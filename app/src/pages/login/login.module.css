@@ -1,52 +1,121 @@
 .page {
-  min-height: calc(100dvh - 120px);
+  flex: 1;
   display: grid;
   place-items: center;
   padding: var(--gap-loose) var(--gap);
+  /* 极淡的斜向纸纹晕染,别让登录页空成一片死白 */
+  background:
+    radial-gradient(120% 80% at 88% 12%, var(--azure-wash), transparent 55%),
+    radial-gradient(90% 70% at 6% 96%, var(--cinnabar-wash), transparent 60%);
 }
 
-.card {
-  width: min(400px, 92vw);
+/* ── 主体:扉页 | 表单 非对称双栏 ── */
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
+  align-items: stretch;
+  width: min(880px, 100%);
   background: var(--paper);
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius-l);
-  box-shadow: var(--shadow-paper);
-  padding: var(--gap-loose);
-  text-align: center;
+  box-shadow: var(--shadow-lift);
+  overflow: hidden;
+  animation: rise var(--t-slow) var(--ease-out) both;
 }
 
-.seal {
-  display: inline-grid;
-  place-items: center;
-  width: 52px;
-  height: 52px;
-  border-radius: var(--radius-s);
-  background: var(--cinnabar);
-  color: var(--paper);
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── 扉页:朱印压角 + 竖排铭 ── */
+
+.plate {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(1.75rem, 3.5vw, 2.75rem);
+  background:
+    linear-gradient(160deg, var(--paper-warm), color-mix(in oklab, var(--paper-warm) 82%, var(--azure) 6%));
+  border-right: 1px solid var(--paper-edge);
+}
+
+/* 竖界栏:仿古籍版框,压在扉页右缘 */
+.plate::after {
+  content: '';
+  position: absolute;
+  top: 1.5rem;
+  bottom: 1.5rem;
+  right: -1px;
+  width: 2px;
+  background: linear-gradient(var(--paper-edge), transparent);
+}
+
+.plateSeal {
+  width: 3.25rem;
+  height: 3.25rem;
+  filter: drop-shadow(0 3px 8px var(--cinnabar-wash));
+  transform: rotate(-3deg);
+}
+
+.plateMotto {
   font-family: var(--font-display);
-  font-size: var(--fs-sub);
-  letter-spacing: 0.1em;
-  margin: 0 auto var(--gap-tight);
+  font-size: clamp(1.7rem, 3.2vw, 2.3rem);
+  font-weight: 700;
+  line-height: 1.28;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  margin: clamp(1.25rem, 3vw, 2rem) 0;
+}
+
+.plateGloss {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  line-height: 1.9;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
+
+/* ── 表单栏 ── */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1.75rem, 3.5vw, 3rem);
+}
+
+.eyebrow {
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  color: var(--cinnabar);
+  margin-bottom: 0.6rem;
 }
 
 .title {
   font-family: var(--font-display);
   font-size: var(--fs-title);
+  font-weight: 700;
+  letter-spacing: 0.04em;
   color: var(--ink);
-  margin: 0 0 var(--gap-hair);
+  margin: 0;
 }
 
 .sub {
   font-size: var(--fs-small);
+  line-height: 1.75;
   color: var(--ink-soft);
-  margin: 0 0 var(--gap);
+  margin: 0.5rem 0 clamp(1.5rem, 3vw, 2rem);
+  max-width: 24em;
 }
 
-.form {
+.fields {
   display: flex;
   flex-direction: column;
   gap: var(--gap-tight);
-  text-align: left;
 }
 
 .field {
@@ -56,80 +125,182 @@
 }
 
 .label {
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.08em;
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  letter-spacing: 0.16em;
   color: var(--ink-soft);
 }
 
+/* 输入框:去圆角卡片感,只留底线,像在纸上填帖 */
 .input {
   width: 100%;
-  padding: var(--gap-hair) var(--gap-tight);
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-s);
-  background: var(--paper-warm);
+  padding: 0.6rem 0.2rem;
+  border: none;
+  border-bottom: 1.5px solid var(--paper-edge);
+  border-radius: 0;
+  background: transparent;
   color: var(--ink);
+  font-family: var(--font-body);
   font-size: var(--fs-body);
+  transition: border-color var(--t-fast) var(--ease-out);
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--azure);
-  box-shadow: 0 0 0 3px var(--azure-wash);
+  border-bottom-color: var(--azure);
+}
+
+.errorSlot {
+  min-height: 1.25rem;
+  margin-top: 0.35rem;
 }
 
 .error {
   margin: 0;
   font-size: var(--fs-small);
   color: var(--cinnabar);
+  animation: rise var(--t-med) var(--ease-out) both;
 }
 
 .submit {
-  margin-top: var(--gap-hair);
-  padding: var(--gap-tight);
+  margin-top: 0.4rem;
+  padding: 0.72rem;
   border: none;
   border-radius: var(--radius-s);
   background: var(--azure);
   color: var(--paper);
   font-family: var(--font-display);
   font-size: var(--fs-body);
-  letter-spacing: 0.12em;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
   cursor: pointer;
-  transition: opacity var(--t-fast) var(--ease-out);
+  transition:
+    background var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
 }
 
 .submit:hover:not(:disabled) {
-  opacity: 0.88;
+  background: var(--azure-deep);
+}
+
+.submit:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .submit:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-.submitLink {
-  display: inline-block;
-  margin-top: var(--gap-tight);
-  color: var(--azure);
-  font-size: var(--fs-body);
-  text-decoration: none;
-}
-
-.note {
-  margin: var(--gap) 0 0;
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-tight);
+  margin-top: clamp(1.5rem, 3vw, 2rem);
+  padding-top: var(--gap-tight);
+  border-top: 1px solid var(--paper-edge);
   font-size: var(--fs-tiny);
   color: var(--ink-faint);
-  line-height: 1.8;
 }
 
 .backLink {
-  display: inline-block;
-  margin-top: var(--gap-tight);
-  font-size: var(--fs-small);
   color: var(--ink-soft);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--t-fast) var(--ease-out);
+}
+
+.backLink:hover {
+  color: var(--ink);
+}
+
+/* ── 独立提示卡(standalone / 已登录)──*/
+
+.notice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gap-tight);
+  width: min(420px, 100%);
+  padding: clamp(1.75rem, 4vw, 2.75rem);
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-paper);
+  animation: rise var(--t-slow) var(--ease-out) both;
+}
+
+.noticeSeal {
+  width: 2.75rem;
+  height: 2.75rem;
+  transform: rotate(-3deg);
+}
+
+.noticeTitle {
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0.25rem 0 0;
+}
+
+.noticeText {
+  font-size: var(--fs-small);
+  line-height: 1.8;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.noticeLink {
+  margin-top: 0.25rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  color: var(--azure);
   text-decoration: none;
 }
 
-.backLink:hover,
-.submitLink:hover {
+.noticeLink:hover {
   text-decoration: underline;
+}
+
+/* ── 窄屏:扉页收成顶部横眉 ── */
+
+@media (max-width: 620px) {
+  .split {
+    grid-template-columns: 1fr;
+  }
+
+  .plate {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--gap);
+    border-right: none;
+    border-bottom: 1px solid var(--paper-edge);
+    padding: var(--gap);
+  }
+
+  .plate::after {
+    display: none;
+  }
+
+  .plateSeal {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .plateMotto {
+    writing-mode: horizontal-tb;
+    font-size: var(--fs-sub);
+    margin: 0;
+  }
+
+  .plateMotto br {
+    display: none;
+  }
+
+  .plateGloss {
+    display: none;
+  }
 }

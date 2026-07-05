@@ -1,11 +1,13 @@
 /**
  * 全局外壳 —— 顶部导航 + 设置抽屉。
+ * 品牌章 SealMark 与 public/favicon.svg 是同一枚「白」字白文印,改任一侧必须同步。
  * /teach 路由下切换为「夜自习」深色透明变体(粉笔白文字),
  * 页面根不铺纸色底,由讲解舱自铺黑板底。
  */
 import { useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { SettingsDrawer } from './SettingsDrawer';
+import { Seal } from './Seal';
 import { useAuthStore } from '../../store/authStore';
 import styles from './AppShell.module.css';
 
@@ -27,11 +29,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className={boardMode ? `${styles.shell} ${styles.board}` : styles.shell}>
       <header className={styles.header}>
         <NavLink to="/" className={styles.brand} aria-label="回到书斋首页">
-          <span className={styles.seal} aria-hidden="true">小白</span>
-          <span className={styles.brandText}>
-            小白同学<span className={styles.brandDot}>·</span>
-            <span className={styles.brandMotto}>教然后知困</span>
-          </span>
+          <Seal className={styles.seal} />
+          <span className={styles.brandName}>小白同学</span>
+          <span className={styles.brandRule} aria-hidden="true" />
+          <span className={styles.brandMotto}>教然后知困</span>
         </NavLink>
 
         <nav className={styles.nav} aria-label="主导航">
@@ -47,24 +48,23 @@ export function AppShell({ children }: { children: ReactNode }) {
               {link.label}
             </NavLink>
           ))}
+
+          <span className={styles.navRule} aria-hidden="true" />
+
           {authStatus === 'anon' && (
-            <NavLink
-              to="/login"
-              className={({ isActive }) =>
-                isActive ? `${styles.link} ${styles.linkActive}` : styles.link
-              }
-            >
-              登录
+            <NavLink to="/login" className={styles.loginBtn}>
+              登入
             </NavLink>
           )}
           {authStatus === 'authed' && (
             <button
               type="button"
-              className={styles.link}
+              className={styles.userBtn}
               onClick={() => void logout()}
               title={`已登录:${authUser ?? ''} · 点击退出`}
             >
-              {authUser} · 退出
+              <span className={styles.userName}>{authUser}</span>
+              <span className={styles.userExit}>退出</span>
             </button>
           )}
           <button
@@ -89,12 +89,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 function GearIcon() {
   return (
     <svg
-      width="17"
-      height="17"
+      width="15"
+      height="15"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="1.6"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"

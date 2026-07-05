@@ -1,9 +1,11 @@
 /**
  * 登入书斋 /login —— 预置账号登录,暂不开放注册。
  * 未登录仅可查看(书斋/成长册/看板);登录后才能备课与开讲。
+ * 构图:左侧扉页(印 + 竖排铭 + 门规),右侧表单;非对称,不是居中卡片。
  */
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Seal } from '../../components/shell/Seal';
 import { useAuthStore } from '../../store/authStore';
 import s from './login.module.css';
 
@@ -32,25 +34,21 @@ export default function LoginPage() {
     else navigate(next, { replace: true });
   };
 
-  if (status === 'standalone') {
+  if (status === 'standalone' || status === 'authed') {
+    const standalone = status === 'standalone';
     return (
       <div className={s.page}>
-        <section className={s.card}>
-          <h1 className={s.title}>本地演示模式</h1>
-          <p className={s.note}>当前没有连接服务器网关,无需登录,全部功能直接可用。</p>
-          <Link className={s.submitLink} to="/">回书斋 →</Link>
-        </section>
-      </div>
-    );
-  }
-
-  if (status === 'authed') {
-    return (
-      <div className={s.page}>
-        <section className={s.card}>
-          <h1 className={s.title}>已登入</h1>
-          <p className={s.note}>你已经登录,可以直接开讲了。</p>
-          <Link className={s.submitLink} to={next}>继续 →</Link>
+        <section className={s.notice}>
+          <Seal className={s.noticeSeal} />
+          <h1 className={s.noticeTitle}>{standalone ? '本地演示模式' : '已在书斋中'}</h1>
+          <p className={s.noticeText}>
+            {standalone
+              ? '当前未连接服务器,无需登录,全部功能直接可用。'
+              : '你已登录,可以直接给小白开讲了。'}
+          </p>
+          <Link className={s.noticeLink} to={standalone ? '/' : next}>
+            {standalone ? '回书斋' : '继续'} →
+          </Link>
         </section>
       </div>
     );
@@ -58,45 +56,60 @@ export default function LoginPage() {
 
   return (
     <div className={s.page}>
-      <section className={s.card} aria-label="登录">
-        <p className={s.seal} aria-hidden="true">小白</p>
-        <h1 className={s.title}>登入书斋</h1>
-        <p className={s.sub}>教然后知困 · 登录后才能给小白开讲</p>
+      <div className={s.split}>
+        {/* 扉页:朱印 + 竖排铭 + 门规 */}
+        <aside className={s.plate}>
+          <Seal className={s.plateSeal} />
+          <p className={s.plateMotto} lang="zh">教<br />然<br />后<br />知<br />困</p>
+          <p className={s.plateGloss}>
+            把知识讲给会追问的<br />AI 学生「小白」听
+          </p>
+        </aside>
 
-        <form className={s.form} onSubmit={onSubmit}>
-          <label className={s.field}>
-            <span className={s.label}>账号</span>
-            <input
-              className={s.input}
-              type="text"
-              value={username}
-              autoComplete="username"
-              spellCheck={false}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-          </label>
-          <label className={s.field}>
-            <span className={s.label}>密码</span>
-            <input
-              className={s.input}
-              type="password"
-              value={password}
-              autoComplete="current-password"
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </label>
-          {error && <p className={s.error} role="alert">{error}</p>}
-          <button className={s.submit} type="submit" disabled={busy || !username.trim() || !password}>
-            {busy ? '正在登入…' : '登入'}
-          </button>
-        </form>
+        {/* 表单 */}
+        <section className={s.form} aria-label="登录">
+          <p className={s.eyebrow}>凭帖入斋</p>
+          <h1 className={s.title}>登入书斋</h1>
+          <p className={s.sub}>登录后方可备课、开讲;未登录也能浏览书斋与看板。</p>
 
-        <p className={s.note}>
-          暂未开放注册,账号由管理员发放。<br />
-          未登录也可以浏览书斋、成长册与教师看板。
-        </p>
-        <Link className={s.backLink} to="/">← 先随便看看</Link>
-      </section>
+          <form className={s.fields} onSubmit={onSubmit}>
+            <label className={s.field}>
+              <span className={s.label}>账号</span>
+              <input
+                className={s.input}
+                type="text"
+                value={username}
+                autoComplete="username"
+                spellCheck={false}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+            </label>
+            <label className={s.field}>
+              <span className={s.label}>密码</span>
+              <input
+                className={s.input}
+                type="password"
+                value={password}
+                autoComplete="current-password"
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </label>
+
+            <div className={s.errorSlot} aria-live="polite">
+              {error && <p className={s.error} role="alert">{error}</p>}
+            </div>
+
+            <button className={s.submit} type="submit" disabled={busy || !username.trim() || !password}>
+              {busy ? '正在验帖…' : '登 入'}
+            </button>
+          </form>
+
+          <footer className={s.foot}>
+            <span>暂未开放注册,账号由管理员发放</span>
+            <Link className={s.backLink} to="/">← 先随便看看</Link>
+          </footer>
+        </section>
+      </div>
     </div>
   );
 }

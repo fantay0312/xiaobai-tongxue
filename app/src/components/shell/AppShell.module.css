@@ -24,8 +24,9 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--gap);
-  padding: var(--gap-tight) clamp(var(--gap), 4vw, var(--gap-loose));
-  background: var(--paper);
+  padding: 0.6rem clamp(var(--gap), 4vw, var(--gap-loose));
+  background: color-mix(in oklab, var(--paper) 92%, transparent);
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--paper-edge);
 }
 
@@ -34,99 +35,137 @@
   border-bottom-color: var(--board-line);
 }
 
-/* ── 品牌:朱砂方章 + 楷体字标 ── */
+/* ── 品牌落款:白文印 + 楷体字标 + 界栏 + 铭 ── */
 
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: var(--gap-tight);
+  gap: 0.7rem;
   color: var(--ink);
+  min-width: 0;
 }
 
 .seal {
-  display: grid;
-  place-items: center;
-  width: 2.125rem;
-  height: 2.125rem;
-  writing-mode: vertical-rl;
-  background: var(--cinnabar);
-  color: var(--paper);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0.08em;
-  border-radius: var(--radius-s);
-  /* 印章内圈:先压一圈底色,再衬一线纸色 */
-  box-shadow: inset 0 0 0 2px var(--cinnabar), inset 0 0 0 3px var(--paper);
-  transform: rotate(-4deg);
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: none;
   transition: transform var(--t-med) var(--ease-out);
 }
 
+/* 盖章:按下去再回弹,像落一方印 */
 .brand:hover .seal {
-  transform: rotate(0deg);
+  transform: scale(0.92);
 }
 
-.brandText {
+.brand:active .seal {
+  transform: scale(0.86);
+}
+
+.brandName {
   font-family: var(--font-display);
-  font-size: var(--fs-sub);
+  font-size: 1.15rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
   white-space: nowrap;
+  transform: translateY(1px); /* 楷体视觉基线微调,与印章光学对齐 */
 }
 
-.brandDot {
-  color: var(--ink-faint);
-  margin: 0 0.2em;
-  font-weight: 400;
+.brandRule {
+  width: 1px;
+  height: 0.95rem;
+  background: var(--paper-edge);
+  flex: none;
 }
 
 .brandMotto {
-  font-weight: 400;
-  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.32em;
+  margin-right: -0.32em; /* 抵消末字间距 */
+  color: var(--ink-faint);
+  white-space: nowrap;
+  transform: translateY(1px);
 }
 
-.board .brandText {
+.board .brandName {
   color: var(--chalk);
 }
 
-.board .brandDot,
+.board .brandRule {
+  background: var(--board-line);
+}
+
 .board .brandMotto {
   color: var(--chalk-soft);
 }
 
-/* ── 导航链接:当前路由压一道墨线 ── */
+@media (max-width: 640px) {
+  .brandRule,
+  .brandMotto {
+    display: none;
+  }
+}
+
+/* 极窄屏:只留印章做标记(商业站惯例),导航收紧 */
+@media (max-width: 520px) {
+  .brandName {
+    display: none;
+  }
+
+  .nav {
+    gap: 0.85rem;
+  }
+
+  .link {
+    font-size: var(--fs-small);
+    letter-spacing: 0.05em;
+  }
+
+  .navRule {
+    display: none;
+  }
+
+  .loginBtn {
+    padding: 0.28rem 0.75rem;
+    letter-spacing: 0.1em;
+    text-indent: 0.1em;
+  }
+}
+
+/* ── 导航链接:当前路由缀一枚句读墨点 ── */
 
 .nav {
   display: flex;
   align-items: center;
-  gap: clamp(var(--gap-tight), 3vw, var(--gap-loose));
+  gap: clamp(1rem, 2.4vw, 1.9rem);
 }
 
 .link {
   position: relative;
   font-family: var(--font-display);
   font-size: var(--fs-body);
-  color: var(--ink-soft);
-  padding: var(--gap-hair) 0;
+  letter-spacing: 0.09em;
+  color: var(--ink-faint);
+  padding: var(--gap-hair) 0.1em;
+  white-space: nowrap;
   transition: color var(--t-fast) var(--ease-out);
-  /* 同一类也用于登出按钮:抹平 button 默认外观 */
+  /* 同一类也用于按钮形态:抹平 button 默认外观 */
   background: none;
   border: none;
   cursor: pointer;
 }
 
+/* 句读点:古人圈点文章,读到哪点到哪 */
 .link::after {
   content: '';
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
+  left: 50%;
+  bottom: -3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
   background: currentColor;
-  border-radius: var(--radius-s);
-  transform: scaleX(0);
-  transform-origin: left;
+  transform: translateX(-50%) scale(0);
   transition: transform var(--t-fast) var(--ease-out);
 }
 
@@ -139,7 +178,7 @@
 }
 
 .linkActive::after {
-  transform: scaleX(1);
+  transform: translateX(-50%) scale(1);
 }
 
 .board .link {
@@ -151,22 +190,103 @@
   color: var(--chalk);
 }
 
+/* ── 界栏:导航与账号/设置之间的细分隔 ── */
+
+.navRule {
+  width: 1px;
+  height: 1rem;
+  background: var(--paper-edge);
+  flex: none;
+}
+
+.board .navRule {
+  background: var(--board-line);
+}
+
+/* ── 登入:唯一描边药丸,与导航文字区分层级 ── */
+
+.loginBtn {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  letter-spacing: 0.18em;
+  text-indent: 0.18em; /* 双字居中补偿 */
+  color: var(--ink);
+  padding: 0.32rem 1rem;
+  border: 1px solid color-mix(in oklab, var(--ink) 32%, transparent);
+  border-radius: 999px;
+  transition:
+    background var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out);
+}
+
+.loginBtn:hover {
+  background: var(--ink-wash);
+  border-color: color-mix(in oklab, var(--ink) 55%, transparent);
+}
+
+.board .loginBtn {
+  color: var(--chalk);
+  border-color: color-mix(in oklab, var(--chalk) 38%, transparent);
+}
+
+.board .loginBtn:hover {
+  background: color-mix(in oklab, var(--chalk) 12%, transparent);
+}
+
+/* ── 已登录:名字实,「退出」虚,悬停才亮出来 ── */
+
+.userBtn {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5em;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--gap-hair) 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+}
+
+.userName {
+  color: var(--ink-soft);
+  letter-spacing: 0.04em;
+}
+
+.userExit {
+  color: var(--ink-faint);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.14em;
+  transition: color var(--t-fast) var(--ease-out);
+}
+
+.userBtn:hover .userExit {
+  color: var(--cinnabar);
+}
+
+.board .userName {
+  color: var(--chalk-soft);
+}
+
+.board .userExit {
+  color: var(--chalk-soft);
+}
+
 /* ── 齿轮按钮 ── */
 
 .gearBtn {
   display: grid;
   place-items: center;
-  width: 2rem;
-  height: 2rem;
+  width: 1.9rem;
+  height: 1.9rem;
   border: none;
   background: transparent;
-  color: var(--ink-soft);
+  color: var(--ink-faint);
   border-radius: var(--radius-s);
   transition: color var(--t-fast) var(--ease-out), transform var(--t-med) var(--ease-out);
 }
 
 .gearBtn:hover {
-  color: var(--azure);
+  color: var(--ink);
   transform: rotate(45deg);
 }
 
