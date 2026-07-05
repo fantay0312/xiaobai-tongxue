@@ -121,7 +121,7 @@ function mockRender(
 }
 
 async function apiRender(
-  card: InstructionCard, recent: ChatMessage[], settings: LlmSettings,
+  card: InstructionCard, recent: ChatMessage[], settings: LlmSettings, bannedTerms: string[],
 ): Promise<string> {
   const system = [
     `你正在扮演「小白」——一个${card.style.persona}的大学低年级学生,正在听老师(用户)给你讲解知识。`,
@@ -132,13 +132,17 @@ async function apiRender(
     '1. 白名单之外的任何概念你都不懂,被问到只能困惑求教:"我就是不知道才问你呀,老师。"',
     '2. 你只能使用三类词汇:老师说过的词 / 白名单中的词 / 你观点中的词。绝不使用其他专业术语。',
     `   老师最近说过的词:${card.recentTeacherTerms.join('、') || '(无)'}`,
+    bannedTerms.length
+      ? `   这些词老师还没教到,你压根不认识,严禁说出口(一个字都不能出现):${bannedTerms.join('、')}`
+      : '',
     '3. 你永远不给老师讲课、不总结知识、不主动纠正老师。',
     `4. 每次发言不超过 ${card.style.maxSentences} 句。${card.style.mustEndWithQuestion ? '以一个问题结尾。' : ''}`,
-    `5. 语气自然口语化,符合${card.style.persona}学生的性格。只输出台词本身。`,
+    `5. 语气自然口语化,符合${card.style.persona}学生的性格。只输出台词本身,不带引号、不带"小白:"前缀。`,
     `【本轮你要做的事】${actionBrief(card)}`,
   ].filter(Boolean).join('\n');
   const user = recent.slice(-6).map((m) => `${m.role === 'teacher' ? '老师' : '小白'}:${m.text}`).join('\n');
-  return llmCall('xiaobai', { system, user }, settings);
+  const raw = await llmCall('xiaobai', { system, user }, settings);
+  return raw.trim().replace(/^["“「『]+/, '').replace(/["”」』]+$/, '').replace(/^小白[::]\s*/, '').trim();
 }
 
 function actionBrief(card: InstructionCard): string {
@@ -173,11 +177,23 @@ export async function speakXiaobai(input: {
   const mc = card.mcId ? topic.misconceptions.find((m) => m.mcId === card.mcId) : undefined;
   if (mc) mcTerms.push(mc.triggerLine, mc.belief);
 
+  // api 模式预告违禁词:未解锁 checklist 的术语(泄漏检测的 banned 集),先说清比事后拦截省一次重试
+  const allowedNow = new Set(card.recentTeacherTerms);
+  for (const item of topic.checklist) {
+    if (state.hitChecklist.includes(item.id)) for (const t of item.terms) allowedNow.add(t);
+  }
+  const banned = [...new Set(
+    topic.checklist
+      .filter((item) => !state.hitChecklist.includes(item.id))
+      .flatMap((item) => item.terms)
+      .filter((t) => !allowedNow.has(t) && !mcTerms.some((s) => s.includes(t))),
+  )];
+
   for (let attempt = 0; attempt <= 2; attempt++) {
     let text: string; let mood: XiaobaiMood;
     if (settings.mode === 'api' && attempt < 2) {
       try {
-        text = (await apiRender(card, recentMessages, settings)).trim();
+        text = (await apiRender(card, recentMessages, settings, banned)).trim();
         mood = ACTION_MOOD[card.action] ?? 'idle';
       } catch {
         ({ text, mood } = mockRender(card, topic, seed + attempt));
@@ -193,6 +209,8 @@ export async function speakXiaobai(input: {
     });
     if (leaks.length === 0) return { text, mood, leakageRetries: attempt, leaked: [] };
     if (attempt === 2) return { text: FALLBACK_LINE, mood: 'confused', leakageRetries: 3, leaked: leaks };
+    // 把实际泄漏词并入违禁清单,下次重试时明确点名
+    for (const t of leaks) if (!banned.includes(t)) banned.push(t);
   }
   return { text: FALLBACK_LINE, mood: 'confused', leakageRetries: 3, leaked: [] };
 }

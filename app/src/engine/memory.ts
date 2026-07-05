@@ -76,6 +76,13 @@ export function applyEvent(state: TopicState, ev: LearnEvent): TopicState {
       s.lastVerified = ev.t;
       s.reviewDue = addDays(ev.t, REVIEW_INTERVAL_DAYS * 2);
       break;
+    case 'session_ended':
+      // 会话结束仍悬置的"已注入"误区退回"待注入":
+      // 否则它既不满足 reteach/review 的重放条件,也永远不会被再次注入,该知识点从此无法出师
+      for (const [id, st] of Object.entries(s.mcStates)) {
+        if (st === '已注入') s.mcStates[id] = '待注入';
+      }
+      break;
     default:
       break;
   }

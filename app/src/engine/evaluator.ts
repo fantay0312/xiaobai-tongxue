@@ -1,10 +1,12 @@
 /**
  * 评估引擎:判断"发生了什么"。
- * mock 模式 = 规则关键词匹配(演示保稳);api 模式 = LLM 结构化输出,失败降级规则。
- * 客观维度(覆盖度/纠错力)永远走规则 —— 混合评分设计。
+ * mock 模式 = 规则关键词匹配(断网兜底);
+ * api 模式 = LLM 语义评估(自由表述也能命中要点/判定误区) + 规则结果合并,失败降级规则。
+ * 合并纪律:规则命中永远保留;LLM 只能在规则漏判处补充,幻觉 id 一律过滤。
  */
 import type { EvalResult, LlmSettings, Topic, TopicState } from '../types';
 import { llmCall } from './llm';
+import type { LlmPayload } from './llm';
 
 export interface EvaluateInput {
   utterance: string;
@@ -98,33 +100,130 @@ export async function evaluate(input: EvaluateInput): Promise<EvalResult> {
   if (input.settings.mode !== 'api') return base;
   try {
     const raw = await llmCall('evaluator', buildEvalPrompt(input), input.settings);
-    const parsed = JSON.parse(raw) as Partial<EvalResult>;
-    // 客观维度(checklist/误区判定)以规则结果为准;LLM 补充主观信号
-    return {
-      ...base,
-      accuracyFlags: Array.isArray(parsed.accuracyFlags) ? parsed.accuracyFlags : base.accuracyFlags,
-      stuckSignal: base.stuckSignal || parsed.stuckSignal === true,
-      offTopic: base.offTopic || parsed.offTopic === true,
-      goldenAnalogy: base.goldenAnalogy ?? (typeof parsed.goldenAnalogy === 'string' ? parsed.goldenAnalogy : null),
-      reasoning: typeof parsed.reasoning === 'string' ? parsed.reasoning : base.reasoning,
-    };
+    return mergeEval(base, parseLlmEval(raw), input);
   } catch {
     return base; // API 失败静默降级规则评估
   }
 }
 
-function buildEvalPrompt(input: EvaluateInput) {
+// ───────────────────────── LLM 语义评估(api 模式) ─────────────────────────
+
+interface LlmEval {
+  checklistHits?: unknown;
+  mcJudgement?: unknown;
+  accuracyFlags?: unknown;
+  stuckSignal?: unknown;
+  offTopic?: unknown;
+  goldenAnalogy?: unknown;
+  reasoning?: unknown;
+}
+
+/** 剥掉偶发的 markdown 代码围栏再解析 */
+function parseLlmEval(raw: string): LlmEval {
+  const clean = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  const parsed: unknown = JSON.parse(clean);
+  if (typeof parsed !== 'object' || parsed === null) throw new Error('llm-eval-shape');
+  return parsed as LlmEval;
+}
+
+/** 证据比对用归一化:只留汉字/字母/数字,英文一律小写 */
+function normForQuote(s: string): string {
+  return s.toLowerCase().replace(/[^\p{Script=Han}a-z0-9]/gu, '');
+}
+
+/**
+ * 合并规则与 LLM 语义评估:
+ * - 命中 = 规则 ∪ LLM;LLM 命中必须带"老师原话摘录"且摘录真实存在于原话中(防幻觉命中),
+ *   且只能命中"尚未讲清"的合法 id
+ * - 误区判定:规则关键词明确命中(corrected/adopted)时以规则为准;规则拿不准(pending)才采信 LLM
+ * - 卡壳/偏题:合并后重算 informative 守卫,有实质内容一律不算
+ */
+function mergeEval(base: EvalResult, llm: LlmEval, input: EvaluateInput): EvalResult {
+  const { topic, state, pendingMcId, utterance } = input;
+  const validIds = new Set(topic.checklist.map((c) => c.id));
+  const uttNorm = normForQuote(utterance);
+
+  const llmHits = (Array.isArray(llm.checklistHits) ? llm.checklistHits : [])
+    .map((h) => {
+      if (typeof h !== 'object' || h === null) return null;
+      const { id, quote } = h as { id?: unknown; quote?: unknown };
+      if (typeof id !== 'string' || typeof quote !== 'string') return null;
+      const q = normForQuote(quote);
+      // 摘录必须有实质长度且逐字出自老师原话 —— 幻觉命中在此被丢弃
+      if (q.length < 4 || !uttNorm.includes(q)) return null;
+      return id;
+    })
+    .filter((id): id is string => id !== null && validIds.has(id) && !state.hitChecklist.includes(id));
+  const checklistHits = [...new Set([...base.checklistHits, ...llmHits])];
+
+  // 误区判定:api 模式下语义判定优先 —— 规则关键词是子串匹配,分不清"一样"和"不一样",
+  // 自由表述下会把正确反驳误判成被带偏(或反向);LLM 给出合法判定时采信 LLM,
+  // LLM 缺失/非法/调用失败时才落回规则结果兜底
+  let mcEvent = base.mcEvent;
+  if (
+    pendingMcId && mcEvent &&
+    (llm.mcJudgement === 'corrected' || llm.mcJudgement === 'adopted' || llm.mcJudgement === 'pending')
+  ) {
+    mcEvent = { mcId: pendingMcId, result: llm.mcJudgement };
+  }
+
+  const resolvedMc = mcEvent !== null && mcEvent.result !== 'pending';
+  const informative = checklistHits.length > 0 || resolvedMc;
+  const stuckSignal = !informative && (base.stuckSignal || llm.stuckSignal === true);
+  const offTopic = !informative && !stuckSignal && !mcEvent && (base.offTopic || llm.offTopic === true);
+
+  // 金句与命中同纪律:必须逐字出自老师原话,防止 LLM 转述/编造被当成"老师金句"存档
+  const llmGoldenRaw = typeof llm.goldenAnalogy === 'string' ? llm.goldenAnalogy : null;
+  const llmGoldenNorm = llmGoldenRaw ? normForQuote(llmGoldenRaw) : '';
+  const goldenAnalogy = base.goldenAnalogy ??
+    (informative && llmGoldenRaw && llmGoldenNorm.length >= 8 && uttNorm.includes(llmGoldenNorm)
+      ? llmGoldenRaw
+      : null);
+
+  const accuracyFlags = (Array.isArray(llm.accuracyFlags) ? llm.accuracyFlags : [])
+    .filter((f): f is { checklistId: string; note: string } =>
+      typeof f === 'object' && f !== null &&
+      typeof (f as { checklistId?: unknown }).checklistId === 'string' &&
+      validIds.has((f as { checklistId: string }).checklistId) &&
+      typeof (f as { note?: unknown }).note === 'string' &&
+      (f as { note: string }).note.length > 0)
+    .slice(0, 3);
+
+  const reasoning =
+    typeof llm.reasoning === 'string' && llm.reasoning
+      ? `${llm.reasoning}(语义评估)`
+      : base.reasoning;
+
+  return { checklistHits, accuracyFlags, mcEvent, stuckSignal, offTopic, goldenAnalogy, reasoning };
+}
+
+function buildEvalPrompt(input: EvaluateInput): LlmPayload {
   const { utterance, topic, state, pendingMcId } = input;
-  return {
-    system:
-      '你是教学评估系统。阅读老师(学生用户)的最新讲解,只输出 JSON:' +
-      '{"accuracyFlags":[{"checklistId":"","note":""}],"stuckSignal":false,"offTopic":false,"goldenAnalogy":null,"reasoning":""}。' +
-      'temperature=0,不确定时保守。',
-    user: JSON.stringify({
-      utterance,
-      checklist: topic.checklist.map((c) => ({ id: c.id, point: c.point, groundTruth: c.groundTruth })),
-      state: { hit: state.hitChecklist, level: state.level, pendingMcId },
-    }),
-    json: true,
-  };
+  const unhit = topic.checklist.filter((c) => !state.hitChecklist.includes(c.id));
+  const mc = pendingMcId ? topic.misconceptions.find((m) => m.mcId === pendingMcId) : undefined;
+  const system = [
+    '你是「小白同学」的教学评估引擎:学生用户(下称"老师")正在给 AI 学生讲课,你要判定老师这一轮讲解发生了什么。',
+    '严格按证据判定,不脑补。只输出 JSON,结构如下:',
+    '{"checklistHits":[{"id":"c1","quote":"老师原话摘录"}],"mcJudgement":null,"accuracyFlags":[],"stuckSignal":false,"offTopic":false,"goldenAnalogy":null,"reasoning":""}',
+    '判定标准:',
+    '- checklistHits:老师本轮讲解【明确、正面、正确】讲到了哪些"待讲要点"。按含义判定,与具体措辞无关;只能填待讲要点列表中的 id。宁缺毋滥:仅仅沾边、间接暗示、需要推理补全、复读提问、或讲错了的一律不算。每一项必须附 quote:从老师本轮原话中一字不差摘录的短句(≤40字),作为该要点被讲到的直接证据;给不出原话证据就不要报命中。',
+    mc
+      ? '- mcJudgement:老师对"当前误区"的回应判定 → "corrected"(明确指出该说法错误,并给出符合纠正标准的解释)/"adopted"(认同、附和或迎合了这个错误说法)/"pending"(没有正面回应)。'
+      : '- mcJudgement:本轮无待判定误区,恒为 null。',
+    '- accuracyFlags:老师讲解中与 groundTruth 相悖或含糊有歧义的表述,格式 {"checklistId":"","note":"≤30字"};没有则空数组。',
+    '- stuckSignal:老师明显卡壳、说不下去、直接表示不会/求助时为 true。',
+    '- offTopic:发言与本知识点完全无关(闲聊、其他话题)才为 true;讲得不好、讲得浅不算偏题。',
+    '- goldenAnalogy:老师若用了贴切的生活化类比,摘录包含类比的原句;没有则为 null。',
+    '- reasoning:一句话判定依据,中文,不超过 40 字。',
+  ].join('\n');
+  const user = JSON.stringify({
+    知识点: topic.title,
+    老师本轮讲解: utterance,
+    待讲要点: unhit.map((c) => ({ id: c.id, point: c.point, groundTruth: c.groundTruth })),
+    已讲清的要点: state.hitChecklist.map(
+      (id) => topic.checklist.find((c) => c.id === id)?.point ?? id,
+    ),
+    当前误区: mc ? { 错误认知: mc.belief, 纠正标准: mc.correctionCriteria } : null,
+  });
+  return { system, user, json: true };
 }

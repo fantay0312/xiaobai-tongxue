@@ -2,3 +2,6 @@ node_modules/
 dist/
 .DS_Store
 *.local
+
+# 含真实 API 密钥,禁止入库
+doc/aiapi.md

@@ -28,7 +28,19 @@ const DEFAULT_GLOBAL: XiaobaiGlobal = {
   bestRecord: null,
 };
 
-const DEFAULT_SETTINGS: LlmSettings = {
+// 构建期注入的 LLM 凭据(.env.local,不入库):有 key → 默认直连 API,否则纯本地演示模式
+const ENV_KEY = (import.meta.env.VITE_LLM_API_KEY as string | undefined)?.trim() ?? '';
+const ENV_LLM_DEFAULT: LlmSettings | null = ENV_KEY
+  ? {
+      mode: 'api',
+      baseUrl: ((import.meta.env.VITE_LLM_BASE_URL as string | undefined) ?? '').trim() || 'https://api.deepseek.com',
+      apiKey: ENV_KEY,
+      model: ((import.meta.env.VITE_LLM_MODEL as string | undefined) ?? '').trim() || 'deepseek-chat',
+      temperature: 0.8,
+    }
+  : null;
+
+const DEFAULT_SETTINGS: LlmSettings = ENV_LLM_DEFAULT ?? {
   mode: 'mock',
   baseUrl: '',
   apiKey: '',
@@ -139,13 +151,15 @@ export const useAppStore = create<AppState>()(
         const speak = await speakXiaobai({
           card: opening.card, topic, state, recentMessages: [], settings: get().settings, seed: 0,
         });
+        // api 模式下渲染可能耗时数秒,期间用户可能已退出/切换会话 —— 续体只允许写回本会话
+        if (get().live?.sessionId !== sessionId) return;
         const greeting =
           mode === 'teach'
             ? `老师好!今天你要给我讲「${topic.title}」呀?我搬好小板凳了!`
             : mode === 'reteach'
               ? `老师,上次那个问题我后来想了想,还是没转过弯来……`
               : `老师……上次学的东西,我好像有点忘了。`;
-        set((s) => s.live ? {
+        set((s) => s.live && s.live.sessionId === sessionId ? {
           live: {
             ...s.live, busy: false, mood: speak.mood,
             messages: [msg('xiaobai', `${greeting}\n${speak.text}`, { action: opening.action, mood: speak.mood })],
@@ -165,6 +179,7 @@ export const useAppStore = create<AppState>()(
         const topic = live ? getTopic(live.topicId) : undefined;
         if (!live || !topic || live.busy || live.ended || !text.trim()) return;
 
+        const sessionId = live.sessionId;
         const teacherMsg = msg('teacher', text.trim());
         set((s) => s.live ? {
           live: { ...s.live, busy: true, mood: 'thinking', lookupChecklistId: null, messages: [...s.live.messages, teacherMsg] },
@@ -176,6 +191,8 @@ export const useAppStore = create<AppState>()(
           const evalResult = await evaluate({
             utterance: text, topic, state, pendingMcId: live.pendingMcId, settings,
           });
+          // 长 await 期间用户可能已退出教室/开启新会话:陈旧续体不得写入事件流与新会话
+          if (get().live?.sessionId !== sessionId) return;
           const decision = decide({
             evalResult, topic, state, global: g, mode: live.mode,
             pendingMcId: live.pendingMcId, turn: live.traces.length, utterance: text,
@@ -209,13 +226,14 @@ export const useAppStore = create<AppState>()(
             recentMessages: [...live.messages, teacherMsg],
             settings, seed: live.traces.length + 1,
           });
+          if (get().live?.sessionId !== sessionId) return;
 
           const newMessages: ChatMessage[] = [
             msg('xiaobai', speak.text, { action: decision.action, mood: speak.mood }),
           ];
           if (decision.systemNote) newMessages.push(msg('system', decision.systemNote));
 
-          set((s) => s.live ? {
+          set((s) => s.live && s.live.sessionId === sessionId ? {
             live: {
               ...s.live,
               busy: false,
@@ -252,7 +270,7 @@ export const useAppStore = create<AppState>()(
             }));
           }
         } catch {
-          set((s) => s.live ? {
+          set((s) => s.live && s.live.sessionId === sessionId ? {
             live: {
               ...s.live, busy: false, mood: 'confused',
               messages: [...s.live.messages, msg('xiaobai', '呀,我走神了……老师你刚说到哪了?再讲一遍呗。', { mood: 'confused' })],
@@ -313,7 +331,18 @@ export const useAppStore = create<AppState>()(
         return report.sessionId;
       },
 
-      abandonSession: () => set({ live: null }),
+      abandonSession: () => {
+        const { live } = get();
+        if (live) {
+          // 事件溯源一致性:中途离开也落 session_ended,悬置的"已注入"误区由重放逻辑退回"待注入"
+          get().appendEvents([{
+            type: 'session_ended', topicId: live.topicId,
+            payload: { turns: live.traces.length, abandoned: true },
+            evidence: `中途离开教室(第 ${live.traces.length} 轮),悬置误区退回待注入`,
+          }], live.sessionId);
+        }
+        set({ live: null });
+      },
 
       completePrep: (topicId, correctCount, total) => {
         get().appendEvents([{
@@ -348,10 +377,23 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'xiaobai-store-v1',
+      version: 2,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         global: s.global, events: s.events, reports: s.reports, settings: s.settings,
       }),
+      // 直通迁移:旧版本存档(v0/v1)原样接收 —— 没有 migrate 时 zustand 会把版本不符的存档整个丢弃
+      migrate: (persisted) => persisted,
+      // 构建期注入了 LLM 凭据、而存档从未配置过 key 时,以注入配置为准;
+      // 用户手动配置过的 key 一律保留不动。放在 merge(每次加载幂等)而非 migrate(版本升级只跑一次):
+      // 否则"无 key 构建"先打上版本戳后,后补的凭据永远无法生效
+      merge: (persisted, current) => {
+        const merged = { ...current, ...(persisted as Partial<AppState> | undefined ?? {}) };
+        if (ENV_LLM_DEFAULT && !merged.settings?.apiKey) {
+          merged.settings = { ...ENV_LLM_DEFAULT, temperature: merged.settings?.temperature ?? 0.8 };
+        }
+        return merged;
+      },
       onRehydrateStorage: () => (state) => {
         state?.rebuildStates();
       },

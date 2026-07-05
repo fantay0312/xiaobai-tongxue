@@ -3,13 +3,37 @@
  * LlmSettings 表单:mock/api 模式切换 + 小白台词温度。
  * 评估与状态机永远本地规则运行,LLM 只负责理解与台词。
  */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppStore } from '../../store/appStore';
+import { llmCall } from '../../engine';
 import styles from './SettingsDrawer.module.css';
+
+type TestState =
+  | { status: 'idle' }
+  | { status: 'busy' }
+  | { status: 'ok'; detail: string }
+  | { status: 'fail'; detail: string };
 
 export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const settings = useAppStore((s) => s.settings);
   const setSettings = useAppStore((s) => s.setSettings);
+  const [test, setTest] = useState<TestState>({ status: 'idle' });
+
+  const runTest = async () => {
+    setTest({ status: 'busy' });
+    const t0 = performance.now();
+    try {
+      const reply = await llmCall(
+        'xiaobai',
+        { system: '你是连接测试,收到任何消息都只回复两个字:在的', user: 'ping' },
+        { ...settings, temperature: 0 },
+      );
+      const ms = Math.round(performance.now() - t0);
+      setTest({ status: 'ok', detail: `连接成功 · ${ms}ms · ${reply.trim().slice(0, 24)}` });
+    } catch (e) {
+      setTest({ status: 'fail', detail: `连接失败:${e instanceof Error ? e.message : String(e)}` });
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -74,7 +98,7 @@ export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () =
                   value={settings.baseUrl}
                   placeholder="https://api.deepseek.com/v1"
                   spellCheck={false}
-                  onChange={(e) => setSettings({ baseUrl: e.target.value })}
+                  onChange={(e) => { setSettings({ baseUrl: e.target.value }); setTest({ status: 'idle' }); }}
                 />
               </label>
               <label className={styles.field}>
@@ -85,7 +109,7 @@ export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () =
                   value={settings.apiKey}
                   placeholder="sk-…"
                   autoComplete="off"
-                  onChange={(e) => setSettings({ apiKey: e.target.value })}
+                  onChange={(e) => { setSettings({ apiKey: e.target.value }); setTest({ status: 'idle' }); }}
                 />
               </label>
               <label className={styles.field}>
@@ -96,9 +120,21 @@ export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () =
                   value={settings.model}
                   placeholder="如 deepseek-chat"
                   spellCheck={false}
-                  onChange={(e) => setSettings({ model: e.target.value })}
+                  onChange={(e) => { setSettings({ model: e.target.value }); setTest({ status: 'idle' }); }}
                 />
               </label>
+              <div className={styles.testRow}>
+                <button
+                  type="button"
+                  className={styles.testBtn}
+                  onClick={runTest}
+                  disabled={test.status === 'busy' || !settings.baseUrl || !settings.apiKey || !settings.model}
+                >
+                  {test.status === 'busy' ? '测试中…' : '测试连接'}
+                </button>
+                {test.status === 'ok' && <span className={`${styles.testStatus} ${styles.testOk}`}>{test.detail}</span>}
+                {test.status === 'fail' && <span className={`${styles.testStatus} ${styles.testFail}`}>{test.detail}</span>}
+              </div>
               <p className={styles.hint}>任何 OpenAI 兼容端点(/chat/completions)均可;密钥只存在本机浏览器,不上传。</p>
             </div>
           )}

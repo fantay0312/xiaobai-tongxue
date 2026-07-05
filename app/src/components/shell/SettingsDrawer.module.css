@@ -170,6 +170,49 @@
   color: var(--ink-faint);
 }
 
+/* ── 连接测试 ── */
+
+.testRow {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
+}
+
+.testBtn {
+  padding: var(--gap-hair) var(--gap-tight);
+  border: 1px solid var(--azure);
+  border-radius: var(--radius-s);
+  background: var(--azure-wash);
+  color: var(--azure);
+  font-size: var(--fs-small);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.testBtn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.testBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--azure-wash);
+}
+
+.testStatus {
+  font-size: var(--fs-tiny);
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.testOk {
+  color: var(--azure);
+}
+
+.testFail {
+  color: #c0392b;
+}
+
 /* ── 温度滑条 ── */
 
 .sliderRow {
