@@ -1,0 +1,73 @@
+/* ─────────────────────────────────────────────────────────
+   「小白同学」设计令牌 —— 书斋学堂
+   宣纸暖白为底,墨青为骨,朱砂点睛(只给误区/盲区),黛绿归掌握。
+   讲解舱独用"夜自习黑板"深色场景(--board-*),不是全局暗色模式。
+   ───────────────────────────────────────────────────────── */
+:root {
+  /* 纸 */
+  --paper: oklch(0.972 0.011 92);          /* 宣纸暖白 */
+  --paper-warm: oklch(0.955 0.018 90);     /* 稍深一档,分区用 */
+  --paper-edge: oklch(0.91 0.025 88);      /* 纸边/分割线 */
+
+  /* 墨 */
+  --ink: oklch(0.27 0.028 255);            /* 正文墨色 */
+  --ink-soft: oklch(0.44 0.024 250);       /* 次级文字 */
+  --ink-faint: oklch(0.60 0.02 245);       /* 弱提示 */
+  --ink-wash: oklch(0.27 0.028 255 / 0.08);/* 淡墨晕染背景 */
+
+  /* 主色:墨青 */
+  --azure: oklch(0.42 0.075 235);
+  --azure-deep: oklch(0.33 0.06 240);
+  --azure-wash: oklch(0.42 0.075 235 / 0.10);
+
+  /* 点睛:朱砂 —— 只用于误区、盲区、警示 */
+  --cinnabar: oklch(0.55 0.165 32);
+  --cinnabar-wash: oklch(0.55 0.165 32 / 0.10);
+
+  /* 掌握:黛绿 / 衰减:藤黄 / 未学:灰 */
+  --jade: oklch(0.56 0.10 158);
+  --jade-wash: oklch(0.56 0.10 158 / 0.12);
+  --amber: oklch(0.72 0.12 80);
+  --amber-wash: oklch(0.72 0.12 80 / 0.14);
+  --dust: oklch(0.72 0.012 90);
+
+  /* 夜自习黑板场景(讲解舱专用) */
+  --board: oklch(0.245 0.02 200);
+  --board-deep: oklch(0.205 0.018 210);
+  --board-line: oklch(0.35 0.02 200);
+  --chalk: oklch(0.93 0.012 95);
+  --chalk-soft: oklch(0.78 0.015 95);
+  --chalk-amber: oklch(0.85 0.09 85);
+
+  /* 字体 */
+  --font-display: 'LXGW WenKai Screen', 'Kaiti SC', 'STKaiti', 'KaiTi', serif;
+  --font-body: -apple-system, 'PingFang SC', 'Source Han Sans SC', 'Microsoft YaHei', sans-serif;
+  --font-code: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+
+  /* 字阶(流式) */
+  --fs-hero: clamp(2rem, 4.5vw, 3.2rem);
+  --fs-title: clamp(1.4rem, 2.6vw, 1.9rem);
+  --fs-sub: clamp(1.05rem, 1.6vw, 1.25rem);
+  --fs-body: 0.9375rem;
+  --fs-small: 0.8125rem;
+  --fs-tiny: 0.6875rem;
+
+  /* 节奏 */
+  --gap-hair: 0.375rem;
+  --gap-tight: 0.75rem;
+  --gap: 1.25rem;
+  --gap-loose: clamp(2rem, 4vw, 3.5rem);
+  --gap-section: clamp(3rem, 7vw, 6rem);
+
+  --radius-s: 4px;
+  --radius: 10px;
+  --radius-l: 18px;
+
+  --shadow-paper: 0 1px 2px oklch(0.27 0.028 255 / 0.06), 0 4px 16px oklch(0.27 0.028 255 / 0.05);
+  --shadow-lift: 0 2px 6px oklch(0.27 0.028 255 / 0.08), 0 12px 32px oklch(0.27 0.028 255 / 0.10);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);   /* expo-out */
+  --t-fast: 160ms;
+  --t-med: 320ms;
+  --t-slow: 640ms;
+}
