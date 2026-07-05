@@ -1,6 +1,8 @@
 /**
  * 小白台词模板库(mock 渲染)。占位符见 types.ts LineTemplates 注释。
  * 铁律:模板中不得出现任何知识点专业术语——术语只能经 {term}/{belief}/{probe} 槽位进入。
+ * 注意:各数组的首个模板顺序不可随意调整(simulate.ts 按 seed 取模选中的台词有断言依赖,
+ * 如偏题拉回必须落在含「今天/知识点」的模板上)。新增模板一律追加在末尾。
  */
 import type { LineTemplates } from '../types';
 
@@ -14,52 +16,140 @@ export const XIAOBAI_LINES: LineTemplates = {
     ask_example: [
       '嗯……道理我好像听懂一点了,能举个生活里的例子吗?',
       '老师能不能拿个具体的例子给我比划比划?我光听概念有点晕。',
+      '要不你拿身边的东西给我打个比方?我这样最容易听懂啦!',
     ],
-    ask_boundary: ['{probe}', '我突然想到一个情况——{probe}'],
-    inject_misconception: ['{belief}'],
-    ask_transfer: ['老师我好像悟了!那{transfer}是不是也一样?',
-      '哦哦哦,那我猜猜——{transfer}也是这个道理吧?'],
+    ask_boundary: [
+      '{probe}',
+      '我突然想到一个情况——{probe}',
+      '欸,那我要是换一种用法呢——{probe}',
+    ],
+    inject_misconception: [
+      '{belief}',
+      '我跟你说老师,我自己琢磨出一个道理:{belief}!对吧?',
+      '嗯……可是我怎么觉得,{belief}呀?',
+    ],
+    ask_transfer: [
+      '老师我好像悟了!那{transfer}是不是也一样?',
+      '哦哦哦,那我猜猜——{transfer}也是这个道理吧?',
+      '那我要是把它挪到{transfer}上,道理还通吗?',
+    ],
     express_understanding: [
       '哦——!我懂了!所以说{paraphrase},对吧?',
       '原来是这样!{paraphrase}……嘿嘿,我记住了!',
+      '懂了懂了!{paraphrase}——你看我这样说对不对?',
     ],
     rescue_hint: [
       '老师,是不是跟你刚才说的{term}有关系呀?你顺着那个讲讲?',
       '嗯……要不从你刚才讲的{term}那里接着说?我觉得快通了。',
+      '别慌老师,你就从你最有把握的那一小块讲起,我听着呢!',
     ],
     propose_lookup: [
       '老师别急,要不……我们一起查查书?查到了你再讲给我听,我肯定认真听!',
+      '要不我们翻翻书嘛,你查到了讲给我听,我给你捧场!',
+      '卡住就卡住呗,我们一起查一查,查完你再教我,好不好?',
     ],
     stay_confused: [
       '可是……我还是觉得{belief},你能证明给我看吗?',
       '呃,老师,这个跟今天的知识点没关系吧?我还想听你讲刚才那个呢。',
+      '老师……我们还是回来讲今天这个吧,我刚才听得正起劲呢。',
     ],
     trigger_review: [
       '老师……上次那个我好像有点忘了,你再给我讲讲呗?',
+      '老师老师,之前讲的那个……我脑子里就剩个影子了,你再带我过一遍呗?',
+      '不好意思老师,上回那个我好像还给你了……再讲一次好不好?',
     ],
   },
   严谨型: {
-    ask_clarify: ['等等,这里我想确认一个细节:{probe}', '老师,{term}的准确含义是什么?我想先把定义弄清楚。'],
-    ask_example: ['能给一个具体的例子吗?我需要一个能验证的案例。'],
-    ask_boundary: ['我想确认一种边界情况:{probe}'],
-    inject_misconception: ['{belief}'],
-    ask_transfer: ['按这个逻辑推下去,{transfer}应该也成立,对吗?'],
-    express_understanding: ['明白了。也就是说{paraphrase}——这样表述准确吗?'],
-    rescue_hint: ['是否可以从你刚才提到的{term}继续?那部分你讲得很清楚。'],
-    propose_lookup: ['要不我们查一下资料再继续?我想要一个可靠的依据。'],
-    stay_confused: ['抱歉,我仍然认为{belief}。请给出能说服我的论证。'],
-    trigger_review: ['老师,上次那个知识点,有个细节我记不清了,能再讲一次吗?'],
+    ask_clarify: [
+      '等等,这里我想确认一个细节:{probe}',
+      '老师,{term}的准确含义是什么?我想先把定义弄清楚。',
+      '在继续之前,我想先确认一下:{probe}',
+    ],
+    ask_example: [
+      '能给一个具体的例子吗?我需要一个能验证的案例。',
+      '有没有一个具体场景?我想把它代入进去验证一下。',
+      '请举一个最小的例子,越小越好,我想看清每一步。',
+    ],
+    ask_boundary: [
+      '我想确认一种边界情况:{probe}',
+      '如果条件稍微变一下呢——{probe}',
+      '我想测试一个极端情况:{probe}',
+    ],
+    inject_misconception: [
+      '{belief}',
+      '按我的理解,{belief}。如果我错了,请指出错在哪一步。',
+      '我先陈述我的结论:{belief}。你帮我验证一下?',
+    ],
+    ask_transfer: [
+      '按这个逻辑推下去,{transfer}应该也成立,对吗?',
+      '换到{transfer}这个场景,同样的推理还成立吗?',
+    ],
+    express_understanding: [
+      '明白了。也就是说{paraphrase}——这样表述准确吗?',
+      '我复述一遍确认一下:{paraphrase}。没有偏差吧?',
+      '记下了:{paraphrase}。这一步我彻底清楚了。',
+    ],
+    rescue_hint: [
+      '是否可以从你刚才提到的{term}继续?那部分你讲得很清楚。',
+      '别急,你可以先把前提再理一遍,我在听。',
+    ],
+    propose_lookup: [
+      '要不我们查一下资料再继续?我想要一个可靠的依据。',
+      '这里建议查一下原始材料再说,免得我们俩都记岔了。',
+    ],
+    stay_confused: [
+      '抱歉,我仍然认为{belief}。请给出能说服我的论证。',
+      '这个话题超出了今天的范围吧。我们回到正题,我还有疑问没解决。',
+    ],
+    trigger_review: [
+      '老师,上次那个知识点,有个细节我记不清了,能再讲一次吗?',
+      '老师,上次那部分我的记忆已经模糊了,麻烦再讲一遍帮我巩固。',
+    ],
   },
   杠精型: {
-    ask_clarify: ['且慢,{probe}你先把这个说圆了。', '{term}?你确定你没说错?展开讲讲。'],
-    ask_example: ['空口无凭,举个例子来听听?'],
-    ask_boundary: ['哼,那我抬个杠——{probe}'],
-    inject_misconception: ['{belief}'],
-    ask_transfer: ['行,就算你说得对,那{transfer}呢?一样吗?'],
-    express_understanding: ['……好吧,这次算你讲明白了。{paraphrase},我认了。'],
-    rescue_hint: ['卡住啦?你刚才{term}不是讲得挺溜的吗,接着编啊。'],
-    propose_lookup: ['讲不下去了吧?行了行了,一起查书,查完你再给我讲。'],
-    stay_confused: ['我不信。{belief}——你倒是证明给我看啊。'],
-    trigger_review: ['喂老师,上次那个东西我忘了,你不会也忘了吧?再讲一遍。'],
+    ask_clarify: [
+      '且慢,{probe}你先把这个说圆了。',
+      '{term}?你确定你没说错?展开讲讲。',
+      '你这话说得也太快了吧?{probe}',
+    ],
+    ask_example: [
+      '空口无凭,举个例子来听听?',
+      '例子呢?没有例子我可不认。',
+      '你要真懂,现编一个例子应该不难吧?',
+    ],
+    ask_boundary: [
+      '哼,那我抬个杠——{probe}',
+      '你说得这么满,那我问你:{probe}',
+    ],
+    inject_misconception: [
+      '{belief}',
+      '我看未必吧。要我说,{belief}。',
+      '得了吧老师,明明是{belief},我记得清清楚楚。',
+    ],
+    ask_transfer: [
+      '行,就算你说得对,那{transfer}呢?一样吗?',
+      '别高兴太早,换成{transfer},你还敢这么说吗?',
+    ],
+    express_understanding: [
+      '……好吧,这次算你讲明白了。{paraphrase},我认了。',
+      '行行行,{paraphrase}——这回我挑不出毛病。',
+      '哼,{paraphrase}……好吧好吧,记下了。',
+    ],
+    rescue_hint: [
+      '卡住啦?你刚才{term}不是讲得挺溜的吗,接着编啊。',
+      '哟,这就没词了?从你刚才讲顺的那段接着来呗。',
+    ],
+    propose_lookup: [
+      '讲不下去了吧?行了行了,一起查书,查完你再给我讲。',
+      '空口吵没意思,翻书,白纸黑字见分晓。',
+    ],
+    stay_confused: [
+      '我不信。{belief}——你倒是证明给我看啊。',
+      '打住打住,今天不是说好讲正题吗?别想岔开话题。',
+    ],
+    trigger_review: [
+      '喂老师,上次那个东西我忘了,你不会也忘了吧?再讲一遍。',
+      '上次那个,你要是还能一字不差再讲一遍,我就服你。',
+    ],
   },
 };

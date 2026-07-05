@@ -1,0 +1,379 @@
+/* ─────────────────────────────────────────────
+   成长页 —— 小白的成长册。
+   图谱是星图/枝干;黛绿=出师、藤黄=待复习、墨青描边=学习中、灰=未学。
+   ───────────────────────────────────────────── */
+
+.page {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: var(--gap-loose) clamp(1.25rem, 4vw, 3rem) var(--gap-section);
+}
+
+.rise { animation: rise var(--t-med) var(--ease-out) both; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.section { margin-bottom: var(--gap-section); }
+
+.h2 {
+  font-size: var(--fs-title);
+  color: var(--ink);
+  margin-bottom: var(--gap);
+  padding-bottom: var(--gap-hair);
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.h2 small {
+  font-size: var(--fs-small);
+  color: var(--ink-faint);
+  font-weight: 400;
+  margin-left: var(--gap-tight);
+}
+
+.h3 { font-size: var(--fs-sub); color: var(--ink); margin-bottom: var(--gap-tight); }
+
+.muted { color: var(--ink-faint); }
+
+/* ── 顶部:小白 + 成长阶梯 + 人格皮肤 ── */
+
+.hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--gap-loose);
+  align-items: start;
+  margin-bottom: var(--gap-section);
+}
+
+@media (max-width: 820px) {
+  .hero { grid-template-columns: 1fr; row-gap: var(--gap); }
+}
+
+.avatarBox { margin-top: var(--gap-tight); }
+
+.heroTitle { font-size: var(--fs-hero); color: var(--ink); letter-spacing: 0.04em; }
+
+.heroSub {
+  font-family: var(--font-display);
+  color: var(--ink-soft);
+  margin-top: var(--gap-hair);
+  margin-bottom: var(--gap-loose);
+}
+
+.levelNow { color: var(--azure); }
+
+/* 成长阶梯:Lv1 嫩芽 → Lv5 学士帽 */
+
+.ladder {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: var(--gap-loose);
+  max-width: 40rem;
+}
+
+.rung {
+  flex: 1;
+  position: relative;
+  padding-top: 1.1rem;
+}
+
+.rung::before {
+  content: '';
+  position: absolute;
+  top: 0.42rem;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--paper-edge);
+}
+
+.rung:first-child::before { left: 0.5rem; }
+.rung:last-child::before { right: auto; width: 0.5rem; }
+
+.rungDot {
+  position: absolute;
+  top: 0;
+  left: 0.15rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 2px solid var(--dust);
+}
+
+.rungPast .rungDot { background: var(--ink-soft); border-color: var(--ink-soft); }
+
+.rungNow .rungDot {
+  background: var(--azure);
+  border-color: var(--azure);
+  box-shadow: 0 0 0 4px var(--azure-wash);
+}
+
+.rungName { font-family: var(--font-display); font-size: var(--fs-small); color: var(--ink-faint); }
+.rungPast .rungName { color: var(--ink-soft); }
+.rungNow .rungName { color: var(--azure); }
+
+.rungDesc { font-size: var(--fs-tiny); color: var(--ink-faint); }
+
+/* 人格皮肤 */
+
+.personaRow { display: flex; flex-wrap: wrap; gap: var(--gap-tight); }
+
+.personaCard {
+  text-align: left;
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+  padding: var(--gap-tight) var(--gap);
+  max-width: 15rem;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.personaCard:hover { transform: translateY(-1px); }
+
+.personaCard:hover { border-color: var(--azure); }
+
+.personaActive { border-color: var(--azure); background: var(--azure-wash); }
+
+.personaName { font-family: var(--font-display); font-size: var(--fs-sub); color: var(--ink); display: block; }
+
+.personaActive .personaName { color: var(--azure); }
+
+.personaLine { font-size: var(--fs-small); color: var(--ink-soft); margin-top: var(--gap-hair); }
+
+/* ── 盲区图谱(出栏的非常规瞬间) ── */
+
+.mapWrap {
+  margin-inline: calc(-1 * clamp(0rem, 3vw, 2.5rem));
+}
+
+.mapSvg { width: 100%; height: auto; display: block; }
+
+.vein { fill: none; stroke: var(--ink); opacity: 0.14; stroke-width: 1.2; stroke-dasharray: 1 5; stroke-linecap: round; }
+
+.node { cursor: pointer; }
+.nodeLocked { cursor: default; }
+
+.coreMastered { fill: var(--jade); }
+.coreForgotten { fill: var(--amber); }
+.coreLearning { fill: var(--paper); stroke: var(--azure); stroke-width: 2.5; }
+.coreUnlearned { fill: var(--dust); }
+.coreLocked { fill: var(--dust); opacity: 0.35; }
+
+.halo { fill: none; stroke: var(--jade); opacity: 0.35; }
+.haloForgot { fill: none; stroke: var(--amber); stroke-dasharray: 4 4; opacity: 0.8; }
+.haloSelected { fill: none; stroke: var(--azure); stroke-width: 1.5; }
+
+.nodeLabel {
+  font-family: var(--font-display);
+  font-size: 14px;
+  fill: var(--ink);
+  text-anchor: middle;
+}
+
+.nodeLabelFaint { fill: var(--ink-faint); }
+
+.hoverText {
+  font-size: 12px;
+  fill: var(--ink-soft);
+  text-anchor: middle;
+}
+
+.legendRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  margin-top: var(--gap-tight);
+}
+
+.swatch {
+  display: inline-block;
+  width: 0.65em;
+  height: 0.65em;
+  border-radius: 50%;
+  margin-right: 0.35em;
+}
+
+.swJade { background: var(--jade); }
+.swAmber { background: var(--amber); }
+.swAzure { background: var(--paper); border: 2px solid var(--azure); }
+.swDust { background: var(--dust); }
+.swLocked { background: var(--dust); opacity: 0.35; }
+
+/* 忘了→复习 入口 */
+
+.forgotRow {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  margin-top: var(--gap);
+  padding: var(--gap-tight) var(--gap);
+  background: var(--amber-wash);
+  border-radius: var(--radius-s);
+  flex-wrap: wrap;
+}
+
+.forgotText { font-family: var(--font-display); color: var(--ink); }
+
+/* 节点详情 + 证据链 */
+
+.collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--t-med) var(--ease-out);
+}
+
+.open { grid-template-rows: 1fr; }
+
+.collapse > div { overflow: hidden; min-height: 0; }
+
+.nodePanel {
+  margin-top: var(--gap);
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+  padding: var(--gap) var(--gap-loose);
+}
+
+.panelHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap);
+  flex-wrap: wrap;
+  margin-bottom: var(--gap-tight);
+}
+
+.panelTitle { font-size: var(--fs-sub); color: var(--ink); }
+
+.chip {
+  font-size: var(--fs-tiny);
+  padding: 0.05rem 0.5rem;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--paper-edge);
+  color: var(--ink-soft);
+}
+
+.chipJade { color: var(--jade); border-color: var(--jade); background: var(--jade-wash); }
+.chipAmber { color: var(--amber); border-color: var(--amber); background: var(--amber-wash); }
+.chipAzure { color: var(--azure); border-color: var(--azure); background: var(--azure-wash); }
+
+.timeline {
+  list-style: none;
+  margin: var(--gap-tight) 0 0;
+  padding: 0 0 0 var(--gap-tight);
+  border-left: 2px solid var(--paper-edge);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+}
+
+.timelineItem { display: flex; gap: var(--gap-tight); align-items: baseline; flex-wrap: wrap; }
+
+.timelineTime { flex: none; font-family: var(--font-code); font-size: var(--fs-tiny); color: var(--ink-faint); }
+
+.timelineText { font-size: var(--fs-small); color: var(--ink); }
+
+/* ── 教学履历 ── */
+
+.statRow { display: flex; flex-wrap: wrap; gap: var(--gap-loose); margin-bottom: var(--gap-loose); }
+
+.stat { min-width: 8rem; }
+
+.statNum { font-family: var(--font-display); font-size: var(--fs-hero); color: var(--azure); line-height: 1.1; }
+
+.statLabel { font-size: var(--fs-small); color: var(--ink-faint); }
+
+.goldenRow { display: flex; flex-wrap: wrap; gap: var(--gap); }
+
+.goldenCard {
+  margin: 0;
+  max-width: 28rem;
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+  padding: var(--gap) var(--gap) var(--gap-tight);
+}
+
+.goldenText { margin: 0; font-family: var(--font-display); color: var(--ink); line-height: 1.8; }
+.goldenText::before { content: '「'; color: var(--azure); }
+.goldenText::after { content: '」'; color: var(--azure); }
+
+.goldenFrom { margin-top: var(--gap-tight); font-size: var(--fs-tiny); color: var(--ink-faint); }
+
+.memoryList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+}
+
+.memoryItem {
+  font-family: var(--font-display);
+  color: var(--ink);
+  padding-left: var(--gap);
+  border-left: 3px solid var(--azure-wash);
+}
+
+/* ── 按钮与角落 ── */
+
+.btnGhost {
+  background: none;
+  border: 1px solid var(--azure);
+  color: var(--azure);
+  border-radius: var(--radius-s);
+  padding: 0.35rem 0.9rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.btnGhost:hover:not(:disabled) { transform: translateY(-1px); }
+
+.btnGhost:hover:not(:disabled) { background: var(--azure-wash); }
+.btnGhost:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.corner {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: var(--gap-tight);
+  margin-top: var(--gap-section);
+}
+
+.cornerBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  text-decoration: underline dotted;
+  transition: opacity var(--t-fast) var(--ease-out);
+}
+
+.cornerBtn:hover { color: var(--cinnabar); }
+
+.cornerConfirm { font-size: var(--fs-tiny); color: var(--cinnabar); }
+
+.cornerYes {
+  background: none;
+  border: 1px solid var(--cinnabar);
+  color: var(--cinnabar);
+  border-radius: var(--radius-s);
+  padding: 0.05rem 0.5rem;
+  font-size: var(--fs-tiny);
+}
+
+.cornerNo {
+  background: none;
+  border: 1px solid var(--paper-edge);
+  color: var(--ink-soft);
+  border-radius: var(--radius-s);
+  padding: 0.05rem 0.5rem;
+  font-size: var(--fs-tiny);
+}

@@ -28,12 +28,36 @@ export function extractTeacherTerms(messages: ChatMessage[], topic: Topic): stri
   return [...terms];
 }
 
-/** 取讲解中最适合复述的短句(mock 的"正确复述") */
+/** 复述时剔除的开场引子/口头禅(复述"我先说说…"会显得鹦鹉学舌) */
+const LEADIN_RE = /^(我先说说|我们再来|我再说说|接下来|接着说|然后|首先|其次|最后|另外|其实|所以|那么|总之|比如说|比如|不对|不是|不用不用|不用|那可不行|呃+|嗯+|哦+|啊+)[,、::\s]*/;
+
+/**
+ * 取讲解中最适合复述的短句(mock 的"正确复述")。
+ * 评分:含专业术语 +2 / 含判断词(是/不/没/会…)+1 / 长度 10-38 字 +1;同分取短。
+ * 超长子句按逗号重组到 ~46 字,避免半句截断。
+ */
 function pickParaphrase(source: string, topic: Topic): string {
-  const clauses = source.split(/[。!?;\n]/).map((s) => s.trim()).filter((s) => s.length >= 6);
+  const clean = source.replace(/\s+/g, ' ').trim();
+  const clauses = clean
+    .split(/[。!?;\n!?;]/)
+    .map((s) => s.trim().replace(LEADIN_RE, '').trim())
+    .filter((s) => s.length >= 6);
   const allTerms = topic.checklist.flatMap((c) => c.terms);
-  const withTerm = clauses.filter((s) => allTerms.some((t) => s.includes(t)));
-  const best = (withTerm.length ? withTerm : clauses).sort((a, b) => a.length - b.length)[0] ?? source;
+  const score = (s: string) =>
+    (allTerms.some((t) => s.includes(t)) ? 2 : 0) +
+    (/[是不没会]|指向|等于|变/.test(s) ? 1 : 0) +
+    (s.length >= 10 && s.length <= 38 ? 1 : 0);
+  let best = [...clauses].sort((a, b) => score(b) - score(a) || a.length - b.length)[0] ?? clean;
+  if (best.length > 46) {
+    const parts = best.split(/[,,、]/);
+    let acc = '';
+    for (const p of parts) {
+      const cand = acc ? `${acc},${p}` : p;
+      if (cand.length > 46) break;
+      acc = cand;
+    }
+    best = acc || best.slice(0, 46);
+  }
   return best.length > 50 ? `${best.slice(0, 50)}…` : best;
 }
 
@@ -44,23 +68,56 @@ function fillTemplate(tpl: string, card: InstructionCard, topic: Topic): string 
   return tpl
     .replaceAll('{probe}', item?.probeLine ?? '能再从头给我讲讲吗?')
     .replaceAll('{point}', item?.point ?? '这里')
-    .replaceAll('{term}', card.recentTeacherTerms[0] ?? '你刚说的那个')
+    .replaceAll('{term}', card.recentTeacherTerms[0] ?? '那个')
     .replaceAll('{belief}', card.mcBelief ?? '')
     .replaceAll('{paraphrase}', card.paraphraseSource ? pickParaphrase(card.paraphraseSource, topic) : '')
     .replaceAll('{transfer}', topic.transferHint);
 }
 
+/** 槽位可填性检查:缺素材的模板直接淘汰,保证任何指令卡下台词都通顺 */
+function slotUsable(tpl: string, card: InstructionCard): boolean {
+  if (tpl.includes('{belief}') && !card.mcBelief) return false;
+  if (tpl.includes('{paraphrase}') && !card.paraphraseSource) return false;
+  if (tpl.includes('{term}') && card.recentTeacherTerms.length === 0) return false;
+  return true;
+}
+
+/** R4 收场专用(卡壳到底,导演结束会话)——不含任何知识点术语 */
+const R4_LINE = '唔……老师,这段我们俩好像都卡住了。要不先记下来,备好课咱们再来一次?我等你!';
+/** 偏题围栏兜底(部分人格的 stay_confused 模板全都依赖 {belief} 时使用) */
+const OFFTOPIC_LINE = '老师,这个好像不是今天要讲的吧?我还想听你接着讲刚才那个呢。';
+
 function mockRender(
   card: InstructionCard, topic: Topic, seed: number,
 ): { text: string; mood: XiaobaiMood } {
-  // inject_misconception 直接使用误区库触发话术(误区库即剧本)
+  // inject_misconception 直接使用误区库触发话术(误区库即剧本);
+  // 若带 paraphraseSource(纠正成功后同轮衔接注入),先复述开窍再抛新误区。
   if (card.action === 'inject_misconception' && card.mcId) {
     const mc = topic.misconceptions.find((m) => m.mcId === card.mcId);
-    if (mc) return { text: mc.triggerLine, mood: 'confused' };
+    if (mc) {
+      const aha = card.paraphraseSource
+        ? `哦——我懂了,${pickParaphrase(card.paraphraseSource, topic)}!` : '';
+      return { text: `${aha}${mc.triggerLine}`, mood: aha ? 'curious' : 'confused' };
+    }
+  }
+  // stay_confused 无误区语境时分两种:R4 收场(带 targetChecklistId 标记)/ 偏题拉回
+  if (card.action === 'stay_confused' && !card.mcBelief && card.targetChecklistId) {
+    return { text: R4_LINE, mood: 'shy' };
   }
   const pool = XIAOBAI_LINES[card.style.persona]?.[card.action] ?? [];
-  const tpl = pool.length ? pool[seed % pool.length] : '{probe}';
-  return { text: fillTemplate(tpl, card, topic), mood: ACTION_MOOD[card.action] ?? 'idle' };
+  const usable = pool.filter((tpl) => slotUsable(tpl, card));
+  if (usable.length === 0 && card.action === 'stay_confused' && !card.mcBelief) {
+    return { text: OFFTOPIC_LINE, mood: 'confused' };
+  }
+  const list = usable.length ? usable : pool;
+  const tpl = list.length ? list[seed % list.length] : '{probe}';
+  let text = fillTemplate(tpl, card, topic);
+  // 开窍复述后衔接下一问:追问目标的 probeLine 直接续上(probeLine 本身过泄漏纪律)
+  if (card.action === 'express_understanding' && card.targetChecklistId) {
+    const next = topic.checklist.find((c) => c.id === card.targetChecklistId);
+    if (next) text = `${text}${next.probeLine}`;
+  }
+  return { text, mood: ACTION_MOOD[card.action] ?? 'idle' };
 }
 
 async function apiRender(
@@ -86,7 +143,10 @@ async function apiRender(
 
 function actionBrief(card: InstructionCard): string {
   switch (card.action) {
-    case 'inject_misconception': return '把【你当前坚信的观点】自然地说出来——语气是真诚地陈述你的理解,不是刻意提问。';
+    case 'inject_misconception':
+      return card.paraphraseSource
+        ? '先用一句话复述你刚被讲明白的点(表达开窍),紧接着把【你当前坚信的观点】自然地说出来——语气是真诚地陈述你的理解,不是刻意提问。'
+        : '把【你当前坚信的观点】自然地说出来——语气是真诚地陈述你的理解,不是刻意提问。';
     case 'express_understanding': return '你刚被讲明白了!用自己的话正确复述老师刚讲的要点,表达开窍的喜悦。';
     case 'rescue_hint': return '老师卡住了。用老师之前讲过的内容轻轻递个台阶,比如"是不是跟你刚才说的那个有关系呀?"';
     case 'propose_lookup': return '老师讲不下去了。提议"要不我们一起查查书?",语气体贴。';
@@ -108,6 +168,7 @@ export async function speakXiaobai(input: {
   seed: number;
 }): Promise<SpeakResult> {
   const { card, topic, state, recentMessages, settings, seed } = input;
+  // 误区语料整句作为允许来源:其中出现的术语按"当前误区条目术语"放行(方案 §11 防线④)
   const mcTerms = card.mcBelief ? [card.mcBelief] : [];
   const mc = card.mcId ? topic.misconceptions.find((m) => m.mcId === card.mcId) : undefined;
   if (mc) mcTerms.push(mc.triggerLine, mc.belief);
@@ -128,7 +189,7 @@ export async function speakXiaobai(input: {
       reply: text, topic,
       whitelistChecklist: state.hitChecklist,
       teacherTerms: card.recentTeacherTerms,
-      mcTerms: mcTerms.join(' ').split(/\s+/).concat(mcTerms),
+      mcTerms,
     });
     if (leaks.length === 0) return { text, mood, leakageRetries: attempt, leaked: [] };
     if (attempt === 2) return { text: FALLBACK_LINE, mood: 'confused', leakageRetries: 3, leaked: leaks };

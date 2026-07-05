@@ -58,7 +58,8 @@ export function applyEvent(state: TopicState, ev: LearnEvent): TopicState {
       s.prepDone = true;
       break;
     case 'remedy_completed':
-      // 补学完成后误区回到"待注入"以便重讲验证(reteach 重放)
+      // 补学完成后误区保持"被带偏"——openingCard(reteach) 正是按此状态找到要重放的误区;
+      // 重讲纠正成功后由 misconception_corrected 事件翻到"已纠正"
       if (ev.payload.mcId) s.mcStates[String(ev.payload.mcId)] = '被带偏';
       break;
     case 'topic_mastered':

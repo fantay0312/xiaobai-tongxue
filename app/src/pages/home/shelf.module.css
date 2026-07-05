@@ -1,0 +1,212 @@
+/* 知识点书架:书脊式立列,立在一道厚纸边"搁板"上 */
+
+.shelf {
+  margin-bottom: var(--gap-loose);
+  scroll-margin-top: calc(var(--gap-loose) + var(--gap));
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap);
+  margin-bottom: var(--gap-loose);
+}
+
+.title {
+  font-size: var(--fs-title);
+  color: var(--ink);
+}
+
+.sub {
+  font-size: var(--fs-small);
+  color: var(--ink-faint);
+}
+
+/* 搁板:书脊立在厚边线上;顶部留白容纳 hover 抽出 */
+
+.row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--gap-tight);
+  padding: var(--gap) var(--gap) 0;
+  border-bottom: 6px solid var(--paper-edge);
+  overflow-x: auto;
+}
+
+/* ── 书脊 ── */
+
+.spine {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-tight);
+  width: 3.5rem;
+  height: 15rem;
+  padding: var(--gap-tight) 0;
+  border: 1px solid var(--paper-edge);
+  border-bottom: none;
+  border-radius: var(--radius-s) var(--radius-s) 0 0;
+  background: var(--paper-warm);
+  transition: transform var(--t-fast) var(--ease-out);
+  animation: shelfRise var(--t-med) var(--ease-out) both;
+}
+
+/* 书高错落,架上才像真的书 */
+.spine:nth-child(2n) {
+  height: 14.25rem;
+}
+
+.spine:nth-child(3n) {
+  height: 15.75rem;
+}
+
+.spine:not(:disabled):hover,
+.spine:not(:disabled):focus-visible {
+  transform: translateY(-0.625rem); /* 微微抽出 */
+}
+
+.spine:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+@keyframes shelfRise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spine {
+    animation-delay: 0ms !important;
+  }
+}
+
+/* 题签色带(书头) */
+
+.band {
+  flex: none;
+  width: calc(100% - var(--gap-tight));
+  height: 0.3125rem;
+  border-radius: var(--radius-s);
+  background: var(--dust);
+}
+
+.spineTitle {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  writing-mode: vertical-rl;
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+}
+
+.status {
+  flex: none;
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+}
+
+/* ── mastery 染色 ── */
+
+.mastered {
+  background: var(--jade-wash);
+  border-color: var(--jade);
+}
+
+.mastered .band {
+  background: var(--jade);
+}
+
+.mastered .status {
+  color: var(--jade);
+}
+
+.review {
+  background: var(--amber-wash);
+  border-color: var(--amber);
+}
+
+.review .band {
+  background: var(--amber);
+}
+
+.review .status {
+  color: var(--amber);
+}
+
+.learning {
+  background: var(--azure-wash);
+  border-color: var(--azure);
+}
+
+.learning .band {
+  background: var(--azure);
+}
+
+.learning .status {
+  color: var(--azure);
+}
+
+/* fresh 用默认灰;locked 压暗 */
+
+.fresh {
+  background: var(--paper-warm);
+}
+
+.locked {
+  background: var(--ink-wash);
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.locked .spineTitle {
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+/* ── 图例 ── */
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-hair);
+  margin-top: var(--gap);
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--radius-s);
+}
+
+.dot:not(:first-child) {
+  margin-left: var(--gap-tight);
+}
+
+.dotJade {
+  background: var(--jade);
+}
+
+.dotAmber {
+  background: var(--amber);
+}
+
+.dotAzure {
+  background: var(--azure);
+}
+
+.dotDust {
+  background: var(--dust);
+}

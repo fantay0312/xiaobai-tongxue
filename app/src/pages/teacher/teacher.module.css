@@ -1,0 +1,188 @@
+/* ─────────────────────────────────────────────
+   教师看板 —— 一屏教务报表:克制、数据密度高。
+   讲不清 Top5 用墨条横图;泄漏率卡是答辩收尾页。
+   ───────────────────────────────────────────── */
+
+.page {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: var(--gap-loose) clamp(1.25rem, 4vw, 3rem) var(--gap-section);
+}
+
+.rise { animation: rise var(--t-med) var(--ease-out) both; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── 头部 ── */
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gap);
+  border-bottom: 1px solid var(--paper-edge);
+  padding-bottom: var(--gap);
+  margin-bottom: var(--gap-loose);
+}
+
+.title { font-size: var(--fs-title); color: var(--ink); }
+
+.demoNote {
+  margin-top: var(--gap-hair);
+  font-size: var(--fs-small);
+  color: var(--ink-faint);
+}
+
+.demoNote strong { color: var(--ink-soft); }
+
+.seal {
+  flex: none;
+  padding: 0.4rem 0.6rem;
+  border: 2px solid var(--azure);
+  border-radius: var(--radius-s);
+  color: var(--azure);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+  transform: rotate(6deg);
+  opacity: 0.8;
+}
+
+/* ── 版块 ── */
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--gap-loose);
+  align-items: start;
+}
+
+@media (max-width: 980px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+.section { margin-bottom: var(--gap-loose); min-width: 0; }
+
+.h2 {
+  font-size: var(--fs-sub);
+  color: var(--ink);
+  margin-bottom: var(--gap-tight);
+}
+
+.h2 small {
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  font-weight: 400;
+  margin-left: var(--gap-tight);
+}
+
+.muted { color: var(--ink-faint); font-size: var(--fs-small); }
+
+/* ── 墨条横图 ── */
+
+.barSvg { width: 100%; height: auto; display: block; }
+
+.barLabel { font-family: var(--font-display); font-size: 14px; fill: var(--ink); }
+
+.barTopic { font-size: 11px; fill: var(--ink-faint); }
+
+.barInk { fill: var(--ink); opacity: 0.82; }
+
+.barMine { fill: var(--cinnabar); }
+
+.barCount { font-family: var(--font-code); font-size: 12px; fill: var(--ink-soft); }
+
+.barYou { font-size: 11px; fill: var(--cinnabar); }
+
+.barAxis { stroke: var(--paper-edge); stroke-width: 1; }
+
+.chartFoot { font-size: var(--fs-tiny); color: var(--ink-faint); margin-top: var(--gap-hair); }
+
+.chartFoot .youMark { color: var(--cinnabar); }
+
+/* ── 个体学情表 ── */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-small);
+}
+
+.table th {
+  text-align: left;
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--ink-faint);
+  border-bottom: 1px solid var(--paper-edge);
+  padding: 0.35rem 0.6rem 0.35rem 0;
+  white-space: nowrap;
+}
+
+.table td {
+  border-bottom: 1px solid var(--paper-edge);
+  padding: 0.4rem 0.6rem 0.4rem 0;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.numCell { font-family: var(--font-code); color: var(--ink-soft); }
+
+.meRow td { background: var(--azure-wash); }
+
+.meRow td:first-child { color: var(--azure); font-family: var(--font-display); }
+
+.blindCell { color: var(--cinnabar); font-family: var(--font-code); }
+
+.tableFoot { font-size: var(--fs-tiny); color: var(--ink-faint); margin-top: var(--gap-hair); }
+
+.tableWrap { overflow-x: auto; }
+
+/* ── 泄漏率实测卡 ── */
+
+.leakCard {
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+  padding: var(--gap-loose);
+}
+
+.leakTitle { font-size: var(--fs-sub); color: var(--ink); margin-bottom: var(--gap); }
+
+.leakRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-loose);
+  flex-wrap: wrap;
+  margin-bottom: var(--gap);
+}
+
+.leakNum {
+  font-family: var(--font-display);
+  font-size: var(--fs-hero);
+  line-height: 1;
+}
+
+.leakNaive { color: var(--cinnabar); }
+.leakGuarded { color: var(--jade); }
+
+.leakLabel { display: block; font-size: var(--fs-tiny); color: var(--ink-faint); margin-top: var(--gap-hair); }
+
+.leakArrow {
+  font-family: var(--font-display);
+  color: var(--ink-soft);
+  font-size: var(--fs-small);
+}
+
+.leakMethod {
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  line-height: 1.8;
+  border-top: 1px dashed var(--paper-edge);
+  padding-top: var(--gap-tight);
+}
+
+.leakFoot { font-size: var(--fs-tiny); color: var(--ink-faint); margin-top: var(--gap-hair); }

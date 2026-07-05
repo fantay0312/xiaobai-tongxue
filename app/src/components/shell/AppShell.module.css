@@ -1,0 +1,186 @@
+/* 全局外壳:宣纸底导航;/teach 下切夜自习深色透明变体 */
+
+.shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 讲解舱场景:根铺黑板色兜底(讲解舱自铺黑板底,此处防纸色露边) */
+.board {
+  background: var(--board);
+}
+
+/* ── 顶部导航 ── */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding: var(--gap-tight) clamp(var(--gap), 4vw, var(--gap-loose));
+  background: var(--paper);
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.board .header {
+  background: color-mix(in oklab, var(--board-deep) 78%, transparent);
+  border-bottom-color: var(--board-line);
+}
+
+/* ── 品牌:朱砂方章 + 楷体字标 ── */
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-tight);
+  color: var(--ink);
+}
+
+.seal {
+  display: grid;
+  place-items: center;
+  width: 2.125rem;
+  height: 2.125rem;
+  writing-mode: vertical-rl;
+  background: var(--cinnabar);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  border-radius: var(--radius-s);
+  /* 印章内圈:先压一圈底色,再衬一线纸色 */
+  box-shadow: inset 0 0 0 2px var(--cinnabar), inset 0 0 0 3px var(--paper);
+  transform: rotate(-4deg);
+  transition: transform var(--t-med) var(--ease-out);
+}
+
+.brand:hover .seal {
+  transform: rotate(0deg);
+}
+
+.brandText {
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.brandDot {
+  color: var(--ink-faint);
+  margin: 0 0.2em;
+  font-weight: 400;
+}
+
+.brandMotto {
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+
+.board .brandText {
+  color: var(--chalk);
+}
+
+.board .brandDot,
+.board .brandMotto {
+  color: var(--chalk-soft);
+}
+
+/* ── 导航链接:当前路由压一道墨线 ── */
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(var(--gap-tight), 3vw, var(--gap-loose));
+}
+
+.link {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  color: var(--ink-soft);
+  padding: var(--gap-hair) 0;
+  transition: color var(--t-fast) var(--ease-out);
+}
+
+.link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: currentColor;
+  border-radius: var(--radius-s);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.link:hover {
+  color: var(--ink);
+}
+
+.linkActive {
+  color: var(--ink);
+}
+
+.linkActive::after {
+  transform: scaleX(1);
+}
+
+.board .link {
+  color: var(--chalk-soft);
+}
+
+.board .link:hover,
+.board .linkActive {
+  color: var(--chalk);
+}
+
+/* ── 齿轮按钮 ── */
+
+.gearBtn {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  border-radius: var(--radius-s);
+  transition: color var(--t-fast) var(--ease-out), transform var(--t-med) var(--ease-out);
+}
+
+.gearBtn:hover {
+  color: var(--azure);
+  transform: rotate(45deg);
+}
+
+.gearBtn:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+.board .gearBtn {
+  color: var(--chalk-soft);
+}
+
+.board .gearBtn:hover {
+  color: var(--chalk);
+}
+
+/* ── 内容区 ── */
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}

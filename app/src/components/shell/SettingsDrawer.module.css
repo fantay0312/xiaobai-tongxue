@@ -1,0 +1,216 @@
+/* 设置抽屉:右侧滑入的宣纸面板 + 淡墨遮罩 */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: color-mix(in oklab, var(--ink) 28%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-med) var(--ease-out);
+}
+
+.scrimOpen {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+  width: min(24rem, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  padding: var(--gap) var(--gap) var(--gap);
+  background: var(--paper);
+  border-left: 1px solid var(--paper-edge);
+  box-shadow: var(--shadow-lift);
+  overflow-y: auto;
+  transform: translateX(105%);
+  transition: transform var(--t-med) var(--ease-out);
+}
+
+.panelOpen {
+  transform: none;
+}
+
+/* ── 头部 ── */
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--gap-tight);
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.title {
+  font-size: var(--fs-title);
+  color: var(--ink);
+}
+
+.closeBtn {
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+  font-size: var(--fs-title);
+  line-height: 1;
+  padding: 0 var(--gap-hair);
+  border-radius: var(--radius-s);
+  transition: color var(--t-fast) var(--ease-out);
+}
+
+.closeBtn:hover {
+  color: var(--ink);
+}
+
+.closeBtn:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+/* ── 分节 ── */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+}
+
+.sectionTitle {
+  font-size: var(--fs-sub);
+  color: var(--ink);
+}
+
+/* ── 模式切换 ── */
+
+.modeGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+}
+
+.modeBtn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+  text-align: left;
+  padding: var(--gap-tight);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  background: var(--paper);
+  color: var(--ink-soft);
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.modeBtn:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+.modeBtnActive {
+  border-color: var(--azure);
+  background: var(--azure-wash);
+  color: var(--ink);
+}
+
+.modeName {
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
+}
+
+.modeDesc {
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  line-height: 1.6;
+}
+
+/* ── API 表单 ── */
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+}
+
+.fieldLabel {
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+
+.input {
+  width: 100%;
+  padding: var(--gap-hair) var(--gap-tight);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--fs-small);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--azure);
+  box-shadow: 0 0 0 3px var(--azure-wash);
+}
+
+.input::placeholder {
+  color: var(--ink-faint);
+}
+
+/* ── 温度滑条 ── */
+
+.sliderRow {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
+}
+
+.slider {
+  flex: 1;
+  accent-color: var(--azure);
+}
+
+.sliderEnd {
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.sliderValue {
+  font-family: var(--font-code);
+  font-size: var(--fs-small);
+  color: var(--azure);
+  min-width: 2.5em;
+  text-align: right;
+}
+
+/* ── 底注 ── */
+
+.hint {
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  line-height: 1.7;
+}
+
+.foot {
+  margin-top: auto;
+  padding-top: var(--gap-tight);
+  border-top: 1px solid var(--paper-edge);
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  line-height: 1.7;
+}

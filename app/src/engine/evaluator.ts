@@ -20,7 +20,10 @@ export function matchKeywordGroups(text: string, groups: string[][]): boolean {
   return groups.some((g) => g.length > 0 && g.every((k) => text.includes(k)));
 }
 
-const STUCK_PATTERNS = ['不太确定', '不知道', '忘了', '想不起来', '不会', '讲不下去', '怎么说呢', '呃', '嗯……'];
+/** 强卡壳词:出现即视为求救(除非本轮有实质内容,见 informative 守卫) */
+const STUCK_STRONG = ['不太确定', '不知道', '想不起来', '讲不下去', '不记得', '我忘了', '忘记了', '卡住了', '没学过', '不清楚'];
+/** 弱卡壳词(语气填充):只在短句里才算卡壳,避免误伤"呃,浅拷贝是……"这类正常讲解 */
+const STUCK_FILLERS = ['呃', '嗯……', '怎么说呢', '这个嘛', '那个……', '唔'];
 const ANALOGY_MARKERS = ['就像', '好比', '比如说', '打个比方', '相当于', '类似于', '就好像'];
 const WHY_MARKERS = ['因为', '所以', '本质上', '原因是', '之所以', '设计成这样是'];
 
@@ -28,7 +31,7 @@ function ruleEvaluate(input: EvaluateInput): EvalResult {
   const { utterance, topic, state, pendingMcId } = input;
   const text = utterance.trim();
 
-  // 1. checklist 新命中
+  // 1. checklist 新命中(优先级最高:有命中就绝不算卡壳/偏题)
   const checklistHits = topic.checklist
     .filter((c) => !state.hitChecklist.includes(c.id))
     .filter((c) => matchKeywordGroups(text, c.keywords))
@@ -49,16 +52,24 @@ function ruleEvaluate(input: EvaluateInput): EvalResult {
     }
   }
 
-  // 3. 卡壳信号:显式卡壳词,或超短且无信息量的回复
+  // 3. 卡壳信号 —— informative 守卫:本轮命中要点、或对误区给出明确判定(纠正/被带偏),
+  //    说明讲解有实质内容,即使夹着"呃/不太确定"也不算卡壳(防误伤,方案 §6.2)。
+  const resolvedMc = mcEvent !== null && mcEvent.result !== 'pending';
+  const informative = checklistHits.length > 0 || resolvedMc;
   const stuckSignal =
-    STUCK_PATTERNS.some((p) => text.includes(p)) ||
-    (text.length < 8 && checklistHits.length === 0 && !mcEvent);
+    !informative &&
+    (STUCK_STRONG.some((p) => text.includes(p)) ||
+      (text.length < 26 && STUCK_FILLERS.some((p) => text.includes(p))) ||
+      text.length < 8);
 
-  // 4. 偏题:较长发言但与本知识点任何关键词/术语无交集
-  const allTerms = topic.checklist.flatMap((c) => [...c.terms, ...c.keywords.flat()]);
+  // 4. 偏题:较长发言但与本知识点任何关键词/术语无交集。
+  //    只用长度≥2 的词做交集判定 —— 单字关键词(如"新/套")撞车率太高,会放跑真偏题。
+  const overlapVocab = topic.checklist
+    .flatMap((c) => [...c.terms, ...c.keywords.flat()])
+    .filter((t) => t.length >= 2);
   const offTopic =
-    text.length > 20 && checklistHits.length === 0 && !mcEvent && !stuckSignal &&
-    !allTerms.some((t) => text.includes(t));
+    text.length > 20 && !informative && !mcEvent && !stuckSignal &&
+    !overlapVocab.some((t) => text.includes(t));
 
   // 5. 金句类比:命中 checklist 且带类比标记
   const goldenAnalogy =

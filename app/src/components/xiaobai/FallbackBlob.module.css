@@ -1,0 +1,23 @@
+/* WebGL 不可用时的 CSS 团子降级(保留原占位实现的观感) */
+
+.blob {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  /* 团子暖白,取纸系令牌,不新造色值 */
+  background: radial-gradient(circle at 35% 30%, var(--paper), var(--paper-edge));
+  font-family: var(--font-display);
+  color: var(--ink);
+  animation: breathe 3.2s var(--ease-out) infinite;
+}
+
+.board {
+  /* 黑板场景下加一圈粉笔柔光,融入深色背景 */
+  box-shadow: 0 0 32px var(--ink-wash);
+  background: radial-gradient(circle at 35% 30%, var(--chalk), var(--chalk-soft));
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}

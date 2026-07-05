@@ -8,8 +8,8 @@
  *   5. 当前层讲完 → 进入下一层级
  */
 import type {
-  DirectorAction, EvalResult, InstructionCard, LearnEvent,
-  QuestionLevel, SessionMode, Topic, TopicState, XiaobaiGlobal, XiaobaiMood,
+  ChecklistItem, DirectorAction, EvalResult, InstructionCard, LearnEvent, McState,
+  Misconception, QuestionLevel, SessionMode, Topic, TopicState, XiaobaiGlobal, XiaobaiMood,
 } from '../types';
 
 export type EventDraft = Pick<LearnEvent, 'type' | 'topicId' | 'payload' | 'evidence'>;
@@ -57,6 +57,45 @@ export function deriveLevel(topic: Topic, hitChecklist: string[]): QuestionLevel
 
 function excerpt(text: string, n = 40): string {
   return text.length > n ? `${text.slice(0, n)}…` : text;
+}
+
+/**
+ * 可注入误区选择:前置 checklist 全命中且仍"待注入"。
+ * 多个同时可注入时,优先挑与本轮新命中最贴合的(前置集含本轮命中、且前置集最小)——
+ * 例:c4 刚讲完时 M3([c4]) 优先于 M2([c1..c4]),挑战永远落在最新鲜的讲解点上。
+ */
+function pickInjectable(
+  topic: Topic, mcStates: Record<string, McState>, hitNow: string[], hitsThisTurn: string[],
+): Misconception | undefined {
+  const eligible = topic.misconceptions.filter((m) =>
+    (mcStates[m.mcId] ?? '待注入') === '待注入' &&
+    m.injectAfterChecklist.every((cid) => hitNow.includes(cid)),
+  );
+  if (eligible.length <= 1) return eligible[0];
+  return [...eligible].sort((a, b) => {
+    const aFresh = a.injectAfterChecklist.some((c) => hitsThisTurn.includes(c)) ? 0 : 1;
+    const bFresh = b.injectAfterChecklist.some((c) => hitsThisTurn.includes(c)) ? 0 : 1;
+    if (aFresh !== bFresh) return aFresh - bFresh;
+    return a.injectAfterChecklist.length - b.injectAfterChecklist.length;
+  })[0];
+}
+
+/**
+ * 下一个追问目标(学习力节奏,方案 §7.1):
+ * 默认取当前层级第一个未命中项;学习力 Lv≥3 时,只要已有命中且还有 L3+ 未命中项,
+ * 就跳过剩余 L1/L2 —— "L1/L2 快速通过,很快进入边界追问"。
+ */
+function pickNextTarget(topic: Topic, hitNow: string[], learningLevel: number): ChecklistItem | undefined {
+  const level = deriveLevel(topic, hitNow);
+  let next = topic.checklist.find((c) => c.level === level && !hitNow.includes(c.id))
+    ?? topic.checklist.find((c) => !hitNow.includes(c.id));
+  if (learningLevel >= 3 && next && (next.level === 'L1' || next.level === 'L2') && hitNow.length > 0) {
+    const jump = topic.checklist.find(
+      (c) => !hitNow.includes(c.id) && c.level !== 'L1' && c.level !== 'L2',
+    );
+    if (jump) next = jump;
+  }
+  return next;
 }
 
 export function decide(input: DecideInput): Decision {
@@ -116,22 +155,24 @@ export function decide(input: DecideInput): Decision {
     };
   };
 
-  // ── 优先级 1:卡壳救援梯度 ──
+  // ── 优先级 1:卡壳救援梯度 R1→R2→R3→R4(方案 §6.2)──
+  // rescueLevel 单调不降:R3 之后 stuckStreak 归零重新累计,但级别不回退——
+  // 新一轮连续卡壳依然先递台阶/查书(R1/R2 台词),连到第 3 次时因 rescueLevel 已是 3,升 R4 收场。
   if (ev.stuckSignal) {
     const streak = state.stuckStreak + 1;
     stateDelta.stuckStreak = streak;
     const nextUnhit = topic.checklist.find((c) => !hitNow.includes(c.id));
     if (streak === 1) {
-      stateDelta.rescueLevel = 1;
+      stateDelta.rescueLevel = Math.max(state.rescueLevel, 1) as TopicState['rescueLevel'];
       events.push({ type: 'stuck_rescued', topicId: topic.topicId, payload: { level: 'R1' }, evidence: 'R1 递台阶:用已讲内容提示' });
       return done('rescue_hint', baseCard('rescue_hint', { targetChecklistId: nextUnhit?.id ?? null }), 'confused');
     }
     if (streak === 2) {
-      stateDelta.rescueLevel = 2;
+      stateDelta.rescueLevel = Math.max(state.rescueLevel, 2) as TopicState['rescueLevel'];
       events.push({ type: 'stuck_rescued', topicId: topic.topicId, payload: { level: 'R2', checklistId: nextUnhit?.id }, evidence: 'R2 提议一起查书,弹出知识卡片' });
       return done('propose_lookup', baseCard('propose_lookup', { targetChecklistId: nextUnhit?.id ?? null }), 'shy');
     }
-    if (streak === 3 && state.rescueLevel < 3) {
+    if (streak >= 3 && state.rescueLevel < 3) {
       stateDelta.rescueLevel = 3;
       stateDelta.stuckStreak = 0;
       events.push({ type: 'stuck_rescued', topicId: topic.topicId, payload: { level: 'R3', checklistId: nextUnhit?.id }, evidence: `R3 跳过「${nextUnhit?.point ?? '当前段落'}」,标记为盲区` });
@@ -139,10 +180,12 @@ export function decide(input: DecideInput): Decision {
         systemNote: `这段先跳过,已标记为盲区:「${nextUnhit?.point ?? '当前段落'}」。讲讲你熟的部分吧。`,
       });
     }
-    // R4:多处 R3 后仍卡 → 结束本轮,退回备课
+    // R4:R3 后再次连续卡满 → 判定备课不足,结束本轮退回备课
+    // targetChecklistId 标记"卡在哪",渲染层据此走 R4 专用收场台词(与偏题的 stay_confused 区分)
     stateDelta.rescueLevel = 4;
-    events.push({ type: 'stuck_rescued', topicId: topic.topicId, payload: { level: 'R4' }, evidence: 'R4 判定备课不足,本轮结束退回备课' });
-    return done('stay_confused', baseCard('stay_confused'), 'shy', {
+    stateDelta.stuckStreak = 0;
+    events.push({ type: 'stuck_rescued', topicId: topic.topicId, payload: { level: 'R4', checklistId: nextUnhit?.id }, evidence: 'R4 判定备课不足,本轮结束退回备课' });
+    return done('stay_confused', baseCard('stay_confused', { targetChecklistId: nextUnhit?.id ?? null }), 'shy', {
       systemNote: '看来这块教材写得不太清楚,我们备完课再来一次。本轮已结束,盲区已记录。',
       forceEnd: true,
     });
@@ -158,14 +201,36 @@ export function decide(input: DecideInput): Decision {
   if (pendingMcId && ev.mcEvent) {
     const mc = topic.misconceptions.find((m) => m.mcId === pendingMcId);
     if (mc && ev.mcEvent.result === 'corrected') {
-      stateDelta.mcStates = { ...state.mcStates, [mc.mcId]: '已纠正' };
+      const mcStatesNow: Record<string, McState> = { ...state.mcStates, [mc.mcId]: '已纠正' };
+      stateDelta.mcStates = mcStatesNow;
       events.push({
         type: 'misconception_corrected', topicId: topic.topicId,
         payload: { mcId: mc.mcId },
         evidence: `讲述者成功纠正误区「${mc.belief}」:“${excerpt(utterance, 60)}”`,
       });
+      // 纠正成功后若另有误区注入条件已满足 → 同轮衔接:先复述开窍,紧跟抛出新误区
+      // (渲染层用 paraphraseSource 做"哦,我懂了…"前缀,再接触发话术,节奏不断)
+      const chain = pickInjectable(topic, mcStatesNow, hitNow, ev.checklistHits);
+      if (chain) {
+        stateDelta.mcStates = { ...mcStatesNow, [chain.mcId]: '已注入' };
+        events.push({
+          type: 'misconception_injected', topicId: topic.topicId,
+          payload: { mcId: chain.mcId },
+          evidence: `注入误区 ${chain.mcId}:「${chain.belief}」`,
+        });
+        return done('inject_misconception', baseCard('inject_misconception', {
+          mcId: chain.mcId, mcBelief: chain.belief, paraphraseSource: utterance,
+        }), 'aha', { pendingMcAfter: chain.mcId });
+      }
+      // 无可注入误区 → 开窍复述,并把追问衔接到下一个未讲要点
+      const follow = pickNextTarget(topic, hitNow, g.learningLevel);
       return done('express_understanding', baseCard('express_understanding', {
         mcId: mc.mcId, paraphraseSource: utterance,
+        targetChecklistId: follow?.id ?? null,
+        style: {
+          persona: g.persona, learningLevel: g.learningLevel,
+          maxSentences: 3, mustEndWithQuestion: follow != null,
+        },
       }), 'aha', { pendingMcAfter: null });
     }
     if (mc && ev.mcEvent.result === 'adopted') {
@@ -189,10 +254,7 @@ export function decide(input: DecideInput): Decision {
   }
 
   // ── 优先级 3:误区注入条件满足 ──
-  const injectable = topic.misconceptions.find((m) =>
-    (state.mcStates[m.mcId] ?? '待注入') === '待注入' &&
-    m.injectAfterChecklist.every((cid) => hitNow.includes(cid)),
-  );
+  const injectable = pickInjectable(topic, state.mcStates, hitNow, ev.checklistHits);
   if (injectable) {
     stateDelta.mcStates = { ...state.mcStates, [injectable.mcId]: '已注入' };
     events.push({
@@ -206,9 +268,8 @@ export function decide(input: DecideInput): Decision {
   }
 
   // ── 优先级 4/5:按层级追问(本轮有新命中 → 先 Aha 复述再带出下一问) ──
-  const level = deriveLevel(topic, hitNow);
-  const nextItem = topic.checklist.find((c) => c.level === level && !hitNow.includes(c.id))
-    ?? topic.checklist.find((c) => !hitNow.includes(c.id));
+  // 追问目标经 pickNextTarget 计算:学习力 Lv≥3 加速通过 L1/L2(方案 §7.1)
+  const nextItem = pickNextTarget(topic, hitNow, g.learningLevel);
 
   if (ev.checklistHits.length > 0) {
     const lastHit = topic.checklist.find((c) => c.id === ev.checklistHits[ev.checklistHits.length - 1]);
@@ -227,6 +288,11 @@ export function decide(input: DecideInput): Decision {
     // 全部讲完且无可注入误区 → L5 迁移(高学习力)或收尾复述
     const action: DirectorAction = g.learningLevel >= 3 ? 'ask_transfer' : 'ask_boundary';
     return done(action, baseCard(action), 'curious');
+  }
+  // Lv5 提前迁移(方案 §7.1"两三轮逼近迁移"):覆盖过六成即可发起迁移追问
+  if (g.learningLevel === 5 && topic.checklist.length > 0 &&
+      hitNow.length / topic.checklist.length >= 0.6) {
+    return done('ask_transfer', baseCard('ask_transfer'), 'curious');
   }
   return done(LEVEL_ACTION[nextItem.level], baseCard(LEVEL_ACTION[nextItem.level], {
     targetChecklistId: nextItem.id,

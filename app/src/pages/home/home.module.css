@@ -1,0 +1,256 @@
+/* 首页 —— 书斋门厅:左对齐大留白,内容列 + 竖排引文眉批列 */
+
+.page {
+  max-width: 72rem;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 clamp(var(--gap), 4vw, var(--gap-loose)) var(--gap-loose);
+}
+
+/* ── 入场编排:一次 stagger,之后克制 ── */
+
+.enter {
+  animation: rise var(--t-med) var(--ease-out) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enter {
+    animation-delay: 0ms !important;
+  }
+}
+
+/* ── 首屏 ── */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: clamp(var(--gap), 5vw, var(--gap-section));
+  align-items: center;
+  padding: var(--gap-section) 0 var(--gap-loose);
+}
+
+.heroMain {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gap);
+}
+
+.kicker {
+  font-size: var(--fs-small);
+  letter-spacing: 0.32em;
+  color: var(--ink-faint);
+}
+
+.claim {
+  font-size: var(--fs-hero);
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+.claim em {
+  font-style: normal;
+  color: var(--azure);
+}
+
+.intro {
+  max-width: 24em;
+  font-size: var(--fs-sub);
+  line-height: 2;
+  color: var(--ink-soft);
+}
+
+.cta {
+  display: inline-block;
+  margin-top: var(--gap-tight);
+  padding: var(--gap-tight) calc(var(--gap) * 1.75);
+  background: var(--azure);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  border-radius: var(--radius-s);
+  transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+}
+
+.cta:hover {
+  background: var(--azure-deep);
+  transform: translateY(-2px);
+}
+
+.cta:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 3px;
+}
+
+/* 小白蹲在标题旁 */
+
+.heroAvatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-hair);
+  align-self: end;
+  padding-bottom: var(--gap);
+}
+
+.avatarCaption {
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.2em;
+  color: var(--ink-faint);
+}
+
+/* 《学记》竖排引文 —— 全站精神锚点,如古籍眉批立于最右 */
+
+.quote {
+  margin: 0;
+  writing-mode: vertical-rl;
+  display: flex;
+  flex-direction: column; /* 块轴:右→左,引文在右,落款在左 */
+  gap: var(--gap-tight);
+  padding: var(--gap) 0 var(--gap) var(--gap);
+  border-left: 1px solid var(--paper-edge); /* 界栏 */
+  justify-self: end;
+}
+
+.quoteText {
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  line-height: 1.9;
+  color: var(--ink);
+}
+
+.quoteFrom {
+  font-family: var(--font-display);
+  font-style: normal;
+  font-size: var(--fs-small);
+  letter-spacing: 0.24em;
+  color: var(--ink-faint);
+}
+
+/* ── 学习闭环一条横带 ── */
+
+.loop {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
+  padding: var(--gap) clamp(var(--gap), 3vw, var(--gap-loose));
+  background: var(--paper-warm);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  margin-bottom: var(--gap-section);
+}
+
+.loopStep {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+}
+
+.loopNum {
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.2em;
+  color: var(--ink-faint);
+}
+
+.loopName {
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.loopDesc {
+  font-size: var(--fs-tiny);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.loopArrow {
+  position: relative;
+  flex: 1 1 var(--gap-loose);
+  min-width: var(--gap);
+  height: 1px;
+  background: var(--dust);
+}
+
+.loopArrow::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -3px;
+  width: 6px;
+  height: 6px;
+  border-top: 1px solid var(--dust);
+  border-right: 1px solid var(--dust);
+  transform: rotate(45deg);
+}
+
+.loopArrowEnd {
+  background: var(--jade);
+}
+
+.loopArrowEnd::after {
+  border-color: var(--jade);
+}
+
+.loopEnd .loopName,
+.loopEnd .loopDesc,
+.loopEnd .loopNum {
+  color: var(--jade);
+}
+
+/* ── 参赛信息位 ── */
+
+.foot {
+  margin-top: var(--gap-section);
+  padding-top: var(--gap);
+  border-top: 1px solid var(--paper-edge);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+}
+
+/* ── 窄屏:引文转横排,单列下落 ── */
+
+@media (max-width: 56rem) {
+  .hero {
+    grid-template-columns: 1fr;
+    align-items: start;
+    padding-top: var(--gap-loose);
+  }
+
+  .heroAvatar {
+    align-self: start;
+    align-items: flex-start;
+  }
+
+  .quote {
+    writing-mode: horizontal-tb;
+    justify-self: start;
+    border-left: 3px solid var(--paper-edge);
+    padding: var(--gap-hair) 0 var(--gap-hair) var(--gap);
+  }
+
+  .quoteText br {
+    display: none;
+  }
+}
