@@ -40,8 +40,10 @@ const ENV_LLM_DEFAULT: LlmSettings | null = ENV_KEY
     }
   : null;
 
+// 无注入凭据时默认 proxy(部署形态走服务器网关);本地无网关时 llmCall 快速失败,
+// 引擎按既有纪律静默降级 mock —— 离线演示体验与从前一致
 const DEFAULT_SETTINGS: LlmSettings = ENV_LLM_DEFAULT ?? {
-  mode: 'mock',
+  mode: 'proxy',
   baseUrl: '',
   apiKey: '',
   model: '',

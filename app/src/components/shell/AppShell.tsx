@@ -6,6 +6,7 @@
 import { useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { SettingsDrawer } from './SettingsDrawer';
+import { useAuthStore } from '../../store/authStore';
 import styles from './AppShell.module.css';
 
 const NAV_LINKS: { to: string; label: string; end: boolean }[] = [
@@ -18,6 +19,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const boardMode = /^\/teach(\/|$)/.test(pathname);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const authStatus = useAuthStore((s) => s.status);
+  const authUser = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
 
   return (
     <div className={boardMode ? `${styles.shell} ${styles.board}` : styles.shell}>
@@ -43,6 +47,26 @@ export function AppShell({ children }: { children: ReactNode }) {
               {link.label}
             </NavLink>
           ))}
+          {authStatus === 'anon' && (
+            <NavLink
+              to="/login"
+              className={({ isActive }) =>
+                isActive ? `${styles.link} ${styles.linkActive}` : styles.link
+              }
+            >
+              登录
+            </NavLink>
+          )}
+          {authStatus === 'authed' && (
+            <button
+              type="button"
+              className={styles.link}
+              onClick={() => void logout()}
+              title={`已登录:${authUser ?? ''} · 点击退出`}
+            >
+              {authUser} · 退出
+            </button>
+          )}
           <button
             type="button"
             className={styles.gearBtn}

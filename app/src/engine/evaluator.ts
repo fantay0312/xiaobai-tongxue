@@ -97,7 +97,8 @@ export function hasWhySignal(text: string): boolean {
 
 export async function evaluate(input: EvaluateInput): Promise<EvalResult> {
   const base = ruleEvaluate(input);
-  if (input.settings.mode !== 'api') return base;
+  // api 与 proxy 都走 LLM 语义评估;仅 mock 纯规则
+  if (input.settings.mode === 'mock') return base;
   try {
     const raw = await llmCall('evaluator', buildEvalPrompt(input), input.settings);
     return mergeEval(base, parseLlmEval(raw), input);

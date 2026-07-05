@@ -4,6 +4,7 @@
  * mode='api' 时调 OpenAI 兼容端点(默认 DeepSeek),失败由调用方降级 mock。
  */
 import type { LlmSettings } from '../types';
+import { API_BASE } from '../lib/api';
 
 export type LlmRole = 'evaluator' | 'xiaobai' | 'report';
 
@@ -31,6 +32,7 @@ export async function llmCall(
   payload: LlmPayload,
   settings: LlmSettings,
 ): Promise<string> {
+  if (settings.mode === 'proxy') return proxyCall(role, payload, settings);
   if (settings.mode !== 'api' || !settings.baseUrl || !settings.apiKey) {
     throw new Error('llm-api-unavailable');
   }
@@ -61,6 +63,39 @@ export async function llmCall(
     }
     const data = await res.json();
     const text: unknown = data?.choices?.[0]?.message?.content;
+    if (typeof text !== 'string' || !text) throw new Error('llm-empty');
+    return text;
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') throw new Error('llm-timeout');
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** proxy 模式:走同源网关 /api/chat,密钥在服务器侧,浏览器只传对话内容 */
+async function proxyCall(role: LlmRole, payload: LlmPayload, settings: LlmSettings): Promise<string> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(`${API_BASE}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        role,
+        temperature: role === 'xiaobai' ? settings.temperature : 0,
+        json: !!payload.json,
+        messages: [
+          { role: 'system', content: payload.system },
+          { role: 'user', content: payload.user },
+        ],
+      }),
+      signal: ctrl.signal,
+    });
+    if (res.status === 401) throw new Error('llm-auth');
+    if (!res.ok) throw new Error(`llm-http-${res.status}`);
+    const data = await res.json();
+    const text: unknown = data?.content;
     if (typeof text !== 'string' || !text) throw new Error('llm-empty');
     return text;
   } catch (e) {

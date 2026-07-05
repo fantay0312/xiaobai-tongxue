@@ -1,7 +1,7 @@
 /**
  * 小白渲染引擎:只负责"怎么说出来"。
  * 每轮近无状态:仅依据 指令卡 + 最近 K 轮对话 新鲜渲染(防线⑥ 逐轮重渲染)。
- * mock 模式:台词模板库 + 槽位填充;api 模式:LLM 渲染,失败降级 mock。
+ * mock 模式:台词模板库 + 槽位填充;api/proxy 模式:LLM 渲染,失败降级 mock。
  * speakXiaobai 是唯一出口:渲染 → 泄漏检测 → 重试(≤2) → 兜底。
  */
 import type {
@@ -191,7 +191,7 @@ export async function speakXiaobai(input: {
 
   for (let attempt = 0; attempt <= 2; attempt++) {
     let text: string; let mood: XiaobaiMood;
-    if (settings.mode === 'api' && attempt < 2) {
+    if (settings.mode !== 'mock' && attempt < 2) {
       try {
         text = (await apiRender(card, recentMessages, settings, banned)).trim();
         mood = ACTION_MOOD[card.action] ?? 'idle';

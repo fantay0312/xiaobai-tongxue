@@ -69,9 +69,19 @@ export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () =
             <button
               type="button"
               role="radio"
+              aria-checked={settings.mode === 'proxy'}
+              className={settings.mode === 'proxy' ? `${styles.modeBtn} ${styles.modeBtnActive}` : styles.modeBtn}
+              onClick={() => { setSettings({ mode: 'proxy' }); setTest({ status: 'idle' }); }}
+            >
+              <span className={styles.modeName}>服务器模式</span>
+              <span className={styles.modeDesc}>走服务器网关调大模型,密钥不出服务器(需登录)</span>
+            </button>
+            <button
+              type="button"
+              role="radio"
               aria-checked={settings.mode === 'mock'}
               className={settings.mode === 'mock' ? `${styles.modeBtn} ${styles.modeBtnActive}` : styles.modeBtn}
-              onClick={() => setSettings({ mode: 'mock' })}
+              onClick={() => { setSettings({ mode: 'mock' }); setTest({ status: 'idle' }); }}
             >
               <span className={styles.modeName}>演示模式</span>
               <span className={styles.modeDesc}>零依赖,内置教学引擎,断网也能完整跑通</span>
@@ -81,12 +91,30 @@ export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () =
               role="radio"
               aria-checked={settings.mode === 'api'}
               className={settings.mode === 'api' ? `${styles.modeBtn} ${styles.modeBtnActive}` : styles.modeBtn}
-              onClick={() => setSettings({ mode: 'api' })}
+              onClick={() => { setSettings({ mode: 'api' }); setTest({ status: 'idle' }); }}
             >
-              <span className={styles.modeName}>API 模式</span>
-              <span className={styles.modeDesc}>接入 OpenAI 兼容端点,小白台词更鲜活</span>
+              <span className={styles.modeName}>自定义 API</span>
+              <span className={styles.modeDesc}>浏览器直连自己的 OpenAI 兼容端点(密钥存本机)</span>
             </button>
           </div>
+
+          {settings.mode === 'proxy' && (
+            <div className={styles.fields}>
+              <div className={styles.testRow}>
+                <button
+                  type="button"
+                  className={styles.testBtn}
+                  onClick={runTest}
+                  disabled={test.status === 'busy'}
+                >
+                  {test.status === 'busy' ? '测试中…' : '测试连接'}
+                </button>
+                {test.status === 'ok' && <span className={`${styles.testStatus} ${styles.testOk}`}>{test.detail}</span>}
+                {test.status === 'fail' && <span className={`${styles.testStatus} ${styles.testFail}`}>{test.detail}</span>}
+              </div>
+              <p className={styles.hint}>密钥与模型由服务器代管,浏览器只传对话内容;需登录后才可调用(llm-auth 表示未登录)。</p>
+            </div>
+          )}
 
           {settings.mode === 'api' && (
             <div className={styles.fields}>
@@ -161,7 +189,7 @@ export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () =
         </section>
 
         <footer className={styles.foot}>
-          评估与状态机永远本地规则运行,LLM 只负责理解与台词。
+          导演状态机永远本地纯代码运行;LLM 负责理解讲解与生成台词,失败自动降级本地规则。
         </footer>
       </aside>
     </>

@@ -110,6 +110,10 @@
   color: var(--ink-soft);
   padding: var(--gap-hair) 0;
   transition: color var(--t-fast) var(--ease-out);
+  /* 同一类也用于登出按钮:抹平 button 默认外观 */
+  background: none;
+  border: none;
+  cursor: pointer;
 }
 
 .link::after {

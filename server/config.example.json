@@ -1,0 +1,12 @@
+{
+  "port": 80,
+  "distDir": "../dist",
+  "pathPrefix": "",
+  "upstreamBaseUrl": "https://api.deepseek.com",
+  "upstreamModel": "deepseek-chat",
+  "apiKey": "sk-填入真实密钥(此文件只放在服务器,勿入库)",
+  "sessionTtlHours": 72,
+  "users": [
+    { "name": "示例账号", "salt": "用 node index.mjs hash <密码> 生成", "hash": "同上" }
+  ]
+}

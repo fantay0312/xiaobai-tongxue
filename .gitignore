@@ -5,3 +5,5 @@ dist/
 
 # 含真实 API 密钥,禁止入库
 doc/aiapi.md
+doc/服务器相关.md
+server/config.json

@@ -310,9 +310,10 @@ export interface LiveSession {
 // ───────────────────────── LLM 配置 ─────────────────────────
 
 export interface LlmSettings {
-  mode: 'mock' | 'api';
-  baseUrl: string;        // OpenAI 兼容端点,如 https://api.deepseek.com/v1
-  apiKey: string;
+  /** mock=本地模板 api=浏览器直连自配端点 proxy=服务器网关代管密钥(部署形态默认) */
+  mode: 'mock' | 'api' | 'proxy';
+  baseUrl: string;        // OpenAI 兼容端点,如 https://api.deepseek.com/v1(仅 api 模式)
+  apiKey: string;         // 仅 api 模式;proxy 模式密钥永不下发到浏览器
   model: string;
   temperature: number;    // 评估固定 0,此项只作用于小白台词
 }

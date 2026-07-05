@@ -7,3 +7,4 @@
 - [x] DeepSeek 真实 API 接入(2026-07-06):.env.local 注入凭据默认 api 模式;评估引擎升级 LLM 语义评估(命中带原话引文落地/误区语义判定优先);渲染器违禁词预告+泄漏词重试反馈;设置抽屉测试连接
 - [x] 对抗审查修复 7 项:mc判定否定盲区(HIGH)/跨会话异步竞态(HIGH)/已注入误区孤儿/金句引文落地/baseUrl双重路径/测试徽章重置/存档merge幂等升级
 - [x] 验证闭环:build+lint+simulate 全绿;livetest 真实 API 全链路 3 次全绿(单轮均值 ~4s,零泄漏);HIGH-1 定点回归通过
+- [x] 生产部署(2026-07-06):零依赖 Node 网关(静态+登录+LLM代理)上线 106.53.163.57,入口 http://106.53.163.57/xiaobai/(nginx 前缀反代,8000 被安全组拦);密钥仅存服务器 config.json(600),前端产物 grep 验证零密钥;登录墙(预置账号+scrypt+HttpOnly cookie,不开放注册),未登录仅可查看(RequireAuth 守卫 /prep /teach);公网九项验收全绿

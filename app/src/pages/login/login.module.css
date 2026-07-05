@@ -1,0 +1,135 @@
+.page {
+  min-height: calc(100dvh - 120px);
+  display: grid;
+  place-items: center;
+  padding: var(--gap-loose) var(--gap);
+}
+
+.card {
+  width: min(400px, 92vw);
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-paper);
+  padding: var(--gap-loose);
+  text-align: center;
+}
+
+.seal {
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-s);
+  background: var(--cinnabar);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  letter-spacing: 0.1em;
+  margin: 0 auto var(--gap-tight);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  color: var(--ink);
+  margin: 0 0 var(--gap-hair);
+}
+
+.sub {
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  margin: 0 0 var(--gap);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+  text-align: left;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+}
+
+.label {
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+
+.input {
+  width: 100%;
+  padding: var(--gap-hair) var(--gap-tight);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  background: var(--paper-warm);
+  color: var(--ink);
+  font-size: var(--fs-body);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--azure);
+  box-shadow: 0 0 0 3px var(--azure-wash);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--cinnabar);
+}
+
+.submit {
+  margin-top: var(--gap-hair);
+  padding: var(--gap-tight);
+  border: none;
+  border-radius: var(--radius-s);
+  background: var(--azure);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: opacity var(--t-fast) var(--ease-out);
+}
+
+.submit:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.submitLink {
+  display: inline-block;
+  margin-top: var(--gap-tight);
+  color: var(--azure);
+  font-size: var(--fs-body);
+  text-decoration: none;
+}
+
+.note {
+  margin: var(--gap) 0 0;
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  line-height: 1.8;
+}
+
+.backLink {
+  display: inline-block;
+  margin-top: var(--gap-tight);
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.backLink:hover,
+.submitLink:hover {
+  text-decoration: underline;
+}
