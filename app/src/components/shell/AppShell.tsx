@@ -16,7 +16,7 @@ const NAV_LINKS: { to: string; label: string; end: boolean }[] = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
-  const boardMode = pathname.startsWith('/teach');
+  const boardMode = /^\/teach(\/|$)/.test(pathname);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
