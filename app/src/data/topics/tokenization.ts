@@ -469,6 +469,30 @@ export const tokenizationTopic: Topic = {
           'pip 装上跑一行 encode,就能现场演示「字数 ≠ token 数」和中英文 token 数的差异;' +
           'README 开头的示例代码即可,备课时先跑一遍留证据。',
       },
+      {
+        title: '【官方双语】大语言模型的简要解释(3Blue1Brown)',
+        url: 'https://www.bilibili.com/video/BV1xmA2eMEFF/',
+        kind: '视频',
+        note:
+          '约 8 分钟,3Blue1Brown 官方号。全片讲清大模型的本职是「预测下一个 token」;' +
+          '重点看开头 2 分钟文本被切块喂进模型的动画,课前热身首选。',
+      },
+      {
+        title: '如何训练自己的中文大模型分词器 tokenizer?',
+        url: 'https://www.bilibili.com/video/BV1KZ421M7di/',
+        kind: '视频',
+        note:
+          '约 26 分钟,UP 主「LLM张老师」面向非科班观众,亲手用中文语料训练一个分词器——' +
+          '把「切块清单是统计合并出来的」变成可复现实验;重点看中文被切碎的对比段落。',
+      },
+      {
+        title: '「让我们构建 GPT Tokenizer」Karpathy 讲座(中英精校)',
+        url: 'https://www.bilibili.com/video/BV1wt421h7Cx/',
+        kind: '视频',
+        note:
+          '全长约 134 分钟,不必看完:只看开头约 20 分钟——Karpathy 把大模型的各种怪毛病' +
+          '一路追溯到 tokenizer,并给出 BPE 合并的直觉,是「切块清单哪来的」的权威出处。',
+      },
     ],
   },
 };

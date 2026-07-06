@@ -36,6 +36,13 @@ systemctl restart xiaobai
 # 换 DeepSeek 密钥:改 config.json 的 apiKey → systemctl restart xiaobai
 ```
 
+> **网关角色(2026-07-06 起为 4 个)**:`xiaobai / evaluator / report / coach`。
+> `coach` 是备课助教「小砚」(备课页右下角宠物),温度恒 0.5、上限 700 token,
+> 尾部护栏已改写为三角色措辞。**下次发布若只发前端不发网关:旧网关把未知 role
+> 按 xiaobai 处理(上限 400 token),且旧护栏措辞只承认「小白/评估器」两角色,
+> 会和助教人设打架、答非所问——发布时记得同步 `scp server/index.mjs` 到
+> `/opt/xiaobai/server/` 并 `systemctl restart xiaobai`。**
+
 ## 重新发布前端
 
 ```bash

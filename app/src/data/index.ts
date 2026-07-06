@@ -5,15 +5,19 @@
 import type { DemoLine, Topic } from '../types';
 import { tokenizationTopic } from './topics/tokenization';
 import { gradientDescentTopic } from './topics/gradientDescent';
-import { llmLockedTopics } from './topics/llmLocked';
+import { attentionTopic } from './topics/attention';
+import { pretrainFinetuneTopic } from './topics/pretrainFinetune';
+import { rlhfTopic } from './topics/rlhf';
+import { scalingLawsTopic } from './topics/scalingLaws';
 import { shallowCopyTopic } from './topics/shallowCopy';
 import { mutableDefaultTopic } from './topics/mutableDefault';
 import { lockedTopics } from './topics/locked';
 import { DEMO_SCRIPT } from './demoScript';
 
-/** 书架按 course 分组展示;数组顺序即书架陈列顺序(《大模型训练》为主推课程) */
+/** 书架按 course 分组展示;数组顺序即书架陈列顺序(《大模型训练》为主推课程,六个知识点全部可玩) */
 export const TOPICS: Topic[] = [
-  tokenizationTopic, gradientDescentTopic, ...llmLockedTopics,
+  tokenizationTopic, gradientDescentTopic, attentionTopic,
+  pretrainFinetuneTopic, rlhfTopic, scalingLawsTopic,
   shallowCopyTopic, mutableDefaultTopic, ...lockedTopics,
 ];
 

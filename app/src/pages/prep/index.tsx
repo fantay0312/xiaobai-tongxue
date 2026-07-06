@@ -2,16 +2,18 @@
  * 备课页 /prep/:topicId —— 自习桌面。
  * 流程:壹 摸底快测(误区库判断题,逐题即时反馈,可重新摸底) → 贰 教学任务卡(真实卡片质感)
  *      → 叁 讲课路线图(checklist 教学大纲 + 小白的追问原话)
- *      → 肆 研读材料包(微课讲义 + 例题 + 误区剧本预演 + 延伸书单,按错题相关展开)
+ *      → 肆 研读材料包(微课讲义 + 例题 + 误区剧本预演 + 视频参考 + 延伸书单,按错题相关展开)
  *      → 伍 自检清单全勾 → 解锁讲解舱。
  * 全对可跳过备课直接开讲;状态只经 store(completePrep)。
  * 侧栏「备课五步」= 锚点导航:点击平滑滚动到分节,IntersectionObserver 高亮当前在读分节。
+ * 右下角常驻备课助教「小砚」(PrepCoach)——只在备课页出现,课堂(/teach)是防作弊红线。
  */
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 import { getTopic } from '../../data';
 import { Md } from '../../components/Md';
+import { PrepCoach } from '../../components/coach/PrepCoach';
 import type { Misconception, PrepReference, QuestionLevel } from '../../types';
 import s from './prep.module.css';
 
@@ -46,6 +48,17 @@ const REF_SEAL: Record<PrepReference['kind'], string> = {
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** 视频出处的人话名(域名 → 平台名;未知域名原样给 hostname) */
+function videoHost(url: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    if (host.endsWith('bilibili.com') || host === 'b23.tv') return '哔哩哔哩';
+    return host;
+  } catch {
+    return '';
+  }
+}
 
 /** 例题与错题的相关性:命中该误区的纠正关键词或误区表述即视为相关 */
 function relatedToWrong(text: string, wrong: Misconception[]): boolean {
@@ -87,6 +100,12 @@ function Collapse({ title, tag, tagTone, defaultOpen, children }: {
 
 export default function PrepPage() {
   const { topicId = '' } = useParams();
+  // 按知识点重挂载:路由参数变化时 React Router 复用同一元素,摸底作答/自检勾选/
+  // submittedRef 会带着上一个知识点的状态给新知识点判分——key 强制全部归零
+  return <PrepRoom key={topicId} topicId={topicId} />;
+}
+
+function PrepRoom({ topicId }: { topicId: string }) {
   const navigate = useNavigate();
   const topic = getTopic(topicId);
   const usable = !!topic && !topic.locked;
@@ -174,8 +193,10 @@ export default function PrepPage() {
     );
   const readMinutes = Math.max(1, Math.ceil(readChars / 400));
 
-  /** 延伸书单(并发代理在填数据,防御式渲染) */
+  /** 延伸资料(防御式渲染):视频拆出独立「视频参考」区,其余走书单 */
   const references = topic.prep.references ?? [];
+  const videoRefs = references.filter((r) => r.kind === '视频');
+  const readRefs = references.filter((r) => r.kind !== '视频');
 
   /** 侧栏五步的进度态(done/active 与 scrollspy 的"当前在读"叠加,互不打架) */
   const stepStates = [
@@ -438,11 +459,47 @@ export default function PrepPage() {
                       })}
                     </ul>
                   </Collapse>
-                  {references.length > 0 && (
+                  {videoRefs.length > 0 && (
+                    <Collapse
+                      title="视频参考"
+                      tag={`选看 · ${videoRefs.length} 部`}
+                      tagTone="plain"
+                      defaultOpen={wrongMcs.length > 0}
+                    >
+                      <p className={s.refLead}>
+                        读不进去的时候换只耳朵——挑一部当预习就够,别当追剧。
+                      </p>
+                      <ul className={s.videoList}>
+                        {videoRefs.map((ref) => (
+                          <li key={ref.url}>
+                            <a
+                              className={s.videoCard}
+                              href={ref.url}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                            >
+                              <span className={s.videoPlay} aria-hidden="true">▶</span>
+                              <span className={s.videoBody}>
+                                <span className={s.videoTitle}>
+                                  {ref.title}
+                                  <span className={s.refArrow} aria-hidden="true">↗</span>
+                                </span>
+                                <span className={s.videoNote}>{ref.note}</span>
+                                {videoHost(ref.url) && (
+                                  <span className={s.videoHost}>{videoHost(ref.url)}</span>
+                                )}
+                              </span>
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </Collapse>
+                  )}
+                  {readRefs.length > 0 && (
                     <Collapse title="延伸书单" tag="选读" tagTone="plain" defaultOpen={false}>
                       <p className={s.refLead}>课上用不到,课后想深挖再看——先把课讲完。</p>
                       <ul className={s.refList}>
-                        {references.map((ref) => (
+                        {readRefs.map((ref) => (
                           <li key={ref.url} className={s.refItem}>
                             <span className={s.refSeal} aria-hidden="true">
                               {REF_SEAL[ref.kind] ?? ref.kind.slice(0, 1)}
@@ -592,6 +649,8 @@ export default function PrepPage() {
           </blockquote>
         </aside>
       </div>
+
+      <PrepCoach topic={topic} />
     </div>
   );
 }

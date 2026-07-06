@@ -6,7 +6,7 @@
 import type { LlmSettings } from '../types';
 import { API_BASE } from '../lib/api';
 
-export type LlmRole = 'evaluator' | 'xiaobai' | 'report';
+export type LlmRole = 'evaluator' | 'xiaobai' | 'report' | 'coach';
 
 export interface LlmPayload {
   system: string;
@@ -14,8 +14,15 @@ export interface LlmPayload {
   json?: boolean; // 需要结构化输出
 }
 
-/** 各角色输出上限:台词短、评估中等、报告长 */
-const ROLE_MAX_TOKENS: Record<LlmRole, number> = { xiaobai: 400, evaluator: 700, report: 900 };
+/** 各角色输出上限:台词短、评估中等、报告长、备课助教答疑中长 */
+const ROLE_MAX_TOKENS: Record<LlmRole, number> = { xiaobai: 400, evaluator: 700, report: 900, coach: 700 };
+
+/** 各角色温度(与服务器网关一致,proxy 模式下服务器按 role 重新裁决,不信客户端) */
+function roleTemperature(role: LlmRole, settings: LlmSettings): number {
+  if (role === 'xiaobai') return settings.temperature;
+  if (role === 'coach') return 0.5;
+  return 0;
+}
 
 /** 单轮要过评估+渲染两跳,单跳超时须控制在体感可接受范围 */
 const TIMEOUT_MS = 45_000;
@@ -47,7 +54,7 @@ export async function llmCall(
       },
       body: JSON.stringify({
         model: settings.model,
-        temperature: role === 'xiaobai' ? settings.temperature : 0,
+        temperature: roleTemperature(role, settings),
         max_tokens: ROLE_MAX_TOKENS[role],
         ...(payload.json ? { response_format: { type: 'json_object' } } : {}),
         messages: [
@@ -83,7 +90,7 @@ async function proxyCall(role: LlmRole, payload: LlmPayload, settings: LlmSettin
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         role,
-        temperature: role === 'xiaobai' ? settings.temperature : 0,
+        temperature: roleTemperature(role, settings),
         json: !!payload.json,
         messages: [
           { role: 'system', content: payload.system },

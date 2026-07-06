@@ -455,6 +455,22 @@ export const shallowCopyTopic: Topic = {
           '把「赋值就是贴名字」讲活的经典原文:只看前半部分 Fact: assignment never copies data,' +
           '里面的名字-对象箭头图,正是纠正「b=a 就是拷贝」时最好的画面素材。',
       },
+      {
+        title: 'Python 基础语法:引用、浅拷贝和深拷贝(周周学Python)',
+        url: 'https://www.bilibili.com/video/BV1cr4y1M7ud/',
+        kind: '视频',
+        note:
+          '约 12 分钟:概念、代码、图形三路并进,从「引用就是贴名字」讲起再到浅/深拷贝,' +
+          '讲课顺序和本课路线图完全一致;重点看图形演示「外层复制、里层共享」那段。',
+      },
+      {
+        title: '120 赋值、浅拷贝和深拷贝(oeasy 教程)',
+        url: 'https://www.bilibili.com/video/BV1ALQ1BhEnd/',
+        kind: '视频',
+        note:
+          '约 7 分钟,全程用 Python Tutor 内存箭头图对比赋值/浅拷贝/深拷贝——' +
+          '和书单里的 Python Tutor 工具正好配套,「克隆人」比喻可以直接搬进课堂。',
+      },
     ],
   },
 };

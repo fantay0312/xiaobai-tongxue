@@ -589,6 +589,79 @@
   line-height: 1.85;
 }
 
+/* ── 视频参考(选看外链):可点整卡,播放印 + 楷体题 + 宋体看点 ── */
+.videoList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--gap-tight);
+}
+.videoCard {
+  display: flex;
+  gap: var(--gap-tight);
+  align-items: flex-start;
+  height: 100%;
+  padding: var(--gap-tight);
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  text-decoration: none;
+  transition: border-color var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out);
+}
+.videoCard:hover {
+  border-color: var(--azure);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-paper);
+}
+.videoPlay {
+  flex: 0 0 auto;
+  width: 1.9rem;
+  height: 1.9rem;
+  margin-top: 0.1rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--azure);
+  border-radius: 50%;
+  color: var(--azure);
+  font-size: 0.6rem;
+  padding-left: 2px; /* ▶ 光学居中 */
+  transition: background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+}
+.videoCard:hover .videoPlay {
+  background: var(--azure);
+  color: var(--paper);
+}
+.videoBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.videoTitle {
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  color: var(--azure);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.videoCard:hover .videoTitle { color: var(--azure-deep); }
+.videoCard:hover .refArrow { transform: translate(2px, -2px); }
+.videoNote {
+  font-family: 'Songti SC', 'STSong', 'Noto Serif SC', 'SimSun', serif;
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  line-height: 1.85;
+}
+.videoHost {
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+}
+
 /* ── 自检清单 ── */
 .checkList {
   list-style: none;
@@ -817,5 +890,7 @@ button.stepCurrent:hover { background: var(--azure-wash); }
   .collapseHead { transition: none; }
   .refArrow,
   .step,
-  .stepDot { transition: none; }
+  .stepDot,
+  .videoCard,
+  .videoPlay { transition: none; }
 }

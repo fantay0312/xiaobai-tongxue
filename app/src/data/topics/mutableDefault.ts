@@ -472,6 +472,30 @@ export const mutableDefaultTopic: Topic = {
           '只看第一节「可变默认参数」:它用「你可能期望什么 / 实际发生了什么 / 你该怎么做」三段式呈现,' +
           '这个结构可以直接搬来当你纠错讲课的骨架。',
       },
+      {
+        title: '我精心设计的默认参数,怎么就出问题了呢?(码农高天)',
+        url: 'https://www.bilibili.com/video/BV1NP4y1g7CT/',
+        kind: '视频',
+        note:
+          '约 6 分钟,UP 主是 CPython 核心开发者:现场演示「默认值在 def 时只算一次」' +
+          '如何导致跨调用累积,并给出 None 哨兵修法——纠错话术可以整段照搬。',
+      },
+      {
+        title: '为什么不应该将列表作为函数的默认参数?(Hucci写代码)',
+        url: 'https://www.bilibili.com/video/BV1st42177YR/',
+        kind: '视频',
+        note:
+          '约 2 分半的极短复现:现象、原因、替代方案一气呵成,' +
+          '适合课前三分钟把「坑长什么样」先过一遍,再用官方 FAQ 补原理。',
+      },
+      {
+        title: '为什么列表不能当默认值?Python 函数参数的那些事儿(水哥澎湃)',
+        url: 'https://www.bilibili.com/video/BV1qrubznEad/',
+        kind: '视频',
+        note:
+          '约 12 分钟的函数参数全流程课:直接跳到 04:01 的「避坑」章节看列表/字典当默认值的陷阱,' +
+          '前后段落顺带补齐多参数与关键字实参的用法。',
+      },
     ],
   },
 };

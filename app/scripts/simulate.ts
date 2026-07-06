@@ -188,6 +188,26 @@ async function simCorrectPath(topic: Topic, script: DemoLine[]): Promise<void> {
       JSON.stringify(injected) === JSON.stringify(['gradient_descent_M1', 'gradient_descent_M3', 'gradient_descent_M2']),
       `实际:${injected.join('→')}`);
   }
+  if (topic.topicId === 'attention') {
+    check('误区注入顺序符合剧本预期(M1→M3→M2)',
+      JSON.stringify(injected) === JSON.stringify(['attention_M1', 'attention_M3', 'attention_M2']),
+      `实际:${injected.join('→')}`);
+  }
+  if (topic.topicId === 'pretrain-finetune') {
+    check('误区注入顺序符合剧本预期(M1→M3→M2)',
+      JSON.stringify(injected) === JSON.stringify(['pretrain_finetune_M1', 'pretrain_finetune_M3', 'pretrain_finetune_M2']),
+      `实际:${injected.join('→')}`);
+  }
+  if (topic.topicId === 'rlhf') {
+    check('误区注入顺序符合剧本预期(M1→M3→M2)',
+      JSON.stringify(injected) === JSON.stringify(['rlhf_M1', 'rlhf_M3', 'rlhf_M2']),
+      `实际:${injected.join('→')}`);
+  }
+  if (topic.topicId === 'scaling-laws') {
+    check('误区注入顺序符合剧本预期(M1→M3→M2)',
+      JSON.stringify(injected) === JSON.stringify(['scaling_laws_M1', 'scaling_laws_M3', 'scaling_laws_M2']),
+      `实际:${injected.join('→')}`);
+  }
   check('每条误区都被注入且被纠正',
     topic.misconceptions.every((m) => injected.includes(m.mcId) && corrected.includes(m.mcId) && sim.state.mcStates[m.mcId] === '已纠正'),
     JSON.stringify(sim.state.mcStates));
@@ -303,7 +323,10 @@ async function simLearningLevels(topic: Topic, script: DemoLine[]): Promise<void
     check('Lv1:首个命中后按层追问 L2(target=c2)', o1.targetChecklistId === 'c2', `实际 ${o1.targetChecklistId}`);
     check('Lv3:加速跳过剩余 L1/L2,直奔边界(target=c3)', o3.targetChecklistId === 'c3', `实际 ${o3.targetChecklistId}`);
   }
-  if (topic.topicId === 'tokenization' || topic.topicId === 'gradient-descent') {
+  const LADDER_ASSERTED = [
+    'tokenization', 'gradient-descent', 'attention', 'pretrain-finetune', 'rlhf', 'scaling-laws',
+  ];
+  if (LADDER_ASSERTED.includes(topic.topicId)) {
     check('Lv1:首个命中后按层追问 L2(target=c2)', o1.targetChecklistId === 'c2', `实际 ${o1.targetChecklistId}`);
     check('Lv3:加速跳过剩余 L1/L2,直奔边界(target=c3)', o3.targetChecklistId === 'c3', `实际 ${o3.targetChecklistId}`);
   }

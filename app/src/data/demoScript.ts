@@ -7,10 +7,18 @@
 import type { DemoLine } from '../types';
 import { tokenizationDemo } from './topics/tokenization';
 import { gradientDescentDemo } from './topics/gradientDescent';
+import { attentionDemo } from './topics/attention';
+import { pretrainFinetuneDemo } from './topics/pretrainFinetune';
+import { rlhfDemo } from './topics/rlhf';
+import { scalingLawsDemo } from './topics/scalingLaws';
 
 export const DEMO_SCRIPT: Record<string, DemoLine[]> = {
   tokenization: tokenizationDemo,
   'gradient-descent': gradientDescentDemo,
+  attention: attentionDemo,
+  'pretrain-finetune': pretrainFinetuneDemo,
+  rlhf: rlhfDemo,
+  'scaling-laws': scalingLawsDemo,
   'shallow-copy': [
     {
       label: '① 讲:赋值 vs 拷贝',

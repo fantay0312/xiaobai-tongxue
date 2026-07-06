@@ -6,6 +6,7 @@
  */
 import { create } from 'zustand';
 import { API_BASE } from '../lib/api';
+import { clearCoachThreads } from '../engine/coach';
 
 export type AuthStatus = 'unknown' | 'standalone' | 'anon' | 'authed';
 
@@ -73,6 +74,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 
   logout: async () => {
     try { await fetch(`${API_BASE}/logout`, { method: 'POST' }); } catch { /* 离线登出也放行 */ }
+    // 登出是 SPA 内切换,不清的话换账号会看见上一位老师的备课答疑草稿
+    clearCoachThreads();
     set({ status: 'anon', user: null });
   },
 }));
