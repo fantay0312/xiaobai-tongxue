@@ -4,6 +4,7 @@ export type { Decision, EventDraft } from './director';
 export { speakXiaobai, extractTeacherTerms } from './renderer';
 export type { SpeakResult } from './renderer';
 export { leakageCheck, FALLBACK_LINE } from './leakage';
+export { isExtractionAttempt, DEFLECTION_LINE } from './guard';
 export {
   initialTopicState, applyEvent, applyEvents, replayTopicState,
   computeMastery, decayedMastery,

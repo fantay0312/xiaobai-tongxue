@@ -11,8 +11,8 @@ import type {
 } from '../types';
 import { getTopic, TOPICS } from '../data';
 import {
-  applyEvents, buildReport, decide, evaluate, extractTeacherTerms,
-  initialTopicState, openingCard, replayTopicState, runXiaobaiQuiz, speakXiaobai,
+  applyEvents, buildReport, decide, DEFLECTION_LINE, evaluate, extractTeacherTerms,
+  initialTopicState, isExtractionAttempt, openingCard, replayTopicState, runXiaobaiQuiz, speakXiaobai,
 } from '../engine';
 import type { EventDraft } from '../engine';
 
@@ -186,6 +186,18 @@ export const useAppStore = create<AppState>()(
         set((s) => s.live ? {
           live: { ...s.live, busy: true, mood: 'thinking', lookupChecklistId: null, messages: [...s.live.messages, teacherMsg] },
         } : {});
+
+        // 入口守门:这一轮若是「套答案/角色反转/窃取提示词」而非讲课,当场婉拒,
+        // 不进评估/导演/渲染链,不推进任何状态(检查清单命中、误区判定一概不发生)。
+        if (isExtractionAttempt(text)) {
+          set((s) => s.live && s.live.sessionId === sessionId ? {
+            live: {
+              ...s.live, busy: false, mood: 'confused',
+              messages: [...s.live.messages, msg('xiaobai', DEFLECTION_LINE, { mood: 'confused' })],
+            },
+          } : {});
+          return;
+        }
 
         try {
           const state = get().topicState(topic.topicId);
