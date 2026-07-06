@@ -19,6 +19,60 @@ const now = () => new Date().toISOString();
 /** 首次引导气泡:点开过一次就永久收起 */
 const HINT_KEY = 'xiaobai-coach-hint-done';
 
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** 已放映过打字机的回复 id(模块级,面板开合/换页不重放) */
+const revealedIds = new Set<string>();
+
+/** 等待期状态轮播:小砚不能干等,要让人看见它在干活 */
+const THINK_LINES = [
+  '小砚翻着这门课的备课材料…',
+  '研墨中…',
+  '在琢磨怎么讲最顺口…',
+  '快好了,再蘸一笔…',
+] as const;
+
+/** 打字机逐字浮现(与讲解舱 TypewriterText 同款节奏,26ms/字) */
+function CoachTypewriter({ text, animate, onTick, onDone }: {
+  text: string;
+  animate: boolean;
+  onTick?: () => void;
+  onDone?: () => void;
+}) {
+  const [n, setN] = useState(animate ? 0 : text.length);
+  const cbRef = useRef({ onTick, onDone });
+  cbRef.current = { onTick, onDone };
+
+  useEffect(() => {
+    if (!animate) {
+      setN(text.length);
+      return;
+    }
+    setN(0);
+    let v = 0;
+    const id = window.setInterval(() => {
+      v += 1;
+      setN(v);
+      cbRef.current.onTick?.();
+      if (v >= text.length) {
+        window.clearInterval(id);
+        cbRef.current.onDone?.();
+      }
+    }, 26);
+    return () => window.clearInterval(id);
+  }, [text, animate]);
+
+  const typing = animate && n < text.length;
+  return (
+    <>
+      {text.slice(0, n)}
+      {typing ? <span className={s.caret} aria-hidden="true">▍</span> : null}
+    </>
+  );
+}
+
 export function PrepCoach({ topic }: { topic: Topic }) {
   const settings = useAppStore((st) => st.settings);
   const [open, setOpen] = useState(false);
@@ -36,6 +90,44 @@ export function PrepCoach({ topic }: { topic: Topic }) {
   const topicIdRef = useRef(topic.topicId);
 
   const busy = busyTid === topic.topicId;
+
+  /* 等待期状态轮播(仅 busy 时转) */
+  const [thinkIdx, setThinkIdx] = useState(0);
+  useEffect(() => {
+    if (!busy) return;
+    setThinkIdx(0);
+    const id = window.setInterval(
+      () => setThinkIdx((i) => (i + 1) % THINK_LINES.length),
+      2200,
+    );
+    return () => window.clearInterval(id);
+  }, [busy]);
+
+  /** 打字机每字跟滚:只在贴近底部时才跟随(讲解舱同款纪律,不把回看中的用户拽回去) */
+  const followTick = () => {
+    const el = listRef.current;
+    if (!el) return;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 48) {
+      el.scrollTop = el.scrollHeight;
+    }
+  };
+
+  /** 当前应放映打字机的回复:最新一条、未放映过的小砚消息 */
+  const lastMsg = messages[messages.length - 1];
+  const animatingId =
+    lastMsg && lastMsg.role === 'coach' && !revealedIds.has(lastMsg.id) && !prefersReducedMotion()
+      ? lastMsg.id
+      : null;
+  /* 放映被打断(关面板/换知识点/离开备课页)也算放映过——重开不整条重放 */
+  useEffect(() => {
+    if (!open || !animatingId) return;
+    return () => {
+      revealedIds.add(animatingId);
+    };
+  }, [open, animatingId]);
+
+  /** 读屏专用通道:回复到达时一次性播报全文(动画区已对读屏隐藏,免得逐字排队轰炸) */
+  const lastCoachText = [...messages].reverse().find((m) => m.role === 'coach')?.text ?? '';
 
   /* 换知识点:载入对应缓存 */
   useEffect(() => {
@@ -125,20 +217,35 @@ export function PrepCoach({ topic }: { topic: Topic }) {
             <button type="button" className={s.closeBtn} onClick={close} aria-label="收起助教面板">×</button>
           </header>
           <p className={s.panelTopic}>正在陪你备《{topic.title}》——问答不进课堂记录,放心打草稿。</p>
-          <div className={s.msgList} ref={listRef} aria-live="polite">
+          {/* 动画区对读屏隐藏:逐字变更 + 状态轮播会把 live region 轰炸成噪音 */}
+          <div className={s.msgList} ref={listRef} aria-hidden="true">
             <div className={`${s.msg} ${s.msgCoach}`}>
               老师好,我是小砚。开场白、讲课顺序、类比、误区试探怎么接——这节课的事都能问我。
             </div>
             {messages.map((m) => (
               <div key={m.id} className={`${s.msg} ${m.role === 'teacher' ? s.msgTeacher : s.msgCoach}`}>
-                {m.text}
+                {m.role === 'coach' ? (
+                  <CoachTypewriter
+                    text={m.text}
+                    animate={m.id === animatingId}
+                    onTick={followTick}
+                    onDone={() => revealedIds.add(m.id)}
+                  />
+                ) : (
+                  m.text
+                )}
               </div>
             ))}
             {busy && (
-              <div className={`${s.msg} ${s.msgCoach} ${s.typing}`} aria-label="小砚思考中">
-                <i /><i /><i />
+              <div className={`${s.msg} ${s.msgCoach} ${s.typing}`}>
+                <span className={s.thinkDots}><i /><i /><i /></span>
+                <span key={thinkIdx} className={s.thinkText}>{THINK_LINES[thinkIdx]}</span>
               </div>
             )}
+          </div>
+          {/* 读屏通道:忙碌播一次、回复全文播一次 */}
+          <div className={s.srOnly} aria-live="polite">
+            {busy ? '小砚思考中' : lastCoachText}
           </div>
           {messages.length === 0 && !busy && (
             <div className={s.chips}>

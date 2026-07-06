@@ -6,7 +6,11 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--board);
+  /* 夜自习灯光:顶部一盏教室灯的柔光 + 底部收暗的黑板渐晕,纯平色显得像色块 */
+  background:
+    radial-gradient(90rem 42rem at 50% -10rem, oklch(0.29 0.022 200 / 0.9), transparent 62%),
+    radial-gradient(120% 130% at 50% 115%, oklch(0.185 0.018 210 / 0.7), transparent 55%),
+    var(--board);
   color: var(--chalk);
   /* 深色场景滚动条/表单控件按暗色渲染,否则 Windows 黑板正中一条亮色滚动轨 */
   color-scheme: dark;
@@ -116,12 +120,13 @@
   gap: var(--gap);
   overflow-y: auto;
 }
-/* 粉笔手画的相框,微微歪着——破格瞬间 */
+/* 粉笔手画的相框,微微歪着——破格瞬间;框内一束聚光落在小白身上 */
 .boardFrame {
   padding: 0.9rem;
   border: 2px solid var(--board-line);
   border-radius: var(--radius);
   transform: rotate(-1.4deg);
+  background: radial-gradient(62% 56% at 50% 42%, oklch(0.3 0.024 200 / 0.85), transparent 78%);
 }
 .plate {
   margin-top: calc(-1 * var(--gap-tight));
@@ -191,6 +196,9 @@
   overflow-wrap: anywhere;
   line-height: 1.8;
 }
+/* 纸便签贴在黑板上,一张张微微歪着(交替倾角;气泡无 hover 变换,静态 transform 安全) */
+.rowT:nth-child(odd) .bubbleT { transform: rotate(0.35deg); }
+.rowT:nth-child(even) .bubbleT { transform: rotate(-0.3deg); }
 
 /* 小白消息:偏左,粉笔白,导演动作粉笔小字注在旁 */
 .rowX {
@@ -215,7 +223,22 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   border-left: 2px solid var(--board-line);
-  padding: 0.1rem 0 0.1rem 0.9rem;
+  padding: 0.1rem 0.35rem 0.1rem 0.9rem;
+  border-radius: 0 var(--radius-s) var(--radius-s) 0;
+}
+
+/* 情绪分档的粉笔配色:开窍/开心/出师 → 黛绿粉笔;困惑/害羞 → 藤黄粉笔(默认灰粉笔) */
+.moodGlad .bubbleX { border-left-color: oklch(0.78 0.09 158); }
+.moodGlad .anno { color: oklch(0.78 0.09 158); }
+.moodWarm .bubbleX { border-left-color: var(--chalk-amber); }
+.moodWarm .anno { color: var(--chalk-amber); }
+/* 开窍瞬间(仅 aha):一层黛绿水洗光亮起再退去(一次性,backwards 起帧) */
+.moodAha .bubbleX {
+  animation: ahaWash 1.4s var(--ease-out) backwards;
+}
+@keyframes ahaWash {
+  from { background: oklch(0.78 0.09 158 / 0.13); }
+  to { background: transparent; }
 }
 .caret {
   color: var(--chalk-amber);
@@ -229,7 +252,7 @@
   text-align: center;
   font-size: var(--fs-small);
   color: var(--chalk-amber);
-  background: var(--board-deep);
+  background: linear-gradient(oklch(0.85 0.09 85 / 0.06), oklch(0.85 0.09 85 / 0.06)), var(--board-deep);
   border: 1px dashed var(--board-line);
   border-radius: var(--radius-s);
   padding: 0.45rem 1rem;
@@ -331,7 +354,11 @@
   resize: none;
   font-size: var(--fs-body);
 }
-.input:focus { outline: none; border-color: var(--chalk-soft); }
+.input:focus {
+  outline: none;
+  border-color: var(--chalk-soft);
+  box-shadow: 0 0 0 3px oklch(0.93 0.012 95 / 0.07);
+}
 .input:disabled { opacity: 0.55; }
 .input::placeholder { color: var(--chalk-soft); opacity: 0.65; }
 .inputSide {

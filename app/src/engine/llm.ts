@@ -24,6 +24,19 @@ function roleTemperature(role: LlmRole, settings: LlmSettings): number {
   return 0;
 }
 
+/**
+ * api 模式的助教专属模型(可选):.env.local 设 VITE_LLM_MODEL_COACH(如 deepseek-v4-pro),
+ * 课堂三角色仍走 VITE_LLM_MODEL(flash 走量);proxy 模式由服务器 config 决定,此值不参与。
+ * node 环境(simulate/livetest 间接引入)无 import.meta.env,按 lib/api.ts 同款守卫回退。
+ */
+const ENV_COACH_MODEL = (
+  (import.meta as { env?: { VITE_LLM_MODEL_COACH?: string } }).env?.VITE_LLM_MODEL_COACH ?? ''
+).trim();
+
+function roleModel(role: LlmRole, settings: LlmSettings): string {
+  return role === 'coach' && ENV_COACH_MODEL ? ENV_COACH_MODEL : settings.model;
+}
+
 /** 单轮要过评估+渲染两跳,单跳超时须控制在体感可接受范围 */
 const TIMEOUT_MS = 45_000;
 
@@ -53,7 +66,7 @@ export async function llmCall(
         Authorization: `Bearer ${settings.apiKey}`,
       },
       body: JSON.stringify({
-        model: settings.model,
+        model: roleModel(role, settings),
         temperature: roleTemperature(role, settings),
         max_tokens: ROLE_MAX_TOKENS[role],
         ...(payload.json ? { response_format: { type: 'json_object' } } : {}),

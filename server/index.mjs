@@ -36,7 +36,10 @@ const cfg = JSON.parse(readFileSync(CONFIG_PATH, 'utf8'));
 const PORT = cfg.port ?? 8787;
 const DIST = path.resolve(HERE, cfg.distDir ?? '../dist');
 const UPSTREAM = String(cfg.upstreamBaseUrl ?? 'https://api.deepseek.com').replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
-const MODEL = cfg.upstreamModel ?? 'deepseek-chat';
+/** 分角色模型:课堂三角色(小白/评估/报告)走 flash 走量,备课助教走 pro 求质。
+ *  旧别名 deepseek-chat/deepseek-reasoner 2026-07-24 弃用,默认值已迁移 v4 正式名。 */
+const MODEL = cfg.upstreamModel ?? 'deepseek-v4-flash';
+const MODEL_COACH = cfg.upstreamModelCoach ?? MODEL;
 const API_KEY = cfg.apiKey ?? '';
 const USERS = Array.isArray(cfg.users) ? cfg.users : [];
 const SESSION_TTL = (cfg.sessionTtlHours ?? 72) * 3600_000;
@@ -240,7 +243,7 @@ async function handleChat(req, res) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
       body: JSON.stringify({
-        model: MODEL,
+        model: role === 'coach' ? MODEL_COACH : MODEL,
         temperature,
         max_tokens: ROLE_MAX_TOKENS[role],
         ...(wantJson ? { response_format: { type: 'json_object' } } : {}),
@@ -317,5 +320,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`小白同学网关已启动: http://0.0.0.0:${PORT} (dist: ${DIST}, model: ${MODEL})`);
+  console.log(`小白同学网关已启动: http://0.0.0.0:${PORT} (dist: ${DIST}, model: ${MODEL}, coach: ${MODEL_COACH})`);
 });

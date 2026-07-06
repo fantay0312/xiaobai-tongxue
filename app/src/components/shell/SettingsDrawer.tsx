@@ -160,7 +160,7 @@ export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () =
                   className={styles.input}
                   type="text"
                   value={settings.model}
-                  placeholder="如 deepseek-chat"
+                  placeholder="如 deepseek-v4-flash"
                   spellCheck={false}
                   onChange={(e) => { setSettings({ model: e.target.value }); setTest({ status: 'idle' }); }}
                 />

@@ -35,7 +35,7 @@ const ENV_LLM_DEFAULT: LlmSettings | null = ENV_KEY
       mode: 'api',
       baseUrl: ((import.meta.env.VITE_LLM_BASE_URL as string | undefined) ?? '').trim() || 'https://api.deepseek.com',
       apiKey: ENV_KEY,
-      model: ((import.meta.env.VITE_LLM_MODEL as string | undefined) ?? '').trim() || 'deepseek-chat',
+      model: ((import.meta.env.VITE_LLM_MODEL as string | undefined) ?? '').trim() || 'deepseek-v4-flash',
       temperature: 0.8,
     }
   : null;

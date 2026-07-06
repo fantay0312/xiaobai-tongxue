@@ -67,14 +67,21 @@ function TypewriterText({ text, animate, onTick, onDone }: {
   );
 }
 
+/** 情绪 → 粉笔配色档:开窍系黛绿(aha 额外闪一次水洗光)、受挫系藤黄,其余默认灰粉笔 */
+const MOOD_TONE: Partial<Record<XiaobaiMood, string>> = {
+  aha: `${s.moodGlad} ${s.moodAha}`, happy: s.moodGlad, proud: s.moodGlad,
+  confused: s.moodWarm, shy: s.moodWarm,
+};
+
 function XiaobaiBubble({ m, animate, onTick, onDone }: {
   m: ChatMessage;
   animate: boolean;
   onTick: () => void;
   onDone: () => void;
 }) {
+  const tone = m.mood ? MOOD_TONE[m.mood] ?? '' : '';
   return (
-    <div className={s.rowX}>
+    <div className={`${s.rowX} ${tone}`}>
       {m.mood ? <span className={s.anno}>﹝{MOOD_ZH[m.mood]}﹞</span> : null}
       <div className={s.bubbleX}>
         <TypewriterText text={m.text} animate={animate} onTick={onTick} onDone={onDone} />

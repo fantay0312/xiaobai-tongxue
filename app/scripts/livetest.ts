@@ -43,7 +43,7 @@ const SETTINGS: LlmSettings = {
   mode: 'api',
   baseUrl: (env.VITE_LLM_BASE_URL ?? '').trim() || 'https://api.deepseek.com',
   apiKey: API_KEY,
-  model: (env.VITE_LLM_MODEL ?? '').trim() || 'deepseek-chat',
+  model: (env.VITE_LLM_MODEL ?? '').trim() || 'deepseek-v4-flash',
   temperature: 0.9,
 };
 

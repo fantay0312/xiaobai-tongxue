@@ -3,7 +3,8 @@
   "distDir": "../dist",
   "pathPrefix": "",
   "upstreamBaseUrl": "https://api.deepseek.com",
-  "upstreamModel": "deepseek-chat",
+  "upstreamModel": "deepseek-v4-flash",
+  "upstreamModelCoach": "deepseek-v4-pro",
   "apiKey": "sk-填入真实密钥(此文件只放在服务器,勿入库)",
   "sessionTtlHours": 72,
   "users": [
