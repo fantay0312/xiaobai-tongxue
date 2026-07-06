@@ -4,6 +4,7 @@
  * /teach 路由下切换为「夜自习」深色透明变体(粉笔白文字),
  * 页面根不铺纸色底,由讲解舱自铺黑板底。
  * / (宣传页)下头部退为透明静置变体,随海报滚走;品牌落款回宣传页,「书斋」导航到 /study。
+ * 宣传页头部不放应用内导航/登入/设置——对外只留品牌与「进入书斋」一个入口。
  */
 import { useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -44,6 +45,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className={styles.brandMotto}>教然后知困</span>
         </NavLink>
 
+        {landingMode ? (
+          <nav className={styles.nav} aria-label="入口">
+            <NavLink to="/study" className={styles.loginBtn}>进入书斋</NavLink>
+          </nav>
+        ) : (
         <nav className={styles.nav} aria-label="主导航">
           {NAV_LINKS.map((link) => (
             <NavLink
@@ -86,6 +92,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <GearIcon />
           </button>
         </nav>
+        )}
       </header>
 
       <main className={styles.main}>{children}</main>
