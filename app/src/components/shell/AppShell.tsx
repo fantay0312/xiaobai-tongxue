@@ -3,6 +3,7 @@
  * 品牌章 SealMark 与 public/favicon.svg 是同一枚「白」字白文印,改任一侧必须同步。
  * /teach 路由下切换为「夜自习」深色透明变体(粉笔白文字),
  * 页面根不铺纸色底,由讲解舱自铺黑板底。
+ * / (宣传页)下头部退为透明静置变体,随海报滚走;品牌落款回宣传页,「书斋」导航到 /study。
  */
 import { useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -12,7 +13,7 @@ import { useAuthStore } from '../../store/authStore';
 import styles from './AppShell.module.css';
 
 const NAV_LINKS: { to: string; label: string; end: boolean }[] = [
-  { to: '/', label: '书斋', end: true },
+  { to: '/study', label: '书斋', end: true },
   { to: '/growth', label: '成长册', end: false },
   { to: '/teacher', label: '教师看板', end: false },
 ];
@@ -20,15 +21,23 @@ const NAV_LINKS: { to: string; label: string; end: boolean }[] = [
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const boardMode = /^\/teach(\/|$)/.test(pathname);
+  // 宣传页场景:头部退为透明静置,随海报一起滚走
+  const landingMode = pathname === '/';
   const [settingsOpen, setSettingsOpen] = useState(false);
   const authStatus = useAuthStore((s) => s.status);
   const authUser = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
 
+  const shellClass = boardMode
+    ? `${styles.shell} ${styles.board}`
+    : landingMode
+      ? `${styles.shell} ${styles.landing}`
+      : styles.shell;
+
   return (
-    <div className={boardMode ? `${styles.shell} ${styles.board}` : styles.shell}>
+    <div className={shellClass}>
       <header className={styles.header}>
-        <NavLink to="/" className={styles.brand} aria-label="回到书斋首页">
+        <NavLink to="/" className={styles.brand} aria-label="回到首页">
           <Seal className={styles.seal} />
           <span className={styles.brandName}>小白同学</span>
           <span className={styles.brandRule} aria-hidden="true" />

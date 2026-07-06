@@ -92,7 +92,7 @@ export default function HomePage() {
 
       {/* ── 参赛信息位 ── */}
       <footer className={styles.foot}>
-        课程《Python 程序设计》 · 学习支持类智能体 · 「小白同学——教然后知困」参赛演示
+        多学科知识书架 · 学习支持类智能体 · 「小白同学——教然后知困」参赛演示
       </footer>
     </div>
   );

@@ -20,8 +20,8 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   // 只接受站内单层路径,杜绝畸形跳转;HashRouter 下绝对 URL 也只会落进 hash,双保险
-  const rawNext = params.get('next') || '/';
-  const next = /^\/(?!\/)[\w\-/]*$/.test(rawNext) ? rawNext : '/';
+  const rawNext = params.get('next') || '/study';
+  const next = /^\/(?!\/)[\w\-/]*$/.test(rawNext) ? rawNext : '/study';
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -46,7 +46,7 @@ export default function LoginPage() {
               ? '当前未连接服务器,无需登录,全部功能直接可用。'
               : '你已登录,可以直接给小白开讲了。'}
           </p>
-          <Link className={s.noticeLink} to={standalone ? '/' : next}>
+          <Link className={s.noticeLink} to={standalone ? '/study' : next}>
             {standalone ? '回书斋' : '继续'} →
           </Link>
         </section>
@@ -106,7 +106,7 @@ export default function LoginPage() {
 
           <footer className={s.foot}>
             <span>暂未开放注册,账号由管理员发放</span>
-            <Link className={s.backLink} to="/">← 先随便看看</Link>
+            <Link className={s.backLink} to="/study">← 先随便看看</Link>
           </footer>
         </section>
       </div>

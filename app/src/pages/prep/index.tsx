@@ -68,7 +68,7 @@ export default function PrepPage() {
     return (
       <div className={s.page}>
         <p className={s.notFound}>
-          这个知识点还没有开放。<Link to="/">← 回书斋</Link>
+          这个知识点还没有开放。<Link to="/study">← 回书斋</Link>
         </p>
       </div>
     );
@@ -106,7 +106,7 @@ export default function PrepPage() {
   return (
     <div className={s.page}>
       <header className={s.head}>
-        <Link to="/" className={s.back}>← 回书斋</Link>
+        <Link to="/study" className={s.back}>← 回书斋</Link>
         <p className={s.course}>{topic.course} · 备课室</p>
         <h1 className={s.title}>{topic.title}</h1>
         <p className={s.tagline}>{topic.tagline}</p>

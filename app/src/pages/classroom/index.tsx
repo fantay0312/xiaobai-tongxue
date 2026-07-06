@@ -10,22 +10,12 @@ import { useAppStore } from '../../store/appStore';
 import { getDemoScript, getTopic } from '../../data';
 import { Md } from '../../components/Md';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
-import type { ChatMessage, DirectorAction, SessionMode, XiaobaiMood } from '../../types';
+import type { ChatMessage, SessionMode, XiaobaiMood } from '../../types';
 import s from './classroom.module.css';
 
-/** 导演动作 → 粉笔小字中文名(注在小白台词旁) */
-const ACTION_ZH: Record<DirectorAction, string> = {
-  ask_clarify: '澄清定义 · L1',
-  ask_example: '索要例子 · L2',
-  ask_boundary: '边界测试 · L3',
-  inject_misconception: '误区注入 · L4',
-  ask_transfer: '迁移追问 · L5',
-  express_understanding: '开窍复述',
-  rescue_hint: '递台阶 · R1',
-  propose_lookup: '一起查书 · R2',
-  stay_confused: '保持困惑',
-  trigger_review: '发起复习',
-};
+// 讲课进行中「不给学生看牌」:导演动作(误区注入/开窍复述/救援层级)一律不在现场显示——
+// 它会直接告诉学生"这句是陷阱,别认同"或"你刚讲对了"。动作仍随消息落库,只在复盘/成长/教师页事后揭示。
+// 现场粉笔小字只注小白的「心情」,是角色表达,不泄露教学机关。
 
 const MOOD_ZH: Record<XiaobaiMood, string> = {
   idle: '平静',
@@ -85,7 +75,7 @@ function XiaobaiBubble({ m, animate, onTick, onDone }: {
 }) {
   return (
     <div className={s.rowX}>
-      {m.action ? <span className={s.anno}>﹝{ACTION_ZH[m.action]}﹞</span> : null}
+      {m.mood ? <span className={s.anno}>﹝{MOOD_ZH[m.mood]}﹞</span> : null}
       <div className={s.bubbleX}>
         <TypewriterText text={m.text} animate={animate} onTick={onTick} onDone={onDone} />
       </div>
@@ -109,7 +99,10 @@ export default function ClassroomPage() {
   const abandonSession = useAppStore((st) => st.abandonSession);
 
   const topic = getTopic(topicId);
-  const demoLines = getDemoScript(topicId);
+  // 演示助手是一键满分讲稿 = 内置答案键,正式部署里对学生隐藏。
+  // 只在本地开发(npm run dev)或答辩时显式带 ?demo=1 才出现,生产构建默认剥离。
+  const demoEnabled = import.meta.env.DEV || sp.get('demo') === '1';
+  const demoLines = demoEnabled ? getDemoScript(topicId) : [];
 
   const [draft, setDraft] = useState('');
   const [demoOpen, setDemoOpen] = useState(false);
@@ -157,7 +150,7 @@ export default function ClassroomPage() {
     return (
       <div className={s.holder}>
         <p>
-          这间教室还没有开放。<Link to="/">← 回书斋</Link>
+          这间教室还没有开放。<Link to="/study">← 回书斋</Link>
         </p>
       </div>
     );
@@ -186,11 +179,11 @@ export default function ClassroomPage() {
 
   const quit = () => {
     abandonSession();
-    navigate('/');
+    navigate('/study');
   };
   const dismissClass = () => {
     const sid = endSession();
-    navigate(sid ? `/review/${sid}` : '/');
+    navigate(sid ? `/review/${sid}` : '/study');
   };
   const backToPrep = () => {
     abandonSession();

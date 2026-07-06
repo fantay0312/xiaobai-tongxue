@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from './components/shell/AppShell';
 import { RequireAuth } from './components/shell/RequireAuth';
 import { useAuthStore } from './store/authStore';
+import LandingPage from './pages/landing';
 import HomePage from './pages/home';
 import PrepPage from './pages/prep';
 import ClassroomPage from './pages/classroom';
@@ -18,7 +19,8 @@ export default function App() {
   return (
     <AppShell>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/study" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         {/* 使用类页面(备课/讲解)须登录;查看类页面(复盘/成长/看板)不设门槛 */}
         <Route path="/prep/:topicId" element={<RequireAuth><PrepPage /></RequireAuth>} />

@@ -3,12 +3,19 @@
  * 每个知识点一个文件放在 ./topics/ 下,在此汇总导出。
  */
 import type { DemoLine, Topic } from '../types';
+import { tokenizationTopic } from './topics/tokenization';
+import { gradientDescentTopic } from './topics/gradientDescent';
+import { llmLockedTopics } from './topics/llmLocked';
 import { shallowCopyTopic } from './topics/shallowCopy';
 import { mutableDefaultTopic } from './topics/mutableDefault';
 import { lockedTopics } from './topics/locked';
 import { DEMO_SCRIPT } from './demoScript';
 
-export const TOPICS: Topic[] = [shallowCopyTopic, mutableDefaultTopic, ...lockedTopics];
+/** 书架按 course 分组展示;数组顺序即书架陈列顺序(《大模型训练》为主推课程) */
+export const TOPICS: Topic[] = [
+  tokenizationTopic, gradientDescentTopic, ...llmLockedTopics,
+  shallowCopyTopic, mutableDefaultTopic, ...lockedTopics,
+];
 
 export function getTopic(topicId: string): Topic | undefined {
   return TOPICS.find((t) => t.topicId === topicId);

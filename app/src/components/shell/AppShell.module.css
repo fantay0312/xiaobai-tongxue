@@ -35,6 +35,14 @@
   border-bottom-color: var(--board-line);
 }
 
+/* 宣传页场景:头部融进海报——透明、无界栏、不吸顶,随页滚走 */
+.landing .header {
+  position: static;
+  background: transparent;
+  backdrop-filter: none;
+  border-bottom-color: transparent;
+}
+
 /* ── 品牌落款:白文印 + 楷体字标 + 界栏 + 铭 ── */
 
 .brand {

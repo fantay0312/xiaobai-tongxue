@@ -75,7 +75,7 @@ export default function ReviewPage() {
           <p className={s.emptyText}>
             可能链接有误,或者演示数据刚被重置。先回书斋门厅给小白讲一课,这里就会长出属于你的第一份档案。
           </p>
-          <Link to="/" className={s.btnPrimary}>回书斋门厅</Link>
+          <Link to="/study" className={s.btnPrimary}>回书斋门厅</Link>
         </div>
       </div>
     );
@@ -88,7 +88,7 @@ export default function ReviewPage() {
   return (
     <div className={s.page}>
       <header className={`${s.head} ${s.rise}`} style={rise(0)}>
-        <p className={s.crumb}><Link to="/">书斋门厅</Link> / 教学档案</p>
+        <p className={s.crumb}><Link to="/study">书斋门厅</Link> / 教学档案</p>
         <h1 className={s.title}>{topic?.title ?? report.topicId}</h1>
         <p className={s.subTitle}>一次讲解的完整复盘 —— 教然后知困</p>
         <p className={s.meta}>

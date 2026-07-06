@@ -1,0 +1,491 @@
+/* 宣传页 —— 海报版书斋:同一纸墨世界,更大的字、更满的留白、更重的节奏。
+   应用页是笔记本,这一页是招贴。 */
+
+.page {
+  max-width: 74rem;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 clamp(var(--gap), 4vw, var(--gap-loose)) var(--gap-loose);
+}
+
+/* ── 入场编排(与门厅同一 rise,一次 stagger) ── */
+
+.enter {
+  animation: rise var(--t-med) var(--ease-out) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── 滚动显现:进入视口定格一次 ── */
+
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity var(--t-slow) var(--ease-out),
+    transform var(--t-slow) var(--ease-out);
+}
+
+.shown {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enter {
+    animation-delay: 0ms !important;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ── 首屏海报 ── */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: clamp(var(--gap), 5vw, var(--gap-section));
+  align-items: center;
+  padding: clamp(3.5rem, 9vw, 7rem) 0 var(--gap-section);
+}
+
+/* 巨字水印:一笔淡墨「教」压在纸底,像书法练习纸的范字 */
+.heroGlyph {
+  position: absolute;
+  right: -0.06em;
+  top: 50%;
+  transform: translateY(-52%);
+  z-index: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(16rem, 34vw, 26rem);
+  line-height: 1;
+  color: var(--ink);
+  opacity: 0.035;
+  pointer-events: none;
+  user-select: none;
+}
+
+.heroMain,
+.heroAvatar,
+.quote {
+  position: relative;
+  z-index: 1;
+}
+
+.heroMain {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gap);
+}
+
+.kicker {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  letter-spacing: 0.4em;
+  color: var(--ink-faint);
+}
+
+/* 海报字阶:比门厅的 --fs-hero 再大一档 */
+.claim {
+  font-size: clamp(2.4rem, 5.6vw, 4.1rem);
+  line-height: 1.32;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+.claim em {
+  font-style: normal;
+  color: var(--azure);
+}
+
+.intro {
+  max-width: 26em;
+  font-size: var(--fs-sub);
+  line-height: 2;
+  color: var(--ink-soft);
+}
+
+.ctaRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--gap) var(--gap-loose);
+  margin-top: var(--gap-tight);
+}
+
+.cta {
+  display: inline-block;
+  padding: calc(var(--gap-tight) * 1.15) calc(var(--gap) * 1.9);
+  background: var(--azure);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  border-radius: var(--radius-s);
+  box-shadow: var(--shadow-paper);
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out);
+}
+
+.cta:hover {
+  background: var(--azure-deep);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+}
+
+.cta:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 3px;
+}
+
+.ctaGhost {
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--dust);
+  padding-bottom: 2px;
+  transition:
+    color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out);
+}
+
+.ctaGhost:hover {
+  color: var(--ink);
+  border-color: var(--ink-soft);
+}
+
+/* 小白立于主张旁 */
+
+.heroAvatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-hair);
+  align-self: end;
+  padding-bottom: var(--gap);
+}
+
+.avatarCaption {
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.2em;
+  color: var(--ink-faint);
+}
+
+/* 《学记》竖排引文 —— 与全站同一精神锚点,立于海报最右 */
+
+.quote {
+  margin: 0;
+  writing-mode: vertical-rl;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+  padding: var(--gap) 0 var(--gap) var(--gap);
+  border-left: 1px solid var(--paper-edge);
+  justify-self: end;
+}
+
+.quoteText {
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  line-height: 1.9;
+  color: var(--ink);
+}
+
+.quoteFrom {
+  font-family: var(--font-display);
+  font-style: normal;
+  font-size: var(--fs-small);
+  letter-spacing: 0.24em;
+  color: var(--ink-faint);
+}
+
+/* ── 理念:一整段大字,不装进任何卡片 ── */
+
+.why {
+  padding: var(--gap-section) 0;
+  border-top: 1px solid var(--paper-edge);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.whyText {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3.2vw, 2.4rem);
+  font-weight: 700;
+  line-height: 1.7;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  max-width: 24em;
+}
+
+.whyText em {
+  font-style: normal;
+  color: var(--azure);
+}
+
+.whySub {
+  font-size: var(--fs-sub);
+  color: var(--ink-soft);
+  padding-left: var(--gap);
+  border-left: 3px solid var(--paper-edge);
+}
+
+/* ── 通用章节头 ── */
+
+.secHead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+  margin-bottom: var(--gap-loose);
+}
+
+.secKicker {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  letter-spacing: 0.32em;
+  color: var(--ink-faint);
+}
+
+.secTitle {
+  font-size: var(--fs-title);
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+
+/* ── 三幕流程:三栏并立,界栏相隔,不做卡片 ── */
+
+.acts {
+  padding: var(--gap-section) 0;
+  border-top: 1px solid var(--paper-edge);
+  /* 锚点滚动落点让出吸顶余量 */
+  scroll-margin-top: var(--gap-loose);
+}
+
+.actRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(var(--gap), 4vw, var(--gap-loose));
+}
+
+.act {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+  padding-left: var(--gap);
+  border-left: 1px solid var(--paper-edge);
+}
+
+.actNo {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  letter-spacing: 0.3em;
+  color: var(--cinnabar);
+}
+
+.actName {
+  font-size: clamp(1.35rem, 2.4vw, 1.8rem);
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+
+.actDesc {
+  font-size: var(--fs-body);
+  line-height: 2;
+  color: var(--ink-soft);
+}
+
+/* ── 机制亮点:报纸分栏式,1px 界栏代替卡片投影 ── */
+
+.mech {
+  padding: var(--gap-section) 0;
+  border-top: 1px solid var(--paper-edge);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--paper-edge);
+  border-block: 1px solid var(--paper-edge);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+  background: var(--paper);
+  padding: clamp(var(--gap), 3vw, var(--gap-loose)) clamp(var(--gap), 2.5vw, 2rem);
+  transition: background var(--t-fast) var(--ease-out);
+}
+
+.card:hover {
+  background: var(--paper-warm);
+}
+
+/* 朱文小印:方框朱字,与品牌印一脉 */
+.stamp {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--cinnabar);
+  border: 1.5px solid color-mix(in oklab, var(--cinnabar) 62%, transparent);
+  border-radius: var(--radius-s);
+  background: var(--cinnabar-wash);
+}
+
+.cardName {
+  font-size: var(--fs-sub);
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+.cardDesc {
+  font-size: var(--fs-small);
+  line-height: 1.9;
+  color: var(--ink-soft);
+}
+
+/* ── 结尾 CTA:黑板夜自习色带 —— 门后就是教室 ── */
+
+.band {
+  margin-top: var(--gap-section);
+  padding: clamp(var(--gap-loose), 7vw, 5rem) clamp(var(--gap), 5vw, var(--gap-section));
+  background: linear-gradient(160deg, var(--board) 0%, var(--board-deep) 100%);
+  border-radius: var(--radius-l);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gap);
+}
+
+.bandKicker {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  letter-spacing: 0.32em;
+  color: var(--chalk-soft);
+}
+
+.bandTitle {
+  font-size: clamp(1.7rem, 3.6vw, 2.7rem);
+  letter-spacing: 0.06em;
+  color: var(--chalk);
+}
+
+.bandCta {
+  display: inline-block;
+  margin-top: var(--gap-hair);
+  padding: calc(var(--gap-tight) * 1.15) calc(var(--gap) * 1.9);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--board-deep);
+  background: var(--chalk);
+  border-radius: var(--radius-s);
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out);
+}
+
+.bandCta:hover {
+  background: var(--chalk-amber);
+  transform: translateY(-2px);
+}
+
+.bandCta:focus-visible {
+  outline: 2px solid var(--chalk);
+  outline-offset: 3px;
+}
+
+/* ── 参赛信息位(与门厅同款) ── */
+
+.foot {
+  margin-top: var(--gap-section);
+  padding-top: var(--gap);
+  border-top: 1px solid var(--paper-edge);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+}
+
+/* ── 响应式 ── */
+
+@media (max-width: 60rem) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 56rem) {
+  .hero {
+    grid-template-columns: 1fr;
+    align-items: start;
+    padding-top: var(--gap-loose);
+  }
+
+  .heroGlyph {
+    top: 0;
+    transform: none;
+    font-size: clamp(12rem, 44vw, 18rem);
+  }
+
+  .heroAvatar {
+    align-self: start;
+    align-items: flex-start;
+  }
+
+  .quote {
+    writing-mode: horizontal-tb;
+    justify-self: start;
+    border-left: 3px solid var(--paper-edge);
+    padding: var(--gap-hair) 0 var(--gap-hair) var(--gap);
+  }
+
+  .quoteText br {
+    display: none;
+  }
+
+  .actRow {
+    grid-template-columns: 1fr;
+    gap: var(--gap-loose);
+  }
+}
+
+@media (max-width: 40rem) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .whyText br {
+    display: none;
+  }
+}

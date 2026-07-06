@@ -131,7 +131,7 @@ export default function TeacherPage() {
     <div className={s.page}>
       <header className={`${s.head} ${s.rise}`} style={rise(0)}>
         <div>
-          <h1 className={s.title}>教务看板 · Python 程序设计</h1>
+          <h1 className={s.title}>教务看板 · {[...new Set(TOPICS.map((t) => t.course))].join(' / ')}</h1>
           <p className={s.demoNote}>
             演示数据:模拟班级 32 人 + <strong>你的真实数据已并入</strong>(Top5 计入你的盲区,学情表含「你」一行)
           </p>
