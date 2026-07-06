@@ -1,8 +1,9 @@
 /**
  * 备课页 /prep/:topicId —— 自习桌面。
- * 流程:壹 摸底快测(误区库判断题,逐题即时反馈,可重新摸底) → 贰 教学任务卡(真实卡片质感)
+ * 流程:壹 摸底快测(两波:误区判断题 → 多维选择题,均逐题即时反馈,可重新摸底,计分合并)
+ *      → 贰 教学任务卡(真实卡片质感)
  *      → 叁 讲课路线图(checklist 教学大纲 + 小白的追问原话)
- *      → 肆 研读材料包(微课讲义 + 例题 + 误区剧本预演 + 视频参考 + 延伸书单,按错题相关展开)
+ *      → 肆 研读材料包(微课讲义 + 一张图看懂 + 例题 + 误区剧本预演 + 视频参考 + 延伸书单,按错题相关展开)
  *      → 伍 自检清单全勾 → 解锁讲解舱。
  * 全对可跳过备课直接开讲;状态只经 store(completePrep)。
  * 侧栏「备课五步」= 锚点导航:点击平滑滚动到分节,IntersectionObserver 高亮当前在读分节。
@@ -12,6 +13,8 @@ import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 import { getTopic } from '../../data';
+import { getSelfTest } from '../../data/selfTest';
+import { getFigures } from '../../components/diagrams';
 import { Md } from '../../components/Md';
 import { PrepCoach } from '../../components/coach/PrepCoach';
 import type { Misconception, PrepReference, QuestionLevel } from '../../types';
@@ -91,7 +94,8 @@ function Collapse({ title, tag, tagTone, defaultOpen, children }: {
           <span className={tagTone === 'warn' ? s.collapseTagWarn : s.collapseTag}>{tag}</span>
         ) : null}
       </button>
-      <div className={`${s.collapseBody} ${open ? s.collapseOpen : ''}`}>
+      {/* inert:收起态把子树(外链/横滚容器)整体移出 Tab 序,0fr 高度动画不受影响 */}
+      <div className={`${s.collapseBody} ${open ? s.collapseOpen : ''}`} inert={!open}>
         <div className={s.collapseInner}>{children}</div>
       </div>
     </section>
@@ -112,8 +116,12 @@ function PrepRoom({ topicId }: { topicId: string }) {
   const completePrep = useAppStore((st) => st.completePrep);
   const prepDone = useAppStore((st) => st.topicStates[topicId]?.prepDone ?? false);
 
-  /** 摸底快测:已作答的选择(true=判"对",false=判"错") */
+  /** 摸底第一波(判断题):已作答的选择(true=判"对",false=判"错") */
   const [answers, setAnswers] = useState<boolean[]>([]);
+  /** 摸底第二波(多维选择题):已选项的下标,逐题追加 */
+  const [mcAnswers, setMcAnswers] = useState<number[]>([]);
+  /** 读屏播报:最近一次判分结果(常驻 aria-live 区,答题瞬间按钮禁用不卸载,焦点不丢) */
+  const [liveMsg, setLiveMsg] = useState('');
   /** 全对时用户仍选择过一遍材料 */
   const [wantMaterials, setWantMaterials] = useState(false);
   const [checks, setChecks] = useState<boolean[]>([]);
@@ -123,10 +131,33 @@ function PrepRoom({ topicId }: { topicId: string }) {
 
   /* 派生态提前算(hooks 必须在提前 return 之前):不可用主题一律给空 */
   const probes = usable ? topic!.misconceptions.slice(0, 3) : [];
-  const quizDone = usable && answers.length >= probes.length;
-  const correctCount = answers.filter((c, i) => c === probes[i]?.probe.isTrue).length;
-  const allCorrect = quizDone && correctCount === probes.length;
-  const wrongMcs = probes.filter((mc, i) => i < answers.length && answers[i] !== mc.probe.isTrue);
+  const selfTest = usable ? getSelfTest(topicId) : [];
+  const probesDone = usable && answers.length >= probes.length;
+  /** 两波都答完才算摸完底;第二波题库为空(如 Python 主题)时与旧行为完全一致 */
+  const quizDone = probesDone && mcAnswers.length >= selfTest.length;
+  const quizTotal = probes.length + selfTest.length;
+  const correctCount =
+    answers.filter((c, i) => c === probes[i]?.probe.isTrue).length +
+    mcAnswers.filter((c, i) => c === selfTest[i]?.answerIndex).length;
+  const allCorrect = quizDone && correctCount === quizTotal;
+  /** 第二波答错的题(驱动侧栏薄弱点条目与 verdict 维度小结) */
+  const wrongSelfTests = selfTest.filter(
+    (q, i) => i < mcAnswers.length && mcAnswers[i] !== q.answerIndex,
+  );
+  /** 暴露的误区 = 判断题答错的 + 选择题答错且挂了 mcRef 的(按 mcId 去重) */
+  const wrongMcs = (() => {
+    const list = probes.filter((mc, i) => i < answers.length && answers[i] !== mc.probe.isTrue);
+    const seen = new Set(list.map((mc) => mc.mcId));
+    wrongSelfTests.forEach((q) => {
+      if (!q.mcRef || seen.has(q.mcRef)) return;
+      const mc = topic!.misconceptions.find((m) => m.mcId === q.mcRef);
+      if (mc) {
+        list.push(mc);
+        seen.add(mc.mcId);
+      }
+    });
+    return list;
+  })();
   const materialsVisible = quizDone && (!allCorrect || wantMaterials);
 
   /**
@@ -183,7 +214,17 @@ function PrepRoom({ topicId }: { topicId: string }) {
   /** 路线图途中试探标记插在大纲中段(L4 误区注入没有固定位置,只提示"路上会来") */
   const ambushAfter = Math.max(0, Math.floor((topic.checklist.length - 1) / 2));
 
-  /** 阅读量估算:讲义 + 例题总字数 ÷ 400 字/分钟,向上取整 */
+  /** 示意图(图解 Collapse):上游按主题给图,空数组则整区不渲染 */
+  const figures = getFigures(topic.topicId);
+
+  /** 错题维度小结:「边界题栽了 1 道」——verdict 顺带汇报第二波哪些角度没站稳 */
+  const dimReport = (['概念', '推演', '边界', '应用', '辨析'] as const)
+    .map((d) => ({ d, n: wrongSelfTests.filter((q) => q.dimension === d).length }))
+    .filter((e) => e.n > 0)
+    .map((e) => `${e.d}题栽了 ${e.n} 道`)
+    .join('、');
+
+  /** 阅读量估算:讲义 + 例题总字数 ÷ 400 字/分钟,向上取整(图不计入,看图不算读) */
   const readChars =
     topic.prep.microLecture.title.length +
     topic.prep.microLecture.body.length +
@@ -211,8 +252,25 @@ function PrepRoom({ topicId }: { topicId: string }) {
     { done: allChecked, active: false, reachable: materialsVisible },
   ];
 
-  const answer = (choice: boolean) =>
+  const answer = (choice: boolean) => {
+    if (answers.length >= probes.length) return;
+    const mc = probes[answers.length];
+    const good = choice === mc.probe.isTrue;
+    setLiveMsg(
+      `${good ? `答对了——这句话是${mc.probe.isTrue ? '对' : '错'}的。` : '答错了——这正是一个高频误区。'}${mc.probe.explanation}`,
+    );
     setAnswers((a) => (a.length >= probes.length ? a : [...a, choice]));
+  };
+
+  const answerMc = (choice: number) => {
+    if (mcAnswers.length >= selfTest.length) return;
+    const q = selfTest[mcAnswers.length];
+    const good = choice === q.answerIndex;
+    setLiveMsg(
+      `${good ? '答对了。' : `答错了——该选「${q.options[q.answerIndex]}」。`}${q.explanation}`,
+    );
+    setMcAnswers((a) => (a.length >= selfTest.length ? a : [...a, choice]));
+  };
 
   /** 锚点滚动:reduced-motion 直接跳,不做平滑 */
   const jumpTo = (id: string) => {
@@ -222,9 +280,11 @@ function PrepRoom({ topicId }: { topicId: string }) {
     });
   };
 
-  /** 重新摸底:清空作答与"过一遍材料"的选择;completePrep 仍只在进讲解舱时按当次成绩提交 */
+  /** 重新摸底:两波作答与"过一遍材料"的选择一并清空;completePrep 仍只在进讲解舱时按当次成绩提交 */
   const retakeQuiz = () => {
     setAnswers([]);
+    setMcAnswers([]);
+    setLiveMsg('');
     setWantMaterials(false);
     jumpTo(SECTIONS[0].id);
   };
@@ -232,7 +292,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
   const enterClassroom = () => {
     if (!submittedRef.current) {
       submittedRef.current = true;
-      completePrep(topic.topicId, correctCount, probes.length);
+      completePrep(topic.topicId, correctCount, quizTotal);
     }
     navigate(`/teach/${topic.topicId}`);
   };
@@ -256,9 +316,13 @@ function PrepRoom({ topicId }: { topicId: string }) {
             <p className={s.sectionHint}>
               开讲之前,先看看你现在站在哪。判断下面的说法对不对:
               {!quizDone && (
-                <span className={s.quizCount}>已答 {answers.length} / {probes.length}</span>
+                <span className={s.quizCount}>
+                  已答 {answers.length + mcAnswers.length} / {quizTotal}
+                </span>
               )}
             </p>
+            {/* 常驻 live region:读屏用户答题后在此听到判分(节点须先于反馈存在,否则首条丢播) */}
+            <p className={s.srOnly} aria-live="polite">{liveMsg}</p>
             <ol className={s.probeList}>
               {probes.map((mc, i) => {
                 if (i > answers.length) return null;
@@ -272,12 +336,26 @@ function PrepRoom({ topicId }: { topicId: string }) {
                   >
                     <p className={s.probeNo}>第 {i + 1} / {probes.length} 题</p>
                     <p className={s.probeStatement}>「{mc.probe.statement}」</p>
-                    {!answered ? (
-                      <div className={s.probeBtns}>
-                        <button type="button" onClick={() => answer(true)}>对</button>
-                        <button type="button" onClick={() => answer(false)}>错</button>
-                      </div>
-                    ) : (
+                    {/* 答后按钮禁用而不卸载:卸载会把键盘焦点甩回 body,读屏用户直接迷航 */}
+                    <div className={s.probeBtns}>
+                      <button
+                        type="button"
+                        disabled={answered}
+                        className={answered && choice === true ? s.optPicked : undefined}
+                        onClick={() => answer(true)}
+                      >
+                        对
+                      </button>
+                      <button
+                        type="button"
+                        disabled={answered}
+                        className={answered && choice === false ? s.optPicked : undefined}
+                        onClick={() => answer(false)}
+                      >
+                        错
+                      </button>
+                    </div>
+                    {answered && (
                       <div className={s.probeFb}>
                         <p className={good ? s.fbGood : s.fbBad}>
                           {good
@@ -291,11 +369,67 @@ function PrepRoom({ topicId }: { topicId: string }) {
                 );
               })}
             </ol>
+            {/* ── 第二波 · 多方位摸底:判断题答完才登场;题库为空的主题走不到这里 ── */}
+            {probesDone && selfTest.length > 0 && (
+              <div className={s.mcWave}>
+                <p className={s.mcWaveTitle}>第二波 · 多方位摸底</p>
+                <p className={s.mcWaveHint}>
+                  判断只是热身——下面换几个角度出选择题,看你的理解经不经得起转弯。
+                </p>
+                <ol className={s.probeList}>
+                  {selfTest.map((q, i) => {
+                    if (i > mcAnswers.length) return null;
+                    const answered = i < mcAnswers.length;
+                    const pick = mcAnswers[i];
+                    const good = answered && pick === q.answerIndex;
+                    return (
+                      <li
+                        key={q.id}
+                        className={`${s.probe} ${answered ? (good ? s.probeGood : s.probeBad) : ''}`}
+                      >
+                        <p className={s.probeNo}>第 {i + 1} / {selfTest.length} 题</p>
+                        <p className={s.probeStatement}>{q.question}</p>
+                        {q.code ? (
+                          <pre className={s.code}><code>{q.code}</code></pre>
+                        ) : null}
+                        <div className={s.mcOptions}>
+                          {q.options.map((opt, oi) => (
+                            <button
+                              key={opt}
+                              type="button"
+                              disabled={answered}
+                              className={answered && pick === oi ? s.optPicked : undefined}
+                              onClick={() => answerMc(oi)}
+                            >
+                              <span className={s.mcOptNo} aria-hidden="true">
+                                {String.fromCharCode(65 + oi)}
+                              </span>
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
+                        {answered && (
+                          <div className={s.probeFb}>
+                            <p className={good ? s.fbGood : s.fbBad}>
+                              <span className={s.mcDim}>{q.dimension}</span>
+                              {good
+                                ? '答对了。'
+                                : `答错了——该选「${q.options[q.answerIndex]}」。`}
+                            </p>
+                            <p className={s.fbExplain}>{q.explanation}</p>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            )}
             {quizDone && (
               allCorrect ? (
                 <div className={s.verdictGood}>
                   <p>
-                    摸底 {correctCount}/{probes.length},基础相当扎实——你有资格直接上讲台。
+                    摸底 {correctCount}/{quizTotal},基础相当扎实——你有资格直接上讲台。
                   </p>
                   <div className={s.verdictBtns}>
                     <button type="button" className={s.primaryBtn} onClick={enterClassroom}>
@@ -318,7 +452,11 @@ function PrepRoom({ topicId }: { topicId: string }) {
               ) : (
                 <div className={s.verdictBad}>
                   <p>
-                    摸底 {correctCount}/{probes.length}——有 {wrongMcs.length} 个误区还没吃透。
+                    摸底 {correctCount}/{quizTotal}——
+                    {wrongMcs.length > 0
+                      ? `有 ${wrongMcs.length} 个误区还没吃透`
+                      : '判断都稳,选择题露了怯'}
+                    {dimReport ? `,${dimReport}` : ''}。
                     别慌,下面的材料就是为它准备的;等会小白多半会拿这里考你。
                   </p>
                   <div className={s.verdictBtns}>
@@ -398,7 +536,9 @@ function PrepRoom({ topicId }: { topicId: string }) {
                 <p className={s.sectionHint}>
                   {wrongMcs.length > 0
                     ? '已按你的错题展开了相关部分;带着任务卡上的问题读。'
-                    : '你全对了,材料默认收起,想翻哪节点哪节。'}
+                    : allCorrect
+                      ? '你全对了,材料默认收起,想翻哪节点哪节。'
+                      : '错的没挂到具体误区——对照右侧薄弱点,想翻哪节点哪节。'}
                 </p>
                 <div className={s.materials}>
                   <Collapse
@@ -409,6 +549,25 @@ function PrepRoom({ topicId }: { topicId: string }) {
                   >
                     <Md text={topic.prep.microLecture.body} className={s.md} />
                   </Collapse>
+                  {figures.length > 0 && (
+                    <Collapse
+                      title="一张图看懂"
+                      tag="图解"
+                      tagTone="plain"
+                      defaultOpen={wrongMcs.length > 0}
+                    >
+                      {figures.map((fig) => (
+                        <figure key={fig.title} className={s.figItem}>
+                          <p className={s.figTitle}>{fig.title}</p>
+                          {/* 横滚壳可聚焦:键盘用户才能滚动看全图(SVG 有 min-width) */}
+                          <div className={s.figScroll} tabIndex={0} role="group" aria-label={fig.title}>
+                            <fig.Svg className={s.figSvg} />
+                          </div>
+                          <figcaption className={s.figCaption}>{fig.caption}</figcaption>
+                        </figure>
+                      ))}
+                    </Collapse>
+                  )}
                   {topic.prep.examples.map((ex, i) => (
                     <Collapse
                       key={ex.title}
@@ -625,12 +784,20 @@ function PrepRoom({ topicId }: { topicId: string }) {
               </ol>
             </div>
           )}
-          {wrongMcs.length > 0 && (
+          {(wrongMcs.length > 0 || wrongSelfTests.length > 0) && (
             <div>
               <h3 className={s.asideTitle}>摸底暴露的薄弱点</h3>
               <ul className={s.weakList}>
                 {wrongMcs.map((mc) => (
                   <li key={mc.mcId} className={s.weakItem}>× {mc.belief}</li>
+                ))}
+                {/* 第二波答错的题:标维度,要点名从路线图 checklist 里查 */}
+                {wrongSelfTests.map((q) => (
+                  <li key={q.id} className={s.weakItem}>
+                    <span className={s.weakDim}>{q.dimension}</span>
+                    {topic.checklist.find((c) => c.id === q.checklistRef)?.point ??
+                      '这个角度还没答稳'}
+                  </li>
                 ))}
               </ul>
             </div>

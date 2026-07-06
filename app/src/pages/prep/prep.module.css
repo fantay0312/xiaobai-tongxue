@@ -141,6 +141,14 @@
   color: var(--paper);
   transform: translateY(-1px);
 }
+/* 答后禁用不卸载(保键盘焦点):降为静默态,选中项留内侧标记 */
+.probeBtns button:disabled {
+  cursor: default;
+  border-color: var(--paper-edge);
+  color: var(--ink-soft);
+  background: none;
+  transform: none;
+}
 .probeFb { margin-top: var(--gap-tight); }
 .fbGood { color: var(--jade-ink); font-weight: 600; font-size: var(--fs-small); }
 .fbBad { color: var(--cinnabar); font-weight: 600; font-size: var(--fs-small); }
@@ -209,6 +217,110 @@
   font-size: var(--fs-tiny);
   color: var(--ink-faint);
   letter-spacing: 0.1em;
+}
+
+/* ── 摸底第二波:多维选择题(分波小题头 + 竖排选项按钮 + 维度徽章) ── */
+.mcWave {
+  margin-top: var(--gap);
+  animation: rise var(--t-med) var(--ease-out) backwards;
+}
+.mcWaveTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  letter-spacing: 0.12em;
+  color: var(--ink);
+}
+/* 题头右侧接一段虚线,把"换波"在版面上画出来 */
+.mcWaveTitle::after {
+  content: '';
+  flex: 1;
+  border-top: 1px dashed var(--paper-edge);
+}
+.mcWaveHint {
+  margin-top: var(--gap-hair);
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  line-height: 1.9;
+}
+.mcOptions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+  margin-top: var(--gap-tight);
+}
+.mcOptions button {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-tight);
+  width: 100%;
+  text-align: left;
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  padding: 0.45rem 0.8rem;
+  color: var(--ink);
+  font-size: var(--fs-body);
+  line-height: 1.7;
+  cursor: pointer;
+  transition: border-color var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+}
+.mcOptions button:hover {
+  border-color: var(--azure);
+  background: var(--azure-wash);
+  color: var(--azure-deep);
+}
+.mcOptions button:disabled {
+  cursor: default;
+  border-color: var(--paper-edge);
+  background: var(--paper);
+  color: var(--ink-soft);
+}
+/* 你按下的那一项:内侧竖标 + 描边加深(对错由所在题卡的左沿色说话) */
+.optPicked,
+.probeBtns button:disabled.optPicked,
+.mcOptions button:disabled.optPicked {
+  border-color: var(--ink-soft);
+  box-shadow: inset 3px 0 0 var(--ink-soft);
+  color: var(--ink);
+}
+
+/* 读屏专用:视觉隐藏但保留在无障碍树(同 coach 的 srOnly) */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.mcOptNo {
+  flex: 0 0 auto;
+  font-family: var(--font-code);
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+}
+/* 维度徽章:细边小胶囊,答完后标记这道题在探哪个方位(信息义,走墨青) */
+.mcDim {
+  display: inline-block;
+  margin-right: 0.5em;
+  font-family: var(--font-body);
+  font-size: var(--fs-tiny);
+  font-weight: 400;
+  color: var(--azure-deep);
+  background: var(--azure-wash);
+  border: 1px solid var(--azure);
+  border-radius: 999px;
+  padding: 0 8px;
+  letter-spacing: 0.08em;
+  vertical-align: 0.1em;
+  white-space: nowrap;
 }
 
 /* ── 讲课路线图:竖排教学大纲,层级徽章 + 小白追问引文 ── */
@@ -508,6 +620,32 @@
   color: var(--ink-soft);
   font-size: var(--fs-small);
   line-height: 1.9;
+}
+
+/* ── 一张图看懂(图解):小标 + 全宽 SVG(宽图在自己的容器里横滚) + 眉批小字 ── */
+.figItem { margin: 0 0 var(--gap); }
+.figItem:last-child { margin-bottom: 0; }
+.figTitle {
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  color: var(--ink);
+  margin-bottom: var(--gap-hair);
+}
+.figScroll { overflow-x: auto; }
+.figScroll:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
+.figSvg {
+  display: block;
+  width: 100%;
+  /* 底线宽:窄屏走 figScroll 横滚而不是整图等比缩小——13px 注文缩到 ~8.7px 就没法读了 */
+  min-width: 640px;
+  height: auto;
+}
+.figCaption {
+  margin-top: var(--gap-hair);
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+  line-height: 1.8;
 }
 
 /* ── 延伸书单(选读外链) ── */
@@ -820,6 +958,16 @@ button.stepCurrent:hover { background: var(--azure-wash); }
   gap: var(--gap-hair);
 }
 .weakItem { color: var(--cinnabar); line-height: 1.7; }
+/* 薄弱点条目上的维度小签(朱砂细边——盲区语义,随 weakItem 的 currentColor) */
+.weakDim {
+  display: inline-block;
+  margin-right: 0.45em;
+  font-size: var(--fs-tiny);
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  padding: 0 4px;
+  white-space: nowrap;
+}
 .doneLink { color: var(--azure); }
 .asideQuote {
   margin: 0;
@@ -882,7 +1030,8 @@ button.stepCurrent:hover { background: var(--azure-wash); }
   .verdictGood,
   .verdictBad,
   .roadStep,
-  .roadAmbush {
+  .roadAmbush,
+  .mcWave {
     animation: none;
   }
   .collapseBody { transition: none; }
@@ -892,5 +1041,6 @@ button.stepCurrent:hover { background: var(--azure-wash); }
   .step,
   .stepDot,
   .videoCard,
-  .videoPlay { transition: none; }
+  .videoPlay,
+  .mcOptions button { transition: none; }
 }

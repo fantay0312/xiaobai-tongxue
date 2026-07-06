@@ -26,13 +26,24 @@ function poly(vals: number[], wobble = 0): string {
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 
-export function Radar({ radar, delta }: { radar: RadarScores; delta: Partial<RadarScores> | null }) {
+export function Radar({ radar, delta, compact = false }: {
+  radar: RadarScores;
+  delta: Partial<RadarScores> | null;
+  /** 紧凑模式:缩略容器(如教师页 300px 侧卡)里跳过文字标注——15px 标签缩到 0.54 倍就没法读了 */
+  compact?: boolean;
+}) {
   const cur = DIMS.map((k) => clamp01(radar[k]));
   const hasPrev = !!delta && Object.keys(delta).length > 0;
   const prev = hasPrev ? DIMS.map((k) => clamp01(radar[k] - (delta?.[k] ?? 0))) : null;
+  const ariaText = DIMS.map((k) => `${k} ${Math.round(radar[k] * 100)}`).join(',');
 
   return (
-    <svg viewBox="0 0 560 460" className={s.radarSvg} role="img" aria-label="五维讲解画像雷达图">
+    <svg
+      viewBox={compact ? '110 60 340 330' : '0 0 560 460'}
+      className={s.radarSvg}
+      role="img"
+      aria-label={`五维讲解画像雷达图:${ariaText}`}
+    >
       {/* 墨线网格 */}
       {[0.25, 0.5, 0.75, 1].map((t, ri) => (
         <polygon
@@ -56,8 +67,8 @@ export function Radar({ radar, delta }: { radar: RadarScores; delta: Partial<Rad
         return <circle key={DIMS[i]} cx={x} cy={y} r={3.2} className={s.radarDot} />;
       })}
 
-      {/* 维度标注 + 增量 */}
-      {DIMS.map((k, i) => {
+      {/* 维度标注 + 增量(compact 略去文字,数据进 aria-label) */}
+      {!compact && DIMS.map((k, i) => {
         const [x, y] = pt(i, 1.26);
         const cos = Math.cos(((-90 + i * 72) * Math.PI) / 180);
         const anchor = Math.abs(cos) < 0.35 ? 'middle' : cos > 0 ? 'start' : 'end';

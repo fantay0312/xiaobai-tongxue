@@ -1,0 +1,348 @@
+/* 故事层 —— 门厅在环节带之前只指一条路:
+   冷启动给「拜师帖」(书信体世界观),有履历后换「旅程带」(等级印 + 当下一步)。
+   入场节奏对齐 home 的 enter 编排:hero CTA 210ms → 本层 240ms → 环节带 260ms */
+
+.letter,
+.ribbon {
+  animation: rise var(--t-med) var(--ease-out) backwards;
+  animation-delay: 240ms;
+  margin-bottom: var(--gap-loose);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .letter,
+  .ribbon {
+    animation-delay: 0ms;
+  }
+}
+
+/* ── 拜师帖:信纸内框线 + 竖排帖名 + 落款小印 ── */
+
+.letter {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: clamp(var(--gap), 4vw, var(--gap-loose));
+  padding: var(--gap-loose) clamp(var(--gap), 4vw, var(--gap-loose));
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+  /* 信封式双框:内衬一圈纸白细线,像旧式信笺的界框 */
+  box-shadow: inset 0 0 0 5px var(--paper-warm), inset 0 0 0 6px var(--paper-edge);
+}
+
+/* 帖名竖排,如信封题签 */
+.letterHead {
+  writing-mode: vertical-rl;
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-weight: 700;
+  letter-spacing: 0.4em;
+  color: var(--ink);
+  padding-right: clamp(var(--gap-tight), 2vw, var(--gap));
+  border-right: 1px solid var(--paper-edge);
+}
+
+.letterBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gap-tight);
+  max-width: 44em;
+}
+
+.salute {
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.letterText {
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  line-height: 2.1;
+  color: var(--ink-soft);
+  text-indent: 2em;
+}
+
+.letterText em {
+  font-style: normal;
+  color: var(--azure);
+}
+
+.letterFoot {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--gap-tight);
+  margin-top: var(--gap-hair);
+}
+
+.signature {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  letter-spacing: 0.2em;
+  color: var(--ink-faint);
+}
+
+/* 落款小印:小白的私章 —— 印泥红走 --seal-red 别名(DESIGN.md 印章豁免) */
+.sealMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 2px solid var(--seal-red);
+  border-radius: var(--radius-s);
+  color: var(--seal-red);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  transform: rotate(-4deg);
+}
+
+.letterCta {
+  display: inline-block;
+  margin-top: var(--gap-tight);
+  padding: var(--gap-tight) calc(var(--gap) * 1.5);
+  background: var(--azure);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  border-radius: var(--radius-s);
+  transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+}
+
+.letterCta:hover {
+  background: var(--azure-deep);
+  transform: translateY(-2px);
+}
+
+.letterCta:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 3px;
+}
+
+/* ── 旅程带:等级印 | 新印 | 当下一步 ── */
+
+.ribbon {
+  display: flex;
+  align-items: center;
+  gap: clamp(var(--gap), 3vw, var(--gap-loose));
+  padding: var(--gap) clamp(var(--gap), 3vw, var(--gap-loose));
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+}
+
+.rankSide {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+}
+
+/* 师道等级印:墨青方章(等级是身份不是警示,故用品牌色而非朱砂) */
+.rankSeal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  border: 2px solid var(--azure);
+  border-radius: var(--radius-s);
+  background: var(--paper);
+  color: var(--azure-deep);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em; /* 抵消末字后的字距,双字视觉居中 */
+  transform: rotate(-3deg);
+}
+
+.rankMeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+}
+
+.rankTitle {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+}
+
+.rankBar {
+  width: 9rem;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--ink-wash);
+  overflow: hidden;
+}
+
+.rankFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--azure);
+  transition: width var(--t-slow) var(--ease-out);
+}
+
+.rankNums {
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+}
+
+.rankNums b {
+  font-family: var(--font-code);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+/* 新出炉的成就小印:点击去成长册印章墙 */
+.newSeal {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-hair);
+}
+
+.newSealGlyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border: 2px solid currentColor;
+  border-radius: var(--radius-s);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  transform: rotate(3deg);
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.newSeal:hover .newSealGlyph {
+  transform: rotate(0deg) translateY(-2px);
+}
+
+.newSeal:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 3px;
+  border-radius: var(--radius-s);
+}
+
+.newSealName {
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+/* tier 即印色:墨印/朱印/金印(朱印走 --seal-red 印泥别名;金印借藤黄 ink 档保对比度) */
+.ink {
+  color: var(--ink);
+}
+
+.cinnabar {
+  color: var(--seal-red);
+}
+
+.gold {
+  color: var(--amber-ink);
+}
+
+.stepSide {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  border-left: 1px solid var(--paper-edge);
+  padding-left: clamp(var(--gap), 3vw, var(--gap-loose));
+}
+
+.stepLine {
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  line-height: 1.8;
+  color: var(--ink);
+}
+
+.stepCta {
+  flex: none;
+  display: inline-block;
+  padding: var(--gap-hair) var(--gap);
+  background: var(--azure);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  border-radius: var(--radius-s);
+  transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+}
+
+.stepCta:hover {
+  background: var(--azure-deep);
+  transform: translateY(-2px);
+}
+
+.stepCta:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 3px;
+}
+
+/* ── 窄屏 ── */
+
+@media (max-width: 820px) {
+  .ribbon {
+    flex-wrap: wrap;
+  }
+
+  .stepSide {
+    flex-basis: 100%;
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid var(--paper-edge);
+    padding-top: var(--gap-tight);
+  }
+}
+
+@media (max-width: 560px) {
+  .letter {
+    grid-template-columns: 1fr;
+  }
+
+  .letterHead {
+    writing-mode: horizontal-tb;
+    padding-right: 0;
+    padding-bottom: var(--gap-tight);
+    border-right: none;
+    border-bottom: 1px solid var(--paper-edge);
+  }
+
+  .stepSide {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

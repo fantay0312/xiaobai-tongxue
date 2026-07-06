@@ -1,13 +1,19 @@
 /**
- * 成长页 /growth —— 小白的成长册。
- * 成长阶梯 + 人格皮肤 + 盲区图谱(星图) + 教学履历 + 每个节点可展开掌握度证据链。
- * 复习契约:await startReview(topicId) → navigate(`/teach/${topicId}?mode=review`)
+ * 成长页 /growth —— 一本真正的「成长册」,按书卷编次:
+ * 卷首·师徒(小白阶梯+人格+师道等级印章+下一步) / 卷一·印章墙 / 卷二·教学编年史 /
+ * 卷三·盲区图谱 / 卷四·金句画廊 / 卷尾·小白眼里的你。
+ * 数据全部真实派生:印章与师道等级来自 engine/achievements,下一步来自 engine/journey,
+ * 编年史把 events 按 sessionId 与 reports 并轨(sessionId 为 null 的备课/补学作独立眉批)。
+ * 保留契约:setPersona / 复习 await startReview(topicId) → navigate(`/teach/${topicId}?mode=review`)
+ * 且 reviewBusy 防抖原样;右下角演示重置的行内二次确认原样(答辩依赖)。
  */
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import type { LearnEventType, Persona, XiaobaiMood } from '../../types';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import type { LearnEvent, LearnEventType, Persona, SessionMode, SessionReport, XiaobaiMood } from '../../types';
 import { useAppStore } from '../../store/appStore';
 import { getTopic, TOPICS } from '../../data';
+import { deriveAchievements, deriveTeacherRank } from '../../engine/achievements';
+import { nextStep } from '../../engine/journey';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { KnowledgeMap, type MapNode } from './KnowledgeMap';
 import s from './growth.module.css';
@@ -44,15 +50,114 @@ const EVENT_LABEL: Record<LearnEventType, string> = {
   session_ended: '下课',
 };
 
+const MODE_LABEL: Record<SessionMode, string> = { teach: '讲解', reteach: '重讲', review: '复习' };
+
 const fmtDateTime = (iso: string) =>
   new Date(iso).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+const fmtDay = (iso: string) =>
+  new Date(iso).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
 
 const rise = (i: number) => ({ animationDelay: `${i * 75}ms` });
+
+// ── 卷二·编年史装订:events 按 sessionId 分组,与 reports 并轨,倒序 ──
+
+interface SessionEntry {
+  kind: 'session';
+  sessionId: string;
+  t: string;
+  topicId: string;
+  mode: SessionMode;
+  turns: number | null;
+  corrected: number;
+  adopted: number;
+  golden: number;
+  reviewPassed: boolean;
+  quizScore: number | null;
+  mastered: boolean;
+  abandoned: boolean;
+  hasReport: boolean;
+}
+
+interface MarginEntry {
+  kind: 'margin';
+  id: string;
+  t: string;
+  topicId: string;
+  type: 'prep_completed' | 'remedy_completed';
+  evidence: string;
+}
+
+type ChronicleEntry = SessionEntry | MarginEntry;
+
+function buildChronicle(events: LearnEvent[], reports: SessionReport[]): ChronicleEntry[] {
+  const reportOf = new Map(reports.map((r) => [r.sessionId, r]));
+  const groups = new Map<string, LearnEvent[]>();
+  const margins: MarginEntry[] = [];
+  for (const e of events) {
+    if (e.sessionId) {
+      const list = groups.get(e.sessionId);
+      if (list) list.push(e);
+      else groups.set(e.sessionId, [e]);
+    } else if (e.type === 'prep_completed' || e.type === 'remedy_completed') {
+      // 无会话归属的备课/补学:作独立眉批,evidence 本身已是一句人话
+      margins.push({ kind: 'margin', id: e.id, t: e.t, topicId: e.topicId, type: e.type, evidence: e.evidence });
+    }
+  }
+  const sessions: SessionEntry[] = [];
+  for (const [sessionId, evs] of groups) {
+    const report = reportOf.get(sessionId) ?? null;
+    const first = evs[0];
+    const rawMode = evs.find((e) => e.type === 'session_started')?.payload.mode;
+    const ended = evs.find((e) => e.type === 'session_ended');
+    const turnsRaw = report?.turnCount ?? ended?.payload.turns;
+    const scoreRaw = report?.quiz?.score ?? evs.find((e) => e.type === 'xiaobai_quiz_scored')?.payload.score;
+    sessions.push({
+      kind: 'session',
+      sessionId,
+      t: first.t,
+      topicId: first.topicId,
+      mode: rawMode === 'reteach' || rawMode === 'review' ? rawMode : (report?.mode ?? 'teach'),
+      turns: typeof turnsRaw === 'number' ? turnsRaw : null,
+      corrected: evs.filter((e) => e.type === 'misconception_corrected').length,
+      adopted: evs.filter((e) => e.type === 'misconception_adopted').length,
+      golden: evs.filter((e) => e.type === 'golden_analogy_saved').length,
+      reviewPassed: evs.some((e) => e.type === 'review_passed'),
+      quizScore: typeof scoreRaw === 'number' ? scoreRaw : null,
+      mastered: (report?.masteredNow ?? false) || evs.some((e) => e.type === 'topic_mastered'),
+      abandoned: ended?.payload.abandoned === true,
+      hasReport: report !== null,
+    });
+  }
+  return [...sessions, ...margins].sort((a, b) => (a.t < b.t ? 1 : -1));
+}
+
+/** 一句叙事:按真实事件拼装,措辞克制;盲区语言纪律——只说小白怎么样,不说你错了。
+    中途弃课不是互斥分支而是后缀从句:有成果也要如实记下「合上了书」,免得编年史与事实相反 */
+function narrate(en: SessionEntry, title: string): string {
+  const t = `〈${title}〉`;
+  const head =
+    en.mode === 'review' ? `这天你陪小白复习${t}`
+      : en.mode === 'reteach' ? `这天你把${t}回炉重讲`
+        : `这天你把${t}讲给小白`;
+  const tail = en.abandoned && !en.mastered ? ',这一课中途合上了书' : '';
+  if (en.mode === 'review' && en.reviewPassed) return `${head},几句点拨,它「想起来了」。`;
+  if (en.mastered) return `${head},讲到它当堂出师。`;
+  if (en.adopted > 0 && en.corrected > 0) return `${head},它把你将了一军,你也识破了它埋的误区${tail}。`;
+  if (en.adopted > 0) return `${head},它在误区上把你将了一军${tail}。`;
+  if (en.corrected > 0) return `${head},它埋的误区被你当场识破${tail}。`;
+  if (en.golden > 0) return `${head},你打的比方被它记进了小本子${tail}。`;
+  if (en.abandoned) return `${head},这一课中途合上了书。`;
+  if (en.quizScore !== null) return `${head},随堂小测考了小白 ${en.quizScore} 分。`;
+  // 只有 session_started 落档(直接关了标签页,没有下课事件):不能谎称「一问一答」
+  if (!en.hasReport && en.turns === null) return `${head},这一课开了个头,还没讲完。`;
+  return `${head},一问一答,平实往来。`;
+}
 
 export default function GrowthPage() {
   const navigate = useNavigate();
   const global = useAppStore((st) => st.global);
   const events = useAppStore((st) => st.events);
+  const reports = useAppStore((st) => st.reports);
   const topicStates = useAppStore((st) => st.topicStates);
   const topicStateOf = useAppStore((st) => st.topicState);
   const setPersona = useAppStore((st) => st.setPersona);
@@ -60,8 +165,32 @@ export default function GrowthPage() {
   const resetAll = useAppStore((st) => st.resetAll);
 
   const [selected, setSelected] = useState<string | null>(null);
+  const [openSeal, setOpenSeal] = useState<string | null>(null);
+  const [oldPages, setOldPages] = useState(false);
   const [reviewBusy, setReviewBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
+
+  // 印章 / 师道等级 / 下一步 / 编年史:全部由事件流等真实数据纯函数派生
+  const deriveInput = useMemo(
+    () => ({ events, reports, global, topicStates, topics: TOPICS }),
+    [events, reports, global, topicStates],
+  );
+  const achievements = useMemo(() => deriveAchievements(deriveInput), [deriveInput]);
+  const rank = useMemo(() => deriveTeacherRank(deriveInput), [deriveInput]);
+  const step = useMemo(
+    () => nextStep({ events, reports, topicStates, topics: TOPICS }),
+    [events, reports, topicStates],
+  );
+  const chronicle = useMemo(() => buildChronicle(events, reports), [events, reports]);
+
+  const earnedCount = achievements.filter((a) => a.earnedAt !== null).length;
+  const openAch = achievements.find((a) => a.id === openSeal) ?? null;
+  const shownChronicle = oldPages ? chronicle : chronicle.slice(0, 6);
+  const rankPct = rank.nextAt !== null && rank.nextAt > 0
+    ? Math.min(100, Math.round((rank.score / rank.nextAt) * 100))
+    : 100;
+  // 实印分色:tier → 印章样式(string 索引宽容契约外值,落回墨印)
+  const TIER_CLASS: Record<string, string> = { ink: s.sealInk, cinnabar: s.sealCinnabar, gold: s.sealGold };
 
   const nodes: MapNode[] = TOPICS.map((t) => {
     if (t.locked) return { topic: t, state: null, status: 'locked' as const };
@@ -99,12 +228,13 @@ export default function GrowthPage() {
 
   return (
     <div className={s.page}>
-      {/* 顶部:小白 + 成长阶梯 + 人格皮肤 */}
+      {/* ── 卷首·师徒:小白 + 成长阶梯 + 人格皮肤 + 师道等级 + 下一步 ── */}
       <header className={`${s.hero} ${s.rise}`} style={rise(0)}>
         <div className={s.avatarBox}>
           <XiaobaiAvatar mood={mood} level={global.learningLevel} variant="paper" size={200} />
         </div>
         <div>
+          <p className={s.volMark}>卷首 · 师徒</p>
           <h1 className={s.heroTitle}>小白的成长册</h1>
           <p className={s.heroSub}>
             它现在是 <span className={s.levelNow}>{LEVELS[global.learningLevel - 1].name} · {LEVELS[global.learningLevel - 1].desc}</span>
@@ -143,12 +273,175 @@ export default function GrowthPage() {
               </button>
             ))}
           </div>
+
+          {/* 徒弟的阶梯之外,还有师父的路:师道等级印章卡 + 下一步 CTA */}
+          <div className={s.mentorRow}>
+            <div className={s.rankCard}>
+              <span className={s.rankSeal} aria-hidden="true">师道</span>
+              <div className={s.rankBody}>
+                <p className={s.rankLabel}>师道等级 · 第 <b className={s.num}>{rank.level}</b> 阶</p>
+                <p className={s.rankTitle}>{rank.title}</p>
+                <p className={s.rankScore}>履历分 <b className={s.num}>{rank.score}</b></p>
+                {rank.nextTitle !== null && rank.nextAt !== null ? (
+                  <>
+                    <div className={s.rankBar}><span style={{ width: `${rankPct}%` }} /></div>
+                    <p className={s.rankNext}>距「{rank.nextTitle}」还差 <b className={s.num}>{Math.max(0, rank.nextAt - rank.score)}</b> 分</p>
+                  </>
+                ) : (
+                  <p className={s.rankNext}>已至此道最高阶。</p>
+                )}
+              </div>
+            </div>
+            {step && (
+              <div className={s.journeyCard}>
+                <p className={s.journeyLabel}>下一步 · {step.title}</p>
+                <p className={s.journeyLine}>{step.line}</p>
+                <Link to={step.to} className={s.btnGhost}>{step.cta} →</Link>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* 盲区图谱 */}
+      {/* ── 卷一·印章墙:成就全量陈列,实印/虚印,点一枚看来历 ── */}
       <section className={`${s.section} ${s.rise}`} style={rise(1)}>
-        <h2 className={s.h2}>盲区图谱<small>点一个节点,展开它的掌握度证据链</small></h2>
+        <h2 className={s.h2}>
+          <span className={s.volNo}>卷一</span>印章墙
+          <small>{earnedCount}/{achievements.length} 枚实印 · 点一枚看它的来历</small>
+        </h2>
+        {achievements.length === 0 ? (
+          <p className={s.muted}>册页尚空——先去开一课,印章自会一枚枚落上来。</p>
+        ) : (
+          <>
+            {earnedCount === 0 && (
+              <p className={s.emptyLead}>册页尚空——下面都是虚印,第一枚实印,等你开讲便有着落。</p>
+            )}
+            <div className={s.sealWall}>
+              {achievements.map((a) => {
+                const earned = a.earnedAt !== null;
+                const isOpen = openSeal === a.id;
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    aria-expanded={isOpen}
+                    className={[
+                      s.seal,
+                      earned ? (TIER_CLASS[a.tier] ?? s.sealInk) : s.sealGhost,
+                      isOpen ? s.sealOpen : '',
+                    ].filter(Boolean).join(' ')}
+                    onClick={() => setOpenSeal(isOpen ? null : a.id)}
+                  >
+                    <span className={s.sealGlyph} aria-hidden="true">{a.glyph}</span>
+                    <span className={s.sealName}>{a.name}</span>
+                    {!earned && (
+                      <span className={s.sealProgress}>{a.progress.now}/{a.progress.target}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <div className={`${s.collapse} ${openAch ? s.open : ''}`}>
+              <div>
+                {openAch && (
+                  <div className={s.sealDetail}>
+                    <p className={s.sealDetailName}>
+                      {openAch.glyph} {openAch.name}
+                      {openAch.earnedAt === null && <span className={s.sealDetailGhost}> · 虚印</span>}
+                    </p>
+                    <p className={s.sealDetailDesc}>{openAch.desc}</p>
+                    {openAch.earnedAt !== null ? (
+                      <p className={s.sealDetailEvidence}>
+                        {openAch.evidence ?? '印已钤下。'}
+                        <span className={s.sealDetailDate}> · {fmtDateTime(openAch.earnedAt)} 钤印</span>
+                      </p>
+                    ) : (
+                      <p className={s.sealDetailEvidence}>
+                        进度 <b className={s.num}>{openAch.progress.now}/{openAch.progress.target}</b>,印还没刻满。
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* ── 卷二·教学编年史:events×reports 并轨的会话日志,倒序,默认最近 6 条 ── */}
+      <section className={`${s.section} ${s.rise}`} style={rise(2)}>
+        <h2 className={s.h2}>
+          <span className={s.volNo}>卷二</span>教学编年史
+          <small>每一课都记在案,自新往旧翻</small>
+        </h2>
+        <div className={s.ledgerMeta}>
+          <span>已出师 <b>{global.topicsMastered}</b> 门</span>
+          <span>最快纪录 <b>{global.bestRecord ?? '——'}</b></span>
+          <span>金句 <b>{global.goldenAnalogies.length}</b> 句</span>
+        </div>
+        {chronicle.length === 0 ? (
+          <p className={s.muted}>编年史还没有第一笔——去书斋门厅开一课,这里会替你记下每一天。</p>
+        ) : (
+          <>
+            <ol className={s.logList} id="chronicle-log">
+              {shownChronicle.map((en) => {
+                if (en.kind === 'margin') {
+                  return (
+                    <li key={en.id} className={s.marginItem}>
+                      <span className={s.logDate}>{fmtDay(en.t)}</span>
+                      <div>
+                        <span className={s.marginTag}>{en.type === 'prep_completed' ? '备课' : '补学'}</span>
+                        <span className={s.marginText}>「{getTopic(en.topicId)?.title ?? en.topicId}」· {en.evidence}</span>
+                      </div>
+                    </li>
+                  );
+                }
+                const title = getTopic(en.topicId)?.title ?? en.topicId;
+                return (
+                  <li key={en.sessionId} className={en.mastered ? `${s.logItem} ${s.logMastered}` : s.logItem}>
+                    <span className={s.logDate}>{fmtDay(en.t)}</span>
+                    <div>
+                      <div className={s.logHead}>
+                        <span className={s.logTopic}>{title}</span>
+                        <span className={s.chip}>{MODE_LABEL[en.mode]}</span>
+                        {en.turns !== null && <span className={s.chip}><b className={s.num}>{en.turns}</b> 轮</span>}
+                        {en.corrected > 0 && <span className={`${s.chip} ${s.chipJade}`}>纠正 ×{en.corrected}</span>}
+                        {en.adopted > 0 && <span className={`${s.chip} ${s.chipCinnabar}`}>被带偏 ×{en.adopted}</span>}
+                        {en.golden > 0 && <span className={`${s.chip} ${s.chipGold}`}>金句 ×{en.golden}</span>}
+                        {en.quizScore !== null && <span className={s.chip}>小测 <b className={s.num}>{en.quizScore}</b> 分</span>}
+                        {en.mastered && <span className={`${s.chip} ${s.chipJade}`}>出师</span>}
+                      </div>
+                      <p className={s.logLine}>{narrate(en, title)}</p>
+                      {en.hasReport && (
+                        <Link to={`/review/${en.sessionId}`} className={s.logLink}>查看复盘 →</Link>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+            {chronicle.length > 6 && (
+              <button
+                type="button"
+                className={s.pageTurn}
+                aria-expanded={oldPages}
+                aria-controls="chronicle-log"
+                onClick={() => setOldPages((v) => !v)}
+              >
+                {oldPages ? '收起旧页 ' : `翻旧页 —— 还有 ${chronicle.length - 6} 条 `}
+                <span aria-hidden="true">{oldPages ? '▴' : '▾'}</span>
+              </button>
+            )}
+          </>
+        )}
+      </section>
+
+      {/* ── 卷三·盲区图谱:星图 + 证据链 + 遗忘复习入口(交互契约原样保留) ── */}
+      <section className={`${s.section} ${s.rise}`} style={rise(3)}>
+        <h2 className={s.h2}>
+          <span className={s.volNo}>卷三</span>盲区图谱
+          <small>点一个节点,展开它的掌握度证据链</small>
+        </h2>
         <div className={s.mapWrap}>
           <KnowledgeMap
             nodes={nodes}
@@ -230,41 +523,35 @@ export default function GrowthPage() {
         </div>
       </section>
 
-      {/* 教学履历 */}
-      <section className={`${s.section} ${s.rise}`} style={rise(2)}>
-        <h2 className={s.h2}>教学履历<small>期末可导出的「我真的懂了」过程证据</small></h2>
-        <div className={s.statRow}>
-          <div className={s.stat}>
-            <div className={s.statNum}>{global.topicsMastered}</div>
-            <div className={s.statLabel}>已教会小白的知识点</div>
+      {/* ── 卷四·金句画廊:goldenAnalogies 横向卡流,引号大字 + 出处小注 ── */}
+      <section className={`${s.section} ${s.rise}`} style={rise(4)}>
+        <h2 className={s.h2}>
+          <span className={s.volNo}>卷四</span>金句画廊
+          <small>你打过的好比方,小白替你裱起来了</small>
+        </h2>
+        {global.goldenAnalogies.length === 0 ? (
+          <p className={s.muted}>画廊还空着——讲课时打一个好比方,小白会把它裱进来。</p>
+        ) : (
+          <div className={s.galleryFlow}>
+            {global.goldenAnalogies.map((g) => (
+              <figure key={g.id} className={s.galleryCard}>
+                <span className={s.galleryMark} aria-hidden="true">「</span>
+                <blockquote className={s.galleryText}>{g.text}</blockquote>
+                <figcaption className={s.galleryFrom}>
+                  出自「{getTopic(g.topicId)?.title ?? g.topicId}」 · {fmtDateTime(g.t)}
+                </figcaption>
+              </figure>
+            ))}
           </div>
-          <div className={s.stat}>
-            <div className={s.statNum}>{global.bestRecord ?? '——'}</div>
-            <div className={s.statLabel}>最快出师纪录</div>
-          </div>
-          <div className={s.stat}>
-            <div className={s.statNum}>×{global.goldenAnalogies.length}</div>
-            <div className={s.statLabel}>金句类比收藏</div>
-          </div>
-        </div>
-
-        {global.goldenAnalogies.length > 0 && (
-          <>
-            <h3 className={s.h3}>金句收藏</h3>
-            <div className={s.goldenRow}>
-              {global.goldenAnalogies.map((g) => (
-                <figure key={g.id} className={s.goldenCard}>
-                  <blockquote className={s.goldenText}>{g.text}</blockquote>
-                  <figcaption className={s.goldenFrom}>
-                    出自「{getTopic(g.topicId)?.title ?? g.topicId}」 · {fmtDateTime(g.t)}
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
-          </>
         )}
+      </section>
 
-        <h3 className={s.h3} style={{ marginTop: 'var(--gap-loose)' }}>小白眼里的你</h3>
+      {/* ── 卷尾·小白眼里的你:关系记忆 ── */}
+      <section className={`${s.section} ${s.rise}`} style={rise(5)}>
+        <h2 className={s.h2}>
+          <span className={s.volNo}>卷尾</span>小白眼里的你
+          <small>它记得的,是你教书的样子</small>
+        </h2>
         {global.relationshipMemory.length === 0 ? (
           <p className={s.muted}>还没熟起来——多讲几课,小白会慢慢记住你的教学风格。</p>
         ) : (

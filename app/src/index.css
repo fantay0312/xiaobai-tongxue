@@ -30,10 +30,13 @@ a { color: var(--azure); text-decoration: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* iteration-count 必须一并压掉:只压 duration 会让无限循环动画以 0.01ms/圈空转闪烁 */
+  /* iteration-count 必须一并压掉:只压 duration 会让无限循环动画以 0.01ms/圈空转闪烁;
+     delay 也必须归零:rise 阶梯的内联 animation-delay 否则会留出最长 375ms 的内容空白窗 */
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
   }
 }

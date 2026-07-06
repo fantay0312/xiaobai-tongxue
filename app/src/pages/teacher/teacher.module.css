@@ -1,6 +1,7 @@
 /* ─────────────────────────────────────────────
-   教师看板 —— 一屏教务报表:克制、数据密度高。
-   讲不清 Top5 用墨条横图;泄漏率卡是答辩收尾页。
+   教师看板 —— 单学生真实教务档案:克制、数据密度高。
+   总览带→盲区榜→学情表→误区台账→近期会话→泄漏率;
+   朱砂只落在盲区/被带偏(语义法则),掌握归黛绿,悬置归藤黄。
    ───────────────────────────────────────────── */
 
 .page {
@@ -9,7 +10,8 @@
   padding: var(--gap-loose) clamp(1.25rem, 4vw, 3rem) var(--gap-section);
 }
 
-.rise { animation: rise var(--t-med) var(--ease-out) both; }
+/* backwards 而非 both:to 帧不驻留,不压死后代 hover 过渡 */
+.rise { animation: rise var(--t-med) var(--ease-out) backwards; }
 
 @keyframes rise {
   from { opacity: 0; transform: translateY(8px); }
@@ -52,6 +54,85 @@
   opacity: 0.8;
 }
 
+/* ── ① 档案总览带 ── */
+
+.statBand {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: var(--gap-tight);
+  margin-bottom: var(--gap-loose);
+}
+
+.statCard {
+  display: flex;
+  flex-direction: column;
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  padding: var(--gap-tight);
+}
+
+.statValue { display: flex; align-items: baseline; gap: 0.25rem; }
+
+.statNum {
+  font-family: var(--font-code);
+  font-size: var(--fs-stat);
+  line-height: 1;
+  color: var(--ink);
+}
+
+.statJade { color: var(--jade); }
+.statCinnabar { color: var(--cinnabar); }
+
+.statUnit { font-size: var(--fs-tiny); color: var(--ink-faint); }
+
+.statLabel {
+  display: block;
+  margin-top: var(--gap-hair);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  color: var(--ink-faint);
+}
+
+/* ── 零数据:档案待建 ── */
+
+.emptyHero {
+  display: grid;
+  justify-items: center;
+  gap: var(--gap-tight);
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+  padding: var(--gap-loose);
+  margin-bottom: var(--gap-loose);
+  text-align: center;
+}
+
+.emptySeal {
+  padding: 0.4rem 0.6rem;
+  border: 2px solid var(--dust);
+  border-radius: var(--radius-s);
+  color: var(--ink-faint);
+  font-family: var(--font-display);
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+  transform: rotate(-4deg);
+}
+
+.emptyLead { max-width: 36em; font-size: var(--fs-body); color: var(--ink-soft); }
+
+.btnGhost {
+  font-family: var(--font-display);
+  color: var(--azure);
+  border: 1px solid var(--azure);
+  border-radius: var(--radius-s);
+  padding: 0.45rem 1.1rem;
+  text-decoration: none;
+  transition: background var(--t-fast) var(--ease-out);
+}
+
+.btnGhost:hover { background: var(--azure-wash); }
+
 /* ── 版块 ── */
 
 .grid {
@@ -64,6 +145,8 @@
 @media (max-width: 980px) {
   .grid { grid-template-columns: 1fr; }
 }
+
+.mainCol, .sideCol { min-width: 0; }
 
 .section { margin-bottom: var(--gap-loose); min-width: 0; }
 
@@ -80,11 +163,22 @@
   margin-left: var(--gap-tight);
 }
 
-.muted { color: var(--ink-faint); font-size: var(--fs-small); }
+/* 每节独立空态:虚线纸框一句话,不让任何版块开天窗 */
+.emptyNote {
+  border: 1px dashed var(--paper-edge);
+  border-radius: var(--radius-s);
+  padding: var(--gap-tight) var(--gap);
+  color: var(--ink-faint);
+  font-size: var(--fs-small);
+}
 
-/* ── 墨条横图 ── */
+/* ── ② 盲区榜墨条横图 ── */
 
-.barSvg { width: 100%; height: auto; display: block; }
+.barWrap { overflow-x: auto; }
+.barWrap:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
+
+.barSvg {
+  min-width: 640px; width: 100%; height: auto; display: block; }
 
 .barLabel { font-family: var(--font-display); font-size: 14px; fill: var(--ink); }
 
@@ -92,11 +186,13 @@
 
 .barInk { fill: var(--ink); opacity: 0.82; }
 
-.barMine { fill: var(--cinnabar); }
+.barHigh { fill: var(--cinnabar); }
 
 .barCount { font-family: var(--font-code); font-size: 12px; fill: var(--ink-soft); }
 
-.barYou { font-size: 11px; fill: var(--cinnabar); }
+.barSev { font-size: 11px; fill: var(--ink-faint); }
+
+.barSevHigh { font-size: 11px; fill: var(--cinnabar); }
 
 .barAxis { stroke: var(--paper-edge); stroke-width: 1; }
 
@@ -104,7 +200,9 @@
 
 .chartFoot .youMark { color: var(--cinnabar); }
 
-/* ── 个体学情表 ── */
+/* ── ③ 知识点学情表 ── */
+
+.tableWrap { overflow-x: auto; }
 
 .table {
   width: 100%;
@@ -131,17 +229,129 @@
 
 .numCell { font-family: var(--font-code); color: var(--ink-soft); }
 
-.meRow td { background: var(--azure-wash); }
+.numInline { font-family: var(--font-code); }
 
-.meRow td:first-child { color: var(--azure); font-family: var(--font-display); }
+.courseCell { font-size: var(--fs-tiny); color: var(--ink-faint); }
 
-.blindCell { color: var(--cinnabar); font-family: var(--font-code); }
+.titleCell { font-family: var(--font-display); }
+
+/* 被带偏还没纠正的行:朱砂弱底,提示先补学 */
+.rowAdopted td { background: var(--cinnabar-wash); }
+
+.masteryCell { display: inline-flex; align-items: center; gap: var(--gap-hair); }
+
+.masteryTrack {
+  flex: none;
+  width: 56px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ink-wash);
+  overflow: hidden;
+}
+
+.masteryFill { display: block; height: 100%; background: var(--jade); }
+
+.mcSummary { color: var(--ink-soft); }
+
+.mcAdopted { color: var(--cinnabar); }
 
 .tableFoot { font-size: var(--fs-tiny); color: var(--ink-faint); margin-top: var(--gap-hair); }
 
-.tableWrap { overflow-x: auto; }
+/* ── 状态 chip:细边小胶囊,wash 底上小字用 *-ink 变体保对比度 ── */
 
-/* ── 泄漏率实测卡 ── */
+.chip {
+  display: inline-block;
+  padding: 0.08rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid;
+  font-size: var(--fs-tiny);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.chipJade { color: var(--jade-ink); border-color: var(--jade); background: var(--jade-wash); }
+.chipAmber { color: var(--amber-ink); border-color: var(--amber); background: var(--amber-wash); }
+.chipCinnabar { color: var(--cinnabar); border-color: var(--cinnabar); background: var(--cinnabar-wash); }
+.chipDust { color: var(--ink-faint); border-color: var(--dust); background: var(--ink-wash); }
+.chipAzure { color: var(--azure); border-color: var(--azure); background: var(--azure-wash); }
+
+/* ── ④ 误区台账 ── */
+
+.mcList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--gap-tight);
+}
+
+.mcItem {
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-left: 3px solid var(--dust);
+  border-radius: var(--radius-s);
+  padding: var(--gap-tight) var(--gap);
+}
+
+.mcEdgeCinnabar { border-left-color: var(--cinnabar); }
+.mcEdgeJade { border-left-color: var(--jade); }
+.mcEdgeAmber { border-left-color: var(--amber); }
+.mcEdgeDust { border-left-color: var(--dust); }
+
+.mcHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap-tight);
+  flex-wrap: wrap;
+}
+
+.mcBelief { font-family: var(--font-display); font-size: var(--fs-body); color: var(--ink); }
+
+.mcTrigger { margin-top: var(--gap-hair); font-size: var(--fs-small); color: var(--ink-faint); }
+
+.mcCounts { margin-top: var(--gap-hair); font-size: var(--fs-small); color: var(--ink-soft); }
+
+.mcFrom { margin-left: var(--gap-tight); color: var(--ink-faint); }
+
+/* ── ⑤ 近期会话卡 ── */
+
+.sessionList { display: grid; gap: var(--gap-tight); }
+
+.sessionCard {
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  padding: var(--gap-tight) var(--gap);
+}
+
+.sessionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap-tight);
+}
+
+.sessionTopic { font-family: var(--font-display); font-size: var(--fs-body); color: var(--ink); }
+
+.sessionMeta { margin-top: var(--gap-hair); font-size: var(--fs-tiny); color: var(--ink-faint); }
+
+.sessionMeta .chip { margin-left: var(--gap-hair); }
+
+.miniRadar { max-width: 300px; margin: var(--gap-hair) auto 0; }
+
+.sessionLink {
+  display: inline-block;
+  margin-top: var(--gap-hair);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  color: var(--azure);
+  text-decoration: none;
+}
+
+.sessionLink:hover { text-decoration: underline; }
+
+/* ── ⑥ 泄漏率实测卡 ── */
 
 .leakCard {
   background: var(--paper-warm);
@@ -187,3 +397,11 @@
 }
 
 .leakFoot { font-size: var(--fs-tiny); color: var(--ink-faint); margin-top: var(--gap-hair); }
+
+/* ── 窄屏 ── */
+
+@media (max-width: 560px) {
+  .head { flex-direction: column; }
+  .seal { align-self: flex-end; }
+  .statBand { grid-template-columns: repeat(auto-fit, minmax(124px, 1fr)); }
+}

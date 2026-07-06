@@ -1,10 +1,13 @@
 /**
  * 首页 —— 书斋门厅。
- * 大字楷体主张 + 《学记》竖排引文(全站精神锚点)+ 学习闭环横带 + 知识点书架。
+ * 大字楷体主张 + 《学记》竖排引文(全站精神锚点)+ 故事层 + 学习闭环横带 + 知识点书架。
+ * 故事层二选一:零履历给「拜师帖」(书信体世界观),有履历给「旅程带」(等级印 + 当下一步)。
  */
 import { Fragment, type MouseEvent } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
+import { MentorLetter } from '../../components/story/MentorLetter';
+import { JourneyRibbon } from '../../components/story/JourneyRibbon';
 import { Bookshelf } from './Bookshelf';
 import styles from './home.module.css';
 
@@ -18,6 +21,7 @@ const LOOP_STEPS: { num: string; name: string; desc: string }[] = [
 
 export default function HomePage() {
   const level = useAppStore((s) => s.global.learningLevel);
+  const hasStory = useAppStore((s) => s.events.length > 0);
 
   const scrollToShelf = (e: MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
@@ -62,6 +66,9 @@ export default function HomePage() {
           <cite className={styles.quoteFrom}>《礼记 · 学记》</cite>
         </blockquote>
       </section>
+
+      {/* ── 故事层:拜师帖(零履历) / 旅程带(有履历) ── */}
+      {hasStory ? <JourneyRibbon /> : <MentorLetter />}
 
       {/* ── 学习闭环一条横带 ── */}
       <section
