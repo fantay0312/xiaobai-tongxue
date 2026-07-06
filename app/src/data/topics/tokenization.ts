@@ -379,7 +379,7 @@ export const tokenizationTopic: Topic = {
         '同样的意思要花更多 token。\n\n' +
         '判断口诀:**先查词表再切块,有整用整,没整拆碎**。' +
         '小白最容易问倒你的地方:「一句话有几个字,是不是就有几个 token?」\n\n' +
-        '## 讲课节奏建议\n\n' +
+        '**讲课节奏建议**\n\n' +
         '- **先讲①②,把"积木块"的画面立起来**:①"先切块再编号"是地基,别急着抛细节;' +
         '讲②词表来历时,顺手用"搭积木前先开一份积木块清单"这类生活类比,小白对好类比的接受度最高。\n' +
         '- **②讲完,警报拉响**:小白多半会在这时用错误直觉试探你——「一句话有几个字,就切成几块吧?」' +
@@ -388,7 +388,7 @@ export const tokenizationTopic: Topic = {
         '- **中场串讲一遍**再进④:把"查词表 → 切块 → 换编号"完整串一次,小白复述对了,再开新内容。\n' +
         '- **讲完④记账,它还会来一次**:「窗口装不下,它自己会记得吧?」用"黑板就这么大,擦掉就没了"顶回去,' +
         '再自然带出⑤语言不平等;末尾它可能还问「新词是不是会报错」——答案是拆碎兜底,最坏拆到字节,一定能表示。\n\n' +
-        '## 一句话收束\n\n' +
+        '**一句话收束**\n\n' +
         '**模型眼里没有字,只有照着一张固定词表切出来的积木块——有整用整,没整拆碎,块数就是账单。**',
     },
     examples: [
@@ -434,6 +434,42 @@ export const tokenizationTopic: Topic = {
     taskCard:
       '📋 你的教学任务:等会小白会问你——「一句话有多少个字,是不是就有多少个 token?」' +
       '带着这个问题去读下面的材料,想好你打算怎么给它讲明白。纠不动它,它会开心地把错的学走。',
+    references: [
+      {
+        title: 'Transformers 官方中文文档:分词器总结',
+        url: 'https://github.com/huggingface/transformers/blob/main/docs/source/zh/tokenizer_summary.md',
+        kind: '官方文档',
+        note:
+          '官方中文一页讲清 BPE、Byte-level BPE、WordPiece 的区别,重点看 Byte-level BPE 那段——' +
+          '正是「新词拆到字节兜底、绝不报错」的权威依据。',
+      },
+      {
+        title: 'Neural Machine Translation of Rare Words with Subword Units(BPE 原论文,Sennrich et al.)',
+        url: 'https://arxiv.org/abs/1508.07909',
+        kind: '论文',
+        note: 'BPE 思想的源头,只看第 3 节和那段 10 行的合并伪代码,就能把「词表是统计合并出来的」讲得有出处。',
+      },
+      {
+        title: 'Language Model Tokenizers Introduce Unfairness Between Languages',
+        url: 'https://arxiv.org/abs/2305.15425',
+        kind: '论文',
+        note: '专门论证「语言之间 token 成本天生不平等」的论文,只看摘要和图 1 里各语言 token 数对比,就够你给小白甩出硬数据。',
+      },
+      {
+        title: '【官方双语】GPT是什么?直观解释Transformer|深度学习第5章(3Blue1Brown)',
+        url: 'https://www.bilibili.com/video/BV13z421U7cs/',
+        kind: '视频',
+        note: '只看前 6 分钟:文本被切成 token 再变成向量的动画,是把「模型眼里没有字只有块」这个画面立起来的最好素材。',
+      },
+      {
+        title: 'openai/tiktoken — GPT 系列官方 BPE 分词器',
+        url: 'https://github.com/openai/tiktoken',
+        kind: '工具',
+        note:
+          'pip 装上跑一行 encode,就能现场演示「字数 ≠ token 数」和中英文 token 数的差异;' +
+          'README 开头的示例代码即可,备课时先跑一遍留证据。',
+      },
+    ],
   },
 };
 

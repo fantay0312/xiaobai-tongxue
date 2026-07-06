@@ -383,7 +383,7 @@ export const mutableDefaultTopic: Topic = {
         '5. **不可变默认值天生安全**。数字、字符串、元组改不动,直接写;要设防的只有列表、字典、集合这些可变容器。\n\n' +
         '判断口诀:**默认值可变要设防,不可变的随便放**。' +
         '小白最容易问倒你的地方:「写着 lst=[],为什么第二次调用它不是空的?」\n\n' +
-        '## 讲课节奏建议\n\n' +
+        '**讲课节奏建议**\n\n' +
         '- **先讲①②,把"def 是会被执行的语句"钉死**:①默认值在 def 执行那一刻求值、只求值一次,' +
         '存在函数对象上(`f.__defaults__` 就是铁证);②顺势推出"省略参数的调用共用同一个列表,越攒越多",' +
         '配上"越用越脏的公用咖啡杯"这类画面,小白最容易记住。\n' +
@@ -397,7 +397,7 @@ export const mutableDefaultTopic: Topic = {
         '用"不可变的改不动,防不存在的风险就是浪费"顶回去,带出⑤;末尾它可能还举一反三过头——' +
         '「只求值一次,那整个程序就永远只有一份吧?」用嵌套 def 的例子拆穿:每执行一次 def,' +
         '就新建一个函数对象、新求值一份默认值。\n\n' +
-        '## 一句话收束\n\n' +
+        '**一句话收束**\n\n' +
         '**默认值在 def 执行那一刻只做一份,可变容器会把上次的状态带进下次调用——可变要设 None 哨兵,不可变随便放。**',
     },
     examples: [
@@ -439,5 +439,39 @@ export const mutableDefaultTopic: Topic = {
     taskCard:
       '📋 你的教学任务:等会小白会问你——「写着 lst=[],每次调用不传参数,拿到的都是新列表吧?」' +
       '带着这个问题去读下面的材料,想好你打算怎么给它讲明白。纠不动它,它会开心地把错的学走。',
+    references: [
+      {
+        title: 'Python 官方编程 FAQ:为什么对象之间共享默认值?',
+        url: 'https://docs.python.org/zh-cn/3/faq/programming.html#why-are-default-values-shared-between-objects',
+        kind: '官方文档',
+        note:
+          '官方亲自回答本课核心问题的小节:一句「默认值在函数定义时仅计算一次」就是标准答案,' +
+          '后半段给出的 None 哨兵写法正是推荐修法,纠错时可直接引用。',
+      },
+      {
+        title: 'Python 官方教程 4.9.1 参数默认值(中文版)',
+        url: 'https://docs.python.org/zh-cn/3/tutorial/controlflow.html#default-argument-values',
+        kind: '官方文档',
+        note:
+          '官方教程里那个著名的「重要警告」框:默认值只求值一次、可变对象会跨调用累积,' +
+          '连示例代码都和讲义的 add(x, lst=[]) 几乎同款,备课时对照读一遍即可校准话术。',
+      },
+      {
+        title: 'wtfpython 中文翻译(GitHub: leisurelicht/wtfpython-cn)',
+        url: 'https://github.com/leisurelicht/wtfpython-cn',
+        kind: '长文',
+        note:
+          '著名 Python 怪癖合集的中文版,在目录里搜「谨防默认的可变参数」小节:' +
+          '把 __defaults__ 前后变化打印出来的写法,是让小白当场哑口的最短实验脚本。',
+      },
+      {
+        title: '常见陷阱 — The Hitchhiker’s Guide to Python 中文版',
+        url: 'https://pythonguidecn.readthedocs.io/zh/latest/writing/gotchas.html',
+        kind: '教程',
+        note:
+          '只看第一节「可变默认参数」:它用「你可能期望什么 / 实际发生了什么 / 你该怎么做」三段式呈现,' +
+          '这个结构可以直接搬来当你纠错讲课的骨架。',
+      },
+    ],
   },
 };

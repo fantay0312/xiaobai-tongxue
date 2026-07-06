@@ -110,12 +110,21 @@ export interface ChecklistItem {
   probeLine: string;
 }
 
-/** 备课材料包 */
+/** 备课延伸资料(选读)。url 必须是经实际访问核验过的真实链接,优先中国大陆可直达的中文资源 */
+export interface PrepReference {
+  title: string;
+  url: string;
+  kind: '官方文档' | '教程' | '视频' | '论文' | '工具' | '长文';
+  note: string;              // 一句话导读:为什么值得读/重点看哪一段
+}
+
+/** 备课材料包(v1.1 追加可选 references,向后兼容,2026-07-06) */
 export interface PrepPack {
   microLecture: { title: string; body: string };  // 500字微课讲义 markdown
   examples: { title: string; code: string; walkthrough: string }[];
   selfCheck: string[];       // 备课自检清单
   taskCard: string;          // 教学任务卡文案(关键设计)
+  references?: PrepReference[];  // 延伸书单(选读,备课页渲染为外链卡)
 }
 
 /** 知识点(课程知识库单元) */

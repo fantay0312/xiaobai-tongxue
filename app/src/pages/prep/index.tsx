@@ -1,17 +1,18 @@
 /**
  * 备课页 /prep/:topicId —— 自习桌面。
- * 流程:壹 摸底快测(误区库判断题,逐题即时反馈) → 贰 教学任务卡(真实卡片质感)
+ * 流程:壹 摸底快测(误区库判断题,逐题即时反馈,可重新摸底) → 贰 教学任务卡(真实卡片质感)
  *      → 叁 讲课路线图(checklist 教学大纲 + 小白的追问原话)
- *      → 肆 研读材料包(微课讲义 + 例题 + 误区剧本预演,按错题相关展开)
+ *      → 肆 研读材料包(微课讲义 + 例题 + 误区剧本预演 + 延伸书单,按错题相关展开)
  *      → 伍 自检清单全勾 → 解锁讲解舱。
  * 全对可跳过备课直接开讲;状态只经 store(completePrep)。
+ * 侧栏「备课五步」= 锚点导航:点击平滑滚动到分节,IntersectionObserver 高亮当前在读分节。
  */
-import { Fragment, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 import { getTopic } from '../../data';
 import { Md } from '../../components/Md';
-import type { Misconception, QuestionLevel } from '../../types';
+import type { Misconception, PrepReference, QuestionLevel } from '../../types';
 import s from './prep.module.css';
 
 /** 追问层级 → 路线图徽章文案(checklist 无 L4;L4 = 误区注入,以途中试探标记呈现) */
@@ -22,6 +23,29 @@ const LEVEL_META: Record<QuestionLevel, string> = {
   L4: '试探',
   L5: '迁移',
 };
+
+/** 壹-伍分节的稳定锚点;侧栏「备课五步」据此导航与 scrollspy 高亮 */
+const SECTIONS = [
+  { id: 'prep-sec-1', name: '摸底快测' },
+  { id: 'prep-sec-2', name: '教学任务卡' },
+  { id: 'prep-sec-3', name: '讲课路线图' },
+  { id: 'prep-sec-4', name: '研读材料包' },
+  { id: 'prep-sec-5', name: '备课自检' },
+] as const;
+
+/** 延伸书单 kind → 朱文小印用字 */
+const REF_SEAL: Record<PrepReference['kind'], string> = {
+  官方文档: '官',
+  教程: '教',
+  视频: '视',
+  论文: '论',
+  工具: '工',
+  长文: '长',
+};
+
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** 例题与错题的相关性:命中该误区的纠正关键词或误区表述即视为相关 */
 function relatedToWrong(text: string, wrong: Misconception[]): boolean {
@@ -65,6 +89,7 @@ export default function PrepPage() {
   const { topicId = '' } = useParams();
   const navigate = useNavigate();
   const topic = getTopic(topicId);
+  const usable = !!topic && !topic.locked;
   const completePrep = useAppStore((st) => st.completePrep);
   const prepDone = useAppStore((st) => st.topicStates[topicId]?.prepDone ?? false);
 
@@ -73,7 +98,47 @@ export default function PrepPage() {
   /** 全对时用户仍选择过一遍材料 */
   const [wantMaterials, setWantMaterials] = useState(false);
   const [checks, setChecks] = useState<boolean[]>([]);
+  /** scrollspy:当前滚入视口阅读带的分节 id */
+  const [currentId, setCurrentId] = useState<string>(SECTIONS[0].id);
   const submittedRef = useRef(false);
+
+  /* 派生态提前算(hooks 必须在提前 return 之前):不可用主题一律给空 */
+  const probes = usable ? topic!.misconceptions.slice(0, 3) : [];
+  const quizDone = usable && answers.length >= probes.length;
+  const correctCount = answers.filter((c, i) => c === probes[i]?.probe.isTrue).length;
+  const allCorrect = quizDone && correctCount === probes.length;
+  const wrongMcs = probes.filter((mc, i) => i < answers.length && answers[i] !== mc.probe.isTrue);
+  const materialsVisible = quizDone && (!allCorrect || wantMaterials);
+
+  /**
+   * scrollspy:观察各分节与视口上部"阅读带"(约 30%~45% 高度)的交叠。
+   * 取带内文档序最靠后者——向下读时新分节一进带即接管高亮;分节增减(materialsVisible)时重建。
+   */
+  useEffect(() => {
+    const els = SECTIONS.map((sec) => document.getElementById(sec.id)).filter(
+      (el): el is HTMLElement => el !== null,
+    );
+    if (els.length === 0) return;
+    setCurrentId((prev) => (els.some((el) => el.id === prev) ? prev : SECTIONS[0].id));
+    const inBand = new Set<string>();
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((en) => {
+          if (en.isIntersecting) inBand.add(en.target.id);
+          else inBand.delete(en.target.id);
+        });
+        for (let i = SECTIONS.length - 1; i >= 0; i -= 1) {
+          if (inBand.has(SECTIONS[i].id)) {
+            setCurrentId(SECTIONS[i].id);
+            return;
+          }
+        }
+      },
+      { rootMargin: '-30% 0px -55% 0px' },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [materialsVisible, topicId]);
 
   if (!topic || topic.locked) {
     return (
@@ -84,13 +149,6 @@ export default function PrepPage() {
       </div>
     );
   }
-
-  const probes = topic.misconceptions.slice(0, 3);
-  const quizDone = answers.length >= probes.length;
-  const correctCount = answers.filter((c, i) => c === probes[i].probe.isTrue).length;
-  const allCorrect = quizDone && correctCount === probes.length;
-  const wrongMcs = probes.filter((mc, i) => i < answers.length && answers[i] !== mc.probe.isTrue);
-  const materialsVisible = quizDone && (!allCorrect || wantMaterials);
 
   /** 材料包按需展开:有错题时,微课讲义 + 与错题相关的例题默认展开 */
   const exampleRelated = topic.prep.examples.map((ex) =>
@@ -106,8 +164,49 @@ export default function PrepPage() {
   /** 路线图途中试探标记插在大纲中段(L4 误区注入没有固定位置,只提示"路上会来") */
   const ambushAfter = Math.max(0, Math.floor((topic.checklist.length - 1) / 2));
 
+  /** 阅读量估算:讲义 + 例题总字数 ÷ 400 字/分钟,向上取整 */
+  const readChars =
+    topic.prep.microLecture.title.length +
+    topic.prep.microLecture.body.length +
+    topic.prep.examples.reduce(
+      (n, ex) => n + ex.title.length + ex.code.length + ex.walkthrough.length,
+      0,
+    );
+  const readMinutes = Math.max(1, Math.ceil(readChars / 400));
+
+  /** 延伸书单(并发代理在填数据,防御式渲染) */
+  const references = topic.prep.references ?? [];
+
+  /** 侧栏五步的进度态(done/active 与 scrollspy 的"当前在读"叠加,互不打架) */
+  const stepStates = [
+    { done: quizDone, active: !quizDone, reachable: true },
+    { done: materialsVisible, active: false, reachable: materialsVisible },
+    { done: materialsVisible, active: false, reachable: materialsVisible },
+    {
+      done: materialsVisible && allChecked,
+      active: materialsVisible && !allChecked,
+      reachable: materialsVisible,
+    },
+    { done: allChecked, active: false, reachable: materialsVisible },
+  ];
+
   const answer = (choice: boolean) =>
     setAnswers((a) => (a.length >= probes.length ? a : [...a, choice]));
+
+  /** 锚点滚动:reduced-motion 直接跳,不做平滑 */
+  const jumpTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({
+      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+      block: 'start',
+    });
+  };
+
+  /** 重新摸底:清空作答与"过一遍材料"的选择;completePrep 仍只在进讲解舱时按当次成绩提交 */
+  const retakeQuiz = () => {
+    setAnswers([]);
+    setWantMaterials(false);
+    jumpTo(SECTIONS[0].id);
+  };
 
   const enterClassroom = () => {
     if (!submittedRef.current) {
@@ -129,7 +228,7 @@ export default function PrepPage() {
       <div className={s.layout}>
         <main className={s.main}>
           {/* ── 壹 · 摸底快测 ── */}
-          <section className={s.section} style={{ animationDelay: '80ms' }}>
+          <section id={SECTIONS[0].id} className={s.section} style={{ animationDelay: '80ms' }}>
             <h2 className={s.sectionTitle}>
               <span className={s.sectionNum}>壹</span>摸底快测
             </h2>
@@ -190,6 +289,9 @@ export default function PrepPage() {
                         稳一点,还是过一遍材料
                       </button>
                     )}
+                    <button type="button" className={s.ghostBtnSm} onClick={retakeQuiz}>
+                      重新测一遍
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -198,6 +300,11 @@ export default function PrepPage() {
                     摸底 {correctCount}/{probes.length}——有 {wrongMcs.length} 个误区还没吃透。
                     别慌,下面的材料就是为它准备的;等会小白多半会拿这里考你。
                   </p>
+                  <div className={s.verdictBtns}>
+                    <button type="button" className={s.ghostBtnSm} onClick={retakeQuiz}>
+                      重新测一遍
+                    </button>
+                  </div>
                 </div>
               )
             )}
@@ -206,7 +313,7 @@ export default function PrepPage() {
           {materialsVisible && (
             <>
               {/* ── 贰 · 教学任务卡 ── */}
-              <section className={s.section}>
+              <section id={SECTIONS[1].id} className={s.section}>
                 <h2 className={s.sectionTitle}>
                   <span className={s.sectionNum}>贰</span>教学任务卡
                 </h2>
@@ -218,7 +325,7 @@ export default function PrepPage() {
               </section>
 
               {/* ── 叁 · 讲课路线图 ── */}
-              <section className={s.section}>
+              <section id={SECTIONS[2].id} className={s.section}>
                 <h2 className={s.sectionTitle}>
                   <span className={s.sectionNum}>叁</span>讲课路线图
                 </h2>
@@ -262,9 +369,10 @@ export default function PrepPage() {
               </section>
 
               {/* ── 肆 · 材料包 ── */}
-              <section className={s.section}>
+              <section id={SECTIONS[3].id} className={s.section}>
                 <h2 className={s.sectionTitle}>
                   <span className={s.sectionNum}>肆</span>研读材料包
+                  <span className={s.readTime}>全读约 {readMinutes} 分钟</span>
                 </h2>
                 <p className={s.sectionHint}>
                   {wrongMcs.length > 0
@@ -330,11 +438,40 @@ export default function PrepPage() {
                       })}
                     </ul>
                   </Collapse>
+                  {references.length > 0 && (
+                    <Collapse title="延伸书单" tag="选读" tagTone="plain" defaultOpen={false}>
+                      <p className={s.refLead}>课上用不到,课后想深挖再看——先把课讲完。</p>
+                      <ul className={s.refList}>
+                        {references.map((ref) => (
+                          <li key={ref.url} className={s.refItem}>
+                            <span className={s.refSeal} aria-hidden="true">
+                              {REF_SEAL[ref.kind] ?? ref.kind.slice(0, 1)}
+                            </span>
+                            <div className={s.refBody}>
+                              <p className={s.refTitleRow}>
+                                <a
+                                  className={s.refLink}
+                                  href={ref.url}
+                                  target="_blank"
+                                  rel="noreferrer noopener"
+                                >
+                                  {ref.title}
+                                  <span className={s.refArrow} aria-hidden="true">↗</span>
+                                </a>
+                                <span className={s.refKind}>{ref.kind}</span>
+                              </p>
+                              <p className={s.refNote}>{ref.note}</p>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </Collapse>
+                  )}
                 </div>
               </section>
 
               {/* ── 伍 · 自检清单 ── */}
-              <section className={s.section}>
+              <section id={SECTIONS[4].id} className={s.section}>
                 <h2 className={s.sectionTitle}>
                   <span className={s.sectionNum}>伍</span>备课自检
                 </h2>
@@ -383,30 +520,41 @@ export default function PrepPage() {
 
         {/* ── 眉批侧注 ── */}
         <aside className={s.aside}>
-          <div>
+          <nav aria-label="备课五步">
             <h3 className={s.asideTitle}>备课五步</h3>
             <ol className={s.stepList}>
-              {[
-                { name: '摸底快测', done: quizDone, active: !quizDone },
-                { name: '教学任务卡', done: materialsVisible, active: false },
-                { name: '讲课路线图', done: materialsVisible, active: false },
-                {
-                  name: '研读材料包',
-                  done: materialsVisible && allChecked,
-                  active: materialsVisible && !allChecked,
-                },
-                { name: '备课自检', done: allChecked, active: false },
-              ].map((st) => (
-                <li
-                  key={st.name}
-                  className={`${s.step} ${st.done ? s.stepDone : ''} ${st.active ? s.stepActive : ''}`}
-                >
-                  <span className={s.stepDot} aria-hidden="true" />
-                  {st.name}
-                </li>
-              ))}
+              {SECTIONS.map((sec, i) => {
+                const st = stepStates[i];
+                const current = currentId === sec.id && st.reachable;
+                const cls = [
+                  s.step,
+                  st.done ? s.stepDone : '',
+                  st.active ? s.stepActive : '',
+                  current ? s.stepCurrent : '',
+                ].join(' ');
+                return (
+                  <li key={sec.id}>
+                    {st.reachable ? (
+                      <button
+                        type="button"
+                        className={cls}
+                        aria-current={current ? 'true' : undefined}
+                        onClick={() => jumpTo(sec.id)}
+                      >
+                        <span className={s.stepDot} aria-hidden="true" />
+                        {sec.name}
+                      </button>
+                    ) : (
+                      <span className={`${s.step} ${s.stepLocked}`}>
+                        <span className={s.stepDot} aria-hidden="true" />
+                        {sec.name}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ol>
-          </div>
+          </nav>
           {materialsVisible && (
             <div>
               <h3 className={s.asideTitle}>路线图</h3>

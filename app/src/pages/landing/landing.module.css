@@ -79,6 +79,17 @@
   opacity: 0.035;
   pointer-events: none;
   user-select: none;
+  /* 淡墨呼吸:极缓的浓淡往复,像墨迹未干(reduced-motion 关闭) */
+  animation: glyphBreathe 7.5s ease-in-out infinite alternate;
+}
+
+@keyframes glyphBreathe {
+  from {
+    opacity: 0.028;
+  }
+  to {
+    opacity: 0.052;
+  }
 }
 
 .heroMain,
@@ -95,10 +106,11 @@
   gap: var(--gap);
 }
 
+/* kicker 字距与 secKicker/bandKicker 统一为 0.32em */
 .kicker {
   font-family: var(--font-display);
   font-size: var(--fs-small);
-  letter-spacing: 0.4em;
+  letter-spacing: 0.32em;
   color: var(--ink-faint);
 }
 
@@ -147,8 +159,9 @@
     box-shadow var(--t-fast) var(--ease-out);
 }
 
+/* hover 墨色再加深一档(azure-deep 向墨青混),印章微移 */
 .cta:hover {
-  background: var(--azure-deep);
+  background: color-mix(in oklab, var(--azure-deep) 78%, var(--ink));
   transform: translateY(-2px);
   box-shadow: var(--shadow-lift);
 }
@@ -156,6 +169,26 @@
 .cta:focus-visible {
   outline: 2px solid var(--azure);
   outline-offset: 3px;
+}
+
+/* CTA 内小印:方框「教」,随 hover 轻轻一歪,像落印前的顿挫 */
+.ctaSeal {
+  display: inline-grid;
+  place-items: center;
+  width: 1.4em;
+  height: 1.4em;
+  margin-left: 0.55em;
+  font-size: 0.75em;
+  line-height: 1;
+  border: 1px solid color-mix(in oklab, currentColor 55%, transparent);
+  border-radius: 3px;
+  vertical-align: -0.28em;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.cta:hover .ctaSeal,
+.bandCta:hover .ctaSeal {
+  transform: translate(2px, -2px) rotate(-6deg);
 }
 
 .ctaGhost {
@@ -374,6 +407,328 @@
   color: var(--ink-soft);
 }
 
+/* ── 课堂实录:黑板夜自习卡片,台词逐字来自课程数据 ── */
+
+.scene {
+  padding: var(--gap-section) 0;
+  border-top: 1px solid var(--paper-edge);
+}
+
+.sceneBoard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  padding: clamp(var(--gap-loose), 5vw, 3.25rem) clamp(var(--gap), 4vw, 3.25rem);
+  background: linear-gradient(160deg, var(--board) 0%, var(--board-deep) 100%);
+  border-radius: var(--radius-l);
+}
+
+.beat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+  max-width: min(36em, 86%);
+}
+
+.beatTeacher {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.beatXiaobai {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.speaker {
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.18em;
+  color: var(--chalk-soft);
+}
+
+.bubble {
+  margin: 0;
+  padding: var(--gap-tight) var(--gap);
+  font-size: var(--fs-body);
+  line-height: 2;
+  color: var(--chalk);
+  border-radius: var(--radius);
+}
+
+.beatTeacher .bubble {
+  background: color-mix(in oklab, var(--chalk) 12%, transparent);
+  border: 1px solid color-mix(in oklab, var(--chalk) 16%, transparent);
+  border-top-right-radius: var(--radius-s);
+}
+
+.beatXiaobai .bubble {
+  background: color-mix(in oklab, var(--board-line) 55%, transparent);
+  border: 1px solid var(--board-line);
+  border-top-left-radius: var(--radius-s);
+}
+
+/* 误区试探拍:板书黄点睛,预告"埋雷"机制 */
+.beatTrap .speaker {
+  color: var(--chalk-amber);
+}
+
+.beatTrap .bubble {
+  border-left: 3px solid var(--chalk-amber);
+}
+
+/* 旁注:居中细线夹注,黑板上的导演批语 */
+.sceneAside {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
+  margin-top: var(--gap-hair);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  letter-spacing: 0.14em;
+  text-align: center;
+  color: var(--chalk-amber);
+}
+
+.sceneAside::before,
+.sceneAside::after {
+  content: '';
+  flex: none;
+  width: clamp(1.25rem, 5vw, 3rem);
+  height: 1px;
+  background: color-mix(in oklab, var(--chalk-amber) 45%, transparent);
+}
+
+.sceneCaption {
+  margin-top: var(--gap);
+  font-size: var(--fs-small);
+  line-height: 1.9;
+  color: var(--ink-faint);
+}
+
+/* 「实录」小印:与朱文印一脉,做数据出处的落款 */
+.sceneStamp {
+  display: inline-grid;
+  place-items: center;
+  margin-right: 0.6em;
+  padding: 0.1em 0.35em;
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--cinnabar);
+  border: 1px solid color-mix(in oklab, var(--cinnabar) 62%, transparent);
+  border-radius: var(--radius-s);
+  background: var(--cinnabar-wash);
+  vertical-align: 0.1em;
+}
+
+/* ── 数字带:四项实证,细线分栏,不做卡片不投影 ── */
+
+.proof {
+  padding: 0 0 var(--gap-section);
+}
+
+.proofRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-block: 1px solid var(--paper-edge);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+  padding: clamp(var(--gap), 3vw, var(--gap-loose)) clamp(var(--gap-tight), 2vw, var(--gap));
+  border-left: 1px solid var(--paper-edge);
+}
+
+.stat:first-child {
+  border-left: none;
+}
+
+/* 大数字楷体,小注细宋 */
+.statNum {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.15em;
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 3.2vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.statUnit {
+  font-style: normal;
+  font-size: 0.45em;
+  color: var(--ink-soft);
+}
+
+/* 泄漏率:裸奔值划朱线作废,闸门值归黛绿 */
+.statFrom {
+  font-size: 0.62em;
+  color: var(--ink-faint);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in oklab, var(--cinnabar) 55%, transparent);
+  text-decoration-thickness: 2px;
+}
+
+.statArrow {
+  font-size: 0.5em;
+  color: var(--ink-faint);
+}
+
+.statTo {
+  color: var(--jade);
+}
+
+.statLabel {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--ink-soft);
+}
+
+.statNote {
+  font-size: var(--fs-tiny);
+  line-height: 1.8;
+  color: var(--ink-faint);
+}
+
+/* ── 书架预览:mini 书脊 + 木色搁板,整条可点直通 /study ── */
+
+.shelfSec {
+  padding: var(--gap-section) 0 0;
+  border-top: 1px solid var(--paper-edge);
+}
+
+.shelfStrip {
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(var(--gap-loose), 6vw, 5rem);
+  padding: var(--gap) var(--gap-hair) var(--gap-hair);
+  overflow-x: auto;
+}
+
+.shelfStrip:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 4px;
+  border-radius: var(--radius-s);
+}
+
+.shelfGroup {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+}
+
+.miniRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.375rem;
+  padding: 0 var(--gap-tight);
+}
+
+.miniSpine {
+  position: relative;
+  flex: none;
+  width: 1.125rem;
+  height: 3.5rem;
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-bottom: none;
+  border-radius: 2px 2px 0 0;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+/* 题签色带(书头) */
+.miniSpine::before {
+  content: '';
+  position: absolute;
+  top: 0.3rem;
+  left: 2px;
+  right: 2px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--dust);
+}
+
+/* 书高书宽错落(按位次确定,与门厅书架同一手法);灰阶交替,未学的素净 */
+.miniSpine:nth-child(2n) {
+  height: 3.05rem;
+}
+
+.miniSpine:nth-child(3n) {
+  height: 3.9rem;
+}
+
+.miniSpine:nth-child(4n + 2) {
+  width: 1.3125rem;
+}
+
+.miniSpine:nth-child(3n + 1) {
+  background: var(--ink-wash);
+}
+
+.miniLocked {
+  opacity: 0.45;
+}
+
+.miniRail {
+  display: block;
+  height: 0.375rem;
+  border-radius: 2px 2px 3px 3px;
+  background: linear-gradient(180deg, oklch(0.66 0.055 70), oklch(0.52 0.055 62));
+  box-shadow: inset 0 1px 0 oklch(0.78 0.05 75);
+}
+
+.shelfCourse {
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+  text-align: center;
+}
+
+.shelfCount {
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  text-align: center;
+}
+
+.shelfGo {
+  flex: none;
+  align-self: center;
+  padding-bottom: 2px;
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  letter-spacing: 0.1em;
+  color: var(--azure);
+  border-bottom: 1px solid var(--dust);
+  white-space: nowrap;
+  transition:
+    color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out);
+}
+
+/* 整条 hover:书轻轻抬一下,像被人伸手要抽 */
+.shelfStrip:hover .miniSpine {
+  transform: translateY(-3px);
+}
+
+.shelfStrip:hover .shelfGo {
+  color: var(--azure-deep);
+  border-color: var(--azure-deep);
+}
+
 /* ── 结尾 CTA:黑板夜自习色带 —— 门后就是教室 ── */
 
 .band {
@@ -487,5 +842,68 @@
 
   .whyText br {
     display: none;
+  }
+}
+
+/* 720px:数字带折两栏,实录气泡放宽,书架条收紧 */
+@media (max-width: 45rem) {
+  .proofRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stat:nth-child(odd) {
+    border-left: none;
+  }
+
+  .stat:nth-child(n + 3) {
+    border-top: 1px solid var(--paper-edge);
+  }
+
+  .beat {
+    max-width: 100%;
+  }
+
+  .sceneBoard {
+    padding: var(--gap-loose) var(--gap);
+  }
+
+  .shelfStrip {
+    gap: var(--gap-loose);
+  }
+}
+
+/* 560px:数字带单列纵排,气泡收窄内距 */
+@media (max-width: 35rem) {
+  .proofRow {
+    grid-template-columns: 1fr;
+  }
+
+  .stat {
+    border-left: none;
+  }
+
+  .stat:nth-child(n + 2) {
+    border-top: 1px solid var(--paper-edge);
+  }
+
+  .bubble {
+    padding: var(--gap-tight);
+  }
+
+  .shelfGo {
+    align-self: flex-end;
+  }
+}
+
+/* reduced-motion 补充:置于文件末尾保证覆盖前文同特异性规则 */
+@media (prefers-reduced-motion: reduce) {
+  .heroGlyph {
+    animation: none;
+  }
+
+  .cta:hover .ctaSeal,
+  .bandCta:hover .ctaSeal,
+  .shelfStrip:hover .miniSpine {
+    transform: none;
   }
 }
