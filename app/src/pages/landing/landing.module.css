@@ -337,7 +337,8 @@
   font-family: var(--font-display);
   font-size: var(--fs-small);
   letter-spacing: 0.3em;
-  color: var(--cinnabar);
+  /* 幕次编号不是误区/警示,不占用朱砂 */
+  color: var(--azure);
 }
 
 .actName {
@@ -373,7 +374,11 @@
   gap: var(--gap-tight);
   background: var(--paper);
   padding: clamp(var(--gap), 3vw, var(--gap-loose)) clamp(var(--gap), 2.5vw, 2rem);
-  transition: background var(--t-fast) var(--ease-out);
+  /* 必须带上 opacity/transform:简写会整体覆盖 .reveal 的过渡,机制卡滚动显现会直接闪现 */
+  transition:
+    background var(--t-fast) var(--ease-out),
+    opacity var(--t-slow) var(--ease-out),
+    transform var(--t-slow) var(--ease-out);
 }
 
 .card:hover {

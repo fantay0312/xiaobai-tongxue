@@ -194,10 +194,7 @@
   cursor: wait;
 }
 
-.testBtn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--azure-wash);
-}
+/* 焦点环走 index.css 全局 :focus-visible 基线,不再各自为政 */
 
 .testStatus {
   font-size: var(--fs-tiny);
@@ -210,7 +207,7 @@
 }
 
 .testFail {
-  color: #c0392b;
+  color: var(--cinnabar);
 }
 
 /* ── 温度滑条 ── */

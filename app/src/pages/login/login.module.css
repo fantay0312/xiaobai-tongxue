@@ -3,10 +3,10 @@
   display: grid;
   place-items: center;
   padding: var(--gap-loose) var(--gap);
-  /* 极淡的斜向纸纹晕染,别让登录页空成一片死白 */
+  /* 极淡的斜向纸纹晕染,别让登录页空成一片死白(朱砂只留给警示,晕染用墨青+淡墨) */
   background:
     radial-gradient(120% 80% at 88% 12%, var(--azure-wash), transparent 55%),
-    radial-gradient(90% 70% at 6% 96%, var(--cinnabar-wash), transparent 60%);
+    radial-gradient(90% 70% at 6% 96%, var(--ink-wash), transparent 60%);
 }
 
 /* ── 主体:扉页 | 表单 非对称双栏 ── */
@@ -91,7 +91,8 @@
   font-size: var(--fs-tiny);
   letter-spacing: 0.34em;
   text-indent: 0.34em;
-  color: var(--cinnabar);
+  /* 眉题不是警示,不占用朱砂 */
+  color: var(--azure);
   margin-bottom: 0.6rem;
 }
 
@@ -143,6 +144,15 @@
   font-family: var(--font-body);
   font-size: var(--fs-body);
   transition: border-color var(--t-fast) var(--ease-out);
+}
+
+/* 浏览器自动填充别糊出蓝黄色块:内阴影铺回纸色 */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--paper) inset;
+  -webkit-text-fill-color: var(--ink);
+  caret-color: var(--ink);
 }
 
 .input:focus {

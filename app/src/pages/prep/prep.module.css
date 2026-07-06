@@ -142,7 +142,7 @@
   transform: translateY(-1px);
 }
 .probeFb { margin-top: var(--gap-tight); }
-.fbGood { color: var(--jade); font-weight: 600; font-size: var(--fs-small); }
+.fbGood { color: var(--jade-ink); font-weight: 600; font-size: var(--fs-small); }
 .fbBad { color: var(--cinnabar); font-weight: 600; font-size: var(--fs-small); }
 .fbExplain {
   color: var(--ink-soft);
@@ -685,7 +685,9 @@
 }
 button.step { cursor: pointer; }
 button.step:hover { color: var(--ink); background: var(--ink-wash); }
-.stepLocked { cursor: default; opacity: 0.72; }
+/* 锁定态只暗圆点,不再整行叠 opacity:ink-faint 再打七二折就跌破 2.4:1 了 */
+.stepLocked { cursor: default; }
+.stepLocked .stepDot { opacity: 0.5; }
 .stepDot {
   width: 8px;
   height: 8px;

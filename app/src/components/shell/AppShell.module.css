@@ -153,7 +153,8 @@
   font-family: var(--font-display);
   font-size: var(--fs-body);
   letter-spacing: 0.09em;
-  color: var(--ink-faint);
+  /* ink-soft 而非 ink-faint:faint 在宣纸上仅 ~3.6:1,正文字号不达 AA */
+  color: var(--ink-soft);
   padding: var(--gap-hair) 0.1em;
   white-space: nowrap;
   transition: color var(--t-fast) var(--ease-out);
@@ -258,6 +259,11 @@
 .userName {
   color: var(--ink-soft);
   letter-spacing: 0.04em;
+  /* 长用户名(如邮箱)截断,否则顶栏被撑出横向滚动 */
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .userExit {
@@ -267,8 +273,9 @@
   transition: color var(--t-fast) var(--ease-out);
 }
 
+/* 退出不是误区/警示,不占用朱砂 */
 .userBtn:hover .userExit {
-  color: var(--cinnabar);
+  color: var(--ink);
 }
 
 .board .userName {
@@ -277,6 +284,10 @@
 
 .board .userExit {
   color: var(--chalk-soft);
+}
+
+.board .userBtn:hover .userExit {
+  color: var(--chalk);
 }
 
 /* ── 齿轮按钮 ── */
@@ -298,9 +309,9 @@
   transform: rotate(45deg);
 }
 
-.gearBtn:focus-visible {
-  outline: 2px solid var(--azure);
-  outline-offset: 2px;
+/* 焦点环走 index.css 全局基线;黑板变体顶栏换粉笔色(azure 在深底上 ~2:1 看不见) */
+.board .header :focus-visible {
+  outline-color: var(--chalk-soft);
 }
 
 .board .gearBtn {

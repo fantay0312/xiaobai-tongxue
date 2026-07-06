@@ -127,10 +127,14 @@ export default function ClassroomPage() {
     void st.startSession(topicId, mode);
   }, [topicId, mode, topic]);
 
-  const scrollToBottom = () => {
+  // force=false 时只在贴近底部才跟随:打字机每帧置底会把用户往上回看的滚动反复拽回去
+  const scrollToBottom = (force = true) => {
     const el = streamRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 96;
+    if (force || nearBottom) el.scrollTop = el.scrollHeight;
   };
+  const prevCountRef = useRef(0);
 
   const msgCount = live?.messages.length ?? 0;
   const lastXiaobai = live
@@ -143,7 +147,10 @@ export default function ClassroomPage() {
 
   useEffect(() => {
     if (animateId) setTypingNow(true);
-    scrollToBottom();
+    // 只有新消息落地才强制置底;打字结束/忙碌翻转不把回看中的用户拽回去
+    const isNewMessage = msgCount > prevCountRef.current;
+    prevCountRef.current = msgCount;
+    scrollToBottom(isNewMessage);
   }, [animateId, msgCount, live?.busy]);
 
   if (!topic || topic.locked) {
@@ -271,7 +278,7 @@ export default function ClassroomPage() {
                   key={m.id}
                   m={m}
                   animate={m.id === animateId}
-                  onTick={scrollToBottom}
+                  onTick={() => scrollToBottom(false)}
                   onDone={() => handleTypeDone(m.id)}
                 />
               ),

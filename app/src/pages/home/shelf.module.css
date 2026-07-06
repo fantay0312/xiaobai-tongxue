@@ -104,7 +104,8 @@
   border-radius: var(--radius-s) var(--radius-s) 0 0;
   background: var(--paper-warm);
   transition: transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out);
-  animation: shelfRise var(--t-med) var(--ease-out) both;
+  /* backwards 而非 both:both 会让 to 帧的 transform:none 永久压住 hover 的抽书位移 */
+  animation: shelfRise var(--t-med) var(--ease-out) backwards;
 }
 
 /* 书高、书宽错落(按位次确定,非随机),架上才像真的书 */
@@ -198,7 +199,7 @@
 }
 
 .mastered .status {
-  color: var(--jade);
+  color: var(--jade-ink);
 }
 
 .review {
@@ -211,7 +212,7 @@
 }
 
 .review .status {
-  color: var(--amber);
+  color: var(--amber-ink);
 }
 
 .learning {

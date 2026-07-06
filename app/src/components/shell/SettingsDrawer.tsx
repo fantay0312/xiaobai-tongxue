@@ -44,6 +44,20 @@ export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () =
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
+  // 抽屉打开时锁定背后页面滚动;补上滚动条宽度,经典滚动条系统(Windows)不横跳
+  useEffect(() => {
+    if (!open) return;
+    const { style } = document.body;
+    const prev = { overflow: style.overflow, paddingRight: style.paddingRight };
+    const gutter = window.innerWidth - document.documentElement.clientWidth;
+    style.overflow = 'hidden';
+    if (gutter > 0) style.paddingRight = `${gutter}px`;
+    return () => {
+      style.overflow = prev.overflow;
+      style.paddingRight = prev.paddingRight;
+    };
+  }, [open]);
+
   return (
     <>
       <div

@@ -10,7 +10,8 @@
 /* ── 入场编排:一次 stagger,之后克制 ── */
 
 .enter {
-  animation: rise var(--t-med) var(--ease-out) both;
+  /* backwards 而非 both:both 会让 to 帧的 transform:none 永久压住 hover 的位移 */
+  animation: rise var(--t-med) var(--ease-out) backwards;
 }
 
 @keyframes rise {

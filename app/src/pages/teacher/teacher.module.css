@@ -155,14 +155,15 @@
 .leakRow {
   display: flex;
   align-items: baseline;
-  gap: var(--gap-loose);
+  gap: var(--gap);
   flex-wrap: wrap;
   margin-bottom: var(--gap);
 }
 
 .leakNum {
   font-family: var(--font-display);
-  font-size: var(--fs-hero);
+  /* stat 档而非 hero 档:侧栏卡约 380px 宽,hero 字阶下箭头对比构图必然折行 */
+  font-size: var(--fs-stat);
   line-height: 1;
 }
 

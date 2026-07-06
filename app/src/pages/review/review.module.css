@@ -60,7 +60,7 @@
   padding: 0.1rem 0.6rem;
   border: 1px solid var(--jade);
   border-radius: var(--radius-s);
-  color: var(--jade);
+  color: var(--jade-ink);
   font-family: var(--font-display);
   font-size: var(--fs-small);
 }
@@ -237,7 +237,7 @@
 }
 
 .radarValue { font-size: 13px; fill: var(--ink-soft); }
-.radarDeltaUp { font-size: 13px; fill: var(--jade); }
+.radarDeltaUp { font-size: 13px; fill: var(--jade-ink); }
 .radarDeltaDown { font-size: 13px; fill: var(--cinnabar); }
 
 .legend {
@@ -549,9 +549,9 @@
   color: var(--ink-soft);
 }
 
-.tagGood { color: var(--jade); border-color: var(--jade); background: var(--jade-wash); }
+.tagGood { color: var(--jade-ink); border-color: var(--jade); background: var(--jade-wash); }
 .tagBad { color: var(--cinnabar); border-color: var(--cinnabar); background: var(--cinnabar-wash); }
-.tagWarn { color: var(--amber); border-color: var(--amber); background: var(--amber-wash); }
+.tagWarn { color: var(--amber-ink); border-color: var(--amber); background: var(--amber-wash); }
 
 .timelineText { font-size: var(--fs-small); color: var(--ink); }
 
@@ -572,3 +572,23 @@
 .emptyTitle { font-size: var(--fs-title); color: var(--ink); margin-bottom: var(--gap); }
 
 .emptyText { color: var(--ink-soft); margin-bottom: var(--gap-loose); line-height: 1.9; }
+
+/* ── 底部去处:档案读完不留死胡同 ── */
+
+.footNav {
+  margin-top: var(--gap-section);
+  padding-top: var(--gap-loose);
+  border-top: 1px solid var(--paper-edge);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--gap);
+}
+
+.footLink {
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  transition: color var(--t-fast) var(--ease-out);
+}
+
+.footLink:hover { color: var(--ink); }

@@ -1,8 +1,0 @@
-/* 讲解舱嵌入用的小白舞台:铺满父容器,黑板夜色由页面背景提供 */
-
-.stage {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  min-height: 200px;
-}

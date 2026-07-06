@@ -147,9 +147,11 @@
 
 .mapWrap {
   margin-inline: calc(-1 * clamp(0rem, 3vw, 2.5rem));
+  /* 窄屏横向滚动而非整图等比缩小:缩到 375px 时节点文字只剩 ~5px */
+  overflow-x: auto;
 }
 
-.mapSvg { width: 100%; height: auto; display: block; }
+.mapSvg { width: 100%; min-width: 640px; height: auto; display: block; }
 
 .vein { fill: none; stroke: var(--ink); opacity: 0.14; stroke-width: 1.2; stroke-dasharray: 1 5; stroke-linecap: round; }
 
@@ -257,8 +259,8 @@
   color: var(--ink-soft);
 }
 
-.chipJade { color: var(--jade); border-color: var(--jade); background: var(--jade-wash); }
-.chipAmber { color: var(--amber); border-color: var(--amber); background: var(--amber-wash); }
+.chipJade { color: var(--jade-ink); border-color: var(--jade); background: var(--jade-wash); }
+.chipAmber { color: var(--amber-ink); border-color: var(--amber); background: var(--amber-wash); }
 .chipAzure { color: var(--azure); border-color: var(--azure); background: var(--azure-wash); }
 
 .timeline {

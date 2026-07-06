@@ -23,6 +23,17 @@ a { color: var(--azure); text-decoration: none; }
 
 ::selection { background: var(--azure-wash); }
 
+/* 全站键盘焦点基线:模块内的定制焦点环(更高特异度)会覆盖这条 */
+:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  /* iteration-count 必须一并压掉:只压 duration 会让无限循环动画以 0.01ms/圈空转闪烁 */
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

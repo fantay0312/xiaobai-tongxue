@@ -261,6 +261,19 @@ export default function ReviewPage() {
               </div>
             </div>
           </section>
+
+          {/* 底部去处 —— 档案读完不留死胡同(出师后主按钮已指向书斋,不再重复给次链接) */}
+          <footer className={`${s.footNav} ${s.rise}`} style={rise(6)}>
+            <Link
+              to={report.masteredNow ? '/study' : `/teach/${report.topicId}`}
+              className={s.btnPrimary}
+            >
+              {report.masteredNow ? '回书斋,再挑一本' : '回讲台,把盲区讲明白'}
+            </Link>
+            {!report.masteredNow && (
+              <Link to="/study" className={s.footLink}>回书斋门厅 →</Link>
+            )}
+          </footer>
         </div>
 
         {/* 眉批侧注 —— 红笔批注气质 */}

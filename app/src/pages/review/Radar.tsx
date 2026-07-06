@@ -62,14 +62,19 @@ export function Radar({ radar, delta }: { radar: RadarScores; delta: Partial<Rad
         const cos = Math.cos(((-90 + i * 72) * Math.PI) / 180);
         const anchor = Math.abs(cos) < 0.35 ? 'middle' : cos > 0 ? 'start' : 'end';
         const d = delta?.[k];
+        // 增量与分值同用百分制,且从「展示用整数」相减:各自四舍五入会出现 85 旁挂 +1 的错账
+        const dPct =
+          typeof d === 'number'
+            ? Math.round(radar[k] * 100) - Math.round((radar[k] - d) * 100)
+            : 0;
         return (
           <text key={k} x={x} y={y} textAnchor={anchor} className={s.radarLabel}>
             <tspan x={x}>{k}</tspan>
             <tspan x={x} dy={17} className={s.radarValue}>
               {Math.round(radar[k] * 100)}
-              {typeof d === 'number' && d !== 0 && (
-                <tspan className={d > 0 ? s.radarDeltaUp : s.radarDeltaDown}>
-                  {'  '}{d > 0 ? '+' : ''}{d.toFixed(2)}
+              {dPct !== 0 && (
+                <tspan className={dPct > 0 ? s.radarDeltaUp : s.radarDeltaDown}>
+                  {'  '}{dPct > 0 ? '+' : ''}{dPct}
                 </tspan>
               )}
             </tspan>

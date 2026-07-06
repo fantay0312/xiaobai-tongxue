@@ -2,14 +2,15 @@
  * 小白 3D 形象 —— Props 契约 FROZEN(three.js/R3F 实现)
  * mood 驱动表情与形变;level 驱动头顶配饰(1嫩芽 2灯泡 3-4眼镜 5学士帽);
  * speaking 时轻微弹跳;variant 适配纸面/黑板两种场景光照。
- * WebGL 不可用或渲染出错时自动降级为 CSS 团子(FallbackBlob)。
+ * WebGL 不可用或渲染出错时自动降级为 CSS 团子(FallbackBlob);
+ * three chunk 懒加载,团子一直垫底到 WebGL 上下文就绪(onReady)才撤,首屏无空框无闪空。
  */
-import { useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import type { XiaobaiMood } from '../../types';
 import { FallbackBlob } from './FallbackBlob';
-import { XiaobaiScene, XIAOBAI_CAMERA } from './XiaobaiScene';
 import { AvatarErrorBoundary, detectWebGL } from './webglGuard';
+
+const SceneCanvas = lazy(() => import('./SceneCanvas'));
 
 export interface XiaobaiAvatarProps {
   mood: XiaobaiMood;
@@ -29,24 +30,30 @@ export function XiaobaiAvatar({
   variant = 'paper',
 }: XiaobaiAvatarProps) {
   const webglOK = useMemo(detectWebGL, []);
+  const [ready, setReady] = useState(false);
 
   if (!webglOK) return <FallbackBlob mood={mood} size={size} variant={variant} />;
 
+  const blob = <FallbackBlob mood={mood} size={size} variant={variant} />;
+
   return (
-    <div style={{ width: size, height: size }} aria-label={`小白(${mood})`} role="img">
-      <AvatarErrorBoundary fallback={<FallbackBlob mood={mood} size={size} variant={variant} />}>
-        <Canvas
-          dpr={[1, 2]}
-          camera={XIAOBAI_CAMERA}
-          gl={{ alpha: true, antialias: true }}
-          style={{ background: 'transparent' }}
-        >
-          <XiaobaiScene mood={mood} level={level} speaking={speaking} variant={variant} />
-        </Canvas>
+    <div
+      style={{ position: 'relative', width: size, height: size }}
+      aria-label={`小白(${mood})`}
+      role="img"
+    >
+      {!ready && <div style={{ position: 'absolute', inset: 0 }}>{blob}</div>}
+      <AvatarErrorBoundary fallback={blob}>
+        <Suspense fallback={null}>
+          <SceneCanvas
+            mood={mood}
+            level={level}
+            speaking={speaking}
+            variant={variant}
+            onReady={() => setReady(true)}
+          />
+        </Suspense>
       </AvatarErrorBoundary>
     </div>
   );
 }
-
-export { XiaobaiStage } from './XiaobaiStage';
-export type { XiaobaiStageProps } from './XiaobaiStage';

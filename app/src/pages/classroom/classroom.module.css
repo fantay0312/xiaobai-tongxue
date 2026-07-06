@@ -8,6 +8,8 @@
   flex-direction: column;
   background: var(--board);
   color: var(--chalk);
+  /* 深色场景滚动条/表单控件按暗色渲染,否则 Windows 黑板正中一条亮色滚动轨 */
+  color-scheme: dark;
 }
 
 .holder {
@@ -38,9 +40,15 @@
   border-radius: var(--radius-s);
   padding: 0.3rem 0.7rem;
   font-size: var(--fs-small);
-  transition: opacity var(--t-fast) var(--ease-out);
+  white-space: nowrap;
+  transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
 .quitBtn:hover { color: var(--chalk); border-color: var(--chalk-soft); }
+
+/* 黑板底上 azure 焦点环太暗,场景内统一换粉笔色 */
+.room :focus-visible {
+  outline-color: var(--chalk-soft);
+}
 .topTitle {
   flex: 1;
   display: flex;
@@ -52,7 +60,11 @@
   font-size: var(--fs-tiny);
   color: var(--chalk-soft);
   letter-spacing: 0.12em;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .topName {
   font-family: var(--font-display);
@@ -70,6 +82,7 @@
   padding: 0.4rem 0.9rem;
   font-size: var(--fs-small);
   font-weight: 600;
+  white-space: nowrap;
   transition: opacity var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
 }
 .endBtn:hover:enabled { transform: translateY(-1px); }
@@ -175,6 +188,7 @@
   border-radius: var(--radius) 2px var(--radius) var(--radius);
   box-shadow: var(--shadow-paper);
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   line-height: 1.8;
 }
 
@@ -199,6 +213,7 @@
   line-height: 1.9;
   color: var(--chalk);
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   border-left: 2px solid var(--board-line);
   padding: 0.1rem 0 0.1rem 0.9rem;
 }
@@ -272,7 +287,14 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--gap-hair);
-  padding: 0 clamp(1rem, 3vw, 2.5rem) var(--gap-hair);
+  /* 不给底 padding:overflow:hidden 裁的是 padding-box,塌缩到 0fr 后
+     底 padding 会留一条可视窗口漏出卡片顶边;底部留白用可裁剪的 spacer(同 197274b) */
+  padding: 0 clamp(1rem, 3vw, 2.5rem);
+}
+.demoInner::after {
+  content: '';
+  flex-basis: 100%;
+  height: 0;
 }
 .demoLine {
   display: flex;
@@ -386,6 +408,8 @@
   width: min(400px, 92vw);
   background: var(--paper);
   color: var(--ink);
+  /* 纸色抽屉别继承 .room 的 color-scheme:dark,否则白纸上出现暗色滚动条 */
+  color-scheme: light;
   box-shadow: var(--shadow-lift);
   padding: var(--gap-loose) var(--gap) var(--gap);
   overflow-y: auto;
