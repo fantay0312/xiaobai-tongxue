@@ -252,6 +252,92 @@
 .legendPrev { color: var(--ink-soft); }
 .legendNote { color: var(--ink-faint); font-size: var(--fs-tiny); }
 
+/* ── 心魔战报(卷叁顶部)——结局即配色:击退黛绿 / 拐走朱砂(真警示) / 照面淡墨 ── */
+
+.demonReport {
+  margin-bottom: var(--gap);
+  padding-bottom: var(--gap);
+  border-bottom: 1px dashed var(--paper-edge);
+}
+
+.demonHead {
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.05em;
+  margin-bottom: var(--gap-tight);
+}
+
+.demonList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+}
+
+.demonCard {
+  border: 1px solid var(--paper-edge);
+  border-left-width: 3px;
+  border-radius: var(--radius-s);
+  padding: var(--gap-tight) var(--gap);
+}
+
+.demonVanquished { border-left-color: var(--jade); background: var(--jade-wash); }
+.demonStray { border-left-color: var(--cinnabar); background: var(--cinnabar-wash); }
+.demonPassed { border-left-color: var(--dust); }
+
+.demonRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-tight);
+  flex-wrap: wrap;
+}
+
+/* 心魔名小印章:随结局借 currentColor 变色,楷体方章制式 */
+.demonChip {
+  flex: none;
+  padding: 0 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-s);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+
+.demonVanquished .demonChip { color: var(--jade-ink); }
+.demonStray .demonChip { color: var(--cinnabar); }
+
+.demonBelief {
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  color: var(--ink);
+}
+
+.demonLine {
+  margin-top: var(--gap-hair);
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+}
+
+/* 「去救小白」:与补学微路径同一个入口,动机换了个讲法;拐走语境许用朱砂 */
+.rescueBtn {
+  margin-top: var(--gap-hair);
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--cinnabar);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  transition: opacity var(--t-fast) var(--ease-out);
+}
+
+.rescueBtn:hover { opacity: 0.75; }
+
 /* ── 盲区 ── */
 
 .blindLead {

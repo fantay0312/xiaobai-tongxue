@@ -1,0 +1,104 @@
+/* 结业证书 —— 宣纸底 + 证书式双内框,水墨晕开入场。
+   印章红只许走 --seal-red 别名(印泥语境,DESIGN.md 印章豁免),不得写 --cinnabar */
+
+.cert {
+  position: relative;
+  margin-bottom: var(--gap-loose);
+  padding: var(--gap-loose) clamp(var(--gap), 6vw, var(--gap-section));
+  text-align: center;
+  font-family: var(--font-display);
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+  /* 证书双内框:两圈细线内衬,像老式奖状的界框 */
+  box-shadow:
+    inset 0 0 0 5px var(--paper-warm),
+    inset 0 0 0 6px var(--paper-edge),
+    inset 0 0 0 11px var(--paper-warm),
+    inset 0 0 0 12px var(--paper-edge),
+    var(--shadow-paper);
+  animation: inkSpread var(--t-slow) var(--ease-out) backwards;
+}
+
+/* 水墨晕开:由虚入实,墨迹在纸上洇定(backwards 而非 both,不污染稳态) */
+@keyframes inkSpread {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* 减动效:证书直接现形,不叠加全局 0.01ms 空转 */
+@media (prefers-reduced-motion: reduce) {
+  .cert {
+    animation: none;
+    animation-delay: 0ms;
+  }
+}
+
+.certTitle {
+  font-size: var(--fs-title);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.6em;
+  text-indent: 0.6em; /* 抵消末字后的字距,四字视觉居中 */
+  margin-bottom: var(--gap);
+}
+
+.certBody {
+  font-size: var(--fs-sub);
+  color: var(--ink);
+  line-height: 2.1;
+}
+
+/* 整张证书最重要的一行:授业师落款,务必放大(doc §7) */
+.certTeacher {
+  margin-top: var(--gap);
+  font-size: var(--fs-stat);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+}
+
+.certDate {
+  margin-top: var(--gap-tight);
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  letter-spacing: 0.18em;
+}
+
+/* 「出师」朱印:斜盖在落款一侧,方章制式与全站私章一族 */
+.certSeal {
+  position: absolute;
+  right: clamp(var(--gap), 8vw, var(--gap-section));
+  bottom: var(--gap-loose);
+  display: grid;
+  place-items: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  border: 2px solid var(--seal-red);
+  border-radius: var(--radius-s);
+  color: var(--seal-red);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-indent: 0.14em;
+  transform: rotate(8deg);
+  opacity: 0.9;
+}
+
+/* 窄屏:绝对定位的印会压住落款文字,改回文档流居中盖在末尾 */
+@media (max-width: 640px) {
+  .certSeal {
+    position: static;
+    display: inline-grid;
+    margin-top: var(--gap-tight);
+  }
+}

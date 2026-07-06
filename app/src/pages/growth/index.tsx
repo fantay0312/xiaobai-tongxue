@@ -1,7 +1,7 @@
 /**
  * 成长页 /growth —— 一本真正的「成长册」,按书卷编次:
  * 卷首·师徒(小白阶梯+人格+师道等级印章+下一步) / 卷一·印章墙 / 卷二·教学编年史 /
- * 卷三·盲区图谱 / 卷四·金句画廊 / 卷尾·小白眼里的你。
+ * 卷三·盲区图谱(遗忘的知识点化作「小白的来信」信笺) / 卷四·金句画廊 / 卷尾·小白眼里的你。
  * 数据全部真实派生:印章与师道等级来自 engine/achievements,下一步来自 engine/journey,
  * 编年史把 events 按 sessionId 与 reports 并轨(sessionId 为 null 的备课/补学作独立眉批)。
  * 保留契约:setPersona / 复习 await startReview(topicId) → navigate(`/teach/${topicId}?mode=review`)
@@ -14,7 +14,9 @@ import { useAppStore } from '../../store/appStore';
 import { getTopic, TOPICS } from '../../data';
 import { deriveAchievements, deriveTeacherRank } from '../../engine/achievements';
 import { nextStep } from '../../engine/journey';
+import { deriveXiaobaiLetter } from '../../engine/story';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
+import { XiaobaiLetter } from '../../components/story/XiaobaiLetter';
 import { KnowledgeMap, type MapNode } from './KnowledgeMap';
 import s from './growth.module.css';
 
@@ -440,7 +442,11 @@ export default function GrowthPage() {
       <section className={`${s.section} ${s.rise}`} style={rise(3)}>
         <h2 className={s.h2}>
           <span className={s.volNo}>卷三</span>盲区图谱
-          <small>点一个节点,展开它的掌握度证据链</small>
+          <small>
+            {forgottenNodes.length > 0
+              ? '小白来信了——雾气漫上来的地方'
+              : '点一个节点,展开它的掌握度证据链'}
+          </small>
         </h2>
         <div className={s.mapWrap}>
           <KnowledgeMap
@@ -457,21 +463,21 @@ export default function GrowthPage() {
           <span><span className={`${s.swatch} ${s.swLocked}`} />未开放</span>
         </div>
 
-        {forgottenNodes.map((n) => (
-          <div key={n.topic.topicId} className={s.forgotRow}>
-            <span className={s.forgotText}>
-              小白说「{n.topic.title}」它有点忘了……当时讲的那个关键地方,是怎么回事来着?
-            </span>
-            <button
-              type="button"
-              className={s.btnGhost}
-              disabled={reviewBusy}
-              onClick={() => goReview(n.topic.topicId)}
-            >
-              帮它复习
-            </button>
+        {/* 遗忘不再是干瘪一行:每个雾里的知识点是一封「小白的来信」(doc §8),
+            素材由 deriveXiaobaiLetter 从真实命中要点与金句派生;回信即原 goReview 契约 */}
+        {forgottenNodes.length > 0 && (
+          <div className={s.letterFlow}>
+            {forgottenNodes.map((n) => n.state && (
+              <XiaobaiLetter
+                key={n.topic.topicId}
+                topicTitle={n.topic.title}
+                data={deriveXiaobaiLetter({ topic: n.topic, state: n.state, events })}
+                busy={reviewBusy}
+                onReply={() => goReview(n.topic.topicId)}
+              />
+            ))}
           </div>
-        ))}
+        )}
 
         <div className={`${s.collapse} ${selNode ? s.open : ''}`}>
           <div>

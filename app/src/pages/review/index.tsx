@@ -2,12 +2,17 @@
  * 复盘页 /review/:sessionId —— 宣纸教学档案。
  * 顺序铁律(方案 §8.2):先高光,后盲区;盲区话术永远「小白还没懂」。
  * 证据链:本 session 事件流 evidence + (会话未关闭时)逐轮评估判语。
+ * 叙事层(证书/战报/日记)全部从本场 misconception_* 事件派生,不读 mcStates 快照
+ * (session_ended 重放会把悬置误区退回待注入,快照会抹掉本场遭遇记录)。
  */
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type { LearnEventType, SessionMode } from '../../types';
 import { useAppStore } from '../../store/appStore';
 import { getTopic } from '../../data';
+import { deriveDemonReport, deriveDiary, type DemonEncounter } from '../../engine/story';
+import { MasteryCertificate } from '../../components/story/MasteryCertificate';
+import { XiaobaiDiary } from '../../components/story/XiaobaiDiary';
 import { Radar } from './Radar';
 import { RemedyPath } from './RemedyPath';
 import s from './review.module.css';
@@ -45,6 +50,13 @@ function tagClass(type: LearnEventType): string {
   if (['misconception_injected', 'stuck_rescued'].includes(type)) return `${s.tag} ${s.tagWarn}`;
   return s.tag;
 }
+
+/** 心魔结局 → 卡片配色类:击退归黛绿,拐走归朱砂(真警示语境),照面归淡墨 */
+const OUTCOME_CLASS: Record<DemonEncounter['outcome'], 'demonVanquished' | 'demonStray' | 'demonPassed'> = {
+  vanquished: 'demonVanquished',
+  stray: 'demonStray',
+  passed: 'demonPassed',
+};
 
 const fmtTime = (iso: string) =>
   new Date(iso).toLocaleTimeString('zh-CN', { hour12: false });
@@ -85,6 +97,25 @@ export default function ReviewPage() {
   const traces = live && live.sessionId === sessionId ? live.traces : [];
   const hasPrev = !!report.radarDelta && Object.keys(report.radarDelta).length > 0;
 
+  // 叙事派生:纯函数、小数组,每帧直接算,不值得 memo
+  const encounters = topic ? deriveDemonReport(topic, sessionEvents) : [];
+  const diary = topic ? deriveDiary({ topic, sessionEvents, report }) : null;
+
+  /** 「去救小白」:展开该心魔的补学微路径,并把对应盲区条目滚进视野 */
+  const rescueXiaobai = (mcId: string) => {
+    setOpenRemedy(mcId);
+    // 滚动必须推迟到 React 提交 + 折叠过渡(--t-med 320ms)结束后:同步滚会用旧布局坐标,
+    // 上方原本展开的补学路径收起时内容整体上移,目标就滚偏了。reduced-motion 下全局
+    // 开关已把过渡压到 0.01ms,0ms 延时(等提交)即可
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.setTimeout(() => {
+      document.getElementById(`blind-${mcId}`)?.scrollIntoView({
+        behavior: reduce ? 'auto' : 'smooth',
+        block: 'center',
+      });
+    }, reduce ? 0 : 360);
+  };
+
   return (
     <div className={s.page}>
       <header className={`${s.head} ${s.rise}`} style={rise(0)}>
@@ -96,6 +127,9 @@ export default function ReviewPage() {
           {report.masteredNow && <span className={s.masteredBadge}>本次出师</span>}
         </p>
       </header>
+
+      {/* 出师那一课:结业证书顶格,先于一切分栏(doc §7 仪式资产) */}
+      {report.masteredNow && topic && <MasteryCertificate topic={topic} report={report} />}
 
       <div className={s.layout}>
         <div className={s.main}>
@@ -135,6 +169,28 @@ export default function ReviewPage() {
           {/* 叁 · 盲区在后 —— 永远说「小白还没懂」 */}
           <section className={`${s.section} ${s.rise}`} style={rise(3)}>
             <h2 className={s.h2}>叁 · 小白还没懂的地方<small>不是你不行,是它还没被讲明白</small></h2>
+            {/* 心魔战报(doc §3.2):注入当下零提示,一切戏剧化只落在课后这里 */}
+            {encounters.length > 0 && (
+              <div className={s.demonReport}>
+                <p className={s.demonHead}>⚔ 本课遭遇心魔 ×{encounters.length}</p>
+                <ul className={s.demonList}>
+                  {encounters.map((en) => (
+                    <li key={en.mcId} className={`${s.demonCard} ${s[OUTCOME_CLASS[en.outcome]]}`}>
+                      <div className={s.demonRow}>
+                        <span className={s.demonChip}>{en.name}</span>
+                        {en.belief && <span className={s.demonBelief}>「{en.belief}」</span>}
+                      </div>
+                      <p className={s.demonLine}>{en.line}</p>
+                      {en.outcome === 'stray' && (
+                        <button type="button" className={s.rescueBtn} onClick={() => rescueXiaobai(en.mcId)}>
+                          去救小白 →
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {report.blindSpots.length === 0 ? (
               <p className={s.muted}>这次没有留下盲区——小白全都听懂了。</p>
             ) : (
@@ -147,6 +203,7 @@ export default function ReviewPage() {
                     return (
                       <li
                         key={`${spot.knowledgePoint}-${i}`}
+                        id={spot.mcId ? `blind-${spot.mcId}` : undefined}
                         className={spot.severity === 'high' ? `${s.blindItem} ${s.blindItemHigh}` : s.blindItem}
                       >
                         <div className={s.blindHead}>
@@ -262,8 +319,16 @@ export default function ReviewPage() {
             </div>
           </section>
 
+          {/* 陆 · 小白的日记 —— 记岔的那段以最自信的语气写下,零报错样式,天气是唯一信号 */}
+          {diary && (
+            <section className={`${s.section} ${s.rise}`} style={rise(6)}>
+              <h2 className={s.h2}>陆 · 小白的日记<small>课后小白写的——它眼里的今天</small></h2>
+              <XiaobaiDiary page={diary} />
+            </section>
+          )}
+
           {/* 底部去处 —— 档案读完不留死胡同(出师后主按钮已指向书斋,不再重复给次链接) */}
-          <footer className={`${s.footNav} ${s.rise}`} style={rise(6)}>
+          <footer className={`${s.footNav} ${s.rise}`} style={rise(7)}>
             <Link
               to={report.masteredNow ? '/study' : `/teach/${report.topicId}`}
               className={s.btnPrimary}
@@ -283,6 +348,7 @@ export default function ReviewPage() {
           <p className={s.railNote}>雷达只跟你自己的上一次比。</p>
           <p className={s.railNote}>盲区的意思是「小白还没懂」,不是「你不行」。</p>
           <p className={s.railNote}>每个分数都有证据,翻到卷伍展开。</p>
+          <p className={s.railNote}>日记里小白写下的,它都当真——包括记岔的那一处。</p>
         </aside>
       </div>
     </div>

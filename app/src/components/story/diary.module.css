@@ -1,0 +1,34 @@
+/* 小白的日记 —— 一页微斜的暖纸日记叶。
+   纪律:全部段落共用同一套样式,不给"记岔的那段"任何视觉特殊化;
+   天气跟日期同色同级,安静地立在右上角 */
+
+.leaf {
+  max-width: 44em;
+  padding: var(--gap-loose) clamp(var(--gap), 4vw, var(--gap-loose));
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-paper);
+  transform: rotate(-0.3deg);
+  font-family: var(--font-display);
+}
+
+/* 首行日期天气,右对齐如手写日记的抬头 */
+.dateLine {
+  text-align: right;
+  font-size: var(--fs-sub);
+  color: var(--ink-soft);
+  letter-spacing: 0.12em;
+  margin-bottom: var(--gap);
+}
+
+.para {
+  text-indent: 2em;
+  line-height: 2.1;
+  font-size: var(--fs-sub);
+  color: var(--ink);
+}
+
+.para + .para {
+  margin-top: var(--gap-tight);
+}

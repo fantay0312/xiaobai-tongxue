@@ -527,20 +527,14 @@
 .swDust { background: var(--dust); }
 .swLocked { background: var(--dust); opacity: 0.35; }
 
-/* 忘了→复习 入口 */
+/* 忘了→来信:信笺一封封竖着叠(信本体样式在 components/story/letter.module.css) */
 
-.forgotRow {
+.letterFlow {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: var(--gap);
   margin-top: var(--gap);
-  padding: var(--gap-tight) var(--gap);
-  background: var(--amber-wash);
-  border-radius: var(--radius-s);
-  flex-wrap: wrap;
 }
-
-.forgotText { font-family: var(--font-display); color: var(--ink); }
 
 /* 节点详情 + 证据链 */
 

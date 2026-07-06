@@ -1,0 +1,131 @@
+/* 小白的来信 —— 卷三里的信笺:paper-warm 信纸 + 信封式双框 + 右上折角。
+   遗忘是衰减语义,模糊那句借 amber-ink(小字号对比档);回信按钮走墨青幽灵钮。
+   入场做一次轻微展信(backwards 不驻留 to 帧,免压交互态);减动效下直接现形。 */
+
+.letter {
+  position: relative;
+  max-width: 36rem;
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  padding: var(--gap) calc(var(--gap) * 1.2) var(--gap-tight);
+  /* 信封式双框:内衬一圈信纸细线,像旧式信笺的界框 */
+  box-shadow:
+    inset 0 0 0 4px var(--paper-warm),
+    inset 0 0 0 5px var(--paper-edge);
+  animation: letterIn var(--t-slow) var(--ease-out) backwards;
+}
+
+/* 右上折角:外侧半片露出页底纸色(像裁掉的角),内侧半片是压深一档的折翼 */
+.letter::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1.4rem;
+  height: 1.4rem;
+  background: linear-gradient(225deg, var(--paper) 48%, var(--paper-edge) 48%);
+}
+
+/* 展信:自上沿揭开 + 轻轻落定 */
+@keyframes letterIn {
+  from {
+    opacity: 0;
+    clip-path: inset(0 0 62% 0 round var(--radius-s));
+    transform: translateY(-6px) rotate(-0.6deg);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0 round var(--radius-s));
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .letter {
+    animation: none;
+    animation-delay: 0ms;
+  }
+}
+
+.salute {
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: var(--gap-hair);
+}
+
+.text {
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  line-height: 2;
+  color: var(--ink-soft);
+  text-indent: 2em;
+}
+
+/* 正在模糊的那一点:衰减语义落 amber-ink(原档压暖纸不足 3:1) */
+.fuzzy { color: var(--amber-ink); }
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--gap-tight);
+  margin-top: var(--gap-hair);
+}
+
+.signature {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  letter-spacing: 0.2em;
+  color: var(--ink-faint);
+}
+
+/* 落款小印:小白的私章 —— 印泥红走 --seal-red 别名(印章豁免,勿与警示朱砂混用) */
+.sealMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 2px solid var(--seal-red);
+  border-radius: var(--radius-s);
+  color: var(--seal-red);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  transform: rotate(-4deg);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: var(--gap-tight);
+}
+
+.replyBtn {
+  background: none;
+  border: 1px solid var(--azure);
+  color: var(--azure);
+  border-radius: var(--radius-s);
+  padding: 0.35rem 0.9rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+}
+
+.replyBtn:hover:not(:disabled) {
+  background: var(--azure-wash);
+  transform: translateY(-1px);
+}
+
+.replyBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.replyBtn:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 3px;
+}
