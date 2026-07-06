@@ -1,16 +1,27 @@
 /**
  * 备课页 /prep/:topicId —— 自习桌面。
  * 流程:壹 摸底快测(误区库判断题,逐题即时反馈) → 贰 教学任务卡(真实卡片质感)
- *      → 叁 材料包(微课讲义 + 例题,按错题相关展开) → 肆 自检清单全勾 → 解锁讲解舱。
+ *      → 叁 讲课路线图(checklist 教学大纲 + 小白的追问原话)
+ *      → 肆 研读材料包(微课讲义 + 例题 + 误区剧本预演,按错题相关展开)
+ *      → 伍 自检清单全勾 → 解锁讲解舱。
  * 全对可跳过备课直接开讲;状态只经 store(completePrep)。
  */
-import { useRef, useState, type ReactNode } from 'react';
+import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 import { getTopic } from '../../data';
 import { Md } from '../../components/Md';
-import type { Misconception } from '../../types';
+import type { Misconception, QuestionLevel } from '../../types';
 import s from './prep.module.css';
+
+/** 追问层级 → 路线图徽章文案(checklist 无 L4;L4 = 误区注入,以途中试探标记呈现) */
+const LEVEL_META: Record<QuestionLevel, string> = {
+  L1: '澄清',
+  L2: '举例',
+  L3: '边界',
+  L4: '试探',
+  L5: '迁移',
+};
 
 /** 例题与错题的相关性:命中该误区的纠正关键词或误区表述即视为相关 */
 function relatedToWrong(text: string, wrong: Misconception[]): boolean {
@@ -92,6 +103,9 @@ export default function PrepPage() {
   const allChecked =
     topic.prep.selfCheck.length > 0 && topic.prep.selfCheck.every((_, i) => checks[i]);
 
+  /** 路线图途中试探标记插在大纲中段(L4 误区注入没有固定位置,只提示"路上会来") */
+  const ambushAfter = Math.max(0, Math.floor((topic.checklist.length - 1) / 2));
+
   const answer = (choice: boolean) =>
     setAnswers((a) => (a.length >= probes.length ? a : [...a, choice]));
 
@@ -121,6 +135,9 @@ export default function PrepPage() {
             </h2>
             <p className={s.sectionHint}>
               开讲之前,先看看你现在站在哪。判断下面的说法对不对:
+              {!quizDone && (
+                <span className={s.quizCount}>已答 {answers.length} / {probes.length}</span>
+              )}
             </p>
             <ol className={s.probeList}>
               {probes.map((mc, i) => {
@@ -200,10 +217,54 @@ export default function PrepPage() {
                 </div>
               </section>
 
-              {/* ── 叁 · 材料包 ── */}
+              {/* ── 叁 · 讲课路线图 ── */}
               <section className={s.section}>
                 <h2 className={s.sectionTitle}>
-                  <span className={s.sectionNum}>叁</span>研读材料包
+                  <span className={s.sectionNum}>叁</span>讲课路线图
+                </h2>
+                <p className={s.sectionHint}>
+                  你要把下面 {topic.checklist.length} 件事讲明白——小白到时候大概会这么问。
+                </p>
+                <ol className={s.roadmap}>
+                  {topic.checklist.map((item, i) => (
+                    <Fragment key={item.id}>
+                      <li className={s.roadStep} style={{ animationDelay: `${i * 70}ms` }}>
+                        <span className={s.roadBadge}>
+                          <b>{item.level}</b>
+                          {LEVEL_META[item.level]}
+                        </span>
+                        <div className={s.roadBody}>
+                          <p className={s.roadPoint}>{item.point}</p>
+                          <p className={s.roadProbe}>
+                            「{item.probeLine}」
+                            <span className={s.roadWho}>—— 小白</span>
+                          </p>
+                        </div>
+                      </li>
+                      {i === ambushAfter && topic.misconceptions.length > 0 && (
+                        <li
+                          className={s.roadAmbush}
+                          style={{ animationDelay: `${(i + 1) * 70}ms` }}
+                        >
+                          <span className={s.roadBadgeWarn}>
+                            <b>L4</b>
+                            试探
+                          </span>
+                          <p className={s.roadAmbushText}>
+                            途中它还会用错误直觉试探你 ×{topic.misconceptions.length}
+                            ——剧本在下面的「误区剧本」里。
+                          </p>
+                        </li>
+                      )}
+                    </Fragment>
+                  ))}
+                </ol>
+              </section>
+
+              {/* ── 肆 · 材料包 ── */}
+              <section className={s.section}>
+                <h2 className={s.sectionTitle}>
+                  <span className={s.sectionNum}>肆</span>研读材料包
                 </h2>
                 <p className={s.sectionHint}>
                   {wrongMcs.length > 0
@@ -231,13 +292,51 @@ export default function PrepPage() {
                       <p className={s.walkthrough}>{ex.walkthrough}</p>
                     </Collapse>
                   ))}
+                  <Collapse
+                    title="预演:小白会怎么为难你"
+                    tag="误区剧本"
+                    tagTone="warn"
+                    defaultOpen={wrongMcs.length > 0}
+                  >
+                    <p className={s.drillLead}>
+                      纠不动它,它就真的学错——复盘时会现形。
+                    </p>
+                    <ul className={s.drillList}>
+                      {topic.misconceptions.map((mc) => {
+                        const stumbled = wrongMcs.some((w) => w.mcId === mc.mcId);
+                        return (
+                          <li
+                            key={mc.mcId}
+                            className={`${s.drill} ${stumbled ? s.drillStumbled : ''}`}
+                          >
+                            <p className={s.drillBelief}>
+                              它会坚信:{mc.belief}
+                              {stumbled && (
+                                <span className={s.drillStumbleTag}>你刚栽在这里</span>
+                              )}
+                            </p>
+                            <p className={s.drillLine}>
+                              「{mc.triggerLine}」
+                              <span className={s.roadWho}>—— 小白,开口大概是这样</span>
+                            </p>
+                            <p className={s.drillCritTitle}>纠正到位的标准</p>
+                            <ul className={s.drillCrits}>
+                              {mc.correctionCriteria.map((c) => (
+                                <li key={c}>{c}</li>
+                              ))}
+                            </ul>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </Collapse>
                 </div>
               </section>
 
-              {/* ── 肆 · 自检清单 ── */}
+              {/* ── 伍 · 自检清单 ── */}
               <section className={s.section}>
                 <h2 className={s.sectionTitle}>
-                  <span className={s.sectionNum}>肆</span>备课自检
+                  <span className={s.sectionNum}>伍</span>备课自检
                 </h2>
                 <p className={s.sectionHint}>对着清单问自己,都能点头再上讲台。</p>
                 <ul className={s.checkList}>
@@ -285,17 +384,18 @@ export default function PrepPage() {
         {/* ── 眉批侧注 ── */}
         <aside className={s.aside}>
           <div>
-            <h3 className={s.asideTitle}>备课四步</h3>
+            <h3 className={s.asideTitle}>备课五步</h3>
             <ol className={s.stepList}>
               {[
                 { name: '摸底快测', done: quizDone, active: !quizDone },
                 { name: '教学任务卡', done: materialsVisible, active: false },
+                { name: '讲课路线图', done: materialsVisible, active: false },
                 {
                   name: '研读材料包',
                   done: materialsVisible && allChecked,
                   active: materialsVisible && !allChecked,
                 },
-                { name: '自检清单', done: allChecked, active: false },
+                { name: '备课自检', done: allChecked, active: false },
               ].map((st) => (
                 <li
                   key={st.name}
@@ -307,6 +407,19 @@ export default function PrepPage() {
               ))}
             </ol>
           </div>
+          {materialsVisible && (
+            <div>
+              <h3 className={s.asideTitle}>路线图</h3>
+              <ol className={s.miniRoute}>
+                {topic.checklist.map((item) => (
+                  <li key={item.id} className={s.miniRouteItem}>
+                    <span className={s.miniRouteLevel}>{LEVEL_META[item.level]}</span>
+                    {item.point}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
           {wrongMcs.length > 0 && (
             <div>
               <h3 className={s.asideTitle}>摸底暴露的薄弱点</h3>

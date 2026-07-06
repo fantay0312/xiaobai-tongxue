@@ -169,6 +169,174 @@
 }
 .ghostBtn:hover { border-color: var(--azure); color: var(--azure); }
 
+.quizCount {
+  margin-left: var(--gap-tight);
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  letter-spacing: 0.1em;
+}
+
+/* ── 讲课路线图:竖排教学大纲,层级徽章 + 小白追问引文 ── */
+.roadmap {
+  list-style: none;
+  margin: var(--gap) 0 0;
+  padding: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+}
+.roadmap::before {
+  content: '';
+  position: absolute;
+  left: 2.1rem;
+  top: 0.9rem;
+  bottom: 0.9rem;
+  border-left: 1px dashed var(--paper-edge);
+}
+.roadStep,
+.roadAmbush {
+  position: relative;
+  display: flex;
+  gap: var(--gap);
+  align-items: flex-start;
+  animation: rise var(--t-med) var(--ease-out) both;
+}
+.roadBadge,
+.roadBadgeWarn {
+  flex: 0 0 auto;
+  width: 4.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0.2rem 0;
+  margin-top: 0.35rem;
+  border-radius: 999px;
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.08em;
+  background: var(--paper);
+  border: 1px solid var(--azure);
+  color: var(--azure);
+}
+.roadBadge b,
+.roadBadgeWarn b {
+  font-family: var(--font-code);
+  font-weight: 600;
+  font-size: 0.9em;
+}
+.roadBadgeWarn {
+  border-color: var(--cinnabar);
+  color: var(--cinnabar);
+  border-style: dashed;
+}
+.roadBody {
+  min-width: 0;
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  padding: var(--gap-tight) var(--gap);
+  flex: 1;
+}
+.roadPoint {
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  line-height: 1.7;
+}
+.roadProbe {
+  margin-top: var(--gap-hair);
+  color: var(--ink-soft);
+  font-size: var(--fs-small);
+  line-height: 1.9;
+  padding-left: var(--gap-tight);
+  border-left: 2px solid var(--azure);
+}
+.roadWho {
+  display: inline-block;
+  margin-left: 0.5em;
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.roadAmbushText {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0.3rem;
+  color: var(--cinnabar);
+  font-size: var(--fs-small);
+  line-height: 1.8;
+  font-family: var(--font-display);
+}
+
+/* ── 试探预演:误区剧本 ── */
+.drillLead {
+  color: var(--cinnabar);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  line-height: 1.9;
+  margin-bottom: var(--gap-tight);
+}
+.drillList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+}
+.drill {
+  border: 1px solid var(--paper-edge);
+  border-left: 3px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  background: var(--paper);
+  padding: var(--gap-tight) var(--gap);
+}
+.drillStumbled {
+  border-left-color: var(--cinnabar);
+  background: var(--cinnabar-wash);
+}
+.drillBelief {
+  font-family: var(--font-display);
+  line-height: 1.8;
+}
+.drillStumbleTag {
+  display: inline-block;
+  margin-left: 0.6em;
+  font-size: var(--fs-tiny);
+  color: var(--cinnabar);
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  padding: 0 6px;
+  vertical-align: 0.15em;
+  white-space: nowrap;
+}
+.drillLine {
+  margin-top: var(--gap-hair);
+  color: var(--ink-soft);
+  font-size: var(--fs-small);
+  line-height: 1.9;
+  padding-left: var(--gap-tight);
+  border-left: 2px solid var(--cinnabar);
+}
+.drillCritTitle {
+  margin-top: var(--gap-tight);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.2em;
+  color: var(--ink-faint);
+}
+.drillCrits {
+  margin: var(--gap-hair) 0 0;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--fs-small);
+  line-height: 1.8;
+  color: var(--ink);
+}
+.drillCrits li::marker { color: var(--jade); }
+
 /* ── 教学任务卡:一张真实的卡片,微微旋转、破格出栏 ── */
 .taskCard {
   position: relative;
@@ -382,6 +550,38 @@
 .stepActive .stepDot { background: var(--azure); }
 .stepDone { color: var(--ink-soft); }
 .stepDone .stepDot { background: var(--jade); }
+.miniRoute {
+  list-style: none;
+  margin: var(--gap-hair) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+  counter-reset: mini;
+}
+.miniRouteItem {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-tight);
+  line-height: 1.7;
+  color: var(--ink-soft);
+}
+.miniRouteItem::before {
+  counter-increment: mini;
+  content: counter(mini);
+  flex: 0 0 auto;
+  font-family: var(--font-code);
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+}
+.miniRouteLevel {
+  flex: 0 0 auto;
+  font-size: var(--fs-tiny);
+  color: var(--azure);
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  padding: 0 4px;
+}
 .weakList {
   list-style: none;
   margin: var(--gap-hair) 0 0;
@@ -416,4 +616,30 @@
     padding-top: var(--gap);
   }
   .taskCard { width: 100%; margin-left: 0; }
+}
+
+@media (max-width: 560px) {
+  .roadmap::before { display: none; }
+  .roadStep,
+  .roadAmbush {
+    flex-direction: column;
+    gap: var(--gap-hair);
+  }
+  .roadBadge,
+  .roadBadgeWarn { margin-top: 0; }
+  .roadAmbushText { margin-top: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .head,
+  .section,
+  .aside,
+  .probe,
+  .verdictGood,
+  .verdictBad,
+  .roadStep,
+  .roadAmbush {
+    animation: none;
+  }
+  .collapseBody { transition: none; }
 }
