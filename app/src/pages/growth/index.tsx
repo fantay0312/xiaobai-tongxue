@@ -20,12 +20,13 @@ import { XiaobaiLetter } from '../../components/story/XiaobaiLetter';
 import { KnowledgeMap, type MapNode } from './KnowledgeMap';
 import s from './growth.module.css';
 
+/* 阶名对齐 3D 形象的等级配件:1 嫩芽 / 2 灯泡 / 3 眼镜 / 4 眼镜+问号泡 / 5 学士帽 */
 const LEVELS = [
-  { lv: 1, name: 'Lv1 嫩芽', desc: '初入学堂' },
-  { lv: 2, name: 'Lv2 灯泡', desc: '偶有灵光' },
-  { lv: 3, name: 'Lv3 眼镜', desc: '追问成性' },
-  { lv: 4, name: 'Lv4 眼镜', desc: '刨根问底' },
-  { lv: 5, name: 'Lv5 学士帽', desc: '可以出师' },
+  { lv: 1, name: '嫩芽', desc: '初入学堂' },
+  { lv: 2, name: '灯泡', desc: '偶有灵光' },
+  { lv: 3, name: '眼镜', desc: '追问成性' },
+  { lv: 4, name: '问号', desc: '刨根问底' },
+  { lv: 5, name: '学士帽', desc: '可以出师' },
 ] as const;
 
 const PERSONAS: { name: Persona; line: string }[] = [
@@ -230,23 +231,38 @@ export default function GrowthPage() {
 
   return (
     <div className={s.page}>
-      {/* ── 卷首·师徒:小白 + 成长阶梯 + 人格皮肤 + 师道等级 + 下一步 ── */}
+      {/* ── 卷首·师徒:弟子画像立轴 + 修行阶牌 + 性情之笺 + 师道/下一步双卡 ── */}
       <header className={`${s.hero} ${s.rise}`} style={rise(0)}>
-        <div className={s.avatarBox}>
-          <XiaobaiAvatar mood={mood} level={global.learningLevel} variant="paper" size={200} />
-        </div>
-        <div>
+        <figure className={s.portrait}>
+          <p className={s.portraitMark} aria-hidden="true">弟 子 画 像</p>
+          <div className={s.portraitStage}>
+            <XiaobaiAvatar mood={mood} level={global.learningLevel} variant="paper" size={176} />
+          </div>
+          {/* figcaption 须是 figure 的末位元素子节点(HTML 内容模型),展签一并收进题名里 */}
+          <figcaption className={s.portraitCaption}>
+            <span className={s.portraitNameRow}>
+              <span className={s.portraitName}>弟子 · 小白</span>
+              <span className={s.portraitSeal} aria-hidden="true">白</span>
+            </span>
+            {/* 画像展签随性情皮肤联动 */}
+            <span className={s.portraitNote}>性情 · {global.persona}</span>
+          </figcaption>
+        </figure>
+
+        <div className={s.heroBody}>
           <p className={s.volMark}>卷首 · 师徒</p>
           <h1 className={s.heroTitle}>小白的成长册</h1>
           <p className={s.heroSub}>
-            它现在是 <span className={s.levelNow}>{LEVELS[global.learningLevel - 1].name} · {LEVELS[global.learningLevel - 1].desc}</span>
+            它现在是 <span className={s.levelNow}>Lv{global.learningLevel} {LEVELS[global.learningLevel - 1].name} · {LEVELS[global.learningLevel - 1].desc}</span>
             ——你教得越明白,它追问得越刁钻。
           </p>
 
-          <div className={s.ladder}>
+          {/* 修行阶:走过的阶落墨,当下的阶钤青印,没到的阶还是虚印(与卷一印章墙同语) */}
+          <ol className={s.ladder} aria-label="小白的成长阶梯">
             {LEVELS.map((l) => (
-              <div
+              <li
                 key={l.lv}
+                aria-current={l.lv === global.learningLevel ? 'step' : undefined}
                 className={
                   l.lv === global.learningLevel
                     ? `${s.rung} ${s.rungNow}`
@@ -255,25 +271,36 @@ export default function GrowthPage() {
                       : s.rung
                 }
               >
-                <span className={s.rungDot} />
-                <div className={s.rungName}>{l.name}</div>
-                <div className={s.rungDesc}>{l.desc}</div>
-              </div>
+                <span className={s.rungLv}>Lv{l.lv}</span>
+                <span className={s.rungName}>{l.name}</span>
+                <span className={s.rungDesc}>{l.desc}</span>
+              </li>
             ))}
-          </div>
+          </ol>
 
-          <div className={s.personaRow}>
-            {PERSONAS.map((p) => (
-              <button
-                key={p.name}
-                type="button"
-                className={global.persona === p.name ? `${s.personaCard} ${s.personaActive}` : s.personaCard}
-                onClick={() => setPersona(p.name)}
-              >
-                <span className={s.personaName}>{p.name}</span>
-                <p className={s.personaLine}>{p.line}</p>
-              </button>
-            ))}
+          {/* 性情之笺:三张可点的纸笺,现用那张钤「现用」小印 */}
+          <div className={s.personaBlock}>
+            <p className={s.blockLabel}>性情之笺 <small>点一张,换一种问法</small></p>
+            <div className={s.personaRow} role="group" aria-label="小白的性情皮肤">
+              {PERSONAS.map((p) => {
+                const active = global.persona === p.name;
+                return (
+                  <button
+                    key={p.name}
+                    type="button"
+                    aria-pressed={active}
+                    className={active ? `${s.personaCard} ${s.personaActive}` : s.personaCard}
+                    onClick={() => setPersona(p.name)}
+                  >
+                    <span className={s.personaTop}>
+                      <span className={s.personaName}>{p.name}</span>
+                      {active && <span className={s.personaStamp} aria-hidden="true">现用</span>}
+                    </span>
+                    <p className={s.personaLine}>{p.line}</p>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* 徒弟的阶梯之外,还有师父的路:师道等级印章卡 + 下一步 CTA */}
@@ -298,7 +325,7 @@ export default function GrowthPage() {
               <div className={s.journeyCard}>
                 <p className={s.journeyLabel}>下一步 · {step.title}</p>
                 <p className={s.journeyLine}>{step.line}</p>
-                <Link to={step.to} className={s.btnGhost}>{step.cta} →</Link>
+                <Link to={step.to} className={s.btnSolid}>{step.cta} →</Link>
               </div>
             )}
           </div>

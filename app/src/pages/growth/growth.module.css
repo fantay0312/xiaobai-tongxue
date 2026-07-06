@@ -68,21 +68,104 @@
 /* 数字纪律:所有数值/时间落 code 字体 */
 .num { font-family: var(--font-code); font-weight: 500; font-size: 0.95em; }
 
-/* ── 卷首:小白 + 成长阶梯 + 人格皮肤 ── */
+/* ── 卷首:弟子画像立轴 + 修行阶牌 + 性情之笺 + 师道/下一步双卡 ── */
 
 .hero {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  column-gap: var(--gap-loose);
+  column-gap: clamp(var(--gap-loose), 5vw, 4.5rem);
   align-items: start;
   margin-bottom: var(--gap-section);
 }
 
 @media (max-width: 820px) {
-  .hero { grid-template-columns: 1fr; row-gap: var(--gap); }
+  .hero { grid-template-columns: 1fr; row-gap: var(--gap-loose); }
+
+  .portrait { margin-inline: auto; }
 }
 
-.avatarBox { margin-top: var(--gap-tight); }
+/* 弟子画像:册页里裱起来的一幅小像 —— 双框衬纸,题签在上,展签在下 */
+.portrait {
+  width: clamp(13rem, 20vw, 15rem);
+  margin: 0;
+  padding: var(--gap-tight) var(--gap-tight) var(--gap);
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+  box-shadow: inset 0 0 0 5px var(--paper-warm), inset 0 0 0 6px var(--paper-edge), var(--shadow-paper);
+  text-align: center;
+}
+
+.portraitMark {
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  padding-bottom: var(--gap-hair);
+  border-bottom: 1px solid var(--paper-edge);
+  margin: 0 var(--gap-hair);
+}
+
+.portraitStage {
+  display: flex;
+  justify-content: center;
+  padding: var(--gap-tight) 0 0;
+}
+
+.portraitCaption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-tight);
+  margin-top: var(--gap-hair);
+}
+
+.portraitNameRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-tight);
+}
+
+.portraitName {
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.08em;
+}
+
+/* 私章走 --seal-red 印泥别名(DESIGN.md 印章豁免) */
+.portraitSeal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 1.5px solid var(--seal-red);
+  border-radius: var(--radius-s);
+  color: var(--seal-red);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  transform: rotate(-4deg);
+}
+
+/* 展签:随性情皮肤联动的小铭牌 */
+.portraitNote {
+  display: inline-block;
+  padding: 0.1rem 0.7rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  color: var(--ink-soft);
+  letter-spacing: 0.14em;
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+}
+
+.heroBody { min-width: 0; }
 
 .heroTitle { font-size: var(--fs-hero); color: var(--ink); letter-spacing: 0.04em; }
 
@@ -95,131 +178,205 @@
 
 .levelNow { color: var(--azure); }
 
-/* 成长阶梯:Lv1 嫩芽 → Lv5 学士帽 */
+/* 修行阶:五方阶牌踏一条墨点路 —— 走过的落墨、当下的钤青印、没到的还是虚印
+   (虚实语言与卷一印章墙同源;overflow 横滚与图谱/画廊同一逃生口) */
 
 .ladder {
+  list-style: none;
+  margin: 0 0 var(--gap-loose);
+  padding: var(--gap-hair);
+  position: relative;
   display: flex;
-  align-items: flex-start;
-  margin-bottom: var(--gap-loose);
-  max-width: 40rem;
+  gap: var(--gap-tight);
+  max-width: 46rem;
+  overflow-x: auto;
 }
 
 .rung {
-  flex: 1;
   position: relative;
-  padding-top: 1.1rem;
+  flex: 1 1 0;
+  min-width: 6.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--gap-hair) var(--gap-tight);
+  background: var(--paper);
+  border: 1.5px dashed var(--dust);
+  border-radius: var(--radius-s);
 }
 
-.rung::before {
+/* 墨点路:逐牌接力的小连线,跟得上 ladder 的横向滚动(容器级横线只到 padding box 就断了) */
+.rung:not(:last-child)::after {
   content: '';
   position: absolute;
-  top: 0.42rem;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--paper-edge);
+  top: 50%;
+  left: 100%;
+  width: var(--gap-tight);
+  border-top: 2px dotted var(--dust);
 }
 
-.rung:first-child::before { left: 0.5rem; }
-.rung:last-child::before { right: auto; width: 0.5rem; }
+.rungLv { font-family: var(--font-code); font-size: var(--fs-tiny); color: var(--ink-faint); }
 
-.rungDot {
-  position: absolute;
-  top: 0;
-  left: 0.15rem;
-  width: 0.85rem;
-  height: 0.85rem;
-  border-radius: 50%;
-  background: var(--paper);
-  border: 2px solid var(--dust);
-}
-
-.rungPast .rungDot { background: var(--ink-soft); border-color: var(--ink-soft); }
-
-.rungNow .rungDot {
-  background: var(--azure);
-  border-color: var(--azure);
-  box-shadow: 0 0 0 4px var(--azure-wash);
-}
-
-.rungName { font-family: var(--font-display); font-size: var(--fs-small); color: var(--ink-faint); }
-.rungPast .rungName { color: var(--ink-soft); }
-.rungNow .rungName { color: var(--azure); }
+.rungName { font-family: var(--font-display); font-size: var(--fs-body); font-weight: 700; color: var(--ink-soft); }
 
 .rungDesc { font-size: var(--fs-tiny); color: var(--ink-faint); }
 
-/* 人格皮肤 */
+/* 实牌底必须不透明:wash 叠在纸色上,否则身后的墨点路会从牌面透出来 */
+.rungPast {
+  border-style: solid;
+  border-color: var(--ink-soft);
+  background: linear-gradient(var(--ink-wash), var(--ink-wash)) var(--paper);
+}
+
+.rungPast .rungName { color: var(--ink); }
+
+/* 落墨的牌上小字随之加深:ink-faint 压 wash 底只剩 ~3.1:1 */
+.rungPast .rungLv,
+.rungPast .rungDesc { color: var(--ink-soft); }
+
+.rungNow {
+  border-style: solid;
+  border-width: 2px;
+  border-color: var(--azure);
+  background: linear-gradient(var(--azure-wash), var(--azure-wash)) var(--paper);
+  box-shadow: var(--shadow-paper);
+  transform: rotate(-1.2deg);
+}
+
+.rungNow .rungLv { color: var(--azure-deep); }
+.rungNow .rungName { color: var(--azure-deep); }
+.rungNow .rungDesc { color: var(--azure-deep); }
+
+/* 性情之笺 */
+
+.personaBlock { margin-bottom: var(--gap-loose); }
+
+.blockLabel {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  color: var(--azure);
+  letter-spacing: 0.18em;
+  margin-bottom: var(--gap-tight);
+}
+
+.blockLabel small {
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  letter-spacing: 0.06em;
+  margin-left: var(--gap-hair);
+}
 
 .personaRow { display: flex; flex-wrap: wrap; gap: var(--gap-tight); }
 
 .personaCard {
+  flex: 1 1 13rem;
+  max-width: 17rem;
   text-align: left;
   background: var(--paper);
   border: 1px solid var(--paper-edge);
-  border-radius: var(--radius);
+  border-radius: var(--radius-s);
   padding: var(--gap-tight) var(--gap);
-  max-width: 15rem;
-  transition: transform var(--t-fast) var(--ease-out);
+  transition: transform var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out);
 }
 
-.personaCard:hover { transform: translateY(-1px); }
-
-.personaCard:hover { border-color: var(--azure); }
+.personaCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--azure);
+  box-shadow: var(--shadow-paper);
+}
 
 .personaActive { border-color: var(--azure); background: var(--azure-wash); }
 
-.personaName { font-family: var(--font-display); font-size: var(--fs-sub); color: var(--ink); display: block; }
-
-.personaActive .personaName { color: var(--azure); }
-
-.personaLine { font-size: var(--fs-small); color: var(--ink-soft); margin-top: var(--gap-hair); }
-
-/* 师道等级印章卡 + 下一步 CTA(卷首收尾的两张平纸卡) */
-
-.mentorRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap);
-  margin-top: var(--gap-loose);
-}
-
-.rankCard {
-  flex: 1 1 18rem;
-  max-width: 26rem;
+.personaTop {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-hair);
+}
+
+.personaName { font-family: var(--font-display); font-size: var(--fs-sub); font-weight: 700; color: var(--ink); }
+
+.personaActive .personaName { color: var(--azure-deep); }
+
+/* 「现用」小印:选中那张笺上钤的一方小青印 */
+.personaStamp {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  color: var(--azure-deep);
+  border: 1.5px solid var(--azure-deep);
+  border-radius: var(--radius-s);
+  padding: 0 0.35rem;
+  letter-spacing: 0.14em;
+  text-indent: 0.14em;
+  transform: rotate(3deg);
+}
+
+/* 笺上的话是它的口头禅,走楷体 */
+.personaLine {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  line-height: 1.8;
+  margin-top: var(--gap-hair);
+}
+
+/* 师道等级印章卡 + 下一步 CTA:同族双卡(同底同框同衬),一张记功、一张指路 */
+
+.mentorRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr));
   gap: var(--gap);
+  max-width: 46rem;
+}
+
+.rankCard,
+.journeyCard {
   background: var(--paper-warm);
   border: 1px solid var(--paper-edge);
-  border-left: 3px solid var(--azure);
-  border-radius: var(--radius-s);
+  border-radius: var(--radius);
+  box-shadow: inset 0 0 0 4px var(--paper-warm), inset 0 0 0 5px var(--paper-edge);
   padding: var(--gap);
 }
 
-/* 方章:2px 描边 + 微旋,师道二字楷体撑字距 */
+.rankCard {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+}
+
+/* 师道方章:竖排双字,免得字距把「道」挤出章框 */
 .rankSeal {
   flex: none;
-  width: 3.4rem;
-  height: 3.4rem;
+  width: 3.2rem;
+  height: 3.2rem;
   display: grid;
   place-items: center;
+  writing-mode: vertical-rl;
+  letter-spacing: 0.14em;
   border: 2px solid var(--azure-deep);
   border-radius: var(--radius-s);
   color: var(--azure-deep);
   font-family: var(--font-display);
-  font-size: var(--fs-sub);
-  letter-spacing: 0.22em;
-  text-indent: 0.22em;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  line-height: 1;
   transform: rotate(-3deg);
 }
 
-.rankBody { min-width: 0; }
+.rankBody { min-width: 0; flex: 1; }
 
-.rankLabel { font-size: var(--fs-tiny); color: var(--ink-faint); letter-spacing: 0.08em; }
+.rankLabel {
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  letter-spacing: 0.14em;
+}
 
 .rankTitle {
   font-family: var(--font-display);
   font-size: var(--fs-title);
+  font-weight: 700;
   color: var(--ink);
   line-height: 1.3;
 }
@@ -227,8 +384,8 @@
 .rankScore { font-size: var(--fs-small); color: var(--ink-soft); margin-top: 2px; }
 
 .rankBar {
-  height: 4px;
-  border-radius: 2px;
+  height: 5px;
+  border-radius: 999px;
   background: var(--ink-wash);
   margin-top: var(--gap-hair);
   overflow: hidden;
@@ -238,26 +395,19 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--azure);
+  background: linear-gradient(90deg, var(--azure), var(--azure-deep));
   transition: width var(--t-slow) var(--ease-out);
 }
 
 .rankNext { font-size: var(--fs-tiny); color: var(--ink-faint); margin-top: var(--gap-hair); }
 
 .journeyCard {
-  flex: 1 1 16rem;
-  max-width: 24rem;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--gap-hair);
-  background: var(--azure-wash);
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-s);
-  padding: var(--gap);
 }
 
-/* wash 底上的小字用 deep 变体保对比 */
 .journeyLabel {
   font-family: var(--font-display);
   font-size: var(--fs-tiny);
@@ -267,7 +417,24 @@
 
 .journeyLine { font-family: var(--font-display); color: var(--ink); line-height: 1.7; }
 
-.journeyCard .btnGhost { margin-top: var(--gap-hair); }
+/* 下一步是卷首唯一的实心按钮:整页只指一条路 */
+.btnSolid {
+  display: inline-block;
+  margin-top: auto;
+  padding: 0.4rem 1.1rem;
+  background: var(--azure);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  border-radius: var(--radius-s);
+  transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+}
+
+.btnSolid:hover { background: var(--azure-deep); transform: translateY(-1px); }
+
+.btnSolid:focus-visible { outline: 2px solid var(--azure); outline-offset: 3px; }
 
 /* ── 卷一·印章墙 ── */
 
