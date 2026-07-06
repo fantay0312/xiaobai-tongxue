@@ -15,6 +15,8 @@ import {
   initialTopicState, isExtractionAttempt, openingCard, replayTopicState, runXiaobaiQuiz, speakXiaobai,
 } from '../engine';
 import type { EventDraft } from '../engine';
+// 跨会话回忆:直接从 recall 模块导入,不走 engine barrel(simulate 在 Node 加载 barrel,recall 不得混入)
+import { recallGreetingLine } from '../engine/recall';
 
 const uid = () => (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
 const now = () => new Date().toISOString();
@@ -150,6 +152,11 @@ export const useAppStore = create<AppState>()(
           sessionId,
         );
 
+        // 跨会话回忆必须在 await 前取材(长渲染期间事件流可能变化);excludeSessionId 滤掉刚开的本场。
+        // 冷启动(无任何往史)返回 null,开场白与从前一字不差;仅 teach 模式追加,reteach/review 不动
+        const recall = mode === 'teach'
+          ? recallGreetingLine({ topic, events: get().events, reports: get().reports, excludeSessionId: sessionId })
+          : null;
         const speak = await speakXiaobai({
           card: opening.card, topic, state, recentMessages: [], settings: get().settings, seed: 0,
         });
@@ -157,7 +164,7 @@ export const useAppStore = create<AppState>()(
         if (get().live?.sessionId !== sessionId) return;
         const greeting =
           mode === 'teach'
-            ? `老师好!今天你要给我讲「${topic.title}」呀?我搬好小板凳了!`
+            ? `老师好!今天你要给我讲「${topic.title}」呀?我搬好小板凳了!${recall ? `\n${recall}` : ''}`
             : mode === 'reteach'
               ? `老师,上次那个问题我后来想了想,还是没转过弯来……`
               : `老师……上次学的东西,我好像有点忘了。`;

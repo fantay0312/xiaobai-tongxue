@@ -1,7 +1,8 @@
 /* ─────────────────────────────────────────────
-   教师看板 —— 单学生真实教务档案:克制、数据密度高。
-   总览带→盲区榜→学情表→误区台账→近期会话→泄漏率;
-   朱砂只落在盲区/被带偏(语义法则),掌握归黛绿,悬置归藤黄。
+   教师看板 —— 单学生真实教务档案,做成一册「教务卷宗」。
+   题头双细线 + 编号小印(壹贰叁肆伍)分节;案头小印卡/册页学情表/心魔台账/泄漏对比台
+   共用 paper-warm + 内衬双框的裱纸制式(与成长册 portrait/rankCard 同源)。
+   朱砂只落在盲区/被带偏(语义法则),掌握归黛绿,悬置归藤黄,虚位归灰。
    ───────────────────────────────────────────── */
 
 .page {
@@ -18,9 +19,10 @@
   to   { opacity: 1; transform: none; }
 }
 
-/* ── 头部 ── */
+/* ── 卷宗题头:双细线收边,楷体眉批在上 ── */
 
 .head {
+  position: relative;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -30,10 +32,30 @@
   margin-bottom: var(--gap-loose);
 }
 
+/* 第二道细线:卷宗封皮的「双栏界格」感 */
+.head::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 3px;
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.headKicker {
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  color: var(--azure);
+  letter-spacing: 0.28em;
+  margin-bottom: var(--gap-hair);
+}
+
 .title { font-size: var(--fs-title); color: var(--ink); }
 
+/* 楷体眉注:提要文字随卷宗气质走 */
 .demoNote {
   margin-top: var(--gap-hair);
+  font-family: var(--font-display);
   font-size: var(--fs-small);
   color: var(--ink-faint);
 }
@@ -54,7 +76,24 @@
   opacity: 0.8;
 }
 
-/* ── ① 档案总览带 ── */
+/* 编号小印:与成长册卷号小印同制式,单字用字距+缩进对中 */
+.secNo {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  font-weight: 400;
+  color: var(--azure);
+  border: 1px solid var(--azure);
+  border-radius: var(--radius-s);
+  padding: 0 0.4rem;
+  margin-right: var(--gap-tight);
+  letter-spacing: 0.18em;
+  text-indent: 0.18em;
+  vertical-align: 0.14em;
+  line-height: 1.6;
+}
+
+/* ── ① 档案总览带:案头小印卡 ── */
 
 .statBand {
   display: grid;
@@ -63,12 +102,15 @@
   margin-bottom: var(--gap-loose);
 }
 
+/* 裱纸制式:paper-warm 底 + 内衬双框(与成长册画像/师道卡同源) */
 .statCard {
+  position: relative;
   display: flex;
   flex-direction: column;
   background: var(--paper-warm);
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius-s);
+  box-shadow: inset 0 0 0 3px var(--paper-warm), inset 0 0 0 4px var(--paper-edge);
   padding: var(--gap-tight);
 }
 
@@ -91,7 +133,25 @@
   margin-top: var(--gap-hair);
   font-family: var(--font-display);
   font-size: var(--fs-small);
+  letter-spacing: 0.1em;
   color: var(--ink-faint);
+}
+
+/* 出师小印:钤在卡角,压住内衬框才像盖上去的(掌握语义归黛绿,非印泥朱) */
+.statSeal {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.45rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  color: var(--jade-ink);
+  border: 1.5px solid var(--jade-ink);
+  border-radius: var(--radius-s);
+  padding: 0 0.3rem;
+  letter-spacing: 0.14em;
+  text-indent: 0.14em;
+  line-height: 1.5;
+  transform: rotate(5deg);
 }
 
 /* ── 零数据:档案待建 ── */
@@ -103,14 +163,16 @@
   background: var(--paper-warm);
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius);
+  box-shadow: inset 0 0 0 5px var(--paper-warm), inset 0 0 0 6px var(--paper-edge);
   padding: var(--gap-loose);
   margin-bottom: var(--gap-loose);
   text-align: center;
 }
 
+/* 虚印:还没盖成的章,dashed 示「虚」 */
 .emptySeal {
   padding: 0.4rem 0.6rem;
-  border: 2px solid var(--dust);
+  border: 2px dashed var(--dust);
   border-radius: var(--radius-s);
   color: var(--ink-faint);
   font-family: var(--font-display);
@@ -150,10 +212,13 @@
 
 .section { margin-bottom: var(--gap-loose); min-width: 0; }
 
+/* 分节题:细线收底,编号小印领头 —— 册页的「卷N」语言 */
 .h2 {
   font-size: var(--fs-sub);
   color: var(--ink);
   margin-bottom: var(--gap-tight);
+  padding-bottom: var(--gap-hair);
+  border-bottom: 1px solid var(--paper-edge);
 }
 
 .h2 small {
@@ -163,13 +228,16 @@
   margin-left: var(--gap-tight);
 }
 
-/* 每节独立空态:虚线纸框一句话,不让任何版块开天窗 */
+/* 每节独立空态:虚印制式的一句话牌,不让任何版块开天窗 */
 .emptyNote {
-  border: 1px dashed var(--paper-edge);
+  border: 1.5px dashed var(--dust);
   border-radius: var(--radius-s);
   padding: var(--gap-tight) var(--gap);
   color: var(--ink-faint);
+  font-family: var(--font-display);
   font-size: var(--fs-small);
+  text-align: center;
+  background: var(--paper);
 }
 
 /* ── ② 盲区榜墨条横图 ── */
@@ -184,15 +252,31 @@
 
 .barTopic { font-size: 11px; fill: var(--ink-faint); }
 
+/* 淡点栅线:刻度背景,比轴线更虚一档 */
+.barGrid { stroke: var(--dust); stroke-width: 1; stroke-dasharray: 2 5; opacity: 0.55; }
+
+/* 墨条:圆头如研开的一笔;宽度从 0 研出,阶梯延迟走内联 style */
+.barRect { animation: barGrow var(--t-slow) var(--ease-out) backwards; }
+
+@keyframes barGrow {
+  from { width: 0; }
+}
+
+/* 全局 reduced-motion 已压零时长;此处再显式断掉,不留 0.01ms 的闪帧 */
+@media (prefers-reduced-motion: reduce) {
+  .barRect { animation: none; }
+}
+
 .barInk { fill: var(--ink); opacity: 0.82; }
 
 .barHigh { fill: var(--cinnabar); }
 
-.barCount { font-family: var(--font-code); font-size: 12px; fill: var(--ink-soft); }
+.barCount { font-family: var(--font-code); font-size: 12px; font-weight: 600; fill: var(--ink-soft); }
 
-.barSev { font-size: 11px; fill: var(--ink-faint); }
+/* 程度小签:楷体撑字距,贴在计数后作 chip 状短注 */
+.barSev { font-family: var(--font-display); font-size: 11px; font-weight: 400; letter-spacing: 0.08em; fill: var(--ink-faint); }
 
-.barSevHigh { font-size: 11px; fill: var(--cinnabar); }
+.barSevHigh { font-family: var(--font-display); font-size: 11px; font-weight: 400; letter-spacing: 0.08em; fill: var(--cinnabar); }
 
 .barAxis { stroke: var(--paper-edge); stroke-width: 1; }
 
@@ -200,7 +284,7 @@
 
 .chartFoot .youMark { color: var(--cinnabar); }
 
-/* ── ③ 知识点学情表 ── */
+/* ── ③ 知识点学情:卷宗册页表 ── */
 
 .tableWrap { overflow-x: auto; }
 
@@ -210,22 +294,28 @@
   font-size: var(--fs-small);
 }
 
+/* 表头压 paper-warm 横带,楷体撑字距 —— 册页的栏目题签 */
 .table th {
   text-align: left;
   font-family: var(--font-display);
   font-weight: 400;
-  color: var(--ink-faint);
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+  background: var(--paper-warm);
   border-bottom: 1px solid var(--paper-edge);
-  padding: 0.35rem 0.6rem 0.35rem 0;
+  padding: 0.4rem 0.6rem 0.4rem 0.5rem;
   white-space: nowrap;
 }
 
 .table td {
   border-bottom: 1px solid var(--paper-edge);
-  padding: 0.4rem 0.6rem 0.4rem 0;
+  padding: 0.45rem 0.6rem 0.45rem 0.5rem;
   color: var(--ink);
   white-space: nowrap;
 }
+
+/* 不用斑马纹,行悬停一层淡墨即可(晕染而非高亮) */
+.table tbody tr:hover td { background: var(--ink-wash); }
 
 .numCell { font-family: var(--font-code); color: var(--ink-soft); }
 
@@ -233,23 +323,47 @@
 
 .courseCell { font-size: var(--fs-tiny); color: var(--ink-faint); }
 
+/* 课程书脊小签:左沿加厚如书脊 */
+.courseChip {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  color: var(--ink-soft);
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-left: 3px solid var(--azure);
+  border-radius: 2px var(--radius-s) var(--radius-s) 2px;
+  padding: 0 0.45rem;
+  letter-spacing: 0.06em;
+  line-height: 1.7;
+  white-space: nowrap;
+}
+
 .titleCell { font-family: var(--font-display); }
 
-/* 被带偏还没纠正的行:朱砂弱底,提示先补学 */
-.rowAdopted td { background: var(--cinnabar-wash); }
+/* 被带偏还没纠正的行:朱砂弱底,提示先补学;悬停也不许被淡墨盖掉语义色 */
+.rowAdopted td,
+.table tbody tr.rowAdopted:hover td { background: var(--cinnabar-wash); }
 
 .masteryCell { display: inline-flex; align-items: center; gap: var(--gap-hair); }
 
 .masteryTrack {
   flex: none;
   width: 56px;
-  height: 4px;
-  border-radius: 2px;
+  height: 7px;
+  border-radius: 999px;
   background: var(--ink-wash);
   overflow: hidden;
 }
 
-.masteryFill { display: block; height: 100%; background: var(--jade); }
+/* 掌握度墨条:由墨入翠,如笔锋渐润——掌握语义归黛绿(题头色律),不得借青 */
+.masteryFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--ink-soft), var(--jade));
+  transition: width var(--t-slow) var(--ease-out);
+}
 
 .mcSummary { color: var(--ink-soft); }
 
@@ -275,7 +389,7 @@
 .chipDust { color: var(--ink-faint); border-color: var(--dust); background: var(--ink-wash); }
 .chipAzure { color: var(--azure); border-color: var(--azure); background: var(--azure-wash); }
 
-/* ── ④ 误区台账 ── */
+/* ── ④ 心魔台账 ── */
 
 .mcList {
   list-style: none;
@@ -301,12 +415,33 @@
 .mcHead {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
   gap: var(--gap-tight);
   flex-wrap: wrap;
 }
 
-.mcBelief { font-family: var(--font-display); font-size: var(--fs-body); color: var(--ink); }
+/* 心魔名小印:楷体方章制式(与复盘页心魔战报同族),微旋示钤印;
+   wash 底上的小字走 *-ink 变体,朱砂无 -ink 档沿用原档(既有对比度口径) */
+.demonChip {
+  flex: none;
+  display: inline-block;
+  align-self: center;
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-indent: 0.1em;
+  padding: 0 0.45rem;
+  border: 1.5px solid currentColor;
+  border-radius: var(--radius-s);
+  transform: rotate(-2deg);
+}
+
+.demonJade { color: var(--jade-ink); background: var(--jade-wash); }
+.demonCinnabar { color: var(--cinnabar); background: var(--cinnabar-wash); }
+.demonAmber { color: var(--amber-ink); background: var(--amber-wash); }
+.demonDust { color: var(--ink-faint); background: var(--ink-wash); }
+
+.mcBelief { flex: 1 1 12rem; font-family: var(--font-display); font-size: var(--fs-body); color: var(--ink); }
 
 .mcTrigger { margin-top: var(--gap-hair); font-size: var(--fs-small); color: var(--ink-faint); }
 
@@ -314,7 +449,7 @@
 
 .mcFrom { margin-left: var(--gap-tight); color: var(--ink-faint); }
 
-/* ── ⑤ 近期会话卡 ── */
+/* ── ⑤ 近期会话卡:与案头卡同一裱纸制式 ── */
 
 .sessionList { display: grid; gap: var(--gap-tight); }
 
@@ -322,6 +457,7 @@
   background: var(--paper-warm);
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius-s);
+  box-shadow: inset 0 0 0 3px var(--paper-warm), inset 0 0 0 4px var(--paper-edge);
   padding: var(--gap-tight) var(--gap);
 }
 
@@ -351,12 +487,13 @@
 
 .sessionLink:hover { text-decoration: underline; }
 
-/* ── ⑥ 泄漏率实测卡 ── */
+/* ── ⑥ 泄漏率实测:答辩收尾的对比台 ── */
 
 .leakCard {
   background: var(--paper-warm);
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius);
+  box-shadow: inset 0 0 0 5px var(--paper-warm), inset 0 0 0 6px var(--paper-edge);
   padding: var(--gap-loose);
 }
 
@@ -364,28 +501,46 @@
 
 .leakRow {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--gap);
   flex-wrap: wrap;
   margin-bottom: var(--gap);
 }
 
+.leakSide { min-width: 0; }
+
 .leakNum {
-  font-family: var(--font-display);
-  /* stat 档而非 hero 档:侧栏卡约 380px 宽,hero 字阶下箭头对比构图必然折行 */
+  /* 数字纪律:率是数值,落 code 字体;
+     stat 档而非 hero 档:侧栏卡约 380px 宽,hero 字阶下对比构图必然折行 */
+  font-family: var(--font-code);
   font-size: var(--fs-stat);
   line-height: 1;
 }
 
 .leakNaive { color: var(--cinnabar); }
-.leakGuarded { color: var(--jade); }
+
+/* 裸 prompt 一侧被红笔划掉:输掉的那个数(朱砂线,语义即警示已被防线压制) */
+.leakStruck { text-decoration: line-through; text-decoration-thickness: 0.09em; }
+
+.leakGuarded { color: var(--jade-ink); }
 
 .leakLabel { display: block; font-size: var(--fs-tiny); color: var(--ink-faint); margin-top: var(--gap-hair); }
 
-.leakArrow {
+/* 对比台中缝:箭头夹一方楷体小匾 */
+.leakVs { display: flex; align-items: center; gap: var(--gap-hair); }
+
+.leakArrow { font-family: var(--font-display); color: var(--ink-faint); font-size: var(--fs-small); }
+
+.leakPlaque {
   font-family: var(--font-display);
-  color: var(--ink-soft);
   font-size: var(--fs-small);
+  color: var(--azure-deep);
+  border: 1px solid var(--azure-deep);
+  border-radius: var(--radius-s);
+  padding: 0.05rem 0.5rem;
+  letter-spacing: 0.18em;
+  text-indent: 0.18em;
+  white-space: nowrap;
 }
 
 .leakMethod {

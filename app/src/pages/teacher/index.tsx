@@ -12,6 +12,7 @@ import type {
 } from '../../types';
 import { useAppStore } from '../../store/appStore';
 import { getTopic, TOPICS } from '../../data';
+import { demonName } from '../../engine/story';
 import { Radar } from '../review/Radar';
 import s from './teacher.module.css';
 
@@ -31,6 +32,10 @@ const MC_CHIP: Record<McState, string> = {
 };
 const MC_EDGE: Record<McState, string> = {
   待注入: 'mcEdgeDust', 已注入: 'mcEdgeAmber', 已纠正: 'mcEdgeJade', 被带偏: 'mcEdgeCinnabar',
+};
+/* 心魔名小印按结局分色:击退黛绿/被拐走朱砂/在身上藤黄/未照面灰(事后揭示面,允许点名) */
+const MC_DEMON: Record<McState, string> = {
+  待注入: 'demonDust', 已注入: 'demonAmber', 已纠正: 'demonJade', 被带偏: 'demonCinnabar',
 };
 
 // ── 泄漏率实测(文件由离线模拟脚本生成;缺失时优雅降级) ──
@@ -110,10 +115,11 @@ export default function TeacherPage() {
   const blindCount = [...latestByTopic.values()].reduce((n, r) => n + r.blindSpots.length, 0);
   const hasArchive = events.length > 0;
 
-  const stats: { label: string; value: string; unit?: string; tone?: string }[] = [
+  const stats: { label: string; value: string; unit?: string; tone?: string; sealed?: boolean }[] = [
     { label: '累计会话', value: String(sessionCount), unit: '次' },
     { label: '累计讲解', value: String(totalTurns), unit: '轮' },
-    { label: '已出师', value: `${masteredCount}/${openTopics.length}`, tone: masteredCount > 0 ? s.statJade : undefined },
+    // 出师卡上钤一方小黛绿印:只有真出过师才落印
+    { label: '已出师', value: `${masteredCount}/${openTopics.length}`, tone: masteredCount > 0 ? s.statJade : undefined, sealed: masteredCount > 0 },
     { label: '平均掌握度', value: String(avgMastery), unit: '%' },
     { label: '现存盲区', value: String(blindCount), unit: '处', tone: blindCount > 0 ? s.statCinnabar : undefined },
     { label: '金句收录', value: String(global.goldenAnalogies.length), unit: '句' },
@@ -180,6 +186,7 @@ export default function TeacherPage() {
     <div className={s.page}>
       <header className={`${s.head} ${s.rise}`} style={rise(0)}>
         <div>
+          <p className={s.headKicker}>教务卷宗 · 弟子一名,逐课立档</p>
           <h1 className={s.title}>教务看板 · {[...new Set(TOPICS.map((t) => t.course))].join(' / ')}</h1>
           <p className={s.demoNote}>
             全部数据来自<strong>本机真实学习记录</strong>,由事件流实时派生,无一处模拟。
@@ -193,6 +200,7 @@ export default function TeacherPage() {
         <section className={`${s.statBand} ${s.rise}`} style={rise(1)} aria-label="档案总览">
           {stats.map((it) => (
             <div key={it.label} className={s.statCard}>
+              {it.sealed && <span className={s.statSeal} aria-hidden="true">出师</span>}
               <div className={s.statValue}>
                 <span className={`${s.statNum} ${it.tone ?? ''}`}>{it.value}</span>
                 {it.unit && <span className={s.statUnit}>{it.unit}</span>}
@@ -215,7 +223,7 @@ export default function TeacherPage() {
         <div className={s.mainCol}>
           {/* ② 「讲不清」盲区榜 */}
           <section className={`${s.section} ${s.rise}`} style={rise(2)}>
-            <h2 className={s.h2}>「讲不清」盲区榜<small>全部复盘档案里小白还没懂的地方,按次计频</small></h2>
+            <h2 className={s.h2}><span className={s.secNo}>壹</span>「讲不清」盲区榜<small>全部复盘档案里小白还没懂的地方,按次计频</small></h2>
             {blindRows.length === 0 ? (
               <p className={s.emptyNote}>尚无盲区记录——开讲之后,这里会记下小白没听懂的地方。</p>
             ) : (
@@ -229,10 +237,19 @@ export default function TeacherPage() {
                   role="img"
                   aria-label={`讲不清盲区计频:${blindRows.map((r) => `${r.point} ${r.count} 次,${SEV_LABEL[r.severity]}`).join(';')}`}
                 >
+                  {/* 淡点栅线:给「次数」一个可目测的刻度背景,纯装饰(数据在 aria-label 里) */}
+                  {[0.25, 0.5, 0.75, 1].map((f) => (
+                    <line
+                      key={f}
+                      x1={BAR_MAX * f} y1={0} x2={BAR_MAX * f} y2={chartH}
+                      className={s.barGrid}
+                    />
+                  ))}
                   <line x1={0} y1={0} x2={0} y2={chartH} className={s.barAxis} />
                   {blindRows.map((r, i) => {
                     const y = i * ROW_H;
-                    const w = Math.max(r.count * unit, 6);
+                    // 墨条圆头(rx=7)后,下限从 6 提到 14:比条高窄的圆角矩形会被压成豆点
+                    const w = Math.max(r.count * unit, 14);
                     return (
                       <g key={r.point}>
                         <text x={2} y={y + 16} className={s.barLabel}>
@@ -240,8 +257,9 @@ export default function TeacherPage() {
                           <tspan dx={10} className={s.barTopic}>出自「{r.topics.join('」「')}」</tspan>
                         </text>
                         <rect
-                          x={0} y={y + 26} width={w} height={14} rx={2}
-                          className={r.severity === 'high' ? s.barHigh : s.barInk}
+                          x={0} y={y + 26} width={w} height={14} rx={7}
+                          className={`${s.barRect} ${r.severity === 'high' ? s.barHigh : s.barInk}`}
+                          style={{ animationDelay: `${120 + i * 60}ms` }}
                         />
                         <text x={w + 8} y={y + 38} className={s.barCount}>
                           {r.count} 次
@@ -264,7 +282,7 @@ export default function TeacherPage() {
 
           {/* ③ 知识点学情表 */}
           <section className={`${s.section} ${s.rise}`} style={rise(3)}>
-            <h2 className={s.h2}>知识点学情<small>每一行都由该主题的事件流重放得出</small></h2>
+            <h2 className={s.h2}><span className={s.secNo}>贰</span>知识点学情<small>每一行都由该主题的事件流重放得出</small></h2>
             <div className={s.tableWrap}>
               <table className={s.table}>
                 <thead>
@@ -283,7 +301,9 @@ export default function TeacherPage() {
                 <tbody>
                   {topicRows.map((row) => (
                     <tr key={row.topic.topicId} className={row.adopted > 0 ? s.rowAdopted : undefined}>
-                      <td className={s.courseCell}>{row.topic.course}</td>
+                      <td className={s.courseCell}>
+                        <span className={s.courseChip}>{row.topic.course}</span>
+                      </td>
                       <td className={s.titleCell}>{row.topic.title}</td>
                       <td>
                         <span className={`${s.chip} ${s[KS_CHIP[row.st.knowledgeState]]}`}>
@@ -324,9 +344,9 @@ export default function TeacherPage() {
             </p>
           </section>
 
-          {/* ④ 误区台账 —— 事后揭示面,可以引用 belief 与注入台词 */}
+          {/* ④ 心魔台账 —— 事后揭示面,可以点心魔名、引 belief 与注入台词 */}
           <section className={`${s.section} ${s.rise}`} style={rise(4)}>
-            <h2 className={s.h2}>误区台账<small>这些错话是系统故意让小白说的,考的是你的纠错力</small></h2>
+            <h2 className={s.h2}><span className={s.secNo}>叁</span>心魔台账<small>每一条误区都是系统故意让小白说的,考的是你的纠错力</small></h2>
             {mcRows.length === 0 ? (
               <p className={s.emptyNote}>台账还空着——要点讲到位后,小白才会开始拿错误说法试探你。</p>
             ) : (
@@ -334,6 +354,7 @@ export default function TeacherPage() {
                 {mcRows.map((r) => (
                   <li key={r.mc.mcId} className={`${s.mcItem} ${s[MC_EDGE[r.state]]}`}>
                     <div className={s.mcHead}>
+                      <span className={`${s.demonChip} ${s[MC_DEMON[r.state]]}`}>{demonName(r.mc)}</span>
                       <span className={s.mcBelief}>「{r.mc.belief}」</span>
                       <span className={`${s.chip} ${s[MC_CHIP[r.state]]}`}>{r.state}</span>
                     </div>
@@ -357,7 +378,7 @@ export default function TeacherPage() {
         <aside className={s.sideCol}>
           {/* ⑤ 近期会话 */}
           <section className={`${s.section} ${s.rise}`} style={rise(2)}>
-            <h2 className={s.h2}>近期会话</h2>
+            <h2 className={s.h2}><span className={s.secNo}>肆</span>近期会话</h2>
             {recentReports.length === 0 ? (
               <p className={s.emptyNote}>还没有会话档案——第一课下课后,这里会替你收好每一份复盘。</p>
             ) : (
@@ -386,14 +407,21 @@ export default function TeacherPage() {
           {/* ⑥ 泄漏率实测卡 —— 答辩收尾页 */}
           <section className={`${s.section} ${s.rise}`} style={rise(3)}>
             <div className={s.leakCard}>
-              <h2 className={s.leakTitle}>知识泄漏率实测</h2>
+              <h2 className={s.leakTitle}><span className={s.secNo}>伍</span>知识泄漏率实测</h2>
               <div className={s.leakRow}>
-                <div>
-                  <span className={`${s.leakNum} ${s.leakNaive}`}>{fmtRate(leak.naive)}</span>
+                <div className={s.leakSide}>
+                  {/* 只有真测出数字才划掉:「待测」不能被提前宣判 */}
+                  <span className={`${s.leakNum} ${s.leakNaive} ${leak.naive !== null ? s.leakStruck : ''}`}>
+                    {fmtRate(leak.naive)}
+                  </span>
                   <span className={s.leakLabel}>裸 prompt(只嘱咐「请假装不懂」)</span>
                 </div>
-                <span className={s.leakArrow}>→ 六层防线 →</span>
-                <div>
+                <div className={s.leakVs}>
+                  <span className={s.leakArrow}>→</span>
+                  <span className={s.leakPlaque}>六层防线</span>
+                  <span className={s.leakArrow}>→</span>
+                </div>
+                <div className={s.leakSide}>
                   <span className={`${s.leakNum} ${s.leakGuarded}`}>{fmtRate(leak.guarded)}</span>
                   <span className={s.leakLabel}>白名单 + 物理隔离 + 出口守门</span>
                 </div>

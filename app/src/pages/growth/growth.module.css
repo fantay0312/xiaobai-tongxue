@@ -21,7 +21,8 @@
   to   { opacity: 1; transform: none; }
 }
 
-.section { margin-bottom: var(--gap-section); }
+/* scroll-margin:卷五记忆匣的锚点按钮 scrollIntoView 落点,给 sticky 顶栏留出身位 */
+.section { margin-bottom: var(--gap-section); scroll-margin-top: 4.5rem; }
 
 .h2 {
   font-size: var(--fs-title);
@@ -808,7 +809,7 @@
 
 .galleryFrom { margin-top: var(--gap-tight); font-size: var(--fs-tiny); color: var(--ink-faint); }
 
-/* ── 卷尾·小白眼里的你 ── */
+/* ── 卷尾·小白眼里的你:印象句(楷体)+ 出处小注(code 字体,右侧,窄屏折行到下) ── */
 
 .memoryList {
   list-style: none;
@@ -820,10 +821,27 @@
 }
 
 .memoryItem {
-  font-family: var(--font-display);
-  color: var(--ink);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--gap-hair) var(--gap);
   padding-left: var(--gap);
   border-left: 3px solid var(--azure-wash);
+}
+
+.memoryLine {
+  font-family: var(--font-display);
+  color: var(--ink);
+  line-height: 1.8;
+}
+
+/* 出处小注:这句印象凭什么——真实事件计数,不可伪造;数字纪律走 code 字体 */
+.memoryEvidence {
+  flex: none;
+  font-family: var(--font-code);
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
 }
 
 /* ── 按钮与角落 ── */

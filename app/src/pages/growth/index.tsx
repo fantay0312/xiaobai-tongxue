@@ -1,9 +1,11 @@
 /**
  * 成长页 /growth —— 一本真正的「成长册」,按书卷编次:
  * 卷首·师徒(小白阶梯+人格+师道等级印章+下一步) / 卷一·印章墙 / 卷二·教学编年史 /
- * 卷三·盲区图谱(遗忘的知识点化作「小白的来信」信笺) / 卷四·金句画廊 / 卷尾·小白眼里的你。
+ * 卷三·盲区图谱(遗忘的知识点化作「小白的来信」信笺) / 卷四·金句画廊 /
+ * 卷五·小白的记忆(四层记忆匣,engine/recall 派生) / 卷尾·小白眼里的你(印象句+可复算出处)。
  * 数据全部真实派生:印章与师道等级来自 engine/achievements,下一步来自 engine/journey,
- * 编年史把 events 按 sessionId 与 reports 并轨(sessionId 为 null 的备课/补学作独立眉批)。
+ * 编年史把 events 按 sessionId 与 reports 并轨(sessionId 为 null 的备课/补学作独立眉批);
+ * 卷二/卷三/卷尾 section 带 id(chronicle/map/bond)供卷五记忆匣的锚点按钮 scrollIntoView。
  * 保留契约:setPersona / 复习 await startReview(topicId) → navigate(`/teach/${topicId}?mode=review`)
  * 且 reviewBusy 防抖原样;右下角演示重置的行内二次确认原样(答辩依赖)。
  */
@@ -15,8 +17,10 @@ import { getTopic, TOPICS } from '../../data';
 import { deriveAchievements, deriveTeacherRank } from '../../engine/achievements';
 import { nextStep } from '../../engine/journey';
 import { deriveXiaobaiLetter } from '../../engine/story';
+import { deriveMemoryPanorama, deriveRelationshipLines } from '../../engine/recall';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { XiaobaiLetter } from '../../components/story/XiaobaiLetter';
+import { MemoryPanorama } from '../../components/story/MemoryPanorama';
 import { KnowledgeMap, type MapNode } from './KnowledgeMap';
 import s from './growth.module.css';
 
@@ -162,6 +166,8 @@ export default function GrowthPage() {
   const events = useAppStore((st) => st.events);
   const reports = useAppStore((st) => st.reports);
   const topicStates = useAppStore((st) => st.topicStates);
+  // 卷五当堂层要跟着课堂实时走:live 也入订阅,开课/下课/答问都会让记忆匣重新派生
+  const live = useAppStore((st) => st.live);
   const topicStateOf = useAppStore((st) => st.topicState);
   const setPersona = useAppStore((st) => st.setPersona);
   const startReview = useAppStore((st) => st.startReview);
@@ -185,6 +191,15 @@ export default function GrowthPage() {
     [events, reports, topicStates],
   );
   const chronicle = useMemo(() => buildChronicle(events, reports), [events, reports]);
+  // 卷五·四层记忆匣 + 卷尾·印象句:engine/recall 纯派生,每句都带可复算的出处
+  const panorama = useMemo(
+    () => deriveMemoryPanorama({ events, reports, topicStates, topics: TOPICS, global, live }),
+    [events, reports, topicStates, global, live],
+  );
+  const bondLines = useMemo(
+    () => deriveRelationshipLines({ events, reports, global }),
+    [events, reports, global],
+  );
 
   const earnedCount = achievements.filter((a) => a.earnedAt !== null).length;
   const openAch = achievements.find((a) => a.id === openSeal) ?? null;
@@ -398,7 +413,7 @@ export default function GrowthPage() {
       </section>
 
       {/* ── 卷二·教学编年史:events×reports 并轨的会话日志,倒序,默认最近 6 条 ── */}
-      <section className={`${s.section} ${s.rise}`} style={rise(2)}>
+      <section id="chronicle" className={`${s.section} ${s.rise}`} style={rise(2)}>
         <h2 className={s.h2}>
           <span className={s.volNo}>卷二</span>教学编年史
           <small>每一课都记在案,自新往旧翻</small>
@@ -466,7 +481,7 @@ export default function GrowthPage() {
       </section>
 
       {/* ── 卷三·盲区图谱:星图 + 证据链 + 遗忘复习入口(交互契约原样保留) ── */}
-      <section className={`${s.section} ${s.rise}`} style={rise(3)}>
+      <section id="map" className={`${s.section} ${s.rise}`} style={rise(3)}>
         <h2 className={s.h2}>
           <span className={s.volNo}>卷三</span>盲区图谱
           <small>
@@ -579,18 +594,30 @@ export default function GrowthPage() {
         )}
       </section>
 
-      {/* ── 卷尾·小白眼里的你:关系记忆 ── */}
-      <section className={`${s.section} ${s.rise}`} style={rise(5)}>
+      {/* ── 卷五·小白的记忆:四层记忆匣(recall.ts 派生,答辩 money-shot) ── */}
+      <section id="memory" className={`${s.section} ${s.rise}`} style={rise(5)}>
+        <h2 className={s.h2}>
+          <span className={s.volNo}>卷五</span>小白的记忆
+          <small>四层,和你一样:当堂的、情景的、学问的、师徒的</small>
+        </h2>
+        <MemoryPanorama layers={panorama} />
+      </section>
+
+      {/* ── 卷尾·小白眼里的你:印象句由 deriveRelationshipLines 派生,每句带可复算出处 ── */}
+      <section id="bond" className={`${s.section} ${s.rise}`} style={rise(6)}>
         <h2 className={s.h2}>
           <span className={s.volNo}>卷尾</span>小白眼里的你
           <small>它记得的,是你教书的样子</small>
         </h2>
-        {global.relationshipMemory.length === 0 ? (
+        {bondLines.length === 0 ? (
           <p className={s.muted}>还没熟起来——多讲几课,小白会慢慢记住你的教学风格。</p>
         ) : (
           <ul className={s.memoryList}>
-            {global.relationshipMemory.map((m) => (
-              <li key={m} className={s.memoryItem}>{m}</li>
+            {bondLines.map((m) => (
+              <li key={m.line} className={s.memoryItem}>
+                <span className={s.memoryLine}>{m.line}</span>
+                <span className={s.memoryEvidence}>{m.evidence}</span>
+              </li>
             ))}
           </ul>
         )}

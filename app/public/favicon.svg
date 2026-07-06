@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
   <!-- 问学印:一笔不闭合的墨白圆,笔锋向内收成一点 —— 与页头品牌章 Seal.tsx 同一枚 -->
   <rect x="2.5" y="2.5" width="43" height="43" rx="9" fill="#bc4630"/>
-  <rect x="6.5" y="6.5" width="35" height="35" rx="5.5" fill="none" stroke="#f8f4e8" stroke-opacity="0.28" stroke-width="1.4"/>
-  <path d="M22.4 12.61 C29.32 11.64 35.5 17.01 35.5 24 C35.5 30.35 30.35 35.5 24 35.5 C20.5 35.5 17.51 31.37 17.07 28 C16.69 25.02 16.79 22.45 19.17 20.62" fill="none" stroke="#f8f4e8" stroke-width="5" stroke-linecap="round"/>
-  <circle cx="25.8" cy="25.3" r="3" fill="#f8f4e8"/>
+  <rect x="6.5" y="6.5" width="35" height="35" rx="5.5" fill="none" stroke="#f0f7fa" stroke-opacity="0.28" stroke-width="1.4"/>
+  <path d="M22.4 12.61 C29.32 11.64 35.5 17.01 35.5 24 C35.5 30.35 30.35 35.5 24 35.5 C20.5 35.5 17.51 31.37 17.07 28 C16.69 25.02 16.79 22.45 19.17 20.62" fill="none" stroke="#f0f7fa" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="25.8" cy="25.3" r="3" fill="#f0f7fa"/>
 </svg>

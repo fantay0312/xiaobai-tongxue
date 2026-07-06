@@ -1,0 +1,141 @@
+/* ─────────────────────────────────────────────
+   卷五·小白的记忆 —— 一摞记忆匣(四层记忆全景的渲染壳)。
+   四只纸匣自上而下叠着:上层窄、下层宽,各偏一丝微旋(±0.4deg 静态 transform,
+   非动画,减动效偏好天然无碍),暗合"越往下存得越久";
+   层号小印与成长页卷号小印同一语言(细边小方,楷体微旋);
+   统计值走 code 字体(数字纪律,汉字自然回退正文字体);
+   入场由成长页 section 级 .rise 承担,本文件不新增动画。
+   ───────────────────────────────────────────── */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+}
+
+.box {
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+  box-shadow: inset 0 0 0 4px var(--paper-warm), inset 0 0 0 5px var(--paper-edge), var(--shadow-paper);
+  padding: var(--gap) clamp(var(--gap), 3vw, var(--gap-loose));
+}
+
+/* 摞匣错位:margin 收放定宽窄,旋角是匣子的身份,不交给 hover 动 */
+.box:nth-child(1) { margin-inline: clamp(0.75rem, 4vw, 3rem); transform: rotate(-0.4deg); }
+.box:nth-child(2) { margin-inline: clamp(0.5rem, 2.7vw, 2rem); transform: rotate(0.3deg); }
+.box:nth-child(3) { margin-inline: clamp(0.25rem, 1.4vw, 1rem); transform: rotate(-0.25deg); }
+.box:nth-child(4) { transform: rotate(0.4deg); }
+
+.head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--gap-hair) var(--gap-tight);
+}
+
+/* 层号小印:壹贰叁肆 */
+.no {
+  flex: none;
+  align-self: center;
+  display: inline-grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 1.5px solid var(--azure);
+  border-radius: var(--radius-s);
+  color: var(--azure);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  transform: rotate(-3deg);
+}
+
+.name {
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* 存续规则眉注:一句话交代这一层怎么活、怎么散 */
+.caption {
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  letter-spacing: 0.1em;
+}
+
+.statRow {
+  list-style: none;
+  margin: var(--gap-tight) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-hair) var(--gap-tight);
+}
+
+.stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  padding: 0.08rem 0.55rem;
+}
+
+.statLabel { font-size: var(--fs-tiny); color: var(--ink-faint); }
+
+/* 数字纪律:统计值整体落 code 字体(等宽数字,汉字回退无碍) */
+.statValue {
+  font-family: var(--font-code);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.lines {
+  list-style: none;
+  margin: var(--gap-tight) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+}
+
+/* 匣中的话是小白的口吻,走楷体 */
+.lines li {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  line-height: 1.9;
+  padding-left: var(--gap-tight);
+  border-left: 2px solid var(--azure-wash);
+}
+
+/* 匣底去处:按钮(本页卷目滚动)与 Link(跨页路由)同衣;焦点环走全站基线,不压 */
+.anchorLink {
+  display: inline-block;
+  margin-top: var(--gap-tight);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  color: var(--azure);
+  transition: color var(--t-fast) var(--ease-out);
+}
+
+.anchorLink:hover { color: var(--azure-deep); }
+
+/* 摞底一行注脚:答辩点题 */
+.footNote {
+  margin-top: var(--gap);
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+}
