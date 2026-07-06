@@ -65,14 +65,14 @@ function Collapse({ title, tag, tagTone, defaultOpen, children }: {
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <section className={s.collapse}>
+    <section className={`${s.collapse} ${open ? s.collapseOn : ''}`}>
       <button
         type="button"
         className={s.collapseHead}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        <span className={s.collapseMark} aria-hidden="true">{open ? '−' : '+'}</span>
+        <span className={s.collapseChev} aria-hidden="true" />
         <span className={s.collapseTitle}>{title}</span>
         {tag ? (
           <span className={tagTone === 'warn' ? s.collapseTagWarn : s.collapseTag}>{tag}</span>

@@ -411,18 +411,17 @@
   line-height: 2;
 }
 
-/* ── 材料包(讲义式折叠) ── */
+/* ── 材料包(卷宗式折叠:一册装订,条目细线分隔,不再一节一盒) ── */
 .materials {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-tight);
   margin-top: var(--gap);
-}
-.collapse {
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius-s);
   background: var(--paper-warm);
+  overflow: hidden;
 }
+.collapse { background: none; }
+.collapse + .collapse { border-top: 1px solid var(--paper-edge); }
+.collapseOn { background: var(--paper); }
 .collapseHead {
   width: 100%;
   display: flex;
@@ -430,16 +429,24 @@
   gap: var(--gap-tight);
   background: none;
   border: none;
-  padding: var(--gap-tight) var(--gap);
+  padding: 0.95rem var(--gap);
   text-align: left;
   color: var(--ink);
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease-out);
 }
-.collapseMark {
-  color: var(--azure);
-  font-family: var(--font-code);
-  width: 1em;
+.collapseHead:hover { background: var(--ink-wash); }
+.collapseChev {
   flex: 0 0 auto;
+  width: 0.5em;
+  height: 0.5em;
+  margin-inline: 0.15em 0.35em;
+  border-right: 1.5px solid var(--azure);
+  border-bottom: 1.5px solid var(--azure);
+  transform: rotate(-45deg);
+  transition: transform var(--t-fast) var(--ease-out);
 }
+.collapseOn .collapseChev { transform: rotate(45deg); }
 .collapseTitle { font-family: var(--font-display); font-size: var(--fs-sub); }
 .collapseTag,
 .collapseTagWarn {
@@ -449,6 +456,8 @@
   border-radius: 2px;
   padding: 0 6px;
   flex: 0 0 auto;
+  opacity: 0.85;
+  letter-spacing: 0.08em;
 }
 .collapseTag { color: var(--ink-faint); }
 .collapseTagWarn { color: var(--cinnabar); }
@@ -458,11 +467,17 @@
   transition: grid-template-rows var(--t-med) var(--ease-out);
 }
 .collapseOpen { grid-template-rows: 1fr; }
+/* 垂直留白全部用可被 0fr 轨道裁剪的"内容型" spacer(::before/::after),
+   不用 padding —— border-box 下 padding 压不到 0,闭合时会露出一条内容边 */
 .collapseInner {
   overflow: hidden;
   min-height: 0;
-  padding: 0 var(--gap) var(--gap);
+  padding: 0 var(--gap);
+  margin-left: 1.45rem;
+  border-left: 2px solid var(--paper-edge);
 }
+.collapseInner::before { content: ''; display: block; height: 0.15rem; }
+.collapseInner::after { content: ''; display: block; height: 1rem; }
 
 .md p { margin: 0 0 0.9em; line-height: 1.9; }
 .md pre {
@@ -769,8 +784,8 @@ button.stepCurrent:hover { background: var(--azure-wash); }
     transform: rotate(-0.7deg);
     padding: var(--gap) var(--gap) calc(var(--gap) + 0.25rem);
   }
-  .collapseHead { padding: var(--gap-tight); }
-  .collapseInner { padding: 0 var(--gap-tight) var(--gap-tight); }
+  .collapseHead { padding: 0.8rem var(--gap-tight); }
+  .collapseInner { padding: 0 var(--gap-tight); margin-left: 0.85rem; }
   .roadmap::before { display: none; }
   .roadStep,
   .roadAmbush {
@@ -796,6 +811,8 @@ button.stepCurrent:hover { background: var(--azure-wash); }
     animation: none;
   }
   .collapseBody { transition: none; }
+  .collapseChev { transition: none; }
+  .collapseHead { transition: none; }
   .refArrow,
   .step,
   .stepDot { transition: none; }
