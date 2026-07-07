@@ -13,6 +13,7 @@ import { RlhfLoopSvg } from './RlhfFigs';
 import { SlLogLogSvg, SlChinchillaSvg } from './ScalingLawsFigs';
 import { ScPointerSvg } from './ShallowCopyFigs';
 import { MdTimelineSvg } from './MutableDefaultFigs';
+import { OS_TOPIC_FIGURES } from './os';
 
 export interface TopicFigure {
   id: string;
@@ -104,6 +105,7 @@ export const TOPIC_FIGURES: Record<string, TopicFigure[]> = {
       Svg: MdTimelineSvg,
     },
   ],
+  ...OS_TOPIC_FIGURES,
 };
 
 /** 按 topicId 取图;未收录返回空数组,调用方按无图降级 */
