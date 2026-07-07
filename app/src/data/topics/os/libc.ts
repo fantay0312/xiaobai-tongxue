@@ -540,7 +540,8 @@ export const osLibcTopic: Topic = {
         '**再深一锹(选读)**\n\n' +
         '- **想读源码,选 musl 别选 glibc**。glibc 历史包袱和优化太重,新手阅读体验极差;' +
         '讲义推荐用 musl 学习——代码干净,配一个带调试信息的 musl-gcc,就能从第一条指令单步走到 main。\n' +
-        '- **错误处理的统一出口**。所有系统调用都可能失败,错误码在手册 ERRORS 一节写得明明白白;' +
+        '- **错误处理的统一出口**。绝大多数系统调用都可能失败(getpid 这类少数例外规定必然成功),' +
+        '错误码在手册 ERRORS 一节写得明明白白;' +
         '你在各种工具里反复见到同一句 "No such file or directory",都是同一套 errno 报出来的——这不是巧合。\n' +
         '- **两篇著名的"泼冷水"**。"C is not a low-level language":今天的 C 只是看起来贴机器;' +
         '"C isn\'t a programming language anymore":C 的接口约定成了各种语言互通绕不开的"世界语"——' +
