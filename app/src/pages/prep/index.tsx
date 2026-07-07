@@ -40,6 +40,7 @@ const SECTIONS = [
 
 /** 延伸书单 kind → 朱文小印用字 */
 const REF_SEAL: Record<PrepReference['kind'], string> = {
+  讲义: '义',
   官方文档: '官',
   教程: '教',
   视频: '视',

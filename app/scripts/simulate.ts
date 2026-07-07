@@ -10,6 +10,7 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEMO_SCRIPT, TOPICS } from '../src/data';
+import { OS_TOPIC_IDS } from '../src/data/topics/os';
 import {
   applyEvent, buildReport, decide, evaluate, extractTeacherTerms, initialTopicState,
   isExtractionAttempt, isValidAction, leakageCheck, runXiaobaiQuiz, speakXiaobai, FALLBACK_LINE,
@@ -23,6 +24,13 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPORT_PATH = path.resolve(HERE, '../src/data/leakageReport.json');
 
 const MOCK: LlmSettings = { mode: 'mock', baseUrl: '', apiKey: '', model: '', temperature: 0.8 };
+
+/** 注入序断言覆盖的知识点(mcId 前缀 = topicId 的 snake_case;《操作系统原理》30 讲整组纳入) */
+const INJECTION_ASSERTED = new Set<string>([
+  'shallow-copy', 'tokenization', 'gradient-descent', 'attention',
+  'pretrain-finetune', 'rlhf', 'scaling-laws',
+  ...OS_TOPIC_IDS,
+]);
 
 const makeGlobal = (learningLevel: XiaobaiGlobal['learningLevel']): XiaobaiGlobal => ({
   persona: '好奇型', learningLevel, relationshipMemory: [], goldenAnalogies: [],
@@ -173,39 +181,11 @@ async function simCorrectPath(topic: Topic, script: DemoLine[]): Promise<void> {
 
   const injected = sim.events.filter((e) => e.type === 'misconception_injected').map((e) => String(e.payload.mcId));
   const corrected = sim.events.filter((e) => e.type === 'misconception_corrected').map((e) => String(e.payload.mcId));
-  if (topic.topicId === 'shallow-copy') {
+  // 注入序断言:mcId 前缀 = topicId 的 snake_case(全课程统一 M1→M3→M2 剧本编排)
+  if (INJECTION_ASSERTED.has(topic.topicId)) {
+    const p = topic.topicId.replace(/-/g, '_');
     check('误区注入顺序符合剧本预期(M1→M3→M2)',
-      JSON.stringify(injected) === JSON.stringify(['shallow_copy_M1', 'shallow_copy_M3', 'shallow_copy_M2']),
-      `实际:${injected.join('→')}`);
-  }
-  if (topic.topicId === 'tokenization') {
-    check('误区注入顺序符合剧本预期(M1→M3→M2)',
-      JSON.stringify(injected) === JSON.stringify(['tokenization_M1', 'tokenization_M3', 'tokenization_M2']),
-      `实际:${injected.join('→')}`);
-  }
-  if (topic.topicId === 'gradient-descent') {
-    check('误区注入顺序符合剧本预期(M1→M3→M2)',
-      JSON.stringify(injected) === JSON.stringify(['gradient_descent_M1', 'gradient_descent_M3', 'gradient_descent_M2']),
-      `实际:${injected.join('→')}`);
-  }
-  if (topic.topicId === 'attention') {
-    check('误区注入顺序符合剧本预期(M1→M3→M2)',
-      JSON.stringify(injected) === JSON.stringify(['attention_M1', 'attention_M3', 'attention_M2']),
-      `实际:${injected.join('→')}`);
-  }
-  if (topic.topicId === 'pretrain-finetune') {
-    check('误区注入顺序符合剧本预期(M1→M3→M2)',
-      JSON.stringify(injected) === JSON.stringify(['pretrain_finetune_M1', 'pretrain_finetune_M3', 'pretrain_finetune_M2']),
-      `实际:${injected.join('→')}`);
-  }
-  if (topic.topicId === 'rlhf') {
-    check('误区注入顺序符合剧本预期(M1→M3→M2)',
-      JSON.stringify(injected) === JSON.stringify(['rlhf_M1', 'rlhf_M3', 'rlhf_M2']),
-      `实际:${injected.join('→')}`);
-  }
-  if (topic.topicId === 'scaling-laws') {
-    check('误区注入顺序符合剧本预期(M1→M3→M2)',
-      JSON.stringify(injected) === JSON.stringify(['scaling_laws_M1', 'scaling_laws_M3', 'scaling_laws_M2']),
+      JSON.stringify(injected) === JSON.stringify([`${p}_M1`, `${p}_M3`, `${p}_M2`]),
       `实际:${injected.join('→')}`);
   }
   check('每条误区都被注入且被纠正',
@@ -325,6 +305,7 @@ async function simLearningLevels(topic: Topic, script: DemoLine[]): Promise<void
   }
   const LADDER_ASSERTED = [
     'tokenization', 'gradient-descent', 'attention', 'pretrain-finetune', 'rlhf', 'scaling-laws',
+    ...OS_TOPIC_IDS,
   ];
   if (LADDER_ASSERTED.includes(topic.topicId)) {
     check('Lv1:首个命中后按层追问 L2(target=c2)', o1.targetChecklistId === 'c2', `实际 ${o1.targetChecklistId}`);

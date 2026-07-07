@@ -5,6 +5,7 @@
  * 卡壳演示含「卡壳」、偏题演示含「偏题」;其余为正确路径。
  */
 import type { DemoLine } from '../types';
+import { OS_DEMOS } from './topics/os';
 import { tokenizationDemo } from './topics/tokenization';
 import { gradientDescentDemo } from './topics/gradientDescent';
 import { attentionDemo } from './topics/attention';
@@ -19,6 +20,7 @@ export const DEMO_SCRIPT: Record<string, DemoLine[]> = {
   'pretrain-finetune': pretrainFinetuneDemo,
   rlhf: rlhfDemo,
   'scaling-laws': scalingLawsDemo,
+  ...OS_DEMOS,
   'shallow-copy': [
     {
       label: '① 讲:赋值 vs 拷贝',

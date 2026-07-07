@@ -114,7 +114,8 @@ export interface ChecklistItem {
 export interface PrepReference {
   title: string;
   url: string;
-  kind: '官方文档' | '教程' | '视频' | '论文' | '工具' | '长文';
+  /** 「讲义」= 课程原生讲义页(v1.2 追加,《操作系统原理》各讲挂 jyywiki 对应讲义) */
+  kind: '讲义' | '官方文档' | '教程' | '视频' | '论文' | '工具' | '长文';
   note: string;              // 一句话导读:为什么值得读/重点看哪一段
 }
 

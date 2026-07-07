@@ -12,12 +12,14 @@ import { scalingLawsTopic } from './topics/scalingLaws';
 import { shallowCopyTopic } from './topics/shallowCopy';
 import { mutableDefaultTopic } from './topics/mutableDefault';
 import { lockedTopics } from './topics/locked';
+import { OS_TOPICS } from './topics/os';
 import { DEMO_SCRIPT } from './demoScript';
 
-/** 书架按 course 分组展示;数组顺序即书架陈列顺序(《大模型训练》为主推课程,六个知识点全部可玩) */
+/** 书架按 course 分组展示;数组顺序即书架陈列顺序(《大模型训练》为主推课程;《操作系统原理》30 讲对齐 jyy 2026 春) */
 export const TOPICS: Topic[] = [
   tokenizationTopic, gradientDescentTopic, attentionTopic,
   pretrainFinetuneTopic, rlhfTopic, scalingLawsTopic,
+  ...OS_TOPICS,
   shallowCopyTopic, mutableDefaultTopic, ...lockedTopics,
 ];
 

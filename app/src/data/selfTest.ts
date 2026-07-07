@@ -8,6 +8,7 @@
  *  - dimension 覆盖多方位:同一主题的题组至少横跨 4 个维度
  */
 import type { PredictionQuizItem } from '../types';
+import { OS_SELF_TESTS } from './topics/os';
 import { tokenizationSelfTest } from './topics/tokenization';
 import { gradientDescentSelfTest } from './topics/gradientDescent';
 import { attentionSelfTest } from './topics/attention';
@@ -29,6 +30,7 @@ export const SELF_TESTS: Record<string, SelfTestItem[]> = {
   'pretrain-finetune': pretrainFinetuneSelfTest,
   rlhf: rlhfSelfTest,
   'scaling-laws': scalingLawsSelfTest,
+  ...OS_SELF_TESTS,
 };
 
 export function getSelfTest(topicId: string): SelfTestItem[] {
