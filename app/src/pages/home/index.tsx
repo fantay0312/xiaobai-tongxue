@@ -10,6 +10,7 @@ import { MentorLetter } from '../../components/story/MentorLetter';
 import { JourneyRibbon } from '../../components/story/JourneyRibbon';
 import { Bookshelf } from './Bookshelf';
 import styles from './home.module.css';
+import anchor from '../../styles/anchor.module.css';
 
 const LOOP_STEPS: { num: string; name: string; desc: string }[] = [
   { num: '壹', name: '备课', desc: '摸底快测,领材料包' },
@@ -52,18 +53,18 @@ export default function HomePage() {
           </a>
         </div>
 
-        <div className={`${styles.heroAvatar} ${styles.enter}`} style={{ animationDelay: '160ms' }}>
+        <div className={`${anchor.heroAvatar} ${styles.enter}`} style={{ animationDelay: '160ms' }}>
           <XiaobaiAvatar variant="paper" mood="curious" level={level} size={192} />
-          <p className={styles.avatarCaption}>你的 AI 学生 · 小白</p>
+          <p className={anchor.avatarCaption}>你的 AI 学生 · 小白</p>
         </div>
 
-        <blockquote className={`${styles.quote} ${styles.enter}`} style={{ animationDelay: '120ms' }}>
-          <p className={styles.quoteText}>
+        <blockquote className={`${anchor.quote} ${styles.enter}`} style={{ animationDelay: '120ms' }}>
+          <p className={anchor.quoteText}>
             教然后知困,
             <br />
             知困然后能自强
           </p>
-          <cite className={styles.quoteFrom}>《礼记 · 学记》</cite>
+          <cite className={anchor.quoteFrom}>《礼记 · 学记》</cite>
         </blockquote>
       </section>
 
@@ -98,7 +99,7 @@ export default function HomePage() {
       <Bookshelf />
 
       {/* ── 参赛信息位 ── */}
-      <footer className={styles.foot}>
+      <footer className={anchor.foot}>
         多学科知识书架 · 学习支持类智能体 · 「小白同学——教然后知困」参赛演示
       </footer>
     </div>

@@ -8,8 +8,8 @@
   flex-direction: column;
   /* 夜自习灯光:顶部一盏教室灯的柔光 + 底部收暗的黑板渐晕,纯平色显得像色块 */
   background:
-    radial-gradient(90rem 42rem at 50% -10rem, oklch(0.29 0.022 200 / 0.9), transparent 62%),
-    radial-gradient(120% 130% at 50% 115%, oklch(0.185 0.018 210 / 0.7), transparent 55%),
+    radial-gradient(90rem 42rem at 50% -10rem, color-mix(in oklab, var(--board-glow) 90%, transparent), transparent 62%),
+    radial-gradient(120% 130% at 50% 115%, color-mix(in oklab, var(--board-shade) 70%, transparent), transparent 55%),
     var(--board);
   color: var(--chalk);
   /* 深色场景滚动条/表单控件按暗色渲染,否则 Windows 黑板正中一条亮色滚动轨 */
@@ -126,7 +126,7 @@
   border: 2px solid var(--board-line);
   border-radius: var(--radius);
   transform: rotate(-1.4deg);
-  background: radial-gradient(62% 56% at 50% 42%, oklch(0.3 0.024 200 / 0.85), transparent 78%);
+  background: radial-gradient(62% 56% at 50% 42%, color-mix(in oklab, var(--board-glow) 85%, transparent), transparent 78%);
 }
 .plate {
   margin-top: calc(-1 * var(--gap-tight));
@@ -155,11 +155,11 @@
 }
 .stageHint {
   font-size: var(--fs-tiny);
+  /* chalk-soft 本身已是弱化档,不再叠 opacity(11px 深底上会跌破可读线) */
   color: var(--chalk-soft);
   line-height: 1.9;
   max-width: 24ch;
   text-align: center;
-  opacity: 0.8;
   margin-top: auto;
 }
 
@@ -183,7 +183,7 @@
 .rowT {
   display: flex;
   justify-content: flex-end;
-  animation: rise var(--t-med) var(--ease-out) both;
+  animation: global(rise) var(--t-med) var(--ease-out) both;
 }
 .bubbleT {
   max-width: 78%;
@@ -205,7 +205,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  animation: rise var(--t-med) var(--ease-out) both;
+  animation: global(rise) var(--t-med) var(--ease-out) both;
 }
 .anno {
   font-size: var(--fs-tiny);
@@ -217,7 +217,7 @@
 .bubbleX {
   max-width: 78%;
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: var(--fs-sub);
   line-height: 1.9;
   color: var(--chalk);
   white-space: pre-wrap;
@@ -228,8 +228,8 @@
 }
 
 /* 情绪分档的粉笔配色:开窍/开心/出师 → 黛绿粉笔;困惑/害羞 → 藤黄粉笔(默认灰粉笔) */
-.moodGlad .bubbleX { border-left-color: oklch(0.78 0.09 158); }
-.moodGlad .anno { color: oklch(0.78 0.09 158); }
+.moodGlad .bubbleX { border-left-color: var(--chalk-jade); }
+.moodGlad .anno { color: var(--chalk-jade); }
 .moodWarm .bubbleX { border-left-color: var(--chalk-amber); }
 .moodWarm .anno { color: var(--chalk-amber); }
 /* 开窍瞬间(仅 aha):一层黛绿水洗光亮起再退去(一次性,backwards 起帧) */
@@ -237,7 +237,7 @@
   animation: ahaWash 1.4s var(--ease-out) backwards;
 }
 @keyframes ahaWash {
-  from { background: oklch(0.78 0.09 158 / 0.13); }
+  from { background: color-mix(in oklab, var(--chalk-jade) 13%, transparent); }
   to { background: transparent; }
 }
 .caret {
@@ -252,12 +252,17 @@
   text-align: center;
   font-size: var(--fs-small);
   color: var(--chalk-amber);
-  background: linear-gradient(oklch(0.85 0.09 85 / 0.06), oklch(0.85 0.09 85 / 0.06)), var(--board-deep);
+  background:
+    linear-gradient(
+      color-mix(in oklab, var(--chalk-amber) 6%, transparent),
+      color-mix(in oklab, var(--chalk-amber) 6%, transparent)
+    ),
+    var(--board-deep);
   border: 1px dashed var(--board-line);
   border-radius: var(--radius-s);
   padding: 0.45rem 1rem;
   line-height: 1.8;
-  animation: rise var(--t-med) var(--ease-out) both;
+  animation: global(rise) var(--t-med) var(--ease-out) both;
 }
 .sysTag {
   display: inline-block;
@@ -265,7 +270,7 @@
   font-family: var(--font-display);
   letter-spacing: 0.2em;
   border: 1px solid currentColor;
-  border-radius: 2px;
+  border-radius: var(--radius-tag);
   padding: 0 0.35em 0 0.55em;
   font-size: var(--fs-tiny);
   vertical-align: 1px;
@@ -276,7 +281,7 @@
   color: var(--chalk-soft);
   font-size: var(--fs-small);
 }
-.dots i { font-style: normal; animation: blink 1.2s infinite; }
+.dots i { font-style: normal; animation: blink 1.2s var(--ease-loop) infinite; }
 .dots i:nth-child(2) { animation-delay: 0.2s; }
 .dots i:nth-child(3) { animation-delay: 0.4s; }
 
@@ -331,7 +336,7 @@
   padding: 0.35rem 0.6rem;
   max-width: 16rem;
   text-align: left;
-  transition: transform var(--t-fast) var(--ease-out);
+  transition: transform var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
 .demoLine:hover { border-color: var(--chalk-soft); transform: translateY(-1px); }
 .demoLabel { font-size: var(--fs-small); }
@@ -357,10 +362,11 @@
 .input:focus {
   outline: none;
   border-color: var(--chalk-soft);
-  box-shadow: 0 0 0 3px oklch(0.93 0.012 95 / 0.07);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--chalk) 7%, transparent);
 }
 .input:disabled { opacity: 0.55; }
-.input::placeholder { color: var(--chalk-soft); opacity: 0.65; }
+/* chalk-soft 本身已是弱化档,不再叠 opacity */
+.input::placeholder { color: var(--chalk-soft); }
 .inputSide {
   display: flex;
   flex-direction: column;
@@ -390,7 +396,7 @@
   flex-direction: column;
   gap: var(--gap-tight);
   align-items: center;
-  animation: rise var(--t-med) var(--ease-out) both;
+  animation: global(rise) var(--t-med) var(--ease-out) both;
 }
 .endedTitle {
   font-family: var(--font-display);
@@ -404,6 +410,7 @@
   line-height: 1.9;
 }
 .endedBtns { display: flex; gap: var(--gap-tight); flex-wrap: wrap; justify-content: center; }
+/* 与 .sendBtn 同制式(粉笔实心钮),改动请两处同步 */
 .primaryBtn {
   background: var(--chalk);
   color: var(--board-deep);
@@ -415,6 +422,7 @@
   transition: transform var(--t-fast) var(--ease-out);
 }
 .primaryBtn:hover { transform: translateY(-1px); }
+/* 与 .quitBtn 同制式(黑板线描边钮),改动请两处同步 */
 .ghostBtn {
   background: none;
   color: var(--chalk-soft);
@@ -422,7 +430,7 @@
   border-radius: var(--radius-s);
   font-size: var(--fs-body);
   padding: 0.5rem 1.2rem;
-  transition: transform var(--t-fast) var(--ease-out);
+  transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
 .ghostBtn:hover { color: var(--chalk); border-color: var(--chalk-soft); }
 
@@ -454,16 +462,19 @@
 .lookupTitle { font-size: var(--fs-sub); color: var(--ink); }
 .lookupMd { flex: 1; color: var(--ink); line-height: 1.9; }
 .lookupMd p { margin: 0 0 0.8em; }
+/* 与备课页 .md pre 同一制式(全站课程代码块规范) */
 .lookupMd pre {
   background: var(--ink-wash);
+  border: 1px solid var(--paper-edge);
   border-radius: var(--radius-s);
-  padding: 0.6rem 0.8rem;
+  padding: 0.7rem 0.9rem;
   overflow-x: auto;
   font-size: var(--fs-small);
   line-height: 1.7;
+  tab-size: 4;
   margin: 0 0 0.8em;
 }
-.lookupMd code { background: var(--ink-wash); padding: 0 4px; border-radius: 3px; font-size: 0.92em; }
+.lookupMd code { background: var(--ink-wash); padding: 0 4px; border-radius: var(--radius-tag); font-size: 0.92em; }
 .lookupMd pre code { background: none; padding: 0; }
 .lookupBtn {
   align-self: flex-start;
@@ -478,10 +489,6 @@
 }
 .lookupBtn:hover { transform: translateY(-1px); }
 
-@keyframes rise {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
 @keyframes blink {
   50% { opacity: 0; }
 }
@@ -494,6 +501,7 @@
   to { transform: translateX(0); opacity: 1; }
 }
 
+/* 880px 是讲台+对话双栏的场景专属折点(应用式布局,不随全站 960 档) */
 @media (max-width: 880px) {
   .main {
     grid-template-columns: 1fr;

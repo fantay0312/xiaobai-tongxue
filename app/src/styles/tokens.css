@@ -41,18 +41,27 @@
   --amber-wash: oklch(0.72 0.12 80 / 0.14);
   --dust: oklch(0.72 0.01 225);
 
+  /* 木色:书架搁板质感(门厅书架 .rail / 宣传页 .miniRail 共用,勿再裸写) */
+  --wood: oklch(0.66 0.055 70);
+  --wood-deep: oklch(0.52 0.055 62);
+  --wood-sheen: oklch(0.78 0.05 75);
+
   /* 夜自习黑板场景(讲解舱专用) */
   --board: oklch(0.245 0.02 200);
   --board-deep: oklch(0.205 0.018 210);
   --board-line: oklch(0.35 0.02 200);
+  --board-glow: oklch(0.29 0.022 200);   /* 夜自习灯光:比黑板亮一档的暖场光 */
+  --board-shade: oklch(0.185 0.018 210); /* 黑板四角的沉影 */
   --chalk: oklch(0.93 0.012 95);
   --chalk-soft: oklch(0.78 0.015 95);
   --chalk-amber: oklch(0.85 0.09 85);
+  --chalk-jade: oklch(0.78 0.09 158);    /* 黑板场景的「掌握」粉笔绿(mood glad/aha) */
 
   /* 字体 */
   --font-display: 'LXGW WenKai Screen', 'Kaiti SC', 'STKaiti', 'KaiTi', serif;
   --font-body: -apple-system, 'PingFang SC', 'Source Han Sans SC', 'Microsoft YaHei', sans-serif;
   --font-code: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+  --font-serif: 'Songti SC', 'STSong', 'Noto Serif SC', 'SimSun', serif; /* 导读/眉注宋体,仅备课书单类点缀 */
 
   /* 字阶(流式) */
   --fs-hero: clamp(2rem, 4.5vw, 3.2rem);
@@ -73,11 +82,21 @@
   --radius-s: 4px;
   --radius: 10px;
   --radius-l: 18px;
+  --radius-tag: 2px; /* 小签/徽章的锐角档(朱文小印制式),比 radius-s 更利 */
+
+  /* 版心:除宣传页(74rem 海报版心)外全站统一 */
+  --page-max: 72rem;
+  /* 吸顶导航实高:锚点让位/侧栏 sticky 偏移一律 calc(var(--header-h) + 间距),勿再写魔法数 */
+  --header-h: 3.4rem;
+
+  /* 断点约定(CSS Modules 不支持变量断点,靠此注释+评审维持):
+     双栏收拢 960px · 中间档 720px · 窄屏 560px;AppShell 品牌名 640/520px 为既有细分行为 */
 
   --shadow-paper: 0 1px 2px oklch(0.27 0.028 255 / 0.06), 0 4px 16px oklch(0.27 0.028 255 / 0.05);
   --shadow-lift: 0 2px 6px oklch(0.27 0.028 255 / 0.08), 0 12px 32px oklch(0.27 0.028 255 / 0.10);
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);   /* expo-out */
+  --ease-loop: cubic-bezier(0.42, 0, 0.58, 1); /* 往复环境动画(呼吸/浮动/眨眼)专用对称缓动;单向运动仍只用 --ease-out */
   --t-fast: 160ms;
   --t-med: 320ms;
   --t-slow: 640ms;

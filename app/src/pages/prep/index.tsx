@@ -194,9 +194,13 @@ function PrepRoom({ topicId }: { topicId: string }) {
   if (!topic || topic.locked) {
     return (
       <div className={s.page}>
-        <p className={s.notFound}>
-          这个知识点还没有开放。<Link to="/study">← 回书斋</Link>
-        </p>
+        <div className={s.notFound}>
+          <h1 className={s.notFoundTitle}>这个知识点还没有开放</h1>
+          <p className={s.notFoundText}>
+            书架上还有已开放的课在等你,先回书斋挑一本,回头再来看它。
+          </p>
+          <Link to="/study" className={s.primaryBtn}>回书斋门厅</Link>
+        </div>
       </div>
     );
   }

@@ -4,20 +4,9 @@
 
 .letterStrip,
 .ribbon {
-  animation: rise var(--t-med) var(--ease-out) backwards;
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
   animation-delay: 240ms;
   margin-bottom: var(--gap-loose);
-}
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -173,6 +162,13 @@
   line-height: 1;
   border-radius: var(--radius-s);
   transition: color var(--t-fast) var(--ease-out);
+}
+
+/* 视觉不变,命中区扩到 ≥40px */
+.modalClose::after {
+  content: '';
+  position: absolute;
+  inset: -0.25rem;
 }
 
 .modalClose:hover {

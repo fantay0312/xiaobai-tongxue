@@ -6,23 +6,16 @@
   margin: 0 auto;
   width: 100%;
   padding: 0 clamp(var(--gap), 4vw, var(--gap-loose)) var(--gap-loose);
+  /* 页内复用值:黑板渐变(sceneBoard/band)与 CTA 内距(cta/bandCta)共用,防两处漂移 */
+  --board-scene-bg: linear-gradient(160deg, var(--board) 0%, var(--board-deep) 100%);
+  --cta-pad: calc(var(--gap-tight) * 1.15) calc(var(--gap) * 1.9);
 }
 
 /* ── 入场编排(与门厅同一 rise,一次 stagger) ── */
 
 .enter {
-  animation: rise var(--t-med) var(--ease-out) both;
-}
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+  /* backwards 而非 both:both 会让 to 帧的 transform:none 永久压住 hover 的位移(CTA 上浮) */
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 
 /* ── 滚动显现:进入视口定格一次 ── */
@@ -80,7 +73,7 @@
   pointer-events: none;
   user-select: none;
   /* 淡墨呼吸:极缓的浓淡往复,像墨迹未干(reduced-motion 关闭) */
-  animation: glyphBreathe 7.5s ease-in-out infinite alternate;
+  animation: glyphBreathe 7.5s var(--ease-loop) infinite alternate;
 }
 
 @keyframes glyphBreathe {
@@ -144,7 +137,7 @@
 
 .cta {
   display: inline-block;
-  padding: calc(var(--gap-tight) * 1.15) calc(var(--gap) * 1.9);
+  padding: var(--cta-pad);
   background: var(--azure);
   color: var(--paper);
   font-family: var(--font-display);
@@ -192,6 +185,7 @@
 }
 
 .ctaGhost {
+  position: relative;
   font-family: var(--font-display);
   font-size: var(--fs-body);
   letter-spacing: 0.1em;
@@ -203,58 +197,19 @@
     border-color var(--t-fast) var(--ease-out);
 }
 
+/* 下划线贴字不动,命中区用伪元素扩到 ≥40px */
+.ctaGhost::after {
+  content: '';
+  position: absolute;
+  inset: -0.65rem 0;
+}
+
 .ctaGhost:hover {
   color: var(--ink);
   border-color: var(--ink-soft);
 }
 
-/* 小白立于主张旁 */
-
-.heroAvatar {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--gap-hair);
-  align-self: end;
-  padding-bottom: var(--gap);
-}
-
-.avatarCaption {
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.2em;
-  color: var(--ink-faint);
-}
-
-/* 《学记》竖排引文 —— 与全站同一精神锚点,立于海报最右 */
-
-.quote {
-  margin: 0;
-  writing-mode: vertical-rl;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-tight);
-  padding: var(--gap) 0 var(--gap) var(--gap);
-  border-left: 1px solid var(--paper-edge);
-  justify-self: end;
-}
-
-.quoteText {
-  font-family: var(--font-display);
-  font-size: var(--fs-title);
-  font-weight: 700;
-  letter-spacing: 0.28em;
-  line-height: 1.9;
-  color: var(--ink);
-}
-
-.quoteFrom {
-  font-family: var(--font-display);
-  font-style: normal;
-  font-size: var(--fs-small);
-  letter-spacing: 0.24em;
-  color: var(--ink-faint);
-}
+/* 小白立于主张旁 + 《学记》引文 → 收拢进 styles/anchor.module.css(与门厅共用) */
 
 /* ── 理念:一整段大字,不装进任何卡片 ── */
 
@@ -424,7 +379,7 @@
   flex-direction: column;
   gap: var(--gap);
   padding: clamp(var(--gap-loose), 5vw, 3.25rem) clamp(var(--gap), 4vw, 3.25rem);
-  background: linear-gradient(160deg, var(--board) 0%, var(--board-deep) 100%);
+  background: var(--board-scene-bg);
   border-radius: var(--radius-l);
 }
 
@@ -532,7 +487,8 @@
 /* ── 数字带:四项实证,细线分栏,不做卡片不投影 ── */
 
 .proof {
-  padding: 0 0 var(--gap-section);
+  /* 上界线由 .proofRow 的 border-block 承担,这里只补节间呼吸,与其余章节 2× 节奏对齐 */
+  padding: var(--gap-section) 0;
 }
 
 .proofRow {
@@ -608,7 +564,7 @@
 /* ── 书架预览:mini 书脊 + 木色搁板,整条可点直通 /study ── */
 
 .shelfSec {
-  padding: var(--gap-section) 0 0;
+  padding: var(--gap-section) 0;
   border-top: 1px solid var(--paper-edge);
 }
 
@@ -689,8 +645,8 @@
   display: block;
   height: 0.375rem;
   border-radius: 2px 2px 3px 3px;
-  background: linear-gradient(180deg, oklch(0.66 0.055 70), oklch(0.52 0.055 62));
-  box-shadow: inset 0 1px 0 oklch(0.78 0.05 75);
+  background: linear-gradient(180deg, var(--wood), var(--wood-deep));
+  box-shadow: inset 0 1px 0 var(--wood-sheen);
 }
 
 .shelfCourse {
@@ -739,7 +695,7 @@
 .band {
   margin-top: var(--gap-section);
   padding: clamp(var(--gap-loose), 7vw, 5rem) clamp(var(--gap), 5vw, var(--gap-section));
-  background: linear-gradient(160deg, var(--board) 0%, var(--board-deep) 100%);
+  background: var(--board-scene-bg);
   border-radius: var(--radius-l);
   display: flex;
   flex-direction: column;
@@ -763,7 +719,7 @@
 .bandCta {
   display: inline-block;
   margin-top: var(--gap-hair);
-  padding: calc(var(--gap-tight) * 1.15) calc(var(--gap) * 1.9);
+  padding: var(--cta-pad);
   font-family: var(--font-display);
   font-size: var(--fs-sub);
   font-weight: 700;
@@ -786,16 +742,7 @@
   outline-offset: 3px;
 }
 
-/* ── 参赛信息位(与门厅同款) ── */
-
-.foot {
-  margin-top: var(--gap-section);
-  padding-top: var(--gap);
-  border-top: 1px solid var(--paper-edge);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.05em;
-  color: var(--ink-faint);
-}
+/* 参赛信息位 → anchor.module.css .foot(与门厅共用) */
 
 /* ── 响应式 ── */
 
@@ -818,21 +765,7 @@
     font-size: clamp(12rem, 44vw, 18rem);
   }
 
-  .heroAvatar {
-    align-self: start;
-    align-items: flex-start;
-  }
-
-  .quote {
-    writing-mode: horizontal-tb;
-    justify-self: start;
-    border-left: 3px solid var(--paper-edge);
-    padding: var(--gap-hair) 0 var(--gap-hair) var(--gap);
-  }
-
-  .quoteText br {
-    display: none;
-  }
+  /* 引文/小白的窄屏回退在 anchor.module.css */
 
   .actRow {
     grid-template-columns: 1fr;

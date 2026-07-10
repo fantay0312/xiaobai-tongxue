@@ -29,7 +29,9 @@
 }
 .petBtn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 10px oklch(0.27 0.028 255 / 0.12), 0 16px 40px oklch(0.27 0.028 255 / 0.14);
+  box-shadow:
+    0 4px 10px color-mix(in oklab, var(--ink) 12%, transparent),
+    0 16px 40px color-mix(in oklab, var(--ink) 14%, transparent);
 }
 .petBtn:hover .petBody { transform: rotate(-5deg); }
 .pet {
@@ -39,12 +41,12 @@
 }
 .petBody {
   transform-origin: 32px 40px;
-  animation: coachBob 3.4s ease-in-out infinite;
+  animation: coachBob 3.4s var(--ease-loop) infinite;
   transition: transform var(--t-fast) var(--ease-out);
 }
 .petEyes {
   transform-origin: 32px 37px;
-  animation: coachBlink 4.8s ease-in-out infinite;
+  animation: coachBlink 4.8s var(--ease-loop) infinite;
 }
 @keyframes coachBob {
   0%, 100% { translate: 0 0; }
@@ -65,7 +67,7 @@
   font-family: var(--font-display);
   font-size: var(--fs-small);
   padding: 0.3rem 0.85rem;
-  animation: rise var(--t-med) var(--ease-out) backwards;
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
   animation-delay: 900ms;
   white-space: nowrap;
 }
@@ -81,7 +83,7 @@
   border-radius: var(--radius);
   box-shadow: var(--shadow-lift);
   overflow: hidden;
-  animation: rise var(--t-med) var(--ease-out) backwards;
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 .panelHead {
   display: flex;
@@ -117,6 +119,7 @@
 .chipLive { color: var(--jade-ink); }
 .chipOffline { color: var(--amber-ink); }
 .closeBtn {
+  position: relative;
   flex: 0 0 auto;
   width: 1.6rem;
   height: 1.6rem;
@@ -126,17 +129,25 @@
   border: none;
   border-radius: var(--radius-s);
   color: var(--ink-faint);
-  font-size: 1.05rem;
+  font-size: var(--fs-body);
   line-height: 1;
   cursor: pointer;
   transition: color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+}
+
+/* 视觉不变,命中区扩到 ≥40px */
+.closeBtn::after {
+  content: '';
+  position: absolute;
+  inset: -0.55rem;
 }
 .closeBtn:hover { color: var(--ink); background: var(--ink-wash); }
 
 .panelTopic {
   padding: 0.45rem var(--gap-tight);
   font-size: var(--fs-tiny);
-  color: var(--ink-faint);
+  /* 「问答不进课堂记录」是功能性承诺,faint 在 11px 下太虚 */
+  color: var(--ink-soft);
   border-bottom: 1px dashed var(--paper-edge);
   letter-spacing: 0.03em;
 }
@@ -170,7 +181,8 @@
 .msgTeacher {
   align-self: flex-end;
   background: var(--azure-wash);
-  border: 1px solid oklch(0.42 0.075 235 / 0.22);
+  /* 从 --azure 派生,换色时自动跟随(旧版曾裸写换色前的靛青) */
+  border: 1px solid color-mix(in oklab, var(--azure) 22%, transparent);
   color: var(--ink);
 }
 
@@ -191,7 +203,7 @@
   height: 5px;
   border-radius: 50%;
   background: var(--ink-faint);
-  animation: coachGrind 1.1s ease-in-out infinite;
+  animation: coachGrind 1.1s var(--ease-loop) infinite;
 }
 .thinkDots i:nth-child(2) { animation-delay: 0.18s; }
 .thinkDots i:nth-child(3) { animation-delay: 0.36s; }
@@ -246,7 +258,7 @@
   color: var(--ink-soft);
   font-size: var(--fs-tiny);
   font-family: var(--font-display);
-  padding: 0.28rem 0.7rem;
+  padding: 0.4rem 0.75rem;
   cursor: pointer;
   transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
@@ -286,15 +298,10 @@
   font-size: var(--fs-small);
   padding: 0.48rem 0.9rem;
   cursor: pointer;
-  transition: transform var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out);
+  transition: transform var(--t-fast) var(--ease-out);
 }
 .sendBtn:hover:enabled { transform: translateY(-1px); }
 .sendBtn:disabled { background: var(--dust); cursor: default; }
-
-@keyframes rise {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
 
 @media (max-width: 560px) {
   .root { right: 0.75rem; bottom: 0.75rem; }

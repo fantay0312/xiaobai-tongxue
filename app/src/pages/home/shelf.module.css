@@ -81,11 +81,11 @@
 .rail {
   height: 0.625rem;
   border-radius: 2px 2px 3px 3px;
-  background: linear-gradient(180deg, oklch(0.66 0.055 70), oklch(0.52 0.055 62));
+  background: linear-gradient(180deg, var(--wood), var(--wood-deep));
   box-shadow:
-    inset 0 1px 0 oklch(0.78 0.05 75),
-    0 4px 8px oklch(0.27 0.028 255 / 0.16),
-    0 10px 22px oklch(0.27 0.028 255 / 0.08);
+    inset 0 1px 0 var(--wood-sheen),
+    0 4px 8px color-mix(in oklab, var(--ink) 16%, transparent),
+    0 10px 22px color-mix(in oklab, var(--ink) 8%, transparent);
 }
 
 /* ── 书脊 ── */
@@ -105,7 +105,7 @@
   background: var(--paper-warm);
   transition: transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out);
   /* backwards 而非 both:both 会让 to 帧的 transform:none 永久压住 hover 的抽书位移 */
-  animation: shelfRise var(--t-med) var(--ease-out) backwards;
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 
 /* 书高、书宽错落(按位次确定,非随机),架上才像真的书 */
@@ -135,17 +135,6 @@
 .spine:focus-visible {
   outline: 2px solid var(--azure);
   outline-offset: 2px;
-}
-
-@keyframes shelfRise {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

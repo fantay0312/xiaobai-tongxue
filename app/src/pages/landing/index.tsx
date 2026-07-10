@@ -14,6 +14,7 @@ import { TOPICS, XIAOBAI_LINES } from '../../data';
 import { tokenizationDemo, tokenizationTopic } from '../../data/topics/tokenization';
 import type { Topic } from '../../types';
 import s from './landing.module.css';
+import anchor from '../../styles/anchor.module.css';
 
 const ACTS: { act: string; name: string; desc: string }[] = [
   {
@@ -101,8 +102,12 @@ const leakModules = import.meta.glob('../../data/leakageReport.json', { eager: t
   { default: { naiveLeakRate?: unknown; guardedLeakRate?: unknown } }
 >;
 const leakReport = Object.values(leakModules)[0]?.default;
-const fmtRate = (v: unknown): string =>
-  typeof v === 'number' ? `${(v <= 1 ? v * 100 : v).toFixed(1)}%` : '待测';
+const fmtRate = (v: number): string => `${(v <= 1 ? v * 100 : v).toFixed(1)}%`;
+/* 报告缺席时整格降级为单个「待测」——不渲染 pair 结构,免得「待测」还被划掉像排版错误 */
+const leakPair =
+  typeof leakReport?.naiveLeakRate === 'number' && typeof leakReport?.guardedLeakRate === 'number'
+    ? { from: fmtRate(leakReport.naiveLeakRate), to: fmtRate(leakReport.guardedLeakRate) }
+    : undefined;
 
 const STATS: {
   label: string;
@@ -114,11 +119,9 @@ const STATS: {
   { num: String(COURSE_COUNT), unit: '门', label: '已开课程', note: '分学科排架,任何学科都能上架开教室' },
   { num: String(TOPICS.length), unit: '个', label: '知识点', note: '含图谱占位知识点,课程版图持续铺开' },
   { num: String(MC_COUNT), unit: '套', label: '预埋误区剧本', note: '每套自带触发台词与纠偏判据,课上现场埋雷' },
-  {
-    pair: { from: fmtRate(leakReport?.naiveLeakRate), to: fmtRate(leakReport?.guardedLeakRate) },
-    label: '泄漏防线实测',
-    note: '对抗样本下的术语泄漏率:裸输出 → 白名单闸门',
-  },
+  leakPair
+    ? { pair: leakPair, label: '泄漏防线实测', note: '对抗样本下的术语泄漏率:裸输出 → 白名单闸门' }
+    : { num: '待测', label: '泄漏防线实测', note: '对抗样本下的术语泄漏率:裸输出 → 白名单闸门' },
 ];
 
 /** 书架预览:按 course 分组,保持 TOPICS 陈列顺序(与门厅书架同一分组逻辑) */
@@ -194,18 +197,18 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className={`${s.heroAvatar} ${s.enter}`} style={{ animationDelay: '160ms' }}>
+        <div className={`${anchor.heroAvatar} ${s.enter}`} style={{ animationDelay: '160ms' }}>
           <XiaobaiAvatar variant="paper" mood="curious" level={level} size={200} />
-          <p className={s.avatarCaption}>你的 AI 学生 · 小白</p>
+          <p className={anchor.avatarCaption}>你的 AI 学生 · 小白</p>
         </div>
 
-        <blockquote className={`${s.quote} ${s.enter}`} style={{ animationDelay: '120ms' }}>
-          <p className={s.quoteText}>
+        <blockquote className={`${anchor.quote} ${s.enter}`} style={{ animationDelay: '120ms' }}>
+          <p className={anchor.quoteText}>
             教然后知困,
             <br />
             知困然后能自强
           </p>
-          <cite className={s.quoteFrom}>《礼记 · 学记》</cite>
+          <cite className={anchor.quoteFrom}>《礼记 · 学记》</cite>
         </blockquote>
       </section>
 
@@ -385,7 +388,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── 参赛信息位 ── */}
-      <footer className={s.foot}>
+      <footer className={anchor.foot}>
         学习支持类智能体 · 「小白同学——教然后知困」参赛演示
       </footer>
     </div>

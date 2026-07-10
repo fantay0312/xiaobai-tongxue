@@ -219,7 +219,8 @@ export default function ReviewPage() {
                               className={s.remedyToggle}
                               onClick={() => setOpenRemedy(opened ? null : mc.mcId)}
                             >
-                              {opened ? '收起补学微路径 ▴' : '展开补学微路径 —— 三步把它讲明白 ▾'}
+                              <span className={`${s.chev} ${opened ? s.chevOpen : ''}`}>▸</span>
+                              {opened ? '收起补学微路径' : '展开补学微路径 —— 三步把它讲明白'}
                             </button>
                             <div className={`${s.collapse} ${opened ? s.open : ''}`}>
                               <div inert={!opened}>

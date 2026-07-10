@@ -6,18 +6,13 @@
    ───────────────────────────────────────────── */
 
 .page {
-  max-width: 1160px;
+  max-width: var(--page-max);
   margin: 0 auto;
   padding: var(--gap-loose) clamp(1.25rem, 4vw, 3rem) var(--gap-section);
 }
 
 /* backwards 而非 both:to 帧不驻留,不压死后代 hover 过渡 */
-.rise { animation: rise var(--t-med) var(--ease-out) backwards; }
-
-@keyframes rise {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: none; }
-}
+.rise { animation: global(rise) var(--t-med) var(--ease-out) backwards; }
 
 /* ── 卷宗题头:双细线收边,楷体眉批在上 ── */
 
@@ -204,7 +199,8 @@
   align-items: start;
 }
 
-@media (max-width: 980px) {
+/* 双栏收拢统一走 960px 档(tokens.css 断点约定) */
+@media (max-width: 960px) {
   .grid { grid-template-columns: 1fr; }
 }
 
@@ -309,7 +305,8 @@
 
 .table td {
   border-bottom: 1px solid var(--paper-edge);
-  padding: 0.45rem 0.6rem 0.45rem 0.5rem;
+  /* 与 th 同一竖向节奏 */
+  padding: 0.4rem 0.6rem 0.4rem 0.5rem;
   color: var(--ink);
   white-space: nowrap;
 }

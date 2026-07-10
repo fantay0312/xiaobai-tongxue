@@ -39,6 +39,8 @@
 ## 动效
 
 - 页面载入:一次编排好的 stagger 入场(60-90ms 间隔,translateY(8px)+opacity,--t-med --ease-out),之后克制
+- 入场关键帧唯一定义在 index.css,模块内必须写 `animation: global(rise) ...`(裸名会被 CSS Modules 哈希导致动画失效);hover 元素配 backwards,勿用 both
+- **缓动豁免**:往复环境动画(呼吸/浮动/眨眼)允许对称缓动,但必须写 `var(--ease-loop)`,不得裸写 ease-in-out;单向运动仍只用 `var(--ease-out)`
 - 小白台词:打字机流式感(逐字或逐词,像"学生在想怎么说")
 - 图谱点亮、出师仪式是两个允许铺张的高光时刻
 - 只 transition transform/opacity;高度展开用 grid-template-rows

@@ -4,18 +4,13 @@
    ───────────────────────────────────────────── */
 
 .page {
-  max-width: 1160px;
+  max-width: var(--page-max);
   margin: 0 auto;
   padding: var(--gap-loose) clamp(1.25rem, 4vw, 3rem) var(--gap-section);
 }
 
 .rise {
-  animation: rise var(--t-med) var(--ease-out) both;
-}
-
-@keyframes rise {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: none; }
+  animation: global(rise) var(--t-med) var(--ease-out) both;
 }
 
 /* ── 档案头 ── */
@@ -78,7 +73,8 @@
 
 .rail {
   position: sticky;
-  top: var(--gap-loose);
+  /* 让出吸顶导航实高:gap-loose 在中宽视口会缩到比导航矮,「批阅讫」印章会滑进毛玻璃底下 */
+  top: calc(var(--header-h) + var(--gap));
   display: flex;
   flex-direction: column;
   gap: var(--gap);
@@ -114,7 +110,17 @@
 
 @media (max-width: 960px) {
   .layout { grid-template-columns: 1fr; }
-  .rail { display: none; }
+  /* 眉批栏降级堆叠(与备课页同策):批注文案保留,只藏印章,不整栏丢内容 */
+  .rail {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--gap);
+    margin-top: var(--gap-loose);
+    border-top: 1px solid var(--paper-edge);
+    padding-top: var(--gap);
+  }
+  .rail .seal { display: none; }
 }
 
 /* ── 卷次小节 ── */
@@ -208,6 +214,12 @@
 
 .radarSvg { width: 100%; height: auto; display: block; }
 
+/* 窄屏:出栏归零 + 横滚,维度标签不随整图缩到不可读 */
+@media (max-width: 560px) {
+  .radarWrap { margin-left: 0; max-width: 100%; overflow-x: auto; }
+  .radarSvg { min-width: 480px; }
+}
+
 .radarGrid { fill: none; stroke: var(--ink); opacity: 0.13; stroke-width: 1; }
 .radarGridOuter { fill: none; stroke: var(--ink); opacity: 0.3; stroke-width: 1.2; stroke-linejoin: round; }
 .radarSpoke { stroke: var(--ink); opacity: 0.1; stroke-width: 1; }
@@ -299,7 +311,7 @@
 /* 心魔名小印章:随结局借 currentColor 变色,楷体方章制式 */
 .demonChip {
   flex: none;
-  padding: 0 0.5rem;
+  padding: 0 0.45rem;
   border: 1px solid currentColor;
   border-radius: var(--radius-s);
   font-family: var(--font-display);
@@ -329,7 +341,9 @@
   margin-top: var(--gap-hair);
   background: none;
   border: none;
-  padding: 0;
+  /* 纵向内边距撑命中区,负 margin 抵回节奏 */
+  padding: 0.5rem 0;
+  margin-bottom: -0.5rem;
   color: var(--cinnabar);
   font-family: var(--font-display);
   font-size: var(--fs-body);
@@ -397,10 +411,15 @@
 }
 
 .remedyToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
   margin-top: var(--gap-tight);
   background: none;
   border: none;
-  padding: 0;
+  /* 纵向内边距撑命中区,负 margin 抵回节奏 */
+  padding: 0.5rem 0;
+  margin-bottom: -0.5rem;
   color: var(--azure);
   font-size: var(--fs-body);
   font-family: var(--font-display);
@@ -441,13 +460,17 @@
 
 .lesson { color: var(--ink); }
 .lesson p { margin-bottom: var(--gap-tight); }
-.lesson pre {
+/* 与备课页 .md pre/.code 同一制式(全站课程代码块规范) */
+.lesson pre,
+.code {
   background: var(--ink-wash);
+  border: 1px solid var(--paper-edge);
   border-radius: var(--radius-s);
-  padding: var(--gap-tight) var(--gap);
+  padding: 0.7rem 0.9rem;
   overflow-x: auto;
   font-size: var(--fs-small);
   line-height: 1.7;
+  tab-size: 4;
 }
 .lesson code { font-size: 0.92em; }
 
@@ -465,15 +488,7 @@
 
 .quizQ { color: var(--ink); margin-bottom: var(--gap-hair); }
 
-.code {
-  margin: 0 0 var(--gap-hair);
-  background: var(--ink-wash);
-  border-radius: var(--radius-s);
-  padding: var(--gap-tight) var(--gap);
-  overflow-x: auto;
-  font-size: var(--fs-small);
-  line-height: 1.7;
-}
+.code { margin: 0 0 var(--gap-hair); }
 
 .optList { display: flex; flex-direction: column; gap: var(--gap-hair); max-width: 32rem; }
 
@@ -495,9 +510,10 @@
 .optReveal { border-color: var(--jade); }
 .optDim { opacity: 0.55; }
 
-.explainRight { margin-top: var(--gap-hair); font-size: var(--fs-small); color: var(--jade); }
+.explainRight { margin-top: var(--gap-hair); font-size: var(--fs-small); color: var(--jade-ink); }
 .explainWrong { margin-top: var(--gap-hair); font-size: var(--fs-small); color: var(--cinnabar); }
 
+/* 主按钮规范:hover 变深上浮 / active 下压 / disabled 半透明(与全站对齐) */
 .btnPrimary {
   display: inline-block;
   background: var(--azure);
@@ -508,11 +524,12 @@
   font-family: var(--font-display);
   font-size: var(--fs-body);
   letter-spacing: 0.05em;
-  transition: transform var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out);
+  transition: background var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
 }
 
-.btnPrimary:hover:not(:disabled) { transform: translateY(-1px); }
-.btnPrimary:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnPrimary:hover:not(:disabled) { background: var(--azure-deep); transform: translateY(-1px); }
+.btnPrimary:active:not(:disabled) { transform: translateY(1px); }
+.btnPrimary:disabled { opacity: 0.55; cursor: not-allowed; }
 
 /* ── 小白测验成绩单 ── */
 
@@ -560,7 +577,7 @@
 
 .quizItem { display: flex; gap: var(--gap-tight); align-items: baseline; }
 
-.markRight { color: var(--jade); font-weight: 700; flex: none; }
+.markRight { color: var(--jade-ink); font-weight: 700; flex: none; }
 .markWrong { color: var(--cinnabar); font-weight: 700; flex: none; }
 
 .quizNote { font-size: var(--fs-small); color: var(--ink-soft); margin-top: 2px; }
@@ -573,11 +590,13 @@
   gap: var(--gap-tight);
   background: none;
   border: none;
-  padding: 0;
+  /* 纵向内边距撑命中区,负 margin 抵回节奏 */
+  padding: 0.5rem 0;
+  margin: -0.5rem 0;
   font-family: var(--font-display);
   font-size: var(--fs-sub);
   color: var(--ink);
-  transition: opacity var(--t-fast) var(--ease-out);
+  transition: color var(--t-fast) var(--ease-out);
 }
 
 .evidenceToggle:hover { color: var(--azure); }

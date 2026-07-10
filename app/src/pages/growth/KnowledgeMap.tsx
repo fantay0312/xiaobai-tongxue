@@ -82,10 +82,8 @@ export function KnowledgeMap({
             onMouseEnter={() => setHovered(topic.topicId)}
             onMouseLeave={() => setHovered(null)}
             onClick={() => { if (!locked) onSelect(topic.topicId); }}
+            aria-label={`${topic.title} · ${STATUS_TEXT[status]}${mastery !== null ? ` · 掌握度 ${mastery}` : ''}`}
           >
-            <title>
-              {topic.title} · {STATUS_TEXT[status]}{mastery !== null ? ` · 掌握度 ${mastery}` : ''}
-            </title>
             {status === 'mastered' && <circle cx={x} cy={y} r={r + 7} className={s.halo} />}
             {status === 'forgotten' && <circle cx={x} cy={y} r={r + 7} className={s.haloForgot} />}
             {isSelected && <circle cx={x} cy={y} r={r + 12} className={s.haloSelected} />}

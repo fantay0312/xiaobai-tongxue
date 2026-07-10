@@ -7,7 +7,8 @@
 export function Seal({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 48 48" aria-hidden="true" focusable="false">
-      <rect x="2.5" y="2.5" width="43" height="43" rx="9" fill="var(--cinnabar)" />
+      {/* 品牌章走印泥别名(印章豁免),勿写警示语义的 --cinnabar */}
+      <rect x="2.5" y="2.5" width="43" height="43" rx="9" fill="var(--seal-red)" />
       <rect
         x="6.5" y="6.5" width="35" height="35" rx="5.5"
         fill="none" stroke="var(--paper)" strokeOpacity="0.28" strokeWidth="1.4"

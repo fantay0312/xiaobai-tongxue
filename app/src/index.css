@@ -29,6 +29,14 @@ a { color: var(--azure); text-decoration: none; }
   outline-offset: 2px;
 }
 
+/* 全站入场关键帧(唯一定义):模块内必须写 animation: global(rise) ...
+   —— postcss-modules 会把裸动画名(含未本地定义的)一律哈希,global() 是官方逃生口,产物中还原为 rise。
+   位移统一 8px(DESIGN.md);hover 元素配 backwards 填充,勿用 both(to 帧会压死 hover transform) */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* iteration-count 必须一并压掉:只压 duration 会让无限循环动画以 0.01ms/圈空转闪烁;
      delay 也必须归零:rise 阶梯的内联 animation-delay 否则会留出最长 375ms 的内容空白窗 */

@@ -1,0 +1,77 @@
+/* 全站精神锚点公共件 —— 门厅(home)与宣传页(landing)共用,原两页逐字拷贝收拢于此。
+   含:《学记》竖排引文(quote 家族)、小白蹲侧(heroAvatar)、参赛信息位(foot);
+   窄屏(≤56rem)引文转横排、小白改左对齐,与两页 hero 单列断点同步。 */
+
+/* 小白蹲在标题旁 */
+.heroAvatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-hair);
+  align-self: end;
+  padding-bottom: var(--gap);
+}
+
+.avatarCaption {
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.2em;
+  color: var(--ink-faint);
+}
+
+/* 《学记》竖排引文 —— 如古籍眉批立于最右 */
+.quote {
+  margin: 0;
+  writing-mode: vertical-rl;
+  display: flex;
+  flex-direction: column; /* 块轴:右→左,引文在右,落款在左 */
+  gap: var(--gap-tight);
+  padding: var(--gap) 0 var(--gap) var(--gap);
+  border-left: 1px solid var(--paper-edge); /* 界栏 */
+  justify-self: end;
+}
+
+.quoteText {
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  line-height: 1.9;
+  color: var(--ink);
+}
+
+.quoteFrom {
+  font-family: var(--font-display);
+  font-style: normal;
+  font-size: var(--fs-small);
+  letter-spacing: 0.24em;
+  color: var(--ink-faint);
+}
+
+/* 参赛信息位 */
+.foot {
+  margin-top: var(--gap-section);
+  padding-top: var(--gap);
+  border-top: 1px solid var(--paper-edge);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+}
+
+@media (max-width: 56rem) {
+  .heroAvatar {
+    align-self: start;
+    align-items: flex-start;
+  }
+
+  .quote {
+    writing-mode: horizontal-tb;
+    justify-self: start;
+    border-left: 3px solid var(--paper-edge);
+    padding: var(--gap-hair) 0 var(--gap-hair) var(--gap);
+  }
+
+  .quoteText br {
+    display: none;
+  }
+}

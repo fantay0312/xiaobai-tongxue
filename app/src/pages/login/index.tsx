@@ -34,6 +34,9 @@ export default function LoginPage() {
     else navigate(next, { replace: true });
   };
 
+  // /api/me 探测瞬间不渲染,免得完整表单闪一下再换提示卡(与 RequireAuth 同策)
+  if (status === 'unknown') return null;
+
   if (status === 'standalone' || status === 'authed') {
     const standalone = status === 'standalone';
     return (
@@ -99,7 +102,12 @@ export default function LoginPage() {
               {error && <p className={s.error} role="alert">{error}</p>}
             </div>
 
-            <button className={s.submit} type="submit" disabled={busy || !username.trim() || !password}>
+            <button
+              className={s.submit}
+              type="submit"
+              data-busy={busy || undefined}
+              disabled={busy || !username.trim() || !password}
+            >
               {busy ? '正在验帖…' : '登 入'}
             </button>
           </form>

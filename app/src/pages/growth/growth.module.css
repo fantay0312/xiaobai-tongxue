@@ -8,21 +8,16 @@
    ───────────────────────────────────────────── */
 
 .page {
-  max-width: 1160px;
+  max-width: var(--page-max);
   margin: 0 auto;
   padding: var(--gap-loose) clamp(1.25rem, 4vw, 3rem) var(--gap-section);
 }
 
 /* backwards 而非 both:to 帧不驻留,免得压死后代 hover transform */
-.rise { animation: rise var(--t-med) var(--ease-out) backwards; }
-
-@keyframes rise {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: none; }
-}
+.rise { animation: global(rise) var(--t-med) var(--ease-out) backwards; }
 
 /* scroll-margin:卷五记忆匣的锚点按钮 scrollIntoView 落点,给 sticky 顶栏留出身位 */
-.section { margin-bottom: var(--gap-section); scroll-margin-top: 4.5rem; }
+.section { margin-bottom: var(--gap-section); scroll-margin-top: calc(var(--header-h) + var(--gap-tight)); }
 
 .h2 {
   font-size: var(--fs-title);
@@ -79,7 +74,8 @@
   margin-bottom: var(--gap-section);
 }
 
-@media (max-width: 820px) {
+/* 双栏收拢统一走 960px 档(tokens.css 断点约定) */
+@media (max-width: 960px) {
   .hero { grid-template-columns: 1fr; row-gap: var(--gap-loose); }
 
   .portrait { margin-inline: auto; }
@@ -430,7 +426,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   border-radius: var(--radius-s);
-  transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+  transition: background var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
 }
 
 .btnSolid:hover { background: var(--azure-deep); transform: translateY(-1px); }
@@ -756,7 +752,8 @@
   border-left: 2px solid var(--paper-edge);
   display: flex;
   flex-direction: column;
-  gap: var(--gap-hair);
+  /* 与复盘页证据链时间线同密度(--gap-tight),两处同步义务 */
+  gap: var(--gap-tight);
 }
 
 .timelineItem { display: flex; gap: var(--gap-tight); align-items: baseline; flex-wrap: wrap; }
@@ -854,12 +851,13 @@
   padding: 0.35rem 0.9rem;
   font-family: var(--font-display);
   font-size: var(--fs-small);
-  transition: transform var(--t-fast) var(--ease-out);
+  transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
 }
 
-.btnGhost:hover:not(:disabled) { transform: translateY(-1px); }
-
-.btnGhost:hover:not(:disabled) { background: var(--azure-wash); }
+.btnGhost:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: var(--azure-wash);
+}
 .btnGhost:disabled { opacity: 0.45; cursor: not-allowed; }
 
 a.btnGhost { display: inline-block; text-decoration: none; }
@@ -876,11 +874,13 @@ a.btnGhost:hover { transform: translateY(-1px); background: var(--azure-wash); }
 .cornerBtn {
   background: none;
   border: none;
-  padding: 0;
+  /* 纵向内边距撑命中区,负 margin 抵回节奏 */
+  padding: 0.5rem 0;
+  margin-block: -0.5rem;
   font-size: var(--fs-tiny);
   color: var(--ink-faint);
   text-decoration: underline dotted;
-  transition: opacity var(--t-fast) var(--ease-out);
+  transition: color var(--t-fast) var(--ease-out);
 }
 
 .cornerBtn:hover { color: var(--cinnabar); }
@@ -892,15 +892,21 @@ a.btnGhost:hover { transform: translateY(-1px); background: var(--azure-wash); }
   border: 1px solid var(--cinnabar);
   color: var(--cinnabar);
   border-radius: var(--radius-s);
-  padding: 0.05rem 0.5rem;
+  padding: 0.3rem 0.7rem;
   font-size: var(--fs-tiny);
+  transition: background var(--t-fast) var(--ease-out);
 }
+
+.cornerYes:hover { background: var(--cinnabar-wash); }
 
 .cornerNo {
   background: none;
   border: 1px solid var(--paper-edge);
   color: var(--ink-soft);
   border-radius: var(--radius-s);
-  padding: 0.05rem 0.5rem;
+  padding: 0.3rem 0.7rem;
   font-size: var(--fs-tiny);
+  transition: background var(--t-fast) var(--ease-out);
 }
+
+.cornerNo:hover { background: var(--ink-wash); }

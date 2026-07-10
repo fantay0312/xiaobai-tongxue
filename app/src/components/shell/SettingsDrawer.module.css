@@ -54,12 +54,16 @@
 }
 
 .closeBtn {
+  display: grid;
+  place-items: center;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
   border: none;
   background: transparent;
   color: var(--ink-faint);
   font-size: var(--fs-title);
   line-height: 1;
-  padding: 0 var(--gap-hair);
+  padding: 0;
   border-radius: var(--radius-s);
   transition: color var(--t-fast) var(--ease-out);
 }
@@ -104,7 +108,14 @@
   border-radius: var(--radius-s);
   background: var(--paper);
   color: var(--ink-soft);
-  transition: transform var(--t-fast) var(--ease-out);
+  transition:
+    border-color var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out),
+    color var(--t-fast) var(--ease-out);
+}
+
+.modeBtn:hover {
+  border-color: color-mix(in oklab, var(--ink) 25%, transparent);
 }
 
 .modeBtn:focus-visible {
@@ -126,7 +137,8 @@
 
 .modeDesc {
   font-size: var(--fs-tiny);
-  color: var(--ink-faint);
+  /* 模式说明是功能性文案,faint 在 11px 下太虚 */
+  color: var(--ink-soft);
   line-height: 1.6;
 }
 

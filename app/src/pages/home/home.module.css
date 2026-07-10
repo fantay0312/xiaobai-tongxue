@@ -11,18 +11,7 @@
 
 .enter {
   /* backwards 而非 both:both 会让 to 帧的 transform:none 永久压住 hover 的位移 */
-  animation: rise var(--t-med) var(--ease-out) backwards;
-}
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -49,6 +38,8 @@
 }
 
 .kicker {
+  /* 与宣传页 kicker 同制式(楷体) */
+  font-family: var(--font-display);
   font-size: var(--fs-small);
   letter-spacing: 0.32em;
   color: var(--ink-faint);
@@ -96,53 +87,7 @@
   outline-offset: 3px;
 }
 
-/* 小白蹲在标题旁 */
-
-.heroAvatar {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--gap-hair);
-  align-self: end;
-  padding-bottom: var(--gap);
-}
-
-.avatarCaption {
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.2em;
-  color: var(--ink-faint);
-}
-
-/* 《学记》竖排引文 —— 全站精神锚点,如古籍眉批立于最右 */
-
-.quote {
-  margin: 0;
-  writing-mode: vertical-rl;
-  display: flex;
-  flex-direction: column; /* 块轴:右→左,引文在右,落款在左 */
-  gap: var(--gap-tight);
-  padding: var(--gap) 0 var(--gap) var(--gap);
-  border-left: 1px solid var(--paper-edge); /* 界栏 */
-  justify-self: end;
-}
-
-.quoteText {
-  font-family: var(--font-display);
-  font-size: var(--fs-title);
-  font-weight: 700;
-  letter-spacing: 0.28em;
-  line-height: 1.9;
-  color: var(--ink);
-}
-
-.quoteFrom {
-  font-family: var(--font-display);
-  font-style: normal;
-  font-size: var(--fs-small);
-  letter-spacing: 0.24em;
-  color: var(--ink-faint);
-}
+/* 小白蹲侧 + 《学记》引文 + 参赛信息位 → 收拢进 styles/anchor.module.css(与宣传页共用) */
 
 /* ── 学习闭环一条横带 ── */
 
@@ -213,45 +158,19 @@
   border-color: var(--jade);
 }
 
-.loopEnd .loopName,
+/* 「出师」步:大字用 --jade,小字号(desc/num 11px)必须用 -ink 文字档 */
+.loopEnd .loopName { color: var(--jade); }
 .loopEnd .loopDesc,
 .loopEnd .loopNum {
-  color: var(--jade);
+  color: var(--jade-ink);
 }
 
-/* ── 参赛信息位 ── */
-
-.foot {
-  margin-top: var(--gap-section);
-  padding-top: var(--gap);
-  border-top: 1px solid var(--paper-edge);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.05em;
-  color: var(--ink-faint);
-}
-
-/* ── 窄屏:引文转横排,单列下落 ── */
+/* ── 窄屏:单列下落(引文/小白的窄屏回退在 anchor.module.css) ── */
 
 @media (max-width: 56rem) {
   .hero {
     grid-template-columns: 1fr;
     align-items: start;
     padding-top: var(--gap-loose);
-  }
-
-  .heroAvatar {
-    align-self: start;
-    align-items: flex-start;
-  }
-
-  .quote {
-    writing-mode: horizontal-tb;
-    justify-self: start;
-    border-left: 3px solid var(--paper-edge);
-    padding: var(--gap-hair) 0 var(--gap-hair) var(--gap);
-  }
-
-  .quoteText br {
-    display: none;
   }
 }

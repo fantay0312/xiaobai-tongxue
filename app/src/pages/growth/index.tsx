@@ -9,7 +9,7 @@
  * 保留契约:setPersona / 复习 await startReview(topicId) → navigate(`/teach/${topicId}?mode=review`)
  * 且 reviewBusy 防抖原样;右下角演示重置的行内二次确认原样(答辩依赖)。
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { LearnEvent, LearnEventType, Persona, SessionMode, SessionReport, XiaobaiMood } from '../../types';
 import { useAppStore } from '../../store/appStore';
@@ -203,6 +203,10 @@ export default function GrowthPage() {
 
   const earnedCount = achievements.filter((a) => a.earnedAt !== null).length;
   const openAch = achievements.find((a) => a.id === openSeal) ?? null;
+  // 收起时缓存上一次内容:让 0fr 折叠动画带着内容合上,而不是先卸载再对空容器过渡
+  const lastAchRef = useRef<typeof openAch>(null);
+  if (openAch) lastAchRef.current = openAch;
+  const shownAch = openAch ?? lastAchRef.current;
   const shownChronicle = oldPages ? chronicle : chronicle.slice(0, 6);
   const rankPct = rank.nextAt !== null && rank.nextAt > 0
     ? Math.min(100, Math.round((rank.score / rank.nextAt) * 100))
@@ -227,7 +231,11 @@ export default function GrowthPage() {
   });
 
   const selNode = nodes.find((n) => n.topic.topicId === selected) ?? null;
-  const selEvents = selected ? events.filter((e) => e.topicId === selected) : [];
+  // 同印章墙:收起时缓存内容,折叠动画不吃空
+  const lastNodeRef = useRef<MapNode | null>(null);
+  if (selNode) lastNodeRef.current = selNode;
+  const shownNode = selNode ?? lastNodeRef.current;
+  const shownEvents = shownNode ? events.filter((e) => e.topicId === shownNode.topic.topicId) : [];
   const forgottenNodes = nodes.filter((n) => n.status === 'forgotten');
 
   const mood: XiaobaiMood =
@@ -386,22 +394,22 @@ export default function GrowthPage() {
               })}
             </div>
             <div className={`${s.collapse} ${openAch ? s.open : ''}`}>
-              <div>
-                {openAch && (
+              <div inert={!openAch}>
+                {shownAch && (
                   <div className={s.sealDetail}>
                     <p className={s.sealDetailName}>
-                      {openAch.glyph} {openAch.name}
-                      {openAch.earnedAt === null && <span className={s.sealDetailGhost}> · 虚印</span>}
+                      {shownAch.glyph} {shownAch.name}
+                      {shownAch.earnedAt === null && <span className={s.sealDetailGhost}> · 虚印</span>}
                     </p>
-                    <p className={s.sealDetailDesc}>{openAch.desc}</p>
-                    {openAch.earnedAt !== null ? (
+                    <p className={s.sealDetailDesc}>{shownAch.desc}</p>
+                    {shownAch.earnedAt !== null ? (
                       <p className={s.sealDetailEvidence}>
-                        {openAch.evidence ?? '印已钤下。'}
-                        <span className={s.sealDetailDate}> · {fmtDateTime(openAch.earnedAt)} 钤印</span>
+                        {shownAch.evidence ?? '印已钤下。'}
+                        <span className={s.sealDetailDate}> · {fmtDateTime(shownAch.earnedAt)} 钤印</span>
                       </p>
                     ) : (
                       <p className={s.sealDetailEvidence}>
-                        进度 <b className={s.num}>{openAch.progress.now}/{openAch.progress.target}</b>,印还没刻满。
+                        进度 <b className={s.num}>{shownAch.progress.now}/{shownAch.progress.target}</b>,印还没刻满。
                       </p>
                     )}
                   </div>
@@ -522,41 +530,41 @@ export default function GrowthPage() {
         )}
 
         <div className={`${s.collapse} ${selNode ? s.open : ''}`}>
-          <div>
-            {selNode && selNode.state && (
+          <div inert={!selNode}>
+            {shownNode && shownNode.state && (
               <div className={s.nodePanel}>
                 <div className={s.panelHead}>
-                  <h3 className={s.panelTitle}>{selNode.topic.title}</h3>
+                  <h3 className={s.panelTitle}>{shownNode.topic.title}</h3>
                   <span className={
-                    selNode.status === 'mastered' ? `${s.chip} ${s.chipJade}`
-                      : selNode.status === 'forgotten' ? `${s.chip} ${s.chipAmber}`
+                    shownNode.status === 'mastered' ? `${s.chip} ${s.chipJade}`
+                      : shownNode.status === 'forgotten' ? `${s.chip} ${s.chipAmber}`
                         : `${s.chip} ${s.chipAzure}`
                   }>
-                    {selNode.status === 'mastered' ? '已出师'
-                      : selNode.status === 'forgotten' ? '小白说它忘了'
-                        : selNode.state.knowledgeState}
+                    {shownNode.status === 'mastered' ? '已出师'
+                      : shownNode.status === 'forgotten' ? '小白说它忘了'
+                        : shownNode.state.knowledgeState}
                   </span>
-                  <span className={s.chip}>掌握度 {Math.round(selNode.state.mastery * 100)}</span>
+                  <span className={s.chip}>掌握度 {Math.round(shownNode.state.mastery * 100)}</span>
                   <span className={s.chip}>
-                    要点 {selNode.state.hitChecklist.length}/{selNode.topic.checklist.length}
+                    要点 {shownNode.state.hitChecklist.length}/{shownNode.topic.checklist.length}
                   </span>
                 </div>
-                {selNode.status === 'forgotten' && (
+                {shownNode.status === 'forgotten' && (
                   <button
                     type="button"
                     className={s.btnGhost}
                     disabled={reviewBusy}
-                    onClick={() => goReview(selNode.topic.topicId)}
+                    onClick={() => goReview(shownNode.topic.topicId)}
                   >
                     小白说它忘了 → 帮它复习
                   </button>
                 )}
                 <h3 className={s.h3} style={{ marginTop: 'var(--gap-tight)' }}>掌握度证据链</h3>
-                {selEvents.length === 0 ? (
+                {shownEvents.length === 0 ? (
                   <p className={s.muted}>还没有任何事件——这个知识点还没开讲。</p>
                 ) : (
                   <ol className={s.timeline}>
-                    {selEvents.map((e) => (
+                    {shownEvents.map((e) => (
                       <li key={e.id} className={s.timelineItem}>
                         <span className={s.timelineTime}>{fmtDateTime(e.t)}</span>
                         <span className={s.chip}>{EVENT_LABEL[e.type] ?? e.type}</span>

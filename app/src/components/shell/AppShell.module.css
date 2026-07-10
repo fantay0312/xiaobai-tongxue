@@ -35,12 +35,16 @@
   border-bottom-color: var(--board-line);
 }
 
-/* 宣传页场景:头部融进海报——透明、无界栏、不吸顶,随页滚走 */
+/* 宣传页场景:头部融进海报——透明、无界栏、不吸顶,随页滚走;
+   限宽与 landing .page 同一版心(74rem),品牌落款才与海报栅格对齐 */
 .landing .header {
   position: static;
   background: transparent;
   backdrop-filter: none;
   border-bottom-color: transparent;
+  width: 100%;
+  max-width: 74rem;
+  margin-inline: auto;
 }
 
 /* ── 品牌落款:白文印 + 楷体字标 + 界栏 + 铭 ── */
@@ -158,10 +162,6 @@
   padding: var(--gap-hair) 0.1em;
   white-space: nowrap;
   transition: color var(--t-fast) var(--ease-out);
-  /* 同一类也用于按钮形态:抹平 button 默认外观 */
-  background: none;
-  border: none;
-  cursor: pointer;
 }
 
 /* 句读点:古人圈点文章,读到哪点到哪 */
@@ -293,6 +293,7 @@
 /* ── 齿轮按钮 ── */
 
 .gearBtn {
+  position: relative;
   display: grid;
   place-items: center;
   width: 1.9rem;
@@ -302,6 +303,13 @@
   color: var(--ink-faint);
   border-radius: var(--radius-s);
   transition: color var(--t-fast) var(--ease-out), transform var(--t-med) var(--ease-out);
+}
+
+/* 视觉不变,命中区扩到 ≥40px(触控目标基线) */
+.gearBtn::after {
+  content: '';
+  position: absolute;
+  inset: -0.35rem;
 }
 
 .gearBtn:hover {
