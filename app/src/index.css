@@ -2,7 +2,7 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html, body { margin: 0; padding: 0; }
+html, body { margin: 0; padding: 0; overflow-x: clip; }
 
 body {
   background: var(--paper);
@@ -21,7 +21,32 @@ input, textarea { font-family: inherit; }
 code, pre { font-family: var(--font-code); }
 a { color: var(--azure); text-decoration: none; }
 
+.route-loader {
+  min-height: min(68dvh, 42rem);
+  display: grid;
+  place-items: center;
+  color: var(--ink-faint);
+  font-family: var(--font-display);
+  letter-spacing: 0.16em;
+}
+
 ::selection { background: var(--azure-wash); }
+
+/* 全站滚动条:细签制式。裸灰粗滚动条压在书架/横滚条上是本轮"加浓"诊断的显性糙点。
+   Firefox 走 scrollbar-*;WebKit 走伪元素。讲解舱(color-scheme:dark)沿用同规格,thumb 色自动可辨。 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--dust), transparent 30%) transparent;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--dust), transparent 30%);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover { background-color: var(--dust); }
 
 /* 全站键盘焦点基线:模块内的定制焦点环(更高特异度)会覆盖这条 */
 :focus-visible {

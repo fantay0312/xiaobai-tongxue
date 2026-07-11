@@ -116,7 +116,9 @@
 
 /* 匣底去处:按钮(本页卷目滚动)与 Link(跨页路由)同衣;焦点环走全站基线,不压 */
 .anchorLink {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-hair);
   margin-top: var(--gap-tight);
   background: none;
   border: none;

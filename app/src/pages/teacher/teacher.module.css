@@ -1,14 +1,20 @@
 /* ─────────────────────────────────────────────
    教师看板 —— 单学生真实教务档案,做成一册「教务卷宗」。
-   题头双细线 + 编号小印(壹贰叁肆伍)分节;案头小印卡/册页学情表/心魔台账/泄漏对比台
-   共用 paper-warm + 内衬双框的裱纸制式(与成长册 portrait/rankCard 同源)。
+   题头双线书版式(hairline + 2px 墨骨短线) + 编号白文小印(壹贰叁肆伍)分节;
+   案头小印卡/册页学情表/心魔台账/泄漏对比台沿用内衬双框裱纸制式(与成长册同源),
+   台账与会话卡走「浅卡深底」:paper 卡 + line-strong 框落在 warm/shade 分区带上。
+   报表节奏:节间距 2rem 定值,数据密度优先,疏朗留给列缝。
    朱砂只落在盲区/被带偏(语义法则),掌握归黛绿,悬置归藤黄,虚位归灰。
    ───────────────────────────────────────────── */
 
 .page {
+  /* width 必须显式给满:外壳 .main 纵向 flex 下,margin:auto 子项不再被 stretch 拉伸,
+     会 shrink-to-fit 压瘦整页(prep.module.css .page 同注) */
+  width: 100%;
   max-width: var(--page-max);
   margin: 0 auto;
-  padding: var(--gap-loose) clamp(1.25rem, 4vw, 3rem) var(--gap-section);
+  /* 教务报表节奏:顶部收到 2rem 定值(gap+tight),首屏多让一行数据出来 */
+  padding: calc(var(--gap) + var(--gap-tight)) clamp(1.25rem, 4vw, 3rem) var(--gap-section);
 }
 
 /* backwards 而非 both:to 帧不驻留,不压死后代 hover 过渡 */
@@ -22,9 +28,10 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--gap);
-  border-bottom: 1px solid var(--paper-edge);
+  /* 外线升强边档:卷宗封皮的界格要「框得住」(R2) */
+  border-bottom: 1px solid var(--line-strong);
   padding-bottom: var(--gap);
-  margin-bottom: var(--gap-loose);
+  margin-bottom: var(--gap);
 }
 
 /* 第二道细线:卷宗封皮的「双栏界格」感 */
@@ -35,6 +42,17 @@
   right: 0;
   bottom: 3px;
   border-bottom: 1px solid var(--paper-edge);
+}
+
+/* 双线书版式的墨骨:一段 2px 墨色短线压在通栏界格上(R2) */
+.head::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 2.5rem;
+  height: 2px;
+  background: var(--ink);
 }
 
 .headKicker {
@@ -71,13 +89,15 @@
   opacity: 0.8;
 }
 
-/* 编号小印:与成长册卷号小印同制式,单字用字距+缩进对中 */
+/* 编号小印:与成长册卷号小印同制式,单字用字距+缩进对中。
+   本轮翻成「白文印」——靛青满底压月白字,给每节题头一枚看得见的墨色锚点(R2) */
 .secNo {
   display: inline-block;
   font-family: var(--font-display);
   font-size: var(--fs-tiny);
   font-weight: 400;
-  color: var(--azure);
+  color: var(--paper);
+  background: var(--azure);
   border: 1px solid var(--azure);
   border-radius: var(--radius-s);
   padding: 0 0.4rem;
@@ -94,16 +114,16 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
   gap: var(--gap-tight);
-  margin-bottom: var(--gap-loose);
+  margin-bottom: calc(var(--gap) + var(--gap-tight));
 }
 
-/* 裱纸制式:paper-warm 底 + 内衬双框(与成长册画像/师道卡同源) */
+/* 裱纸制式:paper-warm 底 + 内衬双框(与成长册画像/师道卡同源);外框升强边档(R3) */
 .statCard {
   position: relative;
   display: flex;
   flex-direction: column;
   background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-s);
   box-shadow: inset 0 0 0 3px var(--paper-warm), inset 0 0 0 4px var(--paper-edge);
   padding: var(--gap-tight);
@@ -160,7 +180,7 @@
   border-radius: var(--radius);
   box-shadow: inset 0 0 0 5px var(--paper-warm), inset 0 0 0 6px var(--paper-edge);
   padding: var(--gap-loose);
-  margin-bottom: var(--gap-loose);
+  margin-bottom: calc(var(--gap) + var(--gap-tight));
   text-align: center;
 }
 
@@ -179,6 +199,9 @@
 .emptyLead { max-width: 36em; font-size: var(--fs-body); color: var(--ink-soft); }
 
 .btnGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-hair);
   font-family: var(--font-display);
   color: var(--azure);
   border: 1px solid var(--azure);
@@ -195,7 +218,8 @@
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  gap: var(--gap-loose);
+  /* 列缝保持疏朗(眉批位),行缝收紧——单栏收拢后节与节之间靠 .section 自己的下距 */
+  gap: var(--gap) var(--gap-loose);
   align-items: start;
 }
 
@@ -206,15 +230,27 @@
 
 .mainCol, .sideCol { min-width: 0; }
 
-.section { margin-bottom: var(--gap-loose); min-width: 0; }
+/* 报表节奏:节间距收到 2rem 定值——数据密度优先,疏朗留给列缝 */
+.section { margin-bottom: calc(var(--gap) + var(--gap-tight)); min-width: 0; }
 
-/* 分节题:细线收底,编号小印领头 —— 册页的「卷N」语言 */
+/* 分节题:双线书版式(R2)——通栏 hairline 收底,再压一段 2px 墨色短线作骨,编号小印领头 */
 .h2 {
+  position: relative;
   font-size: var(--fs-sub);
   color: var(--ink);
   margin-bottom: var(--gap-tight);
   padding-bottom: var(--gap-hair);
   border-bottom: 1px solid var(--paper-edge);
+}
+
+.h2::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 2.5rem;
+  height: 2px;
+  background: var(--ink);
 }
 
 .h2 small {
@@ -282,7 +318,12 @@
 
 /* ── ③ 知识点学情:卷宗册页表 ── */
 
-.tableWrap { overflow-x: auto; }
+/* 横滚壳收纳(R4):九列册页表窄于内容必滚,左右边缘渐隐示意「还有」;
+   mask 里的 #000 是遮罩通道不是配色,属简报豁免 */
+.tableWrap {
+  overflow-x: auto;
+  mask-image: linear-gradient(90deg, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
+}
 
 .table {
   width: 100%;
@@ -290,15 +331,15 @@
   font-size: var(--fs-small);
 }
 
-/* 表头压 paper-warm 横带,楷体撑字距 —— 册页的栏目题签 */
+/* 表头压 paper-shade 横带 + 强边线收底,楷体撑字距 —— 栏目题签要「框得住」数据区(R2/R3) */
 .table th {
   text-align: left;
   font-family: var(--font-display);
   font-weight: 400;
   letter-spacing: 0.1em;
   color: var(--ink-soft);
-  background: var(--paper-warm);
-  border-bottom: 1px solid var(--paper-edge);
+  background: var(--paper-shade);
+  border-bottom: 1px solid var(--line-strong);
   padding: 0.4rem 0.6rem 0.4rem 0.5rem;
   white-space: nowrap;
 }
@@ -388,19 +429,25 @@
 
 /* ── ④ 心魔台账 ── */
 
+/* 台账落在 paper-warm 分区带上,条目翻成「浅卡深底」(R2/R3) */
 .mcList {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: var(--gap-tight);
   display: grid;
   gap: var(--gap-tight);
-}
-
-.mcItem {
   background: var(--paper-warm);
   border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+}
+
+/* 强边线框身 + 状态色左脊(朱砂仍只落「被带偏」,语义法则不动) */
+.mcItem {
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
   border-left: 3px solid var(--dust);
   border-radius: var(--radius-s);
+  box-shadow: var(--shadow-paper);
   padding: var(--gap-tight) var(--gap);
 }
 
@@ -446,35 +493,63 @@
 
 .mcFrom { margin-left: var(--gap-tight); color: var(--ink-faint); }
 
-/* ── ⑤ 近期会话卡:与案头卡同一裱纸制式 ── */
+/* ── ⑤ 近期会话卡:雷达居左、会话档案居右的横排档案条 ──
+   诊断:紧凑雷达挤左、右侧大片空白 → grid-template-areas 重排(DOM 顺序不动,读屏仍先听主题)。
+   列表落 paper-shade 分区带,卡片翻「浅卡深底」+ 强边线裱纸框(R2/R3)。 */
 
-.sessionList { display: grid; gap: var(--gap-tight); }
+.sessionList {
+  display: grid;
+  gap: var(--gap-tight);
+  background: var(--paper-shade);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+  padding: var(--gap-tight);
+}
 
 .sessionCard {
-  background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
+  display: grid;
+  grid-template-areas:
+    'radar head'
+    'radar meta'
+    'radar link';
+  grid-template-columns: minmax(0, 8.25rem) minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr;
+  column-gap: var(--gap);
+  align-items: start;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-s);
-  box-shadow: inset 0 0 0 3px var(--paper-warm), inset 0 0 0 4px var(--paper-edge);
+  box-shadow: inset 0 0 0 3px var(--paper), inset 0 0 0 4px var(--paper-edge), var(--shadow-paper);
   padding: var(--gap-tight) var(--gap);
 }
 
 .sessionHead {
+  grid-area: head;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--gap-tight);
+  flex-wrap: wrap;
 }
 
 .sessionTopic { font-family: var(--font-display); font-size: var(--fs-body); color: var(--ink); }
 
-.sessionMeta { margin-top: var(--gap-hair); font-size: var(--fs-tiny); color: var(--ink-faint); }
+.sessionMeta { grid-area: meta; margin-top: var(--gap-hair); font-size: var(--fs-tiny); color: var(--ink-faint); }
 
 .sessionMeta .chip { margin-left: var(--gap-hair); }
 
-.miniRadar { max-width: 300px; margin: var(--gap-hair) auto 0; }
+.miniRadar { grid-area: radar; align-self: center; min-width: 0; }
+
+/* 共用 Radar 的 560px 档 min-width 是复盘页整幅雷达的口径,缩略卡里必须归零 */
+.miniRadar svg { min-width: 0; }
 
 .sessionLink {
-  display: inline-block;
+  grid-area: link;
+  align-self: end;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-hair);
   margin-top: var(--gap-hair);
   font-family: var(--font-display);
   font-size: var(--fs-small);
@@ -494,7 +569,25 @@
   padding: var(--gap-loose);
 }
 
-.leakTitle { font-size: var(--fs-sub); color: var(--ink); margin-bottom: var(--gap); }
+/* 与各节 .h2 同一套双线书版式,对齐全页题头节奏(R2;台身不动) */
+.leakTitle {
+  position: relative;
+  font-size: var(--fs-sub);
+  color: var(--ink);
+  margin-bottom: var(--gap);
+  padding-bottom: var(--gap-hair);
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.leakTitle::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 2.5rem;
+  height: 2px;
+  background: var(--ink);
+}
 
 .leakRow {
   display: flex;
@@ -556,4 +649,17 @@
   .head { flex-direction: column; }
   .seal { align-self: flex-end; }
   .statBand { grid-template-columns: repeat(auto-fit, minmax(124px, 1fr)); }
+
+  /* 会话卡收回纵排:雷达让出横排位,居中缩略 */
+  .sessionCard {
+    grid-template-areas:
+      'head'
+      'meta'
+      'radar'
+      'link';
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+  }
+
+  .miniRadar { max-width: 240px; width: 100%; justify-self: center; margin-top: var(--gap-hair); }
 }

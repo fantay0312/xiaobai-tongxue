@@ -4,16 +4,28 @@
    ───────────────────────────────────────────── */
 
 .page {
+  /* width 必须显式给满:外壳 .main 是纵向 flexbox,子项一旦带 margin:auto 就不再被
+     align-items:stretch 拉伸,会退化成 shrink-to-fit(内容多窄页面就多窄)——
+     雷达挤左、右半版心死白正是这么来的 */
+  width: 100%;
   max-width: var(--page-max);
   margin: 0 auto;
   padding: var(--gap-loose) clamp(1.25rem, 4vw, 3rem) var(--gap-section);
 }
 
 .rise {
-  animation: global(rise) var(--t-med) var(--ease-out) both;
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 
 /* ── 档案头 ── */
+
+.chapterKicker {
+  margin-bottom: var(--gap-hair);
+  color: var(--azure-deep);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  letter-spacing: 0.2em;
+}
 
 .crumb {
   font-size: var(--fs-small);
@@ -24,10 +36,22 @@
 .crumb a { color: var(--ink-soft); }
 .crumb a:hover { color: var(--azure); }
 
+/* 卷宗题头:双线书版式(R2)——通栏 hairline 上叠一段 2px 墨色短线,题头有骨 */
 .head {
-  border-bottom: 1px solid var(--paper-edge);
+  position: relative;
+  border-bottom: 1px solid var(--line-strong);
   padding-bottom: var(--gap);
   margin-bottom: var(--gap-loose);
+}
+
+.head::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 2.5rem;
+  height: 2px;
+  background: var(--ink);
 }
 
 .title {
@@ -47,6 +71,19 @@
   margin-top: var(--gap-tight);
   font-size: var(--fs-small);
   color: var(--ink-faint);
+}
+
+/* 档案号编号牌:小块砚墨压纸角(R1 的微量用法,不与出师证书争主角) */
+.fileNo {
+  display: inline-block;
+  margin-left: var(--gap-tight);
+  padding: 0.1rem 0.55rem;
+  border-radius: var(--radius-tag);
+  background: linear-gradient(160deg, var(--inkstone), var(--inkstone-deep));
+  color: var(--moon-on-ink);
+  font-family: var(--font-code);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.06em;
 }
 
 .masteredBadge {
@@ -80,12 +117,13 @@
   gap: var(--gap);
 }
 
+/* 「批阅讫」是方章制式,印章语境按纪律走 --seal-red 别名(值同朱砂,语义各档) */
 .seal {
   align-self: flex-start;
   padding: 0.5rem 0.7rem;
-  border: 2px solid var(--cinnabar);
+  border: 2px solid var(--seal-red);
   border-radius: var(--radius-s);
-  color: var(--cinnabar);
+  color: var(--seal-red);
   font-family: var(--font-display);
   font-size: var(--fs-sub);
   letter-spacing: 0.28em;
@@ -125,14 +163,40 @@
 
 /* ── 卷次小节 ── */
 
-.section { margin-bottom: var(--gap-section); }
+/* 分区带接手了区块界限,组间距从 gap-section 收到 gap-loose,消掉大段死白 */
+.section { margin-bottom: var(--gap-loose); }
 
+/* 纸色分层节奏(R2):贰/陆 落纸影带,肆 落淡瓷青带,相邻区块浓度必不同。
+   负外边距 = 内边距,带子比文字栏略宽一档,而正文左缘与非带区块对齐 */
+.bandWarm,
+.bandShade {
+  --band-pad: clamp(1rem, 2vw, 1.75rem);
+  margin-inline: calc(-1 * var(--band-pad));
+  padding: clamp(1.5rem, 3vw, 2.5rem) var(--band-pad);
+  border-radius: var(--radius-l);
+}
+
+.bandWarm { background: var(--paper-warm); }
+.bandShade { background: var(--paper-shade); }
+
+/* 区块题头:双线书版式(R2)——2px 墨色短线叠在通栏 hairline 上 */
 .h2 {
+  position: relative;
   font-size: var(--fs-title);
   color: var(--ink);
   margin-bottom: var(--gap);
   padding-bottom: var(--gap-hair);
-  border-bottom: 1px solid var(--paper-edge);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.h2::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 2.5rem;
+  height: 2px;
+  background: var(--ink);
 }
 
 .h2 small {
@@ -182,7 +246,7 @@
   margin: 0;
   max-width: 30rem;
   background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   padding: var(--gap) var(--gap) var(--gap-tight);
 }
@@ -207,10 +271,96 @@
 
 /* ── 雷达(允许出栏的非常规瞬间) ── */
 
+/* ≥960px 双栏:雷达破格居左,右列逐维朱批,把版心右半从死白里救回来 */
+.radarSplit {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(15rem, 1fr);
+  column-gap: clamp(var(--gap), 3vw, var(--gap-loose));
+  align-items: center;
+}
+
+@media (max-width: 960px) {
+  .radarSplit {
+    grid-template-columns: 1fr;
+    row-gap: var(--gap);
+  }
+}
+
 .radarWrap {
   max-width: 560px;
   margin-left: calc(-1 * clamp(0rem, 3vw, 2.5rem));
 }
+
+/* 逐维朱批列:维名 + 墨青分条 + 分值增量,全部与雷达同源同算法 */
+.dimCol {
+  min-width: 0;
+  border-left: 2px solid var(--line-strong);
+  padding-left: clamp(var(--gap), 2vw, var(--gap-loose));
+}
+
+@media (max-width: 960px) {
+  .dimCol {
+    border-left: none;
+    padding-left: 0;
+  }
+}
+
+.dimList {
+  list-style: none;
+  margin: 0 0 var(--gap);
+  padding: 0;
+}
+
+.dimRow {
+  display: grid;
+  grid-template-columns: 4.5em minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--gap-tight);
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.dimRow:last-child { border-bottom: none; }
+
+.dimName {
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  color: var(--ink);
+  letter-spacing: 0.05em;
+}
+
+.dimBar {
+  display: block;
+  height: 6px;
+  border-radius: var(--radius-s);
+  background: var(--ink-wash);
+  overflow: hidden;
+}
+
+.dimFill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-s);
+  background: var(--azure);
+}
+
+.dimVal {
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  color: var(--ink);
+  min-width: 3.2em;
+  text-align: right;
+}
+
+.dimUp,
+.dimDown {
+  font-style: normal;
+  font-size: var(--fs-tiny);
+  margin-left: 0.35em;
+}
+
+.dimUp { color: var(--jade-ink); }
+.dimDown { color: var(--cinnabar); }
 
 .radarSvg { width: 100%; height: auto; display: block; }
 
@@ -273,6 +423,9 @@
 }
 
 .demonHead {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-hair);
   font-family: var(--font-display);
   font-size: var(--fs-sub);
   font-weight: 700;
@@ -290,15 +443,26 @@
   gap: var(--gap-tight);
 }
 
+/* 浅卡深底(R3):战报卡回到纸白,靠强边线框住;wash 用不透明叠法压在纸上,
+   否则淡瓷青带会从半透明 wash 底下透出来(同成长册 rungNow 的教训) */
 .demonCard {
-  border: 1px solid var(--paper-edge);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
   border-left-width: 3px;
   border-radius: var(--radius-s);
   padding: var(--gap-tight) var(--gap);
 }
 
-.demonVanquished { border-left-color: var(--jade); background: var(--jade-wash); }
-.demonStray { border-left-color: var(--cinnabar); background: var(--cinnabar-wash); }
+.demonVanquished {
+  border-left-color: var(--jade);
+  background: linear-gradient(var(--jade-wash), var(--jade-wash)) var(--paper);
+}
+
+.demonStray {
+  border-left-color: var(--cinnabar);
+  background: linear-gradient(var(--cinnabar-wash), var(--cinnabar-wash)) var(--paper);
+}
+
 .demonPassed { border-left-color: var(--dust); }
 
 .demonRow {
@@ -338,6 +502,9 @@
 
 /* 「去救小白」:与补学微路径同一个入口,动机换了个讲法;拐走语境许用朱砂 */
 .rescueBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-hair);
   margin-top: var(--gap-hair);
   background: none;
   border: none;
@@ -370,12 +537,16 @@
 }
 
 .blindItem {
-  border: 1px solid var(--paper-edge);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   padding: var(--gap);
 }
 
-.blindItemHigh { border-color: var(--cinnabar); background: var(--cinnabar-wash); }
+.blindItemHigh {
+  border-color: var(--cinnabar);
+  background: linear-gradient(var(--cinnabar-wash), var(--cinnabar-wash)) var(--paper);
+}
 
 .blindHead {
   display: flex;
@@ -515,7 +686,10 @@
 
 /* 主按钮规范:hover 变深上浮 / active 下压 / disabled 半透明(与全站对齐) */
 .btnPrimary {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-hair);
   background: var(--azure);
   color: var(--paper);
   border: none;
@@ -535,7 +709,7 @@
 
 .quizCard {
   background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   padding: var(--gap-loose) var(--gap-loose) var(--gap);
   display: grid;
@@ -602,7 +776,7 @@
 .evidenceToggle:hover { color: var(--azure); }
 
 .chev {
-  display: inline-block;
+  display: block;
   color: var(--azure);
   transition: transform var(--t-med) var(--ease-out);
 }
@@ -625,7 +799,7 @@
   list-style: none;
   margin: 0;
   padding: 0 0 0 var(--gap-tight);
-  border-left: 2px solid var(--paper-edge);
+  border-left: 2px solid var(--line-strong);
   display: flex;
   flex-direction: column;
   gap: var(--gap-tight);
@@ -650,13 +824,15 @@
   font-size: var(--fs-tiny);
   padding: 0 0.45rem;
   border-radius: var(--radius-s);
-  border: 1px solid var(--paper-edge);
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
   color: var(--ink-soft);
 }
 
-.tagGood { color: var(--jade-ink); border-color: var(--jade); background: var(--jade-wash); }
-.tagBad { color: var(--cinnabar); border-color: var(--cinnabar); background: var(--cinnabar-wash); }
-.tagWarn { color: var(--amber-ink); border-color: var(--amber); background: var(--amber-wash); }
+/* wash 一律不透明叠在纸上,防纸影带透底 */
+.tagGood { color: var(--jade-ink); border-color: var(--jade); background: linear-gradient(var(--jade-wash), var(--jade-wash)) var(--paper); }
+.tagBad { color: var(--cinnabar); border-color: var(--cinnabar); background: linear-gradient(var(--cinnabar-wash), var(--cinnabar-wash)) var(--paper); }
+.tagWarn { color: var(--amber-ink); border-color: var(--amber); background: linear-gradient(var(--amber-wash), var(--amber-wash)) var(--paper); }
 
 .timelineText { font-size: var(--fs-small); color: var(--ink); }
 
@@ -681,9 +857,9 @@
 /* ── 底部去处:档案读完不留死胡同 ── */
 
 .footNav {
-  margin-top: var(--gap-section);
+  margin-top: var(--gap-loose);
   padding-top: var(--gap-loose);
-  border-top: 1px solid var(--paper-edge);
+  border-top: 1px solid var(--line-strong);
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -691,6 +867,9 @@
 }
 
 .footLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-hair);
   font-size: var(--fs-small);
   color: var(--ink-soft);
   transition: color var(--t-fast) var(--ease-out);

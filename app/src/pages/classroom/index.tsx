@@ -1,14 +1,16 @@
 /**
- * 讲解舱 /teach/:topicId?mode=teach|reteach|review —— 夜自习黑板(全站唯一深色页)。
- * 左 1/3 黑板讲台(小白 + 名牌),右 2/3 对话流;导演动作以粉笔小字注在小白台词旁。
+ * 讲解舱 /teach/:topicId?mode=teach|reteach|review —— 亮书斋教室 + 木框黑板。
+ * 房间是纸色的(与全站同一世界),黑板是挂在教室里的一件家具(--board 系只住在板内);
+ * 左 1/3 讲台(暖光晕下的小白 + 木桌牌),右 2/3 木框黑板上的对话流,板下讲桌是输入区。
  * 挂载契约:store.live 存在且 topicId 吻合则直接接管,否则 startSession(topicId, mode)。
- * 下课:endSession() → /review/:sessionId;R4 退回备课:abandonSession() → /prep/:topicId。
+ * 下课:endSession() → /exam/:sessionId → /review/:sessionId;R4 退回备课:abandonSession() → /prep/:topicId。
  */
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 import { getDemoScript, getTopic } from '../../data';
 import { Md } from '../../components/Md';
+import { Icon } from '../../components/ui/Icon';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import type { ChatMessage, SessionMode, XiaobaiMood } from '../../types';
 import s from './classroom.module.css';
@@ -27,6 +29,8 @@ const MOOD_ZH: Record<XiaobaiMood, string> = {
   proud: '得意',
   shy: '不好意思',
 };
+
+const LEVEL_NAME = ['嫩芽期', '开窍期', '求索期', '问难期', '出师期'] as const;
 
 /** 打字机逐字浮现(像在想怎么说) */
 function TypewriterText({ text, animate, onTick, onDone }: {
@@ -164,7 +168,7 @@ export default function ClassroomPage() {
     return (
       <div className={s.holder}>
         <p>
-          这间教室还没有开放。<Link to="/study">← 回书斋</Link>
+          这间教室还没有开放。<Link to="/study"><Icon name="arrow-left" size={15} />回书斋</Link>
         </p>
       </div>
     );
@@ -197,7 +201,7 @@ export default function ClassroomPage() {
   };
   const dismissClass = () => {
     const sid = endSession();
-    navigate(sid ? `/review/${sid}` : '/study');
+    navigate(sid ? (mode === 'review' ? `/review/${sid}` : `/exam/${sid}`) : '/study');
   };
   const backToPrep = () => {
     abandonSession();
@@ -212,14 +216,19 @@ export default function ClassroomPage() {
     ? topic.checklist.find((c) => c.id === live.lookupChecklistId) ?? null
     : null;
   const lastSystemText = [...live.messages].reverse().find((m) => m.role === 'system')?.text;
+  const finishLabel = mode === 'review' ? '完成温故' : '送小白赴考';
+  const finishIcon = mode === 'review' ? 'pen' : 'route';
 
   return (
     <div className={s.room}>
       {/* ── 顶栏 ── */}
       <header className={s.topbar}>
-        <button type="button" className={s.quitBtn} onClick={quit}>← 退出教室</button>
+        <button type="button" className={s.quitBtn} onClick={quit}>
+          <Icon name="arrow-left" size={16} />
+          <span>暂离学堂</span>
+        </button>
         <div className={s.topTitle}>
-          <span className={s.topCourse}>{topic.course} · 夜自习</span>
+          <span className={s.topCourse}>第二章 · 学堂夜课 · {topic.course}</span>
           <span className={s.topName}>{topic.title}</span>
         </div>
         {!live.ended && (
@@ -229,7 +238,8 @@ export default function ClassroomPage() {
             onClick={dismissClass}
             disabled={live.busy}
           >
-            下课 · 让小白考一考
+            <Icon name={finishIcon} size={16} />
+            {finishLabel}
           </button>
         )}
       </header>
@@ -242,7 +252,7 @@ export default function ClassroomPage() {
       )}
 
       <div className={s.main}>
-        {/* ── 左 1/3:黑板讲台 ── */}
+        {/* ── 左 1/3:讲台(暖光晕下的小白) ── */}
         <aside className={s.stage}>
           <div className={s.boardFrame}>
             <XiaobaiAvatar
@@ -250,12 +260,12 @@ export default function ClassroomPage() {
               level={g.learningLevel}
               speaking={typingNow}
               size={170}
-              variant="board"
+              variant="paper"
             />
           </div>
           <div className={s.plate}>
             <div className={s.plateName}>小白</div>
-            <div className={s.plateRow}>Lv.{g.learningLevel} · {g.persona}</div>
+            <div className={s.plateRow}>{LEVEL_NAME[g.learningLevel - 1]} · {g.persona}</div>
             <div className={s.plateRow}>在学:{topic.title}</div>
             <div className={s.plateRow}>
               心情:{MOOD_ZH[live.busy ? 'thinking' : live.mood]} · 已讲 {live.traces.length} 轮
@@ -267,10 +277,11 @@ export default function ClassroomPage() {
           </p>
         </aside>
 
-        {/* ── 右 2/3:对话流 ── */}
+        {/* ── 右 2/3:木框黑板(对话流写在板上,板下粉笔槽) ── */}
         <section className={s.chat}>
-          <div className={s.stream} ref={streamRef}>
-            {live.messages.map((m) =>
+          <div className={s.boardObj}>
+            <div className={s.stream} ref={streamRef}>
+              {live.messages.map((m) =>
               m.role === 'system' ? (
                 <div key={m.id} className={s.rowSys}>
                   <span className={s.sysTag}>导演</span>
@@ -298,9 +309,15 @@ export default function ClassroomPage() {
                 </div>
               </div>
             )}
+              <p className={s.srOnly} aria-live="polite">
+                {!typingNow && !live.busy ? lastXiaobai?.text ?? '' : ''}
+              </p>
+            </div>
+            {/* 粉笔槽:板下木沿,搁着一截粉笔和板擦 */}
+            <div className={s.tray} aria-hidden="true" />
           </div>
 
-          {/* ── 底部:结束面板 或 演示助手 + 输入区 ── */}
+          {/* ── 底部讲桌:结束面板 或 演示助手 + 输入区 ── */}
           <div className={s.dock}>
             {live.ended ? (
               <div className={s.endedPanel}>
@@ -313,7 +330,7 @@ export default function ClassroomPage() {
                     回去备课
                   </button>
                   <button type="button" className={s.ghostBtn} onClick={dismissClass}>
-                    查看本轮记录
+                    {mode === 'review' ? '查看温故记录' : '送小白赴考'}
                   </button>
                 </div>
               </div>
@@ -327,7 +344,12 @@ export default function ClassroomPage() {
                       aria-expanded={demoOpen}
                       onClick={() => setDemoOpen((o) => !o)}
                     >
-                      {demoOpen ? '▾ 演示助手(点击话术填入输入框,不会直接发送)' : '▸ 演示助手'}
+                      <Icon
+                        name="chevron-right"
+                        size={15}
+                        className={demoOpen ? s.chevronOpen : s.chevron}
+                      />
+                      {demoOpen ? '演示助手(点击话术填入输入框,不会直接发送)' : '演示助手'}
                     </button>
                     <div className={`${s.demoBody} ${demoOpen ? s.demoBodyOpen : ''}`}>
                       <div className={s.demoInner}>
@@ -368,7 +390,8 @@ export default function ClassroomPage() {
                       onClick={send}
                       disabled={!canSend}
                     >
-                      发送
+                      <Icon name="send" size={16} />
+                      讲给小白
                     </button>
                   </div>
                 </div>

@@ -17,7 +17,7 @@
   width: 3.6rem;
   height: 3.6rem;
   border-radius: 50%;
-  border: 1px solid var(--paper-edge);
+  border: 1px solid var(--line-strong);
   background: var(--paper);
   box-shadow: var(--shadow-lift);
   color: var(--azure-deep);
@@ -60,7 +60,7 @@
 /* 首次引导气泡 */
 .hint {
   background: var(--paper);
-  border: 1px solid var(--paper-edge);
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
   box-shadow: var(--shadow-paper);
   color: var(--ink-soft);
@@ -73,13 +73,14 @@
 }
 
 /* ── 答疑面板 ── */
+/* 面板外框走强边线(全站加浓轮:框得住的卡才立得住) */
 .panel {
   width: min(23.5rem, calc(100vw - 2rem));
   max-height: min(34rem, calc(100dvh - 8.5rem));
   display: flex;
   flex-direction: column;
   background: var(--paper);
-  border: 1px solid var(--paper-edge);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lift);
   overflow: hidden;
@@ -175,7 +176,7 @@
 .msgCoach {
   align-self: flex-start;
   background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
+  border: 1px solid var(--line-strong);
   color: var(--ink);
 }
 .msgTeacher {

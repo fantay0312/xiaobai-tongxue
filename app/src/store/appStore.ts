@@ -336,7 +336,8 @@ export const useAppStore = create<AppState>()(
             global: {
               ...s.global,
               topicsMastered: mastered,
-              learningLevel: Math.min(5, 1 + mastered * 2) as XiaobaiGlobal['learningLevel'],
+              // 五阶形象须逐阶可达:嫩芽→灯泡→眼镜→问号→学士帽,不再 1→3→5 跳级
+              learningLevel: Math.min(5, 1 + mastered) as XiaobaiGlobal['learningLevel'],
               bestRecord: !s.global.bestRecord || live.traces.length < parseInt(s.global.bestRecord, 10)
                 ? record : s.global.bestRecord,
             },
@@ -398,13 +399,23 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'xiaobai-store-v1',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         global: s.global, events: s.events, reports: s.reports, settings: s.settings,
       }),
-      // 直通迁移:旧版本存档(v0/v1)原样接收 —— 没有 migrate 时 zustand 会把版本不符的存档整个丢弃
-      migrate: (persisted) => persisted,
+      // v3 修正旧存档的跳级值,让五阶成长从既有出师数重新连续派生
+      migrate: (persisted, version) => {
+        const state = persisted as Partial<AppState>;
+        if (version < 3 && state.global) {
+          const mastered = Math.max(0, Number(state.global.topicsMastered) || 0);
+          state.global = {
+            ...state.global,
+            learningLevel: Math.min(5, 1 + mastered) as XiaobaiGlobal['learningLevel'],
+          };
+        }
+        return state;
+      },
       // 构建期注入了 LLM 凭据、而存档从未配置过 key 时,以注入配置为准;
       // 用户手动配置过的 key 一律保留不动。放在 merge(每次加载幂等)而非 migrate(版本升级只跑一次):
       // 否则"无 key 构建"先打上版本戳后,后补的凭据永远无法生效

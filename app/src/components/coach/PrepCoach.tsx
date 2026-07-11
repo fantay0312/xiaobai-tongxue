@@ -11,6 +11,7 @@ import {
   type CoachMessage,
 } from '../../engine/coach';
 import type { Topic } from '../../types';
+import { Icon } from '../ui/Icon';
 import s from './coach.module.css';
 
 const uid = () => (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
@@ -214,7 +215,9 @@ export function PrepCoach({ topic }: { topic: Topic }) {
             <span className={settings.mode === 'mock' ? s.chipOffline : s.chipLive}>
               {settings.mode === 'mock' ? '离线锦囊' : '已连线'}
             </span>
-            <button type="button" className={s.closeBtn} onClick={close} aria-label="收起助教面板">×</button>
+            <button type="button" className={s.closeBtn} onClick={close} aria-label="收起助教面板">
+              <Icon name="x" size={18} />
+            </button>
           </header>
           <p className={s.panelTopic}>正在陪你备《{topic.title}》——问答不进课堂记录,放心打草稿。</p>
           {/* 动画区对读屏隐藏:逐字变更 + 状态轮播会把 live region 轰炸成噪音 */}

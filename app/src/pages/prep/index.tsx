@@ -17,6 +17,7 @@ import { getSelfTest } from '../../data/selfTest';
 import { getFigures } from '../../components/diagrams';
 import { Md } from '../../components/Md';
 import { PrepCoach } from '../../components/coach/PrepCoach';
+import { Icon } from '../../components/ui/Icon';
 import type { Misconception, PrepReference, QuestionLevel } from '../../types';
 import s from './prep.module.css';
 
@@ -305,16 +306,33 @@ function PrepRoom({ topicId }: { topicId: string }) {
   return (
     <div className={s.page}>
       <header className={s.head}>
-        <Link to="/study" className={s.back}>← 回书斋</Link>
-        <p className={s.course}>{topic.course} · 备课室</p>
-        <h1 className={s.title}>{topic.title}</h1>
-        <p className={s.tagline}>{topic.tagline}</p>
+        <Link to="/study" className={s.back}><Icon name="arrow-left" size={15} />回书斋</Link>
+        <div className={s.headGrid}>
+          <div>
+            <p className={s.course}>第一章 · 入书房温书 · {topic.course}</p>
+            <h1 className={s.title}>{topic.title}</h1>
+            <p className={s.tagline}>{topic.tagline}</p>
+          </div>
+          <aside className={s.prepNote} aria-label="小白的课前问笺">
+            <span className={s.prepNoteIcon} aria-hidden="true"><Icon name="mail" size={20} /></span>
+            <div>
+              <p className={s.prepNoteLabel}>小白的课前问笺</p>
+              <p className={s.prepNoteText}>明日要讲「{topic.title}」，先生且温书。我会带着一个真问题在学堂里等你。</p>
+            </div>
+            {/* 小白的私章:信笺角落钤一枚白文小印(印章形制,走 --seal-red 别名) */}
+            <span className={s.prepNoteSeal} aria-hidden="true">白</span>
+          </aside>
+        </div>
       </header>
 
       <div className={s.layout}>
         <main className={s.main}>
           {/* ── 壹 · 摸底快测 ── */}
-          <section id={SECTIONS[0].id} className={s.section} style={{ animationDelay: '80ms' }}>
+          <section
+            id={SECTIONS[0].id}
+            className={`${s.section} ${s.bandShade}`}
+            style={{ animationDelay: '80ms' }}
+          >
             <h2 className={s.sectionTitle}>
               <span className={s.sectionNum}>壹</span>摸底快测
             </h2>
@@ -438,7 +456,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                   </p>
                   <div className={s.verdictBtns}>
                     <button type="button" className={s.primaryBtn} onClick={enterClassroom}>
-                      跳过备课,直接开讲 →
+                      跳过备课,拍案开讲 <Icon name="arrow-right" size={17} />
                     </button>
                     {!wantMaterials && (
                       <button
@@ -483,13 +501,13 @@ function PrepRoom({ topicId }: { topicId: string }) {
                 </h2>
                 <div className={s.taskCard}>
                   <span className={s.taskPin} aria-hidden="true" />
-                  <span className={s.taskLabel}>教 学 任 务</span>
-                  <p className={s.taskText}>{topic.prep.taskCard}</p>
+                  <span className={s.taskLabel}><Icon name="clipboard" size={16} />教 学 任 务</span>
+                  <p className={s.taskText}>{topic.prep.taskCard.replace(/^[📋🧾]\s*/u, '')}</p>
                 </div>
               </section>
 
               {/* ── 叁 · 讲课路线图 ── */}
-              <section id={SECTIONS[2].id} className={s.section}>
+              <section id={SECTIONS[2].id} className={`${s.section} ${s.bandWarm}`}>
                 <h2 className={s.sectionTitle}>
                   <span className={s.sectionNum}>叁</span>讲课路线图
                 </h2>
@@ -499,7 +517,8 @@ function PrepRoom({ topicId }: { topicId: string }) {
                 <ol className={s.roadmap}>
                   {topic.checklist.map((item, i) => (
                     <Fragment key={item.id}>
-                      <li className={s.roadStep} style={{ animationDelay: `${i * 70}ms` }}>
+                      {/* R6:stagger 70ms,同屏最长 delay 封顶 280ms,后排不留白 */}
+                      <li className={s.roadStep} style={{ animationDelay: `${Math.min(i * 70, 280)}ms` }}>
                         <span className={s.roadBadge}>
                           <b>{item.level}</b>
                           {LEVEL_META[item.level]}
@@ -515,7 +534,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                       {i === ambushAfter && topic.misconceptions.length > 0 && (
                         <li
                           className={s.roadAmbush}
-                          style={{ animationDelay: `${(i + 1) * 70}ms` }}
+                          style={{ animationDelay: `${Math.min((i + 1) * 70, 280)}ms` }}
                         >
                           <span className={s.roadBadgeWarn}>
                             <b>L4</b>
@@ -642,11 +661,11 @@ function PrepRoom({ topicId }: { topicId: string }) {
                               target="_blank"
                               rel="noreferrer noopener"
                             >
-                              <span className={s.videoPlay} aria-hidden="true">▶</span>
+                              <span className={s.videoPlay} aria-hidden="true"><Icon name="play" size={18} /></span>
                               <span className={s.videoBody}>
                                 <span className={s.videoTitle}>
                                   {ref.title}
-                                  <span className={s.refArrow} aria-hidden="true">↗</span>
+                                  <span className={s.refArrow} aria-hidden="true"><Icon name="external" size={14} /></span>
                                 </span>
                                 <span className={s.videoNote}>{ref.note}</span>
                                 {videoHost(ref.url) && (
@@ -677,7 +696,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                                   rel="noreferrer noopener"
                                 >
                                   {ref.title}
-                                  <span className={s.refArrow} aria-hidden="true">↗</span>
+                                  <span className={s.refArrow} aria-hidden="true"><Icon name="external" size={14} /></span>
                                 </a>
                                 <span className={s.refKind}>{ref.kind}</span>
                               </p>
@@ -692,7 +711,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
               </section>
 
               {/* ── 伍 · 自检清单 ── */}
-              <section id={SECTIONS[4].id} className={s.section}>
+              <section id={SECTIONS[4].id} className={`${s.section} ${s.bandShade}`}>
                 <h2 className={s.sectionTitle}>
                   <span className={s.sectionNum}>伍</span>备课自检
                 </h2>
@@ -714,7 +733,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                               })
                             }
                           />
-                          <span className={s.checkBox} aria-hidden="true">{on ? '✓' : ''}</span>
+                          <span className={s.checkBox} aria-hidden="true">{on ? <Icon name="check" size={15} /> : null}</span>
                           <span className={s.checkText}>{item}</span>
                         </label>
                       </li>
@@ -728,7 +747,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                     disabled={!allChecked}
                     onClick={enterClassroom}
                   >
-                    备课完成,进入讲解舱 →
+                    备课完成,拍惊堂木 <Icon name="arrow-right" size={17} />
                   </button>
                   {!allChecked && (
                     <p className={s.lockHint}>把自检清单全部勾完,讲解舱才会解锁。</p>
@@ -810,7 +829,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
           {prepDone && (
             <p>
               <Link className={s.doneLink} to={`/teach/${topic.topicId}`}>
-                你之前备过这门课 · 直接开讲 →
+                你之前备过这门课 · 直接开讲 <Icon name="arrow-right" size={15} />
               </Link>
             </p>
           )}

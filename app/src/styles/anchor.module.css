@@ -1,5 +1,5 @@
 /* 全站精神锚点公共件 —— 门厅(home)与宣传页(landing)共用,原两页逐字拷贝收拢于此。
-   含:《学记》竖排引文(quote 家族)、小白蹲侧(heroAvatar)、参赛信息位(foot);
+   含:《学记》竖排引文(quote 家族)、小白蹲侧(heroAvatar);
    窄屏(≤56rem)引文转横排、小白改左对齐,与两页 hero 单列断点同步。 */
 
 /* 小白蹲在标题旁 */
@@ -19,7 +19,7 @@
   color: var(--ink-faint);
 }
 
-/* 《学记》竖排引文 —— 如古籍眉批立于最右 */
+/* 《学记》竖排引文 —— 如古籍眉批立于最右(加浓轮:界栏升强边线档,眉批才立得住) */
 .quote {
   margin: 0;
   writing-mode: vertical-rl;
@@ -27,7 +27,7 @@
   flex-direction: column; /* 块轴:右→左,引文在右,落款在左 */
   gap: var(--gap-tight);
   padding: var(--gap) 0 var(--gap) var(--gap);
-  border-left: 1px solid var(--paper-edge); /* 界栏 */
+  border-left: 1px solid var(--line-strong); /* 界栏 */
   justify-self: end;
 }
 
@@ -45,17 +45,7 @@
   font-style: normal;
   font-size: var(--fs-small);
   letter-spacing: 0.24em;
-  color: var(--ink-faint);
-}
-
-/* 参赛信息位 */
-.foot {
-  margin-top: var(--gap-section);
-  padding-top: var(--gap);
-  border-top: 1px solid var(--paper-edge);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.05em;
-  color: var(--ink-faint);
+  color: var(--ink-soft);
 }
 
 @media (max-width: 56rem) {
@@ -67,7 +57,7 @@
   .quote {
     writing-mode: horizontal-tb;
     justify-self: start;
-    border-left: 3px solid var(--paper-edge);
+    border-left: 3px solid var(--line-strong);
     padding: var(--gap-hair) 0 var(--gap-hair) var(--gap);
   }
 

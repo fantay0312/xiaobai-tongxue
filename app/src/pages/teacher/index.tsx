@@ -14,6 +14,7 @@ import { useAppStore } from '../../store/appStore';
 import { getTopic, TOPICS } from '../../data';
 import { demonName } from '../../engine/story';
 import { Radar } from '../review/Radar';
+import { Icon } from '../../components/ui/Icon';
 import s from './teacher.module.css';
 
 // ── 展示词表(与复盘页同一套口径,评价语言不允许分叉) ──
@@ -88,7 +89,8 @@ const CHART_W = 720;
 const ROW_H = 58;
 const BAR_MAX = 520;
 
-const rise = (i: number) => ({ animationDelay: `${i * 75}ms` });
+/* 入场阶梯 75ms;同屏最长 delay 封顶 300ms(R6),后排区块不许白屏等场 */
+const rise = (i: number) => ({ animationDelay: `${Math.min(i * 75, 300)}ms` });
 
 export default function TeacherPage() {
   const events = useAppStore((st) => st.events);
@@ -215,7 +217,7 @@ export default function TeacherPage() {
           <p className={s.emptyLead}>
             教务档案从第一课开始记。去书斋给小白开讲,这里的每一个数字都会自己长出来。
           </p>
-          <Link to="/study" className={s.btnGhost}>去书斋开讲 →</Link>
+          <Link to="/study" className={s.btnGhost}>去书斋开讲 <Icon name="arrow-right" size={16} /></Link>
         </section>
       )}
 
@@ -259,7 +261,8 @@ export default function TeacherPage() {
                         <rect
                           x={0} y={y + 26} width={w} height={14} rx={7}
                           className={`${s.barRect} ${r.severity === 'high' ? s.barHigh : s.barInk}`}
-                          style={{ animationDelay: `${120 + i * 60}ms` }}
+                          /* 研墨阶梯 45ms,总延迟封顶 300ms(R6):榜单最多 8 条,尾条不许拖过入场窗 */
+                          style={{ animationDelay: `${Math.min(120 + i * 45, 300)}ms` }}
                         />
                         <text x={w + 8} y={y + 38} className={s.barCount}>
                           {r.count} 次
@@ -397,7 +400,7 @@ export default function TeacherPage() {
                     <div className={s.miniRadar}>
                       <Radar radar={r.radar} delta={r.radarDelta} compact />
                     </div>
-                    <Link to={`/review/${r.sessionId}`} className={s.sessionLink}>查看复盘 →</Link>
+                    <Link to={`/review/${r.sessionId}`} className={s.sessionLink}>查看复盘 <Icon name="arrow-right" size={15} /></Link>
                   </article>
                 ))}
               </div>

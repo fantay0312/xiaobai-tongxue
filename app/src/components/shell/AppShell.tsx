@@ -6,10 +6,12 @@
  * / (宣传页)下头部退为透明静置变体,随海报滚走;品牌落款回宣传页,「书斋」导航到 /study。
  * 宣传页头部不放应用内导航/登入/设置——对外只留品牌与「进入书斋」一个入口。
  */
-import { useState, type ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { SettingsDrawer } from './SettingsDrawer';
 import { Seal } from './Seal';
+import { StoryTrail } from '../story/StoryTrail';
+import { Icon } from '../ui/Icon';
 import { useAuthStore } from '../../store/authStore';
 import styles from './AppShell.module.css';
 
@@ -21,10 +23,12 @@ const NAV_LINKS: { to: string; label: string; end: boolean }[] = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
-  const boardMode = /^\/teach(\/|$)/.test(pathname);
+  // 讲解舱已改「亮书斋 + 木框黑板物件」,全暗外壳退役(board 变体样式保留备用)
+  const boardMode = false;
   // 宣传页场景:头部退为透明静置,随海报一起滚走
   const landingMode = pathname === '/';
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const closeSettings = useCallback(() => setSettingsOpen(false), []);
   const authStatus = useAuthStore((s) => s.status);
   const authUser = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
@@ -89,34 +93,17 @@ export function AppShell({ children }: { children: ReactNode }) {
             aria-label="打开设置"
             title="设置"
           >
-            <GearIcon />
+            <Icon name="settings" size={16} />
           </button>
         </nav>
         )}
       </header>
 
+      {!landingMode && <StoryTrail pathname={pathname} board={boardMode} />}
+
       <main className={styles.main}>{children}</main>
 
-      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsDrawer open={settingsOpen} onClose={closeSettings} />
     </div>
-  );
-}
-
-function GearIcon() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="3.2" />
-      <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.09a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.09a1.7 1.7 0 0 0 1.56 1.03H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.03z" />
-    </svg>
   );
 }

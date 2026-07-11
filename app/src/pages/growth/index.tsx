@@ -1,9 +1,9 @@
 /**
  * 成长页 /growth —— 一本真正的「成长册」,按书卷编次:
- * 卷首·师徒(小白阶梯+人格+师道等级印章+下一步) / 卷一·印章墙 / 卷二·教学编年史 /
+ * 卷首·师徒(小白阶梯+人格+师道称号印+下一步) / 卷一·印章墙 / 卷二·教学编年史 /
  * 卷三·盲区图谱(遗忘的知识点化作「小白的来信」信笺) / 卷四·金句画廊 /
  * 卷五·小白的记忆(四层记忆匣,engine/recall 派生) / 卷尾·小白眼里的你(印象句+可复算出处)。
- * 数据全部真实派生:印章与师道等级来自 engine/achievements,下一步来自 engine/journey,
+ * 数据全部真实派生:印章与师道称号来自 engine/achievements,下一步来自 engine/journey,
  * 编年史把 events 按 sessionId 与 reports 并轨(sessionId 为 null 的备课/补学作独立眉批);
  * 卷二/卷三/卷尾 section 带 id(chronicle/map/bond)供卷五记忆匣的锚点按钮 scrollIntoView。
  * 保留契约:setPersona / 复习 await startReview(topicId) → navigate(`/teach/${topicId}?mode=review`)
@@ -21,17 +21,20 @@ import { deriveMemoryPanorama, deriveRelationshipLines } from '../../engine/reca
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { XiaobaiLetter } from '../../components/story/XiaobaiLetter';
 import { MemoryPanorama } from '../../components/story/MemoryPanorama';
+import { Icon, type IconName } from '../../components/ui/Icon';
 import { KnowledgeMap, type MapNode } from './KnowledgeMap';
 import s from './growth.module.css';
 
 /* 阶名对齐 3D 形象的等级配件:1 嫩芽 / 2 灯泡 / 3 眼镜 / 4 眼镜+问号泡 / 5 学士帽 */
-const LEVELS = [
-  { lv: 1, name: '嫩芽', desc: '初入学堂' },
-  { lv: 2, name: '灯泡', desc: '偶有灵光' },
-  { lv: 3, name: '眼镜', desc: '追问成性' },
-  { lv: 4, name: '问号', desc: '刨根问底' },
-  { lv: 5, name: '学士帽', desc: '可以出师' },
+const LEVELS: { lv: 1 | 2 | 3 | 4 | 5; name: string; desc: string; icon: IconName }[] = [
+  { lv: 1, name: '嫩芽', desc: '初入学堂', icon: 'sprout' },
+  { lv: 2, name: '灯泡', desc: '偶有灵光', icon: 'lightbulb' },
+  { lv: 3, name: '眼镜', desc: '追问成性', icon: 'glasses' },
+  { lv: 4, name: '问号', desc: '刨根问底', icon: 'circle-help' },
+  { lv: 5, name: '学士帽', desc: '可以出师', icon: 'graduation' },
 ] as const;
+
+const DREAM_GOAL = 5;
 
 const PERSONAS: { name: Persona; line: string }[] = [
   { name: '好奇型', line: '「哇,为什么会这样?然后呢然后呢?」' },
@@ -64,7 +67,8 @@ const fmtDateTime = (iso: string) =>
 const fmtDay = (iso: string) =>
   new Date(iso).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
 
-const rise = (i: number) => ({ animationDelay: `${i * 75}ms` });
+/* 入场步进 75ms,同屏最长 delay 封顶 300ms(加浓轮 R6) */
+const rise = (i: number) => ({ animationDelay: `${Math.min(i * 75, 300)}ms` });
 
 // ── 卷二·编年史装订:events 按 sessionId 分组,与 reports 并轨,倒序 ──
 
@@ -179,7 +183,7 @@ export default function GrowthPage() {
   const [reviewBusy, setReviewBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
-  // 印章 / 师道等级 / 下一步 / 编年史:全部由事件流等真实数据纯函数派生
+  // 印章 / 师道称号 / 下一步 / 编年史:全部由事件流等真实数据纯函数派生
   const deriveInput = useMemo(
     () => ({ events, reports, global, topicStates, topics: TOPICS }),
     [events, reports, global, topicStates],
@@ -208,9 +212,6 @@ export default function GrowthPage() {
   if (openAch) lastAchRef.current = openAch;
   const shownAch = openAch ?? lastAchRef.current;
   const shownChronicle = oldPages ? chronicle : chronicle.slice(0, 6);
-  const rankPct = rank.nextAt !== null && rank.nextAt > 0
-    ? Math.min(100, Math.round((rank.score / rank.nextAt) * 100))
-    : 100;
   // 实印分色:tier → 印章样式(string 索引宽容契约外值,落回墨印)
   const TIER_CLASS: Record<string, string> = { ink: s.sealInk, cinnabar: s.sealCinnabar, gold: s.sealGold };
 
@@ -259,7 +260,7 @@ export default function GrowthPage() {
         <figure className={s.portrait}>
           <p className={s.portraitMark} aria-hidden="true">弟 子 画 像</p>
           <div className={s.portraitStage}>
-            <XiaobaiAvatar mood={mood} level={global.learningLevel} variant="paper" size={176} />
+            <XiaobaiAvatar mood={mood} level={global.learningLevel} variant="paper" size={200} />
           </div>
           {/* figcaption 须是 figure 的末位元素子节点(HTML 内容模型),展签一并收进题名里 */}
           <figcaption className={s.portraitCaption}>
@@ -276,9 +277,38 @@ export default function GrowthPage() {
           <p className={s.volMark}>卷首 · 师徒</p>
           <h1 className={s.heroTitle}>小白的成长册</h1>
           <p className={s.heroSub}>
-            它现在是 <span className={s.levelNow}>Lv{global.learningLevel} {LEVELS[global.learningLevel - 1].name} · {LEVELS[global.learningLevel - 1].desc}</span>
+            它现在走到 <span className={s.levelNow}>「{LEVELS[global.learningLevel - 1].name} · {LEVELS[global.learningLevel - 1].desc}」</span>
             ——你教得越明白,它追问得越刁钻。
           </p>
+
+          <div className={s.dreamThread}>
+            <span className={s.dreamIcon} aria-hidden="true"><Icon name="sparkles" size={20} /></span>
+            <div>
+              <p className={s.dreamLabel}>小白一直记着的愿望</p>
+              <p className={s.dreamText}>“我想有一天，也能像先生一样，把道理讲给别人听。”</p>
+            </div>
+            <span className={s.dreamProgress}>
+              {global.topicsMastered >= DREAM_GOAL
+                ? '第一程已圆满'
+                : `离第一次试讲还差 ${DREAM_GOAL - global.topicsMastered} 门`}
+            </span>
+          </div>
+
+          {global.topicsMastered >= DREAM_GOAL && (
+            <section className={s.graduationScene} aria-label="小白的第一次试讲，已由五门出师记录解锁">
+              <div className={s.graduationCast} aria-hidden="true">
+                <span className={s.graduationLectern}><Icon name="presentation" size={25} /></span>
+                <span className={s.littleStudent}>白</span>
+                <span className={s.littleStudent}>白</span>
+                <span className={s.littleStudent}>白</span>
+              </div>
+              <div>
+                <p className={s.graduationLabel}>终章已启 · 小白的第一次试讲</p>
+                <blockquote className={s.graduationQuote}>“先生，这回换我来讲给小小白听。”</blockquote>
+                <p className={s.graduationProof}>由已教到出师的 {global.topicsMastered} 门学问真实解锁</p>
+              </div>
+            </section>
+          )}
 
           {/* 修行阶:走过的阶落墨,当下的阶钤青印,没到的阶还是虚印(与卷一印章墙同语) */}
           <ol className={s.ladder} aria-label="小白的成长阶梯">
@@ -294,7 +324,7 @@ export default function GrowthPage() {
                       : s.rung
                 }
               >
-                <span className={s.rungLv}>Lv{l.lv}</span>
+                <span className={s.rungIcon} aria-hidden="true"><Icon name={l.icon} size={17} /></span>
                 <span className={s.rungName}>{l.name}</span>
                 <span className={s.rungDesc}>{l.desc}</span>
               </li>
@@ -331,32 +361,26 @@ export default function GrowthPage() {
             <div className={s.rankCard}>
               <span className={s.rankSeal} aria-hidden="true">师道</span>
               <div className={s.rankBody}>
-                <p className={s.rankLabel}>师道等级 · 第 <b className={s.num}>{rank.level}</b> 阶</p>
+                <p className={s.rankLabel}>先生的称号 · 由真实课堂留下</p>
                 <p className={s.rankTitle}>{rank.title}</p>
-                <p className={s.rankScore}>履历分 <b className={s.num}>{rank.score}</b></p>
-                {rank.nextTitle !== null && rank.nextAt !== null ? (
-                  <>
-                    <div className={s.rankBar}><span style={{ width: `${rankPct}%` }} /></div>
-                    <p className={s.rankNext}>距「{rank.nextTitle}」还差 <b className={s.num}>{Math.max(0, rank.nextAt - rank.score)}</b> 分</p>
-                  </>
-                ) : (
-                  <p className={s.rankNext}>已至此道最高阶。</p>
-                )}
+                <p className={s.rankScore}>已教到出师 <b className={s.num}>{global.topicsMastered}</b> 门 · 实印 <b className={s.num}>{earnedCount}</b> 枚</p>
+                <p className={s.rankNext}>称号只由备课、讲明要点、纠正误区与出师记录派生。</p>
               </div>
             </div>
             {step && (
               <div className={s.journeyCard}>
                 <p className={s.journeyLabel}>下一步 · {step.title}</p>
                 <p className={s.journeyLine}>{step.line}</p>
-                <Link to={step.to} className={s.btnSolid}>{step.cta} →</Link>
+                <Link to={step.to} className={s.btnSolid}>{step.cta}<Icon name="arrow-right" size={16} /></Link>
               </div>
             )}
           </div>
         </div>
       </header>
 
-      {/* ── 卷一·印章墙:成就全量陈列,实印/虚印,点一枚看来历 ── */}
-      <section className={`${s.section} ${s.rise}`} style={rise(1)}>
+      {/* ── 卷一·印章墙:成就全量陈列,实印/虚印,点一枚看来历 ──
+          分区带节奏(R2):卷一 warm / 卷二 paper / 卷三 shade / 卷四 warm / 卷五 paper / 卷尾 shade */}
+      <section className={`${s.section} ${s.band} ${s.bandWarm} ${s.rise}`} style={rise(1)}>
         <h2 className={s.h2}>
           <span className={s.volNo}>卷一</span>印章墙
           <small>{earnedCount}/{achievements.length} 枚实印 · 点一枚看它的来历</small>
@@ -465,7 +489,7 @@ export default function GrowthPage() {
                       </div>
                       <p className={s.logLine}>{narrate(en, title)}</p>
                       {en.hasReport && (
-                        <Link to={`/review/${en.sessionId}`} className={s.logLink}>查看复盘 →</Link>
+                        <Link to={`/review/${en.sessionId}`} className={s.logLink}>查看复盘 <Icon name="arrow-right" size={15} /></Link>
                       )}
                     </div>
                   </li>
@@ -489,7 +513,7 @@ export default function GrowthPage() {
       </section>
 
       {/* ── 卷三·盲区图谱:星图 + 证据链 + 遗忘复习入口(交互契约原样保留) ── */}
-      <section id="map" className={`${s.section} ${s.rise}`} style={rise(3)}>
+      <section id="map" className={`${s.section} ${s.band} ${s.bandShade} ${s.rise}`} style={rise(3)}>
         <h2 className={s.h2}>
           <span className={s.volNo}>卷三</span>盲区图谱
           <small>
@@ -556,7 +580,7 @@ export default function GrowthPage() {
                     disabled={reviewBusy}
                     onClick={() => goReview(shownNode.topic.topicId)}
                   >
-                    小白说它忘了 → 帮它复习
+                    小白说它忘了 <Icon name="arrow-right" size={15} /> 帮它复习
                   </button>
                 )}
                 <h3 className={s.h3} style={{ marginTop: 'var(--gap-tight)' }}>掌握度证据链</h3>
@@ -580,7 +604,7 @@ export default function GrowthPage() {
       </section>
 
       {/* ── 卷四·金句画廊:goldenAnalogies 横向卡流,引号大字 + 出处小注 ── */}
-      <section className={`${s.section} ${s.rise}`} style={rise(4)}>
+      <section className={`${s.section} ${s.band} ${s.bandWarm} ${s.rise}`} style={rise(4)}>
         <h2 className={s.h2}>
           <span className={s.volNo}>卷四</span>金句画廊
           <small>你打过的好比方,小白替你裱起来了</small>
@@ -612,7 +636,7 @@ export default function GrowthPage() {
       </section>
 
       {/* ── 卷尾·小白眼里的你:印象句由 deriveRelationshipLines 派生,每句带可复算出处 ── */}
-      <section id="bond" className={`${s.section} ${s.rise}`} style={rise(6)}>
+      <section id="bond" className={`${s.section} ${s.band} ${s.bandShade} ${s.rise}`} style={rise(6)}>
         <h2 className={s.h2}>
           <span className={s.volNo}>卷尾</span>小白眼里的你
           <small>它记得的,是你教书的样子</small>

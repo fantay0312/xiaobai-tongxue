@@ -2,6 +2,10 @@
    侧栏「备课五步」兼任锚点导航:进度态(done/active)与 scrollspy 当前在读态叠加 */
 
 .page {
+  /* width 必须显式给满:外壳 .main 是纵向 flexbox,子项一旦带 margin:auto 就不再被
+     align-items:stretch 拉伸,会退化成 shrink-to-fit(内容多窄页面就多窄)——
+     双栏版心被压瘦、右侧留出大片死白正是这么来的 */
+  width: 100%;
   max-width: var(--page-max);
   margin: 0 auto;
   padding: clamp(1.5rem, 4vw, 3rem) clamp(1.25rem, 4vw, 3rem) var(--gap-section);
@@ -24,20 +28,85 @@
 }
 
 /* ── 页头 ── */
-.head { animation: global(rise) var(--t-med) var(--ease-out) both; }
-.back { font-size: var(--fs-small); color: var(--ink-faint); }
+.head { animation: global(rise) var(--t-med) var(--ease-out) backwards; }
+.back { display: inline-flex; align-items: center; gap: var(--gap-hair); font-size: var(--fs-small); color: var(--ink-faint); }
 .back:hover { color: var(--azure); }
-.course {
+.headGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 25rem);
+  gap: var(--gap-loose);
+  align-items: end;
   margin-top: var(--gap);
+}
+.course {
   font-size: var(--fs-tiny);
   letter-spacing: 0.25em;
   color: var(--ink-faint);
 }
+/* 信笺形制(R3 + 加浓诊断 a):纸底 + 强边线外框 + 内衬细线双框,角落钤小白的私章 */
+.prepNote {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--gap-tight);
+  padding: var(--gap);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius) var(--radius) 2px var(--radius);
+  background: var(--paper);
+  box-shadow: var(--shadow-paper);
+}
+.prepNote::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid var(--paper-edge);
+  border-radius: calc(var(--radius) - 4px) calc(var(--radius) - 4px) 1px calc(var(--radius) - 4px);
+  pointer-events: none;
+}
+/* 小白的白文私章:方寸一枚,微斜如手钤(印章语境,只走 --seal-red 别名) */
+.prepNoteSeal {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  display: grid;
+  place-items: center;
+  background: var(--seal-red);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  line-height: 1;
+  border-radius: 3px;
+  transform: rotate(6deg);
+  box-shadow: var(--shadow-paper);
+}
+.prepNoteIcon {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 1px solid var(--azure);
+  border-radius: 50%;
+  color: var(--azure-deep);
+}
+.prepNoteLabel {
+  color: var(--azure-deep);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.16em;
+  /* 给右上角私章让位 */
+  padding-right: 2.1rem;
+}
+.prepNoteText { margin-top: 0.15rem; font-family: var(--font-display); color: var(--ink); line-height: 1.8; }
 .title { font-size: var(--fs-title); margin-top: var(--gap-hair); }
 .tagline {
   color: var(--ink-soft);
   font-family: var(--font-display);
   margin-top: var(--gap-hair);
+}
+
+@media (max-width: 760px) {
+  .headGrid { grid-template-columns: 1fr; gap: var(--gap); }
 }
 
 /* ── 不对称双列:内容 + 眉批 ── */
@@ -56,26 +125,54 @@
 }
 
 .section {
-  animation: global(rise) var(--t-med) var(--ease-out) both;
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
   /* 锚点落点让出吸顶导航栏的高度 */
   scroll-margin-top: calc(var(--header-h) + var(--gap-tight));
 }
+/* 纸色分层节奏(R2 + 诊断 c):壹 shade / 贰 paper / 叁 warm / 肆 paper / 伍 shade,
+   负外距 + 等量内距让分区带向两侧破格,而内容与未着色区块保持同一左缘 */
+.bandWarm,
+.bandShade {
+  margin-inline: calc(-1 * var(--gap));
+  padding: var(--gap) var(--gap) calc(var(--gap) + 0.5rem);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+}
+.bandWarm { background: var(--paper-warm); }
+.bandShade { background: var(--paper-shade); }
+/* 区块题头「双线书版式」(R2):2px 墨色短线叠在通栏 1px 细线上,比孤零零的细线有骨 */
 .sectionTitle {
+  position: relative;
   font-size: var(--fs-sub);
   display: flex;
   align-items: center;
   gap: var(--gap-tight);
   letter-spacing: 0.02em;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--line-strong);
 }
+.sectionTitle::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 2.5rem;
+  height: 2px;
+  background: var(--ink);
+}
+/* 序号章(诊断 c):壹—伍统一墨章形制,方寸实底、微斜如手钤——不是印泥语境,走墨色 */
 .sectionNum {
   display: inline-grid;
   place-items: center;
-  width: 1.9rem;
-  height: 1.9rem;
-  border: 1px solid var(--azure);
-  border-radius: 50%;
-  color: var(--azure);
+  width: 2rem;
+  height: 2rem;
+  background: var(--ink);
+  border-radius: var(--radius-tag);
+  color: var(--paper);
+  font-family: var(--font-display);
   font-size: var(--fs-small);
+  transform: rotate(-3deg);
+  box-shadow: var(--shadow-paper);
   flex: 0 0 auto;
 }
 .sectionHint {
@@ -109,13 +206,15 @@
   flex-direction: column;
   gap: var(--gap-tight);
 }
+/* 题卡(R3 + 诊断 b):浅卡落深带——纸底 + 强边线,不再是"淡卡白底" */
 .probe {
-  background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
-  border-left: 3px solid var(--paper-edge);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--line-strong);
   border-radius: var(--radius-s);
   padding: var(--gap-tight) var(--gap);
-  animation: global(rise) var(--t-med) var(--ease-out) both;
+  box-shadow: var(--shadow-paper);
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 .probeGood { border-left-color: var(--jade); }
 .probeBad { border-left-color: var(--cinnabar); }
@@ -156,6 +255,7 @@
   color: var(--paper);
   transform: translateY(-1px);
 }
+.probeBtns button:active:not(:disabled) { transform: translateY(1px); }
 /* 答后禁用不卸载(保键盘焦点):降为静默态,选中项留内侧标记 */
 .probeBtns button:disabled {
   cursor: default;
@@ -179,11 +279,18 @@
   margin-top: var(--gap);
   border-radius: var(--radius-s);
   padding: var(--gap-tight) var(--gap);
-  animation: global(rise) var(--t-med) var(--ease-out) both;
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
   line-height: 1.9;
 }
-.verdictGood { background: var(--jade-wash); }
-.verdictBad { background: var(--cinnabar-wash); }
+/* 判词落在 shade 带上:wash 底叠不透明纸底,再描一圈同族细边框住 */
+.verdictGood {
+  background: linear-gradient(var(--jade-wash), var(--jade-wash)) var(--paper);
+  border: 1px solid color-mix(in oklab, var(--jade) 38%, transparent);
+}
+.verdictBad {
+  background: linear-gradient(var(--cinnabar-wash), var(--cinnabar-wash)) var(--paper);
+  border: 1px solid color-mix(in oklab, var(--cinnabar) 32%, transparent);
+}
 .verdictBtns {
   display: flex;
   align-items: center;
@@ -194,7 +301,10 @@
 
 /* ── 按钮(主按钮规范:hover 变深上浮 / active 下压 / disabled 半透明,与全站对齐) ── */
 .primaryBtn {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-hair);
   background: var(--azure);
   color: var(--paper);
   border: none;
@@ -252,11 +362,11 @@
   letter-spacing: 0.12em;
   color: var(--ink);
 }
-/* 题头右侧接一段虚线,把"换波"在版面上画出来 */
+/* 题头右侧接一段虚线,把"换波"在版面上画出来(shade 带上细线换强边线才立得住) */
 .mcWaveTitle::after {
   content: '';
   flex: 1;
-  border-top: 1px dashed var(--paper-edge);
+  border-top: 1px dashed var(--line-strong);
 }
 .mcWaveHint {
   margin-top: var(--gap-hair);
@@ -275,6 +385,8 @@
   align-items: baseline;
   gap: var(--gap-tight);
   width: 100%;
+  /* 触控目标底线 ≥40px */
+  min-height: 2.5rem;
   text-align: left;
   background: var(--paper);
   border: 1px solid var(--paper-edge);
@@ -287,6 +399,7 @@
   transition: border-color var(--t-fast) var(--ease-out),
     background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
 }
+.mcOptions button:active:not(:disabled) { border-color: var(--azure-deep); }
 .mcOptions button:hover {
   border-color: var(--azure);
   background: var(--azure-wash);
@@ -298,13 +411,15 @@
   background: var(--paper);
   color: var(--ink-soft);
 }
-/* 你按下的那一项:内侧竖标 + 描边加深(对错由所在题卡的左沿色说话) */
+/* 你按下的那一项:内侧竖标 + 描边加墨 + 淡墨晕底(对错由所在题卡的左沿色说话)
+   —— 答后态比旧版更咬得住版面(诊断 b) */
 .optPicked,
 .probeBtns button:disabled.optPicked,
 .mcOptions button:disabled.optPicked {
   border-color: var(--ink-soft);
   box-shadow: inset 3px 0 0 var(--ink-soft);
   color: var(--ink);
+  background: var(--ink-wash);
 }
 
 /* 读屏专用:视觉隐藏但保留在无障碍树(同 coach 的 srOnly) */
@@ -358,7 +473,7 @@
   left: 2.1rem;
   top: 0.9rem;
   bottom: 0.9rem;
-  border-left: 1px dashed var(--paper-edge);
+  border-left: 1px dashed var(--line-strong);
 }
 .roadStep,
 .roadAmbush {
@@ -366,7 +481,7 @@
   display: flex;
   gap: var(--gap);
   align-items: flex-start;
-  animation: global(rise) var(--t-med) var(--ease-out) both;
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 .roadBadge,
 .roadBadgeWarn {
@@ -396,10 +511,11 @@
   color: var(--cinnabar);
   border-style: dashed;
 }
+/* 路线卡落在 warm 带上:纸底 + 强边线(R3 浅卡深底) */
 .roadBody {
   min-width: 0;
-  background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-s);
   padding: var(--gap-tight) var(--gap);
   flex: 1;
@@ -510,7 +626,7 @@
   margin: calc(var(--gap) + 0.5rem) 0 0 -1.4rem;
   transform: rotate(-1.3deg);
   background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-s);
   box-shadow: var(--shadow-lift);
   padding: calc(var(--gap) + 0.4rem) var(--gap-loose) var(--gap-loose);
@@ -526,6 +642,9 @@
   box-shadow: var(--shadow-paper);
 }
 .taskLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-hair);
   position: absolute;
   top: -0.75rem;
   left: 1.2rem;
@@ -545,7 +664,7 @@
 /* ── 材料包(卷宗式折叠:一册装订,条目细线分隔,不再一节一盒) ── */
 .materials {
   margin-top: var(--gap);
-  border: 1px solid var(--paper-edge);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-s);
   background: var(--paper-warm);
   overflow: hidden;
@@ -711,9 +830,9 @@
   text-decoration: underline;
 }
 .refArrow {
-  display: inline-block;
+  display: inline-flex;
+  vertical-align: -0.15em;
   margin-left: 0.3em;
-  font-size: 0.82em;
   transition: transform var(--t-fast) var(--ease-out);
 }
 .refLink:hover .refArrow { transform: translate(2px, -2px); }
@@ -774,8 +893,6 @@
   border: 1px solid var(--azure);
   border-radius: 50%;
   color: var(--azure);
-  font-size: var(--fs-tiny);
-  padding-left: 2px; /* ▶ 光学居中 */
   transition: background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
 }
 .videoCard:hover .videoPlay {
@@ -819,6 +936,7 @@
   flex-direction: column;
   gap: var(--gap-hair);
 }
+/* 自检条目落在 shade 带上:纸底 + 强边线(R3) */
 .checkLabel {
   position: relative;
   display: flex;
@@ -827,8 +945,8 @@
   cursor: pointer;
   padding: 0.5rem var(--gap-tight);
   border-radius: var(--radius-s);
-  background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
 }
 .checkLabel input {
   position: absolute;
@@ -872,7 +990,7 @@
   color: var(--ink-soft);
   border-left: 1px solid var(--paper-edge);
   padding-left: var(--gap);
-  animation: global(rise) var(--t-med) var(--ease-out) both;
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
   animation-delay: 160ms;
 }
 .asideTitle {
@@ -979,7 +1097,7 @@ button.stepCurrent:hover { background: var(--azure-wash); }
   padding: 0 0.35rem;
   white-space: nowrap;
 }
-.doneLink { color: var(--azure); }
+.doneLink { display: inline-flex; align-items: center; gap: var(--gap-hair); color: var(--azure); }
 .asideQuote {
   margin: 0;
   font-family: var(--font-display);
@@ -1005,6 +1123,12 @@ button.stepCurrent:hover { background: var(--azure-wash); }
 @media (max-width: 560px) {
   .sectionTitle { flex-wrap: wrap; row-gap: var(--gap-hair); }
   .readTime { margin-left: 0; }
+  /* 窄屏分区带收窄破格量,与页边距对齐,不挤出横滚 */
+  .bandWarm,
+  .bandShade {
+    margin-inline: calc(-1 * var(--gap-tight));
+    padding-inline: var(--gap-tight);
+  }
   .probeBtns button { width: auto; flex: 1 1 0; }
   .verdictBtns { align-items: stretch; }
   .verdictBtns .primaryBtn,

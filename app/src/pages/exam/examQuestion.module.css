@@ -1,0 +1,232 @@
+/* 题头:双线书版式(R2)——通栏 hairline 上压一段 2px 短墨线 */
+.examHead {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding-bottom: var(--gap);
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.examHead::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 2.5rem;
+  height: 2px;
+  background: var(--ink);
+}
+
+.examTitle { margin-top: 0.2rem; font-size: var(--fs-title); }
+
+.skipBtn {
+  flex: none;
+  border: none;
+  background: none;
+  color: var(--ink-faint);
+  padding: 0.5rem;
+  font-size: var(--fs-small);
+  text-decoration: underline dotted;
+}
+
+.skipBtn:hover { color: var(--ink); }
+
+/* 答题卡:编号小格(R5 状态分调),不再是无名细条 */
+.progress {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-hair);
+  margin: var(--gap) 0;
+  padding: 0;
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
+}
+
+.progressDot {
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 1.5rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-tag);
+  background: var(--paper);
+  color: var(--ink-faint);
+}
+
+.cellNo {
+  font-family: var(--font-code);
+  font-size: var(--fs-tiny);
+  line-height: 1;
+}
+
+.progressPast { border-color: var(--jade); background: var(--jade-wash); color: var(--jade-ink); }
+
+.progressNow {
+  border-color: var(--azure);
+  background: var(--azure-wash);
+  color: var(--azure-deep);
+  box-shadow: 0 0 0 3px var(--azure-wash);
+}
+
+.beatRail {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--gap-hair);
+  margin: 0 0 var(--gap);
+  padding: 0;
+  animation: global(rise) var(--t-med) var(--ease-out) 60ms backwards;
+}
+
+.beatStep {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.5rem;
+  border-top: 1px solid var(--line-strong);
+  color: var(--ink-faint);
+  font-size: var(--fs-tiny);
+  font-family: var(--font-display);
+}
+
+.beatStep span { color: inherit; }
+.beatPast { color: var(--jade-ink); border-color: var(--jade); }
+.beatNow { color: var(--azure-deep); border-top-width: 2px; border-color: var(--azure); background: var(--azure-wash); }
+
+/* 考卷本体:浅卡落在暖底上(R3),左上一段短墨线是卷首(R2) */
+.questionCard {
+  position: relative;
+  min-height: 10rem;
+  padding: var(--gap-loose);
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  box-shadow: var(--shadow-paper);
+  animation: global(rise) var(--t-med) var(--ease-out) 120ms backwards;
+}
+
+.questionCard::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: 2.5rem;
+  height: 2px;
+  background: var(--ink);
+}
+
+/* 编号章:小方签,不抢朱砂 */
+.questionNo {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.6rem;
+  border: 1px solid var(--azure);
+  border-radius: var(--radius-tag);
+  background: var(--azure-wash);
+  color: var(--azure-deep);
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.14em;
+}
+
+.questionText {
+  margin-top: var(--gap-tight);
+  max-width: 42rem;
+  font-size: var(--fs-title);
+  line-height: 1.65;
+}
+
+.code {
+  margin: var(--gap) 0 0;
+  padding: var(--gap);
+  overflow-x: auto;
+  border: 1px solid var(--paper-edge);
+  background: var(--ink-wash);
+  font-size: var(--fs-small);
+}
+
+/* 场外旁观带:安静的 paper-shade 一段(先生在场外看着,不上台) */
+.thought {
+  min-height: 8rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gap);
+  margin-top: var(--gap);
+  padding: var(--gap) var(--gap-loose);
+  background: var(--paper-shade);
+  border: 1px solid var(--paper-edge);
+  animation: global(rise) var(--t-med) var(--ease-out) 180ms backwards;
+}
+
+.miniAvatar { width: 92px; height: 92px; }
+.thoughtLabel { color: var(--azure-deep); font-size: var(--fs-tiny); letter-spacing: 0.18em; }
+.thoughtText { margin-top: 0.2rem; font-family: var(--font-display); font-size: var(--fs-sub); color: var(--ink); line-height: 1.9; }
+
+.caret {
+  display: inline-block;
+  width: 0.08em;
+  height: 1em;
+  margin-left: 0.12em;
+  vertical-align: -0.08em;
+  background: var(--azure);
+  animation: caretBlink 0.8s step-end infinite;
+}
+
+@keyframes caretBlink { 50% { opacity: 0; } }
+
+.judgement {
+  min-height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding-top: var(--gap);
+  animation: global(rise) var(--t-med) var(--ease-out) 240ms backwards;
+}
+
+.correctStamp,
+.wrongStamp,
+.writing {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-hair);
+  font-family: var(--font-display);
+}
+
+/* 判定戳:方签形制,落章式微斜(掌握=黛绿,未稳=朱砂警示) */
+.correctStamp,
+.wrongStamp {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid;
+  border-radius: var(--radius-tag);
+  transform: rotate(-2deg);
+}
+
+.correctStamp { color: var(--jade-ink); border-color: var(--jade); background: var(--jade-wash); }
+.wrongStamp { color: var(--cinnabar); border-color: var(--cinnabar); background: var(--cinnabar-wash); }
+.writing { color: var(--ink-faint); }
+
+.judgementShown .correctStamp,
+.judgementShown .wrongStamp { animation: stampIn var(--t-med) var(--ease-out) backwards; }
+
+@keyframes stampIn {
+  from { opacity: 0; transform: scale(1.18) rotate(-6deg); }
+  to { opacity: 1; transform: rotate(-2deg); }
+}
+
+@media (max-width: 560px) {
+  .questionCard { padding: var(--gap); }
+  .questionText { font-size: var(--fs-sub); }
+  .beatStep { justify-content: center; padding-inline: 0.2rem; }
+  .thought { grid-template-columns: 1fr; padding: var(--gap); }
+  .miniAvatar { display: none; }
+  .judgement { align-items: stretch; flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .judgementShown .correctStamp,
+  .judgementShown .wrongStamp,
+  .caret { animation: none; }
+}

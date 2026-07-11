@@ -7,6 +7,7 @@
  */
 import { Link } from 'react-router-dom';
 import type { MemoryLayer } from '../../engine/recall';
+import { Icon } from '../ui/Icon';
 import s from './memory.module.css';
 
 interface Props {
@@ -62,11 +63,11 @@ export function MemoryPanorama({ layers }: Props) {
                     className={s.anchorLink}
                     onClick={() => scrollToSection(targetId)}
                   >
-                    {layer.anchor.label} →
+                    {layer.anchor.label} <Icon name="arrow-right" size={15} />
                   </button>
                 ) : (
                   <Link to={layer.anchor.to} className={s.anchorLink}>
-                    {layer.anchor.label} →
+                    {layer.anchor.label} <Icon name="arrow-right" size={15} />
                   </Link>
                 )
               )}

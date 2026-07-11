@@ -1,7 +1,7 @@
 /**
  * 宣传页 —— 站点门面(公开,无需登录)。
  * 与全站同一纸墨世界,但允许比应用页更海报化:大字楷体主张、巨字水印、
- * 三幕流程、课堂实录、实证数字带、朱文印机制卡、书架预览、结尾黑板色 CTA 带。
+ * 四幕流程、课堂实录、实证数字带、朱文印机制卡、书架预览、结尾砚墨 CTA 带。
  * 实证纪律:实录台词、课程/知识点/误区数、泄漏率一律从数据模块与离线实测报告导入,
  * 页面不手写任何会漂移的数字。
  * 入场用与门厅一致的 rise 编排;滚动显现用 IntersectionObserver,尊重 reduced-motion。
@@ -10,6 +10,7 @@ import { useEffect, useRef, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
+import { Icon } from '../../components/ui/Icon';
 import { TOPICS, XIAOBAI_LINES } from '../../data';
 import { tokenizationDemo, tokenizationTopic } from '../../data/topics/tokenization';
 import type { Topic } from '../../types';
@@ -29,7 +30,12 @@ const ACTS: { act: string; name: string; desc: string }[] = [
   },
   {
     act: '第三幕',
-    name: '复盘补学',
+    name: '赴考',
+    desc: '你在场外看小白独自答题。它记住了什么、在哪里犹豫、带着哪处误解落笔，都会如实上演。',
+  },
+  {
+    act: '第四幕',
+    name: '灯下批注',
     desc: '下课领五维雷达和盲区证据链,每个分数都有出处。哪里讲不清补哪里,补完再讲,直到出师。',
   },
 ];
@@ -135,6 +141,18 @@ function groupByCourse(topics: Topic[]): { course: string; topics: Topic[] }[] {
   return groups;
 }
 const SHELF = groupByCourse(TOPICS);
+const TEACHABLE_COUNT = TOPICS.filter((t) => !t.locked).length;
+
+const CN_DIGIT = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+
+/** 1-99 → 汉字讲数(函套书口的传统写法,与门厅书架同一手法) */
+function cnCount(n: number): string {
+  if (n <= 0 || n >= 100) return String(n);
+  const tens = Math.floor(n / 10);
+  const ones = n % 10;
+  if (tens === 0) return CN_DIGIT[ones];
+  return `${tens > 1 ? CN_DIGIT[tens] : ''}十${ones ? CN_DIGIT[ones] : ''}`;
+}
 
 export default function LandingPage() {
   const level = useAppStore((st) => st.global.learningLevel);
@@ -224,10 +242,10 @@ export default function LandingPage() {
         </p>
       </section>
 
-      {/* ── 三幕流程 ── */}
-      <section className={s.acts} id="how" aria-label="三幕流程">
+      {/* ── 四幕流程 ── */}
+      <section className={s.acts} id="how" aria-label="四幕流程">
         <header className={`${s.secHead} ${s.reveal}`} data-reveal>
-          <p className={s.secKicker}>一堂课,三幕</p>
+          <p className={s.secKicker}>一堂课,四幕</p>
           <h2 className={s.secTitle}>从备课到出师</h2>
         </header>
         <div className={s.actRow}>
@@ -274,10 +292,11 @@ export default function LandingPage() {
             <p className={s.speaker}>小白 · 它真诚地坚持一个错误直觉</p>
             <p className={s.bubble}>{M1.triggerLine}</p>
           </div>
+          {/* 同屏 stagger 封顶 300ms:黑板不许为等旁注空着 */}
           <p
             className={`${s.sceneAside} ${s.reveal}`}
             data-reveal
-            style={{ transitionDelay: '360ms' }}
+            style={{ transitionDelay: '300ms' }}
           >
             此刻:纠正它,或被它带偏——复盘时现形
           </p>
@@ -343,41 +362,67 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── 书架预览:mini 书脊立于木色搁板,直通书架 ── */}
+      {/* ── 书斋一角:函套陈列(与门厅书架同语言)+ 书目摘抄,整柜直通书架 ── */}
       <section className={s.shelfSec} aria-label="书架预览">
         <header className={`${s.secHead} ${s.reveal}`} data-reveal>
           <p className={s.secKicker}>书斋一角</p>
           <h2 className={s.secTitle}>书架上已经摆好的课</h2>
         </header>
-        <Link
-          className={`${s.shelfStrip} ${s.reveal}`}
-          data-reveal
-          to="/study"
-          aria-label="进入书架,挑一个知识点开讲"
-        >
-          {SHELF.map(({ course, topics }) => (
-            <span key={course} className={s.shelfGroup}>
-              <span className={s.miniRow}>
-                {topics.map((t) => (
-                  <span
-                    key={t.topicId}
-                    className={`${s.miniSpine} ${t.locked ? s.miniLocked : ''}`}
-                    title={t.locked ? `${t.title}(未开放)` : t.title}
-                  />
-                ))}
-              </span>
-              <span className={s.miniRail} aria-hidden="true" />
-              <span className={s.shelfCourse}>《{course}》</span>
-              <span className={s.shelfCount}>
-                {topics.filter((t) => !t.locked).length} 个可开讲 · 共 {topics.length} 个
-              </span>
+
+        <div className={s.shelfWrap}>
+          <Link
+            className={`${s.caseLink} ${s.reveal}`}
+            data-reveal
+            to="/study"
+            aria-label="进入书架,挑一个知识点开讲"
+          >
+            <span className={s.caseRow}>
+              {SHELF.map(({ course, topics }, i) => (
+                <span
+                  key={course}
+                  className={`${s.vol} ${s[`volTone${i % 3}`]}`}
+                  style={{ width: `${7.25 + Math.min(topics.length * 0.05, 1.5)}rem` }}
+                >
+                  <span className={`${s.volSlip} ${course.length > 6 ? s.volSlipLong : ''}`}>
+                    {course}
+                  </span>
+                  <span className={s.volMeta}>{cnCount(topics.length)} 讲</span>
+                </span>
+              ))}
             </span>
-          ))}
-          <span className={s.shelfGo}>去书架挑一本 →</span>
-        </Link>
+            <span className={s.caseRail} aria-hidden="true" />
+            <span className={s.caseCaption}>
+              {TEACHABLE_COUNT} 个知识点可开讲 · 去书架挑一本 <Icon name="arrow-right" size={14} />
+            </span>
+          </Link>
+
+          <div className={`${s.catalog} ${s.reveal}`} data-reveal style={{ transitionDelay: '120ms' }}>
+            {SHELF.map(({ course, topics }) => {
+              const open = topics.filter((t) => !t.locked);
+              const names = open.slice(0, 3).map((t) => t.title);
+              const bindCount = topics.length - open.length;
+              return (
+                <p key={course} className={s.cataRow}>
+                  <span className={s.cataCourse}>《{course}》</span>
+                  <span className={s.cataNames}>
+                    {names.join(' · ')}
+                    <span className={s.cataCount}>
+                      {open.length > names.length ? ` ……共 ${open.length} 讲可开讲` : ` · 共 ${open.length} 讲可开讲`}
+                      {bindCount > 0 ? `,另 ${bindCount} 讲装订中` : ''}
+                    </span>
+                  </span>
+                </p>
+              );
+            })}
+            <p className={s.cataNote}>
+              每一讲都自带摸底快测、研读材料包与预埋误区剧本——拿来即可开讲;
+              架上永远留着空函,任何学科都能上架,开成一间新教室。
+            </p>
+          </div>
+        </div>
       </section>
 
-      {/* ── 结尾 CTA:黑板夜自习色带,门后就是教室 ── */}
+      {/* ── 结尾 CTA:砚墨收尾锚点,一盏灯的余光——教室的灯已经亮了 ── */}
       <section className={`${s.band} ${s.reveal}`} data-reveal aria-label="开始教学">
         <p className={s.bandKicker}>教室的灯已经亮了</p>
         <h2 className={s.bandTitle}>现在,轮到你来教了</h2>
@@ -386,11 +431,6 @@ export default function LandingPage() {
           <span className={s.ctaSeal} aria-hidden="true">教</span>
         </Link>
       </section>
-
-      {/* ── 参赛信息位 ── */}
-      <footer className={anchor.foot}>
-        学习支持类智能体 · 「小白同学——教然后知困」参赛演示
-      </footer>
     </div>
   );
 }

@@ -3,9 +3,10 @@
  * LlmSettings 表单:mock/api 模式切换 + 小白台词温度。
  * 评估与状态机永远本地规则运行,LLM 只负责理解与台词。
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { llmCall } from '../../engine';
+import { Icon } from '../ui/Icon';
 import styles from './SettingsDrawer.module.css';
 
 type TestState =
@@ -14,10 +15,13 @@ type TestState =
   | { status: 'ok'; detail: string }
   | { status: 'fail'; detail: string };
 
+const FOCUSABLE = 'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])';
+
 export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const settings = useAppStore((s) => s.settings);
   const setSettings = useAppStore((s) => s.setSettings);
   const [test, setTest] = useState<TestState>({ status: 'idle' });
+  const panelRef = useRef<HTMLElement>(null);
 
   const runTest = async () => {
     setTest({ status: 'busy' });
@@ -37,11 +41,37 @@ export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () =
 
   useEffect(() => {
     if (!open) return;
+    const returnTarget = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const panel = panelRef.current;
+    panel?.focus();
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (e.key !== 'Tab' || !panel) return;
+      const focusables = panel.querySelectorAll<HTMLElement>(FOCUSABLE);
+      if (focusables.length === 0) {
+        e.preventDefault();
+        panel.focus();
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === panel)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      returnTarget?.focus();
+    };
   }, [open, onClose]);
 
   // 抽屉打开时锁定背后页面滚动;补上滚动条宽度,经典滚动条系统(Windows)不横跳
@@ -66,14 +96,19 @@ export function SettingsDrawer({ open, onClose }: { open: boolean; onClose: () =
         aria-hidden="true"
       />
       <aside
+        ref={panelRef}
         className={open ? `${styles.panel} ${styles.panelOpen}` : styles.panel}
-        aria-label="设置"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+        aria-hidden={!open}
+        tabIndex={-1}
         inert={!open}
       >
         <header className={styles.head}>
-          <h2 className={styles.title}>设置</h2>
+          <h2 id="settings-title" className={styles.title}>设置</h2>
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="关闭设置">
-            ×
+            <Icon name="x" size={19} />
           </button>
         </header>
 

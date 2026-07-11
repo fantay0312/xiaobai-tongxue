@@ -1,7 +1,7 @@
 /**
  * 首页 —— 书斋门厅。
  * 大字楷体主张 + 《学记》竖排引文(全站精神锚点)+ 故事层 + 学习闭环横带 + 知识点书架。
- * 故事层二选一:零履历给「拜师帖」(书信体世界观),有履历给「旅程带」(等级印 + 当下一步)。
+ * 故事层二选一:零履历给「拜师帖」(书信体世界观),有履历给「旅程带」(称号印 + 当下一步)。
  */
 import { Fragment, type MouseEvent } from 'react';
 import { useAppStore } from '../../store/appStore';
@@ -15,9 +15,10 @@ import anchor from '../../styles/anchor.module.css';
 const LOOP_STEPS: { num: string; name: string; desc: string }[] = [
   { num: '壹', name: '备课', desc: '摸底快测,领材料包' },
   { num: '贰', name: '讲解', desc: '小白追问,误区试探' },
-  { num: '叁', name: '复盘', desc: '五维雷达,盲区显形' },
-  { num: '肆', name: '补学', desc: '哪里讲不清补哪里' },
-  { num: '伍', name: '再讲', desc: '重讲验证,纠正误区' },
+  { num: '叁', name: '赴考', desc: '独自作答,先生观战' },
+  { num: '肆', name: '批注', desc: '五维雷达,盲区显形' },
+  { num: '伍', name: '补学', desc: '哪里讲不清补哪里' },
+  { num: '陆', name: '再讲', desc: '重讲验证,纠正误区' },
 ];
 
 export default function HomePage() {
@@ -53,9 +54,16 @@ export default function HomePage() {
           </a>
         </div>
 
-        <div className={`${anchor.heroAvatar} ${styles.enter}`} style={{ animationDelay: '160ms' }}>
+        <div
+          className={`${anchor.heroAvatar} ${styles.lampNest} ${styles.enter}`}
+          style={{ animationDelay: '160ms' }}
+        >
           <XiaobaiAvatar variant="paper" mood="curious" level={level} size={192} />
           <p className={anchor.avatarCaption}>你的 AI 学生 · 小白</p>
+          <blockquote className={styles.dreamQuote}>
+            <span>小白的愿望</span>
+            “我想有一天，也能像先生一样，把道理讲给别人听。”
+          </blockquote>
         </div>
 
         <blockquote className={`${anchor.quote} ${styles.enter}`} style={{ animationDelay: '120ms' }}>
@@ -75,7 +83,7 @@ export default function HomePage() {
       <section
         className={`${styles.loop} ${styles.enter}`}
         style={{ animationDelay: '260ms' }}
-        aria-label="学习闭环:备课、讲解、复盘、补学、再讲"
+        aria-label="学习闭环:备课、讲解、赴考、批注、补学、再讲"
       >
         {LOOP_STEPS.map((step, i) => (
           <Fragment key={step.name}>
@@ -97,11 +105,6 @@ export default function HomePage() {
 
       {/* ── 知识点书架 ── */}
       <Bookshelf />
-
-      {/* ── 参赛信息位 ── */}
-      <footer className={anchor.foot}>
-        多学科知识书架 · 学习支持类智能体 · 「小白同学——教然后知困」参赛演示
-      </footer>
     </div>
   );
 }

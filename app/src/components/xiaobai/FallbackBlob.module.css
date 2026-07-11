@@ -1,6 +1,7 @@
-/* WebGL 不可用时的 CSS 团子降级(保留原占位实现的观感) */
+/* WebGL 不可用时的 CSS 团子降级:眼口也用几何笔画,避免系统字体颜文字漂移。 */
 
 .blob {
+  position: relative;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -10,6 +11,96 @@
   color: var(--ink);
   animation: breathe 3.2s var(--ease-out) infinite;
 }
+
+.face {
+  position: relative;
+  width: 2.7em;
+  height: 1.5em;
+  transform: translateY(0.16em);
+}
+
+.eye,
+.mouth {
+  position: absolute;
+  display: block;
+  color: inherit;
+}
+
+.eye {
+  top: 0.2em;
+  width: 0.24em;
+  height: 0.34em;
+  border-radius: 50%;
+  background: currentColor;
+  transition: transform var(--t-fast) var(--ease-out), width var(--t-fast) var(--ease-out);
+}
+
+.eyeLeft { left: 0.55em; }
+.eyeRight { right: 0.55em; }
+
+.mouth {
+  left: 50%;
+  bottom: 0.18em;
+  width: 0.72em;
+  height: 0.34em;
+  border-bottom: 0.1em solid currentColor;
+  border-radius: 0 0 50% 50%;
+  transform: translateX(-50%);
+}
+
+.blob[data-mood='curious'] .eye { width: 0.3em; height: 0.4em; }
+.blob[data-mood='thinking'] .eye,
+.blob[data-mood='proud'] .eye {
+  height: 0.08em;
+  border-radius: 99px;
+  transform: translateY(0.15em);
+}
+.blob[data-mood='confused'] .eyeRight { background: transparent; border: 0.08em solid currentColor; }
+.blob[data-mood='confused'] .mouth { width: 0.46em; border-radius: 50%; transform: translateX(-50%) rotate(-12deg); }
+.blob[data-mood='aha'] .eye,
+.blob[data-mood='happy'] .eye {
+  background: transparent;
+  height: 0.2em;
+  border-top: 0.09em solid currentColor;
+  border-radius: 50% 50% 0 0;
+}
+.blob[data-mood='aha'] .mouth,
+.blob[data-mood='happy'] .mouth { width: 0.9em; height: 0.48em; }
+.blob[data-mood='shy'] .eyeLeft { transform: rotate(18deg); }
+.blob[data-mood='shy'] .eyeRight { transform: rotate(-18deg); }
+.blob[data-mood='shy'] .mouth { width: 0.42em; height: 0.18em; }
+
+.accessory,
+.glasses {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  color: var(--azure-deep);
+}
+
+.accessory {
+  top: -5%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.level1 { color: var(--jade-ink); }
+.level2 { color: var(--amber-ink); filter: drop-shadow(0 0 6px var(--amber-wash)); }
+.level3 { top: 36%; }
+.level4 { top: 7%; left: 76%; color: var(--azure); }
+.level5 { top: -8%; }
+
+.glasses {
+  top: 36%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.board .accessory,
+.board .glasses { color: var(--chalk-amber); }
+
+.board .level1 { color: var(--chalk-jade); }
 
 .board {
   /* 黑板场景下加一圈粉笔柔光(深墨影在深底上不可见,必须用亮色晕) */

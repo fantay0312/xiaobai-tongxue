@@ -1,4 +1,7 @@
-/* 讲解舱 —— 夜自习黑板场景(全站唯一深色页,--board/--chalk 系,场景叙事而非暗色模式) */
+/* 讲解舱 —— 亮书斋教室 + 木框黑板物件。
+   房间是纸色的(与全站同一世界,天光从上方来);黑板(--board 系)只住在木框之内,
+   是教室里的一件家具:木框 + 板面暖灯 + 粉笔槽。板下是讲桌(输入区)。
+   板上文字仍走 --chalk 粉笔系,情绪配色(黛绿/藤黄粉笔)一概不变。 */
 
 /* AppShell 的 .main 是 flex 列(min-height:100dvh - 顶栏),这里用 flex:1 填满剩余视口,避免整页滚动 */
 .room {
@@ -6,14 +9,11 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  /* 夜自习灯光:顶部一盏教室灯的柔光 + 底部收暗的黑板渐晕,纯平色显得像色块 */
+  /* 教室天光:顶部一层极淡的暖光,其余交给纸色 */
   background:
-    radial-gradient(90rem 42rem at 50% -10rem, color-mix(in oklab, var(--board-glow) 90%, transparent), transparent 62%),
-    radial-gradient(120% 130% at 50% 115%, color-mix(in oklab, var(--board-shade) 70%, transparent), transparent 55%),
-    var(--board);
-  color: var(--chalk);
-  /* 深色场景滚动条/表单控件按暗色渲染,否则 Windows 黑板正中一条亮色滚动轨 */
-  color-scheme: dark;
+    radial-gradient(80rem 30rem at 50% -12rem, color-mix(in oklab, var(--wood-sheen) 16%, transparent), transparent 62%),
+    var(--paper);
+  color: var(--ink);
 }
 
 .holder {
@@ -21,11 +21,10 @@
   min-height: 60dvh;
   display: grid;
   place-items: center;
-  background: var(--board);
-  color: var(--chalk-soft);
+  color: var(--ink-soft);
   font-family: var(--font-display);
 }
-.holder a { color: var(--chalk-amber); }
+.holder a { display: inline-flex; align-items: center; gap: var(--gap-hair); color: var(--azure); }
 
 /* ── 顶栏 ── */
 .topbar {
@@ -34,25 +33,24 @@
   align-items: center;
   gap: var(--gap);
   padding: 0.55rem 1.1rem;
-  background: var(--board-deep);
-  border-bottom: 1px solid var(--board-line);
+  background: var(--paper);
+  border-bottom: 1px solid var(--paper-edge);
 }
 .quitBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-hair);
   background: none;
-  border: 1px solid var(--board-line);
-  color: var(--chalk-soft);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-soft);
   border-radius: var(--radius-s);
   padding: 0.3rem 0.7rem;
   font-size: var(--fs-small);
   white-space: nowrap;
   transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
-.quitBtn:hover { color: var(--chalk); border-color: var(--chalk-soft); }
+.quitBtn:hover { color: var(--ink); border-color: var(--ink-soft); }
 
-/* 黑板底上 azure 焦点环太暗,场景内统一换粉笔色 */
-.room :focus-visible {
-  outline-color: var(--chalk-soft);
-}
 .topTitle {
   flex: 1;
   display: flex;
@@ -62,7 +60,7 @@
 }
 .topCourse {
   font-size: var(--fs-tiny);
-  color: var(--chalk-soft);
+  color: var(--ink-faint);
   letter-spacing: 0.12em;
   flex: 0 1 auto;
   min-width: 0;
@@ -73,37 +71,41 @@
 .topName {
   font-family: var(--font-display);
   font-size: var(--fs-sub);
-  color: var(--chalk);
+  color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* 主按钮制式(全站规范):靛青实心,hover 深靛上浮 */
 .endBtn {
-  background: var(--chalk-amber);
-  color: var(--board-deep);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-hair);
+  background: var(--azure);
+  color: var(--paper);
   border: none;
   border-radius: var(--radius-s);
   padding: 0.4rem 0.9rem;
   font-size: var(--fs-small);
   font-weight: 600;
   white-space: nowrap;
-  transition: opacity var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
+  transition: background var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out);
 }
-.endBtn:hover:enabled { transform: translateY(-1px); }
-.endBtn:disabled { opacity: 0.45; cursor: default; }
+.endBtn:hover:enabled { background: var(--azure-deep); transform: translateY(-1px); }
+.endBtn:disabled { opacity: 0.55; cursor: default; }
 
 .modeBanner {
   flex: 0 0 auto;
   text-align: center;
   font-size: var(--fs-small);
   font-family: var(--font-display);
-  color: var(--chalk-amber);
-  background: var(--board-deep);
-  border-bottom: 1px dashed var(--board-line);
+  color: var(--amber-ink);
+  background: var(--amber-wash);
+  border-bottom: 1px dashed color-mix(in oklab, var(--amber) 45%, transparent);
   padding: 0.35rem 1rem;
 }
 
-/* ── 主体:左讲台 + 右对话 ── */
+/* ── 主体:左讲台 + 右黑板 ── */
 .main {
   flex: 1;
   display: grid;
@@ -112,72 +114,142 @@
 }
 
 .stage {
-  border-right: 1px solid var(--board-line);
+  border-right: 1px solid var(--paper-edge);
   padding: var(--gap-loose) var(--gap) var(--gap);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--gap);
   overflow-y: auto;
+  /* 讲台一角:比教室暖半档的瓷青底 */
+  background: linear-gradient(180deg, var(--paper-warm), transparent 62%);
 }
-/* 粉笔手画的相框,微微歪着——破格瞬间;框内一束聚光落在小白身上 */
+/* 台灯光晕落在小白身上(与门厅 lampNest 同语言,暖色取木色系材质色) */
 .boardFrame {
-  padding: 0.9rem;
-  border: 2px solid var(--board-line);
-  border-radius: var(--radius);
-  transform: rotate(-1.4deg);
-  background: radial-gradient(62% 56% at 50% 42%, color-mix(in oklab, var(--board-glow) 85%, transparent), transparent 78%);
+  padding: 0.4rem;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--wood-sheen) 34%, transparent),
+    transparent 74%
+  );
 }
+/* 木桌牌:讲台上那块刻字的深木名牌 */
 .plate {
   margin-top: calc(-1 * var(--gap-tight));
-  transform: rotate(0.8deg);
-  background: var(--board-deep);
-  border: 1px solid var(--board-line);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--wood) 55%, var(--wood-deep)), color-mix(in oklab, var(--wood-deep) 88%, var(--ink)));
+  border: 1px solid color-mix(in oklab, var(--wood-deep) 72%, var(--ink));
   border-radius: var(--radius-s);
   padding: 0.55rem 1.1rem;
   display: flex;
   flex-direction: column;
   gap: 2px;
   align-items: center;
+  box-shadow: var(--shadow-paper);
 }
 .plateName {
   font-family: var(--font-display);
   font-size: var(--fs-sub);
   letter-spacing: 0.3em;
   margin-right: -0.3em;
+  color: var(--paper);
 }
-.plateRow { font-size: var(--fs-tiny); color: var(--chalk-soft); }
+.plateRow { font-size: var(--fs-tiny); color: var(--moon-on-ink); }
 .stageThinking {
   font-family: var(--font-display);
   font-size: var(--fs-small);
-  color: var(--chalk-amber);
+  color: var(--amber-ink);
   animation: pulse 1.2s var(--ease-out) infinite alternate;
 }
 .stageHint {
   font-size: var(--fs-tiny);
-  /* chalk-soft 本身已是弱化档,不再叠 opacity(11px 深底上会跌破可读线) */
-  color: var(--chalk-soft);
+  color: var(--ink-faint);
   line-height: 1.9;
   max-width: 24ch;
   text-align: center;
   margin-top: auto;
 }
 
-/* ── 对话流 ── */
+/* ── 木框黑板 ── */
 .chat {
   display: flex;
   flex-direction: column;
   min-height: 0;
   min-width: 0;
 }
+
+.boardObj {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: var(--gap) clamp(1rem, 2.5vw, 2rem) 0;
+}
+
 .stream {
   flex: 1;
   overflow-y: auto;
-  padding: var(--gap) clamp(1rem, 3vw, 2.5rem);
+  /* 板内是深色世界:滚动条/表单控件按暗色渲染 */
+  color-scheme: dark;
+  padding: var(--gap) clamp(1rem, 2.5vw, 2rem);
   display: flex;
   flex-direction: column;
   gap: var(--gap);
+  color: var(--chalk);
+  /* 板面:顶部一盏暖灯的光晕 + 底部收暗的渐晕,住在木框里 */
+  background:
+    radial-gradient(70% 46% at 50% 0%, color-mix(in oklab, var(--board-glow) 80%, transparent), transparent 62%),
+    radial-gradient(120% 120% at 50% 122%, color-mix(in oklab, var(--board-shade) 75%, transparent), transparent 55%),
+    var(--board);
+  /* 木框:方角,上沿受光下沿入影 */
+  border: 7px solid;
+  border-image: linear-gradient(180deg, var(--wood-sheen), var(--wood) 30%, var(--wood-deep)) 1;
+  box-shadow:
+    inset 0 0 34px color-mix(in oklab, var(--board-shade) 60%, transparent),
+    0 2px 6px color-mix(in oklab, var(--ink) 10%, transparent),
+    0 14px 34px color-mix(in oklab, var(--ink) 12%, transparent);
 }
+
+/* 板上元素的焦点环用粉笔色(azure 在深板上看不清) */
+.stream :focus-visible {
+  outline-color: var(--chalk-soft);
+}
+
+/* 粉笔槽:板下木沿,搁着一截粉笔和一块板擦 */
+.tray {
+  position: relative;
+  align-self: center;
+  width: min(52%, 24rem);
+  height: 0.55rem;
+  border-radius: 0 0 3px 3px;
+  background: linear-gradient(180deg, var(--wood), var(--wood-deep));
+  box-shadow: 0 3px 7px color-mix(in oklab, var(--ink) 22%, transparent);
+}
+.tray::before {
+  content: '';
+  position: absolute;
+  top: -0.28rem;
+  left: 17%;
+  width: 1.6rem;
+  height: 0.28rem;
+  border-radius: 2px;
+  background: var(--chalk);
+  transform: rotate(-7deg);
+  box-shadow: 0 1px 1px color-mix(in oklab, var(--ink) 30%, transparent);
+}
+.tray::after {
+  content: '';
+  position: absolute;
+  top: -0.42rem;
+  right: 13%;
+  width: 2.6rem;
+  height: 0.42rem;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--inkstone-line), var(--inkstone));
+  box-shadow: 0 1px 2px color-mix(in oklab, var(--ink) 30%, transparent);
+}
+
+/* ── 板上对话流 ── */
 
 /* 老师消息:偏右,纸色便签 */
 .rowT {
@@ -200,7 +272,7 @@
 .rowT:nth-child(odd) .bubbleT { transform: rotate(0.35deg); }
 .rowT:nth-child(even) .bubbleT { transform: rotate(-0.3deg); }
 
-/* 小白消息:偏左,粉笔白,导演动作粉笔小字注在旁 */
+/* 小白消息:偏左,粉笔白,心情粉笔小字注在旁 */
 .rowX {
   display: flex;
   flex-direction: column;
@@ -285,24 +357,30 @@
 .dots i:nth-child(2) { animation-delay: 0.2s; }
 .dots i:nth-child(3) { animation-delay: 0.4s; }
 
-/* ── 底部输入区 ── */
+/* ── 板下讲桌:输入区 ── */
 .dock {
   flex: 0 0 auto;
-  border-top: 1px solid var(--board-line);
-  background: var(--board-deep);
+  margin-top: var(--gap-tight);
+  border-top: 1px solid var(--paper-edge);
+  background: var(--paper-warm);
 }
-.demoWrap { border-bottom: 1px dashed var(--board-line); }
+.demoWrap { border-bottom: 1px dashed var(--paper-edge); }
 .demoToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-hair);
   width: 100%;
   text-align: left;
   background: none;
   border: none;
-  color: var(--chalk-soft);
+  color: var(--ink-faint);
   font-size: var(--fs-tiny);
   letter-spacing: 0.1em;
   padding: 0.4rem clamp(1rem, 3vw, 2.5rem);
 }
-.demoToggle:hover { color: var(--chalk); }
+.demoToggle:hover { color: var(--ink); }
+.chevron { transition: transform var(--t-med) var(--ease-out); }
+.chevronOpen { transform: rotate(90deg); transition: transform var(--t-med) var(--ease-out); }
 .demoBody {
   display: grid;
   grid-template-rows: 0fr;
@@ -329,18 +407,18 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 1px;
-  background: var(--board);
-  border: 1px solid var(--board-line);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-s);
-  color: var(--chalk);
+  color: var(--ink);
   padding: 0.35rem 0.6rem;
   max-width: 16rem;
   text-align: left;
   transition: transform var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
-.demoLine:hover { border-color: var(--chalk-soft); transform: translateY(-1px); }
+.demoLine:hover { border-color: var(--azure); transform: translateY(-1px); }
 .demoLabel { font-size: var(--fs-small); }
-.demoNote { font-size: var(--fs-tiny); color: var(--chalk-soft); }
+.demoNote { font-size: var(--fs-tiny); color: var(--ink-faint); }
 
 .inputBar {
   display: flex;
@@ -350,9 +428,9 @@
 }
 .input {
   flex: 1;
-  background: var(--board);
-  color: var(--chalk);
-  border: 1px solid var(--board-line);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-s);
   padding: 0.55rem 0.75rem;
   line-height: 1.7;
@@ -361,12 +439,11 @@
 }
 .input:focus {
   outline: none;
-  border-color: var(--chalk-soft);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--chalk) 7%, transparent);
+  border-color: var(--azure);
+  box-shadow: 0 0 0 3px var(--azure-wash);
 }
 .input:disabled { opacity: 0.55; }
-/* chalk-soft 本身已是弱化档,不再叠 opacity */
-.input::placeholder { color: var(--chalk-soft); }
+.input::placeholder { color: var(--ink-faint); }
 .inputSide {
   display: flex;
   flex-direction: column;
@@ -374,19 +451,23 @@
   align-items: flex-end;
   gap: var(--gap-hair);
 }
-.count { font-size: var(--fs-tiny); color: var(--chalk-soft); }
+.count { font-size: var(--fs-tiny); color: var(--ink-faint); }
+/* 主按钮制式(全站规范):靛青实心;与 .endBtn 同族 */
 .sendBtn {
-  background: var(--chalk);
-  color: var(--board-deep);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-hair);
+  background: var(--azure);
+  color: var(--paper);
   border: none;
   border-radius: var(--radius-s);
   font-family: var(--font-display);
   font-size: var(--fs-body);
   padding: 0.45rem 1.2rem;
-  transition: opacity var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
+  transition: background var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out);
 }
-.sendBtn:hover:enabled { transform: translateY(-1px); }
-.sendBtn:disabled { opacity: 0.4; cursor: default; }
+.sendBtn:hover:enabled { background: var(--azure-deep); transform: translateY(-1px); }
+.sendBtn:disabled { opacity: 0.55; cursor: default; }
 
 /* ── R4 结束面板 ── */
 .endedPanel {
@@ -401,40 +482,40 @@
 .endedTitle {
   font-family: var(--font-display);
   font-size: var(--fs-sub);
-  color: var(--chalk);
+  color: var(--ink);
 }
 .endedNote {
   font-size: var(--fs-small);
-  color: var(--chalk-amber);
+  color: var(--amber-ink);
   max-width: 40rem;
   line-height: 1.9;
 }
 .endedBtns { display: flex; gap: var(--gap-tight); flex-wrap: wrap; justify-content: center; }
-/* 与 .sendBtn 同制式(粉笔实心钮),改动请两处同步 */
+/* 与 .sendBtn 同制式(靛青实心主钮),改动请两处同步 */
 .primaryBtn {
-  background: var(--chalk);
-  color: var(--board-deep);
+  background: var(--azure);
+  color: var(--paper);
   border: none;
   border-radius: var(--radius-s);
   font-family: var(--font-display);
   font-size: var(--fs-body);
   padding: 0.5rem 1.4rem;
-  transition: transform var(--t-fast) var(--ease-out);
+  transition: background var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
 }
-.primaryBtn:hover { transform: translateY(-1px); }
-/* 与 .quitBtn 同制式(黑板线描边钮),改动请两处同步 */
+.primaryBtn:hover { background: var(--azure-deep); transform: translateY(-1px); }
+/* 与 .quitBtn 同制式(青描边幽灵钮),改动请两处同步 */
 .ghostBtn {
   background: none;
-  color: var(--chalk-soft);
-  border: 1px solid var(--board-line);
+  color: var(--ink-soft);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-s);
   font-size: var(--fs-body);
   padding: 0.5rem 1.2rem;
   transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
-.ghostBtn:hover { color: var(--chalk); border-color: var(--chalk-soft); }
+.ghostBtn:hover { color: var(--ink); border-color: var(--ink-soft); }
 
-/* ── R2 查书侧栏:黑教室里被台灯照亮的一页书 ── */
+/* ── R2 查书侧栏:被台灯照亮的一页书 ── */
 .lookup {
   position: fixed;
   top: 0;
@@ -443,8 +524,6 @@
   width: min(400px, 92vw);
   background: var(--paper);
   color: var(--ink);
-  /* 纸色抽屉别继承 .room 的 color-scheme:dark,否则白纸上出现暗色滚动条 */
-  color-scheme: light;
   box-shadow: var(--shadow-lift);
   padding: var(--gap-loose) var(--gap) var(--gap);
   overflow-y: auto;
@@ -489,6 +568,18 @@
 }
 .lookupBtn:hover { transform: translateY(-1px); }
 
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 @keyframes blink {
   50% { opacity: 0; }
 }
@@ -501,7 +592,7 @@
   to { transform: translateX(0); opacity: 1; }
 }
 
-/* 880px 是讲台+对话双栏的场景专属折点(应用式布局,不随全站 960 档) */
+/* 880px 是讲台+黑板双栏的场景专属折点(应用式布局,不随全站 960 档) */
 @media (max-width: 880px) {
   .main {
     grid-template-columns: 1fr;
@@ -513,12 +604,30 @@
     justify-content: flex-start;
     gap: var(--gap-tight);
     border-right: none;
-    border-bottom: 1px solid var(--board-line);
+    border-bottom: 1px solid var(--paper-edge);
     padding: var(--gap-tight) var(--gap);
     overflow: visible;
+    background: var(--paper-warm);
   }
-  .boardFrame { padding: 0.35rem; }
+  .boardFrame { padding: 0.2rem; }
   .plate { margin-top: 0; }
   .stageHint { display: none; }
   .stageThinking { margin-left: auto; }
+  .boardObj { margin-inline: var(--gap-tight); }
+}
+
+@media (max-width: 560px) {
+  .topbar { gap: var(--gap-tight); padding-inline: var(--gap-tight); }
+  .quitBtn { padding-inline: 0.45rem; }
+  .quitBtn span { display: none; }
+  .topCourse { display: none; }
+  .endBtn { padding-inline: 0.6rem; }
+  .stage { padding: 0.35rem var(--gap-tight); }
+  .boardFrame > div { width: 66px !important; height: 66px !important; }
+  .plate { align-items: flex-start; padding: 0.35rem 0.65rem; }
+  .plateRow:nth-of-type(n + 3) { display: none; }
+  .boardObj { margin: var(--gap-tight) var(--gap-tight) 0; }
+  .stream { border-width: 5px; padding: var(--gap-tight); }
+  .inputBar { padding-bottom: max(var(--gap-tight), env(safe-area-inset-bottom)); }
+  .sendBtn { padding-inline: 0.8rem; }
 }

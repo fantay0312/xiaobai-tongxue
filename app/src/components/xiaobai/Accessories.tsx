@@ -1,7 +1,7 @@
 /**
  * 头顶配饰(全部用 three 基础几何体拼装):
  *   Lv.1 嫩芽(茎+两片叶,黛绿) · Lv.2 悬浮灯泡(藤黄)
- *   Lv.3/4 圆框眼镜+头顶问号气泡 · Lv.5 学士帽(墨青,藤黄流苏)
+ *   Lv.3 圆框眼镜 · Lv.4 眼镜+头顶问号气泡 · Lv.5 学士帽(墨青,藤黄流苏)
  * 配色对应 tokens.css 语义,见 palette.ts 注释。
  */
 import { useRef } from 'react';
@@ -179,6 +179,7 @@ function GraduationCap() {
 export function LevelAccessory({ level }: { level: 1 | 2 | 3 | 4 | 5 }) {
   if (level === 1) return <Sprout />;
   if (level === 2) return <Bulb />;
+  if (level === 3) return <Glasses />;
   if (level === 5) return <GraduationCap />;
   return (
     <>

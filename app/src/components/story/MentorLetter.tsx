@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 import { TOPICS } from '../../data';
 import { nextStep } from '../../engine/journey';
+import { Icon } from '../ui/Icon';
 import s from './story.module.css';
 
 /** 每次页面加载只自动展帖一次(刷新即重置;演示场景要能重复看,故不落盘) */
@@ -140,7 +141,7 @@ export function MentorLetter() {
             tabIndex={-1}
           >
             <button type="button" className={s.modalClose} onClick={close} aria-label="关上拜师帖">
-              ×
+              <Icon name="x" size={19} />
             </button>
 
             <p className={s.letterHead} aria-hidden="true">拜师帖</p>
@@ -152,6 +153,9 @@ export function MentorLetter() {
               </p>
               <p className={s.letterText}>
                 往后先生备一课,便讲一课与小生听;小生愚钝,不懂必问,问到先生讲清为止。先生能把小生教明白的学问,才算真正落进先生自己手里。
+              </p>
+              <p className={s.letterText}>
+                小生还有一个愿望:有一天,也能像先生一样,把听懂的道理讲给别人听。若真有那天,我一定会用先生教我的那句话。
               </p>
               <p className={s.letterText}>
                 教到小生出师那日,便是先生功成之时。

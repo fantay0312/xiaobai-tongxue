@@ -38,8 +38,8 @@ export const AMBER = '#cc9c42';
 /** ≈ var(--dust) oklch(0.72 0.01 225) —— 冷灰,灯泡金属底座 */
 export const DUST = '#9ea6a9';
 
-/** ≈ var(--board-deep) oklch(0.205 0.018 210) —— 黑板接触阴影色 */
-export const BOARD_DEEP = '#0d191c';
+/** ≈ var(--board-deep) oklch(0.225 0.042 264) —— 黑板接触阴影色(2026-07-11 墨蓝夜授换色) */
+export const BOARD_DEEP = '#121b2f';
 
 /** ≈ var(--chalk) oklch(0.93 0.012 95) —— 粉笔白(星尘/气泡) */
 export const CHALK = '#eae8df';

@@ -23,6 +23,7 @@ function chronological(events: LearnEvent[]): LearnEvent[] {
 
 /* 中文数字日期:story.ts 的同款帮手是私有函数未导出,此处按契约自备一份极小实现 */
 const CN_DIGITS = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+const LEARNING_STAGES = ['嫩芽期', '开窍期', '求索期', '问难期', '出师期'] as const;
 
 function cnNum(n: number): string {
   if (n <= 0 || n > 31) return String(n);
@@ -277,7 +278,7 @@ export function deriveMemoryPanorama(input: {
     key: 'bond', no: '肆', name: '师徒之谊', caption: '这一层,永不清空',
     stats: [
       { label: '人格', value: input.global.persona },
-      { label: '等级', value: `Lv ${input.global.learningLevel}` },
+      { label: '当前阶段', value: LEARNING_STAGES[input.global.learningLevel - 1] },
       { label: '金句', value: `${goldenN} 句` },
       ...(input.global.bestRecord ? [{ label: '最佳战绩', value: input.global.bestRecord }] : []),
     ],

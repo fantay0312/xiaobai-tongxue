@@ -1,0 +1,84 @@
+/* 篇章条:一线细带,只落当前章(朱文小印 + 回目)。卷名/旁白/整卷回目均已删(用户定案)。
+   带体落 paper-warm,顶缘一线纸色高光,底缘 hairline;讲解舱路由走 .board 黑板变体 */
+
+.wrap {
+  flex: none;
+  border-bottom: 1px solid var(--paper-edge);
+  background: var(--paper-warm);
+  box-shadow: inset 0 1px color-mix(in oklab, var(--paper) 85%, transparent);
+}
+
+.inner {
+  width: min(100%, var(--page-max));
+  margin-inline: auto;
+  min-height: 3.2rem;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0.42rem clamp(var(--gap), 4vw, var(--gap-loose));
+}
+
+.current {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+/* 朱文小印:双圈钤法 */
+.chapter {
+  display: grid;
+  place-items: center;
+  flex: none;
+  min-width: 1.9rem;
+  height: 1.9rem;
+  padding-inline: 0.42rem;
+  border: 1px solid color-mix(in oklab, var(--seal-red) 84%, transparent);
+  border-radius: var(--radius-tag);
+  box-shadow: inset 0 0 0 2px var(--paper), inset 0 0 0 3px color-mix(in oklab, var(--seal-red) 32%, transparent);
+  color: var(--seal-red);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-indent: 0.08em;
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ── 黑板变体(讲解舱路由) ── */
+
+.board {
+  border-bottom-color: var(--board-line);
+  background: var(--board-deep);
+  box-shadow: inset 0 1px color-mix(in oklab, var(--chalk) 4%, transparent);
+}
+
+.board .label {
+  color: var(--chalk);
+}
+
+.board .chapter {
+  color: var(--chalk-amber);
+  border-color: color-mix(in oklab, var(--chalk-amber) 82%, transparent);
+  box-shadow:
+    inset 0 0 0 2px var(--board-deep),
+    inset 0 0 0 3px color-mix(in oklab, var(--chalk-amber) 28%, transparent);
+}
+
+@media (max-width: 480px) {
+  .inner {
+    padding-inline: var(--gap);
+  }
+}

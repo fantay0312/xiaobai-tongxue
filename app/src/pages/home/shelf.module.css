@@ -1,15 +1,34 @@
-/* 知识点书架:分学科的书脊式立列,每门课一格,书立在木色搁板上 */
+/* 知识点书架:两级书柜。
+   上层 = 函套排架(一门课一函:深布面 + 白纸题签 + 汉字讲数,函厚随讲数);
+   下层 = 翻开的函(当前课程的章节书脊,多层搁板 + 层尾木书立)。
+   书脊三件套:深布面底色(素书六色轮换/有状态整本染语义布色) + 布面光影(::before)
+   + 奶白乌丝栏题签(.spineTitle);堵头布(.band)素书随布变深、状态书换亮色织带。
+   装帧错落(高/宽)与布色位次由 Bookshelf.tsx 下发,CSS 不再用 nth-child 定尺寸/布色。 */
 
 .shelf {
   margin-bottom: var(--gap-loose);
   scroll-margin-top: calc(var(--gap-loose) + var(--gap));
 }
 
+/* R2 双线书版式:2px 墨色短线叠在通栏 hairline 上,题头有骨 */
 .head {
+  position: relative;
   display: flex;
   align-items: baseline;
   gap: var(--gap);
   margin-bottom: var(--gap-loose);
+  padding-bottom: var(--gap-tight);
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.head::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 2.5rem;
+  height: 2px;
+  background: var(--ink);
 }
 
 .title {
@@ -22,29 +41,230 @@
   color: var(--ink-faint);
 }
 
-/* ── 分学科排架:宽屏两格并列填满版心,窄屏单列下落 ── */
+/* ── 函套排架 ── */
 
-.shelves {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
-  gap: var(--gap-loose) var(--gap-section);
-  align-items: end;
-}
-
-.course {
+.caseUnit {
   min-width: 0;
+  width: max-content;
+  max-width: 100%;
 }
 
-.courseHead {
+.caseRow {
   display: flex;
-  align-items: baseline;
+  align-items: flex-end;
+  gap: var(--gap);
+  /* 顶部留白 = 翻开抽出行程(12px)+ 余量 */
+  padding: calc(var(--gap) + var(--gap-hair)) var(--gap) 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0,
+    transparent 0.875rem,
+    var(--paper-shade) 0.875rem,
+    color-mix(in oklab, var(--wood) 16%, var(--paper-shade)) 100%
+  );
+  border-radius: var(--radius) var(--radius) 0 0;
+  mask-image: linear-gradient(90deg, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
+}
+
+.caseRow::-webkit-scrollbar {
+  display: none;
+}
+
+/* 函套:深布面书函(材质装帧色,非语义色——语义色只染章节书脊) */
+.vol {
+  position: relative;
+  overflow: hidden;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: space-between;
   gap: var(--gap-tight);
-  margin-bottom: var(--gap-tight);
-  padding-left: var(--gap-hair);
+  width: 7.75rem; /* 兜底;实宽随讲数由 TSX 内联下发 */
+  height: 12.5rem;
+  padding: 1rem 0 0.7rem;
+  border: 1px solid color-mix(in oklab, var(--ink) 45%, transparent);
+  border-bottom: none;
+  border-radius: var(--radius-s) var(--radius-s) 0 0;
+  background: var(--inkstone);
+  transition: transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out);
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 
-.courseName {
+/* 三色布面:靛青 / 黛墨 / 茶褐(全部由既有令牌混出) */
+.volTone0 {
+  background: color-mix(in oklab, var(--azure-deep) 85%, var(--ink));
+}
+
+.volTone1 {
+  background: color-mix(in oklab, var(--ink) 82%, var(--azure));
+}
+
+.volTone2 {
+  background: color-mix(in oklab, var(--wood-deep) 68%, var(--ink));
+}
+
+/* 布面光影:左受光右入影 + 底部接触影(深布上比书脊压得更重) */
+.vol::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--paper) 20%, transparent),
+      transparent 16%,
+      transparent 78%,
+      color-mix(in oklab, var(--ink) 40%, transparent)
+    ),
+    linear-gradient(180deg, transparent 78%, color-mix(in oklab, var(--ink) 28%, transparent));
+}
+
+.vol:hover,
+.vol:focus-visible {
+  transform: translateY(-0.375rem);
+  box-shadow: var(--shadow-lift);
+}
+
+.vol:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+/* 翻开的函:持续抽出半指,下方目录区正是从这函里倒出来的 */
+.volOpen {
+  transform: translateY(-0.75rem);
+  box-shadow: var(--shadow-lift);
+}
+
+.volOpen:hover,
+.volOpen:focus-visible {
+  transform: translateY(-0.75rem);
+}
+
+/* 「读」白文小印:只钤在翻开的函上 */
+.volMark {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.5rem;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  background: var(--seal-red);
+  color: var(--paper);
+  border-radius: var(--radius-tag);
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  font-weight: 700;
+  transform: rotate(4deg);
+  opacity: 0;
+  transition: opacity var(--t-fast) var(--ease-out);
+}
+
+.volOpen .volMark {
+  opacity: 1;
+}
+
+/* 函套题签:白纸双线框,竖排课名(经典函套钤法) */
+.volSlip {
+  position: relative; /* 抬到布面光影之上 */
+  flex: 0 1 auto;
+  min-height: 0;
+  max-width: calc(100% - 10px);
+  overflow: hidden;
+  writing-mode: vertical-rl;
+  padding: 0.65em 0.16em;
+  background: var(--paper);
+  border: 1px solid color-mix(in oklab, var(--ink) 40%, transparent);
+  border-radius: 1px;
+  box-shadow: inset 0 0 0 2px var(--paper), inset 0 0 0 3px color-mix(in oklab, var(--ink) 25%, transparent);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  /* 字距/行高收紧:六字课名(操作系统原理)必须单列坐进题签,折两列即破相 */
+  letter-spacing: 0.08em;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+/* 长课名(如「Python 程序设计」)降半档字级,保住单列 */
+.volSlipLong {
+  font-size: var(--fs-small);
+}
+
+/* 书口小字:汉字讲数 + 出师计数,月白直书深布 */
+.volMeta {
+  position: relative;
+  flex: none;
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.12em;
+  color: var(--moon-on-ink);
+}
+
+/* 出师进度:函底一线黛绿,宽度即进度 */
+.volGauge {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 0.25rem;
+  background: var(--jade);
+}
+
+/* 空函位:任何学科都能上架,开成一间新教室 */
+.volGhost {
+  flex: none;
+  align-self: flex-end;
+  display: grid;
+  place-items: center;
+  width: 7.25rem;
+  height: 12.5rem;
+  writing-mode: vertical-rl;
+  border: 1px dashed var(--line-strong);
+  border-bottom: none;
+  border-radius: var(--radius-s) var(--radius-s) 0 0;
+  background: color-mix(in oklab, var(--paper) 55%, transparent);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  letter-spacing: 0.3em;
+  color: var(--ink-faint);
+}
+
+/* ── 翻开的函:章节目录区 ── */
+
+.openCase {
+  margin-top: var(--gap-loose);
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
+  animation-delay: 200ms;
+}
+
+/* 函内题头:课名 + 出师计数 + 图例,双线书版式与章节题头同骨 */
+.openHead {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-tight);
+  padding-bottom: var(--gap-tight);
+  margin-bottom: var(--gap);
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.openHead::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 2.5rem;
+  height: 2px;
+  background: var(--ink);
+}
+
+.openName {
   font-family: var(--font-display);
   font-size: var(--fs-sub);
   font-weight: 700;
@@ -52,77 +272,130 @@
   color: var(--ink);
 }
 
+/* 「出师 x/y」小签:朱文小印同制式的锐角小片 */
 .courseNote {
   flex: none;
+  padding: 0.125rem var(--gap-hair);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-tag);
   font-size: var(--fs-tiny);
   letter-spacing: 0.08em;
-  color: var(--ink-faint);
+  color: var(--ink-soft);
 }
 
-/* ── 搁板单元:书 + 木色搁板;顶部留白容纳 hover 抽出 ── */
+/* ── 搁板单元:书 + 木色搁板;多层书柜逐层下落 ── */
 
+/* 搁板随书收幅:架宽贴着书列走,不铺满整栏——半架书后面拖一整条空背板才是"没做完"的样子 */
 .shelfUnit {
   min-width: 0;
+  width: max-content;
+  max-width: 100%;
+}
+
+.shelfUnit + .shelfUnit {
+  margin-top: var(--gap);
 }
 
 .row {
   display: flex;
   align-items: flex-end;
-  gap: var(--gap-tight);
-  padding: var(--gap) var(--gap) 0;
-  overflow-x: auto; /* 窄屏横向滚动而不是折行 */
-  /* 书墙背景:靠近搁板处微微起暖,书才不是浮在空纸上 */
-  background: linear-gradient(180deg, transparent 20%, var(--paper-warm) 100%);
+  gap: 0.5rem; /* 排密:一层 15 本要在版心里坐得下,书挨书才像用了多年的架 */
+  /* 顶部留白 = hover 抽出行程(10px)+ 轻斜余量:滚动容器内书顶不再有被裁风险 */
+  padding: calc(var(--gap) + var(--gap-hair)) var(--gap) 0;
+  overflow-x: auto; /* 窄屏超架横向滚动兜底(桌面分层后不滚) */
+  /* 滚动条藏起:出现时会把书从搁板上抬起一条灰缝;边缘渐隐 mask 已提示可滚 */
+  scrollbar-width: none;
+  /* 背板带:书后面一条安静的"架内壁",半空的架读作"书未满架"而不是缺内容;
+     上缘硬止点留在书顶之上,像搁板格子的内沿,靠搁板处再晕一层木色 */
+  background: linear-gradient(
+    180deg,
+    transparent 0,
+    transparent 0.875rem,
+    var(--paper-shade) 0.875rem,
+    color-mix(in oklab, var(--wood) 16%, var(--paper-shade)) 100%
+  );
   border-radius: var(--radius) var(--radius) 0 0;
+  /* R4:确需横滚的书列,左右边缘渐隐(#000 是 mask 通道,不是配色) */
+  mask-image: linear-gradient(90deg, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
+}
+
+.row::-webkit-scrollbar {
+  display: none;
 }
 
 /* 木色搁板:书真正"立"在上面 */
 
 .rail {
-  height: 0.625rem;
-  border-radius: 2px 2px 3px 3px;
-  background: linear-gradient(180deg, var(--wood), var(--wood-deep));
+  height: 0.8rem;
+  border-radius: 2px 2px 4px 4px;
+  /* sheen 高光收成上缘一线,主体直落 wood-deep,底缘再压一分墨;
+     每隔一段一条拼板细缝,搁板才像木头不是色条 */
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 7.5rem,
+      color-mix(in oklab, var(--wood-deep) 45%, transparent) 7.5rem,
+      color-mix(in oklab, var(--wood-deep) 45%, transparent) calc(7.5rem + 1px)
+    ),
+    linear-gradient(
+      180deg,
+      var(--wood-sheen) 0,
+      var(--wood) 24%,
+      var(--wood-deep) 68%,
+      color-mix(in oklab, var(--wood-deep) 82%, var(--ink)) 100%
+    );
   box-shadow:
-    inset 0 1px 0 var(--wood-sheen),
-    0 4px 8px color-mix(in oklab, var(--ink) 16%, transparent),
-    0 10px 22px color-mix(in oklab, var(--ink) 8%, transparent);
+    0 4px 8px color-mix(in oklab, var(--ink) 20%, transparent),
+    0 12px 26px color-mix(in oklab, var(--ink) 10%, transparent);
 }
 
-/* ── 书脊 ── */
+/* ── 章节书脊 ── */
 
 .spine {
+  position: relative;
+  overflow: hidden; /* 布面书头带与圆脊光影贴边裁齐 */
   flex: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--gap-tight);
+  /* 宽高由 Bookshelf.tsx 错落表内联下发;此处只留兜底 */
   width: 3.5rem;
-  height: 15rem;
-  padding: var(--gap-tight) 0;
-  border: 1px solid var(--paper-edge);
+  height: 12rem;
+  padding: 0.85rem 0 0.5rem;
+  border: 1px solid color-mix(in oklab, var(--ink) 32%, transparent);
   border-bottom: none;
-  border-radius: var(--radius-s) var(--radius-s) 0 0;
-  background: var(--paper-warm);
+  border-radius: 2px 2px 0 0; /* 锐一点:圆角大了像塑料盒 */
+  background: color-mix(in oklab, var(--ink) 86%, var(--azure)); /* 黛墨兜底,布色由 tone/状态类下发 */
   transition: transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out);
   /* backwards 而非 both:both 会让 to 帧的 transform:none 永久压住 hover 的抽书位移 */
   animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 
-/* 书高、书宽错落(按位次确定,非随机),架上才像真的书 */
-.spine:nth-child(2n) {
-  height: 14.25rem;
-}
-
-.spine:nth-child(3n) {
-  height: 15.75rem;
-}
-
-.spine:nth-child(4n + 2) {
-  width: 3.75rem;
-}
-
-.spine:nth-child(5n + 1) {
-  width: 3.3125rem;
+/* 布面光影:左缘一线脊棱高光、右缘入影,顶部微光、底部接触影——
+   一层伪元素统一叠加,深浅布色一概适用 */
+.spine::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--paper) 45%, transparent),
+      transparent 12%,
+      transparent 80%,
+      color-mix(in oklab, var(--ink) 30%, transparent)
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--paper) 14%, transparent),
+      transparent 12%,
+      transparent 78%,
+      color-mix(in oklab, var(--ink) 22%, transparent)
+    );
 }
 
 /* 可点的书:hover 微微抽出并轻轻一斜 */
@@ -138,7 +411,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .spine {
+  .spine,
+  .vol,
+  .openCase {
     animation-delay: 0ms !important;
   }
 
@@ -146,87 +421,126 @@
   .spine:not(:disabled):focus-visible {
     transform: none;
   }
+
+  .vol:hover,
+  .vol:focus-visible {
+    transform: none;
+  }
+
+  /* 翻开态的抽出是状态标识不是动效,保留 */
+  .volOpen,
+  .volOpen:hover,
+  .volOpen:focus-visible {
+    transform: translateY(-0.75rem);
+  }
 }
 
-/* 题签色带(书头) */
+/* 堵头布:贴边通栏的织带收口。素书是随布色变深的墨帽;
+   有状态的书换成亮色堵头布,隔着半间屋也认得出 */
 
 .band {
-  flex: none;
-  width: calc(100% - var(--gap-tight));
-  height: 0.3125rem;
-  border-radius: var(--radius-s);
-  background: var(--dust);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 0.4rem;
+  background: color-mix(in oklab, var(--ink) 35%, transparent);
 }
 
+/* 纸质题签:奶白纸底 + 乌丝栏双线框,长短随书名自然参差 */
 .spineTitle {
-  flex: 1;
+  position: relative; /* 抬到布面光影之上,题字不吃阴影 */
+  flex: 0 1 auto;
   min-height: 0;
+  max-width: calc(100% - 8px);
   overflow: hidden;
   writing-mode: vertical-rl;
+  padding: 0.7em 0.28em;
+  background: var(--paper);
+  border: 1px solid color-mix(in oklab, var(--ink) 45%, transparent);
+  border-radius: 1px;
+  box-shadow:
+    inset 0 0 0 2px var(--paper),
+    inset 0 0 0 3px color-mix(in oklab, var(--ink) 26%, transparent),
+    0 1px 3px color-mix(in oklab, var(--ink) 28%, transparent);
   font-family: var(--font-display);
   font-size: var(--fs-body);
   font-weight: 700;
-  letter-spacing: 0.14em;
+  /* 字距收紧:九字讲名要在最矮的书上单列坐下,孤字折列即破相 */
+  letter-spacing: 0.06em;
+  line-height: 1.3;
   color: var(--ink);
 }
 
-.status {
-  flex: none;
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
+/* 长讲名(有效字数≥8)降半档字级:竖排题签折出孤字即破相 */
+.spineTitleLong {
+  font-size: var(--fs-small);
+  letter-spacing: 0.04em;
 }
 
-/* ── mastery 染色 ── */
+/* ── 状态即布色:有进度的书整本换装,配亮色堵头布(图例代言,书脚不缀碎字) ── */
 
 .mastered {
-  background: var(--jade-wash);
-  border-color: var(--jade);
+  background: color-mix(in oklab, var(--jade) 55%, var(--ink));
 }
 
 .mastered .band {
-  background: var(--jade);
-}
-
-.mastered .status {
-  color: var(--jade-ink);
+  background: color-mix(in oklab, var(--jade) 65%, var(--paper));
 }
 
 .review {
-  background: var(--amber-wash);
-  border-color: var(--amber);
+  background: color-mix(in oklab, var(--amber) 50%, var(--wood-deep));
 }
 
 .review .band {
-  background: var(--amber);
-}
-
-.review .status {
-  color: var(--amber-ink);
+  background: color-mix(in oklab, var(--amber) 75%, var(--paper));
 }
 
 .learning {
-  background: var(--azure-wash);
-  border-color: var(--azure);
-}
-
-.learning .band {
   background: var(--azure);
 }
 
-.learning .status {
-  color: var(--azure);
+.learning .band {
+  background: color-mix(in oklab, var(--azure) 40%, var(--paper));
 }
 
-/* fresh 用默认灰;locked 压暗 */
+/* 未学:深布面为主的六色轮换(黛墨/深靛/青灰/茶褐/月白/靛墨),
+   低彩度不与语义色抢话;tone 类由 TSX 按全架位次下发(nth-child 会逐层复读) */
 
-.fresh {
-  background: var(--paper-warm);
+.tone0 {
+  background: color-mix(in oklab, var(--ink) 86%, var(--azure));
+}
+
+.tone1 {
+  background: color-mix(in oklab, var(--azure-deep) 80%, var(--ink));
+}
+
+.tone2 {
+  background: color-mix(in oklab, var(--azure-deep) 40%, var(--dust));
+}
+
+.tone3 {
+  background: color-mix(in oklab, var(--wood-deep) 62%, var(--ink));
+}
+
+.tone4 {
+  background: color-mix(in oklab, var(--azure) 10%, var(--paper-warm));
+}
+
+.tone5 {
+  background: color-mix(in oklab, var(--azure-deep) 58%, var(--ink));
 }
 
 .locked {
-  background: var(--ink-wash);
-  opacity: 0.55;
+  /* 不透明淡墨底:半透明底会叠出背板的浮灰,虚而不糊 */
+  background: color-mix(in oklab, var(--ink) 7%, var(--paper-shade));
+  border-color: var(--paper-edge);
+  opacity: 0.6;
   cursor: not-allowed;
+}
+
+.locked .band {
+  background: color-mix(in oklab, var(--ink) 14%, transparent);
 }
 
 .locked .spineTitle {
@@ -234,33 +548,68 @@
   font-weight: 400;
 }
 
-/* ── 图例(全架共用一份) ── */
+/* ── 木书立:立板抵着行尾最后一本,底座伸向空架;空间紧时底座可缩(min-width 只剩立板) ── */
+
+.bookend {
+  flex: 0 1 2.25rem;
+  min-width: 0.5rem;
+  align-self: flex-end;
+  position: relative;
+  height: 5rem;
+}
+
+.bookend::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0.4rem;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(180deg, var(--wood-sheen), var(--wood) 35%, var(--wood-deep));
+  box-shadow: 1px 0 2px color-mix(in oklab, var(--ink) 18%, transparent);
+}
+
+.bookend::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0.3rem;
+  border-radius: 0 2px 2px 0;
+  background: linear-gradient(180deg, var(--wood), var(--wood-deep));
+}
+
+/* ── 图例(函内题头右侧):色点做成小书脊的形状 ── */
 
 .legend {
   display: flex;
   align-items: center;
   gap: var(--gap-hair);
-  margin-top: var(--gap);
+  margin-left: auto;
   font-size: var(--fs-tiny);
   color: var(--ink-faint);
 }
 
 .dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: var(--radius-s);
+  width: 0.45rem;
+  height: 0.8rem;
+  border-radius: 1px 1px 0 0;
 }
 
 .dot:not(:first-child) {
   margin-left: var(--gap-tight);
 }
 
+/* 图例色 = 各状态的布色本尊(书架上所见即所指) */
+
 .dotJade {
-  background: var(--jade);
+  background: color-mix(in oklab, var(--jade) 55%, var(--ink));
 }
 
 .dotAmber {
-  background: var(--amber);
+  background: color-mix(in oklab, var(--amber) 50%, var(--wood-deep));
 }
 
 .dotAzure {
@@ -268,5 +617,19 @@
 }
 
 .dotDust {
-  background: var(--dust);
+  background: color-mix(in oklab, var(--ink) 86%, var(--azure));
+  opacity: 0.5; /* 素书是一族深浅布色,图例取黛墨压淡代表 */
+}
+
+/* ── 窄屏:图例掉到题头下一行 ── */
+
+@media (max-width: 720px) {
+  .openHead {
+    flex-wrap: wrap;
+  }
+
+  .legend {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
 }

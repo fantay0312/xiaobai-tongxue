@@ -87,19 +87,107 @@
   outline-offset: 3px;
 }
 
+.dreamQuote {
+  position: relative;
+  width: min(18rem, 76vw);
+  margin: var(--gap-tight) 0 0;
+  padding: var(--gap-tight) var(--gap);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius) var(--radius) var(--radius) 2px;
+  background: var(--paper-warm);
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  line-height: 1.8;
+  text-align: left;
+  box-shadow: var(--shadow-paper);
+}
+
+.dreamQuote::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  bottom: -0.45rem;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-left: 1px solid var(--line-strong);
+  background: var(--paper-warm);
+  transform: skewY(-42deg);
+}
+
+.dreamQuote span {
+  display: block;
+  color: var(--azure-deep);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.18em;
+  margin-bottom: 0.15rem;
+}
+
+/* 书斋灯下:小白身后一枚极淡的暖灯光晕。
+   暖色取木色系 --wood-sheen(材质色),不动藤黄(--amber 是"衰减"语义色) */
+.lampNest {
+  position: relative;
+}
+
+.lampNest::before {
+  content: '';
+  position: absolute;
+  top: -1.75rem;
+  left: 50%;
+  width: 17rem;
+  height: 17rem;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--wood-sheen) 36%, transparent),
+    transparent 72%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
 /* 小白蹲侧 + 《学记》引文 + 参赛信息位 → 收拢进 styles/anchor.module.css(与宣传页共用) */
 
-/* ── 学习闭环一条横带 ── */
+/* ── 学习闭环一条横带 ──
+   R2 纸色节奏:旅程带(warm)之后落一档 paper-shade,区块界限不再靠猜;
+   R4 收纳:窄屏横滚 + 边缘渐隐,≥960px 改 13 轨网格(7 步 + 6 箭头)整条摊开不滚 */
 
 .loop {
   display: flex;
   align-items: center;
   gap: var(--gap-tight);
   padding: var(--gap) clamp(var(--gap), 3vw, var(--gap-loose));
-  background: var(--paper-warm);
+  background: var(--paper-shade);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   overflow-x: auto;
   margin-bottom: var(--gap-section);
+  /* 边缘渐隐(#000 是 mask 通道,不是配色) */
+  mask-image: linear-gradient(90deg, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
+}
+
+@media (min-width: 960px) {
+  .loop {
+    display: grid;
+    /* 7 个步骤列 + 6 条箭头轨(轨宽 = --gap,与 .loopArrow 的 min-width 对齐) */
+    grid-template-columns: repeat(6, minmax(0, 1fr) var(--gap)) minmax(0, 1fr);
+    overflow-x: visible;
+    mask-image: none;
+  }
+
+  .loopStep {
+    min-width: 0;
+  }
+
+  .loopDesc {
+    white-space: normal;
+    line-height: 1.5;
+  }
+
+  .loopArrow {
+    min-width: 0;
+  }
 }
 
 .loopStep {
@@ -135,7 +223,7 @@
   flex: 1 1 var(--gap-loose);
   min-width: var(--gap);
   height: 1px;
-  background: var(--dust);
+  background: var(--ink-faint);
 }
 
 .loopArrow::after {
@@ -145,8 +233,8 @@
   top: -3px;
   width: 6px;
   height: 6px;
-  border-top: 1px solid var(--dust);
-  border-right: 1px solid var(--dust);
+  border-top: 1px solid var(--ink-faint);
+  border-right: 1px solid var(--ink-faint);
   transform: rotate(45deg);
 }
 
@@ -172,5 +260,10 @@
     grid-template-columns: 1fr;
     align-items: start;
     padding-top: var(--gap-loose);
+  }
+
+  /* 窄屏小白改左对齐(anchor 侧),灯晕跟着对到头像中心(头像 192px 宽) */
+  .lampNest::before {
+    left: 6rem;
   }
 }

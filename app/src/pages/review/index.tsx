@@ -7,12 +7,13 @@
  */
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import type { LearnEventType, SessionMode } from '../../types';
+import type { LearnEventType, RadarScores, SessionMode } from '../../types';
 import { useAppStore } from '../../store/appStore';
 import { getTopic } from '../../data';
 import { deriveDemonReport, deriveDiary, type DemonEncounter } from '../../engine/story';
 import { MasteryCertificate } from '../../components/story/MasteryCertificate';
 import { XiaobaiDiary } from '../../components/story/XiaobaiDiary';
+import { Icon } from '../../components/ui/Icon';
 import { Radar } from './Radar';
 import { RemedyPath } from './RemedyPath';
 import s from './review.module.css';
@@ -22,6 +23,9 @@ const MODE_LABEL: Record<SessionMode, string> = {
 };
 
 const SEVERITY_LABEL = { high: '被带偏', medium: '还没讲到', low: '小测暴露' } as const;
+
+/** 与 Radar 组件同一维度序(展示层复用,不改数据契约) */
+const RADAR_DIMS: (keyof RadarScores)[] = ['覆盖度', '准确度', '逻辑结构', '深度', '纠错力'];
 const SEVERITY_DOT = { high: 'dotHigh', medium: 'dotMedium', low: 'dotLow' } as const;
 
 const EVENT_LABEL: Record<LearnEventType, string> = {
@@ -63,7 +67,8 @@ const fmtTime = (iso: string) =>
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleString('zh-CN', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
 
-const rise = (i: number) => ({ animationDelay: `${i * 75}ms` });
+/** 入场错峰:R6 纪律,同屏最长 delay 封顶 300ms,别让后排内容白屏 */
+const rise = (i: number) => ({ animationDelay: `${Math.min(i * 75, 300)}ms` });
 
 export default function ReviewPage() {
   const { sessionId } = useParams();
@@ -119,11 +124,13 @@ export default function ReviewPage() {
   return (
     <div className={s.page}>
       <header className={`${s.head} ${s.rise}`} style={rise(0)}>
+        <p className={s.chapterKicker}>第四章 · 灯下批注</p>
         <p className={s.crumb}><Link to="/study">书斋门厅</Link> / 教学档案</p>
         <h1 className={s.title}>{topic?.title ?? report.topicId}</h1>
         <p className={s.subTitle}>一次讲解的完整复盘 —— 教然后知困</p>
         <p className={s.meta}>
-          {MODE_LABEL[report.mode]} · {fmtDate(report.startedAt)} · 共 {report.turnCount} 轮讲解 · 档案号 {report.sessionId}
+          {MODE_LABEL[report.mode]} · {fmtDate(report.startedAt)} · 共 {report.turnCount} 轮讲解
+          <span className={s.fileNo}>档案号 {report.sessionId}</span>
           {report.masteredNow && <span className={s.masteredBadge}>本次出师</span>}
         </p>
       </header>
@@ -136,11 +143,17 @@ export default function ReviewPage() {
           {/* 壹 · 高光在前 —— 顺序铁律 */}
           <section className={`${s.section} ${s.rise}`} style={rise(1)}>
             <h2 className={s.h2}>壹 · 高光时刻<small>金句会被收进教学素材库,劳动被珍视</small></h2>
-            <ul className={s.highlightList}>
-              {report.highlights.map((h) => (
-                <li key={h} className={s.highlightItem}>{h}</li>
-              ))}
-            </ul>
+            {/* 老档案兜底:高光与金句都缺席时给一行紧凑空态,不留死白 */}
+            {report.highlights.length === 0 && report.goldenAnalogies.length === 0 && (
+              <p className={s.muted}>这一课没有留下高光记录。</p>
+            )}
+            {report.highlights.length > 0 && (
+              <ul className={s.highlightList}>
+                {report.highlights.map((h) => (
+                  <li key={h} className={s.highlightItem}>{h}</li>
+                ))}
+              </ul>
+            )}
             {report.goldenAnalogies.length > 0 && (
               <div className={s.goldenRow}>
                 {report.goldenAnalogies.map((g) => (
@@ -153,26 +166,60 @@ export default function ReviewPage() {
             )}
           </section>
 
-          {/* 贰 · 五维雷达 */}
+          {/* 贰 · 最独有的剧情揭示不再埋在档案末尾;纸影分区带托住浅色日记叶 */}
+          {diary && (
+            <section className={`${s.section} ${s.bandShade} ${s.rise}`} style={rise(2)}>
+              <h2 className={s.h2}>贰 · 小白眼里的今天<small>它把今天听懂的、听岔的，都当真写进了日记</small></h2>
+              <XiaobaiDiary page={diary} />
+            </section>
+          )}
+
+          {/* 叁 · 五维雷达 —— 雷达破格居左,右列逐维朱批(≥960px 双栏,数据与雷达同源) */}
           <section className={`${s.section} ${s.rise}`} style={rise(2)}>
-            <h2 className={s.h2}>贰 · 五维讲解画像</h2>
-            <div className={s.radarWrap}>
-              <Radar radar={report.radar} delta={report.radarDelta} />
-            </div>
-            <div className={s.legend}>
-              <span className={s.legendNow}>── 本次</span>
-              {hasPrev && <span className={s.legendPrev}>╌╌ 上次</span>}
-              <span className={s.legendNote}>雷达只和你自己的上一次比,不与任何人排名</span>
+            <h2 className={s.h2}>叁 · 五维朱批</h2>
+            <div className={s.radarSplit}>
+              <div className={s.radarWrap}>
+                <Radar radar={report.radar} delta={report.radarDelta} />
+              </div>
+              <div className={s.dimCol}>
+                <ul className={s.dimList}>
+                  {RADAR_DIMS.map((k) => {
+                    const val = Math.round(report.radar[k] * 100);
+                    const d = report.radarDelta?.[k];
+                    // 与 Radar 同一套「展示用整数相减」,避免 85 旁挂 +1 的错账
+                    const dPct = typeof d === 'number' ? val - Math.round((report.radar[k] - d) * 100) : 0;
+                    return (
+                      <li key={k} className={s.dimRow}>
+                        <span className={s.dimName}>{k}</span>
+                        <span className={s.dimBar} aria-hidden="true">
+                          <i className={s.dimFill} style={{ width: `${val}%` }} />
+                        </span>
+                        <span className={s.dimVal}>
+                          {val}
+                          {dPct !== 0 && (
+                            <em className={dPct > 0 ? s.dimUp : s.dimDown}>{dPct > 0 ? '+' : ''}{dPct}</em>
+                          )}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className={s.legend}>
+                  <span className={s.legendNow}>── 本次</span>
+                  {hasPrev && <span className={s.legendPrev}>╌╌ 上次</span>}
+                  <span className={s.legendNote}>雷达只和你自己的上一次比,不与任何人排名</span>
+                </div>
+              </div>
             </div>
           </section>
 
-          {/* 叁 · 盲区在后 —— 永远说「小白还没懂」 */}
-          <section className={`${s.section} ${s.rise}`} style={rise(3)}>
-            <h2 className={s.h2}>叁 · 小白还没懂的地方<small>不是你不行,是它还没被讲明白</small></h2>
+          {/* 肆 · 盲区在后 —— 永远说「小白还没懂」;淡瓷青分区带,浅卡落深底 */}
+          <section className={`${s.section} ${s.bandWarm} ${s.rise}`} style={rise(3)}>
+            <h2 className={s.h2}>肆 · 小白还没懂的地方<small>不是你不行,是它还没被讲明白</small></h2>
             {/* 心魔战报(doc §3.2):注入当下零提示,一切戏剧化只落在课后这里 */}
             {encounters.length > 0 && (
               <div className={s.demonReport}>
-                <p className={s.demonHead}>⚔ 本课遭遇心魔 ×{encounters.length}</p>
+                <p className={s.demonHead}><Icon name="swords" size={19} />本课遭遇心魔 ×{encounters.length}</p>
                 <ul className={s.demonList}>
                   {encounters.map((en) => (
                     <li key={en.mcId} className={`${s.demonCard} ${s[OUTCOME_CLASS[en.outcome]]}`}>
@@ -183,7 +230,7 @@ export default function ReviewPage() {
                       <p className={s.demonLine}>{en.line}</p>
                       {en.outcome === 'stray' && (
                         <button type="button" className={s.rescueBtn} onClick={() => rescueXiaobai(en.mcId)}>
-                          去救小白 →
+                          去救小白 <Icon name="arrow-right" size={16} />
                         </button>
                       )}
                     </li>
@@ -217,12 +264,14 @@ export default function ReviewPage() {
                             <button
                               type="button"
                               className={s.remedyToggle}
+                              aria-expanded={opened}
+                              aria-controls={`remedy-${mc.mcId}`}
                               onClick={() => setOpenRemedy(opened ? null : mc.mcId)}
                             >
-                              <span className={`${s.chev} ${opened ? s.chevOpen : ''}`}>▸</span>
+                              <Icon name="chevron-right" size={16} className={`${s.chev} ${opened ? s.chevOpen : ''}`} />
                               {opened ? '收起补学微路径' : '展开补学微路径 —— 三步把它讲明白'}
                             </button>
-                            <div className={`${s.collapse} ${opened ? s.open : ''}`}>
+                            <div id={`remedy-${mc.mcId}`} className={`${s.collapse} ${opened ? s.open : ''}`}>
                               <div inert={!opened}>
                                 <RemedyPath topicId={report.topicId} mc={mc} />
                               </div>
@@ -237,9 +286,9 @@ export default function ReviewPage() {
             )}
           </section>
 
-          {/* 肆 · 小白测验成绩单 */}
+          {/* 伍 · 小白测验成绩单 */}
           <section className={`${s.section} ${s.rise}`} style={rise(4)}>
-            <h2 className={s.h2}>肆 · 随堂小测成绩单<small>考的是小白,不是你</small></h2>
+            <h2 className={s.h2}>伍 · 放榜细目<small>考的是小白,不是你</small></h2>
             {report.quiz ? (
               <div className={s.quizCard}>
                 <div>
@@ -253,7 +302,9 @@ export default function ReviewPage() {
                     const point = topic?.checklist.find((c) => c.id === a.checklistRef)?.point ?? a.checklistRef;
                     return (
                       <li key={a.quizId} className={s.quizItem}>
-                        <span className={a.correct ? s.markRight : s.markWrong}>{a.correct ? '✓' : '✗'}</span>
+                        <span className={a.correct ? s.markRight : s.markWrong} aria-hidden="true">
+                          <Icon name={a.correct ? 'circle-check' : 'circle-x'} size={18} />
+                        </span>
                         <div>
                           <p className={s.quizQ}>{i + 1}. {q?.question ?? a.quizId}</p>
                           <p className={s.quizNote}>
@@ -272,19 +323,20 @@ export default function ReviewPage() {
             )}
           </section>
 
-          {/* 伍 · 证据链 —— 可审计的教学录像带 */}
-          <section className={`${s.section} ${s.rise}`} style={rise(5)}>
-            <h2 className={s.h2}>伍 · 证据链</h2>
+          {/* 陆 · 证据链 —— 可审计的教学录像带;纸影带收尾,与贰遥相呼应 */}
+          <section className={`${s.section} ${s.bandShade} ${s.rise}`} style={rise(5)}>
+            <h2 className={s.h2}>陆 · 证据链</h2>
             <button
               type="button"
               className={s.evidenceToggle}
               aria-expanded={openEvidence}
+              aria-controls="review-evidence"
               onClick={() => setOpenEvidence((v) => !v)}
             >
-              <span className={`${s.chev} ${openEvidence ? s.chevOpen : ''}`}>▸</span>
+              <Icon name="chevron-right" size={17} className={`${s.chev} ${openEvidence ? s.chevOpen : ''}`} />
               这些分数怎么来的?——展开一卷可审计的教学录像带
             </button>
-            <div className={`${s.collapse} ${openEvidence ? s.open : ''}`}>
+            <div id="review-evidence" className={`${s.collapse} ${openEvidence ? s.open : ''}`}>
               <div className={s.evidenceBody} inert={!openEvidence}>
                 <ol className={s.timeline}>
                   {sessionEvents.length === 0 && (
@@ -320,14 +372,6 @@ export default function ReviewPage() {
             </div>
           </section>
 
-          {/* 陆 · 小白的日记 —— 记岔的那段以最自信的语气写下,零报错样式,天气是唯一信号 */}
-          {diary && (
-            <section className={`${s.section} ${s.rise}`} style={rise(6)}>
-              <h2 className={s.h2}>陆 · 小白的日记<small>课后小白写的——它眼里的今天</small></h2>
-              <XiaobaiDiary page={diary} />
-            </section>
-          )}
-
           {/* 底部去处 —— 档案读完不留死胡同(出师后主按钮已指向书斋,不再重复给次链接) */}
           <footer className={`${s.footNav} ${s.rise}`} style={rise(7)}>
             <Link
@@ -335,9 +379,10 @@ export default function ReviewPage() {
               className={s.btnPrimary}
             >
               {report.masteredNow ? '回书斋,再挑一本' : '回讲台,把盲区讲明白'}
+              <Icon name="arrow-right" size={17} />
             </Link>
             {!report.masteredNow && (
-              <Link to="/study" className={s.footLink}>回书斋门厅 →</Link>
+              <Link to="/study" className={s.footLink}>回书斋门厅 <Icon name="arrow-right" size={15} /></Link>
             )}
           </footer>
         </div>

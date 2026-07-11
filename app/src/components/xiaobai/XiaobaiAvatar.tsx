@@ -32,9 +32,9 @@ export function XiaobaiAvatar({
   const webglOK = useMemo(detectWebGL, []);
   const [ready, setReady] = useState(false);
 
-  if (!webglOK) return <FallbackBlob mood={mood} size={size} variant={variant} />;
+  if (!webglOK) return <FallbackBlob mood={mood} level={level} size={size} variant={variant} />;
 
-  const blob = <FallbackBlob mood={mood} size={size} variant={variant} />;
+  const blob = <FallbackBlob mood={mood} level={level} size={size} variant={variant} />;
 
   return (
     <div

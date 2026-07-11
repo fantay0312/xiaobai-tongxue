@@ -8,6 +8,8 @@
    ───────────────────────────────────────────── */
 
 .page {
+  width: 100%;
+  min-width: 0;
   max-width: var(--page-max);
   margin: 0 auto;
   padding: var(--gap-loose) clamp(1.25rem, 4vw, 3rem) var(--gap-section);
@@ -19,12 +21,37 @@
 /* scroll-margin:卷五记忆匣的锚点按钮 scrollIntoView 落点,给 sticky 顶栏留出身位 */
 .section { margin-bottom: var(--gap-section); scroll-margin-top: calc(var(--header-h) + var(--gap-tight)); }
 
+/* 纸色分层节奏(加浓轮 R2):卷与卷以 paper / paper-warm / paper-shade 交替带出层次;
+   分区带用负外边距吃回 .page 内衬(同一 clamp 表达式),横贯整个版心 */
+.band {
+  --band-pad: clamp(1.25rem, 4vw, 3rem);
+  margin-inline: calc(-1 * var(--band-pad));
+  padding: var(--gap-loose) var(--band-pad);
+  border-block: 1px solid var(--paper-edge);
+}
+
+.bandWarm { background: var(--paper-warm); }
+.bandShade { background: var(--paper-shade); }
+
 .h2 {
+  position: relative;
   font-size: var(--fs-title);
   color: var(--ink);
   margin-bottom: var(--gap);
   padding-bottom: var(--gap-hair);
-  border-bottom: 1px solid var(--paper-edge);
+  /* 通栏线升强边线档:hairline 落在 warm/shade 带上会隐形(R2) */
+  border-bottom: 1px solid var(--line-strong);
+}
+
+/* 双线书版式(R2):通栏线上叠一段 2px 墨色短线作"骨",与宣传页各章同一副骨架 */
+.h2::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 2.5rem;
+  height: 2px;
+  background: var(--ink);
 }
 
 .h2 small {
@@ -38,7 +65,7 @@
 
 .muted { color: var(--ink-faint); }
 
-/* 卷号小印:章回感的来源,细边小方,楷体撑字距 */
+/* 卷号小印:章回感的来源,细边小方,楷体撑字距;青底衬一层让章号在带上立得住 */
 .volNo {
   display: inline-block;
   font-family: var(--font-display);
@@ -46,6 +73,7 @@
   color: var(--azure);
   border: 1px solid var(--azure);
   border-radius: var(--radius-s);
+  background: var(--azure-wash);
   padding: 0 0.45rem;
   margin-right: var(--gap-tight);
   letter-spacing: 0.18em;
@@ -81,15 +109,16 @@
   .portrait { margin-inline: auto; }
 }
 
-/* 弟子画像:册页里裱起来的一幅小像 —— 双框衬纸,题签在上,展签在下 */
+/* 弟子画像:册页里裱起来的一幅小像 —— 双框衬纸,题签在上,展签在下;
+   立轴加宽到 ~300-320px 与右列平衡(加浓轮:卷首孤挂左上、右半空);描边升强边线档(R3) */
 .portrait {
-  width: clamp(13rem, 20vw, 15rem);
+  width: clamp(17rem, 22vw, 20rem);
   margin: 0;
   padding: var(--gap-tight) var(--gap-tight) var(--gap);
   background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
-  box-shadow: inset 0 0 0 5px var(--paper-warm), inset 0 0 0 6px var(--paper-edge), var(--shadow-paper);
+  box-shadow: inset 0 0 0 5px var(--paper-warm), inset 0 0 0 6px var(--line-strong), var(--shadow-paper);
   text-align: center;
 }
 
@@ -175,6 +204,87 @@
 
 .levelNow { color: var(--azure); }
 
+.dreamThread {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gap);
+  margin: 0 0 var(--gap-loose);
+  padding: var(--gap) var(--gap-loose);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(110deg, var(--amber-wash), transparent 46%),
+    var(--paper-warm);
+}
+
+.dreamIcon {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  color: var(--amber-ink);
+  background: var(--paper);
+  border: 1px solid var(--amber);
+}
+
+.dreamLabel { color: var(--amber-ink); font-size: var(--fs-tiny); letter-spacing: 0.16em; }
+.dreamText { margin-top: 0.1rem; font-family: var(--font-display); color: var(--ink); }
+.dreamProgress { color: var(--ink-faint); font-size: var(--fs-tiny); white-space: nowrap; }
+
+.graduationScene {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gap-loose);
+  margin: calc(-1 * var(--gap-tight)) 0 var(--gap-loose);
+  padding: var(--gap) var(--gap-loose);
+  border: 1px solid var(--jade);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(120deg, var(--jade-wash), transparent 64%),
+    var(--paper);
+  box-shadow: var(--shadow-paper);
+}
+
+.graduationCast {
+  display: grid;
+  grid-template-columns: repeat(3, 1.55rem);
+  align-items: end;
+  justify-items: center;
+  gap: var(--gap-hair);
+}
+
+.graduationLectern {
+  grid-column: 1 / -1;
+  display: grid;
+  place-items: center;
+  width: 3.2rem;
+  height: 3.2rem;
+  color: var(--jade-ink);
+  border: 1px solid var(--jade);
+  border-radius: 50%;
+  background: var(--paper-warm);
+}
+
+.littleStudent {
+  display: grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: 50%;
+  color: var(--ink-soft);
+  background: var(--paper-warm);
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+}
+
+.graduationLabel { color: var(--jade-ink); font-size: var(--fs-tiny); letter-spacing: 0.16em; }
+.graduationQuote { margin-top: 0.16rem; font-family: var(--font-display); font-size: var(--fs-sub); color: var(--ink); }
+.graduationProof { margin-top: var(--gap-hair); color: var(--ink-faint); font-size: var(--fs-tiny); }
+
 /* 修行阶:五方阶牌踏一条墨点路 —— 走过的落墨、当下的钤青印、没到的还是虚印
    (虚实语言与卷一印章墙同源;overflow 横滚与图谱/画廊同一逃生口) */
 
@@ -185,8 +295,16 @@
   position: relative;
   display: flex;
   gap: var(--gap-tight);
-  max-width: 46rem;
   overflow-x: auto;
+}
+
+/* 中窄档五方牌开始横滚:左右边缘渐隐收纳滚动(R4;#000 是 mask 通道不是配色) */
+@media (max-width: 720px) {
+  .ladder {
+    margin-inline: calc(-1 * var(--gap));
+    padding-inline: var(--gap);
+    mask-image: linear-gradient(90deg, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
+  }
 }
 
 .rung {
@@ -212,7 +330,7 @@
   border-top: 2px dotted var(--dust);
 }
 
-.rungLv { font-family: var(--font-code); font-size: var(--fs-tiny); color: var(--ink-faint); }
+.rungIcon { color: var(--ink-faint); }
 
 .rungName { font-family: var(--font-display); font-size: var(--fs-body); font-weight: 700; color: var(--ink-soft); }
 
@@ -228,7 +346,7 @@
 .rungPast .rungName { color: var(--ink); }
 
 /* 落墨的牌上小字随之加深:ink-faint 压 wash 底只剩 ~3.1:1 */
-.rungPast .rungLv,
+.rungPast .rungIcon,
 .rungPast .rungDesc { color: var(--ink-soft); }
 
 .rungNow {
@@ -240,7 +358,7 @@
   transform: rotate(-1.2deg);
 }
 
-.rungNow .rungLv { color: var(--azure-deep); }
+.rungNow .rungIcon { color: var(--azure-deep); }
 .rungNow .rungName { color: var(--azure-deep); }
 .rungNow .rungDesc { color: var(--azure-deep); }
 
@@ -324,25 +442,33 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr));
   gap: var(--gap);
-  max-width: 46rem;
 }
 
 .rankCard,
 .journeyCard {
-  background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
   border-radius: var(--radius);
-  box-shadow: inset 0 0 0 4px var(--paper-warm), inset 0 0 0 5px var(--paper-edge);
   padding: var(--gap);
 }
 
+.journeyCard {
+  background: var(--paper-warm);
+  border: 1px solid var(--line-strong);
+  box-shadow: inset 0 0 0 4px var(--paper-warm), inset 0 0 0 5px var(--line-strong);
+}
+
+/* 砚墨锚点(R1):师道称号是本页唯一的深色"证书",砚台压住卷首纸角——
+   靛墨 --inkstone 系专用,文字走 --moon-on-ink 双档;不是暗色模式 */
 .rankCard {
   display: flex;
   align-items: center;
   gap: var(--gap);
+  background: linear-gradient(160deg, var(--inkstone), var(--inkstone-deep));
+  border: 1px solid var(--inkstone-line);
+  box-shadow: inset 0 0 0 4px var(--inkstone), inset 0 0 0 5px var(--inkstone-line), var(--shadow-paper);
 }
 
-/* 师道方章:竖排双字,免得字距把「道」挤出章框 */
+/* 师道方章:竖排双字,免得字距把「道」挤出章框(vertical-rl,不加字距);
+   印泥红章钤在纸签上压住砚墨卡角——印章语境走 --seal-red 别名(DESIGN.md 印章豁免) */
 .rankSeal {
   flex: none;
   width: 3.2rem;
@@ -350,10 +476,10 @@
   display: grid;
   place-items: center;
   writing-mode: vertical-rl;
-  letter-spacing: 0.14em;
-  border: 2px solid var(--azure-deep);
+  border: 2px solid var(--seal-red);
   border-radius: var(--radius-s);
-  color: var(--azure-deep);
+  color: var(--seal-red);
+  background: var(--paper);
   font-family: var(--font-display);
   font-size: var(--fs-body);
   font-weight: 700;
@@ -366,7 +492,7 @@
 .rankLabel {
   font-family: var(--font-display);
   font-size: var(--fs-tiny);
-  color: var(--ink-faint);
+  color: var(--moonsoft-on-ink);
   letter-spacing: 0.14em;
 }
 
@@ -374,11 +500,13 @@
   font-family: var(--font-display);
   font-size: var(--fs-title);
   font-weight: 700;
-  color: var(--ink);
+  color: var(--moon-on-ink);
   line-height: 1.3;
 }
 
-.rankScore { font-size: var(--fs-small); color: var(--ink-soft); margin-top: 2px; }
+.rankScore { font-size: var(--fs-small); color: var(--moonsoft-on-ink); margin-top: 2px; }
+
+.rankScore .num { color: var(--moon-on-ink); }
 
 .rankBar {
   height: 5px;
@@ -396,7 +524,7 @@
   transition: width var(--t-slow) var(--ease-out);
 }
 
-.rankNext { font-size: var(--fs-tiny); color: var(--ink-faint); margin-top: var(--gap-hair); }
+.rankNext { font-size: var(--fs-tiny); color: var(--moonsoft-on-ink); margin-top: var(--gap-hair); }
 
 .journeyCard {
   display: flex;
@@ -416,7 +544,9 @@
 
 /* 下一步是卷首唯一的实心按钮:整页只指一条路 */
 .btnSolid {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-hair);
   margin-top: auto;
   padding: 0.4rem 1.1rem;
   background: var(--azure);
@@ -427,6 +557,13 @@
   letter-spacing: 0.1em;
   border-radius: var(--radius-s);
   transition: background var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
+}
+
+@media (max-width: 560px) {
+  .dreamThread { grid-template-columns: auto minmax(0, 1fr); padding: var(--gap); }
+  .dreamProgress { grid-column: 2; white-space: normal; }
+  .graduationScene { grid-template-columns: 1fr; padding: var(--gap); }
+  .graduationCast { justify-content: start; }
 }
 
 .btnSolid:hover { background: var(--azure-deep); transform: translateY(-1px); }
@@ -502,10 +639,11 @@
 
 .sealProgress { font-family: var(--font-code); font-size: var(--fs-tiny); color: var(--ink-faint); }
 
+/* 来历卡改浅卡:卷一落在 warm 带上,warm 底会与带融成一片(R2+R3) */
 .sealDetail {
   margin-top: var(--gap);
-  background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
   border-left: 3px solid var(--azure);
   border-radius: var(--radius-s);
   padding: var(--gap) var(--gap-loose);
@@ -548,8 +686,9 @@
   grid-template-columns: 4.2rem minmax(0, 1fr);
   gap: var(--gap-tight);
   background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
-  border-left: 3px solid var(--paper-edge);
+  /* 描边升强边线档:日志卡要"框得住"(R3) */
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--line-strong);
   border-radius: var(--radius-s);
   padding: var(--gap-tight) var(--gap);
 }
@@ -575,7 +714,9 @@
 .logLine { font-size: var(--fs-small); color: var(--ink-soft); margin-top: var(--gap-hair); }
 
 .logLink {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-hair);
   margin-top: var(--gap-hair);
   font-family: var(--font-display);
   font-size: var(--fs-small);
@@ -628,44 +769,367 @@
   .logItem, .marginItem { grid-template-columns: 3.2rem minmax(0, 1fr); }
 }
 
-/* ── 卷三·盲区图谱(选择器名与 KnowledgeMap.tsx 咬合,不可改名) ── */
+/* ── 卷三·迷雾舆图(选择器名与 KnowledgeMap.tsx 咬合) ── */
 
 .mapWrap {
+  min-width: 0;
+  max-width: 100%;
   margin-inline: calc(-1 * clamp(0rem, 3vw, 2.5rem));
-  /* 窄屏横向滚动而非整图等比缩小:缩到 375px 时节点文字只剩 ~5px */
+  padding-bottom: var(--gap-hair);
   overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-gutter: stable;
+  /* 横滚收纳(R4):左右边缘渐隐;#000 是 mask 通道不是配色。
+     渐隐坡 1.25rem 落在 mapAtlas 的 padding-inline(≥ --gap)里,不吃节点内容 */
+  mask-image: linear-gradient(90deg, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
 }
 
-.mapSvg { width: 100%; min-width: 640px; height: auto; display: block; }
+/* 六列保持节点标题可读;窄屏让用户沿路横移，不把 42 个点缩成小字。 */
+.mapAtlas {
+  min-width: 44rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-loose);
+  padding-inline: clamp(var(--gap), 3vw, 2.5rem);
+}
 
-.vein { fill: none; stroke: var(--ink); opacity: 0.14; stroke-width: 1.2; stroke-dasharray: 1 5; stroke-linecap: round; }
+/* 一境一张纸岛:卷三落在 shade 带上,境卡以实纸浮出("浅卡深底",R3) */
+.mapRealm {
+  position: relative;
+  isolation: isolate;
+  padding: var(--gap) var(--gap) var(--gap-loose);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(38rem 12rem at 16% 26%, var(--paper-warm), transparent 70%),
+    var(--paper);
+  box-shadow: var(--shadow-paper);
+}
 
-.node { cursor: pointer; }
-.nodeLocked { cursor: default; }
+/* 同一门课是一境：左边章号、中间境名、右边操作提示。 */
+.realmHead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gap);
+  margin-bottom: var(--gap-tight);
+}
 
-.coreMastered { fill: var(--jade); }
-.coreForgotten { fill: var(--amber); }
-.coreLearning { fill: var(--paper); stroke: var(--azure); stroke-width: 2.5; }
-.coreUnlearned { fill: var(--dust); }
-.coreLocked { fill: var(--dust); opacity: 0.35; }
-
-.halo { fill: none; stroke: var(--jade); opacity: 0.35; }
-.haloForgot { fill: none; stroke: var(--amber); stroke-dasharray: 4 4; opacity: 0.8; }
-.haloSelected { fill: none; stroke: var(--azure); stroke-width: 1.5; }
-
-.nodeLabel {
+.realmNo {
+  display: grid;
+  place-items: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  border: 1px solid var(--azure);
+  border-radius: 50%;
+  color: var(--azure-deep);
+  background: var(--paper);
   font-family: var(--font-display);
-  font-size: 14px;
-  fill: var(--ink);
-  text-anchor: middle;
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  transform: rotate(-3deg);
 }
 
-.nodeLabelFaint { fill: var(--ink-faint); }
+.realmTitle {
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  color: var(--ink);
+  letter-spacing: 0.06em;
+}
 
-.hoverText {
-  font-size: 12px;
-  fill: var(--ink-soft);
-  text-anchor: middle;
+.realmSubtitle {
+  margin-top: 0.15rem;
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+}
+
+.realmHint {
+  max-width: 18rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  line-height: 1.7;
+  color: var(--ink-faint);
+  text-align: right;
+}
+
+.realmTrail {
+  position: relative;
+}
+
+.realmPath {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(6.25rem, 1fr));
+  grid-auto-rows: 8.75rem;
+  gap: 2rem var(--gap-tight);
+  list-style: none;
+  margin: 0;
+  padding: var(--gap-tight) 0;
+}
+
+.pathLines {
+  position: absolute;
+  z-index: 0;
+  top: var(--gap-tight);
+  left: 0;
+  width: 100%;
+  height: calc(100% - var(--gap) - 1px);
+  overflow: visible;
+  pointer-events: none;
+}
+
+.pathLine,
+.pathLineShadow {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pathLineShadow {
+  stroke: var(--paper);
+  stroke-width: 7;
+  opacity: 0.9;
+}
+
+.pathLine {
+  stroke: var(--ink-faint);
+  stroke-width: 1.5;
+  stroke-dasharray: 1 7;
+  opacity: 0.66;
+}
+
+.pathSlot {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  /* 入场步进由 KnowledgeMap.tsx 内联 animationDelay 提供:min(i×45ms, 300ms)(R6) */
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
+}
+
+/* 节点不做通用卡片：它是路上一处可踏入的地标。 */
+.mapNode {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-hair);
+  padding: var(--gap-hair);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  text-align: center;
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out);
+}
+
+.mapNode:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: var(--ink-wash);
+  border-color: var(--line-strong);
+}
+
+.mapNode:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 3px;
+  transform: translateY(-2px);
+}
+
+/* 选中只描青圈,不投大阴影(加浓轮:杀重投影,平贴纸面) */
+.mapNodeSelected {
+  background: color-mix(in oklch, var(--azure-wash) 72%, var(--paper));
+  border-color: var(--azure);
+  box-shadow: 0 0 0 3px var(--azure-wash);
+}
+
+.nodeOrder {
+  position: absolute;
+  top: var(--gap-hair);
+  left: var(--gap-hair);
+  font-family: var(--font-code);
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+}
+
+/* 水墨圆牌(加浓轮 R5):软放射墨/尘晕面 + 细环,平贴纸面——
+   不是悬浮的雾球;外圈 4px 实纸圈只为抠掉身后的墨点路 */
+.nodeMarker {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 2.9rem;
+  height: 2.9rem;
+  border: 1.5px solid var(--dust);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, var(--paper) 0 26%, transparent 62%),
+    color-mix(in oklch, var(--dust) 24%, var(--paper));
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  box-shadow: 0 0 0 4px var(--paper);
+  transition: transform var(--t-med) var(--ease-out);
+}
+
+.mapNode:hover:not(:disabled) .nodeMarker,
+.mapNode:focus-visible .nodeMarker,
+.mapNodeSelected .nodeMarker {
+  transform: scale(1.06);
+}
+
+/* 地雾拍平:单层低透明尘晕垫在牌后,只给雾态用,不再是重影雾球 */
+.nodeMist {
+  position: absolute;
+  z-index: 1;
+  inset: 1.1rem 0.4rem 1.9rem;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 55%, color-mix(in oklch, var(--dust) 42%, transparent), transparent 72%);
+  opacity: 0;
+  pointer-events: none;
+  transform-origin: center;
+}
+
+.nodeTitle {
+  position: relative;
+  z-index: 2;
+  min-height: 2.7em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 9.5em;
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.nodeState {
+  position: relative;
+  z-index: 2;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+/* 已出师：玉环圆牌 + 一点温和的灯晕——图谱点亮是允许的高光时刻,但不做重投影。 */
+.mapNodeMastered .nodeMist {
+  opacity: 0;
+}
+
+.mapNodeMastered .nodeMarker {
+  color: var(--jade-ink);
+  border-color: var(--jade);
+  background:
+    radial-gradient(circle at 32% 28%, var(--paper) 0 30%, transparent 66%),
+    color-mix(in oklch, var(--jade) 14%, var(--paper));
+  box-shadow:
+    0 0 0 4px var(--paper),
+    0 0 0 6px var(--jade-wash),
+    0 0 14px color-mix(in oklch, var(--jade) 26%, transparent);
+}
+
+.mapNodeMastered .nodeState { color: var(--jade-ink); }
+
+/* 衰减：藤黄环,雾正从旁边慢慢回拢。 */
+.mapNodeForgotten .nodeMist {
+  opacity: 0.6;
+  animation: mapFogDrift 5.5s var(--ease-loop) infinite alternate;
+}
+
+.mapNodeForgotten .nodeMarker {
+  color: var(--amber-ink);
+  border-color: var(--amber);
+  background:
+    radial-gradient(circle at 32% 28%, var(--paper) 0 26%, transparent 62%),
+    color-mix(in oklch, var(--amber) 18%, var(--paper));
+}
+
+.mapNodeForgotten .nodeState { color: var(--amber-ink); }
+
+/* 学习中：青环半明,雾只剩右半。 */
+.mapNodeLearning .nodeMist {
+  opacity: 0.3;
+  clip-path: inset(0 0 0 52%);
+  transform: translateX(9%);
+}
+
+.mapNodeLearning .nodeMarker {
+  color: var(--azure-deep);
+  border-color: var(--azure);
+  background:
+    radial-gradient(circle at 32% 28%, var(--paper) 0 26%, transparent 62%),
+    color-mix(in oklch, var(--azure) 12%, var(--paper));
+}
+
+.mapNodeLearning .nodeState { color: var(--azure-deep); }
+
+/* 未学：虚线尘环示"雾未开",牌面沉半档,仍可点开看诚实空态。 */
+.mapNodeUnlearned .nodeMist { opacity: 0.55; }
+
+.mapNodeUnlearned .nodeMarker {
+  border-style: dashed;
+  color: var(--ink-faint);
+  background:
+    radial-gradient(circle at 32% 28%, var(--paper) 0 22%, transparent 60%),
+    color-mix(in oklch, var(--dust) 15%, var(--paper));
+}
+
+/* 未开放：禁用且不进 Tab 序，雾量最高。 */
+.mapNodeLocked {
+  cursor: not-allowed;
+  color: var(--ink-faint);
+}
+
+.mapNodeLocked .nodeMist { opacity: 0.75; }
+
+.mapNodeLocked .nodeMarker {
+  border-style: dashed;
+  color: var(--ink-faint);
+  background: color-mix(in oklch, var(--dust) 26%, var(--paper));
+}
+
+.mapNodeLocked .nodeTitle,
+.mapNodeLocked .nodeState,
+.mapNodeLocked .nodeOrder {
+  color: var(--ink-faint);
+  opacity: 0.7;
+}
+
+@keyframes mapFogDrift {
+  from { transform: translate3d(-4px, 1px, 0); opacity: 0.4; }
+  to { transform: translate3d(4px, -1px, 0); opacity: 0.65; }
+}
+
+@media (max-width: 720px) {
+  .mapAtlas {
+    min-width: 42rem;
+    padding-inline: var(--gap);
+  }
+
+  .mapRealm { padding-inline: var(--gap-tight); }
+  .realmHead { grid-template-columns: auto minmax(0, 1fr); }
+  .realmHint { display: none; }
+  .realmPath { grid-template-columns: repeat(6, minmax(5.75rem, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mapNodeForgotten .nodeMist { animation: none; }
+  .mapNode:hover:not(:disabled),
+  .mapNode:focus-visible { transform: none; }
 }
 
 .legendRow {
@@ -673,7 +1137,8 @@
   flex-wrap: wrap;
   gap: var(--gap);
   font-size: var(--fs-tiny);
-  color: var(--ink-faint);
+  /* 图例落在 shade 带上,faint 档会看不清,提半档 */
+  color: var(--ink-soft);
   margin-top: var(--gap-tight);
 }
 
@@ -712,10 +1177,11 @@
 
 .collapse > div { overflow: hidden; min-height: 0; }
 
+/* 证据链面板改浅卡:卷三落在 shade 带上,warm 底立不住(R3) */
 .nodePanel {
   margin-top: var(--gap);
-  background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   padding: var(--gap) var(--gap-loose);
 }
@@ -768,20 +1234,25 @@
   display: flex;
   gap: var(--gap);
   overflow-x: auto;
-  padding: var(--gap-hair) var(--gap-hair) var(--gap);
+  /* 横滚收纳(R4):渐隐坡放进负外边距让出的檐廊,首末卡不吃淡;#000 是 mask 通道 */
+  margin-inline: calc(-1 * var(--gap));
+  padding: var(--gap-hair) var(--gap) var(--gap);
   scroll-snap-type: x proximity;
+  mask-image: linear-gradient(90deg, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
 }
 
+/* 裱好的金句是浅卡,落在 warm 带上浮出来(R3) */
 .galleryCard {
   position: relative;
   margin: 0;
   flex: 0 0 auto;
   width: min(22rem, 78vw);
   scroll-snap-align: start;
-  background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   padding: var(--gap-loose) var(--gap-loose) var(--gap-tight);
+  box-shadow: var(--shadow-paper);
 }
 
 .galleryMark {
@@ -824,7 +1295,8 @@
   flex-wrap: wrap;
   gap: var(--gap-hair) var(--gap);
   padding-left: var(--gap);
-  border-left: 3px solid var(--azure-wash);
+  /* 卷尾落在 shade 带上:10% 青 wash 左沿会隐形,提到半浓青(R2) */
+  border-left: 3px solid color-mix(in oklch, var(--azure) 45%, transparent);
 }
 
 .memoryLine {
@@ -844,6 +1316,9 @@
 /* ── 按钮与角落 ── */
 
 .btnGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-hair);
   background: none;
   border: 1px solid var(--azure);
   color: var(--azure);

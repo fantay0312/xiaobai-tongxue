@@ -6,6 +6,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Seal } from '../../components/shell/Seal';
+import { Icon } from '../../components/ui/Icon';
 import { useAuthStore } from '../../store/authStore';
 import s from './login.module.css';
 
@@ -50,7 +51,7 @@ export default function LoginPage() {
               : '你已登录,可以直接给小白开讲了。'}
           </p>
           <Link className={s.noticeLink} to={standalone ? '/study' : next}>
-            {standalone ? '回书斋' : '继续'} →
+            {standalone ? '回书斋' : '继续'} <Icon name="arrow-right" size={16} />
           </Link>
         </section>
       </div>
@@ -114,7 +115,7 @@ export default function LoginPage() {
 
           <footer className={s.foot}>
             <span>暂未开放注册,账号由管理员发放</span>
-            <Link className={s.backLink} to="/study">← 先随便看看</Link>
+            <Link className={s.backLink} to="/study"><Icon name="arrow-left" size={15} />先随便看看</Link>
           </footer>
         </section>
       </div>
