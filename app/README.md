@@ -3,6 +3,8 @@
 学生扮演老师,AI 扮演"困惑但会追问的学生"。通过梯度追问、误区注入和讲解质量评估,
 精确定位理解盲区,驱动「备课—讲解—评估—补学—再讲」学习闭环。
 
+**在线体验**:<https://tradingvane.com/xiaobai/>(语音输入需此 HTTPS 入口;学习记录按账号存服务器,换设备登录即还原)
+
 ## 快速开始
 
 ```bash
@@ -17,7 +19,7 @@ npm run dev        # http://localhost:5173
 ```bash
 VITE_LLM_BASE_URL=https://api.deepseek.com
 VITE_LLM_API_KEY=sk-xxxx
-VITE_LLM_MODEL=deepseek-chat
+VITE_LLM_MODEL=deepseek-v4-flash
 ```
 
 三种台词引擎模式(设置抽屉可随时切换并**测试连接**):
@@ -30,6 +32,10 @@ VITE_LLM_MODEL=deepseek-chat
 
 API 任何一跳失败都会静默降级到规则/模板,课堂不会中断。
 部署形态还带登录墙:未登录仅可查看,备课/讲解需登录(`/server/README.md`)。
+
+课堂支持**语音输入**(口述转文字落输入框):默认走服务器网关代理(密钥服务器代管,需登录),
+也可在设置里自配任何 OpenAI 兼容转写端点(`/audio/transcriptions`,密钥只存本机);
+浏览器只在 HTTPS/localhost 下开放麦克风。
 
 架构纪律:导演状态机永远是纯代码,LLM 只负责「理解讲解」和「生成台词」;
 所有小白台词过泄漏检测出口守门(未解锁术语禁止说出口)。
