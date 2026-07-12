@@ -203,6 +203,10 @@ function MicButton({ disabled, onText }: { disabled: boolean; onText: (t: string
     if (phase === 'busy' || startingRef.current) return;
     if (phase === 'rec') return void finish();
     setHint('');
+    // HTTP 明文站点(裸 IP 部署)拿不到麦克风:浏览器只在安全上下文暴露 mediaDevices
+    if (!window.isSecureContext) {
+      return showHint('浏览器只在 HTTPS(或本机调试)下开放麦克风,这个站点暂时用不了语音');
+    }
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
       return showHint('这个浏览器不支持录音');
     }
