@@ -55,7 +55,10 @@ if (!API_KEY) console.warn('[warn] config.apiKey 为空,/api/chat 将全部 502'
 if (!INVITE_CODE) console.warn('[warn] config.inviteCode 未配置,/api/register 关闭');
 
 // ───────────────────────── 注册用户(落盘持久化) ─────────────────────────
-const REG_PATH = path.join(HERE, 'registered-users.json');
+/** 生产 systemd 把 /opt/xiaobai 挂只读(ProtectSystem=strict),状态文件必须写进
+ *  StateDirectory(config.dataDir=/var/lib/xiaobai);不配 dataDir 回落网关同目录(本地/裸跑) */
+const DATA_DIR = typeof cfg.dataDir === 'string' && cfg.dataDir ? cfg.dataDir : HERE;
+const REG_PATH = path.join(DATA_DIR, 'registered-users.json');
 const MAX_REG_USERS = 500; // 邀请码泄露时的最后一道闸:名额封顶
 let regUsers = [];
 try {
@@ -85,7 +88,7 @@ function persistRegUsers() {
 // 而不是等第一位注册用户撞 500
 if (INVITE_CODE) {
   try { persistRegUsers(); } catch (e) {
-    console.error('[fatal] registered-users.json 不可写(检查目录属主/权限):', e?.message);
+    console.error('[fatal] registered-users.json 不可写(检查 config.dataDir 与 systemd StateDirectory/目录属主):', e?.message);
     process.exit(2);
   }
 }

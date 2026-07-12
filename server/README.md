@@ -29,8 +29,10 @@
 - 限流:登录失败按真实客户端 IP(仅信任本机 nginx 的 X-Real-IP)10 次/15 分钟;
   注册尝试(成败都计)8 次/15 分钟/IP,邀请码恒时比对防爆破,注册总量封顶 500;
   聊天按**账号名** 12 次/分钟 + 400 次/日(重复登录铸新会话无法绕过)
-- **部署注意**:网关进程(User=xiaobai)要能在 `/opt/xiaobai/server/` 里创建
-  `registered-users.json` —— 目录属主须为 xiaobai,否则启动时直接 fatal 退出提示
+- **部署注意**:systemd 单元 `ProtectSystem=strict` 把 `/opt/xiaobai` 挂只读,
+  注册状态文件写在 `StateDirectory=xiaobai`(即 `/var/lib/xiaobai/registered-users.json`),
+  生产 `config.json` 必须配 `"dataDir": "/var/lib/xiaobai"`;不配 dataDir 时回落
+  网关同目录(本地裸跑用)。目录不可写会在启动写探测时直接 fatal 退出提示
 
 ## 运维速查
 
