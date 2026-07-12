@@ -272,6 +272,22 @@
 .rowT:nth-child(odd) .bubbleT { transform: rotate(0.35deg); }
 .rowT:nth-child(even) .bubbleT { transform: rotate(-0.3deg); }
 
+/* 金句被记进小本本:黛绿粉笔小注落在便签下缘(唯一现场彩蛋——只夸讲得好,不泄导演机关) */
+.rowGold {
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-start;
+  row-gap: 3px;
+}
+
+.goldNote {
+  font-size: var(--fs-tiny);
+  font-family: var(--font-display);
+  color: var(--chalk-jade);
+  letter-spacing: 0.08em;
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
+}
+
 /* 小白消息:偏左,粉笔白,心情粉笔小字注在旁 */
 .rowX {
   display: flex;

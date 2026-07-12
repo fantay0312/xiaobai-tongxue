@@ -104,6 +104,7 @@ export default function ClassroomPage() {
   const navigate = useNavigate();
 
   const live = useAppStore((st) => st.live);
+  const events = useAppStore((st) => st.events);
   const g = useAppStore((st) => st.global);
   const submitTeaching = useAppStore((st) => st.submitTeaching);
   const closeLookup = useAppStore((st) => st.closeLookup);
@@ -214,6 +215,20 @@ export default function ClassroomPage() {
     setTypingNow(false);
   };
 
+  // 金句现场微反馈:本会话 golden_analogy_saved 事件的引文逐字出自老师原话(评估层
+  // 已做归一化子串校验),回贴到命中的老师气泡上。这是唯一不泄导演机关的现场彩蛋——
+  // 只夸讲得好,不提示哪句是陷阱;误区注入/救援层级仍然只在复盘事后揭示。
+  const normQuote = (t: string) => t.replace(/\s+/g, '');
+  const goldenQuotes = events
+    .filter((e) => e.sessionId === live.sessionId && e.type === 'golden_analogy_saved')
+    .map((e) => normQuote(String(e.payload.text ?? '')))
+    .filter(Boolean);
+  const isGoldenRow = (text: string) => {
+    if (goldenQuotes.length === 0) return false;
+    const t = normQuote(text);
+    return goldenQuotes.some((q) => t.includes(q));
+  };
+
   const lookupItem = live.lookupChecklistId
     ? topic.checklist.find((c) => c.id === live.lookupChecklistId) ?? null
     : null;
@@ -290,9 +305,16 @@ export default function ClassroomPage() {
                   {m.text}
                 </div>
               ) : m.role === 'teacher' ? (
-                <div key={m.id} className={s.rowT}>
-                  <div className={s.bubbleT}>{m.text}</div>
-                </div>
+                isGoldenRow(m.text) ? (
+                  <div key={m.id} className={`${s.rowT} ${s.rowGold}`}>
+                    <div className={s.bubbleT}>{m.text}</div>
+                    <span className={s.goldNote}>﹝小白把这句记进小本本了﹞</span>
+                  </div>
+                ) : (
+                  <div key={m.id} className={s.rowT}>
+                    <div className={s.bubbleT}>{m.text}</div>
+                  </div>
+                )
               ) : (
                 <XiaobaiBubble
                   key={m.id}

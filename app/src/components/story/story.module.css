@@ -430,6 +430,25 @@
   color: var(--amber-ink);
 }
 
+/* 新印/将落之印纵向小叠:两枚小签只占一枚的横宽,别挤叙事句 */
+.sealStack {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+/* 将落之印:虚印制式与成长册卷一同纪律——dashed 边 + 灰饰面,印名文字保持全透明度 */
+.ghostSeal {
+  color: var(--dust);
+}
+
+.ghostSeal .newSealGlyph {
+  border-style: dashed;
+  background: transparent;
+}
+
 .stepCta {
   flex: none;
   display: inline-flex;

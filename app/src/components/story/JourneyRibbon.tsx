@@ -21,15 +21,26 @@ export function JourneyRibbon() {
   const global = useAppStore((st) => st.global);
   const topicStates = useAppStore((st) => st.topicStates);
 
-  const { rank, step, latest } = useMemo(() => {
+  const { rank, step, latest, nextSeal } = useMemo(() => {
     const input = { events, reports, global, topicStates, topics: TOPICS };
-    const earned = deriveAchievements(input)
+    const all = deriveAchievements(input);
+    const earned = all
       .filter((a) => a.earnedAt !== null)
       .sort((a, b) => (a.earnedAt! < b.earnedAt! ? 1 : -1));
+    // 将落之印:进度比最高的虚印(已开攒才提,零进度不催);比相同差得少者先落
+    const ghost = all
+      .filter((a) => a.earnedAt === null && a.progress.now > 0)
+      .sort((a, b) => {
+        const ra = a.progress.now / a.progress.target;
+        const rb = b.progress.now / b.progress.target;
+        if (rb !== ra) return rb - ra;
+        return (a.progress.target - a.progress.now) - (b.progress.target - b.progress.now);
+      })[0] ?? null;
     return {
       rank: deriveTeacherRank(input),
       step: nextStep({ events, reports, topicStates, topics: TOPICS }),
       latest: earned[0] ?? null,
+      nextSeal: ghost,
     };
   }, [events, reports, global, topicStates]);
 
@@ -52,15 +63,31 @@ export function JourneyRibbon() {
 
       <p className={s.stepLine}>{step.line}</p>
 
-      {latest && (
-        <Link
-          to="/growth"
-          className={`${s.newSeal} ${s[latest.tier]}`}
-          title={`「${latest.name}」:${latest.desc}`}
-        >
-          <span className={s.newSealGlyph} aria-hidden="true">{latest.glyph}</span>
-          <span className={s.newSealName}>新印 · {latest.name}</span>
-        </Link>
+      {(latest || nextSeal) && (
+        <div className={s.sealStack}>
+          {latest && (
+            <Link
+              to="/growth"
+              className={`${s.newSeal} ${s[latest.tier]}`}
+              title={`「${latest.name}」:${latest.desc}`}
+            >
+              <span className={s.newSealGlyph} aria-hidden="true">{latest.glyph}</span>
+              <span className={s.newSealName}>新印 · {latest.name}</span>
+            </Link>
+          )}
+          {nextSeal && (
+            <Link
+              to="/growth"
+              className={`${s.newSeal} ${s.ghostSeal}`}
+              title={`「${nextSeal.name}」:${nextSeal.desc}`}
+            >
+              <span className={s.newSealGlyph} aria-hidden="true">{nextSeal.glyph}</span>
+              <span className={s.newSealName}>
+                将落 · {nextSeal.name} {nextSeal.progress.now}/{nextSeal.progress.target}
+              </span>
+            </Link>
+          )}
+        </div>
       )}
 
       <Link className={s.stepCta} to={step.to}>{step.cta}<Icon name="arrow-right" size={16} /></Link>
