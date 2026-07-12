@@ -6,6 +6,7 @@
   "upstreamModel": "deepseek-v4-flash",
   "upstreamModelCoach": "deepseek-v4-pro",
   "apiKey": "sk-填入真实密钥(此文件只放在服务器,勿入库)",
+  "inviteCode": "",
   "sessionTtlHours": 72,
   "users": [
     { "name": "示例账号", "salt": "用 node index.mjs hash <密码> 生成", "hash": "同上" }

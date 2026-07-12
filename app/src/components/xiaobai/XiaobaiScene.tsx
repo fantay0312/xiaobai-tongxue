@@ -9,9 +9,9 @@ import * as THREE from 'three';
 import type { XiaobaiMood } from '../../types';
 import { LevelAccessory } from './Accessories';
 import { createBlobMaterial } from './blobMaterial';
-import { drawFace, FACE_CANVAS_SIZE } from './faceTexture';
+import { BLINK_MOODS, drawFace, FACE_CANVAS_SIZE } from './faceTexture';
 import { MOOD_MOTION } from './moodMotion';
-import { AZURE_RIM, BOARD_DEEP, CHALK, CHALK_AMBER, PAPER_EDGE } from './palette';
+import { AZURE_RIM, BOARD_DEEP, CHALK, CHALK_AMBER, INK_SOFT, PAPER_EDGE } from './palette';
 
 export interface XiaobaiSceneProps {
   mood: XiaobaiMood;
@@ -44,6 +44,8 @@ function useFaceTexture(mood: XiaobaiMood) {
 
   // crossfade 状态:prev → next,blend 0→1
   const fade = useRef({ prev: mood, next: mood, blend: 1 });
+  // 眨眼排程:timer 走到 0 翻转睑态(闭 ~0.11s,睁 2.4–5.6s 随机),只在待机表情眨
+  const blink = useRef({ closed: false, timer: 1.8 });
 
   useEffect(() => {
     if (mood !== fade.current.next) {
@@ -62,20 +64,36 @@ function useFaceTexture(mood: XiaobaiMood) {
 
   useEffect(() => () => made.texture.dispose(), [made]);
 
-  /** 每帧推进 crossfade;返回 true 表示本帧发生了重绘 */
+  /** 每帧推进 crossfade 与眨眼;返回 true 表示本帧发生了重绘 */
   const tick = (dt: number): boolean => {
     const f = fade.current;
-    if (f.blend >= 1) return false;
+    const b = blink.current;
     const { ctx, texture } = made;
     if (!ctx) return false;
-    f.blend = Math.min(1, f.blend + dt / FACE_FADE_SECONDS);
-    const a = easeOutCubic(f.blend);
+
+    if (f.blend < 1) {
+      // 表情切换期间不眨:两张脸都按睁眼画,睑态清零重新排程
+      b.closed = false;
+      b.timer = 2 + Math.random() * 3;
+      f.blend = Math.min(1, f.blend + dt / FACE_FADE_SECONDS);
+      const a = easeOutCubic(f.blend);
+      ctx.clearRect(0, 0, FACE_CANVAS_SIZE, FACE_CANVAS_SIZE);
+      ctx.globalAlpha = 1 - a;
+      drawFace(ctx, f.prev);
+      ctx.globalAlpha = a;
+      drawFace(ctx, f.next);
+      ctx.globalAlpha = 1;
+      texture.needsUpdate = true;
+      return true;
+    }
+
+    if (!BLINK_MOODS.has(f.next)) return false;
+    b.timer -= dt;
+    if (b.timer > 0) return false;
+    b.closed = !b.closed;
+    b.timer = b.closed ? 0.11 : 2.4 + Math.random() * 3.2;
     ctx.clearRect(0, 0, FACE_CANVAS_SIZE, FACE_CANVAS_SIZE);
-    ctx.globalAlpha = 1 - a;
-    drawFace(ctx, f.prev);
-    ctx.globalAlpha = a;
-    drawFace(ctx, f.next);
-    ctx.globalAlpha = 1;
+    drawFace(ctx, f.next, FACE_CANVAS_SIZE, b.closed);
     texture.needsUpdate = true;
     return true;
   };
@@ -202,9 +220,11 @@ function SceneLights({ variant }: { variant: 'paper' | 'board' }) {
   );
 }
 
-/* ────────────────── 接触阴影(黑板地面) ────────────────── */
+/* ────────────────── 接触阴影(两种场景都有,团子不再悬空) ────────────────── */
 
-function ContactShadow() {
+function ContactShadow({ variant }: { variant: 'paper' | 'board' }) {
+  // 黑板地面:深墨浓影;宣纸页面:淡墨软影(把团子"放"在纸上,而不是浮着)
+  const base = variant === 'board' ? BOARD_DEEP : INK_SOFT;
   const texture = useMemo(() => {
     const size = 128;
     const canvas = document.createElement('canvas');
@@ -213,22 +233,26 @@ function ContactShadow() {
     const ctx = canvas.getContext('2d');
     if (ctx) {
       const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-      grad.addColorStop(0, `${BOARD_DEEP}b3`); // --board-deep,中心 ~0.7 透明度
-      grad.addColorStop(0.55, `${BOARD_DEEP}40`);
-      grad.addColorStop(1, `${BOARD_DEEP}00`);
+      grad.addColorStop(0, `${base}b3`); // 中心 ~0.7 透明度
+      grad.addColorStop(0.55, `${base}40`);
+      grad.addColorStop(1, `${base}00`);
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, size, size);
     }
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
-  }, []);
+  }, [base]);
   useEffect(() => () => texture.dispose(), [texture]);
 
   return (
-    <mesh position={[0, -1.12, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[2.3, 1.5, 1]}>
+    <mesh
+      position={[0, -1.12, 0]}
+      rotation={[-Math.PI / 2, 0, 0]}
+      scale={variant === 'board' ? [2.3, 1.5, 1] : [2.05, 1.3, 1]}
+    >
       <planeGeometry args={[1, 1]} />
-      <meshBasicMaterial map={texture} transparent opacity={0.55} depthWrite={false} />
+      <meshBasicMaterial map={texture} transparent opacity={variant === 'board' ? 0.55 : 0.3} depthWrite={false} />
     </mesh>
   );
 }
@@ -281,7 +305,7 @@ export function XiaobaiScene({ mood, level, speaking, variant, stardust = false 
     <>
       <SceneLights variant={variant} />
       <XiaobaiBlob mood={mood} level={level} speaking={speaking} variant={variant} />
-      {variant === 'board' && <ContactShadow />}
+      <ContactShadow variant={variant} />
       {stardust && <Stardust />}
     </>
   );

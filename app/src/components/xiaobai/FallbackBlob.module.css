@@ -19,6 +19,21 @@
   transform: translateY(0.16em);
 }
 
+/* 腮红:两团淡朱砂,与 3D 版 blush 同语义(朱砂在小白身上只许出现在这) */
+.face::before,
+.face::after {
+  content: '';
+  position: absolute;
+  bottom: 0.06em;
+  width: 0.34em;
+  height: 0.18em;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--cinnabar) 20%, transparent);
+}
+
+.face::before { left: -0.08em; }
+.face::after { right: -0.08em; }
+
 .eye,
 .mouth {
   position: absolute;
@@ -37,6 +52,24 @@
 
 .eyeLeft { left: 0.55em; }
 .eyeRight { right: 0.55em; }
+
+/* 睁眼待机的两个 mood:墨点里点一粒纸色高光 + 周期眨眼(与 3D 版同节律) */
+.blob[data-mood='idle'] .eye::before,
+.blob[data-mood='curious'] .eye::before {
+  content: '';
+  position: absolute;
+  top: 20%;
+  left: 16%;
+  width: 36%;
+  height: 32%;
+  border-radius: 50%;
+  background: var(--paper);
+}
+
+.blob[data-mood='idle'] .eye,
+.blob[data-mood='curious'] .eye {
+  animation: blinkSquash 4.6s linear infinite;
+}
 
 .mouth {
   left: 50%;
@@ -111,4 +144,10 @@
 @keyframes breathe {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.02); }
+}
+
+/* 眨眼:绝大部分时间睁着,末尾快速一压一抬(linear 配百分比阶跃,非往复缓动) */
+@keyframes blinkSquash {
+  0%, 93.5%, 100% { transform: scaleY(1); }
+  95.5%, 97.5% { transform: scaleY(0.14); }
 }

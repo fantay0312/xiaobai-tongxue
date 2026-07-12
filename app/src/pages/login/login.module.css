@@ -108,6 +108,55 @@
   max-width: 24em;
 }
 
+/* ── 登录/注册切换:纸上折痕式双签,不做胶囊控件 ── */
+
+.modes {
+  display: flex;
+  gap: var(--gap);
+  margin-bottom: clamp(1rem, 2vw, 1.4rem);
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.modeBtn {
+  position: relative;
+  padding: 0.45rem 0.15rem 0.55rem;
+  border: none;
+  background: none;
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: color var(--t-fast) var(--ease-out);
+}
+
+/* 活签:墨色 + 底缘一道靛青短线(压在分隔线上) */
+.modeBtn::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--azure);
+  opacity: 0;
+  transition: opacity var(--t-fast) var(--ease-out);
+}
+
+.modeBtn:hover {
+  color: var(--ink-soft);
+}
+
+.modeBtn[aria-pressed='true'] {
+  color: var(--ink);
+  cursor: default;
+}
+
+.modeBtn[aria-pressed='true']::after {
+  opacity: 1;
+}
+
 .fields {
   display: flex;
   flex-direction: column;
@@ -153,6 +202,13 @@
 .input:focus {
   outline: none;
   border-bottom-color: var(--azure);
+}
+
+/* 字段旁注:注册规则的轻声提示,不与报错抢注意力 */
+.hint {
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  letter-spacing: 0.02em;
 }
 
 .errorSlot {

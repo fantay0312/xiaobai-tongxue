@@ -4,6 +4,8 @@
  *   idle '· ᴗ ·' | curious '◕ ᴗ ◕' | confused '@ _ @' | thinking '– ᴗ –'
  *   aha '✧ ▽ ✧' | happy '≧ ▽ ≦' | proud '¯ ▽ ¯' | shy '> _ <'
  * mood 切换时由调用方对两个 mood 各画一遍并按 alpha 交叉淡入(crossfade)。
+ * 2026-07-12 形象润色:睁眼表情(idle/curious)支持 blink 闭睑变体(场景层排期),
+ * 圆点眼加高光,多数表情带常驻淡腮红 —— 只动脸部纹理,Props 契约不变。
  */
 import type { XiaobaiMood } from '../../types';
 import { AZURE, CINNABAR, INK } from './palette';
@@ -25,17 +27,31 @@ function stroke(ctx: Ctx, w: number) {
   ctx.stroke();
 }
 
-/** 圆点眼 '·' */
+/** 圆点眼 '·'(带一粒偏左上的高光,墨点才有"湿润"神采) */
 function dotEye(ctx: Ctx, x: number, y: number, r: number) {
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fillStyle = INK;
   ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x - r * 0.3, y - r * 0.34, r * 0.32, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff'; // 眼内高光,非界面色
+  ctx.fill();
 }
 
-/** 大圆眼 '◕':实心圆 + 高光 */
+/** 闭睑 '⌣':下弯小弧,眨眼瞬间用(比直线多一点软) */
+function lidEye(ctx: Ctx, x: number, y: number, r: number, w: number) {
+  ctx.beginPath();
+  ctx.arc(x, y - r * 0.35, r, Math.PI * 0.2, Math.PI * 0.8);
+  stroke(ctx, w);
+}
+
+/** 大圆眼 '◕':实心圆 + 高光(dotEye 自带高光,这里独立画底避免叠两粒) */
 function roundEye(ctx: Ctx, x: number, y: number, r: number) {
-  dotEye(ctx, x, y, r);
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = INK;
+  ctx.fill();
   ctx.beginPath();
   ctx.arc(x - r * 0.32, y - r * 0.35, r * 0.3, 0, Math.PI * 2);
   ctx.fillStyle = '#ffffff'; // 眼内高光,非界面色
@@ -171,29 +187,51 @@ function brow(ctx: Ctx, x: number, y: number, half: number, angle: number, w: nu
   stroke(ctx, w);
 }
 
+/** 睁眼待机表情:场景层只对这些 mood 排眨眼(星星眼/蚊香眼眨起来只会诡异) */
+export const BLINK_MOODS: ReadonlySet<XiaobaiMood> = new Set(['idle', 'curious']);
+
 /**
  * 把指定 mood 的表情画到 ctx 上(不清屏,由调用方控制 globalAlpha 实现 crossfade)。
+ * blink=true 时把睁眼换成闭睑弧(仅 BLINK_MOODS 生效),眉/嘴/腮红照常。
  */
-export function drawFace(ctx: Ctx, mood: XiaobaiMood, s: number = FACE_CANVAS_SIZE) {
+export function drawFace(
+  ctx: Ctx,
+  mood: XiaobaiMood,
+  s: number = FACE_CANVAS_SIZE,
+  blink = false,
+) {
   const cx = s * 0.5;
   const lx = s * (0.5 - EYE_DX);
   const rx = s * (0.5 + EYE_DX);
   const ey = s * EYE_Y;
   const my = s * MOUTH_Y;
   const w = s * 0.03;
+  const shut = blink && BLINK_MOODS.has(mood);
 
   switch (mood) {
     case 'idle': // · ᴗ ·
-      dotEye(ctx, lx, ey, s * 0.032);
-      dotEye(ctx, rx, ey, s * 0.032);
+      if (shut) {
+        lidEye(ctx, lx, ey, s * 0.042, w);
+        lidEye(ctx, rx, ey, s * 0.042, w);
+      } else {
+        dotEye(ctx, lx, ey, s * 0.034);
+        dotEye(ctx, rx, ey, s * 0.034);
+      }
       smileMouth(ctx, cx, my, s * 0.055, w);
+      blush(ctx, s, 0.16);
       break;
     case 'curious': // ◕ ᴗ ◕
-      roundEye(ctx, lx, ey, s * 0.056);
-      roundEye(ctx, rx, ey, s * 0.056);
+      if (shut) {
+        lidEye(ctx, lx, ey, s * 0.052, w);
+        lidEye(ctx, rx, ey, s * 0.052, w);
+      } else {
+        roundEye(ctx, lx, ey, s * 0.056);
+        roundEye(ctx, rx, ey, s * 0.056);
+      }
       brow(ctx, lx, ey - s * 0.115, s * 0.05, -0.5, w * 0.85);
       brow(ctx, rx, ey - s * 0.115, s * 0.05, -0.5, w * 0.85);
       smileMouth(ctx, cx, my, s * 0.06, w);
+      blush(ctx, s, 0.18);
       break;
     case 'confused': // @ _ @
       spiralEye(ctx, lx, ey, s * 0.052, w * 0.8);
@@ -205,6 +243,7 @@ export function drawFace(ctx: Ctx, mood: XiaobaiMood, s: number = FACE_CANVAS_SI
       lineEye(ctx, lx, ey, s * 0.05, w);
       lineEye(ctx, rx, ey, s * 0.05, w);
       smileMouth(ctx, cx, my, s * 0.04, w * 0.9);
+      blush(ctx, s, 0.12);
       break;
     case 'aha': // ✧ ▽ ✧
       starEye(ctx, lx, ey, s * 0.062);
@@ -212,6 +251,7 @@ export function drawFace(ctx: Ctx, mood: XiaobaiMood, s: number = FACE_CANVAS_SI
       brow(ctx, lx, ey - s * 0.125, s * 0.05, -0.6, w * 0.85);
       brow(ctx, rx, ey - s * 0.125, s * 0.05, -0.6, w * 0.85);
       openMouth(ctx, cx, my, s * 0.05);
+      blush(ctx, s, 0.28);
       break;
     case 'happy': // ≧ ▽ ≦
       archEye(ctx, lx, ey, s * 0.06, w);
@@ -223,6 +263,7 @@ export function drawFace(ctx: Ctx, mood: XiaobaiMood, s: number = FACE_CANVAS_SI
       lineEye(ctx, lx, ey - s * 0.015, s * 0.05, w);
       lineEye(ctx, rx, ey - s * 0.015, s * 0.05, w);
       openMouth(ctx, cx, my, 0.045 * s);
+      blush(ctx, s, 0.2);
       break;
     case 'shy': // > _ < (左眼尖朝内即朝右,右眼朝左)
       squeezeEye(ctx, lx, ey, s * 0.045, w, 1);

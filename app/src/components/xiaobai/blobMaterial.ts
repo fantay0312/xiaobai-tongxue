@@ -122,6 +122,10 @@ uniform float uRimStrength;`
         '#include <dithering_fragment>',
         `#include <dithering_fragment>
 {
+  // 下腹淡墨影:法线朝下处轻压一点冷灰,团子有了体积,不再是均匀死白
+  // (smoothstep 规范要求 edge0 < edge1,反序是 UB —— 用 1-smoothstep 表达反坡)
+  float belly = 1.0 - smoothstep(-0.85, 0.15, normalize(vNormal).y);
+  gl_FragColor.rgb *= mix(vec3(1.0), vec3(0.935, 0.955, 0.975), belly * 0.8);
   // 菲涅尔轻微边缘光:亚光团子的柔和轮廓
   float fres = 1.0 - saturate(dot(normalize(vViewPosition), normalize(vNormal)));
   fres = pow(fres, 2.6);

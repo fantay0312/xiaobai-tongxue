@@ -16,8 +16,22 @@ interface AuthState {
   init: () => Promise<void>;
   /** 返回 null 表示成功,否则为可展示的错误消息 */
   login: (username: string, password: string) => Promise<string | null>;
+  /** 凭邀请码注册,成功即已登录;返回 null 表示成功,否则为可展示的错误消息 */
+  register: (username: string, password: string, invite: string) => Promise<string | null>;
   logout: () => Promise<void>;
 }
+
+/** 注册接口错误码 → 用户可读文案(未知码回退通用提示) */
+const REGISTER_ERRORS: Record<string, string> = {
+  'invalid-invite': '邀请码不对,请核对后再试',
+  'name-taken': '这个账号名已有人用,换一个吧',
+  'bad-name': '账号名需 2–20 字,可用汉字、字母、数字、_ 或 -',
+  'weak-password': '密码至少要 8 位',
+  'password-too-long': '密码太长了(最多 128 位)',
+  'registration-disabled': '注册暂未开放,请联系管理员',
+  'registry-full': '注册名额已满,请联系管理员',
+  'too-many-attempts': '尝试太频繁,请稍后再试',
+};
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
   status: 'unknown',
@@ -65,6 +79,27 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       if (res.status === 429) return '尝试太频繁,请稍后再试';
       if (!res.ok) return `登录失败(${res.status})`;
       const data = await res.json();
+      set({ status: 'authed', user: String(data?.user?.name ?? username) });
+      return null;
+    } catch {
+      return '连不上服务器,请检查网络';
+    }
+  },
+
+  register: async (username, password, invite) => {
+    try {
+      const res = await fetch(`${API_BASE}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, invite }),
+      });
+      if (!res.ok) {
+        let code = '';
+        try { code = String((await res.json())?.error ?? ''); } catch { /* 非 JSON 响应走回退文案 */ }
+        return REGISTER_ERRORS[code] ?? `注册失败(${res.status})`;
+      }
+      const data = await res.json();
+      // 服务端注册成功即发会话 Cookie,这里直接进登录态
       set({ status: 'authed', user: String(data?.user?.name ?? username) });
       return null;
     } catch {

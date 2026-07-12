@@ -16,11 +16,21 @@
 
 ## 鉴权模型
 
-- 预置账号(`config.json` 的 `users`,scrypt 哈希),**不开放注册**
+- 预置账号(`config.json` 的 `users`,scrypt 哈希)+ **邀请码注册**(2026-07-12 起):
+  `POST /api/register {username,password,invite}`,邀请码 = `config.json` 的 `inviteCode`
+  (**仓库公开,值只放服务器配置,代码零默认值**;未配置或空串=注册关闭。
+  模板刻意留 `""`:任何非空字符串都会开放注册,别把说明文字当值填进去)
+- 注册规则:用户名 2-20 字(汉字/字母/数字/`_`/`-`)、全站唯一(与预置账号一起按
+  小写比对,杜绝大小写双开);密码 ≥8 位;通过即 scrypt 哈希落盘
+  `server/registered-users.json`(0600,临时文件+rename 原子写,已 gitignore),
+  重启不丢;注册成功直接发会话 Cookie(免再登录一次)
 - 登录发 HttpOnly Cookie(`xiaobai_sid`,SameSite=Lax,72h),会话存内存(重启全员登出)
 - `/api/chat` 必须登录;未登录仅可查看前端页面
 - 限流:登录失败按真实客户端 IP(仅信任本机 nginx 的 X-Real-IP)10 次/15 分钟;
-  聊天按**账号名** 20 次/分钟(重复登录铸新会话无法绕过)
+  注册尝试(成败都计)8 次/15 分钟/IP,邀请码恒时比对防爆破,注册总量封顶 500;
+  聊天按**账号名** 12 次/分钟 + 400 次/日(重复登录铸新会话无法绕过)
+- **部署注意**:网关进程(User=xiaobai)要能在 `/opt/xiaobai/server/` 里创建
+  `registered-users.json` —— 目录属主须为 xiaobai,否则启动时直接 fatal 退出提示
 
 ## 运维速查
 

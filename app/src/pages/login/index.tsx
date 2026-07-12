@@ -1,5 +1,7 @@
 /**
- * 登入书斋 /login —— 预置账号登录,暂不开放注册。
+ * 登入书斋 /login —— 登录 + 凭邀请码注册(2026-07-12 起开放)。
+ * 注册规则由网关裁决(邀请码/用户名唯一/密码≥8),前端只做即时预校验与文案;
+ * 邀请码的值只存在服务器 config.json,前端与仓库零出现。
  * 未登录仅可查看(书斋/成长册/看板);登录后才能备课与开讲。
  * 构图:左侧扉页(印 + 竖排铭 + 门规),右侧表单;非对称,不是居中卡片。
  */
@@ -11,27 +13,48 @@ import { useAuthStore } from '../../store/authStore';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import s from './login.module.css';
 
+type Mode = 'login' | 'register';
+
 export default function LoginPage() {
-  useDocTitle('登入书斋');
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const status = useAuthStore((st) => st.status);
   const login = useAuthStore((st) => st.login);
+  const register = useAuthStore((st) => st.register);
+  const [mode, setMode] = useState<Mode>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [invite, setInvite] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  useDocTitle(mode === 'login' ? '登入书斋' : '递帖注册');
 
   // 只接受站内单层路径,杜绝畸形跳转;HashRouter 下绝对 URL 也只会落进 hash,双保险
   const rawNext = params.get('next') || '/study';
   const next = /^\/(?!\/)[\w\-/]*$/.test(rawNext) ? rawNext : '/study';
 
+  const registering = mode === 'register';
+
+  const switchMode = (m: Mode) => {
+    // 提交进行中锁住切换:否则登录报错会落在注册表单上(或反过来)
+    if (m === mode || busy) return;
+    setMode(m);
+    setError(null);
+  };
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (busy || !username.trim() || !password) return;
+    if (registering) {
+      if (!invite.trim()) return;
+      // 密码下限在网关也会拦,这里先拦一步省一次往返
+      if (password.length < 8) { setError('密码至少要 8 位'); return; }
+    }
     setBusy(true);
     setError(null);
-    const err = await login(username.trim(), password);
+    const err = registering
+      ? await register(username.trim(), password, invite.trim())
+      : await login(username.trim(), password);
     setBusy(false);
     if (err) setError(err);
     else navigate(next, { replace: true });
@@ -73,10 +96,34 @@ export default function LoginPage() {
         </aside>
 
         {/* 表单 */}
-        <section className={s.form} aria-label="登录">
+        <section className={s.form} aria-label={registering ? '注册' : '登录'}>
           <p className={s.eyebrow}>凭帖入斋</p>
-          <h1 className={s.title}>登入书斋</h1>
-          <p className={s.sub}>登录后方可备课、开讲;未登录也能浏览书斋与看板。</p>
+          <h1 className={s.title}>{registering ? '递帖注册' : '登入书斋'}</h1>
+          <p className={s.sub}>
+            {registering
+              ? '持邀请码即可入斋;账号与密码由你自定,密码至少 8 位。'
+              : '登录后方可备课、开讲;未登录也能浏览书斋与看板。'}
+          </p>
+
+          {/* 登录/注册 切换:同一张帖的正反面,不跳页 */}
+          <div className={s.modes} role="group" aria-label="登录或注册">
+            <button
+              type="button"
+              className={s.modeBtn}
+              aria-pressed={!registering}
+              onClick={() => switchMode('login')}
+            >
+              登 入
+            </button>
+            <button
+              type="button"
+              className={s.modeBtn}
+              aria-pressed={registering}
+              onClick={() => switchMode('register')}
+            >
+              注 册
+            </button>
+          </div>
 
           <form className={s.fields} onSubmit={onSubmit}>
             <label className={s.field}>
@@ -89,6 +136,7 @@ export default function LoginPage() {
                 spellCheck={false}
                 onChange={(e) => setUsername(e.target.value)}
               />
+              {registering && <span className={s.hint}>2–20 字,可用汉字、字母、数字、_ 或 -</span>}
             </label>
             <label className={s.field}>
               <span className={s.label}>密码</span>
@@ -96,10 +144,24 @@ export default function LoginPage() {
                 className={s.input}
                 type="password"
                 value={password}
-                autoComplete="current-password"
+                autoComplete={registering ? 'new-password' : 'current-password'}
                 onChange={(e) => setPassword(e.target.value)}
               />
+              {registering && <span className={s.hint}>至少 8 位</span>}
             </label>
+            {registering && (
+              <label className={s.field}>
+                <span className={s.label}>邀请码</span>
+                <input
+                  className={s.input}
+                  type="text"
+                  value={invite}
+                  autoComplete="off"
+                  spellCheck={false}
+                  onChange={(e) => setInvite(e.target.value)}
+                />
+              </label>
+            )}
 
             <div className={s.errorSlot} aria-live="polite">
               {error && <p className={s.error} role="alert">{error}</p>}
@@ -109,14 +171,14 @@ export default function LoginPage() {
               className={s.submit}
               type="submit"
               data-busy={busy || undefined}
-              disabled={busy || !username.trim() || !password}
+              disabled={busy || !username.trim() || !password || (registering && !invite.trim())}
             >
-              {busy ? '正在验帖…' : '登 入'}
+              {busy ? (registering ? '正在递帖…' : '正在验帖…') : registering ? '注 册' : '登 入'}
             </button>
           </form>
 
           <footer className={s.foot}>
-            <span>暂未开放注册,账号由管理员发放</span>
+            <span>{registering ? '邀请码由管理员发放' : '持邀请码可注册新账号'}</span>
             <Link className={s.backLink} to="/study"><Icon name="arrow-left" size={15} />先随便看看</Link>
           </footer>
         </section>

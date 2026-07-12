@@ -1,7 +1,9 @@
 /**
  * 小白同学 生产网关(零依赖,Node ≥ 18)
  *  - 静态托管前端 dist(SPA 回退)
- *  - /api/login /api/logout /api/me:预置账号会话(scrypt 哈希,HttpOnly Cookie),不开放注册
+ *  - /api/login /api/logout /api/me:账号会话(scrypt 哈希,HttpOnly Cookie)
+ *  - /api/register:凭邀请码注册(邀请码只存服务器 config.json —— 仓库公开,严禁写进代码默认值);
+ *    注册用户落盘 registered-users.json,与 config.json 的预置账号并存
  *  - /api/chat:登录后才可用的 LLM 代理 —— DeepSeek 密钥只存在服务器 config.json,永不下发
  *
  * 用法:
@@ -9,7 +11,7 @@
  *   node index.mjs hash <密码>     # 生成账号的 scrypt 哈希条目(粘进 config.json 的 users)
  */
 import http from 'node:http';
-import { readFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, writeFileSync, renameSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
@@ -43,22 +45,73 @@ const MODEL_COACH = cfg.upstreamModelCoach ?? MODEL;
 const API_KEY = cfg.apiKey ?? '';
 const USERS = Array.isArray(cfg.users) ? cfg.users : [];
 const SESSION_TTL = (cfg.sessionTtlHours ?? 72) * 3600_000;
+/** 邀请码只从服务器 config.json 读取(此仓库公开,代码里不留任何默认值);未配置=注册关闭 */
+const INVITE_CODE = typeof cfg.inviteCode === 'string' && cfg.inviteCode ? cfg.inviteCode : null;
 /** 路径前缀部署(nginx location /xiaobai/ 反代时设为 "/xiaobai"):网关自己剥前缀,双入口可用 */
 const PREFIX = String(cfg.pathPrefix ?? '').replace(/\/+$/, '');
 /** 与同机其他站点共用源时避免 Cookie 名冲突 */
 const COOKIE = 'xiaobai_sid';
 if (!API_KEY) console.warn('[warn] config.apiKey 为空,/api/chat 将全部 502');
-if (USERS.length === 0) console.warn('[warn] config.users 为空,无人能登录');
+if (!INVITE_CODE) console.warn('[warn] config.inviteCode 未配置,/api/register 关闭');
+
+// ───────────────────────── 注册用户(落盘持久化) ─────────────────────────
+const REG_PATH = path.join(HERE, 'registered-users.json');
+const MAX_REG_USERS = 500; // 邀请码泄露时的最后一道闸:名额封顶
+let regUsers = [];
+try {
+  if (existsSync(REG_PATH)) {
+    const loaded = JSON.parse(readFileSync(REG_PATH, 'utf8'));
+    if (Array.isArray(loaded)) {
+      // salt/hash 必须是本网关自己写出的形状(32/128 位 hex);畸形行直接丢弃
+      regUsers = loaded.filter((u) => u && typeof u.name === 'string'
+        && typeof u.salt === 'string' && /^[0-9a-f]{32}$/.test(u.salt)
+        && typeof u.hash === 'string' && /^[0-9a-f]{128}$/.test(u.hash));
+    }
+  }
+} catch (e) {
+  // 文件损坏时拒绝启动:静默丢弃会让老用户"被注销"且重名可被抢注
+  console.error('[fatal] registered-users.json 解析失败,请人工修复或删除:', e?.message);
+  process.exit(2);
+}
+
+/** 原子写:先落临时文件再 rename,进程中途被杀不会留半截 JSON */
+function persistRegUsers() {
+  const tmp = `${REG_PATH}.tmp`;
+  writeFileSync(tmp, JSON.stringify(regUsers, null, 2), { mode: 0o600 });
+  renameSync(tmp, REG_PATH);
+}
+
+// 注册开着就先做一次写探测:目录不可写(部署 chown 漏了)要在启动日志里立刻暴露,
+// 而不是等第一位注册用户撞 500
+if (INVITE_CODE) {
+  try { persistRegUsers(); } catch (e) {
+    console.error('[fatal] registered-users.json 不可写(检查目录属主/权限):', e?.message);
+    process.exit(2);
+  }
+}
+
+/** 预置账号 + 注册账号统一查找;唯一性按小写比对,杜绝大小写双开 */
+function findUser(name) {
+  if (typeof name !== 'string') return null;
+  const key = name.toLowerCase();
+  const match = (u) => u && typeof u.name === 'string' && u.name.toLowerCase() === key;
+  return USERS.find(match) ?? regUsers.find(match) ?? null;
+}
+if (USERS.length === 0 && regUsers.length === 0 && !INVITE_CODE) {
+  console.warn('[warn] 无预置账号、无注册用户且注册关闭,无人能登录');
+}
 
 // ───────────────────────── 会话与限流(内存态,重启即清) ─────────────────────────
 const sessions = new Map(); // token -> { name, expires }
 const loginFails = new Map(); // ip -> { count, resetAt }
+const regHits = new Map(); // ip -> { count, resetAt } 注册尝试(成败都计,防邀请码爆破/批量灌号)
 const chatHits = new Map(); // name -> { count, resetAt }
 const chatDaily = new Map(); // name -> { day, count }
 setInterval(() => {
   const now = Date.now();
   for (const [t, s] of sessions) if (s.expires < now) sessions.delete(t);
   for (const [k, v] of loginFails) if (v.resetAt < now) loginFails.delete(k);
+  for (const [k, v] of regHits) if (v.resetAt < now) regHits.delete(k);
   for (const [k, v] of chatHits) if (v.resetAt < now) chatHits.delete(k);
   const today = new Date().toISOString().slice(0, 10);
   for (const [k, v] of chatDaily) if (v.day !== today) chatDaily.delete(k);
@@ -66,6 +119,7 @@ setInterval(() => {
 
 const LOGIN_MAX_FAILS = 10;          // 15 分钟内同 IP 最多失败次数
 const LOGIN_WINDOW = 15 * 60_000;
+const REG_MAX_PER_WINDOW = 8;        // 15 分钟内同 IP 注册尝试上限(邀请码爆破在这撞墙)
 const CHAT_MAX_PER_MIN = 12;         // 单账号每分钟 LLM 调用上限(一轮讲课=评估+渲染 2 次,~6 轮/分足够)
 const CHAT_MAX_PER_DAY = 400;        // 单账号每日上限(~200 轮),防泄露凭据被当免费 LLM 长期薅
 
@@ -113,6 +167,9 @@ function pruneSessions(name) {
 function verifyPassword(user, password) {
   try {
     const expect = Buffer.from(user.hash, 'hex');
+    // Buffer.from 遇非法 hex 会静默截断,空/坏哈希会得到零长缓冲,
+    // 而 timingSafeEqual(空,空)===true —— 占位行或坏档案会变成"任意密码可过",必须拒
+    if (expect.length < 32) return false;
     const got = crypto.scryptSync(password, user.salt, expect.length);
     return crypto.timingSafeEqual(expect, got);
   } catch { return false; }
@@ -148,6 +205,16 @@ function send(res, status, body, headers = {}) {
 }
 
 // ───────────────────────── API 处理 ─────────────────────────
+/** 铸会话并连 Set-Cookie 一起应答(登录与注册共用) */
+function issueSession(res, name, status = 200) {
+  pruneSessions(name);
+  const token = crypto.randomBytes(32).toString('hex');
+  sessions.set(token, { name, expires: Date.now() + SESSION_TTL });
+  send(res, status, { user: { name } }, {
+    'Set-Cookie': `${COOKIE}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${Math.floor(SESSION_TTL / 1000)}`,
+  });
+}
+
 async function handleLogin(req, res) {
   const ip = clientIp(req);
   const fails = loginFails.get(ip);
@@ -157,19 +224,61 @@ async function handleLogin(req, res) {
   let body;
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
   const { username, password } = body ?? {};
-  const user = USERS.find((u) => u.name === username);
+  const user = findUser(username);
   if (!user || typeof password !== 'string' || !verifyPassword(user, password)) {
     const f = loginFails.get(ip) ?? { count: 0, resetAt: Date.now() + LOGIN_WINDOW };
     f.count += 1; loginFails.set(ip, f);
     return send(res, 401, { error: 'invalid-credentials' });
   }
   loginFails.delete(ip);
-  pruneSessions(user.name);
-  const token = crypto.randomBytes(32).toString('hex');
-  sessions.set(token, { name: user.name, expires: Date.now() + SESSION_TTL });
-  send(res, 200, { user: { name: user.name } }, {
-    'Set-Cookie': `${COOKIE}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${Math.floor(SESSION_TTL / 1000)}`,
-  });
+  issueSession(res, user.name);
+}
+
+/** 用户名:2-20 字,汉字/字母/数字/下划线/连字符(空白与控制符天然被排除) */
+const NAME_RE = /^[\p{Script=Han}A-Za-z0-9_-]{2,20}$/u;
+
+/** 邀请码恒时比对:双方过 sha256 再 timingSafeEqual,长度差异不早退 */
+function inviteOk(given) {
+  if (!INVITE_CODE || typeof given !== 'string') return false;
+  const a = crypto.createHash('sha256').update(given).digest();
+  const b = crypto.createHash('sha256').update(INVITE_CODE).digest();
+  return crypto.timingSafeEqual(a, b);
+}
+
+async function handleRegister(req, res) {
+  if (!INVITE_CODE) return send(res, 403, { error: 'registration-disabled' });
+  const ip = clientIp(req);
+  // 成败都计次:错码计次防爆破,成功也计次防同 IP 批量灌号
+  const hits = regHits.get(ip) ?? { count: 0, resetAt: Date.now() + LOGIN_WINDOW };
+  if (hits.resetAt < Date.now()) { hits.count = 0; hits.resetAt = Date.now() + LOGIN_WINDOW; }
+  hits.count += 1; regHits.set(ip, hits);
+  if (hits.count > REG_MAX_PER_WINDOW) return send(res, 429, { error: 'too-many-attempts' });
+
+  let body;
+  try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  const { username, password, invite } = body ?? {};
+  if (!inviteOk(invite)) return send(res, 403, { error: 'invalid-invite' });
+  const name = typeof username === 'string' ? username.trim() : '';
+  if (!NAME_RE.test(name)) return send(res, 400, { error: 'bad-name' });
+  // 密码下限 8 位(产品要求);上限只为封住超长输入拖垮 scrypt
+  if (typeof password !== 'string' || password.length < 8) return send(res, 400, { error: 'weak-password' });
+  if (password.length > 128) return send(res, 400, { error: 'password-too-long' });
+  if (findUser(name)) return send(res, 409, { error: 'name-taken' });
+  if (regUsers.length >= MAX_REG_USERS) return send(res, 503, { error: 'registry-full' });
+
+  // ↓ 此处到落盘之间全程同步、无 await:单线程下查重与写入不会被并发请求穿插
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  regUsers.push({ name, salt, hash, createdAt: new Date().toISOString() });
+  try {
+    persistRegUsers();
+  } catch (e) {
+    regUsers.pop(); // 落盘失败回滚内存,别让"注册成功"活不过一次重启
+    console.error('[register] 落盘失败:', e?.message);
+    return send(res, 500, { error: 'persist-failed' });
+  }
+  console.log(`[register] 新用户: ${name} (${ip}), 总注册数 ${regUsers.length}`);
+  issueSession(res, name, 200);
 }
 
 function handleLogout(req, res) {
@@ -310,6 +419,7 @@ const server = http.createServer((req, res) => {
   }
   if (pathname.startsWith('/api/')) {
     if (pathname === '/api/login' && req.method === 'POST') return void handleLogin(req, res);
+    if (pathname === '/api/register' && req.method === 'POST') return void handleRegister(req, res);
     if (pathname === '/api/logout' && req.method === 'POST') return handleLogout(req, res);
     if (pathname === '/api/me' && req.method === 'GET') return handleMe(req, res);
     if (pathname === '/api/chat' && req.method === 'POST') return void handleChat(req, res);
@@ -320,5 +430,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`小白同学网关已启动: http://0.0.0.0:${PORT} (dist: ${DIST}, model: ${MODEL}, coach: ${MODEL_COACH})`);
+  console.log(`小白同学网关已启动: http://0.0.0.0:${PORT} (dist: ${DIST}, model: ${MODEL}, coach: ${MODEL_COACH}, 注册: ${INVITE_CODE ? `开放(已注册 ${regUsers.length})` : '关闭'})`);
 });
