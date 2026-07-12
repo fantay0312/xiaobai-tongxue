@@ -3,10 +3,15 @@
 零依赖 Node(≥18)单文件网关:静态托管前端 + 登录会话 + LLM 代理 + 语音转写代理 + 按账号学习存档。
 **DeepSeek 密钥与 OpenRouter(ASR)密钥只存在服务器的 `config.json`,永远不出现在前端产物里。**
 
-## 当前部署(2026-07-06)
+## 当前部署(2026-07-06,HTTPS 入口 2026-07-13 起)
 
 - 服务器:106.53.163.57(Debian 13,腾讯云)
-- 入口:`http://106.53.163.57/xiaobai/`(nginx `location /xiaobai/` 反代 → 本机 `127.0.0.1:8000`)
+- **主入口(推荐)**:`https://tradingvane.com/xiaobai/` —— 复用同机 tradingvane.com 的
+  Let's Encrypt 证书(`/etc/nginx/sites-available/tradingvane.com` 443 块追加了
+  `/xiaobai/` location,改前备份 `tradingvane.com.bak-xiaobai`)。
+  **语音输入只在这个入口可用**(浏览器只在安全上下文开放麦克风)
+- 旧入口(保留):`http://106.53.163.57/xiaobai/`(nginx `location /xiaobai/` 反代 → 本机 `127.0.0.1:8000`);
+  HTTP 明文,无语音;两个入口是不同 origin,浏览器本地缓存互不相通,但服务器档跟账号走,登录即还原
 - 网关直听 `0.0.0.0:8000`,但云安全组未放行 8000;若在腾讯云控制台放行,
   `http://106.53.163.57:8000/` 也可直接访问(网关 `pathPrefix` 对两种入口同时兼容)
 - 服务:`systemd` 单元 `xiaobai.service`(开机自启,`User=xiaobai` 非特权用户)
