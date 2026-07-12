@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type {
-  ChatMessage, LearnEvent, LiveSession, LlmSettings, Persona,
+  AsrSettings, ChatMessage, LearnEvent, LiveSession, LlmSettings, Persona,
   SessionMode, SessionReport, TopicState, XiaobaiGlobal,
 } from '../types';
 import { getTopic, TOPICS } from '../data';
@@ -17,11 +17,14 @@ import {
 import type { EventDraft } from '../engine';
 // 跨会话回忆:直接从 recall 模块导入,不走 engine barrel(simulate 在 Node 加载 barrel,recall 不得混入)
 import { recallGreetingLine } from '../engine/recall';
+// 语音转写默认配置:同为浏览器专用模块,不走 barrel
+import { DEFAULT_ASR } from '../engine/asr';
 
 const uid = () => (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
 const now = () => new Date().toISOString();
 
-const DEFAULT_GLOBAL: XiaobaiGlobal = {
+/** 导出给 sync 拉档时兜底:远端 global 缺字段(或被手工改坏)不得让页面派生层崩掉 */
+export const DEFAULT_GLOBAL: XiaobaiGlobal = {
   persona: '好奇型',
   learningLevel: 1,
   relationshipMemory: [],
@@ -67,6 +70,8 @@ export interface AppState {
   topicStates: Record<string, TopicState>;
   live: LiveSession | null;
   settings: LlmSettings;
+  /** 语音转文字配置(含密钥):只存本机,永不进服务器学习存档同步 */
+  asrSettings: AsrSettings;
 
   topicState: (topicId: string) => TopicState;
   appendEvents: (drafts: EventDraft[], sessionId: string | null) => LearnEvent[];
@@ -84,6 +89,7 @@ export interface AppState {
 
   setPersona: (p: Persona) => void;
   setSettings: (s: Partial<LlmSettings>) => void;
+  setAsrSettings: (s: Partial<AsrSettings>) => void;
   resetAll: () => void;
 }
 
@@ -96,6 +102,7 @@ export const useAppStore = create<AppState>()(
       topicStates: {},
       live: null,
       settings: DEFAULT_SETTINGS,
+      asrSettings: DEFAULT_ASR,
 
       topicState: (topicId) => {
         const cached = get().topicStates[topicId];
@@ -393,6 +400,7 @@ export const useAppStore = create<AppState>()(
 
       setPersona: (p) => set((s) => ({ global: { ...s.global, persona: p } })),
       setSettings: (partial) => set((s) => ({ settings: { ...s.settings, ...partial } })),
+      setAsrSettings: (partial) => set((s) => ({ asrSettings: { ...s.asrSettings, ...partial } })),
       resetAll: () => set({
         global: DEFAULT_GLOBAL, events: [], reports: [], topicStates: {}, live: null,
       }),
@@ -402,7 +410,8 @@ export const useAppStore = create<AppState>()(
       version: 3,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
-        global: s.global, events: s.events, reports: s.reports, settings: s.settings,
+        global: s.global, events: s.events, reports: s.reports,
+        settings: s.settings, asrSettings: s.asrSettings,
       }),
       // v3 修正旧存档的跳级值,让五阶成长从既有出师数重新连续派生
       migrate: (persisted, version) => {

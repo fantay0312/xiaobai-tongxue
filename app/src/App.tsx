@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation, useNavigationType } from 'react-r
 import { AppShell } from './components/shell/AppShell';
 import { RequireAuth } from './components/shell/RequireAuth';
 import { useAuthStore } from './store/authStore';
+import { initStateSync } from './store/sync';
 
 const LandingPage = lazy(() => import('./pages/landing'));
 const HomePage = lazy(() => import('./pages/home'));
@@ -26,7 +27,10 @@ function ScrollToTop() {
 
 export default function App() {
   const initAuth = useAuthStore((s) => s.init);
-  useEffect(() => { void initAuth(); }, [initAuth]);
+  useEffect(() => {
+    initStateSync(); // 先装同步订阅,再探会话:authed 一落地就拉服务器档
+    void initAuth();
+  }, [initAuth]);
 
   return (
     <AppShell>

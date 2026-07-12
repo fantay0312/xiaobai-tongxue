@@ -17,6 +17,7 @@ import { getSelfTest } from '../../data/selfTest';
 import { getFigures } from '../../components/diagrams';
 import { Md } from '../../components/Md';
 import { PrepCoach } from '../../components/coach/PrepCoach';
+import { Tour, type TourStep } from '../../components/tour/Tour';
 import { Icon } from '../../components/ui/Icon';
 import type { Misconception, PrepReference, QuestionLevel } from '../../types';
 import { useDocTitle } from '../../hooks/useDocTitle';
@@ -39,6 +40,25 @@ const SECTIONS = [
   { id: 'prep-sec-4', name: '研读材料包' },
   { id: 'prep-sec-5', name: '备课自检' },
 ] as const;
+
+/** 备课桌引路(称「先生」):只指首访就在场的三处——贰至伍分节要摸完底才摊开,不硬指 */
+const PREP_TOUR: TourStep[] = [
+  {
+    target: `#${SECTIONS[0].id}`,
+    title: '先摸个底',
+    text: '开讲前先把摸底做完,看看先生现在站在哪——摸完这轮底,下面的讲义材料才会摊开;全对还能直接拍案开讲。',
+  },
+  {
+    target: '[data-tour="prep-steps"]',
+    title: '备课五步',
+    text: '温书按这五步走:摸底、任务卡、路线图、材料包、自检。走到哪儿这里亮到哪儿,亮开的一步点一下就能跳过去。',
+  },
+  {
+    target: '[data-tour="coach"]',
+    title: '备课助教小砚',
+    text: '卡住了就点它。小砚只陪备课、不进课堂,问答也不落进课堂记录,先生放心打草稿。',
+  },
+];
 
 /** 延伸书单 kind → 朱文小印用字 */
 const REF_SEAL: Record<PrepReference['kind'], string> = {
@@ -762,7 +782,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
 
         {/* ── 眉批侧注 ── */}
         <aside className={s.aside}>
-          <nav aria-label="备课五步">
+          <nav aria-label="备课五步" data-tour="prep-steps">
             <h3 className={s.asideTitle}>备课五步</h3>
             <ol className={s.stepList}>
               {SECTIONS.map((sec, i) => {
@@ -844,6 +864,9 @@ function PrepRoom({ topicId }: { topicId: string }) {
       </div>
 
       <PrepCoach topic={topic} />
+
+      {/* ── 新手引路(首访自动开一次) ── */}
+      <Tour tourKey="prep" steps={PREP_TOUR} />
     </div>
   );
 }

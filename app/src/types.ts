@@ -328,6 +328,16 @@ export interface LlmSettings {
   temperature: number;    // 评估固定 0,此项只作用于小白台词
 }
 
+/** 语音转文字(课堂口述输入)配置。与 LlmSettings 同构分档:
+ *  proxy=服务器网关代管密钥(部署形态默认) api=浏览器直连自配转写端点。
+ *  含密钥,只存本机 localStorage,永不进服务器学习存档同步。 */
+export interface AsrSettings {
+  mode: 'proxy' | 'api';
+  baseUrl: string;        // OpenAI 兼容转写端点根,如 https://openrouter.ai/api/v1(仅 api 模式)
+  apiKey: string;         // 仅 api 模式
+  model: string;          // 如 qwen/qwen3-asr-flash-2026-02-10
+}
+
 // ───────────────────────── 台词模板库契约(mock 渲染用) ─────────────────────────
 
 /**

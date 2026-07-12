@@ -63,6 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               className={({ isActive }) =>
                 isActive ? `${styles.link} ${styles.linkActive}` : styles.link
               }
+              data-tour={link.to === '/growth' ? 'nav-growth' : undefined}
             >
               {link.label}
             </NavLink>

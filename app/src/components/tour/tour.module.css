@@ -1,0 +1,182 @@
+/* ─────────────────────────────────────────────
+   「小白引路」 —— 聚光灯挖窗 + 引路纸笺
+   z-index 70:盖过顶栏(40)/课堂查书(50)/拜师帖(60),让位设置抽屉(80/90)
+   ───────────────────────────────────────────── */
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+}
+
+/* 透明接客层:引路期间页面本体不可点;淡墨罩由挖窗的外阴影铺满,此层只负责拦点击 */
+.shade {
+  position: absolute;
+  inset: 0;
+}
+
+/* 挖窗:外阴影一口气铺满全屏当淡墨罩,窗内保持原亮;位置由 JS 逐帧下发,不做位置过渡 */
+.spot {
+  position: absolute;
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 200vmax color-mix(in oklab, var(--ink) 45%, transparent);
+  outline: 2px solid color-mix(in oklab, var(--azure) 65%, transparent);
+  outline-offset: 2px;
+  pointer-events: none;
+  animation: spotIn var(--t-med) var(--ease-out) backwards;
+}
+
+@keyframes spotIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 引路纸笺:与拜师帖同一信笺界框工艺(内衬一圈纸白细线) */
+.slip {
+  position: absolute;
+  width: min(21rem, calc(100vw - 2rem));
+  padding: var(--gap-tight) var(--gap) var(--gap);
+  background: var(--paper-warm);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow:
+    inset 0 0 0 4px var(--paper-warm),
+    inset 0 0 0 5px var(--paper-edge),
+    var(--shadow-lift);
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
+}
+
+.slip:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 3px;
+}
+
+.kicker {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--gap-hair);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+
+/* 「白」字小印:印章语境走 --seal-red 别名(印泥豁免),微微歪着像随手钤的 */
+.kickSeal {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 1.15rem;
+  block-size: 1.15rem;
+  border-radius: var(--radius-tag);
+  background: var(--seal-red);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  transform: rotate(-4deg);
+}
+
+.kickStep {
+  margin-left: auto;
+  letter-spacing: 0.05em;
+}
+
+.title {
+  margin: 0.45rem 0 0.2rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* 笺文是小白台词:按法典走楷体 --font-display */
+.text {
+  margin: 0 0 var(--gap-tight);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  line-height: 1.9;
+  color: var(--ink-soft);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-hair);
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* 触控目标 ≥40px:视觉不变,::after 负 inset 扩命中 */
+.ghostBtn,
+.solidBtn {
+  position: relative;
+}
+
+.ghostBtn::after,
+.solidBtn::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+
+.ghostBtn {
+  padding: 0.32rem 0.6rem;
+  border: none;
+  background: none;
+  border-radius: var(--radius-s);
+  font-size: var(--fs-small);
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition:
+    color var(--t-fast) var(--ease-out),
+    background-color var(--t-fast) var(--ease-out);
+}
+
+.ghostBtn:hover {
+  color: var(--ink);
+  background: var(--ink-wash);
+}
+
+.ghostBtn:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+/* 主按钮规范:hover = azure-deep + 浮,active 下压 */
+.solidBtn {
+  padding: 0.36rem 0.9rem;
+  border: none;
+  border-radius: var(--radius-s);
+  background: var(--azure);
+  color: var(--paper);
+  font-size: var(--fs-small);
+  cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.solidBtn:hover {
+  background: var(--azure-deep);
+  transform: translateY(-1px);
+}
+
+.solidBtn:active {
+  transform: translateY(1px);
+}
+
+.solidBtn:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spot,
+  .slip {
+    animation: none;
+  }
+}

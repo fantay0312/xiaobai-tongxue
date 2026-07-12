@@ -5,13 +5,16 @@
  *  - /api/register:凭邀请码注册(邀请码只存服务器 config.json —— 仓库公开,严禁写进代码默认值);
  *    注册用户落盘 registered-users.json,与 config.json 的预置账号并存
  *  - /api/chat:登录后才可用的 LLM 代理 —— DeepSeek 密钥只存在服务器 config.json,永不下发
+ *  - /api/asr:登录后可用的语音转写代理 —— 浏览器上传 WAV 原始体,服务器持 OpenRouter 密钥
+ *    转发 /v1/audio/transcriptions(密钥同样永不下发)
+ *  - /api/state:按账号读写学习存档(dataDir/userdata/<sha256(账号)>.json),换设备登录即还原
  *
  * 用法:
  *   node index.mjs                 # 读取同目录 config.json 启动
  *   node index.mjs hash <密码>     # 生成账号的 scrypt 哈希条目(粘进 config.json 的 users)
  */
 import http from 'node:http';
-import { readFileSync, existsSync, statSync, writeFileSync, renameSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
@@ -51,8 +54,13 @@ const INVITE_CODE = typeof cfg.inviteCode === 'string' && cfg.inviteCode ? cfg.i
 const PREFIX = String(cfg.pathPrefix ?? '').replace(/\/+$/, '');
 /** 与同机其他站点共用源时避免 Cookie 名冲突 */
 const COOKIE = 'xiaobai_sid';
+/** 语音转写上游(OpenAI 兼容 /audio/transcriptions):密钥只存服务器 config.json,永不下发 */
+const ASR_UPSTREAM = String(cfg.asrUpstreamUrl ?? 'https://openrouter.ai/api/v1/audio/transcriptions');
+const ASR_MODEL = cfg.asrModel ?? 'qwen/qwen3-asr-flash-2026-02-10';
+const ASR_KEY = cfg.asrApiKey ?? '';
 if (!API_KEY) console.warn('[warn] config.apiKey 为空,/api/chat 将全部 502');
 if (!INVITE_CODE) console.warn('[warn] config.inviteCode 未配置,/api/register 关闭');
+if (!ASR_KEY) console.warn('[warn] config.asrApiKey 为空,/api/asr 关闭');
 
 // ───────────────────────── 注册用户(落盘持久化) ─────────────────────────
 /** 生产 systemd 把 /opt/xiaobai 挂只读(ProtectSystem=strict),状态文件必须写进
@@ -93,6 +101,20 @@ if (INVITE_CODE) {
   }
 }
 
+// ───────────────────────── 按账号学习存档(落盘持久化) ─────────────────────────
+/** 存档目录与文件名:文件名用账号小写的 sha256(汉字账号不进文件系统,天然免注入/编码坑) */
+const USERDATA_DIR = path.join(DATA_DIR, 'userdata');
+try {
+  mkdirSync(USERDATA_DIR, { recursive: true, mode: 0o700 });
+} catch (e) {
+  console.error('[fatal] userdata 目录不可建(检查 dataDir 属主):', e?.message);
+  process.exit(2);
+}
+function userStatePath(name) {
+  const digest = crypto.createHash('sha256').update(name.toLowerCase()).digest('hex');
+  return path.join(USERDATA_DIR, `${digest}.json`);
+}
+
 /** 预置账号 + 注册账号统一查找;唯一性按小写比对,杜绝大小写双开 */
 function findUser(name) {
   if (typeof name !== 'string') return null;
@@ -110,14 +132,20 @@ const loginFails = new Map(); // ip -> { count, resetAt }
 const regHits = new Map(); // ip -> { count, resetAt } 注册尝试(成败都计,防邀请码爆破/批量灌号)
 const chatHits = new Map(); // name -> { count, resetAt }
 const chatDaily = new Map(); // name -> { day, count }
+const asrHits = new Map(); // name -> { count, resetAt }
+const asrDaily = new Map(); // name -> { day, count }
+const stateHits = new Map(); // name -> { count, resetAt }
 setInterval(() => {
   const now = Date.now();
   for (const [t, s] of sessions) if (s.expires < now) sessions.delete(t);
   for (const [k, v] of loginFails) if (v.resetAt < now) loginFails.delete(k);
   for (const [k, v] of regHits) if (v.resetAt < now) regHits.delete(k);
   for (const [k, v] of chatHits) if (v.resetAt < now) chatHits.delete(k);
+  for (const [k, v] of asrHits) if (v.resetAt < now) asrHits.delete(k);
+  for (const [k, v] of stateHits) if (v.resetAt < now) stateHits.delete(k);
   const today = new Date().toISOString().slice(0, 10);
   for (const [k, v] of chatDaily) if (v.day !== today) chatDaily.delete(k);
+  for (const [k, v] of asrDaily) if (v.day !== today) asrDaily.delete(k);
 }, 60_000).unref();
 
 const LOGIN_MAX_FAILS = 10;          // 15 分钟内同 IP 最多失败次数
@@ -125,6 +153,25 @@ const LOGIN_WINDOW = 15 * 60_000;
 const REG_MAX_PER_WINDOW = 8;        // 15 分钟内同 IP 注册尝试上限(邀请码爆破在这撞墙)
 const CHAT_MAX_PER_MIN = 12;         // 单账号每分钟 LLM 调用上限(一轮讲课=评估+渲染 2 次,~6 轮/分足够)
 const CHAT_MAX_PER_DAY = 400;        // 单账号每日上限(~200 轮),防泄露凭据被当免费 LLM 长期薅
+const ASR_MAX_PER_MIN = 10;          // 单账号每分钟转写上限(口述一段→改一改→再说,10 次/分绰绰有余)
+const ASR_MAX_PER_DAY = 300;         // 单账号每日转写上限(按秒计费,防被当免费听写服务薅)
+const STATE_MAX_PER_MIN = 30;        // 存档读写上限(客户端 3s 去抖,正常远到不了)
+
+/** 单账号的分钟窗+日封顶通用检查:超限返回错误码字符串,未超返回 null */
+function rateCheck(name, perMin, perDay, minMap, dayMap) {
+  const rate = minMap.get(name) ?? { count: 0, resetAt: Date.now() + 60_000 };
+  if (rate.resetAt < Date.now()) { rate.count = 0; rate.resetAt = Date.now() + 60_000; }
+  rate.count += 1; minMap.set(name, rate);
+  if (rate.count > perMin) return 'rate-limited';
+  if (dayMap) {
+    const today = new Date().toISOString().slice(0, 10);
+    const daily = dayMap.get(name);
+    const dayCount = daily && daily.day === today ? daily.count + 1 : 1;
+    dayMap.set(name, { day: today, count: dayCount });
+    if (dayCount > perDay) return 'daily-limit';
+  }
+  return null;
+}
 
 function clientIp(req) {
   const direct = req.socket.remoteAddress ?? 'unknown';
@@ -180,21 +227,26 @@ function verifyPassword(user, password) {
 
 // ───────────────────────── 请求体与响应工具 ─────────────────────────
 const BODY_LIMIT = 64 * 1024;
+const STATE_LIMIT = 2 * 1024 * 1024;  // 学习存档(事件流会随使用增长,给足余量)
+const AUDIO_LIMIT = 8 * 1024 * 1024;  // 16k 单声道 WAV ≈ 32KB/s,8MB ≈ 4 分钟口述
 
-function readJson(req) {
+function readRaw(req, limit) {
   return new Promise((resolve, reject) => {
     let size = 0; const chunks = [];
     req.on('data', (c) => {
       size += c.length;
-      if (size > BODY_LIMIT) { reject(new Error('body-too-large')); req.destroy(); return; }
+      if (size > limit) { reject(new Error('body-too-large')); req.destroy(); return; }
       chunks.push(c);
     });
-    req.on('end', () => {
-      try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); }
-      catch { reject(new Error('bad-json')); }
-    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
+}
+
+async function readJson(req, limit = BODY_LIMIT) {
+  const buf = await readRaw(req, limit);
+  try { return JSON.parse(buf.toString('utf8') || '{}'); }
+  catch { throw new Error('bad-json'); }
 }
 
 function send(res, status, body, headers = {}) {
@@ -379,6 +431,118 @@ async function handleChat(req, res) {
   }
 }
 
+/** 语音转写代理:浏览器传 WAV 原始体,服务器持钥转发 OpenAI 兼容 /audio/transcriptions。
+ *  模型/端点/密钥全部服务器侧决定,客户端只能给音频 —— 不给任何改道空间 */
+const ASR_TIMEOUT = 60_000;
+/** 全局并发闸:每个在飞请求最多在内存里压 8MB 音频,并发封顶防多账号齐发把网关内存打爆 */
+const ASR_MAX_INFLIGHT = 6;
+let asrInflight = 0;
+
+async function handleAsr(req, res) {
+  const u = currentUser(req);
+  if (!u) return send(res, 401, { error: 'login-required' });
+  if (!ASR_KEY) return send(res, 503, { error: 'asr-disabled' });
+  const limited = rateCheck(u.name, ASR_MAX_PER_MIN, ASR_MAX_PER_DAY, asrHits, asrDaily);
+  if (limited) return send(res, 429, { error: limited });
+  if (asrInflight >= ASR_MAX_INFLIGHT) return send(res, 503, { error: 'asr-busy' });
+  asrInflight += 1;
+  try {
+    await handleAsrInner(req, res);
+  } finally {
+    asrInflight -= 1;
+  }
+}
+
+async function handleAsrInner(req, res) {
+  let buf;
+  try { buf = await readRaw(req, AUDIO_LIMIT); } catch (e) {
+    return send(res, e.message === 'body-too-large' ? 413 : 400, { error: e.message });
+  }
+  if (buf.length < 100) return send(res, 400, { error: 'empty-audio' });
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ASR_TIMEOUT);
+  try {
+    const fd = new FormData();
+    fd.append('file', new Blob([buf], { type: 'audio/wav' }), 'speech.wav');
+    fd.append('model', ASR_MODEL);
+    const upstream = await fetch(ASR_UPSTREAM, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ASR_KEY}` },
+      body: fd,
+      signal: ctrl.signal,
+    });
+    if (!upstream.ok) {
+      console.error(`[asr] upstream ${upstream.status}`);
+      return send(res, 502, { error: 'upstream', status: upstream.status });
+    }
+    const data = await upstream.json();
+    const text = data?.text;
+    if (typeof text !== 'string') return send(res, 502, { error: 'upstream-empty' });
+    send(res, 200, { text });
+  } catch (e) {
+    console.error('[asr] error:', e?.name === 'AbortError' ? 'timeout' : e?.message);
+    send(res, 504, { error: 'upstream-timeout' });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** 按账号学习存档:GET 取回 / PUT 覆盖(整包 LWW,客户端去抖推送)。
+ *  只当不透明 JSON 桶存取,不解释内容 —— 但形状上限死:顶层必须是对象,尺寸 ≤ STATE_LIMIT */
+function handleStateGet(req, res) {
+  const u = currentUser(req);
+  if (!u) return send(res, 401, { error: 'login-required' });
+  const limited = rateCheck(u.name, STATE_MAX_PER_MIN, null, stateHits, null);
+  if (limited) return send(res, 429, { error: limited });
+  const file = userStatePath(u.name);
+  if (!existsSync(file)) return send(res, 200, { state: null, updatedAt: null });
+  try {
+    const doc = JSON.parse(readFileSync(file, 'utf8'));
+    return send(res, 200, { state: doc?.state ?? null, updatedAt: doc?.updatedAt ?? null });
+  } catch (e) {
+    // 档案损坏当"无档"回,别把用户挡在门外;下次推送会原子重写修复
+    console.error('[state] 读档损坏:', u.name, e?.message);
+    return send(res, 200, { state: null, updatedAt: null });
+  }
+}
+
+async function handleStatePut(req, res) {
+  const u = currentUser(req);
+  if (!u) return send(res, 401, { error: 'login-required' });
+  const limited = rateCheck(u.name, STATE_MAX_PER_MIN, null, stateHits, null);
+  if (limited) return send(res, 429, { error: limited });
+  let body;
+  try { body = await readJson(req, STATE_LIMIT); } catch (e) {
+    return send(res, e.message === 'body-too-large' ? 413 : 400, { error: e.message });
+  }
+  const state = body?.state;
+  if (state === null || typeof state !== 'object' || Array.isArray(state)) {
+    return send(res, 400, { error: 'bad-shape' });
+  }
+  const file = userStatePath(u.name);
+  // 乐观并发:客户端带 baseVersion(上次见到的 updatedAt);已有档且版本对不上 → 409,
+  // 让客户端拉回远端并集合并后重推 —— 双开页签/两台设备同时用,谁都不盲覆谁
+  if (existsSync(file)) {
+    const baseVersion = typeof body?.baseVersion === 'string' ? body.baseVersion : null;
+    let curVersion = null;
+    try { curVersion = JSON.parse(readFileSync(file, 'utf8'))?.updatedAt ?? null; } catch { /* 损坏档:放行覆写修复 */ }
+    if (curVersion !== null && baseVersion !== curVersion) {
+      return send(res, 409, { error: 'conflict', updatedAt: curVersion });
+    }
+  }
+  const updatedAt = new Date().toISOString();
+  try {
+    const tmp = `${file}.tmp`;
+    writeFileSync(tmp, JSON.stringify({ name: u.name, updatedAt, state }), { mode: 0o600 });
+    renameSync(tmp, file);
+  } catch (e) {
+    console.error('[state] 落盘失败:', u.name, e?.message);
+    return send(res, 500, { error: 'persist-failed' });
+  }
+  send(res, 200, { ok: true, updatedAt });
+}
+
 // ───────────────────────── 静态资源(SPA) ─────────────────────────
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -426,6 +590,9 @@ const server = http.createServer((req, res) => {
     if (pathname === '/api/logout' && req.method === 'POST') return handleLogout(req, res);
     if (pathname === '/api/me' && req.method === 'GET') return handleMe(req, res);
     if (pathname === '/api/chat' && req.method === 'POST') return void handleChat(req, res);
+    if (pathname === '/api/asr' && req.method === 'POST') return void handleAsr(req, res);
+    if (pathname === '/api/state' && req.method === 'GET') return handleStateGet(req, res);
+    if (pathname === '/api/state' && req.method === 'PUT') return void handleStatePut(req, res);
     return send(res, 404, { error: 'not-found' });
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'method-not-allowed');
@@ -433,5 +600,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`小白同学网关已启动: http://0.0.0.0:${PORT} (dist: ${DIST}, model: ${MODEL}, coach: ${MODEL_COACH}, 注册: ${INVITE_CODE ? `开放(已注册 ${regUsers.length})` : '关闭'})`);
+  console.log(`小白同学网关已启动: http://0.0.0.0:${PORT} (dist: ${DIST}, model: ${MODEL}, coach: ${MODEL_COACH}, asr: ${ASR_KEY ? ASR_MODEL : '关闭'}, 注册: ${INVITE_CODE ? `开放(已注册 ${regUsers.length})` : '关闭'})`);
 });

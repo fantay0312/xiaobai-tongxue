@@ -47,7 +47,7 @@ export function JourneyRibbon() {
   const dreamLeft = Math.max(0, DREAM_GOAL - global.topicsMastered);
 
   return (
-    <section className={s.ribbon} aria-label="师道旅程">
+    <section className={s.ribbon} aria-label="师道旅程" data-tour="story">
       <span className={s.rankSeal} aria-hidden="true">{rank.title}</span>
       <div className={s.rankMeta}>
         <span className={s.rankTitle}>师道 · {rank.title}</span>

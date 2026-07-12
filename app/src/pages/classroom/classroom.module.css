@@ -437,6 +437,7 @@
 .demoNote { font-size: var(--fs-tiny); color: var(--ink-faint); }
 
 .inputBar {
+  position: relative; /* 语音提示笺的锚 */
   display: flex;
   gap: var(--gap-tight);
   padding: var(--gap-tight) clamp(1rem, 3vw, 2.5rem);
@@ -484,6 +485,73 @@
 }
 .sendBtn:hover:enabled { background: var(--azure-deep); transform: translateY(-1px); }
 .sendBtn:disabled { opacity: 0.55; cursor: default; }
+
+/* 底排:麦克风与发送并肩 */
+.sideBtns {
+  display: flex;
+  align-items: stretch;
+  gap: var(--gap-hair);
+}
+
+/* 麦克风:青描边幽灵钮,与实心发送钮同高同族 */
+.micBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-hair);
+  min-width: 2.6rem;
+  padding: 0.4rem 0.55rem;
+  background: var(--paper);
+  color: var(--azure);
+  border: 1px solid var(--azure);
+  border-radius: var(--radius-s);
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    color var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+.micBtn:hover:enabled { background: var(--azure-wash); transform: translateY(-1px); }
+.micBtn:active:enabled { transform: translateY(1px); }
+.micBtn:disabled { opacity: 0.55; cursor: default; }
+
+/* 采音中:钮面转朱砂(实时采音提醒属警示语义),红点用 --ease-loop 呼吸 */
+.micRec {
+  color: var(--cinnabar);
+  border-color: var(--cinnabar);
+  background: var(--cinnabar-wash);
+}
+.micRec:hover:enabled { background: var(--cinnabar-wash); }
+.micDot {
+  inline-size: 0.55rem;
+  block-size: 0.55rem;
+  border-radius: 50%;
+  background: var(--cinnabar);
+  animation: micPulse 1.4s var(--ease-loop) infinite;
+}
+@keyframes micPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.micBusy { color: var(--ink-faint); font-size: var(--fs-tiny); }
+
+/* 转写提示笺:悬在讲桌上沿,几秒后自动消隐 */
+.micHint {
+  position: absolute;
+  right: clamp(1rem, 3vw, 2.5rem);
+  bottom: calc(100% + 4px);
+  max-width: min(24rem, 70vw);
+  padding: 0.3rem 0.65rem;
+  background: var(--paper-warm);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  box-shadow: var(--shadow-paper);
+  font-size: var(--fs-tiny);
+  color: var(--ink-soft);
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
+}
 
 /* ── R4 结束面板 ── */
 .endedPanel {

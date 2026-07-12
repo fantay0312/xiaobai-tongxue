@@ -5,15 +5,19 @@
  * 挂载契约:store.live 存在且 topicId 吻合则直接接管,否则 startSession(topicId, mode)。
  * 下课:endSession() → /exam/:sessionId → /review/:sessionId;R4 退回备课:abandonSession() → /prep/:topicId。
  */
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 import { getDemoScript, getTopic } from '../../data';
 import { Md } from '../../components/Md';
 import { Icon } from '../../components/ui/Icon';
+import { Tour, type TourStep } from '../../components/tour/Tour';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import type { ChatMessage, SessionMode, XiaobaiMood } from '../../types';
 import { useDocTitle } from '../../hooks/useDocTitle';
+// 语音转写与录音都是浏览器专用模块,按路径直引,不走 engine barrel
+import { transcribe } from '../../engine/asr';
+import { blobToWav16k, startRecording, type Recorder } from '../../lib/audio';
 import s from './classroom.module.css';
 
 // 讲课进行中「不给学生看牌」:导演动作(误区注入/开窍复述/救援层级)一律不在现场显示——
@@ -32,6 +36,44 @@ const MOOD_ZH: Record<XiaobaiMood, string> = {
 };
 
 const LEVEL_NAME = ['嫩芽期', '开窍期', '求索期', '问难期', '出师期'] as const;
+
+/** 讲解舱引路(称呼纪律:课堂台词一律「老师」);只讲怎么用教室,不泄任何导演机关。
+    末步跟着收尾按钮走 mode:teach/reteach 是「送小白赴考」,review 是「完成温故」 */
+function buildTeachTour(mode: SessionMode): TourStep[] {
+  return [
+    {
+      target: '[data-tour="stage"]',
+      title: '讲台边的小白',
+      text: '我就坐在这儿听课。桌牌上写着我的期数和心情——老师讲得清不清楚,看我的脸色就知道。',
+    },
+    {
+      target: '[data-tour="board"]',
+      title: '一块黑板',
+      text: '对话都写在黑板上。我没读过标准答案,老师的话就是我的全部教材,听不懂我一定会问。',
+    },
+    {
+      target: '[data-tour="input"]',
+      title: '开讲',
+      text: '在这里把知识讲给我听,Enter 发送。用老师自己的话讲,别背书——背书我听不懂。',
+    },
+    {
+      target: '[data-tour="mic"]',
+      title: '开口就讲',
+      text: '打字累了就点这个,直接开口讲;再点一下,老师的话就变成文字落进输入框,改顺了再发给我。',
+    },
+    mode === 'review'
+      ? {
+          target: '[data-tour="end"]',
+          title: '温故收尾',
+          text: '帮我把忘了的想起来,讲得差不多就点「完成温故」——这一课的温故记录会留在档案里。',
+        }
+      : {
+          target: '[data-tour="end"]',
+          title: '送我赴考',
+          text: '讲得差不多了,就送我去赴考。我在考场上的样子,就是老师讲解的成色。',
+        },
+  ];
+}
 
 /** 打字机逐字浮现(像在想怎么说) */
 function TypewriterText({ text, animate, onTick, onDone }: {
@@ -77,6 +119,141 @@ const MOOD_TONE: Partial<Record<XiaobaiMood, string>> = {
   aha: `${s.moodGlad} ${s.moodAha}`, happy: s.moodGlad, proud: s.moodGlad,
   confused: s.moodWarm, shy: s.moodWarm,
 };
+
+/** 录音错误/转写错误 → 人话提示(不暴露错误码) */
+function asrErrorHint(e: unknown): string {
+  if (e instanceof DOMException) {
+    if (e.name === 'NotAllowedError' || e.name === 'SecurityError') return '麦克风权限被拒了,在浏览器地址栏允许后再试';
+    if (e.name === 'NotFoundError') return '没找到麦克风设备';
+    if (e.name === 'EncodingError') return '这段录音没录上,再录一次';
+  }
+  const code = e instanceof Error ? e.message : '';
+  if (code === 'record-failed') return '录音出了岔子,再试一次';
+  if (code === 'asr-auth') return '语音输入要登录后才能用';
+  if (code === 'asr-disabled') return '服务器还没开通语音服务';
+  if (code === 'asr-unconfigured') return '先去设置里把语音服务配好';
+  if (code === 'asr-rate-limited') return '说得太频繁了,歇一会儿再试';
+  if (code === 'asr-daily-limit') return '今天的语音额度用完了,明天再来(打字不受限)';
+  if (code === 'asr-timeout') return '转写超时了,再试一次';
+  if (code.startsWith('asr-http-') || code === 'asr-empty') return '转写没成功,再试一次';
+  // 网络层直接抛 TypeError:按当前模式给对症的话
+  return useAppStore.getState().asrSettings.mode === 'api'
+    ? '连不上自配的转写服务,检查 Base URL 和网络'
+    : '语音服务连不上——需登录使用,或在设置里自配转写服务';
+}
+
+/** 录音上限:16k WAV ≈ 32KB/s,3 分钟 ≈ 5.6MB,仍在网关 8MB 限内 */
+const MAX_REC_SECONDS = 180;
+
+/** 讲桌上的麦克风:点一下开录,再点一下收音转文字,落进输入框由老师改定再发 */
+function MicButton({ disabled, onText }: { disabled: boolean; onText: (t: string) => void }) {
+  const [phase, setPhase] = useState<'idle' | 'rec' | 'busy'>('idle');
+  const [seconds, setSeconds] = useState(0);
+  const [hint, setHint] = useState('');
+  const recRef = useRef<Recorder | null>(null);
+  const hintTimerRef = useRef(0);
+  /** getUserMedia 悬挂期间的双击/卸载守卫:开录中不许再开,卸载后拿到的流当场回收 */
+  const startingRef = useRef(false);
+  const disposedRef = useRef(false);
+
+  // 卸载(下课/暂离)时回收麦克风,别让采音红点挂在标签页上
+  useEffect(() => () => {
+    disposedRef.current = true;
+    recRef.current?.cancel();
+    recRef.current = null;
+    window.clearTimeout(hintTimerRef.current);
+  }, []);
+
+  const showHint = useCallback((m: string) => {
+    setHint(m);
+    window.clearTimeout(hintTimerRef.current);
+    hintTimerRef.current = window.setTimeout(() => setHint(''), 6000);
+  }, []);
+
+  const finish = useCallback(async () => {
+    const rec = recRef.current;
+    if (!rec) return;
+    recRef.current = null;
+    setPhase('busy');
+    try {
+      const raw = await rec.stop();
+      const wav = await blobToWav16k(raw);
+      const text = await transcribe(wav, useAppStore.getState().asrSettings);
+      if (text) onText(text);
+      else showHint('没听清,靠近麦克风再说一次');
+    } catch (e) {
+      showHint(asrErrorHint(e));
+    } finally {
+      setPhase('idle');
+    }
+  }, [onText, showHint]);
+
+  // 录音计时(updater 保持纯函数;到限自动收音由下面的独立 effect 判)
+  useEffect(() => {
+    if (phase !== 'rec') return;
+    setSeconds(0);
+    const id = window.setInterval(() => setSeconds((v) => v + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [phase]);
+  useEffect(() => {
+    if (phase === 'rec' && seconds >= MAX_REC_SECONDS) void finish();
+  }, [phase, seconds, finish]);
+
+  const toggle = async () => {
+    if (phase === 'busy' || startingRef.current) return;
+    if (phase === 'rec') return void finish();
+    setHint('');
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      return showHint('这个浏览器不支持录音');
+    }
+    startingRef.current = true;
+    try {
+      const rec = await startRecording();
+      // 权限弹窗悬挂期间可能已下课离场:拿到的流当场回收,别让采音红点挂着
+      if (disposedRef.current) {
+        rec.cancel();
+        return;
+      }
+      recRef.current = rec;
+      setPhase('rec');
+    } catch (e) {
+      if (!disposedRef.current) showHint(asrErrorHint(e));
+    } finally {
+      startingRef.current = false;
+    }
+  };
+
+  const label = phase === 'rec'
+    ? `停止录音(已录 ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')})`
+    : phase === 'busy' ? '正在转写' : '语音输入:开口把知识讲给小白';
+
+  return (
+    <>
+      <button
+        type="button"
+        className={phase === 'rec' ? `${s.micBtn} ${s.micRec}` : s.micBtn}
+        data-tour="mic"
+        onClick={() => void toggle()}
+        disabled={disabled || phase === 'busy'}
+        aria-label={label}
+        title={label}
+        aria-pressed={phase === 'rec'}
+      >
+        {phase === 'rec' ? (
+          <>
+            <span className={s.micDot} aria-hidden="true" />
+            {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}
+          </>
+        ) : phase === 'busy' ? (
+          <span className={s.micBusy}>听写中…</span>
+        ) : (
+          <Icon name="mic" size={16} />
+        )}
+      </button>
+      {hint && <span className={s.micHint} role="status">{hint}</span>}
+    </>
+  );
+}
 
 function XiaobaiBubble({ m, animate, onTick, onDone }: {
   m: ChatMessage;
@@ -252,6 +429,7 @@ export default function ClassroomPage() {
           <button
             type="button"
             className={s.endBtn}
+            data-tour="end"
             onClick={dismissClass}
             disabled={live.busy}
           >
@@ -270,7 +448,7 @@ export default function ClassroomPage() {
 
       <div className={s.main}>
         {/* ── 左 1/3:讲台(暖光晕下的小白) ── */}
-        <aside className={s.stage}>
+        <aside className={s.stage} data-tour="stage">
           <div className={s.boardFrame}>
             <XiaobaiAvatar
               mood={live.busy ? 'thinking' : live.mood}
@@ -296,7 +474,7 @@ export default function ClassroomPage() {
 
         {/* ── 右 2/3:木框黑板(对话流写在板上,板下粉笔槽) ── */}
         <section className={s.chat}>
-          <div className={s.boardObj}>
+          <div className={s.boardObj} data-tour="board">
             <div className={s.stream} ref={streamRef}>
               {live.messages.map((m) =>
               m.role === 'system' ? (
@@ -395,7 +573,7 @@ export default function ClassroomPage() {
                     </div>
                   </div>
                 )}
-                <div className={s.inputBar}>
+                <div className={s.inputBar} data-tour="input">
                   <textarea
                     ref={inputRef}
                     className={s.input}
@@ -408,15 +586,24 @@ export default function ClassroomPage() {
                   />
                   <div className={s.inputSide}>
                     <span className={s.count}>{draft.length} 字</span>
-                    <button
-                      type="button"
-                      className={s.sendBtn}
-                      onClick={send}
-                      disabled={!canSend}
-                    >
-                      <Icon name="send" size={16} />
-                      讲给小白
-                    </button>
+                    <div className={s.sideBtns}>
+                      <MicButton
+                        disabled={live.ended}
+                        onText={(text) => {
+                          setDraft((d) => (d.trim() ? `${d.replace(/\s+$/, '')}\n${text}` : text));
+                          inputRef.current?.focus();
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className={s.sendBtn}
+                        onClick={send}
+                        disabled={!canSend}
+                      >
+                        <Icon name="send" size={16} />
+                        讲给小白
+                      </button>
+                    </div>
                   </div>
                 </div>
               </>
@@ -424,6 +611,9 @@ export default function ClassroomPage() {
           </div>
         </section>
       </div>
+
+      {/* ── 新手引路(首访自动开一次;只讲教室怎么用,不碰导演机关) ── */}
+      <Tour tourKey="teach" steps={buildTeachTour(mode)} />
 
       {/* ── R2 查书侧栏:黑教室里一页被台灯照亮的书 ── */}
       {lookupItem && !live.ended && (

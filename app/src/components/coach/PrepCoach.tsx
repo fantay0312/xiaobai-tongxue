@@ -283,6 +283,7 @@ export function PrepCoach({ topic }: { topic: Topic }) {
         ref={petBtnRef}
         type="button"
         className={s.petBtn}
+        data-tour="coach"
         onClick={toggle}
         aria-expanded={open}
         aria-label={open ? '收起备课助教' : '召唤备课助教小砚'}

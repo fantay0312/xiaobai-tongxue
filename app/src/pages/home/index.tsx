@@ -8,10 +8,44 @@ import { useAppStore } from '../../store/appStore';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { MentorLetter } from '../../components/story/MentorLetter';
 import { JourneyRibbon } from '../../components/story/JourneyRibbon';
+import { Tour, type TourStep } from '../../components/tour/Tour';
 import { Bookshelf } from './Bookshelf';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import styles from './home.module.css';
 import anchor from '../../styles/anchor.module.css';
+
+/** 门厅引路(小白口吻,册页语境称「先生」):指路条 → 闭环 → 书架 → 成长册,自上而下不折返。
+    第一步按履历分两套话:零履历时案头是拜师帖信封条,有履历才是指路的旅程带——话要对得上东西 */
+function buildHomeTour(hasStory: boolean): TourStep[] {
+  return [
+    hasStory
+      ? {
+          target: '[data-tour="story"]',
+          title: '案头一条笺',
+          text: '这条案头笺永远指着「当下最该做的一步」——先生迷了路,回门厅看它准没错。',
+        }
+      : {
+          target: '[data-tour="story"]',
+          title: '案头一封帖',
+          text: '小生的拜师帖收在案头,点「展帖重读」随时能重看。等先生开了课,这里会换成一条旅程带,永远指着当下最该做的一步。',
+        },
+    {
+      target: '[data-tour="loop"]',
+      title: '一课的走法',
+      text: '每一课都走这六步:备课、讲解、赴考、批注、补学、再讲,直到把小生教到出师。',
+    },
+    {
+      target: '#shelf',
+      title: '满架的课',
+      text: '一函一课。新书翻开先进备课桌温一遍;已开讲的书,翻开就回讲解舱接着讲。',
+    },
+    {
+      target: '[data-tour="nav-growth"]',
+      title: '小生的成长册',
+      text: '小生学到的都记在成长册里:印章、旅程、还有小生的记忆匣,先生得空就来翻翻。',
+    },
+  ];
+}
 
 const LOOP_STEPS: { num: string; name: string; desc: string }[] = [
   { num: '壹', name: '备课', desc: '摸底快测,领材料包' },
@@ -86,6 +120,7 @@ export default function HomePage() {
         className={`${styles.loop} ${styles.enter}`}
         style={{ animationDelay: '260ms' }}
         aria-label="学习闭环:备课、讲解、赴考、批注、补学、再讲"
+        data-tour="loop"
       >
         {LOOP_STEPS.map((step, i) => (
           <Fragment key={step.name}>
@@ -107,6 +142,9 @@ export default function HomePage() {
 
       {/* ── 知识点书架 ── */}
       <Bookshelf />
+
+      {/* ── 新手引路(首访自动开;礼让拜师帖,帖收了才上前) ── */}
+      <Tour tourKey="home" steps={buildHomeTour(hasStory)} />
     </div>
   );
 }

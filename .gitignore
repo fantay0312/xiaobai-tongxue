@@ -6,11 +6,13 @@ dist/
 # 含真实 API 密钥,禁止入库
 doc/aiapi.md
 doc/服务器相关.md
+doc/openrouter key.md
 server/config.json
 
-# 注册用户凭据(网关运行时落盘),禁止入库
+# 注册用户凭据/按账号学习存档(网关运行时落盘),禁止入库
 server/registered-users.json
 server/registered-users.json.tmp
+server/userdata/
 
 # 含账号凭据/本地打包产物,禁止入库
 doc/账号.md

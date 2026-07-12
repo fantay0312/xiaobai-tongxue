@@ -15,6 +15,7 @@ import { useAppStore } from '../../store/appStore';
 import { TOPICS } from '../../data';
 import { nextStep } from '../../engine/journey';
 import { Icon } from '../ui/Icon';
+import { LETTER_CLOSED_EVENT, LETTER_OPEN_EVENT } from '../tour/tourState';
 import s from './story.module.css';
 
 /** 每次页面加载只自动展帖一次(刷新即重置;演示场景要能重复看,故不落盘) */
@@ -37,6 +38,15 @@ export function MentorLetter() {
   const stripBtnRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
+  /** 开合必须同步广播给「小白引路」(不能走 [open] effect):
+      主线程被 three 懒加载卡住时,帖的 450ms 定时器与引路的 700ms 定时器会挤进同一批
+      宏任务 flush——帖 due 更早、规范保证先跑,同步派发才来得及把引路的定时器 clear 掉;
+      经 React effect 异步派发则总在引路开火之后才到(实测 2052ms vs 2063ms)。 */
+  const setOpenAndBroadcast = useCallback((next: boolean) => {
+    setOpen(next);
+    window.dispatchEvent(new CustomEvent(next ? LETTER_OPEN_EVENT : LETTER_CLOSED_EVENT));
+  }, []);
+
   /* 自动展帖:等 hero 先画完(~450ms)再弹。
      StrictMode 会「装载→清理→再装载」跑两遍:首跑若还没弹出就被清理,必须把名额还回去,
      否则第二跑(真正存活的那次)会误判"已弹过"而永不自动展开 */
@@ -46,13 +56,13 @@ export function MentorLetter() {
     let fired = false;
     const id = window.setTimeout(() => {
       fired = true;
-      setOpen(true);
+      setOpenAndBroadcast(true);
     }, 450);
     return () => {
       window.clearTimeout(id);
       if (!fired) autoOpenedThisLoad = false;
     };
-  }, []);
+  }, [setOpenAndBroadcast]);
 
   /* 弹层期间锁背后页面滚动;补上滚动条宽度,经典滚动条系统(Windows)不横跳。
      依赖 [open] 的清理函数同时覆盖「关帖」与「组件卸载」两条退出路径 */
@@ -60,6 +70,9 @@ export function MentorLetter() {
     if (!open) return;
     const docStyle = document.documentElement.style;
     const bodyStyle = document.body.style;
+    // 别人(设置抽屉)已持锁就不抢:否则本效应把「hidden」记成原值,
+    // 两层先后关闭会把 hidden 还原回去,页面永久锁死(首访 450ms 内点开抽屉可复现)
+    if (docStyle.overflow === 'hidden' || bodyStyle.overflow === 'hidden') return;
     const prev = { doc: docStyle.overflow, body: bodyStyle.overflow, pad: bodyStyle.paddingRight };
     const gutter = window.innerWidth - document.documentElement.clientWidth;
     docStyle.overflow = 'hidden';
@@ -79,9 +92,9 @@ export function MentorLetter() {
 
   /** 关帖并把焦点还给案头的「展帖重读」(dialog 焦点归还契约) */
   const close = useCallback(() => {
-    setOpen(false);
+    setOpenAndBroadcast(false);
     stripBtnRef.current?.focus();
-  }, []);
+  }, [setOpenAndBroadcast]);
 
   /** 点淡墨罩关帖:只认罩本身,信纸内的点击不算 */
   const onBackdrop = (e: MouseEvent<HTMLDivElement>) => {
@@ -116,7 +129,7 @@ export function MentorLetter() {
   return (
     <>
       {/* 案头信封条:门厅位的常驻痕迹,与旅程带同一高度族 */}
-      <section className={s.letterStrip} aria-label="案头的拜师帖">
+      <section className={s.letterStrip} aria-label="案头的拜师帖" data-tour="story">
         <span className={s.stripSeal} aria-hidden="true">白</span>
         <p className={s.stripLine}>小白递来一封拜师帖,收在案头</p>
         <button
@@ -124,7 +137,7 @@ export function MentorLetter() {
           type="button"
           className={s.stripBtn}
           aria-haspopup="dialog"
-          onClick={() => setOpen(true)}
+          onClick={() => setOpenAndBroadcast(true)}
         >
           展帖重读
         </button>
@@ -167,7 +180,7 @@ export function MentorLetter() {
               </div>
 
               <div className={s.letterActions}>
-                <Link className={s.letterCta} to={step.to} onClick={() => setOpen(false)}>
+                <Link className={s.letterCta} to={step.to} onClick={() => setOpenAndBroadcast(false)}>
                   {step.cta}
                 </Link>
                 <button type="button" className={s.dismissBtn} onClick={close}>

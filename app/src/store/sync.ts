@@ -1,0 +1,239 @@
+/**
+ * 按账号服务器存档同步 —— 登录态下学习数据与网关 /api/state 保持一致,换设备登录即还原。
+ * 载荷 = { global, events, reports } 三件:
+ *   拉:登录/会话恢复(authed)时取回服务器档 —— 有档 → 覆盖本地并重放派生态;
+ *      无档 → 本地数据归属当前账号(lastSyncUser 相同或从未同步)则上传认领,
+ *      归属别的账号则清空重开(换号登录不把上一位老师的学习史带进新账号)。
+ *   推:appStore 三件变化后去抖 3s PUT;失败退避重试;页面隐藏时尽力冲刷。
+ * 防互踩:PUT 带 baseVersion(上次见到的服务器 updatedAt),不符则 409 —— 客户端拉回远端档,
+ *   按 id 并集合并 events/reports 后重推(双开页签/两台设备同时用,谁都不清掉谁)。
+ * 守门:拉档没成功(登录竞态/断网)之前一律不推 —— 空档新机器不许覆写服务器上的老档。
+ * 纪律:settings/asrSettings(含密钥)永不进载荷;live(进行中会话)不同步;
+ *      standalone(无网关)完全旁路,离线演示行为与从前一字不差。
+ */
+import { DEFAULT_GLOBAL, useAppStore } from './appStore';
+import { useAuthStore } from './authStore';
+import { API_BASE } from '../lib/api';
+import type { LearnEvent, SessionReport, XiaobaiGlobal } from '../types';
+
+const LAST_USER_KEY = 'xiaobai-sync-user';
+const DEBOUNCE_MS = 3000;
+const RETRY_MS = 15_000;
+/** Chrome 对 keepalive 请求体的硬限 ≈64KB(按字节),超限的档退回常规 fetch(尽力而为) */
+const KEEPALIVE_LIMIT = 60 * 1024;
+
+interface SyncPayload {
+  global: XiaobaiGlobal;
+  events: LearnEvent[];
+  reports: SessionReport[];
+}
+
+let applyingRemote = false; // 正在把服务器档灌回本地:期间的 store 变化不回推
+let pushTimer = 0;
+let dirty = false;
+let started = false;
+/** 拉档成功后才等于当前账号名:是"允许推送"的闸门(空档新机不许覆写服务器老档) */
+let syncedUser: string | null = null;
+/** 上次见到的服务器档版本(updatedAt),PUT 时作为 baseVersion 防互踩 */
+let serverVersion: string | null = null;
+
+function snapshot(): SyncPayload {
+  const s = useAppStore.getState();
+  return { global: s.global, events: s.events, reports: s.reports };
+}
+
+/** 远端档消毒:字段缺失/被手工改坏时以默认值补齐、坏行丢弃——档坏最多丢数据,不许砸崩页面 */
+function sanitize(remote: Partial<SyncPayload>): SyncPayload {
+  const global: XiaobaiGlobal = {
+    ...DEFAULT_GLOBAL,
+    ...(remote.global && typeof remote.global === 'object' ? remote.global : {}),
+  };
+  if (!Array.isArray(global.relationshipMemory)) global.relationshipMemory = [];
+  if (!Array.isArray(global.goldenAnalogies)) global.goldenAnalogies = [];
+  // 事件行必须五脏俱全(id/t/type/topicId/payload):派生层(重放/回忆/成就)默认这些字段在
+  const events = (Array.isArray(remote.events) ? remote.events : [])
+    .filter((e): e is LearnEvent => {
+      const ev = e as LearnEvent | null;
+      return !!ev && typeof ev === 'object'
+        && typeof ev.id === 'string' && typeof ev.t === 'string'
+        && typeof ev.type === 'string' && typeof ev.topicId === 'string'
+        && !!ev.payload && typeof ev.payload === 'object';
+    });
+  const reports = (Array.isArray(remote.reports) ? remote.reports : [])
+    .filter((r): r is SessionReport => !!r && typeof r === 'object');
+  return { global, events, reports };
+}
+
+/** 409 冲突时的并集合并:events/reports 按 id 并集(时间序),global 留本地(最新操作在本机) */
+function mergeRemote(remote: SyncPayload): void {
+  const cur = useAppStore.getState();
+  const seenE = new Set(cur.events.map((e) => e.id));
+  const events = [...cur.events, ...remote.events.filter((e) => !seenE.has(e.id))]
+    .sort((a, b) => a.t.localeCompare(b.t));
+  const seenR = new Set(cur.reports.map((r) => r.sessionId));
+  const reports = [...cur.reports, ...remote.reports.filter((r) => !seenR.has(r.sessionId))]
+    .sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+  applyingRemote = true;
+  try {
+    useAppStore.setState({ events, reports, topicStates: {} });
+    useAppStore.getState().rebuildStates();
+  } finally {
+    applyingRemote = false;
+  }
+}
+
+async function fetchRemote(): Promise<{ state: Partial<SyncPayload> | null; updatedAt: string | null } | null> {
+  try {
+    const res = await fetch(`${API_BASE}/state`);
+    if (!res.ok) return null;
+    const data: unknown = await res.json();
+    const doc = data as { state?: unknown; updatedAt?: unknown };
+    return {
+      state: doc?.state && typeof doc.state === 'object' ? (doc.state as Partial<SyncPayload>) : null,
+      updatedAt: typeof doc?.updatedAt === 'string' ? doc.updatedAt : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function push(useKeepalive = false, isRetryAfterConflict = false): Promise<void> {
+  // 闸门:必须是"已完成拉档"的当前账号才许推——防空档新机覆写、防换号期间的旧定时器串档
+  if (useAuthStore.getState().status !== 'authed') return;
+  if (!syncedUser || syncedUser !== useAuthStore.getState().user) return;
+  dirty = false;
+  const body = JSON.stringify({ state: snapshot(), baseVersion: serverVersion });
+  const bytes = new Blob([body]).size;
+  try {
+    const res = await fetch(`${API_BASE}/state`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      ...(useKeepalive && bytes <= KEEPALIVE_LIMIT ? { keepalive: true } : {}),
+    });
+    if (res.status === 409 && !isRetryAfterConflict) {
+      // 别的页签/设备先写了:拉回远端并集合并,换新版本号重推一次
+      const remote = await fetchRemote();
+      if (remote?.state) {
+        mergeRemote(sanitize(remote.state));
+        serverVersion = remote.updatedAt;
+        return push(false, true);
+      }
+      dirty = true;
+      return;
+    }
+    if (!res.ok) {
+      dirty = true;
+      scheduleRetry();
+      return;
+    }
+    const data: unknown = await res.json().catch(() => null);
+    const updatedAt = (data as { updatedAt?: unknown })?.updatedAt;
+    if (typeof updatedAt === 'string') serverVersion = updatedAt;
+  } catch {
+    dirty = true; // 离线:退避后重试,或等下一次变化
+    scheduleRetry();
+  }
+}
+
+function schedulePush(delay = DEBOUNCE_MS): void {
+  dirty = true;
+  window.clearTimeout(pushTimer);
+  pushTimer = window.setTimeout(() => void push(), delay);
+}
+
+function scheduleRetry(): void {
+  window.clearTimeout(pushTimer);
+  pushTimer = window.setTimeout(() => {
+    if (dirty) void push();
+  }, RETRY_MS);
+}
+
+function flushNow(): void {
+  if (!dirty) return;
+  window.clearTimeout(pushTimer);
+  void push(true);
+}
+
+/** 登录/会话恢复:先拉服务器档,决定谁覆盖谁;成功后才开推送闸门 */
+async function adopt(user: string): Promise<boolean> {
+  const remote = await fetchRemote();
+  if (!remote) return false; // 拉档失败:闸门不开,这一轮完全不同步
+
+  if (remote.state) {
+    const clean = sanitize(remote.state);
+    applyingRemote = true;
+    try {
+      useAppStore.setState({ ...clean, topicStates: {}, live: null });
+      useAppStore.getState().rebuildStates();
+    } finally {
+      applyingRemote = false;
+    }
+    serverVersion = remote.updatedAt;
+    syncedUser = user;
+  } else {
+    // 服务器无档:本地若是别的账号留下的学习史,清空再认领
+    const lastUser = localStorage.getItem(LAST_USER_KEY);
+    if (lastUser && lastUser.toLowerCase() !== user.toLowerCase()) {
+      applyingRemote = true;
+      try {
+        useAppStore.getState().resetAll();
+      } finally {
+        applyingRemote = false;
+      }
+    }
+    serverVersion = null;
+    syncedUser = user; // 先开闸门再首推(push 闸门要看它)
+    await push();
+  }
+  try { localStorage.setItem(LAST_USER_KEY, user); } catch { /* 存储不可用:仅失去归属检查 */ }
+  return true;
+}
+
+/** App 启动时装一次:订阅两个 store,拉/推自动进行 */
+export function initStateSync(): void {
+  if (started) return;
+  started = true;
+
+  let adoptRetryTimer = 0;
+  const onAuth = (status: string, user: string | null) => {
+    // 任何登录态变化都先掐掉挂起的推送:旧账号的去抖定时器绝不许在新账号会话里开火
+    window.clearTimeout(pushTimer);
+    window.clearTimeout(adoptRetryTimer);
+    dirty = false;
+    if (status === 'authed' && user) {
+      if (syncedUser !== user) {
+        syncedUser = null;
+        serverVersion = null;
+        const tryAdopt = () => {
+          void adopt(user).then((ok) => {
+            // 拉档失败(断网/网关重启):30s 后再试,直到成功或登出
+            if (!ok && useAuthStore.getState().user === user) {
+              adoptRetryTimer = window.setTimeout(tryAdopt, 30_000);
+            }
+          });
+        };
+        tryAdopt();
+      }
+    } else {
+      syncedUser = null;
+      serverVersion = null;
+    }
+  };
+  useAuthStore.subscribe((s) => onAuth(s.status, s.user));
+  // initStateSync 装载时会话可能已恢复(装载顺序/HMR),补一次当前态
+  const auth = useAuthStore.getState();
+  onAuth(auth.status, auth.user);
+
+  useAppStore.subscribe((state, prev) => {
+    if (applyingRemote) return;
+    if (useAuthStore.getState().status !== 'authed') return;
+    if (state.global === prev.global && state.events === prev.events && state.reports === prev.reports) return;
+    schedulePush();
+  });
+
+  window.addEventListener('pagehide', flushNow);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushNow();
+  });
+}
