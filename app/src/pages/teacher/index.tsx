@@ -15,6 +15,7 @@ import { getTopic, TOPICS } from '../../data';
 import { demonName } from '../../engine/story';
 import { Radar } from '../review/Radar';
 import { Icon } from '../../components/ui/Icon';
+import { useDocTitle } from '../../hooks/useDocTitle';
 import s from './teacher.module.css';
 
 // ── 展示词表(与复盘页同一套口径,评价语言不允许分叉) ──
@@ -93,6 +94,7 @@ const BAR_MAX = 520;
 const rise = (i: number) => ({ animationDelay: `${Math.min(i * 75, 300)}ms` });
 
 export default function TeacherPage() {
+  useDocTitle('教师看板');
   const events = useAppStore((st) => st.events);
   const reports = useAppStore((st) => st.reports);
   const global = useAppStore((st) => st.global);

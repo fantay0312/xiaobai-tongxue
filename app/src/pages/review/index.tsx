@@ -9,11 +9,14 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type { LearnEventType, RadarScores, SessionMode } from '../../types';
 import { useAppStore } from '../../store/appStore';
-import { getTopic } from '../../data';
+import { getTopic, TOPICS } from '../../data';
 import { deriveDemonReport, deriveDiary, type DemonEncounter } from '../../engine/story';
+import { deriveSessionHonors } from '../../engine/honors';
+import { HonorRoll } from '../../components/story/HonorRoll';
 import { MasteryCertificate } from '../../components/story/MasteryCertificate';
 import { XiaobaiDiary } from '../../components/story/XiaobaiDiary';
 import { Icon } from '../../components/ui/Icon';
+import { useDocTitle } from '../../hooks/useDocTitle';
 import { Radar } from './Radar';
 import { RemedyPath } from './RemedyPath';
 import s from './review.module.css';
@@ -75,9 +78,12 @@ export default function ReviewPage() {
   const reports = useAppStore((st) => st.reports);
   const events = useAppStore((st) => st.events);
   const live = useAppStore((st) => st.live);
+  const global = useAppStore((st) => st.global);
+  const topicStates = useAppStore((st) => st.topicStates);
 
   const report = reports.find((r) => r.sessionId === sessionId);
   const topic = report ? getTopic(report.topicId) : undefined;
+  useDocTitle(topic ? `灯下批注 · ${topic.title}` : '灯下批注');
 
   const [openRemedy, setOpenRemedy] = useState<string | null>(
     () => report?.blindSpots.find((b) => b.mcId)?.mcId ?? null,
@@ -105,6 +111,10 @@ export default function ReviewPage() {
   // 叙事派生:纯函数、小数组,每帧直接算,不值得 memo
   const encounters = topic ? deriveDemonReport(topic, sessionEvents) : [];
   const diary = topic ? deriveDiary({ topic, sessionEvents, report }) : null;
+  // 下课钤印:课前/课后事件切片各复算一遍印匣,差集即本课新落之印(老档案回看同样成立)
+  const honors = sessionId
+    ? deriveSessionHonors({ events, reports, global, topicStates, topics: TOPICS }, sessionId)
+    : null;
 
   /** 「去救小白」:展开该心魔的补学微路径,并把对应盲区条目滚进视野 */
   const rescueXiaobai = (mcId: string) => {
@@ -137,6 +147,9 @@ export default function ReviewPage() {
 
       {/* 出师那一课:结业证书顶格,先于一切分栏(doc §7 仪式资产) */}
       {report.masteredNow && topic && <MasteryCertificate topic={topic} report={report} />}
+
+      {/* 下课钤印:本课新落的印章/晋级/升期,无新荣誉整条不渲染 */}
+      {honors && <HonorRoll honors={honors} />}
 
       <div className={s.layout}>
         <div className={s.main}>

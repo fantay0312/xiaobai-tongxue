@@ -13,6 +13,7 @@ import { Md } from '../../components/Md';
 import { Icon } from '../../components/ui/Icon';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import type { ChatMessage, SessionMode, XiaobaiMood } from '../../types';
+import { useDocTitle } from '../../hooks/useDocTitle';
 import s from './classroom.module.css';
 
 // 讲课进行中「不给学生看牌」:导演动作(误区注入/开窍复述/救援层级)一律不在现场显示——
@@ -110,6 +111,7 @@ export default function ClassroomPage() {
   const abandonSession = useAppStore((st) => st.abandonSession);
 
   const topic = getTopic(topicId);
+  useDocTitle(topic ? `学堂夜课 · ${topic.title}` : undefined);
   // 演示助手是一键满分讲稿 = 内置答案键,正式部署里对学生隐藏。
   // 只在本地开发(npm run dev)或答辩时显式带 ?demo=1 才出现,生产构建默认剥离。
   const demoEnabled = import.meta.env.DEV || sp.get('demo') === '1';

@@ -42,6 +42,15 @@ export interface AchievementInput {
 /** 「顿悟」判据:几轮之内讲到出师算速通 */
 const SWIFT_TURNS = 6;
 
+/** 「日课」判据:连续几个日历日都有开课记录 */
+const DAILY_RUN = 3;
+
+/** 本地日历日序号(整数,相邻日差 1)——只用事件自带时间戳,引擎不碰时钟 */
+function dayNumber(iso: string): number {
+  const d = new Date(iso);
+  return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86_400_000);
+}
+
 /** payload 数值闸口:坏档(手改 localStorage)里的非数值不许污染 reduce——与 teacher 页 num() 同口径 */
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 
@@ -104,9 +113,28 @@ export function deriveAchievements(input: AchievementInput): Achievement[] {
     return h >= 22 || h < 6;
   });
 
+  // 日课:连续 DAILY_RUN 个日历日都有开课,补全连串最后一天的第一课即落印时刻;
+  // 进度取历史最长连串(真实、可解释),中断重数不清零历史
+  const sessionStarts = of('session_started');
+  const dayFirst = new Map<number, LearnEvent>();
+  for (const e of sessionStarts) {
+    const dn = dayNumber(e.t);
+    if (!dayFirst.has(dn)) dayFirst.set(dn, e);
+  }
+  const days = [...dayFirst.keys()].sort((a, b) => a - b);
+  let bestRun = days.length > 0 ? 1 : 0;
+  let run = bestRun;
+  let dailyTrigger: LearnEvent | null = null;
+  for (let i = 1; i < days.length; i += 1) {
+    run = days[i] === days[i - 1] + 1 ? run + 1 : 1;
+    bestRun = Math.max(bestRun, run);
+    if (!dailyTrigger && run >= DAILY_RUN) dailyTrigger = dayFirst.get(days[i]) ?? null;
+  }
+
   return [
     countSeal('first-lesson', '开讲', '启', '第一次把小白领进讲解舱', 'ink', of('session_started'), 1),
     countSeal('first-correct', '正误', '正', '第一次把小白从误区里拉回来', 'ink', of('misconception_corrected'), 1),
+    countSeal('corrections-5', '破迷', '破', '五次把小白从误区里拉回来,迷雾尽破', 'cinnabar', of('misconception_corrected'), 5),
     countSeal('first-analogy', '妙喻', '喻', '第一句被小白记进小本本的金句', 'ink', analogies, 1),
     countSeal('analogy-grove', '喻林', '林', '金句攒满五句,张口即比方', 'cinnabar', analogies, 5),
     {
@@ -118,8 +146,16 @@ export function deriveAchievements(input: AchievementInput): Achievement[] {
     },
     countSeal('swift-master', '顿悟', '悟', `${SWIFT_TURNS} 轮之内把一门课讲到出师`, 'cinnabar', swift, 1),
     countSeal('first-master', '出师', '师', '第一门课讲到小白出师', 'cinnabar', masteries, 1),
+    countSeal('masters-5', '五车', '车', '学富五车——把五门课讲到小白出师', 'gold', masteries, 5),
     countSeal('hits-25', '积微', '积', '讲明白的要点累计二十五处', 'ink', of('checklist_hit'), 25),
     countSeal('sessions-10', '不辍', '勤', '开课十讲,弦歌不辍', 'ink', of('session_started'), 10),
+    {
+      id: 'daily-run', name: '日课', glyph: '日',
+      desc: `连着 ${DAILY_RUN} 天,书斋里天天有讲书声`, tier: 'cinnabar',
+      earnedAt: dailyTrigger?.t ?? null,
+      progress: { now: bestRun, target: DAILY_RUN },
+      evidence: dailyTrigger?.evidence ?? null,
+    },
     countSeal('review-pass', '温故', '温', '小白忘了的,你帮他重新想了起来', 'ink', of('review_passed'), 1),
     countSeal('night-read', '夜读', '夜', '子夜灯下,仍有讲书声', 'ink', nightly, 1),
     countSeal('mend-heaven', '补天', '补', '小白曾被带偏的课,你重新讲到了出师', 'gold', mended, 1),

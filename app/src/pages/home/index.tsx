@@ -9,6 +9,7 @@ import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { MentorLetter } from '../../components/story/MentorLetter';
 import { JourneyRibbon } from '../../components/story/JourneyRibbon';
 import { Bookshelf } from './Bookshelf';
+import { useDocTitle } from '../../hooks/useDocTitle';
 import styles from './home.module.css';
 import anchor from '../../styles/anchor.module.css';
 
@@ -22,6 +23,7 @@ const LOOP_STEPS: { num: string; name: string; desc: string }[] = [
 ];
 
 export default function HomePage() {
+  useDocTitle('书斋门厅');
   const level = useAppStore((s) => s.global.learningLevel);
   const hasStory = useAppStore((s) => s.events.length > 0);
 

@@ -5,6 +5,7 @@ import { Icon } from '../../components/ui/Icon';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { useAppStore } from '../../store/appStore';
 import type { XiaobaiQuizResult } from '../../types';
+import { useDocTitle } from '../../hooks/useDocTitle';
 import { ExamQuestion } from './ExamQuestion';
 import {
   BEAT_INDEX, EXAM_BEATS, deriveUnderstanding, examWhisper, thinkingDuration, type ExamBeat,
@@ -29,6 +30,7 @@ export default function ExamPage() {
   const level = useAppStore((st) => st.global.learningLevel);
   const report = reports.find((item) => item.sessionId === sessionId);
   const topic = report ? getTopic(report.topicId) : undefined;
+  useDocTitle(topic ? `送小白赴考 · ${topic.title}` : '送小白赴考');
   const quiz = report?.quiz ?? null;
   const topicState = useAppStore((st) => report ? st.topicStates[report.topicId] : undefined);
 
@@ -135,6 +137,18 @@ export default function ExamPage() {
             <span className={s.gateMark} aria-hidden="true"><Icon name="school" size={23} /></span>
             <XiaobaiAvatar mood="shy" level={level} variant="paper" size={190} />
             <span className={s.satchel}>小书箱已背好</span>
+            <div className={s.ticket} aria-label="小白的准考证">
+              <p className={s.ticketHead}>
+                准考证
+                <span className={s.ticketStamp} aria-hidden="true">考</span>
+              </p>
+              <dl className={s.ticketRows}>
+                <div><dt>考生</dt><dd>小白</dd></div>
+                <div><dt>科目</dt><dd>{topic.title}</dd></div>
+                <div><dt>试题</dt><dd>{quiz.answers.length} 道</dd></div>
+                <div><dt>监考</dt><dd>导演</dd></div>
+              </dl>
+            </div>
           </div>
           <div className={s.sendoffBody}>
             <p className={s.kicker}>第三章 · 送小白赴考</p>
@@ -181,6 +195,12 @@ export default function ExamPage() {
               {correctCount(quiz)} 题答稳 · {quiz.answers.length - correctCount(quiz)} 题留下墨痕
             </p>
             <blockquote className={s.resultQuote}>「{resultLine(quiz.score)}」</blockquote>
+            {report.masteredNow && (
+              <p className={s.resultMastered}>
+                <Icon name="graduation" size={17} />
+                这一场过后，小白在「{topic.title}」上正式出师——结业证书已收进灯下批注。
+              </p>
+            )}
             <p className={s.resultNote}>分数只来自随堂测验；考场独白只是把小白当时的理解状态说给你听。</p>
             <Link to={`/review/${report.sessionId}`} className={s.primaryBtn}>
               <Icon name="pen" size={18} />

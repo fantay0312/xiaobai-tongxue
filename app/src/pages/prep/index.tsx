@@ -19,6 +19,7 @@ import { Md } from '../../components/Md';
 import { PrepCoach } from '../../components/coach/PrepCoach';
 import { Icon } from '../../components/ui/Icon';
 import type { Misconception, PrepReference, QuestionLevel } from '../../types';
+import { useDocTitle } from '../../hooks/useDocTitle';
 import s from './prep.module.css';
 
 /** 追问层级 → 路线图徽章文案(checklist 无 L4;L4 = 误区注入,以途中试探标记呈现) */
@@ -114,6 +115,7 @@ export default function PrepPage() {
 function PrepRoom({ topicId }: { topicId: string }) {
   const navigate = useNavigate();
   const topic = getTopic(topicId);
+  useDocTitle(topic ? `灯下温书 · ${topic.title}` : undefined);
   const usable = !!topic && !topic.locked;
   const completePrep = useAppStore((st) => st.completePrep);
   const prepDone = useAppStore((st) => st.topicStates[topicId]?.prepDone ?? false);

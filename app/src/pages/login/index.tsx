@@ -8,9 +8,11 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Seal } from '../../components/shell/Seal';
 import { Icon } from '../../components/ui/Icon';
 import { useAuthStore } from '../../store/authStore';
+import { useDocTitle } from '../../hooks/useDocTitle';
 import s from './login.module.css';
 
 export default function LoginPage() {
+  useDocTitle('登入书斋');
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const status = useAuthStore((st) => st.status);

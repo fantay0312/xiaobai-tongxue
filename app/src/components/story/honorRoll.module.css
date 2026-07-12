@@ -1,0 +1,104 @@
+/* 下课钤印 —— 复盘页落印仪式条。
+   印章语境:朱印走 --seal-red / 金印走 --amber-ink / 墨印走 --ink(豁免制度,勿改 --cinnabar)。
+   chip 的 stampIn 是本模块局部关键帧(盖章落下),入场整条走 global(rise)。 */
+
+/* 版心由复盘页 .page 统一约束,这里只管自己的下边距 */
+.roll {
+  margin-bottom: var(--gap-loose);
+  padding: var(--gap) var(--gap-loose);
+  background: linear-gradient(var(--seal-red-wash), var(--seal-red-wash)) var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-left: 3px solid var(--seal-red);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-paper);
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-tight);
+  flex-wrap: wrap;
+  margin-bottom: var(--gap-tight);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  color: var(--seal-red);
+  letter-spacing: 0.12em;
+}
+
+.note {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-tight);
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
+  padding: var(--gap-tight) var(--gap);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  animation: stampIn 0.42s var(--ease-out) backwards;
+}
+
+.glyph {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border: 2px solid currentcolor;
+  border-radius: var(--radius-s);
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  transform: rotate(-3deg);
+}
+
+.body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.name {
+  font-size: var(--fs-body);
+  color: var(--ink);
+}
+
+.desc {
+  font-size: var(--fs-tiny);
+  color: var(--ink-soft);
+}
+
+.tierInk .glyph { color: var(--ink); background: var(--ink-wash); }
+.tierCinnabar .glyph { color: var(--seal-red); background: var(--seal-red-wash); }
+.tierGold .glyph { color: var(--amber-ink); background: var(--amber-wash); }
+
+/* 晋级/升期:不是印章,用青印与黛绿区别于印匣语境 */
+.rankChip .glyph { color: var(--azure-deep); background: var(--azure-wash); border-radius: 50%; }
+.pupilChip .glyph { color: var(--jade-ink); background: var(--jade-wash); border-radius: 50%; }
+
+/* 盖章落下:从悬空微放大压到纸面,一次性动作 */
+@keyframes stampIn {
+  from {
+    opacity: 0;
+    transform: scale(1.25) rotate(1.5deg);
+  }
+}
+
+@media (max-width: 560px) {
+  .roll { padding: var(--gap) var(--gap); }
+  .chip { width: 100%; }
+}

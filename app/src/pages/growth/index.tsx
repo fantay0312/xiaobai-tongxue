@@ -22,6 +22,7 @@ import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { XiaobaiLetter } from '../../components/story/XiaobaiLetter';
 import { MemoryPanorama } from '../../components/story/MemoryPanorama';
 import { Icon, type IconName } from '../../components/ui/Icon';
+import { useDocTitle } from '../../hooks/useDocTitle';
 import { KnowledgeMap, type MapNode } from './KnowledgeMap';
 import s from './growth.module.css';
 
@@ -165,6 +166,7 @@ function narrate(en: SessionEntry, title: string): string {
 }
 
 export default function GrowthPage() {
+  useDocTitle('成长册');
   const navigate = useNavigate();
   const global = useAppStore((st) => st.global);
   const events = useAppStore((st) => st.events);
@@ -363,8 +365,12 @@ export default function GrowthPage() {
               <div className={s.rankBody}>
                 <p className={s.rankLabel}>先生的称号 · 由真实课堂留下</p>
                 <p className={s.rankTitle}>{rank.title}</p>
-                <p className={s.rankScore}>已教到出师 <b className={s.num}>{global.topicsMastered}</b> 门 · 实印 <b className={s.num}>{earnedCount}</b> 枚</p>
-                <p className={s.rankNext}>称号只由备课、讲明要点、纠正误区与出师记录派生。</p>
+                <p className={s.rankScore}>已教到出师 <b className={s.num}>{global.topicsMastered}</b> 门 · 实印 <b className={s.num}>{earnedCount}</b> 枚 · 履历 <b className={s.num}>{rank.score}</b> 分</p>
+                <p className={s.rankNext}>
+                  {rank.nextTitle && rank.nextAt !== null
+                    ? <>距「{rank.nextTitle}」还差 <b className={s.num}>{rank.nextAt - rank.score}</b> 分——备课、讲明要点、纠正误区、出师,都在攒。</>
+                    : '已至宗师——师道至此,桃李成蹊。'}
+                </p>
               </div>
             </div>
             {step && (

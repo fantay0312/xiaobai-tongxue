@@ -14,6 +14,7 @@ import { Icon } from '../../components/ui/Icon';
 import { TOPICS, XIAOBAI_LINES } from '../../data';
 import { tokenizationDemo, tokenizationTopic } from '../../data/topics/tokenization';
 import type { Topic } from '../../types';
+import { useDocTitle } from '../../hooks/useDocTitle';
 import s from './landing.module.css';
 import anchor from '../../styles/anchor.module.css';
 
@@ -155,6 +156,7 @@ function cnCount(n: number): string {
 }
 
 export default function LandingPage() {
+  useDocTitle();
   const level = useAppStore((st) => st.global.learningLevel);
   const pageRef = useRef<HTMLDivElement>(null);
 
