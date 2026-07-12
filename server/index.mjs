@@ -18,6 +18,12 @@ import { readFileSync, existsSync, statSync, writeFileSync, renameSync, mkdirSyn
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
+import dns from 'node:dns';
+
+// 腾讯云主机无 IPv6 出网,而 openrouter.ai 等上游把 AAAA 排在解析结果前面;
+// Node fetch(undici)不做 Happy Eyeballs,按序拿 IPv6 直连会 ENETUNREACH 秒败
+// (同机 curl 能通即此因)。强制 IPv4 优先,对 A-only 域名(deepseek)无影响。
+dns.setDefaultResultOrder('ipv4first');
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
