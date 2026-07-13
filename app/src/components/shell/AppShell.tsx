@@ -1,5 +1,5 @@
 /**
- * 全局外壳 —— 顶部导航 + 设置抽屉。
+ * 全局外壳 —— 顶部导航 + 设置弹窗。
  * 品牌章 SealMark 与 public/favicon.svg 是同一枚「白」字白文印,改任一侧必须同步。
  * /teach 路由下切换为「夜自习」深色透明变体(粉笔白文字),
  * 页面根不铺纸色底,由讲解舱自铺黑板底。
@@ -8,7 +8,7 @@
  */
 import { useCallback, useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { SettingsDrawer } from './SettingsDrawer';
+import { SettingsDialog } from './SettingsDialog';
 import { Seal } from './Seal';
 import { StoryTrail } from '../story/StoryTrail';
 import { Icon } from '../ui/Icon';
@@ -91,6 +91,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             type="button"
             className={styles.gearBtn}
             onClick={() => setSettingsOpen(true)}
+            aria-haspopup="dialog"
             aria-label="打开设置"
             title="设置"
           >
@@ -104,7 +105,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className={styles.main}>{children}</main>
 
-      <SettingsDrawer open={settingsOpen} onClose={closeSettings} />
+      <SettingsDialog open={settingsOpen} onClose={closeSettings} />
     </div>
   );
 }

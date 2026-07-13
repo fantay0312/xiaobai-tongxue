@@ -43,7 +43,8 @@ interface SpotRect {
 const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/** 场上是否还开着别的对话框(设置抽屉常驻 DOM,关着时挂 aria-hidden,须排除) */
+/** 场上是否还开着别的对话框(拜师帖/设置弹窗都按需挂载;
+    设置弹窗退场余像期间挂 aria-hidden——该排除保证不把谢幕中的窗当在场) */
 const anyDialogVisible = () =>
   [...document.querySelectorAll('[role="dialog"]')].some(
     (d) => d.getAttribute('aria-hidden') !== 'true',
@@ -86,7 +87,7 @@ export function Tour({ tourKey, steps }: { tourKey: TourKey; steps: TourStep[] }
     setLive(present);
   }, []);
 
-  /** 走完与跳过都算看过:不再自动上前,想重看走设置抽屉「重新引路」 */
+  /** 走完与跳过都算看过:不再自动上前,想重看走设置弹窗「重新引路」 */
   const close = useCallback(() => {
     markTourDone(tourKey);
     setLive(null);
@@ -113,7 +114,7 @@ export function Tour({ tourKey, steps }: { tourKey: TourKey; steps: TourStep[] }
     let timer = 0;
     const fire = () => {
       if (holdByLetter || isTourDone(tourKey)) return;
-      // 保险丝:场上还有别的可见弹层(拜师帖/设置抽屉)就再等等——
+      // 保险丝:场上还有别的可见弹层(拜师帖/设置弹窗)就再等等——
       // 事件礼让之外的兜底,防任何时序下引路压到别的对话框上
       if (anyDialogVisible()) {
         schedule(500);
@@ -143,8 +144,8 @@ export function Tour({ tourKey, steps }: { tourKey: TourKey; steps: TourStep[] }
     };
   }, [tourKey, openTour]);
 
-  /* 设置抽屉「重新引路」清痕广播:当前页的引路稍等抽屉滑走再重开;
-     抽屉若还开着(或有别的弹层)就每半秒探一次,关了再上前 */
+  /* 设置弹窗「重新引路」清痕广播:当前页的引路稍等弹窗收场再重开;
+     弹窗若还开着(或有别的弹层)就每半秒探一次,关了再上前 */
   useEffect(
     () =>
       subscribeTours(() => {

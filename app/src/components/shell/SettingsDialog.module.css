@@ -1,0 +1,622 @@
+/* 设置弹窗:居中双栏册页 —— 淡墨罩 + 左目录 + 右详情(2026-07-13 由右侧抽屉改制) */
+
+/* z-index 90:盖过拜师帖(60)与吸顶头(40),与旧抽屉同档 */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(var(--gap-tight), 3vw, var(--gap-loose));
+  background: color-mix(in oklab, var(--ink) 40%, transparent);
+  animation: scrimIn var(--t-med) var(--ease-out) backwards;
+}
+
+@keyframes scrimIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 窗体:固定高度的册页,换章时框不跳动;小视口整体收缩 */
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(46rem, 100%);
+  height: min(34rem, 100%);
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lift);
+  overflow: hidden;
+  animation: cardIn var(--t-med) var(--ease-out) backwards;
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 退场余像:TSX 在 open 落下后多留 190ms 播本组动画再卸载;
+   forwards 保持谢幕帧到卸载(此间 pointer-events 已关,无交互态可压) */
+.overlayOut {
+  pointer-events: none;
+  animation: scrimOut var(--t-fast) var(--ease-out) forwards;
+}
+
+@keyframes scrimOut {
+  to {
+    opacity: 0;
+  }
+}
+
+.overlayOut .card {
+  animation: cardOut var(--t-fast) var(--ease-out) forwards;
+}
+
+@keyframes cardOut {
+  to {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+}
+
+/* 减动效:TSX 会直接跳过退场余像,这里的兜底保证即便渲染到也不动 */
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .card,
+  .overlayOut,
+  .overlayOut .card {
+    animation: none;
+  }
+}
+
+/* ── 头部 ── */
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--gap-tight) var(--gap-tight) var(--gap-tight) var(--gap);
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--ink);
+}
+
+.closeBtn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+  line-height: 1;
+  padding: 0;
+  border-radius: var(--radius-s);
+  transition:
+    color var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out);
+}
+
+/* 视觉不变,命中区扩到 ≥40px */
+.closeBtn::after {
+  content: '';
+  position: absolute;
+  inset: -0.25rem;
+}
+
+.closeBtn:hover {
+  color: var(--ink);
+  background: var(--ink-wash);
+}
+
+/* ── 双栏主体 ── */
+
+.body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+/* 左目录:淡瓷青衬底,像册页的目录页 */
+.rail {
+  flex: 0 0 10.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--gap-tight);
+  background: var(--paper-warm);
+  border-right: 1px solid var(--paper-edge);
+  overflow-y: auto;
+}
+
+.railBtn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.65rem;
+  border: none;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: var(--fs-small);
+  text-align: left;
+  transition:
+    background var(--t-fast) var(--ease-out),
+    color var(--t-fast) var(--ease-out);
+}
+
+.railBtn:hover {
+  background: var(--ink-wash);
+  color: var(--ink);
+}
+
+.railBtn[aria-selected='true'] {
+  background: var(--azure-wash);
+  color: var(--azure-deep);
+  font-weight: 600;
+}
+
+/* 目录"当前章"的墨签:选中项左缘一枚短墨线 */
+.railBtn[aria-selected='true']::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 2px;
+  height: 1.1em;
+  transform: translateY(-50%);
+  background: var(--azure);
+  border-radius: 1px;
+}
+
+.railIcon {
+  flex: none;
+  opacity: 0.85;
+}
+
+/* 右详情:换章独立滚动 */
+.pane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gap-tight);
+  padding: var(--gap);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.paneHead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+}
+
+.paneTitle {
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.paneDesc {
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  line-height: 1.7;
+}
+
+/* ── 模式切换(单选卡) ── */
+
+.modeGroup {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+}
+
+.modeBtn {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.65rem;
+  row-gap: 2px;
+  align-items: center;
+  text-align: left;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  background: var(--paper);
+  color: var(--ink-soft);
+  transition:
+    border-color var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out),
+    color var(--t-fast) var(--ease-out);
+}
+
+.modeBtn:hover {
+  border-color: var(--line-strong);
+  background: var(--paper-warm);
+}
+
+.modeBtnActive,
+.modeBtnActive:hover {
+  border-color: var(--azure);
+  background: var(--azure-wash);
+  color: var(--ink);
+}
+
+/* 选点:空圈,选中时描边增厚挤出圆心(纸色芯) */
+.modeDot {
+  grid-row: 1;
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 1.5px solid var(--dust);
+  border-radius: 50%;
+  background: var(--paper);
+  transition:
+    border-color var(--t-fast) var(--ease-out),
+    border-width var(--t-fast) var(--ease-out);
+}
+
+.modeBtnActive .modeDot {
+  border-color: var(--azure);
+  border-width: 4.5px;
+}
+
+.modeName {
+  grid-row: 1;
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
+}
+
+.modeDesc {
+  grid-column: 2;
+  font-size: var(--fs-tiny);
+  /* 模式说明是功能性文案,faint 在 11px 下太虚 */
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
+/* ── 详情表单 ── */
+
+.fields {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gap-tight);
+}
+
+.split {
+  align-self: stretch;
+  border: none;
+  border-top: 1px solid var(--paper-edge);
+  margin: var(--gap-hair) 0;
+}
+
+.field {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+}
+
+.fieldLabel {
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+
+.input {
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--fs-small);
+  transition:
+    border-color var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out);
+}
+
+.input:hover {
+  border-color: var(--line-strong);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--azure);
+  box-shadow: 0 0 0 3px var(--azure-wash);
+}
+
+.input::placeholder {
+  color: var(--ink-faint);
+}
+
+/* ── 动作钮与连接测试 ── */
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.95rem;
+  border: 1px solid var(--azure);
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--azure);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.actionBtn:hover {
+  background: var(--azure-wash);
+}
+
+.actionBtn:active {
+  transform: translateY(1px);
+}
+
+.actionBtn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+  transform: none;
+}
+
+.testRow {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--gap-tight);
+}
+
+.testStatus {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  font-size: var(--fs-tiny);
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.testIcon {
+  flex: none;
+  margin-top: 0.1em;
+}
+
+.testOk {
+  color: var(--azure);
+}
+
+.testFail {
+  color: var(--cinnabar);
+}
+
+/* ── 温度滑条(自绘轨道:靛青已行程 + 淡墨余程) ── */
+
+.sliderRow {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
+}
+
+.slider {
+  --fill: 50%;
+  flex: 1;
+  appearance: none;
+  height: 1.1rem;
+  background: transparent;
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--azure) var(--fill), var(--ink-wash) var(--fill));
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: calc((4px - 1.1rem) / 2);
+  border: 2px solid var(--azure);
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 1px 4px color-mix(in oklab, var(--ink) 25%, transparent);
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.slider::-webkit-slider-thumb:hover,
+.slider:active::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+
+.slider::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--azure) var(--fill), var(--ink-wash) var(--fill));
+}
+
+.slider::-moz-range-thumb {
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid var(--azure);
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 1px 4px color-mix(in oklab, var(--ink) 25%, transparent);
+}
+
+.sliderEnd {
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.sliderValue {
+  font-family: var(--font-code);
+  font-size: var(--fs-small);
+  color: var(--azure);
+  min-width: 2.5em;
+  text-align: right;
+}
+
+/* 当前档位的口吻注解:眉批式小笺,左缘一道墨签 */
+.temperNote {
+  align-self: stretch;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: var(--gap-tight) 0.9rem;
+  background: var(--paper-warm);
+  border-left: 2px solid var(--azure);
+  border-radius: 0 var(--radius-s) var(--radius-s) 0;
+}
+
+.temperName {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.temperLine {
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+
+/* ── 引路一览 ── */
+
+.tourList {
+  align-self: stretch;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+}
+
+.tourRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-tight);
+  padding: 0.6rem 0.9rem;
+}
+
+.tourRow + .tourRow {
+  border-top: 1px solid var(--paper-edge);
+}
+
+.tourName {
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.tourDone {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+}
+
+.tourDoneIcon {
+  flex: none;
+}
+
+.tourTodo {
+  font-size: var(--fs-tiny);
+  color: var(--azure);
+}
+
+/* ── 底注与提示 ── */
+
+.hint {
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  line-height: 1.7;
+}
+
+.foot {
+  padding: var(--gap-tight) var(--gap);
+  border-top: 1px solid var(--paper-edge);
+  background: var(--paper-warm);
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  line-height: 1.7;
+}
+
+/* ── 窄屏:目录横排在顶,窗体撑满 ── */
+
+@media (max-width: 560px) {
+  .overlay {
+    padding: var(--gap-tight);
+  }
+
+  .card {
+    height: 100%;
+  }
+
+  .body {
+    flex-direction: column;
+  }
+
+  .rail {
+    flex: none;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: var(--gap-hair) var(--gap-tight);
+    border-right: none;
+    border-bottom: 1px solid var(--paper-edge);
+    scrollbar-width: none;
+  }
+
+  .railBtn {
+    white-space: nowrap;
+  }
+
+  /* 横排目录的"当前章"墨签换到底缘 */
+  .railBtn[aria-selected='true']::before {
+    top: auto;
+    bottom: 0;
+    left: 0.65rem;
+    width: auto;
+    right: 0.65rem;
+    height: 2px;
+    transform: none;
+  }
+}
