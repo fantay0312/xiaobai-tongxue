@@ -2,6 +2,7 @@
 
 .blob {
   position: relative;
+  isolation: isolate;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -9,11 +10,12 @@
   background: radial-gradient(circle at 35% 30%, var(--paper), var(--paper-edge));
   font-family: var(--font-display);
   color: var(--ink);
-  animation: breathe 3.2s var(--ease-out) infinite;
+  animation: breathe 3.2s var(--ease-loop) infinite;
 }
 
 .face {
   position: relative;
+  z-index: 2;
   width: 2.7em;
   height: 1.5em;
   transform: translateY(0.16em);
@@ -106,7 +108,7 @@
 .accessory,
 .glasses {
   position: absolute;
-  z-index: 1;
+  z-index: 3;
   display: grid;
   place-items: center;
   color: var(--azure-deep);
@@ -140,6 +142,63 @@
   box-shadow: 0 0 32px color-mix(in oklab, var(--chalk) 15%, transparent);
   background: radial-gradient(circle at 35% 30%, var(--chalk), var(--chalk-soft));
 }
+
+.limb {
+  position: absolute;
+  z-index: -1;
+  display: block;
+  background: radial-gradient(circle at 35% 30%, var(--paper), var(--paper-edge));
+}
+
+.armLeft,
+.armRight {
+  top: 44%;
+  width: 22%;
+  height: 42%;
+  border-radius: 50%;
+}
+
+.armLeft { left: -5%; transform: rotate(18deg); }
+.armRight { right: -5%; transform: rotate(-18deg); }
+
+.footLeft,
+.footRight {
+  bottom: -4%;
+  width: 35%;
+  height: 18%;
+  border-radius: 50%;
+}
+
+.footLeft { left: 13%; transform: rotate(-4deg); }
+.footRight { right: 13%; transform: rotate(4deg); }
+
+.collar {
+  position: absolute;
+  z-index: 2;
+  top: 67%;
+  left: 50%;
+  width: 24%;
+  height: 15%;
+  color: var(--azure-deep);
+  transform: translateX(-50%);
+}
+
+.collar i {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 6%;
+  height: 100%;
+  border-radius: 99px;
+  background: currentColor;
+  transform-origin: top;
+}
+
+.collar i:first-child { transform: rotate(42deg); }
+.collar i:last-child { transform: rotate(-42deg); }
+
+.board .limb { background: radial-gradient(circle at 35% 30%, var(--chalk), var(--chalk-soft)); }
+.board .collar { color: var(--chalk-amber); }
 
 @keyframes breathe {
   0%, 100% { transform: scale(1); }

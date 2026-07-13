@@ -42,8 +42,12 @@ export function XiaobaiAvatar({
       aria-label={`小白(${mood})`}
       role="img"
     >
-      {!ready && <div style={{ position: 'absolute', inset: 0 }}>{blob}</div>}
-      <AvatarErrorBoundary fallback={blob}>
+      {!ready && (
+        <div style={{ position: 'absolute', inset: 0 }} aria-hidden="true">
+          {blob}
+        </div>
+      )}
+      <AvatarErrorBoundary fallback={<div aria-hidden="true">{blob}</div>}>
         <Suspense fallback={null}>
           <SceneCanvas
             mood={mood}

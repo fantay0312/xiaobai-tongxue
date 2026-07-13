@@ -30,6 +30,14 @@ export function FallbackBlob({ mood, level, size = 240, variant = 'paper' }: Fal
       role="img"
       aria-label="小白的动态形象"
     >
+      <span className={`${styles.limb} ${styles.armLeft}`} aria-hidden="true" />
+      <span className={`${styles.limb} ${styles.armRight}`} aria-hidden="true" />
+      <span className={`${styles.limb} ${styles.footLeft}`} aria-hidden="true" />
+      <span className={`${styles.limb} ${styles.footRight}`} aria-hidden="true" />
+      <span className={styles.collar} aria-hidden="true">
+        <i />
+        <i />
+      </span>
       <span className={`${styles.accessory} ${styles[`level${level}`]}`} aria-hidden="true">
         <Icon name={LEVEL_ICON[level]} size={Math.round(size * 0.2)} strokeWidth={1.7} />
       </span>

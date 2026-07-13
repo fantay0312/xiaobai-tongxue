@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TOPICS } from '../../data';
+import { COURSE_COVERS } from '../../data/courseCovers';
 import { useAppStore } from '../../store/appStore';
 import type { Topic, TopicState } from '../../types';
 import styles from './shelf.module.css';
@@ -82,6 +83,7 @@ export function Bookshelf() {
   const courses = groupByCourse(TOPICS);
   const [openCourse, setOpenCourse] = useState(courses[0]?.course ?? '');
   const current = courses.find((c) => c.course === openCourse) ?? courses[0];
+  const currentCover = COURSE_COVERS[current.course];
 
   const openTopic = (topic: Topic) => {
     if (topic.locked) return;
@@ -108,6 +110,7 @@ export function Bookshelf() {
           {courses.map(({ course, topics }, i) => {
             const open = course === current.course;
             const mastered = masteredOf(topics);
+            const cover = COURSE_COVERS[course];
             return (
               <button
                 key={course}
@@ -121,6 +124,18 @@ export function Bookshelf() {
                 aria-controls="shelf-open"
                 onClick={() => setOpenCourse(course)}
               >
+                {cover && (
+                  <img
+                    className={styles.volArt}
+                    src={cover.src}
+                    alt=""
+                    width={512}
+                    height={768}
+                    loading="lazy"
+                    decoding="async"
+                    aria-hidden="true"
+                  />
+                )}
                 <span className={styles.volMark} aria-hidden="true">读</span>
                 <span className={`${styles.volSlip} ${course.length > 6 ? styles.volSlipLong : ''}`}>
                   {course}
@@ -152,10 +167,29 @@ export function Bookshelf() {
         aria-label={`《${current.course}》章节`}
       >
         <div className={styles.openHead}>
-          <h3 className={styles.openName}>《{current.course}》</h3>
-          <span className={styles.courseNote}>
-            出师 {masteredOf(current.topics)}/{current.topics.length}
-          </span>
+          {currentCover && (
+            <div className={styles.courseCover} aria-hidden="true">
+              <img
+                src={currentCover.src}
+                alt=""
+                width={512}
+                height={768}
+                loading="lazy"
+                decoding="async"
+              />
+              <span className={styles.courseCoverMark}>{currentCover.mark}</span>
+            </div>
+          )}
+          <div className={styles.openHeadCopy}>
+            {currentCover && <p className={styles.coverEyebrow}>{currentCover.eyebrow}</p>}
+            <div className={styles.openTitleRow}>
+              <h3 className={styles.openName}>《{current.course}》</h3>
+              <span className={styles.courseNote}>
+                出师 {masteredOf(current.topics)}/{current.topics.length}
+              </span>
+            </div>
+            {currentCover && <p className={styles.coverBlurb}>{currentCover.blurb}</p>}
+          </div>
           <p className={styles.legend} aria-hidden="true">
             <span className={`${styles.dot} ${styles.dotJade}`} />出师
             <span className={`${styles.dot} ${styles.dotAmber}`} />待复习

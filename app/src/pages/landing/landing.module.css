@@ -696,6 +696,7 @@
   content: '';
   position: absolute;
   inset: 0;
+  z-index: 1;
   pointer-events: none;
   background:
     linear-gradient(
@@ -706,6 +707,19 @@
       color-mix(in oklab, var(--ink) 40%, transparent)
     ),
     linear-gradient(180deg, transparent 78%, color-mix(in oklab, var(--ink) 28%, transparent));
+}
+
+.volArt {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.34;
+  filter: saturate(0.72) contrast(1.08);
+  transform: scale(1.01);
+  transition: opacity var(--t-med) var(--ease-out), transform var(--t-med) var(--ease-out);
 }
 
 /* 三色布面:靛青 / 黛墨 / 茶褐 */
@@ -724,6 +738,7 @@
 /* 函套题签:白纸双线框,竖排课名 */
 .volSlip {
   position: relative;
+  z-index: 2;
   flex: 0 1 auto;
   min-height: 0;
   max-width: calc(100% - 10px);
@@ -750,6 +765,7 @@
 /* 书口小字:汉字讲数,月白直书深布 */
 .volMeta {
   position: relative;
+  z-index: 2;
   flex: none;
   font-family: var(--font-display);
   font-size: var(--fs-tiny);
@@ -797,6 +813,11 @@
 /* 整柜 hover:函轻轻抬一下,像被人伸手要取 */
 .caseLink:hover .vol {
   transform: translateY(-4px);
+}
+
+.caseLink:hover .volArt {
+  opacity: 0.48;
+  transform: scale(1.04);
 }
 
 .caseLink:hover .caseCaption {
@@ -1000,7 +1021,8 @@
 
   .cta:hover .ctaSeal,
   .bandCta:hover .ctaSeal,
-  .caseLink:hover .vol {
+  .caseLink:hover .vol,
+  .caseLink:hover .volArt {
     transform: none;
   }
 }

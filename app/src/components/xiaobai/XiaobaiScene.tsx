@@ -4,20 +4,23 @@
  * 动效原则:一切过渡走阻尼插值(ease-out 质感),禁止 elastic。
  */
 import { useEffect, useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { XiaobaiMood } from '../../types';
 import { LevelAccessory } from './Accessories';
 import { createBlobMaterial } from './blobMaterial';
 import { BLINK_MOODS, drawFace, FACE_CANVAS_SIZE } from './faceTexture';
 import { MOOD_MOTION } from './moodMotion';
-import { AZURE_RIM, BOARD_DEEP, CHALK, CHALK_AMBER, INK_SOFT, PAPER_EDGE } from './palette';
+import { AZURE_RIM, CHALK, PAPER_EDGE } from './palette';
+import { ContactShadow, SceneLights } from './SceneEnvironment';
+import { StudentSilhouette } from './StudentSilhouette';
 
 export interface XiaobaiSceneProps {
   mood: XiaobaiMood;
   level: 1 | 2 | 3 | 4 | 5;
   speaking: boolean;
   variant: 'paper' | 'board';
+  reducedMotion?: boolean;
   /** 星尘粒子(讲解舱 Stage 用) */
   stardust?: boolean;
 }
@@ -25,12 +28,12 @@ export interface XiaobaiSceneProps {
 /* ────────────────── 脸:CanvasTexture + crossfade ────────────────── */
 
 const FACE_FADE_SECONDS = 0.26;
-
 function easeOutCubic(x: number) {
   return 1 - Math.pow(1 - x, 3);
 }
 
-function useFaceTexture(mood: XiaobaiMood) {
+function useFaceTexture(mood: XiaobaiMood, reducedMotion: boolean) {
+  const invalidate = useThree((state) => state.invalidate);
   const made = useMemo(() => {
     const canvas = document.createElement('canvas');
     canvas.width = FACE_CANVAS_SIZE;
@@ -48,10 +51,21 @@ function useFaceTexture(mood: XiaobaiMood) {
   const blink = useRef({ closed: false, timer: 1.8 });
 
   useEffect(() => {
+    if (reducedMotion) {
+      fade.current = { prev: mood, next: mood, blend: 1 };
+      blink.current = { closed: false, timer: 1.8 };
+      const { ctx, texture } = made;
+      if (!ctx) return;
+      ctx.clearRect(0, 0, FACE_CANVAS_SIZE, FACE_CANVAS_SIZE);
+      drawFace(ctx, mood);
+      texture.needsUpdate = true;
+      invalidate();
+      return;
+    }
     if (mood !== fade.current.next) {
       fade.current = { prev: fade.current.next, next: mood, blend: 0 };
     }
-  }, [mood]);
+  }, [invalidate, made, mood, reducedMotion]);
 
   // 初始画一帧
   useEffect(() => {
@@ -60,7 +74,8 @@ function useFaceTexture(mood: XiaobaiMood) {
     ctx.clearRect(0, 0, FACE_CANVAS_SIZE, FACE_CANVAS_SIZE);
     drawFace(ctx, fade.current.next);
     texture.needsUpdate = true;
-  }, [made]);
+    invalidate();
+  }, [invalidate, made]);
 
   useEffect(() => () => made.texture.dispose(), [made]);
 
@@ -104,8 +119,7 @@ function useFaceTexture(mood: XiaobaiMood) {
 /* ────────────────── 团子 + 脸 + 配饰 ────────────────── */
 
 const damp = THREE.MathUtils.damp;
-
-function XiaobaiBlob({ mood, level, speaking, variant }: XiaobaiSceneProps) {
+function XiaobaiBlob({ mood, level, speaking, variant, reducedMotion = false }: XiaobaiSceneProps) {
   const groupRef = useRef<THREE.Group>(null);
 
   const { material, uniforms } = useMemo(
@@ -117,7 +131,7 @@ function XiaobaiBlob({ mood, level, speaking, variant }: XiaobaiSceneProps) {
   );
   useEffect(() => () => material.dispose(), [material]);
 
-  const face = useFaceTexture(mood);
+  const face = useFaceTexture(mood, reducedMotion);
   const faceMaterial = useMemo(
     () =>
       new THREE.MeshBasicMaterial({
@@ -140,10 +154,23 @@ function XiaobaiBlob({ mood, level, speaking, variant }: XiaobaiSceneProps) {
   }, [mood]);
 
   useFrame(({ clock }, dt) => {
-    const t = clock.elapsedTime;
     const m = MOOD_MOTION[mood];
     const g = groupRef.current;
     if (!g) return;
+
+    if (reducedMotion) {
+      const staticScale = 1 + m.puff * 0.25;
+      uniforms.uTime.value = 0;
+      uniforms.uAmp.value = m.amp;
+      uniforms.uFreq.value = m.freq;
+      uniforms.uJitter.value = 0;
+      g.scale.set(staticScale, staticScale, staticScale);
+      g.position.y = 0;
+      g.rotation.z = mood === 'shy' ? -0.05 : mood === 'proud' ? 0.03 : 0;
+      return;
+    }
+
+    const t = clock.elapsedTime;
 
     // 1. shader 形变参数:阻尼趋近目标(柔和 ease-out)
     uniforms.uTime.value = t;
@@ -182,78 +209,17 @@ function XiaobaiBlob({ mood, level, speaking, variant }: XiaobaiSceneProps) {
 
   return (
     <group ref={groupRef}>
-      {/* 团子本体:高细分二十面体 + simplex 位移 */}
+      {/* 团子本体:适度细分二十面体 + simplex 位移，兼顾轮廓与移动端开销。 */}
       <mesh material={material}>
-        <icosahedronGeometry args={[1, 24]} />
+        <icosahedronGeometry args={[1, 8]} />
       </mesh>
+      <StudentSilhouette material={material} variant={variant} />
       {/* 脸:贴于正面(团子最大位移 ~0.08,平面放 1.1 避免穿插) */}
       <mesh position={[0, 0.06, 1.1]} material={faceMaterial} renderOrder={2}>
         <planeGeometry args={[1.5, 1.5]} />
       </mesh>
       <LevelAccessory level={level} />
     </group>
-  );
-}
-
-/* ────────────────── 光照(两种场景) ────────────────── */
-
-function SceneLights({ variant }: { variant: 'paper' | 'board' }) {
-  if (variant === 'board') {
-    return (
-      <>
-        {/* 夜自习黑板:偏暖顶光(--chalk-amber) + 青色 rim(--azure 提亮) */}
-        <ambientLight intensity={0.55} color={CHALK} />
-        <directionalLight position={[0.6, 4, 1.8]} intensity={2.4} color={CHALK_AMBER} />
-        <directionalLight position={[-2.5, 1.2, -2.5]} intensity={1.6} color={AZURE_RIM} />
-        <directionalLight position={[2.5, 0.4, -1.5]} intensity={0.7} color={AZURE_RIM} />
-      </>
-    );
-  }
-  return (
-    <>
-      {/* 宣纸场景:明亮柔和三点光 */}
-      <ambientLight intensity={1.05} color={CHALK} />
-      <directionalLight position={[2, 3, 4]} intensity={2.0} color={'#fff7e8' /* 暖白主光,≈ --paper 提亮 */} />
-      <directionalLight position={[-3, 1.5, 2]} intensity={0.8} color={PAPER_EDGE} />
-      <directionalLight position={[0, 2, -3]} intensity={1.0} color={CHALK} />
-    </>
-  );
-}
-
-/* ────────────────── 接触阴影(两种场景都有,团子不再悬空) ────────────────── */
-
-function ContactShadow({ variant }: { variant: 'paper' | 'board' }) {
-  // 黑板地面:深墨浓影;宣纸页面:淡墨软影(把团子"放"在纸上,而不是浮着)
-  const base = variant === 'board' ? BOARD_DEEP : INK_SOFT;
-  const texture = useMemo(() => {
-    const size = 128;
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-      grad.addColorStop(0, `${base}b3`); // 中心 ~0.7 透明度
-      grad.addColorStop(0.55, `${base}40`);
-      grad.addColorStop(1, `${base}00`);
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, size, size);
-    }
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-  }, [base]);
-  useEffect(() => () => texture.dispose(), [texture]);
-
-  return (
-    <mesh
-      position={[0, -1.12, 0]}
-      rotation={[-Math.PI / 2, 0, 0]}
-      scale={variant === 'board' ? [2.3, 1.5, 1] : [2.05, 1.3, 1]}
-    >
-      <planeGeometry args={[1, 1]} />
-      <meshBasicMaterial map={texture} transparent opacity={variant === 'board' ? 0.55 : 0.3} depthWrite={false} />
-    </mesh>
   );
 }
 
@@ -300,11 +266,24 @@ function Stardust() {
 
 /* ────────────────── 场景组装 ────────────────── */
 
-export function XiaobaiScene({ mood, level, speaking, variant, stardust = false }: XiaobaiSceneProps) {
+export function XiaobaiScene({
+  mood,
+  level,
+  speaking,
+  variant,
+  reducedMotion = false,
+  stardust = false,
+}: XiaobaiSceneProps) {
   return (
     <>
       <SceneLights variant={variant} />
-      <XiaobaiBlob mood={mood} level={level} speaking={speaking} variant={variant} />
+      <XiaobaiBlob
+        mood={mood}
+        level={level}
+        speaking={speaking}
+        variant={variant}
+        reducedMotion={reducedMotion}
+      />
       <ContactShadow variant={variant} />
       {stardust && <Stardust />}
     </>
