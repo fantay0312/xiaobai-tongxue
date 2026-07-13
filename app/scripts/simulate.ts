@@ -15,8 +15,12 @@ import {
   applyEvent, buildReport, decide, evaluate, extractTeacherTerms, initialTopicState,
   isExtractionAttempt, isValidAction, leakageCheck, runXiaobaiQuiz, speakXiaobai, FALLBACK_LINE,
 } from '../src/engine';
+// 成长双轨引擎按路径直连:evolution/honors 是 Node 安全纯函数,刻意不进 engine/index barrel
+// (barrel 牵入浏览器专用模块),此处绕过惯例单独 import,与页面消费方式一致
+import { XP_RULES, deriveWisdom, deriveEvolution, STAGE_RULES } from '../src/engine/evolution';
+import { deriveSessionHonors } from '../src/engine/honors';
 import type {
-  ChatMessage, DemoLine, LearnEvent, LlmSettings, Topic, TopicState,
+  ChatMessage, DemoLine, LearnEvent, LearnEventType, LlmSettings, Topic, TopicState,
   TurnTrace, XiaobaiGlobal,
 } from '../src/types';
 
@@ -430,6 +434,138 @@ function runGuardBenchmark(): void {
     LEGIT_TEACHING.filter((l) => isExtractionAttempt(l)).map((l) => `误伤:${l}`).join(' ; '));
 }
 
+// ───────────────────────── ⑧ 成长双轨(升级/进化)─────────────────────────
+
+let growthSeq = 0;
+/** 合成事件:固定递增 ISO 时间戳(保证时序稳定),全字段齐备 */
+function gev(
+  type: LearnEventType, topicId: string,
+  payload: Record<string, unknown> = {}, sessionId: string | null = 'sim-growth',
+): LearnEvent {
+  growthSeq += 1;
+  const t = new Date(Date.UTC(2026, 0, 1, 0, 0, growthSeq)).toISOString();
+  return { id: `gev-${growthSeq}`, t, type, topicId, sessionId, payload, evidence: `合成事件 ${type}` };
+}
+
+function runGrowthDualTrack(): void {
+  console.log('\n── 成长双轨(升级/进化)──');
+
+  // 合成事件的 topicId 从真实 TOPICS 按 course 动态取(不硬编码 id)
+  const openTopics = TOPICS.filter((t) => !t.locked);
+  const byCourse = new Map<string, Topic[]>();
+  for (const t of openTopics) {
+    const arr = byCourse.get(t.course) ?? [];
+    arr.push(t);
+    byCourse.set(t.course, arr);
+  }
+  const courses = [...byCourse.keys()];
+  check('开放课程 ≥3(跨课程广度门可测)', courses.length >= 3, `实际 ${courses.length}`);
+  if (courses.length < 3) return; // 前提不成立,后续广度断言无意义
+
+  const t1 = byCourse.get(courses[0])![0].topicId;  // 甲课
+  const t2 = byCourse.get(courses[1])![0].topicId;  // 乙课
+  const t3 = byCourse.get(courses[2])![0].topicId;  // 丙课
+  const multiCourse = courses.find((c) => byCourse.get(c)!.length >= 2)!;
+  const scTopics = byCourse.get(multiCourse)!;
+  const sc1 = scTopics[0].topicId;                  // 同一门课的两讲
+  const sc2 = scTopics[1].topicId;
+
+  // (a) XP 加权
+  check('XP_RULES 权重锚定(要点3/纠错8/金句6/卡壳2/复习10/出师25)',
+    XP_RULES.checklist_hit === 3 && XP_RULES.misconception_corrected === 8
+    && XP_RULES.golden_analogy_saved === 6 && XP_RULES.stuck_rescued === 2
+    && XP_RULES.review_passed === 10 && XP_RULES.topic_mastered === 25);
+  const xpStream = deriveWisdom([
+    gev('checklist_hit', t1),
+    gev('misconception_corrected', t1),
+    gev('golden_analogy_saved', t1),
+    gev('stuck_rescued', t1),
+    gev('xiaobai_quiz_scored', t1, { score: 80 }),
+    gev('review_passed', t1),
+    gev('topic_mastered', t1, { turns: 3 }),
+  ]);
+  check('XP 合计 3+8+6+2+8+10+25=62', xpStream.xp === 62, `实得 ${xpStream.xp}`);
+  check('坏小测分(score:"abc")计 0 学识',
+    deriveWisdom([gev('xiaobai_quiz_scored', t1, { score: 'abc' })]).xp === 0);
+  check('被带偏(misconception_adopted)计 0 学识',
+    deriveWisdom([gev('misconception_adopted', t1)]).xp === 0);
+
+  // (b) 等级阶梯:t(n)=15/40/75/120…
+  const ladder: { xp: number; level: number; stream: LearnEvent[] }[] = [
+    { xp: 0, level: 1, stream: [] },
+    { xp: 15, level: 2, stream: [gev('review_passed', t1), gev('checklist_hit', t1), gev('stuck_rescued', t1)] },
+    { xp: 39, level: 2, stream: [gev('topic_mastered', t1), gev('review_passed', t1), gev('stuck_rescued', t1), gev('stuck_rescued', t1)] },
+    { xp: 40, level: 3, stream: [gev('topic_mastered', t1), gev('review_passed', t1), gev('checklist_hit', t1), gev('stuck_rescued', t1)] },
+    { xp: 75, level: 4, stream: [gev('topic_mastered', t1), gev('topic_mastered', t1), gev('topic_mastered', t1)] },
+    { xp: 120, level: 5, stream: [gev('topic_mastered', t1), gev('topic_mastered', t1), gev('topic_mastered', t1), gev('topic_mastered', t1), gev('review_passed', t1), gev('review_passed', t1)] },
+  ];
+  for (const { xp, level, stream } of ladder) {
+    const w = deriveWisdom(stream);
+    check(`学识 ${xp} 点 → 第 ${level} 级`, w.xp === xp && w.level === level, `实得 xp=${w.xp} level=${w.level}`);
+    check(`第 ${level} 级 intoLevel/forNext 自洽`,
+      w.intoLevel >= 0 && w.intoLevel < w.forNext && w.forNext > 0 && w.xp === cumBase(w.level) + w.intoLevel,
+      `intoLevel=${w.intoLevel} forNext=${w.forNext}`);
+  }
+
+  // (c) 进化门槛
+  const evo = (ids: string[]) => deriveEvolution(ids.map((id) => gev('topic_mastered', id)), TOPICS);
+  check('STAGE_RULES 五阶锚定(2:1门/3:2门·2课/4:4门·2课/5:6门·3课)',
+    STAGE_RULES.length === 5
+    && STAGE_RULES[1].masteries === 1
+    && STAGE_RULES[2].masteries === 2 && STAGE_RULES[2].courses === 2
+    && STAGE_RULES[3].masteries === 4 && STAGE_RULES[3].courses === 2
+    && STAGE_RULES[4].masteries === 6 && STAGE_RULES[4].courses === 3);
+  check('0 出师 → 第 1 阶', evo([]).stage === 1);
+  check('1 出师 → 第 2 阶', evo([t1]).stage === 2);
+
+  const same2 = evo([sc1, sc2]);
+  check('2 出师·同一门课 → 仍第 2 阶(广度未达)', same2.stage === 2, `实际 ${same2.stage}`);
+  check('同课卡阶:next.stage=3 且 breadthBlocked=true(深度够、只差换课)',
+    same2.next?.stage === 3 && same2.next?.breadthBlocked === true);
+  check('同课卡阶:suggestedCourses 非空且不含已涉猎的课',
+    (same2.next?.suggestedCourses.length ?? 0) > 0 && !same2.next!.suggestedCourses.includes(multiCourse),
+    JSON.stringify(same2.next?.suggestedCourses));
+
+  check('2 出师·跨两门课 → 第 3 阶', evo([t1, t2]).stage === 3);
+  check('4 出师·两门课 → 第 4 阶', evo([t1, t1, t2, t2]).stage === 4);
+
+  const six2 = evo([t1, t1, t1, t2, t2, t2]);
+  check('6 出师·两门课 → 仍第 4 阶(第 5 阶广度未达)', six2.stage === 4, `实际 ${six2.stage}`);
+  check('6 出师·两门课:next.stage=5 且 breadthBlocked=true', six2.next?.stage === 5 && six2.next?.breadthBlocked === true);
+
+  const six3 = evo([t1, t1, t2, t2, t3, t3]);
+  check('6 出师·跨三门课 → 第 5 阶且 next=null', six3.stage === 5 && six3.next === null);
+
+  const unknown = deriveEvolution([gev('topic_mastered', t1), gev('topic_mastered', '__no_such_topic__')], TOPICS);
+  check('未知 topicId 出师:计深度不计广度(出师2/课程1 → 仍第 2 阶)',
+    unknown.masteries === 2 && unknown.coursesTouched.length === 1 && unknown.stage === 2,
+    `masteries=${unknown.masteries} courses=${unknown.coursesTouched.length} stage=${unknown.stage}`);
+
+  // (d) honors 切片:第二门课出师使升期 2→3,且学识进账 > 0
+  const honorEvents: LearnEvent[] = [
+    gev('topic_mastered', t1, { turns: 3 }, 'sess-A'),
+    gev('checklist_hit', t2, {}, 'sess-B'),
+    gev('golden_analogy_saved', t2, {}, 'sess-B'),
+    gev('topic_mastered', t2, { turns: 4 }, 'sess-B'),
+  ];
+  const honors = deriveSessionHonors({
+    events: honorEvents, reports: [], global: makeGlobal(1), topicStates: {}, topics: TOPICS,
+  }, 'sess-B');
+  check('honors 切片非空', honors !== null);
+  check('第二门课出师使升期 2→3(进化 levelUp=true)',
+    honors!.pupilLevelBefore === 2 && honors!.pupilLevelAfter === 3 && honors!.levelUp === true,
+    `${honors?.pupilLevelBefore}→${honors?.pupilLevelAfter}`);
+  check('本课学识进账 > 0 且 xpLevel 字段自洽',
+    honors!.xpGained > 0 && honors!.xpLevelAfter >= honors!.xpLevelBefore
+    && honors!.xpLevelUp === (honors!.xpLevelAfter > honors!.xpLevelBefore),
+    `xpGained=${honors?.xpGained} ${honors?.xpLevelBefore}→${honors?.xpLevelAfter}`);
+}
+
+/** 学识第 n 级累计门槛(镜像 evolution.cumThreshold,仅供本节 intoLevel 自洽校验) */
+function cumBase(n: number): number {
+  return 15 * (n - 1) + 5 * (n - 1) * (n - 2);
+}
+
 // ───────────────────────── main ─────────────────────────
 
 async function main(): Promise<void> {
@@ -452,6 +588,7 @@ async function main(): Promise<void> {
   const shallow = teachable.find((t) => t.topicId === 'shallow-copy');
   if (shallow) runLeakageBenchmark(shallow);
   runGuardBenchmark();
+  runGrowthDualTrack();
 
   // 数据体检(动态检测,取代早期静态清单——那批问题已在数据侧修复)
   for (const topic of teachable) {

@@ -17,6 +17,8 @@ import {
 import type { EventDraft } from '../engine';
 // 跨会话回忆:直接从 recall 模块导入,不走 engine barrel(simulate 在 Node 加载 barrel,recall 不得混入)
 import { recallGreetingLine } from '../engine/recall';
+// 进化派生(升期):同为不进 barrel 的纯函数,按路径直连
+import { deriveEvolution } from '../engine/evolution';
 // 语音转写默认配置:同为浏览器专用模块,不走 barrel
 import { DEFAULT_ASR } from '../engine/asr';
 
@@ -339,12 +341,14 @@ export const useAppStore = create<AppState>()(
           }], live.sessionId);
           const mastered = g.topicsMastered + 1;
           const record = `${live.traces.length} 轮出师`;
+          // 进化新规则(出师深度 + 跨课程广度)从新鲜事件流重算修行阶——topic_mastered 已 append,get().events 含之
+          const stage = deriveEvolution(get().events, TOPICS).stage;
           set((s) => ({
             global: {
               ...s.global,
               topicsMastered: mastered,
-              // 五阶形象须逐阶可达:嫩芽→灯泡→眼镜→问号→学士帽,不再 1→3→5 跳级
-              learningLevel: Math.min(5, 1 + mastered) as XiaobaiGlobal['learningLevel'],
+              // 五阶形象跃迁 = 进化:出师深度够、还需跨课程广度才升更高阶(不再单课深耕即跳级)
+              learningLevel: stage,
               bestRecord: !s.global.bestRecord || live.traces.length < parseInt(s.global.bestRecord, 10)
                 ? record : s.global.bestRecord,
             },
@@ -407,13 +411,15 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'xiaobai-store-v1',
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         global: s.global, events: s.events, reports: s.reports,
         settings: s.settings, asrSettings: s.asrSettings,
       }),
       // v3 修正旧存档的跳级值,让五阶成长从既有出师数重新连续派生
+      // v4 进化新规则(跨课程广度)重算:从事件流按 deriveEvolution 复算 learningLevel
+      //    —— 深耕单课程的旧档会诚实降阶,属新规则下的确定性重算,接受
       migrate: (persisted, version) => {
         const state = persisted as Partial<AppState>;
         if (version < 3 && state.global) {
@@ -421,6 +427,13 @@ export const useAppStore = create<AppState>()(
           state.global = {
             ...state.global,
             learningLevel: Math.min(5, 1 + mastered) as XiaobaiGlobal['learningLevel'],
+          };
+        }
+        if (version < 4 && state.global && Array.isArray(state.events)) {
+          // events 缺失/非数组时保持原值(不硬把等级抹成 1);正常档按跨课程广度重算
+          state.global = {
+            ...state.global,
+            learningLevel: deriveEvolution(state.events, TOPICS).stage,
           };
         }
         return state;

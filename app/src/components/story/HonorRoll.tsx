@@ -17,8 +17,9 @@ const TIER_CLASS = { ink: 'tierInk', cinnabar: 'tierCinnabar', gold: 'tierGold' 
 const stamp = (i: number) => ({ animationDelay: `${Math.min(i * 120, 300)}ms` });
 
 export function HonorRoll({ honors }: { honors: SessionHonors }) {
-  const { newSeals, promoted, levelUp } = honors;
-  if (newSeals.length === 0 && !promoted && !levelUp) return null;
+  const { newSeals, promoted, levelUp, xpGained, xpLevelUp } = honors;
+  // 学识晋级(升级轨)也是一件值得钤下的荣誉,单它成真也让钤印条现身
+  if (newSeals.length === 0 && !promoted && !levelUp && !xpLevelUp) return null;
 
   const levelName = (lv: number) => LEVEL_NAME[Math.min(5, Math.max(1, lv)) - 1];
 
@@ -45,6 +46,8 @@ export function HonorRoll({ honors }: { honors: SessionHonors }) {
               <b className={s.name}>师道晋级 · {honors.rankAfter.title}</b>
               <span className={s.desc}>
                 {honors.rankBefore.title} → {honors.rankAfter.title},本课履历 +{honors.scoreGained} 分
+                {/* 学识进账并入这条现成的进账句;若本课学识晋了级,进账改由下面的学识签细说,此处不重复 */}
+                {xpGained > 0 && !xpLevelUp && ` · 学识 +${xpGained} 点`}
               </span>
             </span>
           </div>
@@ -56,6 +59,20 @@ export function HonorRoll({ honors }: { honors: SessionHonors }) {
               <b className={s.name}>小白升期 · {levelName(honors.pupilLevelAfter)}</b>
               <span className={s.desc}>
                 从{levelName(honors.pupilLevelBefore)}长到了{levelName(honors.pupilLevelAfter)},是先生教出来的
+              </span>
+            </span>
+          </div>
+        )}
+        {xpLevelUp && (
+          <div
+            className={`${s.chip} ${s.wisdomChip}`}
+            style={stamp(newSeals.length + (promoted ? 1 : 0) + (levelUp ? 1 : 0))}
+          >
+            <span className={s.glyph} aria-hidden="true">识</span>
+            <span className={s.body}>
+              <b className={s.name}>学识晋级 · 第 {honors.xpLevelAfter} 级</b>
+              <span className={s.desc}>
+                学识 +{xpGained} 点,从第 {honors.xpLevelBefore} 级长到第 {honors.xpLevelAfter} 级
               </span>
             </span>
           </div>

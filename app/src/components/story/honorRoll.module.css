@@ -89,6 +89,8 @@
 /* 晋级/升期:不是印章,用青印与黛绿区别于印匣语境 */
 .rankChip .glyph { color: var(--azure-deep); background: var(--azure-wash); border-radius: 50%; }
 .pupilChip .glyph { color: var(--jade-ink); background: var(--jade-wash); border-radius: 50%; }
+/* 学识晋级(升级轨):走靛青,与升期(进化=黛绿)分色不分形,同为圆签 */
+.wisdomChip .glyph { color: var(--azure-deep); background: var(--azure-wash); border-radius: 50%; }
 
 /* 盖章落下:从悬空微放大压到纸面,一次性动作 */
 @keyframes stampIn {

@@ -2,7 +2,8 @@
  * 下课钤印 —— 一堂课落下的荣誉(纯派生,不落盘)。
  * 用同一事件流的「课前切片 / 课后切片」各复算一遍印章与师道,差集即本课新落之印;
  * 切片按事件追加序(数组索引)划界,老档案回看时也能还原「当时的印匣」,不被后来课堂污染。
- * 小白学级与 appStore 同口径:出师门数 + 1,封顶 5 —— 只数切片内 topic_mastered 事件。
+ * 小白升期(进化)与 appStore 同口径:走 deriveEvolution(出师深度 + 跨课程广度)取阶;
+ * 学识(升级)另用 deriveWisdom 对前后切片求经验差(xpGained/xpLevel*)。
  * 铁律:纯函数、Node 安全(不碰 window/localStorage/import.meta),
  * 且不得 re-export 进 engine/index barrel —— simulate 在 Node 直接加载 barrel。
  */
@@ -10,6 +11,7 @@ import {
   deriveAchievements, deriveTeacherRank,
   type Achievement, type AchievementInput, type TeacherRank,
 } from './achievements';
+import { deriveEvolution, deriveWisdom } from './evolution';
 
 export interface SessionHonors {
   newSeals: Achievement[];     // 本课新落的实印(含证据链)
@@ -17,16 +19,13 @@ export interface SessionHonors {
   rankAfter: TeacherRank;
   promoted: boolean;           // 师道晋级与否
   scoreGained: number;         // 本课履历分进账
-  pupilLevelBefore: number;    // 小白学级(1-5)
+  pupilLevelBefore: number;    // 小白修行阶(1-5,= 进化阶)
   pupilLevelAfter: number;
-  levelUp: boolean;            // 小白升期与否
-}
-
-/** 切片内出师事件数 → 小白学级(与 appStore.endSession 的 1 + topicsMastered 同口径:
-    topicsMastered 逐 topic_mastered 事件累加,这里也数事件、不去重) */
-function pupilLevel(events: AchievementInput['events']): number {
-  const mastered = events.filter((e) => e.type === 'topic_mastered').length;
-  return Math.min(5, 1 + mastered);
+  levelUp: boolean;            // 小白升期(进化)与否
+  xpGained: number;            // 本课学识经验进账
+  xpLevelBefore: number;       // 小白学识等级(第 N 级)
+  xpLevelAfter: number;
+  xpLevelUp: boolean;          // 小白学识晋级与否
 }
 
 export function deriveSessionHonors(
@@ -54,8 +53,12 @@ export function deriveSessionHonors(
 
   const rankBefore = deriveTeacherRank(before);
   const rankAfter = deriveTeacherRank(after);
-  const pupilLevelBefore = pupilLevel(before.events);
-  const pupilLevelAfter = pupilLevel(after.events);
+  // 升期(进化):进化新规则 = 出师深度 + 跨课程广度,input 已带 topics
+  const pupilLevelBefore = deriveEvolution(before.events, input.topics).stage;
+  const pupilLevelAfter = deriveEvolution(after.events, input.topics).stage;
+  // 升级(学识):同前后切片各求经验,差即本课进账
+  const wisdomBefore = deriveWisdom(before.events);
+  const wisdomAfter = deriveWisdom(after.events);
 
   return {
     newSeals,
@@ -66,5 +69,9 @@ export function deriveSessionHonors(
     pupilLevelBefore,
     pupilLevelAfter,
     levelUp: pupilLevelAfter > pupilLevelBefore,
+    xpGained: Math.max(0, wisdomAfter.xp - wisdomBefore.xp),
+    xpLevelBefore: wisdomBefore.level,
+    xpLevelAfter: wisdomAfter.level,
+    xpLevelUp: wisdomAfter.level > wisdomBefore.level,
   };
 }

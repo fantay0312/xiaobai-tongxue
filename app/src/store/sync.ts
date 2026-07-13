@@ -14,6 +14,9 @@
 import { DEFAULT_GLOBAL, useAppStore } from './appStore';
 import { useAuthStore } from './authStore';
 import { API_BASE } from '../lib/api';
+import { TOPICS } from '../data';
+// 进化派生(升期):不进 barrel 的纯函数,按路径直连
+import { deriveEvolution } from '../engine/evolution';
 import type { LearnEvent, SessionReport, XiaobaiGlobal } from '../types';
 
 const LAST_USER_KEY = 'xiaobai-sync-user';
@@ -61,6 +64,9 @@ function sanitize(remote: Partial<SyncPayload>): SyncPayload {
     });
   const reports = (Array.isArray(remote.reports) ? remote.reports : [])
     .filter((r): r is SessionReport => !!r && typeof r === 'object');
+  // 远端旧规则档拉档即校准:按进化新规则(跨课程广度)从消毒后的事件流重算修行阶
+  // (topicsMastered 是历史累计计数、不受广度影响,留存不动)
+  global.learningLevel = deriveEvolution(events, TOPICS).stage;
   return { global, events, reports };
 }
 
@@ -75,7 +81,14 @@ function mergeRemote(remote: SyncPayload): void {
     .sort((a, b) => a.startedAt.localeCompare(b.startedAt));
   applyingRemote = true;
   try {
-    useAppStore.setState({ events, reports, topicStates: {} });
+    useAppStore.setState({
+      events,
+      reports,
+      topicStates: {},
+      // 修行阶 = 事件流的纯派生:并集后的事件可能带来别台设备的出师,按合并流重算,
+      // 否则重推的快照会是"学识与修行阶自相矛盾"的档(不变式:learningLevel ≡ deriveEvolution(events).stage)
+      global: { ...cur.global, learningLevel: deriveEvolution(events, TOPICS).stage },
+    });
     useAppStore.getState().rebuildStates();
   } finally {
     applyingRemote = false;

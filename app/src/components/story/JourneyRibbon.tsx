@@ -10,6 +10,7 @@ import { useAppStore } from '../../store/appStore';
 import { TOPICS } from '../../data';
 import { deriveAchievements, deriveTeacherRank } from '../../engine/achievements';
 import { nextStep } from '../../engine/journey';
+import { deriveWisdom } from '../../engine/evolution';
 import { Icon } from '../ui/Icon';
 import s from './story.module.css';
 
@@ -21,7 +22,7 @@ export function JourneyRibbon() {
   const global = useAppStore((st) => st.global);
   const topicStates = useAppStore((st) => st.topicStates);
 
-  const { rank, step, latest, nextSeal } = useMemo(() => {
+  const { rank, step, latest, nextSeal, wisdomLevel } = useMemo(() => {
     const input = { events, reports, global, topicStates, topics: TOPICS };
     const all = deriveAchievements(input);
     const earned = all
@@ -41,6 +42,8 @@ export function JourneyRibbon() {
       step: nextStep({ events, reports, topicStates, topics: TOPICS }),
       latest: earned[0] ?? null,
       nextSeal: ghost,
+      // 小白学识等级(升级轨),并入下方师道行尾作一小段纯文本
+      wisdomLevel: deriveWisdom(events).level,
     };
   }, [events, reports, global, topicStates]);
 
@@ -56,6 +59,7 @@ export function JourneyRibbon() {
           {dreamLeft > 0
             ? `，再教会 ${dreamLeft} 门，小白就能试着讲给小小白听`
             : '，小白已经准备好把先生的讲法传下去了'}
+          {` · 小白学识第 ${wisdomLevel} 级`}
         </span>
       </div>
 

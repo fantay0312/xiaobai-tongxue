@@ -204,6 +204,42 @@
 
 .levelNow { color: var(--azure); }
 
+/* 学识经验条:升级轨的连续反馈——细进度条,轨走淡墨、填充靛青(与师道卡 rankBar 同制);
+   宽度可过渡,不做位置过渡(法典既定制式:进度条宽度是 transform/opacity 之外的例外) */
+.wisdom { margin: calc(-1 * var(--gap-tight)) 0 var(--gap-loose); }
+
+.wisdomHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap-tight);
+  margin-bottom: var(--gap-hair);
+}
+
+.wisdomLabel {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  color: var(--azure);
+  letter-spacing: 0.12em;
+}
+
+.wisdomGap { font-size: var(--fs-tiny); color: var(--ink-faint); }
+
+.wisdomTrack {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--ink-wash);
+  overflow: hidden;
+}
+
+.wisdomFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--azure), var(--azure-deep));
+  transition: width var(--t-slow) var(--ease-out);
+}
+
 .dreamThread {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -336,6 +372,13 @@
 
 .rungDesc { font-size: var(--fs-tiny); color: var(--ink-faint); }
 
+/* 条件铭文:够到这一阶要出师几讲、涉猎几门(数字从 STAGE_RULES 派生,不手写);
+   当前目标阶那行改显实时进度(x/y),配色随牌面(past/now)一并加深 */
+.rungReq { font-size: var(--fs-tiny); color: var(--ink-faint); letter-spacing: 0.02em; }
+
+/* 分句整体不拆行:换行只许落在分句间的「·」上,免得「门/槛」孤字坠行 */
+.reqClause { white-space: nowrap; }
+
 /* 实牌底必须不透明:wash 叠在纸色上,否则身后的墨点路会从牌面透出来 */
 .rungPast {
   border-style: solid;
@@ -347,7 +390,8 @@
 
 /* 落墨的牌上小字随之加深:ink-faint 压 wash 底只剩 ~3.1:1 */
 .rungPast .rungIcon,
-.rungPast .rungDesc { color: var(--ink-soft); }
+.rungPast .rungDesc,
+.rungPast .rungReq { color: var(--ink-soft); }
 
 .rungNow {
   border-style: solid;
@@ -361,6 +405,21 @@
 .rungNow .rungIcon { color: var(--azure-deep); }
 .rungNow .rungName { color: var(--azure-deep); }
 .rungNow .rungDesc { color: var(--azure-deep); }
+.rungNow .rungReq { color: var(--azure-deep); }
+
+/* 化形指引:深度够了、只差换门课时的一句眉批(称呼纪律用「先生」);
+   静默小注不是警示——不落朱砂,只用青虚线左沿轻轻提一句 */
+.morphHint {
+  margin: calc(-1 * var(--gap-tight)) 0 var(--gap-loose);
+  padding-left: var(--gap);
+  border-left: 2px dotted var(--azure);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+
+.morphCourse { font-style: normal; color: var(--azure); }
 
 /* 性情之笺 */
 

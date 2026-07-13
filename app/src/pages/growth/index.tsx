@@ -16,6 +16,8 @@ import { useAppStore } from '../../store/appStore';
 import { getTopic, TOPICS } from '../../data';
 import { deriveAchievements, deriveTeacherRank } from '../../engine/achievements';
 import { nextStep } from '../../engine/journey';
+// 双轨成长引擎:同 achievements/journey 惯例按路径直接 import,不进 engine barrel
+import { STAGE_RULES, deriveWisdom, deriveEvolution } from '../../engine/evolution';
 import { deriveXiaobaiLetter } from '../../engine/story';
 import { deriveMemoryPanorama, deriveRelationshipLines } from '../../engine/recall';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
@@ -197,6 +199,10 @@ export default function GrowthPage() {
     [events, reports, topicStates],
   );
   const chronicle = useMemo(() => buildChronicle(events, reports), [events, reports]);
+  // 双轨成长(纯派生,不新增事件):学识经验轨(升级)+ 五阶进化轨(升期),均从 events 重算
+  const wisdom = useMemo(() => deriveWisdom(events), [events]);
+  const evolution = useMemo(() => deriveEvolution(events, TOPICS), [events]);
+  const next = evolution.next;
   // 卷五·四层记忆匣 + 卷尾·印象句:engine/recall 纯派生,每句都带可复算的出处
   const panorama = useMemo(
     () => deriveMemoryPanorama({ events, reports, topicStates, topics: TOPICS, global, live }),
@@ -206,6 +212,10 @@ export default function GrowthPage() {
     () => deriveRelationshipLines({ events, reports, global }),
     [events, reports, global],
   );
+
+  // 学识条:intoLevel 已入本级的点数 / forNext 升下一级门槛(deriveWisdom 收口,恒 >0)
+  const wisdomLeft = Math.max(0, wisdom.forNext - wisdom.intoLevel);
+  const wisdomPct = wisdom.forNext > 0 ? Math.min(100, (wisdom.intoLevel / wisdom.forNext) * 100) : 100;
 
   const earnedCount = achievements.filter((a) => a.earnedAt !== null).length;
   const openAch = achievements.find((a) => a.id === openSeal) ?? null;
@@ -283,6 +293,24 @@ export default function GrowthPage() {
             ——你教得越明白,它追问得越刁钻。
           </p>
 
+          {/* 学识经验条:升级轨的连续反馈——攒学识、涨等级,与升期(进化)各走一轨 */}
+          <div className={s.wisdom}>
+            <div className={s.wisdomHead}>
+              <span className={s.wisdomLabel}>学识 · 第 {wisdom.level} 级</span>
+              <span className={s.wisdomGap}>距下一级还差 <b className={s.num}>{wisdomLeft}</b> 点</span>
+            </div>
+            <div
+              className={s.wisdomTrack}
+              role="progressbar"
+              aria-valuenow={wisdom.intoLevel}
+              aria-valuemin={0}
+              aria-valuemax={wisdom.forNext}
+              aria-label={`小白学识第 ${wisdom.level} 级,距下一级还差 ${wisdomLeft} 点`}
+            >
+              <span className={s.wisdomFill} style={{ width: `${wisdomPct}%` }} />
+            </div>
+          </div>
+
           <div className={s.dreamThread}>
             <span className={s.dreamIcon} aria-hidden="true"><Icon name="sparkles" size={20} /></span>
             <div>
@@ -314,7 +342,10 @@ export default function GrowthPage() {
 
           {/* 修行阶:走过的阶落墨,当下的阶钤青印,没到的阶还是虚印(与卷一印章墙同语) */}
           <ol className={s.ladder} aria-label="小白的成长阶梯">
-            {LEVELS.map((l) => (
+            {LEVELS.map((l) => {
+              // 本阶规则:STAGE_RULES 是按 stage 排列的数组,按 stage 字段查(勿用下标,避免错位)
+              const stageRule = STAGE_RULES.find((r) => r.stage === l.lv);
+              return (
               <li
                 key={l.lv}
                 aria-current={l.lv === global.learningLevel ? 'step' : undefined}
@@ -329,9 +360,37 @@ export default function GrowthPage() {
                 <span className={s.rungIcon} aria-hidden="true"><Icon name={l.icon} size={17} /></span>
                 <span className={s.rungName}>{l.name}</span>
                 <span className={s.rungDesc}>{l.desc}</span>
+                {/* 条件铭文:够到这一阶的门槛,数字一律从 STAGE_RULES 派生(不手写复制);
+                    当下要奔的那一阶改显实时进度(x/y);广度门槛未起(≤1 门)时不赘述涉猎;
+                    两个分句各自 nowrap,窄牌换行只许发生在「·」处,不许孤字成行 */}
+                {l.lv === 1 ? (
+                  <span className={s.rungReq}>无需门槛</span>
+                ) : next && next.stage === l.lv ? (
+                  <span className={s.rungReq}>
+                    <span className={s.reqClause}>出师 <b className={s.num}>{next.haveMasteries}</b>/<b className={s.num}>{next.needMasteries}</b></span>
+                    {next.needCourses >= 2 && (
+                      <> · <span className={s.reqClause}>课程 <b className={s.num}>{next.haveCourses}</b>/<b className={s.num}>{next.needCourses}</b></span></>
+                    )}
+                  </span>
+                ) : (
+                  <span className={s.rungReq}>
+                    <span className={s.reqClause}>出师 <b className={s.num}>{stageRule?.masteries ?? 0}</b> 讲</span>
+                    {(stageRule?.courses ?? 0) >= 2 && (
+                      <> · <span className={s.reqClause}>涉猎 <b className={s.num}>{stageRule?.courses}</b> 门</span></>
+                    )}
+                  </span>
+                )}
               </li>
-            ))}
+              );
+            })}
           </ol>
+
+          {/* 化形指引:深度够了、只差换门课时的一句静默眉批(册页物称呼纪律用「先生」;不落朱砂) */}
+          {next?.breadthBlocked && next.suggestedCourses[0] && (
+            <p className={s.morphHint}>
+              小白想去别的书架看看——先生哪天换一门<em className={s.morphCourse}>《{next.suggestedCourses[0]}》</em>讲给他听?
+            </p>
+          )}
 
           {/* 性情之笺:三张可点的纸笺,现用那张钤「现用」小印 */}
           <div className={s.personaBlock}>
