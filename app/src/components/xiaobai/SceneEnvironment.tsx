@@ -6,20 +6,23 @@ export function SceneLights({ variant }: { variant: 'paper' | 'board' }) {
   if (variant === 'board') {
     return (
       <>
-        <ambientLight intensity={0.55} color={CHALK} />
-        <directionalLight position={[0.6, 4, 1.8]} intensity={2.4} color={CHALK_AMBER} />
-        <directionalLight position={[-2.5, 1.2, -2.5]} intensity={1.6} color={AZURE_RIM} />
-        <directionalLight position={[2.5, 0.4, -1.5]} intensity={0.7} color={AZURE_RIM} />
+        <ambientLight intensity={0.5} color={CHALK} />
+        <directionalLight position={[0.8, 3.6, 2.8]} intensity={1.65} color={CHALK} />
+        <directionalLight position={[2.2, 2.8, 3.4]} intensity={0.35} color={CHALK_AMBER} />
+        <directionalLight position={[-2.8, 1.4, 1.4]} intensity={0.95} color={AZURE_RIM} />
+        <directionalLight position={[2.3, 0.6, -1.8]} intensity={0.55} color={AZURE_RIM} />
       </>
     );
   }
 
   return (
     <>
-      <ambientLight intensity={1.05} color={CHALK} />
-      <directionalLight position={[2, 3, 4]} intensity={2} color="#fff7e8" />
-      <directionalLight position={[-3, 1.5, 2]} intensity={0.8} color={PAPER_EDGE} />
-      <directionalLight position={[0, 2, -3]} intensity={1} color={CHALK} />
+      <ambientLight intensity={0.84} color={CHALK} />
+      <directionalLight position={[1.3, 3.4, 4]} intensity={1.05} color={CHALK} />
+      <directionalLight position={[0, 0.6, 5]} intensity={0.2} color={CHALK} />
+      <directionalLight position={[2.5, 3, 3.2]} intensity={0.28} color={CHALK_AMBER} />
+      <directionalLight position={[-3, 1.4, 2.2]} intensity={0.62} color={PAPER_EDGE} />
+      <directionalLight position={[0, 2.4, -3]} intensity={0.5} color={CHALK} />
     </>
   );
 }
@@ -48,15 +51,15 @@ export function ContactShadow({ variant }: { variant: 'paper' | 'board' }) {
 
   return (
     <mesh
-      position={[0, -1.12, 0]}
+      position={[0, -1.23, 0]}
       rotation={[-Math.PI / 2, 0, 0]}
-      scale={variant === 'board' ? [2.3, 1.5, 1] : [2.05, 1.3, 1]}
+      scale={variant === 'board' ? [1.75, 1.15, 1] : [1.25, 0.72, 1]}
     >
       <planeGeometry args={[1, 1]} />
       <meshBasicMaterial
         map={texture}
         transparent
-        opacity={variant === 'board' ? 0.55 : 0.3}
+        opacity={variant === 'board' ? 0.45 : 0.1}
         depthWrite={false}
       />
     </mesh>

@@ -1,97 +1,227 @@
-/* WebGL 不可用时的 CSS 团子降级:眼口也用几何笔画,避免系统字体颜文字漂移。 */
+/* WebGL 降级版:和 3D 版共用“瓷白头 + 月白衣袍 + 抱书”轮廓。 */
 
 .blob {
   position: relative;
   isolation: isolate;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  /* 团子暖白,取纸系令牌,不新造色值 */
-  background: radial-gradient(circle at 35% 30%, var(--paper), var(--paper-edge));
-  font-family: var(--font-display);
+  width: 100%;
+  height: 100%;
+  font-size: 12.5cqi;
   color: var(--ink);
-  animation: breathe 3.2s var(--ease-loop) infinite;
+  animation: scholarBreath 3.6s var(--ease-loop) infinite;
 }
+
+.head {
+  position: absolute;
+  z-index: 4;
+  top: 17%;
+  left: 50%;
+  width: 53%;
+  height: 40%;
+  border: 1px solid color-mix(in oklab, var(--paper-edge) 72%, transparent);
+  border-radius: 47% 47% 44% 44% / 49% 49% 45% 45%;
+  background: radial-gradient(circle at 34% 25%, var(--paper), var(--paper-edge));
+  box-shadow: inset -0.18em -0.2em 0.45em color-mix(in oklab, var(--ink) 6%, transparent);
+  transform: translateX(-50%);
+}
+
+.robe {
+  position: absolute;
+  z-index: 2;
+  top: 49%;
+  left: 50%;
+  width: 49%;
+  height: 45%;
+  border: 1px solid var(--paper-edge);
+  border-radius: 42% 42% 18% 18% / 25% 25% 14% 14%;
+  background: linear-gradient(145deg, var(--paper), var(--paper-edge));
+  box-shadow: inset -0.18em -0.12em 0.35em color-mix(in oklab, var(--ink) 7%, transparent);
+  transform: translateX(-50%);
+}
+
+.sleeve {
+  position: absolute;
+  z-index: -1;
+  top: 23%;
+  width: 17%;
+  height: 46%;
+  border-bottom: 0.055em solid var(--azure-deep);
+  border-radius: 48% 48% 42% 42%;
+  background: linear-gradient(145deg, var(--paper), var(--paper-edge));
+  transform-origin: 50% 14%;
+}
+
+.sleeveLeft { left: 3%; transform: rotate(26deg); }
+.sleeveRight { right: 3%; transform: rotate(-26deg); }
+
+.collar {
+  position: absolute;
+  z-index: 2;
+  top: 2%;
+  left: 50%;
+  width: 44%;
+  height: 23%;
+  color: var(--azure-deep);
+  transform: translateX(-50%);
+}
+
+.collar i {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  width: 76%;
+  height: 16%;
+  border-radius: 99px;
+  background: currentColor;
+  transform-origin: top;
+}
+
+.collar i:first-child { transform: translateX(-94%) rotate(25deg); }
+.collar i:last-child { transform: translateX(-6%) rotate(-25deg); }
+
+.book {
+  position: absolute;
+  z-index: 4;
+  top: 40%;
+  left: 50%;
+  width: 48%;
+  height: 43%;
+  border: 0.07em solid var(--azure-deep);
+  border-radius: 0.18em 0.12em 0.12em 0.18em;
+  background: var(--azure-deep);
+  box-shadow: inset 0.09em 0 0 var(--paper-edge);
+  transform: translateX(-50%) rotate(-1.5deg);
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.book i {
+  position: absolute;
+  left: 50%;
+  width: 48%;
+  height: 0.06em;
+  border-radius: 99px;
+  background: var(--paper-edge);
+  transform: translateX(-50%);
+}
+
+.book i:first-child { top: 29%; }
+.book i:last-child { top: 40%; width: 32%; }
+
+.hand {
+  position: absolute;
+  z-index: 5;
+  top: 57%;
+  width: 11%;
+  height: 16%;
+  border-radius: 48%;
+  background: radial-gradient(circle at 32% 28%, var(--paper), var(--paper-edge));
+}
+
+.handLeft { left: 21%; transform: rotate(7deg); }
+.handRight { right: 21%; transform: rotate(-7deg); }
 
 .face {
-  position: relative;
+  position: absolute;
   z-index: 2;
-  width: 2.7em;
-  height: 1.5em;
-  transform: translateY(0.16em);
+  top: 32%;
+  left: 50%;
+  width: 74%;
+  height: 42%;
+  transform: translateX(-50%);
 }
 
-/* 腮红:两团淡朱砂,与 3D 版 blush 同语义(朱砂在小白身上只许出现在这) */
 .face::before,
 .face::after {
   content: '';
   position: absolute;
-  bottom: 0.06em;
-  width: 0.34em;
-  height: 0.18em;
+  bottom: 12%;
+  width: 17%;
+  height: 13%;
   border-radius: 50%;
-  background: color-mix(in oklab, var(--cinnabar) 20%, transparent);
+  background: color-mix(in oklab, var(--cinnabar) 14%, transparent);
 }
 
-.face::before { left: -0.08em; }
-.face::after { right: -0.08em; }
+.face::before { left: 1%; }
+.face::after { right: 1%; }
 
 .eye,
-.mouth {
+.mouth,
+.nose {
   position: absolute;
   display: block;
   color: inherit;
 }
 
 .eye {
-  top: 0.2em;
-  width: 0.24em;
-  height: 0.34em;
+  top: 8%;
+  width: 0.34em;
+  height: 0.42em;
   border-radius: 50%;
   background: currentColor;
   transition: transform var(--t-fast) var(--ease-out), width var(--t-fast) var(--ease-out);
 }
 
-.eyeLeft { left: 0.55em; }
-.eyeRight { right: 0.55em; }
-
-/* 睁眼待机的两个 mood:墨点里点一粒纸色高光 + 周期眨眼(与 3D 版同节律) */
-.blob[data-mood='idle'] .eye::before,
-.blob[data-mood='curious'] .eye::before {
+.eye::before {
   content: '';
   position: absolute;
-  top: 20%;
-  left: 16%;
-  width: 36%;
-  height: 32%;
+  top: 17%;
+  left: 15%;
+  width: 35%;
+  height: 30%;
   border-radius: 50%;
   background: var(--paper);
 }
 
-.blob[data-mood='idle'] .eye,
-.blob[data-mood='curious'] .eye {
-  animation: blinkSquash 4.6s linear infinite;
+.eyeLeft { left: 22%; }
+.eyeRight { right: 22%; }
+
+.nose {
+  top: 49%;
+  left: 51%;
+  width: 0.1em;
+  height: 0.06em;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--ink) 20%, transparent);
 }
 
 .mouth {
   left: 50%;
-  bottom: 0.18em;
-  width: 0.72em;
-  height: 0.34em;
-  border-bottom: 0.1em solid currentColor;
+  bottom: 3%;
+  width: 0.7em;
+  height: 0.3em;
+  border-bottom: 0.09em solid currentColor;
   border-radius: 0 0 50% 50%;
   transform: translateX(-50%);
 }
 
-.blob[data-mood='curious'] .eye { width: 0.3em; height: 0.4em; }
+.blob[data-mood='idle'] .eye,
+.blob[data-mood='curious'] .eye { animation: blinkSquash 4.6s linear infinite; }
+.blob[data-mood='curious'] .eye { width: 0.4em; height: 0.48em; }
+
 .blob[data-mood='thinking'] .eye,
 .blob[data-mood='proud'] .eye {
   height: 0.08em;
   border-radius: 99px;
-  transform: translateY(0.15em);
+  transform: translateY(0.16em);
 }
-.blob[data-mood='confused'] .eyeRight { background: transparent; border: 0.08em solid currentColor; }
-.blob[data-mood='confused'] .mouth { width: 0.46em; border-radius: 50%; transform: translateX(-50%) rotate(-12deg); }
+
+.blob[data-mood='thinking'] .eye::before,
+.blob[data-mood='proud'] .eye::before,
+.blob[data-mood='confused'] .eye::before,
+.blob[data-mood='aha'] .eye::before,
+.blob[data-mood='happy'] .eye::before,
+.blob[data-mood='shy'] .eye::before { display: none; }
+
+.blob[data-mood='confused'] .eye {
+  background: transparent;
+  border: 0.08em solid currentColor;
+}
+
+.blob[data-mood='confused'] .mouth {
+  width: 0.48em;
+  border-radius: 50%;
+  transform: translateX(-50%) rotate(-10deg);
+}
+
 .blob[data-mood='aha'] .eye,
 .blob[data-mood='happy'] .eye {
   background: transparent;
@@ -99,114 +229,57 @@
   border-top: 0.09em solid currentColor;
   border-radius: 50% 50% 0 0;
 }
+
 .blob[data-mood='aha'] .mouth,
-.blob[data-mood='happy'] .mouth { width: 0.9em; height: 0.48em; }
+.blob[data-mood='happy'] .mouth { width: 0.9em; height: 0.46em; }
 .blob[data-mood='shy'] .eyeLeft { transform: rotate(18deg); }
 .blob[data-mood='shy'] .eyeRight { transform: rotate(-18deg); }
 .blob[data-mood='shy'] .mouth { width: 0.42em; height: 0.18em; }
+.blob[data-mood='shy'] .book { transform: translate(-50%, -10%) rotate(-1.5deg); }
 
 .accessory,
 .glasses {
   position: absolute;
-  z-index: 3;
+  z-index: 7;
   display: grid;
   place-items: center;
   color: var(--azure-deep);
 }
 
-.accessory {
-  top: -5%;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
+.accessory { top: 0; left: 50%; transform: translateX(-50%); }
 .level1 { color: var(--jade-ink); }
-.level2 { color: var(--amber-ink); filter: drop-shadow(0 0 6px var(--amber-wash)); }
-.level3 { top: 36%; }
-.level4 { top: 7%; left: 76%; color: var(--azure); }
-.level5 { top: -8%; }
+.level2 { top: -2%; color: var(--amber-ink); filter: drop-shadow(0 0 5px var(--amber-wash)); }
+.level4 { top: 10%; left: 77%; color: var(--azure); }
+.level5 { top: -2%; }
 
 .glasses {
-  top: 36%;
+  top: 38%;
   left: 50%;
   transform: translateX(-50%);
 }
 
+.board .head,
+.board .hand { background: radial-gradient(circle at 34% 25%, var(--chalk), var(--chalk-soft)); }
+.board .robe,
+.board .sleeve { background: linear-gradient(145deg, var(--chalk), var(--chalk-soft)); }
+.board .sleeve { border-color: var(--chalk-amber); }
+.board .collar,
 .board .accessory,
 .board .glasses { color: var(--chalk-amber); }
-
 .board .level1 { color: var(--chalk-jade); }
 
-.board {
-  /* 黑板场景下加一圈粉笔柔光(深墨影在深底上不可见,必须用亮色晕) */
-  box-shadow: 0 0 32px color-mix(in oklab, var(--chalk) 15%, transparent);
-  background: radial-gradient(circle at 35% 30%, var(--chalk), var(--chalk-soft));
-}
-
-.limb {
-  position: absolute;
-  z-index: -1;
-  display: block;
-  background: radial-gradient(circle at 35% 30%, var(--paper), var(--paper-edge));
-}
-
-.armLeft,
-.armRight {
-  top: 44%;
-  width: 22%;
-  height: 42%;
-  border-radius: 50%;
-}
-
-.armLeft { left: -5%; transform: rotate(18deg); }
-.armRight { right: -5%; transform: rotate(-18deg); }
-
-.footLeft,
-.footRight {
-  bottom: -4%;
-  width: 35%;
-  height: 18%;
-  border-radius: 50%;
-}
-
-.footLeft { left: 13%; transform: rotate(-4deg); }
-.footRight { right: 13%; transform: rotate(4deg); }
-
-.collar {
-  position: absolute;
-  z-index: 2;
-  top: 67%;
-  left: 50%;
-  width: 24%;
-  height: 15%;
-  color: var(--azure-deep);
-  transform: translateX(-50%);
-}
-
-.collar i {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 6%;
-  height: 100%;
-  border-radius: 99px;
-  background: currentColor;
-  transform-origin: top;
-}
-
-.collar i:first-child { transform: rotate(42deg); }
-.collar i:last-child { transform: rotate(-42deg); }
-
-.board .limb { background: radial-gradient(circle at 35% 30%, var(--chalk), var(--chalk-soft)); }
-.board .collar { color: var(--chalk-amber); }
-
-@keyframes breathe {
+@keyframes scholarBreath {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.02); }
+  50% { transform: scale(1.008); }
 }
 
-/* 眨眼:绝大部分时间睁着,末尾快速一压一抬(linear 配百分比阶跃,非往复缓动) */
 @keyframes blinkSquash {
   0%, 93.5%, 100% { transform: scaleY(1); }
   95.5%, 97.5% { transform: scaleY(0.14); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blob,
+  .blob[data-mood='idle'] .eye,
+  .blob[data-mood='curious'] .eye { animation: none; }
 }

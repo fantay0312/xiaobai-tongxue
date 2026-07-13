@@ -45,6 +45,12 @@ const PERSONAS: { name: Persona; line: string }[] = [
   { name: '杠精型', line: '「我不信。你要是对的,这段代码怎么解释?」' },
 ];
 
+const PERSONA_MOOD: Record<Persona, XiaobaiMood> = {
+  好奇型: 'curious',
+  严谨型: 'thinking',
+  杠精型: 'proud',
+};
+
 const EVENT_LABEL: Record<LearnEventType, string> = {
   session_started: '开课',
   checklist_hit: '要点命中',
@@ -253,7 +259,7 @@ export default function GrowthPage() {
   const forgottenNodes = nodes.filter((n) => n.status === 'forgotten');
 
   const mood: XiaobaiMood =
-    global.learningLevel >= 5 ? 'proud' : global.topicsMastered > 0 ? 'happy' : 'idle';
+    global.learningLevel >= 5 ? 'proud' : global.topicsMastered > 0 ? 'happy' : PERSONA_MOOD[global.persona];
 
   const goReview = async (topicId: string) => {
     if (reviewBusy) return;

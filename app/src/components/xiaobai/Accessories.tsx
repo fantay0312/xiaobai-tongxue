@@ -14,20 +14,22 @@ import {
 /** Lv.1 嫩芽:微曲茎 + 两片对生叶 */
 function Sprout() {
   return (
-    <group position={[0, 0.96, 0]} rotation={[0, 0, -0.08]}>
-      {/* 茎(jade 加深) */}
-      <mesh position={[0, 0.09, 0]}>
-        <cylinderGeometry args={[0.02, 0.026, 0.2, 8]} />
+    <group position={[0, 0.59, 0]} rotation={[0, 0, -0.045]} scale={0.9}>
+      {/* 头顶芽节把茎叶和头部真正连起来，不再像悬空图标。 */}
+      <mesh position={[0, -0.015, 0]} scale={[1, 0.55, 1]}>
+        <sphereGeometry args={[0.07, 16, 12]} />
+        <meshStandardMaterial color={JADE_DEEP} roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 0.11, 0]} rotation={[0, 0, -0.04]}>
+        <cylinderGeometry args={[0.026, 0.034, 0.25, 10]} />
         <meshStandardMaterial color={JADE_DEEP} roughness={0.85} />
       </mesh>
-      {/* 左叶(压扁球体近似叶片,--jade 黛绿) */}
-      <mesh position={[-0.085, 0.2, 0]} rotation={[0, 0, 0.7]} scale={[1, 0.34, 0.5]}>
-        <sphereGeometry args={[0.095, 16, 12]} />
+      <mesh position={[-0.095, 0.24, 0]} rotation={[0, 0, 0.72]} scale={[1, 0.32, 0.52]}>
+        <sphereGeometry args={[0.14, 20, 14]} />
         <meshStandardMaterial color={JADE} roughness={0.8} />
       </mesh>
-      {/* 右叶 */}
-      <mesh position={[0.085, 0.22, 0]} rotation={[0, 0, -0.7]} scale={[1, 0.34, 0.5]}>
-        <sphereGeometry args={[0.095, 16, 12]} />
+      <mesh position={[0.1, 0.25, 0]} rotation={[0, 0, -0.72]} scale={[1, 0.32, 0.52]}>
+        <sphereGeometry args={[0.14, 20, 14]} />
         <meshStandardMaterial color={JADE} roughness={0.8} />
       </mesh>
     </group>
@@ -35,16 +37,21 @@ function Sprout() {
 }
 
 /** Lv.2 悬浮灯泡:玻璃球 + 灯丝点 + 螺口底座,整体缓慢浮动 */
-function Bulb() {
+function Bulb({ reducedMotion }: { reducedMotion: boolean }) {
   const ref = useRef<THREE.Group>(null);
   useFrame(({ clock }) => {
     if (!ref.current) return;
+    if (reducedMotion) {
+      ref.current.position.y = 0.91;
+      ref.current.rotation.z = 0;
+      return;
+    }
     const t = clock.elapsedTime;
-    ref.current.position.y = 1.36 + Math.sin(t * 1.4) * 0.035;
+    ref.current.position.y = 0.91 + Math.sin(t * 1.4) * 0.025;
     ref.current.rotation.z = Math.sin(t * 0.9) * 0.08;
   });
   return (
-    <group ref={ref} position={[0, 1.36, 0]}>
+    <group ref={ref} position={[0, 0.91, 0]}>
       {/* 玻璃球体(--amber 藤黄,自发光营造点亮感) */}
       <mesh position={[0, 0.06, 0]}>
         <sphereGeometry args={[0.15, 24, 18]} />
@@ -76,20 +83,17 @@ function Bulb() {
 /** Lv.3/4 圆框眼镜:两只圆环 + 鼻梁,悬于脸面(z=1.1)前,圈住画出来的眼睛 */
 function Glasses() {
   return (
-    <group position={[0, 0.18, 1.14]}>
-      {/* 左镜框(--ink 墨色细框),眼睛世界坐标 ≈ (±0.315, 0.18) */}
-      <mesh position={[-0.315, 0, 0]}>
-        <torusGeometry args={[0.19, 0.02, 10, 32]} />
+    <group position={[0, 0.1, 0.69]}>
+      <mesh position={[-0.205, 0, 0]}>
+        <torusGeometry args={[0.145, 0.018, 10, 32]} />
         <meshStandardMaterial color={INK} roughness={0.5} />
       </mesh>
-      {/* 右镜框 */}
-      <mesh position={[0.315, 0, 0]}>
-        <torusGeometry args={[0.19, 0.02, 10, 32]} />
+      <mesh position={[0.205, 0, 0]}>
+        <torusGeometry args={[0.145, 0.018, 10, 32]} />
         <meshStandardMaterial color={INK} roughness={0.5} />
       </mesh>
-      {/* 鼻梁 */}
-      <mesh position={[0, 0.06, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.016, 0.016, 0.26, 8]} />
+      <mesh position={[0, 0.025, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.014, 0.014, 0.14, 8]} />
         <meshStandardMaterial color={INK} roughness={0.5} />
       </mesh>
     </group>
@@ -97,16 +101,21 @@ function Glasses() {
 }
 
 /** Lv.3/4 头顶问号气泡:压扁球气泡 + 几何拼的"?"(圆环缺口+竖杆+圆点),缓慢浮动 */
-function QuestionBubble() {
+function QuestionBubble({ reducedMotion }: { reducedMotion: boolean }) {
   const ref = useRef<THREE.Group>(null);
   useFrame(({ clock }) => {
     if (!ref.current) return;
+    if (reducedMotion) {
+      ref.current.position.y = 0.79;
+      ref.current.rotation.z = 0;
+      return;
+    }
     const t = clock.elapsedTime;
-    ref.current.position.y = 1.28 + Math.sin(t * 1.2 + 1) * 0.03;
+    ref.current.position.y = 0.79 + Math.sin(t * 1.2 + 1) * 0.025;
     ref.current.rotation.z = Math.sin(t * 0.8) * 0.06;
   });
   return (
-    <group ref={ref} position={[0.52, 1.28, 0.15]} scale={0.9}>
+    <group ref={ref} position={[0.55, 0.79, 0.08]} scale={0.78}>
       {/* 气泡本体(--chalk 粉笔白,压扁球) */}
       <mesh scale={[1, 1, 0.45]}>
         <sphereGeometry args={[0.24, 24, 18]} />
@@ -141,7 +150,7 @@ function QuestionBubble() {
 /** Lv.5 学士帽:帽箍圆柱 + 方板 + 顶扣 + 垂坠流苏(--azure-deep 墨青 / --amber 藤黄) */
 function GraduationCap() {
   return (
-    <group position={[0, 0.98, 0]} rotation={[0.06, 0.3, -0.07]}>
+    <group position={[0, 0.56, 0]} rotation={[0.06, 0.3, -0.07]} scale={0.82}>
       {/* 帽箍 */}
       <mesh position={[0, 0.05, 0]}>
         <cylinderGeometry args={[0.4, 0.46, 0.22, 24]} />
@@ -176,15 +185,21 @@ function GraduationCap() {
   );
 }
 
-export function LevelAccessory({ level }: { level: 1 | 2 | 3 | 4 | 5 }) {
+export function LevelAccessory({
+  level,
+  reducedMotion,
+}: {
+  level: 1 | 2 | 3 | 4 | 5;
+  reducedMotion: boolean;
+}) {
   if (level === 1) return <Sprout />;
-  if (level === 2) return <Bulb />;
+  if (level === 2) return <Bulb reducedMotion={reducedMotion} />;
   if (level === 3) return <Glasses />;
   if (level === 5) return <GraduationCap />;
   return (
     <>
       <Glasses />
-      <QuestionBubble />
+      <QuestionBubble reducedMotion={reducedMotion} />
     </>
   );
 }

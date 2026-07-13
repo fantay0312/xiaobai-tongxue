@@ -1,19 +1,17 @@
 /**
- * Canvas 内部场景:团子本体(shader 形变) + 脸(CanvasTexture crossfade)
- * + 头顶配饰 + 分场景光照 + 接触阴影 + 可选星尘。
+ * Canvas 内部场景:纸塑小书生 + 脸(CanvasTexture crossfade)
+ * + 成长配饰 + 分场景光照 + 接触阴影 + 可选星尘。
  * 动效原则:一切过渡走阻尼插值(ease-out 质感),禁止 elastic。
  */
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { XiaobaiMood } from '../../types';
-import { LevelAccessory } from './Accessories';
-import { createBlobMaterial } from './blobMaterial';
 import { BLINK_MOODS, drawFace, FACE_CANVAS_SIZE } from './faceTexture';
 import { MOOD_MOTION } from './moodMotion';
-import { AZURE_RIM, CHALK, PAPER_EDGE } from './palette';
+import { AZURE_DEEP, BODY_WHITE, CHALK, CHALK_AMBER, PAPER } from './palette';
 import { ContactShadow, SceneLights } from './SceneEnvironment';
-import { StudentSilhouette } from './StudentSilhouette';
+import { XiaobaiBody, type XiaobaiMaterials } from './XiaobaiBody';
 
 export interface XiaobaiSceneProps {
   mood: XiaobaiMood;
@@ -116,109 +114,87 @@ function useFaceTexture(mood: XiaobaiMood, reducedMotion: boolean) {
   return { texture: made.texture, tick };
 }
 
-/* ────────────────── 团子 + 脸 + 配饰 ────────────────── */
+/* ────────────────── 小书生本体 + 脸 + 姿态 ────────────────── */
 
 const damp = THREE.MathUtils.damp;
-function XiaobaiBlob({ mood, level, speaking, variant, reducedMotion = false }: XiaobaiSceneProps) {
-  const groupRef = useRef<THREE.Group>(null);
 
-  const { material, uniforms } = useMemo(
-    () =>
-      variant === 'board'
-        ? createBlobMaterial(AZURE_RIM, 0.34) // 黑板:青色轮廓 rim(--azure 提亮)
-        : createBlobMaterial(PAPER_EDGE, 0.16), // 纸面:暖纸色微弱边缘光
-    [variant],
+function createFigureMaterials(variant: 'paper' | 'board'): XiaobaiMaterials {
+  return {
+    porcelain: new THREE.MeshStandardMaterial({ color: BODY_WHITE, roughness: 0.92, metalness: 0 }),
+    robe: new THREE.MeshStandardMaterial({ color: PAPER, roughness: 0.93, metalness: 0 }),
+    trim: new THREE.MeshStandardMaterial({
+      color: variant === 'board' ? CHALK_AMBER : AZURE_DEEP,
+      roughness: 0.82,
+      metalness: 0,
+    }),
+    book: new THREE.MeshStandardMaterial({ color: AZURE_DEEP, roughness: 0.86, metalness: 0 }),
+  };
+}
+
+function XiaobaiScholar({ mood, level, speaking, variant, reducedMotion = false }: XiaobaiSceneProps) {
+  const groupRef = useRef<THREE.Group>(null);
+  const materials = useMemo(() => createFigureMaterials(variant), [variant]);
+  useEffect(
+    () => () => Object.values(materials).forEach((material) => material.dispose()),
+    [materials],
   );
-  useEffect(() => () => material.dispose(), [material]);
 
   const face = useFaceTexture(mood, reducedMotion);
   const faceMaterial = useMemo(
-    () =>
-      new THREE.MeshBasicMaterial({
-        map: face.texture,
-        transparent: true,
-        depthWrite: false,
-      }),
+    () => new THREE.MeshBasicMaterial({ map: face.texture, transparent: true, depthWrite: false }),
     [face.texture],
   );
   useEffect(() => () => faceMaterial.dispose(), [faceMaterial]);
 
-  // mood 进场脉冲(aha 瞬间鼓起 / 其他 mood 微弹跳),指数衰减 = ease-out
   const pulse = useRef(0);
   const prevMood = useRef(mood);
   useEffect(() => {
-    if (prevMood.current !== mood) {
-      prevMood.current = mood;
-      pulse.current = Math.max(pulse.current, MOOD_MOTION[mood].enterPulse, 0.04);
-    }
+    if (prevMood.current === mood) return;
+    prevMood.current = mood;
+    pulse.current = Math.max(pulse.current, MOOD_MOTION[mood].enterPulse);
   }, [mood]);
 
   useFrame(({ clock }, dt) => {
-    const m = MOOD_MOTION[mood];
-    const g = groupRef.current;
-    if (!g) return;
+    const motion = MOOD_MOTION[mood];
+    const group = groupRef.current;
+    if (!group) return;
 
     if (reducedMotion) {
-      const staticScale = 1 + m.puff * 0.25;
-      uniforms.uTime.value = 0;
-      uniforms.uAmp.value = m.amp;
-      uniforms.uFreq.value = m.freq;
-      uniforms.uJitter.value = 0;
-      g.scale.set(staticScale, staticScale, staticScale);
-      g.position.y = 0;
-      g.rotation.z = mood === 'shy' ? -0.05 : mood === 'proud' ? 0.03 : 0;
+      const staticScale = 1 + motion.puff * 0.25;
+      group.scale.setScalar(staticScale);
+      group.position.y = 0;
+      group.rotation.z = 0;
+      face.tick(0);
       return;
     }
 
     const t = clock.elapsedTime;
-
-    // 1. shader 形变参数:阻尼趋近目标(柔和 ease-out)
-    uniforms.uTime.value = t;
-    uniforms.uAmp.value = damp(uniforms.uAmp.value, m.amp, 6, dt);
-    uniforms.uFreq.value = damp(uniforms.uFreq.value, m.freq, 6, dt);
-    uniforms.uJitter.value = damp(uniforms.uJitter.value, m.jitter, 8, dt);
-
-    // 2. 脉冲衰减(瞬间鼓起后弹回)
     pulse.current *= Math.exp(-dt * 5.2);
+    const breath = Math.sin(t * motion.breathSpeed) * motion.breathAmp;
+    const targetScale = 1 + motion.puff * 0.25 + pulse.current + breath;
+    group.scale.setScalar(damp(group.scale.x, targetScale, 9, dt));
 
-    // 3. 呼吸挤压 + 整体缩放,作用于 group 使脸/配饰一起动
-    const breath = Math.sin(t * m.breathSpeed) * m.breathAmp;
-    const scale = 1 + m.puff * 0.5 + pulse.current;
-    const targetSX = (1 + breath) * scale;
-    const targetSY = (1 - breath * 0.85) * scale;
-    g.scale.x = damp(g.scale.x, targetSX, 10, dt);
-    g.scale.z = damp(g.scale.z, targetSX, 10, dt);
-    g.scale.y = damp(g.scale.y, targetSY, 10, dt);
-
-    // 4. bob:speaking 上下轻浮 + happy 自主小弹跳(正弦,非 elastic)
     let y = 0;
-    if (m.bobAmp > 0) y += Math.abs(Math.sin(t * m.bobSpeed)) * m.bobAmp;
-    if (speaking) y += Math.sin(t * 5.5) * 0.028 + 0.012;
-    g.position.y = damp(g.position.y, y, 8, dt);
+    if (motion.bobAmp > 0) y += Math.abs(Math.sin(t * motion.bobSpeed)) * motion.bobAmp;
+    if (speaking) y += Math.sin(t * 4.2) * 0.006;
+    group.position.y = damp(group.position.y, y, 8, dt);
 
-    // 5. 姿态:轻微摇摆;confused 高频小幅左右发抖
-    let rz = Math.sin(t * 0.6) * 0.02;
-    if (mood === 'confused') rz += Math.sin(t * 22) * 0.014;
-    if (mood === 'shy') rz -= 0.05;
-    if (mood === 'proud') rz += 0.03;
-    g.rotation.z = damp(g.rotation.z, rz, 12, dt);
-
-    // 6. 表情 crossfade
+    let rotation = Math.sin(t * 0.52) * 0.006;
+    if (motion.shake > 0) rotation += Math.sin(t * 16) * motion.shake;
+    group.rotation.z = damp(group.rotation.z, rotation, 12, dt);
     face.tick(dt);
   });
 
   return (
     <group ref={groupRef}>
-      {/* 团子本体:适度细分二十面体 + simplex 位移，兼顾轮廓与移动端开销。 */}
-      <mesh material={material}>
-        <icosahedronGeometry args={[1, 8]} />
-      </mesh>
-      <StudentSilhouette material={material} variant={variant} />
-      {/* 脸:贴于正面(团子最大位移 ~0.08,平面放 1.1 避免穿插) */}
-      <mesh position={[0, 0.06, 1.1]} material={faceMaterial} renderOrder={2}>
-        <planeGeometry args={[1.5, 1.5]} />
-      </mesh>
-      <LevelAccessory level={level} />
+      <XiaobaiBody
+        mood={mood}
+        level={level}
+        speaking={speaking}
+        reducedMotion={reducedMotion}
+        faceMaterial={faceMaterial}
+        materials={materials}
+      />
     </group>
   );
 }
@@ -277,7 +253,7 @@ export function XiaobaiScene({
   return (
     <>
       <SceneLights variant={variant} />
-      <XiaobaiBlob
+      <XiaobaiScholar
         mood={mood}
         level={level}
         speaking={speaking}
@@ -290,9 +266,9 @@ export function XiaobaiScene({
   );
 }
 
-/** 供外层 Canvas 复用的相机参数:略俯视,把接触阴影和头顶配饰都框进画面 */
+/** 正面视角保留衣袍高度，避免俯视再次把小白压成一颗头。 */
 export const XIAOBAI_CAMERA = {
-  position: [0, 0.9, 4.6] as [number, number, number],
-  rotation: [-0.12, 0, 0] as [number, number, number],
-  fov: 36,
+  position: [0, 0.08, 5] as [number, number, number],
+  rotation: [0, 0, 0] as [number, number, number],
+  fov: 32,
 };
