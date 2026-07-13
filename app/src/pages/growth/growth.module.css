@@ -456,7 +456,7 @@
   box-shadow: inset 0 0 0 4px var(--paper-warm), inset 0 0 0 5px var(--line-strong);
 }
 
-/* 砚墨锚点(R1):师道称号是本页唯一的深色"证书",砚台压住卷首纸角——
+/* 砚墨锚点(R1):师道称号砚墨卡 + 卷三星图立轴,本页深色就此两处(法典上限"一两处")——
    靛墨 --inkstone 系专用,文字走 --moon-on-ink 双档;不是暗色模式 */
 .rankCard {
   display: flex;
@@ -769,7 +769,7 @@
   .logItem, .marginItem { grid-template-columns: 3.2rem minmax(0, 1fr); }
 }
 
-/* ── 卷三·迷雾舆图(选择器名与 KnowledgeMap.tsx 咬合) ── */
+/* ── 卷三·盲区星图(选择器名与 KnowledgeMap.tsx 咬合) ── */
 
 .mapWrap {
   min-width: 0;
@@ -780,50 +780,64 @@
   overscroll-behavior-inline: contain;
   scrollbar-gutter: stable;
   /* 横滚收纳(R4):左右边缘渐隐;#000 是 mask 通道不是配色。
-     渐隐坡 1.25rem 落在 mapAtlas 的 padding-inline(≥ --gap)里,不吃节点内容 */
+     渐隐坡 1.25rem 落在 starAtlas 的 padding-inline(≥ --gap)里,不吃星图立轴的装裱边 */
   mask-image: linear-gradient(90deg, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
 }
 
-/* 六列保持节点标题可读;窄屏让用户沿路横移，不把 42 个点缩成小字。 */
-.mapAtlas {
+/* 星图坐标与 KnowledgeMap.tsx 几何咬合:VIEW_W=720 / ROW_H=150(=9.375rem),
+   星槽用 % 定位 + rem 负 margin 对星心;槽上只写 margin 不写 transform
+   (global rise 的 to 帧 transform:none 会压死 transform 居中,老坑) */
+.starAtlas {
   min-width: 44rem;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-loose);
   padding-inline: clamp(var(--gap), 3vw, 2.5rem);
 }
 
-/* 一境一张纸岛:卷三落在 shade 带上,境卡以实纸浮出("浅卡深底",R3) */
-.mapRealm {
+/* 砚墨星图立轴:与师道砚墨卡同一装裱工艺(inset 双线),
+   本页深色锚点就此两处(法典上限"一两处");这不是暗色模式,
+   是挂在书斋墙上的一幅星图——深色作为"物件"才成立(黑板同款教训) */
+.skyChart {
+  --sky-lit: color-mix(in oklch, var(--jade) 40%, var(--moon-on-ink));
+  --sky-azure: color-mix(in oklch, var(--azure) 38%, var(--moon-on-ink));
+  --sky-amber: color-mix(in oklch, var(--amber) 52%, var(--moon-on-ink));
+  --sky-dim: color-mix(in oklch, var(--moonsoft-on-ink) 55%, transparent);
   position: relative;
   isolation: isolate;
-  padding: var(--gap) var(--gap) var(--gap-loose);
-  border: 1px solid var(--line-strong);
+  padding: var(--gap) clamp(var(--gap), 2.5vw, 2rem) var(--gap-loose);
+  border: 1px solid var(--inkstone-line);
   border-radius: var(--radius);
   background:
-    radial-gradient(38rem 12rem at 16% 26%, var(--paper-warm), transparent 70%),
-    var(--paper);
-  box-shadow: var(--shadow-paper);
+    radial-gradient(52rem 20rem at 18% -4%, color-mix(in oklch, var(--azure) 26%, transparent), transparent 62%),
+    radial-gradient(40rem 26rem at 88% 108%, color-mix(in oklch, var(--azure) 14%, transparent), transparent 66%),
+    linear-gradient(168deg, var(--inkstone), var(--inkstone-deep));
+  box-shadow:
+    inset 0 0 0 4px color-mix(in oklch, var(--inkstone) 55%, transparent),
+    inset 0 0 0 5px var(--inkstone-line),
+    var(--shadow-paper);
 }
 
-/* 同一门课是一境：左边章号、中间境名、右边操作提示。 */
-.realmHead {
+/* 垣与垣之间:一道虚线界栏,像星图上的分野线 */
+.skyRealm + .skyRealm {
+  margin-top: var(--gap-loose);
+  padding-top: var(--gap);
+  border-top: 1px dashed var(--inkstone-line);
+}
+
+.skyHead {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--gap);
-  margin-bottom: var(--gap-tight);
 }
 
-.realmNo {
+.skyNo {
   display: grid;
   place-items: center;
   width: 2.8rem;
   height: 2.8rem;
-  border: 1px solid var(--azure);
+  border: 1px solid var(--moonsoft-on-ink);
   border-radius: 50%;
-  color: var(--azure-deep);
-  background: var(--paper);
+  color: var(--moon-on-ink);
+  background: color-mix(in oklch, var(--moon-on-ink) 6%, transparent);
   font-family: var(--font-display);
   font-size: var(--fs-small);
   font-weight: 700;
@@ -831,306 +845,321 @@
   transform: rotate(-3deg);
 }
 
-.realmTitle {
+.skyTitle {
   font-family: var(--font-display);
   font-size: var(--fs-sub);
-  color: var(--ink);
+  color: var(--moon-on-ink);
   letter-spacing: 0.06em;
 }
 
-.realmSubtitle {
+.skySub {
   margin-top: 0.15rem;
   font-size: var(--fs-small);
-  color: var(--ink-soft);
+  color: var(--moonsoft-on-ink);
 }
 
-.realmHint {
-  max-width: 18rem;
+.skyHint {
+  max-width: 16rem;
   font-family: var(--font-display);
   font-size: var(--fs-small);
   line-height: 1.7;
-  color: var(--ink-faint);
+  color: var(--moonsoft-on-ink);
   text-align: right;
 }
 
-.realmTrail {
-  position: relative;
+/* 满天星点齐:锐角小签(朱文小印制式),星图里唯一的"完成"高光 */
+.skyDone {
+  justify-self: end;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--sky-lit);
+  border-radius: var(--radius-tag);
+  color: var(--sky-lit);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: 0.1em;
 }
 
-.realmPath {
+.skyField {
   position: relative;
-  z-index: 1;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(6.25rem, 1fr));
-  grid-auto-rows: 8.75rem;
-  gap: 2rem var(--gap-tight);
-  list-style: none;
-  margin: 0;
-  padding: var(--gap-tight) 0;
+  margin-top: var(--gap-tight);
 }
 
-.pathLines {
+.skyLines {
   position: absolute;
+  inset: 0;
   z-index: 0;
-  top: var(--gap-tight);
-  left: 0;
   width: 100%;
-  height: calc(100% - var(--gap) - 1px);
+  height: 100%;
   overflow: visible;
   pointer-events: none;
 }
 
-.pathLine,
-.pathLineShadow {
+/* 铺底星尘:基准亮度由 TSX 内联 --dust-o 下发,呼吸只在基准值上摆动 */
+.dustStar {
+  fill: var(--moonsoft-on-ink);
+  animation: dustTwinkle 5.2s var(--ease-loop) infinite alternate;
+}
+
+@keyframes dustTwinkle {
+  from { opacity: calc(var(--dust-o, 0.2) * 0.35); }
+  to { opacity: var(--dust-o, 0.2); }
+}
+
+/* 星轨三态:preserveAspectRatio=none 会横向拉伸,线宽必须锁死 */
+.segDim,
+.segWalked,
+.segLit,
+.segGlow {
   fill: none;
   vector-effect: non-scaling-stroke;
   stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
-.pathLineShadow {
-  stroke: var(--paper);
-  stroke-width: 7;
-  opacity: 0.9;
+.segDim {
+  stroke: var(--sky-dim);
+  stroke-width: 1;
+  stroke-dasharray: 2 7;
 }
 
-.pathLine {
-  stroke: var(--ink-faint);
+.segWalked {
+  stroke: var(--moonsoft-on-ink);
+  stroke-width: 1.2;
+  opacity: 0.55;
+}
+
+.segLit {
+  stroke: var(--sky-lit);
   stroke-width: 1.5;
-  stroke-dasharray: 1 7;
-  opacity: 0.66;
+  opacity: 0.95;
 }
 
-.pathSlot {
-  position: relative;
+.segGlow {
+  stroke: var(--sky-lit);
+  stroke-width: 5;
+  opacity: 0.16;
+}
+
+.starList {
+  position: absolute;
+  inset: 0;
   z-index: 1;
-  min-width: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.starSlot {
+  position: absolute;
+  width: 7.5rem;
+  margin-left: -3.75rem;
+  /* 星芒盒 3rem,星心在槽顶下 1.5rem */
+  margin-top: -1.5rem;
   /* 入场步进由 KnowledgeMap.tsx 内联 animationDelay 提供:min(i×45ms, 300ms)(R6) */
   animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 
-/* 节点不做通用卡片：它是路上一处可踏入的地标。 */
-.mapNode {
+.starBtn {
   position: relative;
-  isolation: isolate;
   width: 100%;
-  height: 100%;
-  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: var(--gap-hair);
-  padding: var(--gap-hair);
-  border: 1px solid transparent;
-  border-radius: var(--radius);
+  gap: 0.25rem;
+  padding: 0 0 var(--gap-hair);
+  border: 0;
   background: transparent;
-  color: var(--ink);
+  color: var(--moon-on-ink);
   text-align: center;
+  cursor: pointer;
+}
+
+.starBtn:focus-visible {
+  outline: 2px solid var(--moon-on-ink);
+  outline-offset: 3px;
+  border-radius: var(--radius-s);
+}
+
+/* 星芒:四芒 sparkle,状态只改上色/缩放/辉光,不换形 */
+.starGlyph {
+  position: relative;
+  z-index: 1;
+  width: 3rem;
+  height: 3rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 50%;
   transition:
     transform var(--t-fast) var(--ease-out),
     border-color var(--t-fast) var(--ease-out),
-    background var(--t-fast) var(--ease-out),
-    box-shadow var(--t-fast) var(--ease-out);
+    background var(--t-fast) var(--ease-out);
 }
 
-.mapNode:hover:not(:disabled) {
-  transform: translateY(-2px);
-  background: var(--ink-wash);
-  border-color: var(--line-strong);
+.starGlyph svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
 }
 
-.mapNode:focus-visible {
-  outline: 2px solid var(--azure);
-  outline-offset: 3px;
-  transform: translateY(-2px);
-}
-
-/* 选中只描青圈,不投大阴影(加浓轮:杀重投影,平贴纸面) */
-.mapNodeSelected {
-  background: color-mix(in oklch, var(--azure-wash) 72%, var(--paper));
-  border-color: var(--azure);
-  box-shadow: 0 0 0 3px var(--azure-wash);
-}
-
-.nodeOrder {
-  position: absolute;
-  top: var(--gap-hair);
-  left: var(--gap-hair);
-  font-family: var(--font-code);
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
-}
-
-/* 水墨圆牌(加浓轮 R5):软放射墨/尘晕面 + 细环,平贴纸面——
-   不是悬浮的雾球;外圈 4px 实纸圈只为抠掉身后的墨点路 */
-.nodeMarker {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  width: 2.9rem;
-  height: 2.9rem;
-  border: 1.5px solid var(--dust);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 32% 28%, var(--paper) 0 26%, transparent 62%),
-    color-mix(in oklch, var(--dust) 24%, var(--paper));
-  color: var(--ink-soft);
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  font-weight: 700;
-  box-shadow: 0 0 0 4px var(--paper);
-  transition: transform var(--t-med) var(--ease-out);
-}
-
-.mapNode:hover:not(:disabled) .nodeMarker,
-.mapNode:focus-visible .nodeMarker,
-.mapNodeSelected .nodeMarker {
-  transform: scale(1.06);
-}
-
-/* 地雾拍平:单层低透明尘晕垫在牌后,只给雾态用,不再是重影雾球 */
-.nodeMist {
-  position: absolute;
-  z-index: 1;
-  inset: 1.1rem 0.4rem 1.9rem;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at 50% 55%, color-mix(in oklch, var(--dust) 42%, transparent), transparent 72%);
+.glyphRing {
+  fill: none;
+  stroke: var(--sky-lit);
+  stroke-width: 0.8;
   opacity: 0;
-  pointer-events: none;
-  transform-origin: center;
 }
 
-.nodeTitle {
+.glyphStar {
+  fill: color-mix(in oklch, var(--moonsoft-on-ink) 26%, transparent);
+  stroke: var(--sky-dim);
+  stroke-width: 1;
+  transform: scale(0.72);
+  transform-origin: center;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.starBtn:hover:not(:disabled) .starGlyph,
+.starBtn:focus-visible .starGlyph {
+  transform: scale(1.12);
+  border-color: var(--sky-dim);
+  background: color-mix(in oklch, var(--moon-on-ink) 7%, transparent);
+}
+
+.starSelected .starGlyph {
+  border-color: var(--moon-on-ink);
+  background: color-mix(in oklch, var(--moon-on-ink) 10%, transparent);
+}
+
+.starOrder {
+  position: absolute;
+  top: -0.3rem;
+  right: -0.95rem;
+  font-family: var(--font-code);
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+  color: var(--moonsoft-on-ink);
+  opacity: 0.75;
+}
+
+.starName {
   position: relative;
-  z-index: 2;
-  min-height: 2.7em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  max-width: 9.5em;
+  z-index: 1;
+  max-width: 100%;
   font-family: var(--font-display);
   font-size: var(--fs-small);
   font-weight: 700;
-  line-height: 1.4;
+  line-height: 1.35;
+  color: var(--moon-on-ink);
   overflow-wrap: anywhere;
+  transition: color var(--t-fast) var(--ease-out);
 }
 
-.nodeState {
+.starState {
   position: relative;
-  z-index: 2;
-  font-size: 0.75rem;
-  color: var(--ink-soft);
+  z-index: 1;
+  font-size: var(--fs-tiny);
   white-space: nowrap;
 }
 
-/* 已出师：玉环圆牌 + 一点温和的灯晕——图谱点亮是允许的高光时刻,但不做重投影。 */
-.mapNodeMastered .nodeMist {
+/* 遗忘雾:垫在星芒后的一小团藤黄雾,慢慢回拢 */
+.starFog {
+  position: absolute;
+  z-index: 0;
+  top: -0.75rem;
+  left: 50%;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin-left: -2.25rem;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklch, var(--amber) 34%, transparent), transparent 72%);
   opacity: 0;
+  pointer-events: none;
 }
 
-.mapNodeMastered .nodeMarker {
-  color: var(--jade-ink);
-  border-color: var(--jade);
-  background:
-    radial-gradient(circle at 32% 28%, var(--paper) 0 30%, transparent 66%),
-    color-mix(in oklch, var(--jade) 14%, var(--paper));
-  box-shadow:
-    0 0 0 4px var(--paper),
-    0 0 0 6px var(--jade-wash),
-    0 0 14px color-mix(in oklch, var(--jade) 26%, transparent);
+/* 出师:亮星 + 命座环 + 辉光——星图点亮是允许的高光时刻 */
+.starMastered .glyphStar {
+  fill: var(--sky-lit);
+  stroke: none;
+  transform: scale(1);
 }
 
-.mapNodeMastered .nodeState { color: var(--jade-ink); }
+.starMastered .glyphRing { opacity: 0.85; }
 
-/* 衰减：藤黄环,雾正从旁边慢慢回拢。 */
-.mapNodeForgotten .nodeMist {
-  opacity: 0.6;
-  animation: mapFogDrift 5.5s var(--ease-loop) infinite alternate;
+.starMastered .starGlyph {
+  filter: drop-shadow(0 0 7px color-mix(in oklch, var(--sky-lit) 65%, transparent));
 }
 
-.mapNodeForgotten .nodeMarker {
-  color: var(--amber-ink);
-  border-color: var(--amber);
-  background:
-    radial-gradient(circle at 32% 28%, var(--paper) 0 26%, transparent 62%),
-    color-mix(in oklch, var(--amber) 18%, var(--paper));
+.starMastered .starState { color: var(--sky-lit); }
+
+/* 学习中:青星半明 */
+.starLearning .glyphStar {
+  fill: var(--sky-azure);
+  stroke: none;
+  transform: scale(0.9);
 }
 
-.mapNodeForgotten .nodeState { color: var(--amber-ink); }
-
-/* 学习中：青环半明,雾只剩右半。 */
-.mapNodeLearning .nodeMist {
-  opacity: 0.3;
-  clip-path: inset(0 0 0 52%);
-  transform: translateX(9%);
+.starLearning .starGlyph {
+  filter: drop-shadow(0 0 5px color-mix(in oklch, var(--sky-azure) 45%, transparent));
 }
 
-.mapNodeLearning .nodeMarker {
-  color: var(--azure-deep);
-  border-color: var(--azure);
-  background:
-    radial-gradient(circle at 32% 28%, var(--paper) 0 26%, transparent 62%),
-    color-mix(in oklch, var(--azure) 12%, var(--paper));
+.starLearning .starState { color: var(--sky-azure); }
+
+/* 衰减:藤黄雾星(全站唯一暖色=衰减语义,在夜空里自然扎眼) */
+.starForgotten .glyphStar {
+  fill: var(--sky-amber);
+  stroke: none;
+  transform: scale(0.88);
 }
 
-.mapNodeLearning .nodeState { color: var(--azure-deep); }
-
-/* 未学：虚线尘环示"雾未开",牌面沉半档,仍可点开看诚实空态。 */
-.mapNodeUnlearned .nodeMist { opacity: 0.55; }
-
-.mapNodeUnlearned .nodeMarker {
-  border-style: dashed;
-  color: var(--ink-faint);
-  background:
-    radial-gradient(circle at 32% 28%, var(--paper) 0 22%, transparent 60%),
-    color-mix(in oklch, var(--dust) 15%, var(--paper));
+.starForgotten .starGlyph {
+  filter: drop-shadow(0 0 5px color-mix(in oklch, var(--sky-amber) 50%, transparent));
 }
 
-/* 未开放：禁用且不进 Tab 序，雾量最高。 */
-.mapNodeLocked {
-  cursor: not-allowed;
-  color: var(--ink-faint);
+.starForgotten .starState { color: var(--sky-amber); }
+
+.starForgotten .starFog {
+  opacity: 0.55;
+  animation: starFogDrift 5.5s var(--ease-loop) infinite alternate;
 }
 
-.mapNodeLocked .nodeMist { opacity: 0.75; }
-
-.mapNodeLocked .nodeMarker {
-  border-style: dashed;
-  color: var(--ink-faint);
-  background: color-mix(in oklch, var(--dust) 26%, var(--paper));
+@keyframes starFogDrift {
+  from { transform: translate3d(-5px, 2px, 0); opacity: 0.4; }
+  to { transform: translate3d(5px, -2px, 0); opacity: 0.62; }
 }
 
-.mapNodeLocked .nodeTitle,
-.mapNodeLocked .nodeState,
-.mapNodeLocked .nodeOrder {
-  color: var(--ink-faint);
-  opacity: 0.7;
+/* 未学:暗星轮廓,雾未开;仍可点开看诚实空态 */
+.starUnlearned .starName { color: var(--moonsoft-on-ink); }
+
+/* 未开蒙:一粒最暗的星核,禁用不进 Tab 序 */
+.starLocked { cursor: not-allowed; }
+
+.starLocked .glyphStar {
+  fill: var(--sky-dim);
+  stroke: none;
+  transform: scale(0.4);
 }
 
-@keyframes mapFogDrift {
-  from { transform: translate3d(-4px, 1px, 0); opacity: 0.4; }
-  to { transform: translate3d(4px, -1px, 0); opacity: 0.65; }
-}
+.starLocked .starName { opacity: 0.45; }
 
 @media (max-width: 720px) {
-  .mapAtlas {
+  .starAtlas {
     min-width: 42rem;
     padding-inline: var(--gap);
   }
 
-  .mapRealm { padding-inline: var(--gap-tight); }
-  .realmHead { grid-template-columns: auto minmax(0, 1fr); }
-  .realmHint { display: none; }
-  .realmPath { grid-template-columns: repeat(6, minmax(5.75rem, 1fr)); }
+  .skyHead { grid-template-columns: auto minmax(0, 1fr); }
+  .skyHint { display: none; }
+  .skyDone { grid-column: 2; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mapNodeForgotten .nodeMist { animation: none; }
-  .mapNode:hover:not(:disabled),
-  .mapNode:focus-visible { transform: none; }
+  .dustStar { animation: none; }
+  .starForgotten .starFog { animation: none; }
+  .starBtn:hover:not(:disabled) .starGlyph,
+  .starBtn:focus-visible .starGlyph { transform: none; }
 }
+
 
 .legendRow {
   display: flex;

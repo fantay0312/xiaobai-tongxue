@@ -525,7 +525,7 @@ export default function GrowthPage() {
           <small>
             {forgottenNodes.length > 0
               ? '小白来信了——雾气漫上来的地方'
-              : '点一个节点,展开它的掌握度证据链'}
+              : '点一颗星,展开它的掌握度证据链'}
           </small>
         </h2>
         <div className={s.mapWrap}>
