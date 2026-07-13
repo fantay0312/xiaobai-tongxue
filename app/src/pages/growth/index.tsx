@@ -45,6 +45,12 @@ const PERSONAS: { name: Persona; line: string }[] = [
   { name: '杠精型', line: '「我不信。你要是对的,这段代码怎么解释?」' },
 ];
 
+const PERSONA_MOOD: Record<Persona, XiaobaiMood> = {
+  好奇型: 'curious',
+  严谨型: 'thinking',
+  杠精型: 'proud',
+};
+
 const EVENT_LABEL: Record<LearnEventType, string> = {
   session_started: '开课',
   checklist_hit: '要点命中',
@@ -226,6 +232,7 @@ export default function GrowthPage() {
   const shownChronicle = oldPages ? chronicle : chronicle.slice(0, 6);
   // 实印分色:tier → 印章样式(string 索引宽容契约外值,落回墨印)
   const TIER_CLASS: Record<string, string> = { ink: s.sealInk, cinnabar: s.sealCinnabar, gold: s.sealGold };
+  const TIER_NAME: Record<string, string> = { ink: '墨印', cinnabar: '朱印', gold: '金印' };
 
   const nodes: MapNode[] = TOPICS.map((t) => {
     if (t.locked) return { topic: t, state: null, status: 'locked' as const };
@@ -252,7 +259,7 @@ export default function GrowthPage() {
   const forgottenNodes = nodes.filter((n) => n.status === 'forgotten');
 
   const mood: XiaobaiMood =
-    global.learningLevel >= 5 ? 'proud' : global.topicsMastered > 0 ? 'happy' : 'idle';
+    global.learningLevel >= 5 ? 'proud' : global.topicsMastered > 0 ? 'happy' : PERSONA_MOOD[global.persona];
 
   const goReview = async (topicId: string) => {
     if (reviewBusy) return;
@@ -461,11 +468,18 @@ export default function GrowthPage() {
               {achievements.map((a) => {
                 const earned = a.earnedAt !== null;
                 const isOpen = openSeal === a.id;
+                const progressPct = a.progress.target > 0
+                  ? Math.min(100, (a.progress.now / a.progress.target) * 100)
+                  : 100;
                 return (
                   <button
                     key={a.id}
+                    id={`achievement-${a.id}`}
                     type="button"
                     aria-expanded={isOpen}
+                    aria-controls="achievement-detail"
+                    aria-label={earned ? `${a.name}，已钤印` : `${a.name}，进度 ${a.progress.now}/${a.progress.target}`}
+                    data-tier-name={TIER_NAME[a.tier] ?? '印章'}
                     className={[
                       s.seal,
                       earned ? (TIER_CLASS[a.tier] ?? s.sealInk) : s.sealGhost,
@@ -473,17 +487,30 @@ export default function GrowthPage() {
                     ].filter(Boolean).join(' ')}
                     onClick={() => setOpenSeal(isOpen ? null : a.id)}
                   >
-                    <span className={s.sealGlyph} aria-hidden="true">{a.glyph}</span>
+                    <span className={s.sealState}>{earned ? '已钤' : '待刻'}</span>
+                    <span className={s.sealFace} aria-hidden="true">
+                      <span className={s.sealGlyph}>{a.glyph}</span>
+                    </span>
                     <span className={s.sealName}>{a.name}</span>
                     {!earned && (
-                      <span className={s.sealProgress}>{a.progress.now}/{a.progress.target}</span>
+                      <span className={s.sealProgress}>
+                        <span className={s.sealProgressTrack} aria-hidden="true">
+                          <span style={{ width: `${progressPct}%` }} />
+                        </span>
+                        <span className={s.sealProgressText}>{a.progress.now}/{a.progress.target}</span>
+                      </span>
                     )}
                   </button>
                 );
               })}
             </div>
             <div className={`${s.collapse} ${openAch ? s.open : ''}`}>
-              <div inert={!openAch}>
+              <div
+                id="achievement-detail"
+                role="region"
+                aria-labelledby={shownAch ? `achievement-${shownAch.id}` : undefined}
+                inert={!openAch}
+              >
                 {shownAch && (
                   <div className={s.sealDetail}>
                     <p className={s.sealDetailName}>

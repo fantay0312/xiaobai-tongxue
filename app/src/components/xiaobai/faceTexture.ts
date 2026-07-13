@@ -8,13 +8,13 @@
  * 圆点眼加高光,多数表情带常驻淡腮红 —— 只动脸部纹理,Props 契约不变。
  */
 import type { XiaobaiMood } from '../../types';
-import { AZURE, CINNABAR, INK } from './palette';
+import { AZURE, BODY_WHITE, CINNABAR, INK } from './palette';
 
 export const FACE_CANVAS_SIZE = 256;
 
-/* 归一化布局:画布 256px,眼睛中心 y≈0.42,嘴 y≈0.62,左右眼距中心 ±0.21 */
+/* 归一化布局:收窄眼距，让表情集中在头部中心，避免两颗小眼被大轮廓吞掉。 */
 const EYE_Y = 0.42;
-const EYE_DX = 0.21;
+const EYE_DX = 0.18;
 const MOUTH_Y = 0.63;
 
 type Ctx = CanvasRenderingContext2D;
@@ -35,7 +35,7 @@ function dotEye(ctx: Ctx, x: number, y: number, r: number) {
   ctx.fill();
   ctx.beginPath();
   ctx.arc(x - r * 0.3, y - r * 0.34, r * 0.32, 0, Math.PI * 2);
-  ctx.fillStyle = '#ffffff'; // 眼内高光,非界面色
+  ctx.fillStyle = BODY_WHITE;
   ctx.fill();
 }
 
@@ -54,7 +54,7 @@ function roundEye(ctx: Ctx, x: number, y: number, r: number) {
   ctx.fill();
   ctx.beginPath();
   ctx.arc(x - r * 0.32, y - r * 0.35, r * 0.3, 0, Math.PI * 2);
-  ctx.fillStyle = '#ffffff'; // 眼内高光,非界面色
+  ctx.fillStyle = BODY_WHITE;
   ctx.fill();
 }
 
@@ -187,6 +187,17 @@ function brow(ctx: Ctx, x: number, y: number, half: number, angle: number, w: nu
   stroke(ctx, w);
 }
 
+/** 极淡的小瓷鼻只给脸留一点立体定位，不画成人类卡通鼻。 */
+function noseHint(ctx: Ctx, s: number) {
+  ctx.save();
+  ctx.globalAlpha *= 0.18;
+  ctx.fillStyle = INK;
+  ctx.beginPath();
+  ctx.ellipse(s * 0.51, s * 0.535, s * 0.008, s * 0.005, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 /** 睁眼待机表情:场景层只对这些 mood 排眨眼(星星眼/蚊香眼眨起来只会诡异) */
 export const BLINK_MOODS: ReadonlySet<XiaobaiMood> = new Set(['idle', 'curious']);
 
@@ -214,23 +225,25 @@ export function drawFace(
         lidEye(ctx, lx, ey, s * 0.042, w);
         lidEye(ctx, rx, ey, s * 0.042, w);
       } else {
-        dotEye(ctx, lx, ey, s * 0.034);
-        dotEye(ctx, rx, ey, s * 0.034);
+        dotEye(ctx, lx, ey, s * 0.041);
+        dotEye(ctx, rx, ey, s * 0.041);
       }
-      smileMouth(ctx, cx, my, s * 0.055, w);
-      blush(ctx, s, 0.16);
+      brow(ctx, lx, ey - s * 0.105, s * 0.043, 0, w * 0.7);
+      brow(ctx, rx, ey - s * 0.105, s * 0.043, 0, w * 0.7);
+      smileMouth(ctx, cx, my, s * 0.063, w * 0.9);
+      blush(ctx, s, 0.11);
       break;
     case 'curious': // ◕ ᴗ ◕
       if (shut) {
         lidEye(ctx, lx, ey, s * 0.052, w);
         lidEye(ctx, rx, ey, s * 0.052, w);
       } else {
-        roundEye(ctx, lx, ey, s * 0.056);
-        roundEye(ctx, rx, ey, s * 0.056);
+        roundEye(ctx, lx, ey, s * 0.055);
+        roundEye(ctx, rx, ey, s * 0.055);
       }
-      brow(ctx, lx, ey - s * 0.115, s * 0.05, -0.5, w * 0.85);
-      brow(ctx, rx, ey - s * 0.115, s * 0.05, -0.5, w * 0.85);
-      smileMouth(ctx, cx, my, s * 0.06, w);
+      brow(ctx, lx, ey - s * 0.125, s * 0.048, 0.16, w * 0.48);
+      brow(ctx, rx, ey - s * 0.108, s * 0.048, -0.04, w * 0.48);
+      smileMouth(ctx, cx, my, s * 0.052, w * 0.86);
       blush(ctx, s, 0.18);
       break;
     case 'confused': // @ _ @
@@ -272,4 +285,5 @@ export function drawFace(
       blush(ctx, s, 0.5);
       break;
   }
+  noseHint(ctx, s);
 }

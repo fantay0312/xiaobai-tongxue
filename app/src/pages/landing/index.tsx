@@ -12,6 +12,7 @@ import { useAppStore } from '../../store/appStore';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { Icon } from '../../components/ui/Icon';
 import { TOPICS, XIAOBAI_LINES } from '../../data';
+import { COURSE_COVERS } from '../../data/courseCovers';
 import { tokenizationDemo, tokenizationTopic } from '../../data/topics/tokenization';
 import type { Topic } from '../../types';
 import { useDocTitle } from '../../hooks/useDocTitle';
@@ -379,18 +380,33 @@ export default function LandingPage() {
             aria-label="进入书架,挑一个知识点开讲"
           >
             <span className={s.caseRow}>
-              {SHELF.map(({ course, topics }, i) => (
-                <span
-                  key={course}
-                  className={`${s.vol} ${s[`volTone${i % 3}`]}`}
-                  style={{ width: `${7.25 + Math.min(topics.length * 0.05, 1.5)}rem` }}
-                >
-                  <span className={`${s.volSlip} ${course.length > 6 ? s.volSlipLong : ''}`}>
-                    {course}
+              {SHELF.map(({ course, topics }, i) => {
+                const cover = COURSE_COVERS[course];
+                return (
+                  <span
+                    key={course}
+                    className={`${s.vol} ${s[`volTone${i % 3}`]}`}
+                    style={{ width: `${7.25 + Math.min(topics.length * 0.05, 1.5)}rem` }}
+                  >
+                    {cover && (
+                      <img
+                        className={s.volArt}
+                        src={cover.src}
+                        alt=""
+                        width={512}
+                        height={768}
+                        loading="lazy"
+                        decoding="async"
+                        aria-hidden="true"
+                      />
+                    )}
+                    <span className={`${s.volSlip} ${course.length > 6 ? s.volSlipLong : ''}`}>
+                      {course}
+                    </span>
+                    <span className={s.volMeta}>{cnCount(topics.length)} 讲</span>
                   </span>
-                  <span className={s.volMeta}>{cnCount(topics.length)} 讲</span>
-                </span>
-              ))}
+                );
+              })}
             </span>
             <span className={s.caseRail} aria-hidden="true" />
             <span className={s.caseCaption}>

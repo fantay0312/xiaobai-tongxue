@@ -1,6 +1,6 @@
 /**
- * CSS 团子降级组件:WebGL 不可用或 three 场景渲染出错时使用。
- * 以纯 CSS 眼口保持跨平台一致,保证任何环境下小白都在场。
+ * WebGL 不可用、异步场景加载中或运行时上下文丢失时的 CSS 小书生。
+ * 轮廓与 3D 版保持同一身份:瓷白头、月白衣袍、交领、抱书和成长配饰。
  */
 import type { XiaobaiMood } from '../../types';
 import { Icon, type IconName } from '../ui/Icon';
@@ -9,7 +9,6 @@ import styles from './FallbackBlob.module.css';
 export interface FallbackBlobProps {
   mood: XiaobaiMood;
   level: 1 | 2 | 3 | 4 | 5;
-  size?: number;
   variant?: 'paper' | 'board';
 }
 
@@ -21,28 +20,41 @@ const LEVEL_ICON: Record<FallbackBlobProps['level'], IconName> = {
   5: 'graduation',
 };
 
-export function FallbackBlob({ mood, level, size = 240, variant = 'paper' }: FallbackBlobProps) {
+export function FallbackBlob({ mood, level, variant = 'paper' }: FallbackBlobProps) {
   return (
     <div
       className={variant === 'board' ? `${styles.blob} ${styles.board}` : styles.blob}
-      style={{ width: size, height: size, fontSize: size / 8 }}
       data-mood={mood}
-      role="img"
-      aria-label="小白的动态形象"
+      aria-hidden="true"
     >
-      <span className={`${styles.accessory} ${styles[`level${level}`]}`} aria-hidden="true">
-        <Icon name={LEVEL_ICON[level]} size={Math.round(size * 0.2)} strokeWidth={1.7} />
-      </span>
-      <span className={styles.face} aria-hidden="true">
-        <i className={`${styles.eye} ${styles.eyeLeft}`} />
-        <i className={`${styles.eye} ${styles.eyeRight}`} />
-        <i className={styles.mouth} />
-      </span>
-      {level === 4 && (
-        <span className={styles.glasses} aria-hidden="true">
-          <Icon name="glasses" size={Math.round(size * 0.2)} strokeWidth={1.7} />
+      {level !== 3 ? (
+        <span className={`${styles.accessory} ${styles[`level${level}`]}`}>
+          <Icon name={LEVEL_ICON[level]} size="1.35em" strokeWidth={1.8} />
         </span>
-      )}
+      ) : null}
+
+      <span className={styles.head}>
+        <span className={styles.face}>
+          <i className={`${styles.eye} ${styles.eyeLeft}`} />
+          <i className={`${styles.eye} ${styles.eyeRight}`} />
+          <i className={styles.nose} />
+          <i className={styles.mouth} />
+        </span>
+        {level === 3 || level === 4 ? (
+          <span className={styles.glasses}>
+            <Icon name="glasses" size="2.05em" strokeWidth={1.65} />
+          </span>
+        ) : null}
+      </span>
+
+      <span className={styles.robe}>
+        <span className={`${styles.sleeve} ${styles.sleeveLeft}`} />
+        <span className={`${styles.sleeve} ${styles.sleeveRight}`} />
+        <span className={styles.collar}><i /><i /></span>
+        <span className={styles.book}><i /><i /></span>
+        <span className={`${styles.hand} ${styles.handLeft}`} />
+        <span className={`${styles.hand} ${styles.handRight}`} />
+      </span>
     </div>
   );
 }

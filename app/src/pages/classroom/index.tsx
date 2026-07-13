@@ -459,7 +459,7 @@ export default function ClassroomPage() {
               level={g.learningLevel}
               speaking={typingNow}
               size={170}
-              variant="paper"
+              variant="board"
             />
           </div>
           <div className={s.plate}>
