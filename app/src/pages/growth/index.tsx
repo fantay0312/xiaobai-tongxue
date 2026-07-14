@@ -28,7 +28,7 @@ import { useDocTitle } from '../../hooks/useDocTitle';
 import { KnowledgeMap, type MapNode } from './KnowledgeMap';
 import s from './growth.module.css';
 
-/* 阶名对齐 3D 形象的等级配件:1 嫩芽 / 2 灯泡 / 3 眼镜 / 4 眼镜+问号泡 / 5 学士帽 */
+/* 五阶称号沿用既有成长语义;头像以壹至伍学识印标记当前阶段 */
 const LEVELS: { lv: 1 | 2 | 3 | 4 | 5; name: string; desc: string; icon: IconName }[] = [
   { lv: 1, name: '嫩芽', desc: '初入学堂', icon: 'sprout' },
   { lv: 2, name: '灯泡', desc: '偶有灵光', icon: 'lightbulb' },

@@ -37,7 +37,7 @@ npm run simulate     # 教学引擎全量仿真回归(38 讲断言)
 ## 仓库结构
 
 ```
-app/                 # 前端:Vite + React 19 + TS,zustand,three.js(小白 3D 形象)
+app/                 # 前端:Vite + React 19 + TS,zustand(小白二维书童形象)
   src/engine/        # 教学引擎:评估/导演/渲染/守门/成就/回忆(纯函数,可 Node 仿真)
   src/data/topics/   # 38 讲课程数据(checklist/误区/题库/备课包/台词)
   src/pages/         # 门厅/备课/讲解舱/送考/复盘/成长册/教师看板

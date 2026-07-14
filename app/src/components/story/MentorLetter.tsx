@@ -39,9 +39,8 @@ export function MentorLetter() {
   const dialogRef = useRef<HTMLDivElement>(null);
 
   /** 开合必须同步广播给「小白引路」(不能走 [open] effect):
-      主线程被 three 懒加载卡住时,帖的 450ms 定时器与引路的 700ms 定时器会挤进同一批
-      宏任务 flush——帖 due 更早、规范保证先跑,同步派发才来得及把引路的定时器 clear 掉;
-      经 React effect 异步派发则总在引路开火之后才到(实测 2052ms vs 2063ms)。 */
+      页面忙时两个定时器可能挤进同一批宏任务;同步派发才能及时清掉引路计时器,
+      避免拜师帖与引路提示同时弹出。 */
   const setOpenAndBroadcast = useCallback((next: boolean) => {
     setOpen(next);
     window.dispatchEvent(new CustomEvent(next ? LETTER_OPEN_EVENT : LETTER_CLOSED_EVENT));

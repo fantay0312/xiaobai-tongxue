@@ -1,0 +1,9 @@
+{
+  "name": "xiaobai-gateway",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check index.mjs && node --check email-auth.mjs && node --check auth-security.mjs && node --check password-credentials.mjs",
+    "test": "node --test *.test.mjs"
+  }
+}

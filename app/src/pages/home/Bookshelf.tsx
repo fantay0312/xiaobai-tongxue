@@ -15,6 +15,14 @@ import styles from './shelf.module.css';
 
 type SpineStatus = 'mastered' | 'review' | 'learning' | 'fresh' | 'locked';
 
+const STATUS_LABEL: Record<SpineStatus, string> = {
+  mastered: '出师',
+  review: '待复习',
+  learning: '学习中',
+  fresh: '未学',
+  locked: '未开放',
+};
+
 function spineStatus(topic: Topic, st: TopicState | undefined): SpineStatus {
   if (topic.locked) return 'locked';
   if (!st) return 'fresh';
@@ -133,6 +141,7 @@ export function Bookshelf() {
                     height={768}
                     loading="lazy"
                     decoding="async"
+                    draggable={false}
                     aria-hidden="true"
                   />
                 )}
@@ -176,6 +185,7 @@ export function Bookshelf() {
                 height={768}
                 loading="lazy"
                 decoding="async"
+                draggable={false}
               />
               <span className={styles.courseCoverMark}>{currentCover.mark}</span>
             </div>
@@ -221,7 +231,8 @@ export function Bookshelf() {
                     }}
                     disabled={topic.locked}
                     onClick={() => openTopic(topic)}
-                    title={topic.locked ? `${topic.title}(未开放)` : topic.tagline}
+                    aria-label={`第 ${idx + 1} 讲，${topic.title}，${STATUS_LABEL[status]}`}
+                    title={topic.locked ? `${topic.title}(未开放)` : `${topic.title} · ${STATUS_LABEL[status]}\n${topic.tagline}`}
                   >
                     <span className={styles.band} aria-hidden="true" />
                     <span

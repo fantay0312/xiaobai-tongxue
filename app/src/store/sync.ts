@@ -7,13 +7,13 @@
  *   推:appStore 三件变化后去抖 3s PUT;失败退避重试;页面隐藏时尽力冲刷。
  * 防互踩:PUT 带 baseVersion(上次见到的服务器 updatedAt),不符则 409 —— 客户端拉回远端档,
  *   按 id 并集合并 events/reports 后重推(双开页签/两台设备同时用,谁都不清掉谁)。
- * 守门:拉档没成功(登录竞态/断网)之前一律不推 —— 空档新机器不许覆写服务器上的老档。
+ * 守门:拉档没成功或旧账号尚未补录邮箱时一律不拉不推 —— 未验证会话与空档新机器都不许碰服务器档。
  * 纪律:settings/asrSettings(含密钥)永不进载荷;live(进行中会话)不同步;
  *      standalone(无网关)完全旁路,离线演示行为与从前一字不差。
  */
 import { DEFAULT_GLOBAL, useAppStore } from './appStore';
 import { useAuthStore } from './authStore';
-import { API_BASE } from '../lib/api';
+import { API_BASE, gatewayFetch } from '../lib/api';
 import { TOPICS } from '../data';
 // 进化派生(升期):不进 barrel 的纯函数,按路径直连
 import { deriveEvolution } from '../engine/evolution';
@@ -35,10 +35,19 @@ let applyingRemote = false; // 正在把服务器档灌回本地:期间的 store
 let pushTimer = 0;
 let dirty = false;
 let started = false;
+/** 账号/鉴权状态真正变化时递增；所有在飞响应落地前必须核对。 */
+let syncGeneration = 0;
+let observedAuthKey: string | null = null;
 /** 拉档成功后才等于当前账号名:是"允许推送"的闸门(空档新机不许覆写服务器老档) */
 let syncedUser: string | null = null;
 /** 上次见到的服务器档版本(updatedAt),PUT 时作为 baseVersion 防互踩 */
 let serverVersion: string | null = null;
+
+function syncIsCurrent(generation: number, user: string): boolean {
+  const auth = useAuthStore.getState();
+  return generation === syncGeneration && auth.status === 'authed'
+    && auth.user === user && !auth.emailBindingRequired;
+}
 
 function snapshot(): SyncPayload {
   const s = useAppStore.getState();
@@ -97,7 +106,7 @@ function mergeRemote(remote: SyncPayload): void {
 
 async function fetchRemote(): Promise<{ state: Partial<SyncPayload> | null; updatedAt: string | null } | null> {
   try {
-    const res = await fetch(`${API_BASE}/state`);
+    const res = await gatewayFetch(`${API_BASE}/state`);
     if (!res.ok) return null;
     const data: unknown = await res.json();
     const doc = data as { state?: unknown; updatedAt?: unknown };
@@ -112,21 +121,24 @@ async function fetchRemote(): Promise<{ state: Partial<SyncPayload> | null; upda
 
 async function push(useKeepalive = false, isRetryAfterConflict = false): Promise<void> {
   // 闸门:必须是"已完成拉档"的当前账号才许推——防空档新机覆写、防换号期间的旧定时器串档
-  if (useAuthStore.getState().status !== 'authed') return;
-  if (!syncedUser || syncedUser !== useAuthStore.getState().user) return;
+  const user = syncedUser;
+  const generation = syncGeneration;
+  if (!user || !syncIsCurrent(generation, user)) return;
   dirty = false;
   const body = JSON.stringify({ state: snapshot(), baseVersion: serverVersion });
   const bytes = new Blob([body]).size;
   try {
-    const res = await fetch(`${API_BASE}/state`, {
+    const res = await gatewayFetch(`${API_BASE}/state`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body,
       ...(useKeepalive && bytes <= KEEPALIVE_LIMIT ? { keepalive: true } : {}),
     });
+    if (!syncIsCurrent(generation, user)) return;
     if (res.status === 409 && !isRetryAfterConflict) {
       // 别的页签/设备先写了:拉回远端并集合并,换新版本号重推一次
       const remote = await fetchRemote();
+      if (!syncIsCurrent(generation, user)) return;
       if (remote?.state) {
         mergeRemote(sanitize(remote.state));
         serverVersion = remote.updatedAt;
@@ -135,15 +147,18 @@ async function push(useKeepalive = false, isRetryAfterConflict = false): Promise
       dirty = true;
       return;
     }
+    if (res.status === 401) return;
     if (!res.ok) {
       dirty = true;
       scheduleRetry();
       return;
     }
     const data: unknown = await res.json().catch(() => null);
+    if (!syncIsCurrent(generation, user)) return;
     const updatedAt = (data as { updatedAt?: unknown })?.updatedAt;
     if (typeof updatedAt === 'string') serverVersion = updatedAt;
   } catch {
+    if (!syncIsCurrent(generation, user)) return;
     dirty = true; // 离线:退避后重试,或等下一次变化
     scheduleRetry();
   }
@@ -169,8 +184,9 @@ function flushNow(): void {
 }
 
 /** 登录/会话恢复:先拉服务器档,决定谁覆盖谁;成功后才开推送闸门 */
-async function adopt(user: string): Promise<boolean> {
+async function adopt(user: string, generation: number): Promise<boolean> {
   const remote = await fetchRemote();
+  if (!syncIsCurrent(generation, user)) return false;
   if (!remote) return false; // 拉档失败:闸门不开,这一轮完全不同步
 
   if (remote.state) {
@@ -186,8 +202,11 @@ async function adopt(user: string): Promise<boolean> {
     syncedUser = user;
   } else {
     // 服务器无档:本地若是别的账号留下的学习史,清空再认领
-    const lastUser = localStorage.getItem(LAST_USER_KEY);
-    if (lastUser && lastUser.toLowerCase() !== user.toLowerCase()) {
+    let lastUser: string | null = null;
+    let ownerKnown = true;
+    try { lastUser = localStorage.getItem(LAST_USER_KEY); } catch { ownerKnown = false; }
+    if (!syncIsCurrent(generation, user)) return false;
+    if (!ownerKnown || (lastUser && lastUser.toLowerCase() !== user.toLowerCase())) {
       applyingRemote = true;
       try {
         useAppStore.getState().resetAll();
@@ -198,7 +217,9 @@ async function adopt(user: string): Promise<boolean> {
     serverVersion = null;
     syncedUser = user; // 先开闸门再首推(push 闸门要看它)
     await push();
+    if (!syncIsCurrent(generation, user)) return false;
   }
+  if (!syncIsCurrent(generation, user)) return false;
   try { localStorage.setItem(LAST_USER_KEY, user); } catch { /* 存储不可用:仅失去归属检查 */ }
   return true;
 }
@@ -209,19 +230,25 @@ export function initStateSync(): void {
   started = true;
 
   let adoptRetryTimer = 0;
-  const onAuth = (status: string, user: string | null) => {
+  const onAuth = (status: string, user: string | null, emailBindingRequired: boolean) => {
+    const authKey = `${status}\0${user ?? ''}\0${emailBindingRequired ? 'restricted' : 'ready'}`;
+    if (authKey === observedAuthKey) return;
+    observedAuthKey = authKey;
+    syncGeneration += 1;
     // 任何登录态变化都先掐掉挂起的推送:旧账号的去抖定时器绝不许在新账号会话里开火
     window.clearTimeout(pushTimer);
     window.clearTimeout(adoptRetryTimer);
     dirty = false;
-    if (status === 'authed' && user) {
+    if (status === 'authed' && user && !emailBindingRequired) {
       if (syncedUser !== user) {
         syncedUser = null;
         serverVersion = null;
         const tryAdopt = () => {
-          void adopt(user).then((ok) => {
+          const generation = syncGeneration;
+          if (!syncIsCurrent(generation, user)) return;
+          void adopt(user, generation).then((ok) => {
             // 拉档失败(断网/网关重启):30s 后再试,直到成功或登出
-            if (!ok && useAuthStore.getState().user === user) {
+            if (!ok && syncIsCurrent(generation, user)) {
               adoptRetryTimer = window.setTimeout(tryAdopt, 30_000);
             }
           });
@@ -233,14 +260,15 @@ export function initStateSync(): void {
       serverVersion = null;
     }
   };
-  useAuthStore.subscribe((s) => onAuth(s.status, s.user));
+  useAuthStore.subscribe((s) => onAuth(s.status, s.user, s.emailBindingRequired));
   // initStateSync 装载时会话可能已恢复(装载顺序/HMR),补一次当前态
   const auth = useAuthStore.getState();
-  onAuth(auth.status, auth.user);
+  onAuth(auth.status, auth.user, auth.emailBindingRequired);
 
   useAppStore.subscribe((state, prev) => {
     if (applyingRemote) return;
-    if (useAuthStore.getState().status !== 'authed') return;
+    const auth = useAuthStore.getState();
+    if (auth.status !== 'authed' || auth.emailBindingRequired) return;
     if (state.global === prev.global && state.events === prev.events && state.reports === prev.reports) return;
     schedulePush();
   });

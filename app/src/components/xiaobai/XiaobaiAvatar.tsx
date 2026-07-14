@@ -1,17 +1,11 @@
 /**
- * 小白 3D 纸塑小书生 —— Props 契约 FROZEN(three.js/R3F 实现)
- * mood 驱动表情与形变;level 驱动头顶配饰(1嫩芽 2灯泡 3-4眼镜 5学士帽);
- * speaking 时轻微弹跳;variant 适配纸面/黑板两种场景光照。
- * WebGL 不可用或渲染出错时自动降级为同轮廓的 CSS 小书生(FallbackBlob);
- * three chunk 懒加载，降级形象一直垫底到 WebGL 首帧就绪才撤，首屏无空框无闪空。
+ * 小白二维书童形象 —— Props 契约 FROZEN。
+ * 以用户提供的角色设定稿派生透明八表情图集；不携带原稿文字、网格或骨骼点。
+ * mood 映射独立表情，level 映射学识朱印，variant 适配纸面/黑板场景。
  */
-import { Suspense, lazy, useMemo, useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import type { XiaobaiMood } from '../../types';
-import { FallbackBlob } from './FallbackBlob';
-import { AvatarErrorBoundary, detectWebGL } from './webglGuard';
-import { getXiaobaiLabel } from './xiaobaiLabel';
-
-const SceneCanvas = lazy(() => import('./SceneCanvas'));
+import styles from './XiaobaiAvatar.module.css';
 
 export interface XiaobaiAvatarProps {
   mood: XiaobaiMood;
@@ -23,6 +17,32 @@ export interface XiaobaiAvatarProps {
   variant?: 'paper' | 'board';
 }
 
+interface SpriteFrame { column: 0 | 1 | 2 | 3; row: 0 | 1 }
+
+const SPRITE_FRAMES: Record<XiaobaiMood, SpriteFrame> = {
+  idle: { column: 0, row: 0 },
+  curious: { column: 1, row: 0 },
+  confused: { column: 2, row: 0 },
+  thinking: { column: 3, row: 0 },
+  aha: { column: 0, row: 1 },
+  happy: { column: 1, row: 1 },
+  proud: { column: 2, row: 1 },
+  shy: { column: 3, row: 1 },
+};
+const MOOD_LABELS: Record<XiaobaiMood, string> = {
+  idle: '安静等候', curious: '好奇追问', confused: '有些困惑', thinking: '认真思考',
+  aha: '恍然大悟', happy: '开心学会', proud: '自信出师', shy: '腼腆作揖',
+};
+const LEVEL_MARKS = ['壹', '贰', '叁', '肆', '伍'] as const;
+const ASSET_URL = `${import.meta.env.BASE_URL}xiaobai-book-boy-atlas.webp`;
+
+function spriteStyle(frame: SpriteFrame): CSSProperties {
+  return {
+    width: '400%',
+    transform: `translate(${-frame.column * 25}%, ${-frame.row * 50}%)`,
+  };
+}
+
 export function XiaobaiAvatar({
   mood,
   level,
@@ -30,42 +50,32 @@ export function XiaobaiAvatar({
   size = 240,
   variant = 'paper',
 }: XiaobaiAvatarProps) {
-  const webglOK = useMemo(detectWebGL, []);
-  const [ready, setReady] = useState(false);
-  const [contextLost, setContextLost] = useState(false);
-  const fallback = <FallbackBlob mood={mood} level={level} variant={variant} />;
-  const showCanvas = webglOK && !contextLost;
-
+  const [assetFailed, setAssetFailed] = useState(false);
+  const frame = SPRITE_FRAMES[mood];
+  const className = [styles.avatar, styles[variant], speaking ? styles.speaking : '']
+    .filter(Boolean).join(' ');
   return (
     <div
-      style={{ position: 'relative', width: size, height: size, containerType: 'inline-size' }}
-      aria-label={getXiaobaiLabel(mood, level)}
+      className={className}
+      style={{ width: size, height: size }}
       role="img"
+      aria-label={`小白正在${MOOD_LABELS[mood]}`}
+      data-mood={mood}
     >
-      {(!showCanvas || !ready) && (
-        <div style={{ position: 'absolute', inset: 0 }} aria-hidden="true">
-          {fallback}
-        </div>
-      )}
-      {showCanvas && (
-        <AvatarErrorBoundary
-          fallback={<div style={{ position: 'absolute', inset: 0 }} aria-hidden="true">{fallback}</div>}
-        >
-          <Suspense fallback={null}>
-            <SceneCanvas
-              mood={mood}
-              level={level}
-              speaking={speaking}
-              variant={variant}
-              onReady={() => setReady(true)}
-              onContextLost={() => {
-                setReady(false);
-                setContextLost(true);
-              }}
-            />
-          </Suspense>
-        </AvatarErrorBoundary>
-      )}
+      <span className={styles.motion} aria-hidden="true">
+        {assetFailed ? <span className={styles.fallback}>白</span> : (
+          <img
+            className={styles.sprite}
+            style={spriteStyle(frame)}
+            src={ASSET_URL}
+            alt=""
+            draggable={false}
+            decoding="async"
+            onError={() => setAssetFailed(true)}
+          />
+        )}
+      </span>
+      <span className={styles.levelMark} aria-hidden="true">{LEVEL_MARKS[level - 1]}</span>
     </div>
   );
 }

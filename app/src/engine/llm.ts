@@ -4,7 +4,7 @@
  * mode='api' 时调 OpenAI 兼容端点(默认 DeepSeek),失败由调用方降级 mock。
  */
 import type { LlmSettings } from '../types';
-import { API_BASE } from '../lib/api';
+import { API_BASE, gatewayFetch } from '../lib/api';
 
 export type LlmRole = 'evaluator' | 'xiaobai' | 'report' | 'coach';
 
@@ -98,7 +98,7 @@ async function proxyCall(role: LlmRole, payload: LlmPayload, settings: LlmSettin
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(`${API_BASE}/chat`, {
+    const res = await gatewayFetch(`${API_BASE}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

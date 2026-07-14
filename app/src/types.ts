@@ -18,7 +18,7 @@ export type KnowledgeState = '没懂' | '半懂' | '出师';
 /** 误区条目状态机 */
 export type McState = '待注入' | '已注入' | '已纠正' | '被带偏';
 
-/** 小白情绪(驱动 3D 形象与台词语气) */
+/** 小白情绪(驱动二维书童表情与台词语气) */
 export type XiaobaiMood =
   | 'idle'      // 平静等待
   | 'curious'   // 好奇追问

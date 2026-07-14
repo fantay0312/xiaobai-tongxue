@@ -9,10 +9,11 @@
   "asrUpstreamUrl": "https://openrouter.ai/api/v1/audio/transcriptions",
   "asrModel": "qwen/qwen3-asr-flash-2026-02-10",
   "asrApiKey": "",
+  "resendApiKey": "",
+  "resendFrom": "小白同学 <noreply@mail.tradingvane.com>",
   "inviteCode": "",
   "dataDir": "",
+  "allowInsecureAuth": false,
   "sessionTtlHours": 72,
-  "users": [
-    { "name": "示例账号", "salt": "用 node index.mjs hash <密码> 生成", "hash": "同上" }
-  ]
+  "users": []
 }

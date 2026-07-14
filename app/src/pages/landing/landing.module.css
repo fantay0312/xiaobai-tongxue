@@ -720,6 +720,8 @@
   filter: saturate(0.72) contrast(1.08);
   transform: scale(1.01);
   transition: opacity var(--t-med) var(--ease-out), transform var(--t-med) var(--ease-out);
+  pointer-events: none;
+  user-select: none;
 }
 
 /* 三色布面:靛青 / 黛墨 / 茶褐 */

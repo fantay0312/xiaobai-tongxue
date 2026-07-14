@@ -116,6 +116,8 @@
   .brandMotto {
     display: none;
   }
+
+  .profileName { display: none; }
 }
 
 /* 极窄屏:只留印章做标记(商业站惯例),导航收紧 */
@@ -141,6 +143,14 @@
     padding: 0.28rem 0.75rem;
     letter-spacing: 0.1em;
     text-indent: 0.1em;
+  }
+
+  /* 认证页小屏只留品牌章与设置，避免完整站内导航挤压成竖排。 */
+  .auth .link,
+  .auth .navRule,
+  .auth .loginBtn,
+  .auth .profileTrigger {
+    display: none;
   }
 }
 
@@ -242,53 +252,56 @@
   background: color-mix(in oklab, var(--chalk) 12%, transparent);
 }
 
-/* ── 已登录:名字实,「退出」虚,悬停才亮出来 ── */
+/* ── 已登录:名章触发器;退出与安全信息收进个人中心 ── */
 
-.userBtn {
+.profileTrigger {
   display: inline-flex;
-  align-items: baseline;
-  gap: 0.5em;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: var(--gap-hair) 0;
+  max-width: 14rem;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.16rem 0.38rem 0.16rem 0.16rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
   font-family: var(--font-display);
   font-size: var(--fs-small);
+  transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
 
-.userName {
-  color: var(--ink-soft);
-  letter-spacing: 0.04em;
-  /* 长用户名(如邮箱)截断,否则顶栏被撑出横向滚动 */
-  max-width: 12rem;
+.profileTrigger:hover {
+  border-color: var(--paper-edge);
+  background: var(--ink-wash);
+}
+
+.profileName {
+  min-width: 0;
   overflow: hidden;
+  letter-spacing: 0.04em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.userExit {
+.profileChevron {
+  flex: none;
   color: var(--ink-faint);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.14em;
-  transition: color var(--t-fast) var(--ease-out);
+  transition: transform var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
 }
 
-/* 退出不是误区/警示,不占用朱砂 */
-.userBtn:hover .userExit {
-  color: var(--ink);
-}
+.profileTrigger:hover .profileChevron { color: var(--ink-soft); }
+.profileTrigger[aria-expanded='true'] .profileChevron { transform: rotate(180deg); }
 
-.board .userName {
+.board .profileTrigger {
   color: var(--chalk-soft);
 }
 
-.board .userExit {
-  color: var(--chalk-soft);
+.board .profileTrigger:hover {
+  border-color: var(--board-line);
+  background: color-mix(in oklab, var(--chalk) 10%, transparent);
 }
 
-.board .userBtn:hover .userExit {
-  color: var(--chalk);
-}
+.board .profileChevron { color: var(--chalk-soft); }
 
 /* ── 齿轮按钮 ── */
 
