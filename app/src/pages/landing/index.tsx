@@ -397,6 +397,7 @@ export default function LandingPage() {
                         height={768}
                         loading="lazy"
                         decoding="async"
+                        draggable={false}
                         aria-hidden="true"
                       />
                     )}

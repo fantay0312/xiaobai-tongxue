@@ -6,8 +6,9 @@
  * / (宣传页)下头部退为透明静置变体,随海报滚走;品牌落款回宣传页,「书斋」导航到 /study。
  * 宣传页头部不放应用内导航/登入/设置——对外只留品牌与「进入书斋」一个入口。
  */
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { ProfileDialog, ProfileMark } from './ProfileDialog';
 import { SettingsDialog } from './SettingsDialog';
 import { Seal } from './Seal';
 import { StoryTrail } from '../story/StoryTrail';
@@ -27,17 +28,35 @@ export function AppShell({ children }: { children: ReactNode }) {
   const boardMode = false;
   // 宣传页场景:头部退为透明静置,随海报一起滚走
   const landingMode = pathname === '/';
+  const authMode = pathname === '/login';
+  const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const closeProfile = useCallback(() => setProfileOpen(false), []);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
   const authStatus = useAuthStore((s) => s.status);
   const authUser = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
+
+  const openSettings = useCallback(() => {
+    setProfileOpen(false);
+    setSettingsOpen(true);
+  }, []);
+
+  const openSettingsFromProfile = useCallback(() => {
+    setProfileOpen(false);
+    window.requestAnimationFrame(() => setSettingsOpen(true));
+  }, []);
+
+  useEffect(() => {
+    if (authStatus === 'anon' || authStatus === 'standalone' || authStatus === 'unavailable') {
+      setProfileOpen(false);
+    }
+  }, [authStatus]);
 
   const shellClass = boardMode
     ? `${styles.shell} ${styles.board}`
     : landingMode
       ? `${styles.shell} ${styles.landing}`
-      : styles.shell;
+      : authMode ? `${styles.shell} ${styles.auth}` : styles.shell;
 
   return (
     <div className={shellClass}>
@@ -79,18 +98,23 @@ export function AppShell({ children }: { children: ReactNode }) {
           {authStatus === 'authed' && (
             <button
               type="button"
-              className={styles.userBtn}
-              onClick={() => void logout()}
-              title={`已登录:${authUser ?? ''} · 点击退出`}
+              className={styles.profileTrigger}
+              aria-haspopup="dialog"
+              aria-expanded={profileOpen}
+              aria-controls="profile-dialog"
+              aria-label={`打开 ${authUser ?? ''} 的个人中心`}
+              onClick={() => setProfileOpen(true)}
+              title={`打开 ${authUser ?? ''} 的个人中心`}
             >
-              <span className={styles.userName}>{authUser}</span>
-              <span className={styles.userExit}>退出</span>
+              <ProfileMark name={authUser} compact />
+              <span className={styles.profileName}>{authUser}</span>
+              <Icon name="chevron-down" size={14} className={styles.profileChevron} />
             </button>
           )}
           <button
             type="button"
             className={styles.gearBtn}
-            onClick={() => setSettingsOpen(true)}
+            onClick={openSettings}
             aria-haspopup="dialog"
             aria-label="打开设置"
             title="设置"
@@ -105,6 +129,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className={styles.main}>{children}</main>
 
+      <ProfileDialog
+        open={profileOpen && authStatus === 'authed'}
+        onClose={closeProfile}
+        onOpenSettings={openSettingsFromProfile}
+      />
       <SettingsDialog open={settingsOpen} onClose={closeSettings} />
     </div>
   );

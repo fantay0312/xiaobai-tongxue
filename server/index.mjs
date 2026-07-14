@@ -1,9 +1,11 @@
 /**
  * 小白同学 生产网关(零依赖,Node ≥ 18)
  *  - 静态托管前端 dist(SPA 回退)
- *  - /api/login /api/logout /api/me:账号会话(scrypt 哈希,HttpOnly Cookie)
- *  - /api/register:凭邀请码注册(邀请码只存服务器 config.json —— 仓库公开,严禁写进代码默认值);
- *    注册用户落盘 registered-users.json,与 config.json 的预置账号并存
+ *  - /api/login /api/logout /api/me:账号或已验证邮箱+密码会话(scrypt 哈希,HttpOnly Cookie)
+ *  - /api/auth/email-code /api/login/email:邮箱验证码发送与登录(Resend 密钥仅服务器持有)
+ *  - /api/account/email-code /api/account/email:首次绑定或换绑并验证邮箱
+ *  - /api/register:凭邀请码+已验证邮箱注册;注册用户落盘 registered-users.json,
+ *    与 config.json 的预置账号并存
  *  - /api/chat:登录后才可用的 LLM 代理 —— DeepSeek 密钥只存在服务器 config.json,永不下发
  *  - /api/asr:登录后可用的语音转写代理 —— 浏览器上传 WAV 原始体,服务器持 OpenRouter 密钥
  *    转发 /v1/audio/transcriptions(密钥同样永不下发)
@@ -14,11 +16,34 @@
  *   node index.mjs hash <密码>     # 生成账号的 scrypt 哈希条目(粘进 config.json 的 users)
  */
 import http from 'node:http';
-import { readFileSync, existsSync, statSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, writeFileSync, renameSync, mkdirSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import dns from 'node:dns';
+import { createEmailAuth, createResendSender, normalizeEmail } from './email-auth.mjs';
+import {
+  applyPasswordOverrides,
+  updatePassword,
+  validatePasswordOverrides,
+} from './password-credentials.mjs';
+import {
+  authTransportAllowed,
+  bindVerifiedEmail,
+  canonicalName,
+  changeVerifiedEmail,
+  createAuthGate,
+  createPasswordService,
+  encodedIdentityMatches,
+  ipRateKey,
+  isLoopbackAddress,
+  maskEmail,
+  protectedAccessError,
+  requestUsesTrustedHttps,
+  revokeUserSessions,
+  userHasVerifiedEmail,
+  validateUserSets,
+} from './auth-security.mjs';
 
 // 腾讯云主机无 IPv6 出网,而 openrouter.ai 等上游把 AAAA 排在解析结果前面;
 // Node fetch(undici)不做 Happy Eyeballs,按序拿 IPv6 直连会 ENETUNREACH 秒败
@@ -31,8 +56,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 if (process.argv[2] === 'hash') {
   const pw = process.argv[3];
   if (!pw) { console.error('用法: node index.mjs hash <密码>'); process.exit(2); }
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.scryptSync(pw, salt, 64).toString('hex');
+  const { salt, hash } = await createPasswordService().hash(pw);
   console.log(JSON.stringify({ name: '改成账号名', salt, hash }));
   process.exit(0);
 }
@@ -52,8 +76,16 @@ const UPSTREAM = String(cfg.upstreamBaseUrl ?? 'https://api.deepseek.com').repla
 const MODEL = cfg.upstreamModel ?? 'deepseek-v4-flash';
 const MODEL_COACH = cfg.upstreamModelCoach ?? MODEL;
 const API_KEY = cfg.apiKey ?? '';
-const USERS = Array.isArray(cfg.users) ? cfg.users : [];
-const SESSION_TTL = (cfg.sessionTtlHours ?? 72) * 3600_000;
+const CONFIG_USER_SOURCE = cfg.users ?? [];
+const sessionTtlHours = cfg.sessionTtlHours ?? 72;
+if (typeof sessionTtlHours !== 'number' || !Number.isFinite(sessionTtlHours)
+  || sessionTtlHours < 1 || sessionTtlHours > 24 * 30) {
+  console.error('配置 sessionTtlHours 必须是 1–720 之间的有限数字');
+  process.exit(2);
+}
+const SESSION_TTL = sessionTtlHours * 3600_000;
+/** 仅本地/自动化测试可显式开启;生产默认拒绝所有明文鉴权请求 */
+const ALLOW_INSECURE_AUTH = cfg.allowInsecureAuth === true;
 /** 邀请码只从服务器 config.json 读取(此仓库公开,代码里不留任何默认值);未配置=注册关闭 */
 const INVITE_CODE = typeof cfg.inviteCode === 'string' && cfg.inviteCode ? cfg.inviteCode : null;
 /** 路径前缀部署(nginx location /xiaobai/ 反代时设为 "/xiaobai"):网关自己剥前缀,双入口可用 */
@@ -64,8 +96,23 @@ const COOKIE = 'xiaobai_sid';
 const ASR_UPSTREAM = String(cfg.asrUpstreamUrl ?? 'https://openrouter.ai/api/v1/audio/transcriptions');
 const ASR_MODEL = cfg.asrModel ?? 'qwen/qwen3-asr-flash-2026-02-10';
 const ASR_KEY = cfg.asrApiKey ?? '';
+/** 邮件密钥环境变量优先;配置文件回落仅供现有单文件部署兼容(该文件必须 0600 且不入库) */
+const RESEND_API_KEY = process.env.RESEND_API_KEY
+  || (typeof cfg.resendApiKey === 'string' ? cfg.resendApiKey : '');
+const RESEND_FROM = process.env.RESEND_FROM
+  || (typeof cfg.resendFrom === 'string' ? cfg.resendFrom : '');
+let emailAuth = null;
+if (RESEND_API_KEY && RESEND_FROM) {
+  emailAuth = createEmailAuth({
+    sendCode: createResendSender({ apiKey: RESEND_API_KEY, from: RESEND_FROM }),
+  });
+}
+const passwordService = createPasswordService();
+const authGate = createAuthGate({ maxConcurrent: 8, maxPerMinute: 120 });
 if (!API_KEY) console.warn('[warn] config.apiKey 为空,/api/chat 将全部 502');
 if (!INVITE_CODE) console.warn('[warn] config.inviteCode 未配置,/api/register 关闭');
+if (!emailAuth) console.warn('[warn] Resend 密钥或发件人未配置,邮箱登录与注册关闭');
+if (ALLOW_INSECURE_AUTH) console.warn('[warn] allowInsecureAuth=true,仅允许用于本地/测试');
 if (!ASR_KEY) console.warn('[warn] config.asrApiKey 为空,/api/asr 关闭');
 
 // ───────────────────────── 注册用户(落盘持久化) ─────────────────────────
@@ -73,36 +120,52 @@ if (!ASR_KEY) console.warn('[warn] config.asrApiKey 为空,/api/asr 关闭');
  *  StateDirectory(config.dataDir=/var/lib/xiaobai);不配 dataDir 回落网关同目录(本地/裸跑) */
 const DATA_DIR = typeof cfg.dataDir === 'string' && cfg.dataDir ? cfg.dataDir : HERE;
 const REG_PATH = path.join(DATA_DIR, 'registered-users.json');
+const BINDINGS_PATH = path.join(DATA_DIR, 'email-bindings.json');
+const PASSWORD_OVERRIDES_PATH = path.join(DATA_DIR, 'password-overrides.json');
 const MAX_REG_USERS = 500; // 邀请码泄露时的最后一道闸:名额封顶
+let CONFIG_USERS = [];
+let USERS = [];
 let regUsers = [];
+let emailBindings = [];
+let passwordOverrides = [];
 try {
-  if (existsSync(REG_PATH)) {
-    const loaded = JSON.parse(readFileSync(REG_PATH, 'utf8'));
-    if (Array.isArray(loaded)) {
-      // salt/hash 必须是本网关自己写出的形状(32/128 位 hex);畸形行直接丢弃
-      regUsers = loaded.filter((u) => u && typeof u.name === 'string'
-        && typeof u.salt === 'string' && /^[0-9a-f]{32}$/.test(u.salt)
-        && typeof u.hash === 'string' && /^[0-9a-f]{128}$/.test(u.hash));
-    }
-  }
+  const loadedRegistrations = existsSync(REG_PATH) ? JSON.parse(readFileSync(REG_PATH, 'utf8')) : [];
+  const loadedBindings = existsSync(BINDINGS_PATH) ? JSON.parse(readFileSync(BINDINGS_PATH, 'utf8')) : [];
+  const loadedPasswordOverrides = existsSync(PASSWORD_OVERRIDES_PATH)
+    ? JSON.parse(readFileSync(PASSWORD_OVERRIDES_PATH, 'utf8')) : [];
+  passwordOverrides = validatePasswordOverrides(CONFIG_USER_SOURCE, loadedPasswordOverrides);
+  CONFIG_USERS = applyPasswordOverrides(CONFIG_USER_SOURCE, passwordOverrides);
+  const validated = validateUserSets(CONFIG_USERS, loadedRegistrations, loadedBindings);
+  USERS = validated.users;
+  regUsers = validated.registrations;
+  emailBindings = validated.bindings;
 } catch (e) {
-  // 文件损坏时拒绝启动:静默丢弃会让老用户"被注销"且重名可被抢注
-  console.error('[fatal] registered-users.json 解析失败,请人工修复或删除:', e?.message);
+  // 任一行畸形、悬空绑定或全局重名都拒绝启动:禁止静默丢用户/邮箱归属
+  console.error('[fatal] 用户、邮箱绑定或密码覆盖表校验失败,请人工修复:', e?.message);
   process.exit(2);
 }
 
 /** 原子写:先落临时文件再 rename,进程中途被杀不会留半截 JSON */
-function persistRegUsers() {
-  const tmp = `${REG_PATH}.tmp`;
-  writeFileSync(tmp, JSON.stringify(regUsers, null, 2), { mode: 0o600 });
-  renameSync(tmp, REG_PATH);
+function persistJson(file, value) {
+  const tmp = `${file}.${process.pid}.${crypto.randomBytes(8).toString('hex')}.tmp`;
+  try {
+    writeFileSync(tmp, JSON.stringify(value, null, 2), { mode: 0o600, flag: 'wx' });
+    renameSync(tmp, file);
+  } catch (error) {
+    try { if (existsSync(tmp)) unlinkSync(tmp); } catch { /* 保留原始写入错误 */ }
+    throw error;
+  }
 }
 
-// 注册开着就先做一次写探测:目录不可写(部署 chown 漏了)要在启动日志里立刻暴露,
-// 而不是等第一位注册用户撞 500
-if (INVITE_CODE) {
-  try { persistRegUsers(); } catch (e) {
-    console.error('[fatal] registered-users.json 不可写(检查 config.dataDir 与 systemd StateDirectory/目录属主):', e?.message);
+// 只写独立 probe,绝不在启动时重写真实注册表
+if (emailAuth) {
+  const probe = path.join(DATA_DIR, `.registry-write-probe-${process.pid}`);
+  try {
+    writeFileSync(probe, '', { mode: 0o600, flag: 'wx' });
+    unlinkSync(probe);
+  } catch (e) {
+    try { if (existsSync(probe)) unlinkSync(probe); } catch { /* 保留原始报错 */ }
+    console.error('[fatal] 用户状态目录不可写(检查 config.dataDir 与 systemd StateDirectory/目录属主):', e?.message);
     process.exit(2);
   }
 }
@@ -123,18 +186,114 @@ function userStatePath(name) {
 
 /** 预置账号 + 注册账号统一查找;唯一性按小写比对,杜绝大小写双开 */
 function findUser(name) {
-  if (typeof name !== 'string') return null;
-  const key = name.toLowerCase();
-  const match = (u) => u && typeof u.name === 'string' && u.name.toLowerCase() === key;
+  const key = canonicalName(name);
+  if (!key) return null;
+  const match = (u) => canonicalName(u?.name) === key;
   return USERS.find(match) ?? regUsers.find(match) ?? null;
 }
-if (USERS.length === 0 && regUsers.length === 0 && !INVITE_CODE) {
+
+/** 邮箱仅做规范化后的精确匹配;旧账号没有 email 仍可走密码登录 */
+function findUserByEmail(email) {
+  const key = normalizeEmail(email);
+  if (!key) return null;
+  const match = (u) => userHasVerifiedEmail(u) && normalizeEmail(u.email) === key;
+  return USERS.find(match) ?? regUsers.find(match) ?? null;
+}
+
+/** 密码登录统一标识符:优先按账号名查找,再按已验证邮箱查找。
+ *  findUserByEmail 本身只接受 emailVerifiedAt 合法的邮箱,旧账号不会因未验证数据被放行。 */
+function findUserByIdentifier(identifier) {
+  return findUser(identifier) ?? findUserByEmail(identifier);
+}
+
+function sameAccount(left, right) {
+  const leftName = canonicalName(left?.name ?? left);
+  const rightName = canonicalName(right?.name ?? right);
+  return leftName !== null && rightName !== null && leftName === rightName;
+}
+
+/**
+ * 凭据版本只在服务端内存里比较，不下发、不落日志。任何密码落盘都会同时更换
+ * salt/hash，因此摘要变化可作为异步鉴权后的 CAS 版本。
+ */
+function credentialRevision(user) {
+  if (typeof user?.salt !== 'string' || typeof user?.hash !== 'string') return null;
+  return crypto.createHash('sha256').update(`${user.salt}\0${user.hash}`).digest('hex');
+}
+
+/** 登录/找回验证码绑定到“账号 + 当前邮箱验证版本”，邮箱换绑后旧码自然失效。 */
+function emailOwnershipSubject(user, emailValue) {
+  const email = normalizeEmail(emailValue);
+  const name = canonicalName(user?.name);
+  if (!name || !email || !userHasVerifiedEmail(user) || normalizeEmail(user.email) !== email) return null;
+  const digest = crypto.createHash('sha256')
+    .update(`${name}\0${email}\0${user.emailVerifiedAt}`)
+    .digest('hex');
+  return `owner:${digest}`;
+}
+
+function publicEmailSubject(user, emailValue, purpose) {
+  const email = normalizeEmail(emailValue);
+  const ownership = emailOwnershipSubject(user, email);
+  if (!ownership) {
+    return `unowned:${crypto.createHash('sha256').update(email ?? 'invalid-email').digest('hex')}`;
+  }
+  if (purpose !== 'reset-password') return ownership;
+  const revision = credentialRevision(user);
+  if (!revision) return `invalid:${crypto.createHash('sha256').update(ownership).digest('hex')}`;
+  const version = crypto.createHash('sha256').update(`${ownership}\0${revision}`).digest('hex');
+  return `reset:${version}`;
+}
+
+function emailBindingRequired(name) {
+  return !userHasVerifiedEmail(findUser(name));
+}
+
+function accountEmailPurpose(user) {
+  return userHasVerifiedEmail(user) ? 'change-email' : 'bind';
+}
+
+function accountEmailSubject(user, purpose) {
+  const name = canonicalName(user?.name);
+  const revision = credentialRevision(user);
+  if (!name || !revision) return null;
+  const ownership = userHasVerifiedEmail(user)
+    ? emailOwnershipSubject(user, user.email) : 'unbound';
+  const version = crypto.createHash('sha256')
+    .update(`${name}\0${purpose}\0${revision}\0${ownership}`)
+    .digest('hex');
+  return `account:${version}`;
+}
+
+function authPayload(name) {
+  const user = findUser(name);
+  return {
+    user: { name },
+    emailBindingRequired: !userHasVerifiedEmail(user),
+    emailMasked: userHasVerifiedEmail(user) ? maskEmail(user.email) : null,
+  };
+}
+
+function rejectUnverifiedEmail(res, session) {
+  const error = protectedAccessError(findUser(session.name));
+  if (!error) return false;
+  send(res, 403, { error });
+  return true;
+}
+
+function registrationAvailable() {
+  return Boolean(emailAuth && INVITE_CODE && regUsers.length < MAX_REG_USERS);
+}
+
+if (USERS.length === 0 && regUsers.length === 0 && !registrationAvailable()) {
   console.warn('[warn] 无预置账号、无注册用户且注册关闭,无人能登录');
 }
 
 // ───────────────────────── 会话与限流(内存态,重启即清) ─────────────────────────
 const sessions = new Map(); // token -> { name, expires }
+const credentialMutationTails = new Map(); // canonical name -> FIFO release promise
 const loginFails = new Map(); // ip -> { count, resetAt }
+const authHits = new Map(); // ip -> { count, resetAt } 所有鉴权 POST 的前置入场限流
 const regHits = new Map(); // ip -> { count, resetAt } 注册尝试(成败都计,防邀请码爆破/批量灌号)
 const chatHits = new Map(); // name -> { count, resetAt }
 const chatDaily = new Map(); // name -> { day, count }
@@ -145,10 +304,12 @@ setInterval(() => {
   const now = Date.now();
   for (const [t, s] of sessions) if (s.expires < now) sessions.delete(t);
   for (const [k, v] of loginFails) if (v.resetAt < now) loginFails.delete(k);
+  for (const [k, v] of authHits) if (v.resetAt < now) authHits.delete(k);
   for (const [k, v] of regHits) if (v.resetAt < now) regHits.delete(k);
   for (const [k, v] of chatHits) if (v.resetAt < now) chatHits.delete(k);
   for (const [k, v] of asrHits) if (v.resetAt < now) asrHits.delete(k);
   for (const [k, v] of stateHits) if (v.resetAt < now) stateHits.delete(k);
+  emailAuth?.cleanup(now);
   const today = new Date().toISOString().slice(0, 10);
   for (const [k, v] of chatDaily) if (v.day !== today) chatDaily.delete(k);
   for (const [k, v] of asrDaily) if (v.day !== today) asrDaily.delete(k);
@@ -156,12 +317,68 @@ setInterval(() => {
 
 const LOGIN_MAX_FAILS = 10;          // 15 分钟内同 IP 最多失败次数
 const LOGIN_WINDOW = 15 * 60_000;
+const AUTH_MAX_PER_MIN = 30;         // 单 IP 先于全局门禁拦截，避免一台客户端耗尽全局额度
+const AUTH_WINDOW = 60_000;
 const REG_MAX_PER_WINDOW = 8;        // 15 分钟内同 IP 注册尝试上限(邀请码爆破在这撞墙)
+const AUTH_RATE_MAP_MAX = 5_000;      // 多源 IP 洪泛时不让限流 Map 无界增长
 const CHAT_MAX_PER_MIN = 12;         // 单账号每分钟 LLM 调用上限(一轮讲课=评估+渲染 2 次,~6 轮/分足够)
 const CHAT_MAX_PER_DAY = 400;        // 单账号每日上限(~200 轮),防泄露凭据被当免费 LLM 长期薅
 const ASR_MAX_PER_MIN = 10;          // 单账号每分钟转写上限(口述一段→改一改→再说,10 次/分绰绰有余)
 const ASR_MAX_PER_DAY = 300;         // 单账号每日转写上限(按秒计费,防被当免费听写服务薅)
 const STATE_MAX_PER_MIN = 30;        // 存档读写上限(客户端 3s 去抖,正常远到不了)
+
+/**
+ * 同一账号的密码重置/改密必须串行。否则多个请求可在旧密码仍有效时
+ * 同时通过验证，再于受害者重置完成后用旧授权覆盖新密码。
+ */
+async function withCredentialMutation(nameValue, task) {
+  const name = canonicalName(nameValue);
+  if (!name) throw new Error('bad-credential-mutation-name');
+  const previous = credentialMutationTails.get(name) ?? Promise.resolve();
+  let release;
+  const current = new Promise((resolve) => { release = resolve; });
+  credentialMutationTails.set(name, current);
+  await previous;
+  try {
+    return await task();
+  } finally {
+    release();
+    if (credentialMutationTails.get(name) === current) credentialMutationTails.delete(name);
+  }
+}
+
+function authRateBucket(map, key, windowMs) {
+  const now = Date.now();
+  let item = map.get(key);
+  if (item?.resetAt <= now) { map.delete(key); item = null; }
+  if (!item && map.size >= AUTH_RATE_MAP_MAX) return null;
+  if (!item) { item = { count: 0, resetAt: now + windowMs }; map.set(key, item); }
+  return item;
+}
+
+function takeRegistrationAttempt(ip) {
+  const hits = authRateBucket(regHits, ip, LOGIN_WINDOW);
+  if (!hits) return { ok: false, error: 'auth-busy', retryAfter: 60 };
+  if (hits.count >= REG_MAX_PER_WINDOW) {
+    return { ok: false, error: 'too-many-attempts', retryAfter: Math.max(1, Math.ceil((hits.resetAt - Date.now()) / 1000)) };
+  }
+  hits.count += 1;
+  return { ok: true };
+}
+
+function takeAuthRequest(ip) {
+  const hits = authRateBucket(authHits, ip, AUTH_WINDOW);
+  if (!hits) return { ok: false, error: 'auth-busy', retryAfter: 60 };
+  if (hits.count >= AUTH_MAX_PER_MIN) {
+    return {
+      ok: false,
+      error: 'too-many-attempts',
+      retryAfter: Math.max(1, Math.ceil((hits.resetAt - Date.now()) / 1000)),
+    };
+  }
+  hits.count += 1;
+  return { ok: true };
+}
 
 /** 单账号的分钟窗+日封顶通用检查:超限返回错误码字符串,未超返回 null */
 function rateCheck(name, perMin, perDay, minMap, dayMap) {
@@ -182,11 +399,11 @@ function rateCheck(name, perMin, perDay, minMap, dayMap) {
 function clientIp(req) {
   const direct = req.socket.remoteAddress ?? 'unknown';
   // 仅当请求来自本机(nginx 反代)时才信任 X-Real-IP;公网直连不信任任何头,防伪造绕限流
-  if (direct === '127.0.0.1' || direct === '::1' || direct === '::ffff:127.0.0.1') {
+  if (isLoopbackAddress(direct)) {
     const real = req.headers['x-real-ip'];
-    if (typeof real === 'string' && real) return real;
+    if (typeof real === 'string' && real) return ipRateKey(real);
   }
-  return direct;
+  return ipRateKey(direct);
 }
 
 function getCookie(req, name) {
@@ -206,6 +423,10 @@ function currentUser(req) {
   return { token, name: s.name };
 }
 
+function clientIdentityMatches(req, user) {
+  return encodedIdentityMatches(req.headers['x-xiaobai-user'], user.name);
+}
+
 /** 会话数量上限:单账号与全局各设天花板,超出逐出最旧(Map 迭代序=插入序);防刷登录撑爆内存 */
 const MAX_SESSIONS_PER_USER = 20;
 const MAX_SESSIONS_TOTAL = 500;
@@ -218,17 +439,6 @@ function pruneSessions(name) {
     if (oldest === undefined) break;
     sessions.delete(oldest);
   }
-}
-
-function verifyPassword(user, password) {
-  try {
-    const expect = Buffer.from(user.hash, 'hex');
-    // Buffer.from 遇非法 hex 会静默截断,空/坏哈希会得到零长缓冲,
-    // 而 timingSafeEqual(空,空)===true —— 占位行或坏档案会变成"任意密码可过",必须拒
-    if (expect.length < 32) return false;
-    const got = crypto.scryptSync(password, user.salt, expect.length);
-    return crypto.timingSafeEqual(expect, got);
-  } catch { return false; }
 }
 
 // ───────────────────────── 请求体与响应工具 ─────────────────────────
@@ -255,48 +465,408 @@ async function readJson(req, limit = BODY_LIMIT) {
   catch { throw new Error('bad-json'); }
 }
 
+function hasJsonContentType(req) {
+  const value = req.headers['content-type'];
+  return typeof value === 'string' && /^application\/json(?:\s*;|$)/i.test(value);
+}
+
 function send(res, status, body, headers = {}) {
   const data = typeof body === 'string' ? body : JSON.stringify(body);
   res.writeHead(status, {
     'Content-Type': typeof body === 'string' ? 'text/plain; charset=utf-8' : 'application/json; charset=utf-8',
     'X-Content-Type-Options': 'nosniff',
+    'Cache-Control': 'no-store',
     ...headers,
   });
   res.end(data);
 }
 
+async function handleAuthRequest(req, res, handler) {
+  if (!authTransportAllowed(req, ALLOW_INSECURE_AUTH)) {
+    return send(res, 426, { error: 'https-required' }, { Upgrade: 'TLS/1.2' });
+  }
+  const permit = authGate.acquireConcurrency();
+  if (!permit.ok) {
+    return send(res, 429, { error: permit.error, retryAfter: permit.retryAfter }, {
+      'Retry-After': String(permit.retryAfter),
+    });
+  }
+  let bodyTimer;
+  try {
+    const localAdmission = takeAuthRequest(clientIp(req));
+    if (!localAdmission.ok) {
+      return send(res, 429, { error: localAdmission.error, retryAfter: localAdmission.retryAfter }, {
+        'Retry-After': String(localAdmission.retryAfter),
+      });
+    }
+    const globalAdmission = authGate.admitGlobal();
+    if (!globalAdmission.ok) {
+      return send(res, 429, { error: globalAdmission.error, retryAfter: globalAdmission.retryAfter }, {
+        'Retry-After': String(globalAdmission.retryAfter),
+      });
+    }
+    // 鉴权请求体绝对时限：慢速滴流也不能长时间占住全局并发槽。
+    bodyTimer = setTimeout(() => {
+      if (!req.complete) req.destroy(new Error('auth-body-timeout'));
+    }, 5_000);
+    bodyTimer.unref();
+    await handler(req, res);
+  } catch {
+    console.error('[auth] 未预期内部错误');
+    if (!res.headersSent) send(res, 500, { error: 'internal-error' });
+  } finally {
+    if (bodyTimer) clearTimeout(bodyTimer);
+    permit.release();
+  }
+}
+
 // ───────────────────────── API 处理 ─────────────────────────
-/** 铸会话并连 Set-Cookie 一起应答(登录与注册共用) */
-function issueSession(res, name, status = 200) {
+/** 铸会话并连 Set-Cookie 一起应答(密码登录、邮箱登录与注册共用) */
+function issueSession(req, res, name, status = 200) {
   pruneSessions(name);
   const token = crypto.randomBytes(32).toString('hex');
   sessions.set(token, { name, expires: Date.now() + SESSION_TTL });
-  send(res, status, { user: { name } }, {
-    'Set-Cookie': `${COOKIE}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${Math.floor(SESSION_TTL / 1000)}`,
+  // 生产默认永远 Secure;只有显式本地测试开关才允许明文 Cookie
+  const secure = !ALLOW_INSECURE_AUTH || requestUsesTrustedHttps(req) ? '; Secure' : '';
+  send(res, status, authPayload(name), {
+    'Set-Cookie': `${COOKIE}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${Math.floor(SESSION_TTL / 1000)}${secure}`,
   });
 }
 
 async function handleLogin(req, res) {
+  if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
   const ip = clientIp(req);
-  const fails = loginFails.get(ip);
-  if (fails && fails.count >= LOGIN_MAX_FAILS && fails.resetAt > Date.now()) {
-    return send(res, 429, { error: 'too-many-attempts' });
-  }
   let body;
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
-  const { username, password } = body ?? {};
-  const user = findUser(username);
-  if (!user || typeof password !== 'string' || !verifyPassword(user, password)) {
-    const f = loginFails.get(ip) ?? { count: 0, resetAt: Date.now() + LOGIN_WINDOW };
-    f.count += 1; loginFails.set(ip, f);
+  // identifier 是新契约;username 仅用于兼容旧客户端。若显式提交 identifier,
+  // 即使其形状错误也不回退 username,避免两个互相矛盾的身份字段产生歧义。
+  const identifier = body && Object.hasOwn(body, 'identifier') ? body.identifier : body?.username;
+  const { password } = body ?? {};
+  const fails = authRateBucket(loginFails, ip, LOGIN_WINDOW);
+  if (!fails) return send(res, 429, { error: 'auth-busy', retryAfter: 60 });
+  if (fails.count >= LOGIN_MAX_FAILS) return send(res, 429, { error: 'too-many-attempts' });
+  // 长度先封顶;合法形状的未知用户仍跑同参数 dummy scrypt,缩小枚举时序差
+  const validShape = typeof identifier === 'string' && identifier.length > 0 && identifier.length <= 254
+    && typeof password === 'string' && password.length > 0 && password.length <= 128;
+  if (!validShape) {
+    fails.count += 1;
     return send(res, 401, { error: 'invalid-credentials' });
   }
-  loginFails.delete(ip);
-  issueSession(res, user.name);
+  // scrypt 是异步的；先预占一次失败名额，避免多个并发请求都在 count<10 时穿门而过。
+  // 验证成功只撤销本请求的预占，不触碰此前已累积的失败历史。
+  fails.count += 1;
+  const user = findUserByIdentifier(identifier);
+  const verifiedRevision = credentialRevision(user);
+  if (!await passwordService.verify(user, password)) {
+    return send(res, 401, { error: 'invalid-credentials' });
+  }
+  // scrypt 是异步的；等待期间可能发生改密或邮箱换绑。必须重做标识符归属
+  // 并比对凭据版本，禁止旧密码/旧邮箱的在途请求在变更后签发 SID。
+  const current = findUserByIdentifier(identifier);
+  if (!sameAccount(current, user) || !verifiedRevision
+    || credentialRevision(current) !== verifiedRevision) {
+    return send(res, 401, { error: 'invalid-credentials' });
+  }
+  fails.count = Math.max(0, fails.count - 1);
+  // 成功登录不能清空整个 IP 的失败历史：否则知道任一有效账号密码的人可在猜测间
+  // 穿插一次成功登录，循环重置 10 次/15 分钟门禁。窗口只按到期清理。
+  issueSession(req, res, current.name);
 }
 
-/** 用户名:2-20 字,汉字/字母/数字/下划线/连字符(空白与控制符天然被排除) */
-const NAME_RE = /^[\p{Script=Han}A-Za-z0-9_-]{2,20}$/u;
+/** 绑定/换绑邮箱是持久账号操作，不能只凭可能被盗的长会话完成。 */
+async function requireCurrentPassword(req, res, user, value) {
+  const fails = authRateBucket(loginFails, clientIp(req), LOGIN_WINDOW);
+  if (!fails) {
+    send(res, 429, { error: 'auth-busy', retryAfter: 60 }, { 'Retry-After': '60' });
+    return false;
+  }
+  if (fails.count >= LOGIN_MAX_FAILS) {
+    const retryAfter = Math.max(1, Math.ceil((fails.resetAt - Date.now()) / 1000));
+    send(res, 429, { error: 'too-many-attempts', retryAfter }, { 'Retry-After': String(retryAfter) });
+    return false;
+  }
+  const password = typeof value === 'string' && value.length > 0 && value.length <= 128 ? value : '';
+  const verifiedRevision = credentialRevision(user);
+  fails.count += 1;
+  if (!password || !await passwordService.verify(user, password)) {
+    send(res, 401, { error: 'invalid-credentials' });
+    return null;
+  }
+  fails.count = Math.max(0, fails.count - 1);
+  // 异步 scrypt 返回后重新确认 SID、标签页身份与凭据版本。
+  const session = currentUser(req);
+  if (!session || !sameAccount(session, user)) {
+    send(res, 401, { error: 'login-required' });
+    return null;
+  }
+  if (!clientIdentityMatches(req, session)) {
+    send(res, 401, { error: 'identity-mismatch' });
+    return null;
+  }
+  const current = findUser(session.name);
+  if (!sameAccount(current, user) || !verifiedRevision
+    || credentialRevision(current) !== verifiedRevision) {
+    send(res, 401, { error: 'login-required' });
+    return null;
+  }
+  return current;
+}
+
+function sendEmailAuthError(res, result, invalidStatus = 400) {
+  const retry = result.retryAfter ? { 'Retry-After': String(result.retryAfter) } : {};
+  if (result.error === 'too-many-attempts' || result.error === 'send-too-frequent' || result.error === 'auth-busy') {
+    return send(res, 429, { error: result.error, retryAfter: result.retryAfter ?? 60 }, retry);
+  }
+  if (result.error === 'email-auth-busy') return send(res, 503, { error: result.error }, retry);
+  if (result.error === 'email-unavailable') return send(res, 502, { error: result.error });
+  if (result.error === 'bad-email' || result.error === 'bad-purpose' || result.error === 'bad-subject') {
+    return send(res, 400, { error: result.error });
+  }
+  return send(res, invalidStatus, { error: 'invalid-or-expired-code' });
+}
+
+async function handleEmailCode(req, res) {
+  if (!emailAuth) return send(res, 503, { error: 'email-auth-unavailable' });
+  if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
+  let body;
+  try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  if (body?.purpose !== 'login' && body?.purpose !== 'register') {
+    return send(res, 400, { error: 'bad-purpose' });
+  }
+  const ip = clientIp(req);
+  if (body?.purpose === 'register') {
+    if (!registrationAvailable()) return send(res, 403, { error: 'registration-disabled' });
+    const limited = takeRegistrationAttempt(ip);
+    if (!limited.ok) return sendEmailAuthError(res, limited);
+    if (!inviteOk(body?.invite)) return send(res, 403, { error: 'invalid-invite' });
+  }
+  const email = normalizeEmail(body?.email);
+  // 未知登录邮箱不触发真实发信,但与已存在账号共用限流/冷却/返回形状与近似延迟
+  const loginUser = body?.purpose === 'login' ? findUserByEmail(email) : null;
+  const deliver = body?.purpose !== 'login' || Boolean(loginUser);
+  const result = await emailAuth.requestCode({
+    email,
+    purpose: body?.purpose,
+    ...(body?.purpose === 'login' ? { subject: publicEmailSubject(loginUser, email, 'login') } : {}),
+    ip,
+    deliver,
+  });
+  // 登录发信上游故障也不得反向暴露“该邮箱存在”
+  if (!result.ok && body?.purpose === 'login' && result.error === 'email-unavailable') {
+    return send(res, 200, { ok: true, retryAfter: 60 });
+  }
+  if (!result.ok) return sendEmailAuthError(res, result);
+  send(res, 200, { ok: true, retryAfter: result.retryAfter });
+}
+
+async function handleEmailLogin(req, res) {
+  if (!emailAuth) return send(res, 503, { error: 'email-auth-unavailable' });
+  if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
+  let body;
+  try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  const email = normalizeEmail(body?.email);
+  const user = findUserByEmail(email);
+  const result = emailAuth.consumeCode({
+    email,
+    code: body?.code,
+    purpose: 'login',
+    subject: publicEmailSubject(user, email, 'login'),
+    ip: clientIp(req),
+  });
+  if (!result.ok) return sendEmailAuthError(res, result, 401);
+  if (!user || normalizeEmail(user.email) !== result.email) {
+    return send(res, 401, { error: 'invalid-credentials' });
+  }
+  issueSession(req, res, user.name);
+}
+
+async function handlePasswordCode(req, res) {
+  if (!emailAuth) return send(res, 503, { error: 'email-auth-unavailable' });
+  if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
+  let body;
+  try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  const email = normalizeEmail(body?.email);
+  const user = findUserByEmail(email);
+  const result = await emailAuth.requestCode({
+    email,
+    purpose: 'reset-password',
+    subject: publicEmailSubject(user, email, 'reset-password'),
+    ip: clientIp(req),
+    deliver: Boolean(user),
+  });
+  // 未知邮箱和真实邮件上游故障都保持同形，不反向暴露账号归属。
+  if (!result.ok && result.error === 'email-unavailable') {
+    return send(res, 200, { ok: true, retryAfter: 60 });
+  }
+  if (!result.ok) return sendEmailAuthError(res, result);
+  send(res, 200, { ok: true, retryAfter: result.retryAfter });
+}
+
+async function handlePasswordReset(req, res) {
+  if (!emailAuth) return send(res, 503, { error: 'email-auth-unavailable' });
+  if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
+  let body;
+  try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  const password = validateNewPassword(res, body?.newPassword);
+  if (!password) return;
+  const email = normalizeEmail(body?.email);
+  const user = findUserByEmail(email);
+  const expectedRevision = credentialRevision(user);
+  const verified = emailAuth.consumeCode({
+    email,
+    code: body?.code,
+    purpose: 'reset-password',
+    subject: publicEmailSubject(user, email, 'reset-password'),
+    ip: clientIp(req),
+  });
+  if (!verified.ok) return sendEmailAuthError(res, verified);
+  if (!user || normalizeEmail(user.email) !== verified.email) {
+    return send(res, 400, { error: 'invalid-or-expired-code' });
+  }
+  await withCredentialMutation(user.name, async () => {
+    // 等锁与 scrypt 期间邮箱可能换绑；只允许验码签发时的同一归属者落盘。
+    const lockedOwner = findUserByEmail(verified.email);
+    if (!sameAccount(lockedOwner, user) || !expectedRevision
+      || credentialRevision(lockedOwner) !== expectedRevision) {
+      return send(res, 400, { error: 'invalid-or-expired-code' });
+    }
+    const credentials = await passwordService.hash(password);
+    const currentOwner = findUserByEmail(verified.email);
+    if (!sameAccount(currentOwner, user)
+      || credentialRevision(currentOwner) !== expectedRevision) {
+      return send(res, 400, { error: 'invalid-or-expired-code' });
+    }
+    if (!persistPassword(currentOwner.name, credentials)) {
+      return send(res, 500, { error: 'persist-failed' });
+    }
+    revokeUserSessions(sessions, currentOwner.name);
+    issueSession(req, res, currentOwner.name);
+  });
+}
+
+async function handleAccountEmailCode(req, res) {
+  if (!emailAuth) return send(res, 503, { error: 'email-auth-unavailable' });
+  const session = currentUser(req);
+  if (!session) return send(res, 401, { error: 'login-required' });
+  if (!clientIdentityMatches(req, session)) return send(res, 401, { error: 'identity-mismatch' });
+  let user = findUser(session.name);
+  if (!user) return send(res, 401, { error: 'login-required' });
+  if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
+  let body;
+  try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  user = await requireCurrentPassword(req, res, user, body?.currentPassword);
+  if (!user) return;
+  const email = normalizeEmail(body?.email);
+  if (!email) return send(res, 400, { error: 'bad-email' });
+  const purpose = accountEmailPurpose(user);
+  const subject = accountEmailSubject(user, purpose);
+  const revision = credentialRevision(user);
+  // 邮箱是否已被占用不能改变响应形状，也不能绕过发码限流。已占用邮箱走抑制发送：
+  // 他人已占用的邮箱走抑制发送；当前账号的邮箱则真实发码，避免发码响应
+  // 反向暴露本人完整邮箱。三者都消耗同一组限流/冷却并返回同形成功。
+  const owner = findUserByEmail(email);
+  const deliver = !owner || canonicalName(owner.name) === canonicalName(user.name);
+  const result = await emailAuth.requestCode({
+    email,
+    purpose,
+    subject,
+    ip: clientIp(req),
+    deliver,
+  });
+  // Resend 等待是异步边界；期间改密/换绑会撤销 SID 并改变版本。
+  // 旧请求不得对已变更账号宣告发码成功，其码也因 subject 版本不同而不可消费。
+  const currentSession = currentUser(req);
+  const current = currentSession ? findUser(currentSession.name) : null;
+  if (!currentSession || currentSession.token !== session.token
+    || !sameAccount(current, user) || credentialRevision(current) !== revision
+    || accountEmailSubject(current, purpose) !== subject) {
+    return send(res, 401, { error: 'login-required' });
+  }
+  // 上游邮件故障也保持同形，避免“已占用(抑制发送)=200、可用(真实发送失败)=502”反向枚举。
+  if (!result.ok && result.error === 'email-unavailable') {
+    return send(res, 200, { ok: true, retryAfter: 60 });
+  }
+  if (!result.ok) return sendEmailAuthError(res, result);
+  send(res, 200, { ok: true, retryAfter: result.retryAfter });
+}
+
+async function handleAccountEmail(req, res) {
+  if (!emailAuth) return send(res, 503, { error: 'email-auth-unavailable' });
+  const session = currentUser(req);
+  if (!session) return send(res, 401, { error: 'login-required' });
+  if (!clientIdentityMatches(req, session)) return send(res, 401, { error: 'identity-mismatch' });
+  let user = findUser(session.name);
+  if (!user) return send(res, 401, { error: 'login-required' });
+  if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
+  let body;
+  try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  user = await requireCurrentPassword(req, res, user, body?.currentPassword);
+  if (!user) return;
+  const email = normalizeEmail(body?.email);
+  if (!email) return send(res, 400, { error: 'bad-email' });
+  const purpose = accountEmailPurpose(user);
+  // 不在验码前检查邮箱归属：被抑制发送的占用邮箱没有可消费验证码，和任意错误码
+  // 一样得到 invalid-or-expired-code；同时 consumeCode 会先计入验码 IP 窗口。
+  const verified = emailAuth.consumeCode({
+    email,
+    code: body?.code,
+    purpose,
+    subject: accountEmailSubject(user, purpose),
+    ip: clientIp(req),
+  });
+  if (!verified.ok) return sendEmailAuthError(res, verified);
+  const persisted = persistVerifiedEmail(user.name, verified.email, purpose);
+  if (!persisted.ok) {
+    if (['email-taken', 'email-already-bound', 'email-unchanged', 'email-not-bound']
+      .includes(persisted.error)) {
+      // 极窄竞态：发码后邮箱被另一账号先绑定。只返回通用不可用，不泄露当前归属。
+      return send(res, 409, { error: 'email-unavailable' });
+    }
+    return send(res, 500, { error: 'persist-failed' });
+  }
+  // 只有持久化成功才升级会话；撤销同账号全部旧 restricted SID，再签发一个新 SID。
+  revokeUserSessions(sessions, user.name);
+  issueSession(req, res, user.name);
+}
+
+async function handleAccountPassword(req, res) {
+  const session = currentUser(req);
+  if (!session) return send(res, 401, { error: 'login-required' });
+  if (!clientIdentityMatches(req, session)) return send(res, 401, { error: 'identity-mismatch' });
+  const user = findUser(session.name);
+  if (!user) return send(res, 401, { error: 'login-required' });
+  if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
+  let body;
+  try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  await withCredentialMutation(user.name, async () => {
+    const lockedSession = currentUser(req);
+    if (!lockedSession || lockedSession.token !== session.token) {
+      return send(res, 401, { error: 'login-required' });
+    }
+    if (!clientIdentityMatches(req, lockedSession)) {
+      return send(res, 401, { error: 'identity-mismatch' });
+    }
+    let lockedUser = findUser(lockedSession.name);
+    if (!lockedUser) return send(res, 401, { error: 'login-required' });
+    lockedUser = await requireCurrentPassword(req, res, lockedUser, body?.currentPassword);
+    if (!lockedUser) return;
+    const password = validateNewPassword(res, body?.newPassword);
+    if (!password) return;
+    if (password === body.currentPassword) return send(res, 409, { error: 'password-unchanged' });
+    const revision = credentialRevision(lockedUser);
+    const credentials = await passwordService.hash(password);
+    // 邮箱变更不走密码锁，但会撤销旧 SID；落盘前再做一次 SID + 凭据 CAS。
+    const currentSession = currentUser(req);
+    const current = currentSession ? findUser(currentSession.name) : null;
+    if (!currentSession || currentSession.token !== session.token
+      || !sameAccount(current, lockedUser) || credentialRevision(current) !== revision) {
+      return send(res, 401, { error: 'login-required' });
+    }
+    if (!persistPassword(current.name, credentials)) return send(res, 500, { error: 'persist-failed' });
+    revokeUserSessions(sessions, current.name);
+    issueSession(req, res, current.name);
+  });
+}
 
 /** 邀请码恒时比对:双方过 sha256 再 timingSafeEqual,长度差异不早退 */
 function inviteOk(given) {
@@ -306,51 +876,140 @@ function inviteOk(given) {
   return crypto.timingSafeEqual(a, b);
 }
 
+async function buildRegisteredUser(name, email, password) {
+  const { salt, hash } = await passwordService.hash(password);
+  const createdAt = new Date().toISOString();
+  return { name, email, emailVerifiedAt: createdAt, salt, hash, createdAt };
+}
+
+function persistRegisteredUser(user) {
+  try {
+    const validated = validateUserSets(CONFIG_USERS, [...regUsers, user], emailBindings);
+    persistJson(REG_PATH, validated.registrations);
+    USERS = validated.users;
+    regUsers = validated.registrations;
+    emailBindings = validated.bindings;
+    return true;
+  } catch (e) {
+    console.error('[register] 落盘失败:', e?.message);
+    return false;
+  }
+}
+
+function persistVerifiedEmail(name, email, purpose) {
+  let updated;
+  try {
+    const update = purpose === 'bind' ? bindVerifiedEmail : changeVerifiedEmail;
+    updated = update(CONFIG_USERS, regUsers, emailBindings, name, email, new Date().toISOString());
+    const file = updated.source === 'bindings' ? BINDINGS_PATH : REG_PATH;
+    const value = updated.source === 'bindings' ? updated.bindings : updated.registrations;
+    persistJson(file, value);
+  } catch (e) {
+    console.error('[account-email] 落盘失败:', e?.message);
+    return { ok: false, error: e?.message ?? 'persist-failed' };
+  }
+  USERS = updated.users;
+  regUsers = updated.registrations;
+  emailBindings = updated.bindings;
+  return { ok: true };
+}
+
+function persistPassword(name, credentials) {
+  let updated;
+  try {
+    updated = updatePassword(
+      CONFIG_USER_SOURCE,
+      regUsers,
+      passwordOverrides,
+      name,
+      credentials,
+      new Date().toISOString(),
+    );
+    const file = updated.source === 'overrides' ? PASSWORD_OVERRIDES_PATH : REG_PATH;
+    const value = updated.source === 'overrides' ? updated.overrides : updated.registrations;
+    persistJson(file, value);
+    const validated = validateUserSets(updated.users, updated.registrations, emailBindings);
+    CONFIG_USERS = updated.users;
+    USERS = validated.users;
+    regUsers = validated.registrations;
+    emailBindings = validated.bindings;
+    passwordOverrides = updated.overrides;
+    return true;
+  } catch (e) {
+    console.error('[account-password] 落盘失败:', e?.message);
+    return false;
+  }
+}
+
+function validateNewPassword(res, value) {
+  if (typeof value !== 'string' || value.length < 8) {
+    send(res, 400, { error: 'weak-password' });
+    return null;
+  }
+  if (value.length > 128) {
+    send(res, 400, { error: 'password-too-long' });
+    return null;
+  }
+  return value;
+}
+
 async function handleRegister(req, res) {
   if (!INVITE_CODE) return send(res, 403, { error: 'registration-disabled' });
+  if (!emailAuth) return send(res, 503, { error: 'email-auth-unavailable' });
+  if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
   const ip = clientIp(req);
-  // 成败都计次:错码计次防爆破,成功也计次防同 IP 批量灌号
-  const hits = regHits.get(ip) ?? { count: 0, resetAt: Date.now() + LOGIN_WINDOW };
-  if (hits.resetAt < Date.now()) { hits.count = 0; hits.resetAt = Date.now() + LOGIN_WINDOW; }
-  hits.count += 1; regHits.set(ip, hits);
-  if (hits.count > REG_MAX_PER_WINDOW) return send(res, 429, { error: 'too-many-attempts' });
+  // 注册发码与最终注册共用同一 IP 窗口,错邀请码也计次
+  const limited = takeRegistrationAttempt(ip);
+  if (!limited.ok) return sendEmailAuthError(res, limited);
 
   let body;
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
-  const { username, password, invite } = body ?? {};
+  const { username, password, invite, code } = body ?? {};
   if (!inviteOk(invite)) return send(res, 403, { error: 'invalid-invite' });
-  const name = typeof username === 'string' ? username.trim() : '';
-  if (!NAME_RE.test(name)) return send(res, 400, { error: 'bad-name' });
-  // 密码下限 8 位(产品要求);上限只为封住超长输入拖垮 scrypt
+  const name = typeof username === 'string' ? username.trim().normalize('NFC') : '';
+  const email = normalizeEmail(body?.email);
+  if (!canonicalName(name)) return send(res, 400, { error: 'bad-name' });
+  if (!email) return send(res, 400, { error: 'bad-email' });
   if (typeof password !== 'string' || password.length < 8) return send(res, 400, { error: 'weak-password' });
   if (password.length > 128) return send(res, 400, { error: 'password-too-long' });
-  if (findUser(name)) return send(res, 409, { error: 'name-taken' });
   if (regUsers.length >= MAX_REG_USERS) return send(res, 503, { error: 'registry-full' });
 
-  // ↓ 此处到落盘之间全程同步、无 await:单线程下查重与写入不会被并发请求穿插
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-  regUsers.push({ name, salt, hash, createdAt: new Date().toISOString() });
-  try {
-    persistRegUsers();
-  } catch (e) {
-    regUsers.pop(); // 落盘失败回滚内存,别让"注册成功"活不过一次重启
-    console.error('[register] 落盘失败:', e?.message);
-    return send(res, 500, { error: 'persist-failed' });
-  }
+  const verified = emailAuth.consumeCode({ email, code, purpose: 'register', ip });
+  if (!verified.ok) return sendEmailAuthError(res, verified);
+  // 用户名/邮箱存在性只在持有有效邮箱码后暴露
+  if (findUser(name)) return send(res, 409, { error: 'name-taken' });
+  if (findUserByEmail(email)) return send(res, 409, { error: 'email-taken' });
+  const user = await buildRegisteredUser(name, email, password);
+  // scrypt 期间另一请求可能落盘,入库前再做一次同步唯一性门禁
+  if (findUser(name)) return send(res, 409, { error: 'name-taken' });
+  if (findUserByEmail(email)) return send(res, 409, { error: 'email-taken' });
+  if (regUsers.length >= MAX_REG_USERS) return send(res, 503, { error: 'registry-full' });
+  if (!persistRegisteredUser(user)) return send(res, 500, { error: 'persist-failed' });
   console.log(`[register] 新用户: ${name} (${ip}), 总注册数 ${regUsers.length}`);
-  issueSession(res, name, 200);
+  issueSession(req, res, name, 200);
 }
 
 function handleLogout(req, res) {
   const u = currentUser(req);
   if (u) sessions.delete(u.token);
-  send(res, 200, { ok: true }, { 'Set-Cookie': `${COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0` });
+  const secure = !ALLOW_INSECURE_AUTH || requestUsesTrustedHttps(req) ? '; Secure' : '';
+  send(res, 200, { ok: true }, { 'Set-Cookie': `${COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secure}` });
 }
 
 function handleMe(req, res) {
   const u = currentUser(req);
-  send(res, 200, { user: u ? { name: u.name } : null, authRequired: true });
+  const transportAvailable = authTransportAllowed(req, ALLOW_INSECURE_AUTH);
+  send(res, 200, {
+    ...(u ? authPayload(u.name) : {
+      user: null,
+      emailBindingRequired: false,
+      emailMasked: null,
+    }),
+    authRequired: true,
+    emailAuthAvailable: Boolean(emailAuth && transportAvailable),
+    registrationAvailable: registrationAvailable() && transportAvailable,
+    inviteRequired: Boolean(INVITE_CODE),
+  });
 }
 
 /** LLM 代理:模型/密钥/端点全部服务器侧决定,客户端只能传对话内容与少量参数 */
@@ -360,6 +1019,8 @@ const UPSTREAM_TIMEOUT = 45_000;
 async function handleChat(req, res) {
   const u = currentUser(req);
   if (!u) return send(res, 401, { error: 'login-required' });
+  if (!clientIdentityMatches(req, u)) return send(res, 401, { error: 'identity-mismatch' });
+  if (rejectUnverifiedEmail(res, u)) return;
 
   // 限流按账号名而非会话 token:重复登录铸新会话无法刷新额度
   const rate = chatHits.get(u.name) ?? { count: 0, resetAt: Date.now() + 60_000 };
@@ -447,6 +1108,8 @@ let asrInflight = 0;
 async function handleAsr(req, res) {
   const u = currentUser(req);
   if (!u) return send(res, 401, { error: 'login-required' });
+  if (!clientIdentityMatches(req, u)) return send(res, 401, { error: 'identity-mismatch' });
+  if (rejectUnverifiedEmail(res, u)) return;
   if (!ASR_KEY) return send(res, 503, { error: 'asr-disabled' });
   const limited = rateCheck(u.name, ASR_MAX_PER_MIN, ASR_MAX_PER_DAY, asrHits, asrDaily);
   if (limited) return send(res, 429, { error: limited });
@@ -499,6 +1162,8 @@ async function handleAsrInner(req, res) {
 function handleStateGet(req, res) {
   const u = currentUser(req);
   if (!u) return send(res, 401, { error: 'login-required' });
+  if (!clientIdentityMatches(req, u)) return send(res, 401, { error: 'identity-mismatch' });
+  if (rejectUnverifiedEmail(res, u)) return;
   const limited = rateCheck(u.name, STATE_MAX_PER_MIN, null, stateHits, null);
   if (limited) return send(res, 429, { error: limited });
   const file = userStatePath(u.name);
@@ -516,6 +1181,8 @@ function handleStateGet(req, res) {
 async function handleStatePut(req, res) {
   const u = currentUser(req);
   if (!u) return send(res, 401, { error: 'login-required' });
+  if (!clientIdentityMatches(req, u)) return send(res, 401, { error: 'identity-mismatch' });
+  if (rejectUnverifiedEmail(res, u)) return;
   const limited = rateCheck(u.name, STATE_MAX_PER_MIN, null, stateHits, null);
   if (limited) return send(res, 429, { error: limited });
   let body;
@@ -553,7 +1220,7 @@ async function handleStatePut(req, res) {
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json',
-  '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon',
   '.woff2': 'font/woff2', '.woff': 'font/woff', '.map': 'application/json',
 };
 
@@ -591,8 +1258,15 @@ const server = http.createServer((req, res) => {
     pathname = pathname.slice(PREFIX.length) || '/';
   }
   if (pathname.startsWith('/api/')) {
-    if (pathname === '/api/login' && req.method === 'POST') return void handleLogin(req, res);
-    if (pathname === '/api/register' && req.method === 'POST') return void handleRegister(req, res);
+    if (pathname === '/api/login' && req.method === 'POST') return void handleAuthRequest(req, res, handleLogin);
+    if (pathname === '/api/login/email' && req.method === 'POST') return void handleAuthRequest(req, res, handleEmailLogin);
+    if (pathname === '/api/auth/email-code' && req.method === 'POST') return void handleAuthRequest(req, res, handleEmailCode);
+    if (pathname === '/api/auth/password-code' && req.method === 'POST') return void handleAuthRequest(req, res, handlePasswordCode);
+    if (pathname === '/api/auth/password-reset' && req.method === 'POST') return void handleAuthRequest(req, res, handlePasswordReset);
+    if (pathname === '/api/account/email-code' && req.method === 'POST') return void handleAuthRequest(req, res, handleAccountEmailCode);
+    if (pathname === '/api/account/email' && req.method === 'POST') return void handleAuthRequest(req, res, handleAccountEmail);
+    if (pathname === '/api/account/password' && req.method === 'POST') return void handleAuthRequest(req, res, handleAccountPassword);
+    if (pathname === '/api/register' && req.method === 'POST') return void handleAuthRequest(req, res, handleRegister);
     if (pathname === '/api/logout' && req.method === 'POST') return handleLogout(req, res);
     if (pathname === '/api/me' && req.method === 'GET') return handleMe(req, res);
     if (pathname === '/api/chat' && req.method === 'POST') return void handleChat(req, res);
@@ -606,5 +1280,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`小白同学网关已启动: http://0.0.0.0:${PORT} (dist: ${DIST}, model: ${MODEL}, coach: ${MODEL_COACH}, asr: ${ASR_KEY ? ASR_MODEL : '关闭'}, 注册: ${INVITE_CODE ? `开放(已注册 ${regUsers.length})` : '关闭'})`);
+  const registration = registrationAvailable() ? `开放(已注册 ${regUsers.length})` : '关闭';
+  console.log(`小白同学网关已启动: http://0.0.0.0:${PORT} (dist: ${DIST}, model: ${MODEL}, coach: ${MODEL_COACH}, asr: ${ASR_KEY ? ASR_MODEL : '关闭'}, 邮箱验证: ${emailAuth ? '开启' : '关闭'}, 注册: ${registration})`);
 });

@@ -1,0 +1,102 @@
+.avatar {
+  position: relative;
+  flex: 0 0 auto;
+  margin: 0;
+  overflow: hidden;
+  isolation: isolate;
+  container-type: inline-size;
+  border: 1px solid var(--line-strong);
+  border-radius: 46% 46% 42% 42%;
+  background: var(--paper-warm);
+  box-shadow: var(--shadow-paper);
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
+}
+
+.avatar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 0.35rem color-mix(in oklab, var(--paper) 32%, transparent);
+}
+
+.motion,
+.sprite {
+  position: absolute;
+  inset: 0 auto auto 0;
+  display: block;
+  max-width: none;
+  user-select: none;
+}
+
+.motion {
+  width: 100%;
+  height: 100%;
+}
+
+.sprite {
+  height: auto;
+  pointer-events: none;
+}
+
+.fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--azure-deep);
+  font-family: var(--font-display);
+  font-size: 42cqi;
+  font-weight: 700;
+}
+
+.speaking .motion {
+  animation: speakingNod 1.4s var(--ease-loop) infinite;
+}
+
+.levelMark {
+  position: absolute;
+  right: 7%;
+  bottom: 7%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 1.75em;
+  aspect-ratio: 1;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-tag);
+  background: color-mix(in oklab, var(--paper) 88%, transparent);
+  color: var(--seal-red);
+  font-family: var(--font-display);
+  font-size: clamp(0.62rem, 7cqi, 0.9rem);
+  font-weight: 700;
+  line-height: 1;
+  transform: rotate(-5deg);
+}
+
+.board {
+  border-color: var(--board-line);
+  background: var(--board-deep);
+  box-shadow: 0 0 32px color-mix(in oklab, var(--chalk) 13%, transparent);
+}
+
+.board::after {
+  box-shadow: inset 0 0 0 0.35rem color-mix(in oklab, var(--board) 35%, transparent);
+}
+
+.board .levelMark {
+  background: color-mix(in oklab, var(--board-deep) 82%, transparent);
+  color: var(--chalk-amber);
+}
+
+@keyframes speakingNod {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.5%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar,
+  .speaking .motion { animation: none; }
+}

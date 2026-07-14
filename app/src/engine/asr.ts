@@ -6,7 +6,7 @@
  * (simulate 在 Node 加载 barrel;与 recall/journey 同一纪律)。
  */
 import type { AsrSettings } from '../types';
-import { API_BASE } from '../lib/api';
+import { API_BASE, gatewayFetch } from '../lib/api';
 
 export const DEFAULT_ASR: AsrSettings = {
   mode: 'proxy',
@@ -30,7 +30,7 @@ export async function transcribe(wav: Blob, settings: AsrSettings): Promise<stri
   try {
     let res: Response;
     if (settings.mode === 'proxy') {
-      res = await fetch(`${API_BASE}/asr`, {
+      res = await gatewayFetch(`${API_BASE}/asr`, {
         method: 'POST',
         headers: { 'Content-Type': 'audio/wav' },
         body: wav,

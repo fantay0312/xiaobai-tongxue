@@ -4,6 +4,8 @@ import { AppShell } from './components/shell/AppShell';
 import { RequireAuth } from './components/shell/RequireAuth';
 import { useAuthStore } from './store/authStore';
 import { initStateSync } from './store/sync';
+import { AUTH_EXPIRED_EVENT, EMAIL_BINDING_REQUIRED_EVENT } from './lib/api';
+import { subscribeAuthChanges } from './lib/authChannel';
 
 const LandingPage = lazy(() => import('./pages/landing'));
 const HomePage = lazy(() => import('./pages/home'));
@@ -27,10 +29,31 @@ function ScrollToTop() {
 
 export default function App() {
   const initAuth = useAuthStore((s) => s.init);
+  const refreshSession = useAuthStore((s) => s.refreshSession);
   useEffect(() => {
     initStateSync(); // 先装同步订阅,再探会话:authed 一落地就拉服务器档
     void initAuth();
   }, [initAuth]);
+
+  useEffect(() => {
+    const revalidateNow = () => void refreshSession(true);
+    const revalidateOnReturn = () => void refreshSession(false);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') revalidateOnReturn();
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, revalidateNow);
+    window.addEventListener(EMAIL_BINDING_REQUIRED_EVENT, revalidateNow);
+    window.addEventListener('focus', revalidateOnReturn);
+    document.addEventListener('visibilitychange', onVisibility);
+    const unsubscribe = subscribeAuthChanges(revalidateNow);
+    return () => {
+      window.removeEventListener(AUTH_EXPIRED_EVENT, revalidateNow);
+      window.removeEventListener(EMAIL_BINDING_REQUIRED_EVENT, revalidateNow);
+      window.removeEventListener('focus', revalidateOnReturn);
+      document.removeEventListener('visibilitychange', onVisibility);
+      unsubscribe();
+    };
+  }, [refreshSession]);
 
   return (
     <AppShell>

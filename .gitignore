@@ -7,11 +7,19 @@ dist/
 doc/aiapi.md
 doc/服务器相关.md
 doc/openrouter key.md
+doc/resendkey.md
 server/config.json
 
 # 注册用户凭据/按账号学习存档(网关运行时落盘),禁止入库
 server/registered-users.json
 server/registered-users.json.tmp
+server/registered-users.json.*.tmp
+server/email-bindings.json
+server/email-bindings.json.tmp
+server/email-bindings.json.*.tmp
+server/password-overrides.json
+server/password-overrides.json.tmp
+server/password-overrides.json.*.tmp
 server/userdata/
 
 # 含账号凭据/本地打包产物,禁止入库
