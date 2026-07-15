@@ -27,7 +27,7 @@
   flex-direction: column; /* 块轴:右→左,引文在右,落款在左 */
   gap: var(--gap-tight);
   padding: var(--gap) 0 var(--gap) var(--gap);
-  border-left: 1px solid var(--line-strong); /* 界栏 */
+  border-left: 2px solid var(--reed); /* 芦苇竖线,让精神锚点与主丁香形成双调 */
   justify-self: end;
 }
 

@@ -4,8 +4,8 @@
   place-items: center;
   padding: var(--gap-loose) var(--gap);
   background:
-    radial-gradient(120% 80% at 88% 12%, var(--azure-wash), transparent 55%),
-    radial-gradient(90% 70% at 6% 96%, var(--ink-wash), transparent 60%);
+    radial-gradient(85% 80% at 88% 12%, color-mix(in oklch, var(--lilac) 34%, transparent), transparent 62%),
+    radial-gradient(80% 72% at 6% 96%, color-mix(in oklch, var(--reed) 30%, transparent), transparent 64%);
 }
 
 .split {
@@ -29,7 +29,10 @@
   align-items: center;
   gap: var(--gap-tight);
   padding: clamp(1.5rem, 3vw, 2.5rem);
-  background: linear-gradient(160deg, var(--paper-warm), color-mix(in oklab, var(--paper-warm) 82%, var(--azure) 6%));
+  background:
+    radial-gradient(120% 90% at 14% 92%, var(--reed-wash), transparent 62%),
+    radial-gradient(110% 82% at 92% 8%, var(--lilac-wash), transparent 66%),
+    linear-gradient(155deg, var(--paper-warm), var(--paper-blush));
   border-right: 1px solid var(--paper-edge);
 }
 
@@ -40,7 +43,7 @@
   right: -1px;
   bottom: 1.5rem;
   width: 2px;
-  background: linear-gradient(var(--paper-edge), transparent);
+  background: linear-gradient(var(--lilac), var(--reed), transparent);
 }
 
 .plateSeal {
@@ -55,7 +58,7 @@
   grid-column: 1;
   justify-self: center;
   align-self: center;
-  filter: drop-shadow(0 0.55rem 0.8rem color-mix(in oklab, var(--azure) 13%, transparent));
+  filter: drop-shadow(0 0.7rem 1rem color-mix(in oklch, var(--lilac) 24%, transparent));
 }
 
 .plateMotto {
@@ -136,7 +139,7 @@
   bottom: -1px;
   left: 0;
   height: 2px;
-  background: var(--azure);
+  background: linear-gradient(90deg, var(--lilac-ink), var(--reed));
   opacity: 0;
   transition: opacity var(--t-fast) var(--ease-out);
 }

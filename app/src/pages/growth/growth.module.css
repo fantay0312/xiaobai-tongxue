@@ -30,8 +30,16 @@
   border-block: 1px solid var(--paper-edge);
 }
 
-.bandWarm { background: var(--paper-warm); }
-.bandShade { background: var(--paper-shade); }
+.bandWarm {
+  background:
+    radial-gradient(80% 120% at 100% 0%, var(--lilac-wash), transparent 72%),
+    var(--paper-warm);
+}
+.bandShade {
+  background:
+    radial-gradient(90% 130% at 0% 100%, var(--reed-wash), transparent 74%),
+    var(--paper-shade);
+}
 
 .h2 {
   position: relative;
@@ -51,7 +59,7 @@
   bottom: -1px;
   width: 2.5rem;
   height: 2px;
-  background: var(--ink);
+  background: linear-gradient(90deg, var(--lilac-ink), var(--reed));
 }
 
 .h2 small {

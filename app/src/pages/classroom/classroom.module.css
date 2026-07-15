@@ -11,7 +11,8 @@
   flex-direction: column;
   /* 教室天光:顶部一层极淡的暖光,其余交给纸色 */
   background:
-    radial-gradient(80rem 30rem at 50% -12rem, color-mix(in oklab, var(--wood-sheen) 16%, transparent), transparent 62%),
+    radial-gradient(48rem 28rem at 8% 6%, color-mix(in oklch, var(--reed) 14%, transparent), transparent 68%),
+    radial-gradient(54rem 30rem at 92% 0%, color-mix(in oklch, var(--lilac) 14%, transparent), transparent 70%),
     var(--paper);
   color: var(--ink);
 }
@@ -33,7 +34,7 @@
   align-items: center;
   gap: var(--gap);
   padding: 0.55rem 1.1rem;
-  background: var(--paper);
+  background: color-mix(in oklch, var(--paper) 88%, var(--paper-blush));
   border-bottom: 1px solid var(--paper-edge);
 }
 .quitBtn {
@@ -122,7 +123,9 @@
   gap: var(--gap);
   overflow-y: auto;
   /* 讲台一角:比教室暖半档的瓷青底 */
-  background: linear-gradient(180deg, var(--paper-warm), transparent 62%);
+  background:
+    radial-gradient(22rem 22rem at 50% 32%, var(--lilac-wash), transparent 68%),
+    linear-gradient(180deg, var(--paper-warm), transparent 68%);
 }
 /* 台灯光晕落在小白身上(与门厅 lampNest 同语言,暖色取木色系材质色) */
 .boardFrame {
@@ -259,10 +262,11 @@
 }
 .bubbleT {
   max-width: 78%;
-  background: var(--paper);
+  background: color-mix(in oklch, var(--paper) 86%, var(--paper-blush));
   color: var(--ink);
   padding: 0.6rem 0.9rem;
   border-radius: var(--radius) 2px var(--radius) var(--radius);
+  border: 1px solid color-mix(in oklch, var(--lilac) 44%, var(--paper-edge));
   box-shadow: var(--shadow-paper);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -378,7 +382,9 @@
   flex: 0 0 auto;
   margin-top: var(--gap-tight);
   border-top: 1px solid var(--paper-edge);
-  background: var(--paper-warm);
+  background:
+    radial-gradient(42rem 12rem at 100% 0%, var(--lilac-wash), transparent 72%),
+    var(--paper-warm);
 }
 .demoWrap { border-bottom: 1px dashed var(--paper-edge); }
 .demoToggle {

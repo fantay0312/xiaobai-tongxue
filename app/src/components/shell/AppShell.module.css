@@ -4,6 +4,9 @@
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  background:
+    radial-gradient(36rem 20rem at 10% 0%, color-mix(in oklch, var(--lilac) 10%, transparent), transparent 72%),
+    radial-gradient(42rem 24rem at 94% 8%, color-mix(in oklch, var(--reed) 9%, transparent), transparent 74%);
 }
 
 /* 讲解舱场景:根铺黑板色兜底(讲解舱自铺黑板底,此处防纸色露边) */
@@ -25,9 +28,22 @@
   justify-content: space-between;
   gap: var(--gap);
   padding: 0.6rem clamp(var(--gap), 4vw, var(--gap-loose));
-  background: color-mix(in oklab, var(--paper) 92%, transparent);
-  backdrop-filter: blur(10px);
+  background: color-mix(in oklch, var(--paper) 91%, transparent);
+  backdrop-filter: blur(14px) saturate(112%);
   border-bottom: 1px solid var(--paper-edge);
+}
+
+/* 一笔双色界栏把整站调色锚钉在最常见的应用壳层,不把粉绿铺满控件。 */
+.header::after {
+  content: '';
+  position: absolute;
+  left: clamp(var(--gap), 4vw, var(--gap-loose));
+  right: clamp(var(--gap), 4vw, var(--gap-loose));
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--lilac), var(--reed) 68%, transparent 94%);
+  opacity: 0.72;
+  pointer-events: none;
 }
 
 .board .header {
@@ -46,6 +62,8 @@
   max-width: 74rem;
   margin-inline: auto;
 }
+
+.landing .header::after { display: none; }
 
 /* ── 品牌落款:白文印 + 楷体字标 + 界栏 + 铭 ── */
 
@@ -193,10 +211,11 @@
 }
 
 .linkActive {
-  color: var(--ink);
+  color: var(--azure-deep);
 }
 
 .linkActive::after {
+  background: var(--reed-ink);
   transform: translateX(-50%) scale(1);
 }
 
@@ -231,7 +250,7 @@
   text-indent: 0.18em; /* 双字居中补偿 */
   color: var(--ink);
   padding: 0.32rem 1rem;
-  border: 1px solid color-mix(in oklab, var(--ink) 32%, transparent);
+  border: 1px solid color-mix(in oklch, var(--lilac-ink) 58%, var(--paper-edge));
   border-radius: 999px;
   transition:
     background var(--t-fast) var(--ease-out),
@@ -239,8 +258,8 @@
 }
 
 .loginBtn:hover {
-  background: var(--ink-wash);
-  border-color: color-mix(in oklab, var(--ink) 55%, transparent);
+  background: var(--lilac-wash);
+  border-color: var(--lilac-ink);
 }
 
 .board .loginBtn {
