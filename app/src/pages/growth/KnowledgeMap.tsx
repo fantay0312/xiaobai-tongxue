@@ -5,7 +5,10 @@
  * 节点五态仍由 MapNode.status 驱动,组件不新造任何学习状态;
  * 交互(onSelect/证据链/键盘序)与旧迷雾舆图完全同契约。
  */
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { STAR_LINKS } from '../../data/starLinks';
+import type { StarLink } from '../../data/starLinks';
 import type { Topic, TopicState } from '../../types';
 import s from './growth.module.css';
 
@@ -25,6 +28,16 @@ interface CourseRealm {
 interface StarPoint {
   x: number;
   y: number;
+}
+
+interface MeasuredStarLink extends StarLink {
+  path: string;
+}
+
+interface LinkOverlayLayout {
+  width: number;
+  height: number;
+  links: MeasuredStarLink[];
 }
 
 const COLS = 6;
@@ -152,6 +165,34 @@ function segmentKind(a: MapNode, b: MapNode): 'lit' | 'walked' | 'dim' {
   return 'dim';
 }
 
+/** 只读 layout 坐标，不受 starSlot 入场动画的 transform 影响。 */
+function centerWithin(element: HTMLElement, ancestor: HTMLElement): StarPoint | null {
+  let x = element.offsetWidth / 2;
+  let y = element.offsetHeight / 2;
+  let current: HTMLElement | null = element;
+
+  while (current && current !== ancestor) {
+    x += current.offsetLeft;
+    y += current.offsetTop;
+    current = current.offsetParent instanceof HTMLElement ? current.offsetParent : null;
+  }
+
+  return current === ancestor ? { x, y } : null;
+}
+
+function curvedLinkPath(from: StarPoint, to: StarPoint, index: number): string {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.hypot(dx, dy);
+  if (length === 0) return `M ${from.x} ${from.y}`;
+
+  const bow = Math.min(48, Math.max(14, length * 0.075)) * (index % 2 === 0 ? 1 : -1);
+  const controlX = (from.x + to.x) / 2 - (dy / length) * bow;
+  const controlY = (from.y + to.y) / 2 + (dx / length) * bow;
+  const round = (value: number) => Number(value.toFixed(1));
+  return `M ${round(from.x)} ${round(from.y)} Q ${round(controlX)} ${round(controlY)} ${round(to.x)} ${round(to.y)}`;
+}
+
 function AmbientDust({ realmIndex, rows }: { realmIndex: number; rows: number }) {
   const rand = lcg(realmIndex + 1);
   const count = rows * 16;
@@ -187,10 +228,110 @@ export function KnowledgeMap({
   onSelect: (topicId: string) => void;
 }) {
   const realms = groupByCourse(nodes);
+  const chartRef = useRef<HTMLDivElement>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [linkLayout, setLinkLayout] = useState<LinkOverlayLayout>({
+    width: 0,
+    height: 0,
+    links: [],
+  });
+  const statusById = new Map(nodes.map((node) => [node.topic.topicId, node.status]));
+  const activeIds = new Set(
+    [selectedId, hoveredId, focusedId].filter((id): id is string => id !== null),
+  );
+  const linkedStarIds = new Set<string>();
+
+  for (const link of STAR_LINKS) {
+    if (!activeIds.has(link.a) && !activeIds.has(link.b)) continue;
+    if (!activeIds.has(link.a)) linkedStarIds.add(link.a);
+    if (!activeIds.has(link.b)) linkedStarIds.add(link.b);
+  }
+
+  useLayoutEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return undefined;
+
+    let frame = 0;
+    let disposed = false;
+    const measure = () => {
+      const centers = new Map<string, StarPoint>();
+      const slots = chart.querySelectorAll<HTMLElement>('[data-star-id]');
+      for (const slot of slots) {
+        const starId = slot.dataset.starId;
+        const anchor = slot.querySelector<HTMLElement>('[data-star-anchor]');
+        if (!starId || !anchor) continue;
+        const center = centerWithin(anchor, chart);
+        if (center) centers.set(starId, center);
+      }
+
+      const links = STAR_LINKS.flatMap((link, index) => {
+        const from = centers.get(link.a);
+        const to = centers.get(link.b);
+        return from && to ? [{ ...link, path: curvedLinkPath(from, to, index) }] : [];
+      });
+      if (!disposed) {
+        setLinkLayout({ width: chart.clientWidth, height: chart.clientHeight, links });
+      }
+    };
+    const scheduleMeasure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    };
+
+    scheduleMeasure();
+    const resizeObserver = new ResizeObserver(scheduleMeasure);
+    resizeObserver.observe(chart);
+    void document.fonts.ready.then(() => {
+      if (!disposed) scheduleMeasure();
+    });
+
+    return () => {
+      disposed = true;
+      cancelAnimationFrame(frame);
+      resizeObserver.disconnect();
+    };
+  }, [nodes]);
 
   return (
     <div className={s.starAtlas}>
-      <div className={s.skyChart} role="group" aria-label="盲区星图:按课程分垣,一讲一星">
+      <div ref={chartRef} className={s.skyChart} role="group" aria-label="盲区星图:按课程分垣,一讲一星">
+        <svg
+          className={s.crossLinkOverlay}
+          width={linkLayout.width}
+          height={linkLayout.height}
+          aria-hidden="true"
+          focusable="false"
+        >
+          {linkLayout.links.map((link) => {
+            const highlighted = activeIds.has(link.a) || activeIds.has(link.b);
+            const mastered = statusById.get(link.a) === 'mastered'
+              && statusById.get(link.b) === 'mastered';
+            const key = `${link.a}:${link.b}`;
+            return (
+              <g key={key}>
+                {(mastered || highlighted) && (
+                  <path
+                    className={[
+                      s.crossLinkGlow,
+                      mastered ? s.crossLinkGlowMastered : '',
+                      highlighted ? s.crossLinkGlowActive : '',
+                    ].filter(Boolean).join(' ')}
+                    d={link.path}
+                  />
+                )}
+                <path
+                  className={[
+                    s.crossLink,
+                    mastered ? s.crossLinkMastered : '',
+                    highlighted ? s.crossLinkActive : '',
+                  ].filter(Boolean).join(' ')}
+                  d={link.path}
+                />
+              </g>
+            );
+          })}
+        </svg>
         {realms.map((realm, realmIndex) => {
           const realmTitleId = `knowledge-realm-${realmIndex}`;
           const masteredCount = realm.nodes.filter((node) => node.status === 'mastered').length;
@@ -261,21 +402,35 @@ export function KnowledgeMap({
                     };
 
                     return (
-                      <li key={node.topic.topicId} className={s.starSlot} style={slotStyle}>
+                      <li
+                        key={node.topic.topicId}
+                        className={s.starSlot}
+                        style={slotStyle}
+                        data-star-id={node.topic.topicId}
+                      >
                         <button
                           type="button"
                           className={[
                             s.starBtn,
                             STATUS_CLASS[node.status],
                             selected ? s.starSelected : '',
+                            linkedStarIds.has(node.topic.topicId) ? s.starLinked : '',
                           ].filter(Boolean).join(' ')}
                           disabled={locked}
                           aria-label={nodeLabel(node)}
                           aria-pressed={locked ? undefined : selected}
                           onClick={() => onSelect(node.topic.topicId)}
+                          onMouseEnter={() => setHoveredId(node.topic.topicId)}
+                          onMouseLeave={() => setHoveredId((current) => (
+                            current === node.topic.topicId ? null : current
+                          ))}
+                          onFocus={() => setFocusedId(node.topic.topicId)}
+                          onBlur={() => setFocusedId((current) => (
+                            current === node.topic.topicId ? null : current
+                          ))}
                         >
                           <span className={s.starFog} aria-hidden="true" />
-                          <span className={s.starGlyph} aria-hidden="true">
+                          <span className={s.starGlyph} data-star-anchor aria-hidden="true">
                             <svg viewBox="-14 -14 28 28" focusable="false">
                               <circle className={s.glyphRing} r="11.5" />
                               <path className={s.glyphStar} d={STAR_PATH} />

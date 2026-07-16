@@ -970,74 +970,143 @@
     var(--shadow-paper);
 }
 
-/* 垣与垣之间:一道虚线界栏,像星图上的分野线 */
+/* 三垣共用一片夜空:只留松缓呼吸，不再画课程分隔带。 */
+.skyRealm { position: relative; }
+
 .skyRealm + .skyRealm {
-  margin-top: var(--gap-loose);
-  padding-top: var(--gap);
-  border-top: 1px dashed var(--inkstone-line);
+  margin-top: var(--gap-hair);
 }
 
 .skyHead {
-  display: grid;
+  position: relative;
+  z-index: 3;
+  display: inline-grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--gap);
+  width: fit-content;
+  max-width: calc(100% - var(--gap));
+  gap: var(--gap-tight);
+  padding: 0.3rem 0.6rem;
+  border: 1px solid color-mix(in oklch, var(--moonsoft-on-ink) 16%, transparent);
+  border-radius: var(--radius-s);
+  background: color-mix(in oklch, var(--inkstone-deep) 78%, transparent);
 }
 
 .skyNo {
-  display: grid;
-  place-items: center;
-  width: 2.8rem;
-  height: 2.8rem;
-  border: 1px solid var(--moonsoft-on-ink);
-  border-radius: 50%;
-  color: var(--moon-on-ink);
-  background: color-mix(in oklch, var(--moon-on-ink) 6%, transparent);
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding-right: var(--gap-tight);
+  border-right: 1px solid color-mix(in oklch, var(--moonsoft-on-ink) 24%, transparent);
+  color: var(--moonsoft-on-ink);
   font-family: var(--font-display);
-  font-size: var(--fs-small);
+  font-size: var(--fs-tiny);
   font-weight: 700;
-  letter-spacing: 0.08em;
-  transform: rotate(-3deg);
+  letter-spacing: 0.12em;
 }
 
 .skyTitle {
   font-family: var(--font-display);
-  font-size: var(--fs-sub);
+  font-size: var(--fs-small);
   color: var(--moon-on-ink);
   letter-spacing: 0.06em;
 }
 
 .skySub {
-  margin-top: 0.15rem;
-  font-size: var(--fs-small);
+  margin-top: 0.05rem;
+  font-size: var(--fs-tiny);
   color: var(--moonsoft-on-ink);
 }
 
 .skyHint {
-  max-width: 16rem;
+  max-width: 13rem;
+  padding-left: var(--gap-tight);
+  border-left: 1px solid color-mix(in oklch, var(--moonsoft-on-ink) 18%, transparent);
   font-family: var(--font-display);
-  font-size: var(--fs-small);
-  line-height: 1.7;
+  font-size: var(--fs-tiny);
+  line-height: 1.45;
   color: var(--moonsoft-on-ink);
-  text-align: right;
+  text-align: left;
 }
 
 /* 满天星点齐:锐角小签(朱文小印制式),星图里唯一的"完成"高光 */
 .skyDone {
   justify-self: end;
-  padding: 0.2rem 0.6rem;
+  padding: 0.15rem 0.45rem;
   border: 1px solid var(--sky-lit);
   border-radius: var(--radius-tag);
   color: var(--sky-lit);
   font-family: var(--font-display);
-  font-size: var(--fs-small);
+  font-size: var(--fs-tiny);
   font-weight: 700;
   letter-spacing: 0.1em;
 }
 
 .skyField {
   position: relative;
-  margin-top: var(--gap-tight);
+  margin-top: calc(-1 * var(--gap-hair));
+}
+
+.crossLinkOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.crossLink,
+.crossLinkGlow {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+}
+
+.crossLink {
+  stroke: color-mix(in oklab, var(--lilac) 34%, transparent);
+  stroke-width: 1.1;
+  stroke-dasharray: 3 8;
+  opacity: 0.68;
+  transition:
+    stroke var(--t-fast) var(--ease-out),
+    stroke-width var(--t-fast) var(--ease-out),
+    opacity var(--t-fast) var(--ease-out);
+}
+
+.crossLinkMastered {
+  stroke: color-mix(in oklab, var(--jade) 62%, var(--moon-on-ink));
+  stroke-width: 1.5;
+  stroke-dasharray: none;
+  opacity: 0.9;
+}
+
+.crossLinkActive {
+  stroke: color-mix(in oklab, var(--lilac) 74%, var(--moon-on-ink));
+  stroke-width: 1.8;
+  stroke-dasharray: none;
+  opacity: 1;
+}
+
+.crossLinkMastered.crossLinkActive {
+  stroke: color-mix(in oklab, var(--jade) 78%, var(--moon-on-ink));
+}
+
+.crossLinkGlow {
+  stroke: color-mix(in oklab, var(--lilac) 44%, transparent);
+  stroke-width: 6;
+  opacity: 0.12;
+}
+
+.crossLinkGlowMastered {
+  stroke: color-mix(in oklab, var(--jade) 54%, transparent);
+  opacity: 0.16;
+}
+
+.crossLinkGlowActive {
+  stroke-width: 7;
+  opacity: 0.2;
 }
 
 .skyLines {
@@ -1098,7 +1167,7 @@
 .starList {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 2;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1184,6 +1253,12 @@
 .starSelected .starGlyph {
   border-color: var(--moon-on-ink);
   background: color-mix(in oklch, var(--moon-on-ink) 10%, transparent);
+}
+
+.starLinked .starGlyph {
+  border-color: color-mix(in oklab, var(--lilac) 58%, var(--moon-on-ink));
+  background: color-mix(in oklab, var(--lilac) 12%, transparent);
+  box-shadow: 0 0 1rem color-mix(in oklab, var(--lilac) 28%, transparent);
 }
 
 .starOrder {

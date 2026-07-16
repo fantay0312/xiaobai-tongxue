@@ -10,6 +10,7 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEMO_SCRIPT, TOPICS } from '../src/data';
+import { STAR_LINKS } from '../src/data/starLinks';
 import { XIAOBAI_EXAM_READY_LINE } from '../src/data/xiaobaiLines';
 import { OS_TOPIC_IDS } from '../src/data/topics/os';
 import {
@@ -695,6 +696,16 @@ async function main(): Promise<void> {
   runGrowthDualTrack();
 
   // 数据体检(动态检测,取代早期静态清单——那批问题已在数据侧修复)
+  const topicIds = new Set(TOPICS.map((topic) => topic.topicId));
+  const starLinkPairKeys = STAR_LINKS.map(({ a, b }) => [a, b].sort().join('\u0000'));
+  check('盲区星图连线端点均为有效 topicId',
+    STAR_LINKS.every(({ a, b }) => topicIds.has(a) && topicIds.has(b)),
+    STAR_LINKS.filter(({ a, b }) => !topicIds.has(a) || !topicIds.has(b))
+      .map(({ a, b }) => `${a}↔${b}`).join(','));
+  check('盲区星图连线无自连', STAR_LINKS.every(({ a, b }) => a !== b));
+  check('盲区星图连线无重复无向边',
+    new Set(starLinkPairKeys).size === starLinkPairKeys.length);
+
   for (const topic of teachable) {
     for (const item of topic.checklist) {
       for (const group of item.keywords) {
