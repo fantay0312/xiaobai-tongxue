@@ -16,7 +16,7 @@
   bottom: -1px;
   width: 2.5rem;
   height: 2px;
-  background: var(--ink);
+  background: linear-gradient(90deg, var(--lilac-ink), var(--reed));
 }
 
 .examTitle { margin-top: 0.2rem; font-size: var(--fs-title); }
@@ -113,7 +113,7 @@
   left: 0;
   width: 2.5rem;
   height: 2px;
-  background: var(--ink);
+  background: linear-gradient(90deg, var(--lilac-ink), var(--reed));
 }
 
 /* 编号章:小方签,不抢朱砂 */

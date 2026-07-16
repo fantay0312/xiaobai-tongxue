@@ -1,6 +1,8 @@
 /* 首页 —— 书斋门厅:左对齐大留白,内容列 + 竖排引文眉批列 */
 
 .page {
+  position: relative;
+  isolation: isolate;
   max-width: 72rem;
   margin: 0 auto;
   width: 100%;
@@ -23,11 +25,25 @@
 /* ── 首屏 ── */
 
 .hero {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: clamp(var(--gap), 5vw, var(--gap-section));
   align-items: center;
   padding: var(--gap-section) 0 var(--gap-loose);
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 10% -8% 4% 42%;
+  border-radius: 54% 46% 42% 58%;
+  background:
+    radial-gradient(ellipse at 42% 36%, color-mix(in oklch, var(--lilac) 26%, transparent), transparent 62%),
+    radial-gradient(ellipse at 70% 70%, color-mix(in oklch, var(--reed) 24%, transparent), transparent 67%);
+  transform: rotate(-5deg);
+  pointer-events: none;
 }
 
 .heroMain {
@@ -42,7 +58,7 @@
   font-family: var(--font-display);
   font-size: var(--fs-small);
   letter-spacing: 0.32em;
-  color: var(--ink-faint);
+  color: var(--reed-ink);
 }
 
 .claim {
@@ -74,6 +90,7 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   border-radius: var(--radius-s);
+  box-shadow: 0 0.7rem 1.8rem color-mix(in oklch, var(--lilac) 24%, transparent);
   transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
 }
 
@@ -94,7 +111,8 @@
   padding: var(--gap-tight) var(--gap);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius) var(--radius) var(--radius) 2px;
-  background: var(--paper-warm);
+  background:
+    linear-gradient(145deg, color-mix(in oklch, var(--paper) 88%, var(--lilac) 12%), var(--paper-warm));
   color: var(--ink-soft);
   font-family: var(--font-display);
   font-size: var(--fs-small);
@@ -158,7 +176,9 @@
   align-items: center;
   gap: var(--gap-tight);
   padding: var(--gap) clamp(var(--gap), 3vw, var(--gap-loose));
-  background: var(--paper-shade);
+  background:
+    radial-gradient(65% 160% at 100% 50%, var(--reed-wash), transparent 74%),
+    var(--paper-shade);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   overflow-x: auto;

@@ -2,22 +2,34 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html, body { margin: 0; padding: 0; overflow-x: clip; }
+html, body { margin: 0; padding: 0; overflow-x: clip; min-height: 100%; }
 
 body {
-  background: var(--paper);
+  /* 春雾纸底:丁香与芦苇只以水迹进入大底,可交互表面仍用不透明纸色保证可读性。 */
+  background:
+    radial-gradient(42rem 30rem at 8% 4%, color-mix(in oklch, var(--lilac) 18%, transparent), transparent 72%),
+    radial-gradient(48rem 34rem at 94% 16%, color-mix(in oklch, var(--reed) 16%, transparent), transparent 70%),
+    radial-gradient(52rem 32rem at 20% 92%, color-mix(in oklch, var(--reed) 10%, transparent), transparent 74%),
+    radial-gradient(44rem 28rem at 88% 86%, color-mix(in oklch, var(--lilac) 11%, transparent), transparent 72%),
+    var(--paper);
+  background-attachment: fixed;
   color: var(--ink);
   font-family: var(--font-body);
   font-size: var(--fs-body);
   line-height: 1.75;
+  font-kerning: normal;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
+#root { min-height: 100dvh; }
+
 h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; line-height: 1.3; margin: 0; }
 p { margin: 0; }
 button { font-family: inherit; cursor: pointer; }
-input, textarea { font-family: inherit; }
+input, textarea { font-family: inherit; caret-color: var(--azure); }
+input::placeholder,
+textarea::placeholder { color: var(--ink-faint); opacity: 1; }
 code, pre { font-family: var(--font-code); }
 a { color: var(--azure); text-decoration: none; }
 
@@ -30,23 +42,23 @@ a { color: var(--azure); text-decoration: none; }
   letter-spacing: 0.16em;
 }
 
-::selection { background: var(--azure-wash); }
+::selection { background: var(--lilac); color: var(--ink); }
 
 /* 全站滚动条:细签制式。裸灰粗滚动条压在书架/横滚条上是本轮"加浓"诊断的显性糙点。
    Firefox 走 scrollbar-*;WebKit 走伪元素。讲解舱(color-scheme:dark)沿用同规格,thumb 色自动可辨。 */
 * {
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in oklch, var(--dust), transparent 30%) transparent;
+  scrollbar-color: color-mix(in oklch, var(--lilac), transparent 28%) transparent;
 }
 *::-webkit-scrollbar { width: 8px; height: 8px; }
 *::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb {
-  background: color-mix(in oklch, var(--dust), transparent 30%);
+  background: color-mix(in oklch, var(--lilac), transparent 28%);
   border-radius: 4px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
-*::-webkit-scrollbar-thumb:hover { background-color: var(--dust); }
+*::-webkit-scrollbar-thumb:hover { background-color: var(--lilac); }
 
 /* 全站键盘焦点基线:模块内的定制焦点环(更高特异度)会覆盖这条 */
 :focus-visible {

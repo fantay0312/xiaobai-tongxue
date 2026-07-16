@@ -176,8 +176,16 @@
   border-radius: var(--radius-l);
 }
 
-.bandWarm { background: var(--paper-warm); }
-.bandShade { background: var(--paper-shade); }
+.bandWarm {
+  background:
+    radial-gradient(90% 130% at 100% 0%, var(--lilac-wash), transparent 72%),
+    var(--paper-warm);
+}
+.bandShade {
+  background:
+    radial-gradient(90% 140% at 0% 100%, var(--reed-wash), transparent 74%),
+    var(--paper-shade);
+}
 
 /* 区块题头:双线书版式(R2)——2px 墨色短线叠在通栏 hairline 上 */
 .h2 {
@@ -196,7 +204,7 @@
   bottom: -1px;
   width: 2.5rem;
   height: 2px;
-  background: var(--ink);
+  background: linear-gradient(90deg, var(--lilac-ink), var(--reed));
 }
 
 .h2 small {

@@ -9,6 +9,8 @@
   padding: clamp(var(--gap), 4vw, var(--gap-section));
   background:
     radial-gradient(circle at 50% 36%, color-mix(in oklch, var(--paper) 72%, transparent), transparent 44%),
+    radial-gradient(50rem 28rem at 4% 100%, color-mix(in oklch, var(--reed) 22%, transparent), transparent 72%),
+    radial-gradient(48rem 28rem at 96% 0%, color-mix(in oklch, var(--lilac) 20%, transparent), transparent 70%),
     repeating-linear-gradient(0deg, transparent 0 35px, color-mix(in oklch, var(--ink) 4%, transparent) 36px),
     var(--paper-shade);
 }
@@ -173,7 +175,7 @@
   flex: none;
   width: 1.75rem;
   height: 2px;
-  background: var(--ink);
+  background: linear-gradient(90deg, var(--lilac-ink), var(--reed));
 }
 
 .title {

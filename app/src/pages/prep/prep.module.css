@@ -138,8 +138,16 @@
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius-s);
 }
-.bandWarm { background: var(--paper-warm); }
-.bandShade { background: var(--paper-shade); }
+.bandWarm {
+  background:
+    radial-gradient(90% 130% at 100% 0%, var(--lilac-wash), transparent 72%),
+    var(--paper-warm);
+}
+.bandShade {
+  background:
+    radial-gradient(90% 140% at 0% 100%, var(--reed-wash), transparent 74%),
+    var(--paper-shade);
+}
 /* 区块题头「双线书版式」(R2):2px 墨色短线叠在通栏 1px 细线上,比孤零零的细线有骨 */
 .sectionTitle {
   position: relative;
@@ -158,7 +166,7 @@
   bottom: -1px;
   width: 2.5rem;
   height: 2px;
-  background: var(--ink);
+  background: linear-gradient(90deg, var(--lilac-ink), var(--reed));
 }
 /* 序号章(诊断 c):壹—伍统一墨章形制,方寸实底、微斜如手钤——不是印泥语境,走墨色 */
 .sectionNum {
@@ -166,7 +174,7 @@
   place-items: center;
   width: 2rem;
   height: 2rem;
-  background: var(--ink);
+  background: var(--inkstone);
   border-radius: var(--radius-tag);
   color: var(--paper);
   font-family: var(--font-display);
