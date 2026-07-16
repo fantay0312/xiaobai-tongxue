@@ -28,7 +28,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const boardMode = false;
   // 宣传页场景:头部退为透明静置,随海报一起滚走
   const landingMode = pathname === '/';
-  const appLocked = pathname.startsWith('/teach');
+  // 注意精确到 '/teach/':裸 startsWith('/teach') 会把 /teacher 教师看板一并锁死(2026-07-16 生产 bug)
+  const appLocked = pathname.startsWith('/teach/');
   const authMode = pathname === '/login';
   const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);

@@ -449,10 +449,6 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             )}
           </div>
         </div>
-
-        <footer className={styles.foot}>
-          导演状态机永远本地纯代码运行;LLM 负责理解讲解与生成台词,失败自动降级本地规则。
-        </footer>
       </div>
     </div>
   );

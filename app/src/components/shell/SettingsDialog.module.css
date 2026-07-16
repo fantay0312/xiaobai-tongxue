@@ -570,15 +570,6 @@
   line-height: 1.7;
 }
 
-.foot {
-  padding: var(--gap-tight) var(--gap);
-  border-top: 1px solid var(--paper-edge);
-  background: var(--paper-warm);
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
-  line-height: 1.7;
-}
-
 /* ── 窄屏:目录横排在顶,窗体撑满 ── */
 
 @media (max-width: 560px) {
