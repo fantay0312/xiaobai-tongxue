@@ -1,0 +1,121 @@
+/* 新印落成的唯一铺张时刻：木章压纸、压力波、少量印泥飞屑。只动 transform / opacity。 */
+.stampTool {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  bottom: 0.05rem;
+  width: 5.2rem;
+  height: 6.8rem;
+  pointer-events: none;
+  opacity: 0;
+  transform-origin: 50% 100%;
+  animation: stampPress 1.55s var(--ease-out);
+}
+
+.stampKnob {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 50%;
+  width: 2.35rem;
+  height: 2.6rem;
+  border: 1px solid var(--wood-deep);
+  border-radius: 48% 48% 35% 35%;
+  background: linear-gradient(90deg, var(--wood-deep), var(--wood), var(--wood-sheen), var(--wood));
+  box-shadow: inset -0.35rem 0 0 color-mix(in oklch, var(--wood-deep) 38%, transparent), var(--shadow-paper);
+  transform: translateX(-50%);
+}
+
+.stampStem {
+  position: absolute;
+  top: 2rem;
+  left: 50%;
+  width: 1.15rem;
+  height: 3.4rem;
+  border-inline: 1px solid var(--wood-deep);
+  background: linear-gradient(90deg, var(--wood-deep), var(--wood-sheen), var(--wood));
+  transform: translateX(-50%);
+}
+
+.stampBase {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 1.3rem;
+  border: 1px solid var(--wood-deep);
+  border-radius: var(--radius-s) var(--radius-s) 2px 2px;
+  background: linear-gradient(90deg, var(--wood-deep), var(--wood), var(--wood-sheen), var(--wood-deep));
+  box-shadow: inset 0 -0.3rem 0 color-mix(in oklch, var(--seal-tone) 48%, var(--wood-deep)), var(--shadow-paper);
+}
+
+.inkBloom {
+  position: absolute;
+  z-index: 4;
+  inset: 8%;
+  border: 2px solid var(--seal-tone);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  animation: pressureWave 0.8s var(--ease-out) 0.46s;
+}
+
+.inkFlecks { position: absolute; z-index: 5; inset: 0; pointer-events: none; }
+.inkFlecks i {
+  --flight: translate(0, -3rem);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.2rem;
+  height: 0.2rem;
+  border-radius: 50%;
+  background: var(--seal-tone);
+  opacity: 0;
+  animation: inkFleck 0.72s var(--ease-out) 0.48s;
+}
+.inkFlecks i:nth-child(2) { --flight: translate(2.8rem, -2.1rem); }
+.inkFlecks i:nth-child(3) { --flight: translate(3.4rem, 0.5rem); }
+.inkFlecks i:nth-child(4) { --flight: translate(2.2rem, 2.8rem); }
+.inkFlecks i:nth-child(5) { --flight: translate(-0.6rem, 3.1rem); }
+.inkFlecks i:nth-child(6) { --flight: translate(-3rem, 2rem); }
+.inkFlecks i:nth-child(7) { --flight: translate(-3.3rem, -0.7rem); }
+.inkFlecks i:nth-child(8) { --flight: translate(-2rem, -2.8rem); }
+
+.pending .sealArtwork { opacity: 0; }
+.celebrating { z-index: 8; }
+.celebrating .sealArtwork { opacity: 1; animation: imprintSet 1.2s var(--ease-out) 0.3s backwards; }
+.celebrating .sealName { animation: nameSet 0.55s var(--ease-out) 0.62s backwards; }
+.ceremonyNote { animation: ceremonyArrive 0.5s var(--ease-out) backwards; }
+
+@keyframes stampPress {
+  0% { opacity: 0; transform: translate3d(-50%, -4.2rem, 0) rotate(-5deg) scale(1.06); }
+  12% { opacity: 1; }
+  35% { opacity: 1; transform: translate3d(-50%, 0.15rem, 0) rotate(-1deg) scale(0.98); }
+  48% { opacity: 1; transform: translate3d(-50%, 0.15rem, 0) rotate(-1deg) scale(0.98); }
+  100% { opacity: 0; transform: translate3d(-50%, -3.2rem, 0) rotate(2deg) scale(1.03); }
+}
+
+@keyframes imprintSet {
+  0%, 34% { opacity: 0; transform: scale(1.08); }
+  46% { opacity: 1; transform: scale(0.97); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pressureWave {
+  from { opacity: 0.5; transform: scale(0.72); }
+  to { opacity: 0; transform: scale(1.32); }
+}
+
+@keyframes inkFleck {
+  0% { opacity: 0; transform: translate(0, 0) scale(0); }
+  24% { opacity: 0.7; }
+  100% { opacity: 0; transform: var(--flight) scale(0.45); }
+}
+
+@keyframes nameSet { from { opacity: 0; transform: translateY(0.35rem); } }
+@keyframes ceremonyArrive { from { opacity: 0; transform: translateY(-0.6rem); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .stampTool, .inkBloom, .inkFlecks { display: none; }
+  .celebrating .sealArtwork, .celebrating .sealName, .ceremonyNote { animation: none; }
+}

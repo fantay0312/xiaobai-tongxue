@@ -26,6 +26,7 @@ import { MemoryPanorama } from '../../components/story/MemoryPanorama';
 import { Icon, type IconName } from '../../components/ui/Icon';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { KnowledgeMap, type MapNode } from './KnowledgeMap';
+import { AchievementWall } from './AchievementWall';
 import s from './growth.module.css';
 
 /* 五阶称号沿用既有成长语义;头像以壹至伍学识印标记当前阶段 */
@@ -188,7 +189,6 @@ export default function GrowthPage() {
   const resetAll = useAppStore((st) => st.resetAll);
 
   const [selected, setSelected] = useState<string | null>(null);
-  const [openSeal, setOpenSeal] = useState<string | null>(null);
   const [oldPages, setOldPages] = useState(false);
   const [reviewBusy, setReviewBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -224,15 +224,7 @@ export default function GrowthPage() {
   const wisdomPct = wisdom.forNext > 0 ? Math.min(100, (wisdom.intoLevel / wisdom.forNext) * 100) : 100;
 
   const earnedCount = achievements.filter((a) => a.earnedAt !== null).length;
-  const openAch = achievements.find((a) => a.id === openSeal) ?? null;
-  // 收起时缓存上一次内容:让 0fr 折叠动画带着内容合上,而不是先卸载再对空容器过渡
-  const lastAchRef = useRef<typeof openAch>(null);
-  if (openAch) lastAchRef.current = openAch;
-  const shownAch = openAch ?? lastAchRef.current;
   const shownChronicle = oldPages ? chronicle : chronicle.slice(0, 6);
-  // 实印分色:tier → 印章样式(string 索引宽容契约外值,落回墨印)
-  const TIER_CLASS: Record<string, string> = { ink: s.sealInk, cinnabar: s.sealCinnabar, gold: s.sealGold };
-  const TIER_NAME: Record<string, string> = { ink: '墨印', cinnabar: '朱印', gold: '金印' };
 
   const nodes: MapNode[] = TOPICS.map((t) => {
     if (t.locked) return { topic: t, state: null, status: 'locked' as const };
@@ -455,85 +447,9 @@ export default function GrowthPage() {
       <section className={`${s.section} ${s.band} ${s.bandWarm} ${s.rise}`} style={rise(1)}>
         <h2 className={s.h2}>
           <span className={s.volNo}>卷一</span>印章墙
-          <small>{earnedCount}/{achievements.length} 枚实印 · 点一枚看它的来历</small>
+          <small>{earnedCount}/{achievements.length} 枚实印 · 课堂有迹，落印有据</small>
         </h2>
-        {achievements.length === 0 ? (
-          <p className={s.muted}>册页尚空——先去开一课,印章自会一枚枚落上来。</p>
-        ) : (
-          <>
-            {earnedCount === 0 && (
-              <p className={s.emptyLead}>册页尚空——下面都是虚印,第一枚实印,等你开讲便有着落。</p>
-            )}
-            <div className={s.sealWall}>
-              {achievements.map((a) => {
-                const earned = a.earnedAt !== null;
-                const isOpen = openSeal === a.id;
-                const progressPct = a.progress.target > 0
-                  ? Math.min(100, (a.progress.now / a.progress.target) * 100)
-                  : 100;
-                return (
-                  <button
-                    key={a.id}
-                    id={`achievement-${a.id}`}
-                    type="button"
-                    aria-expanded={isOpen}
-                    aria-controls="achievement-detail"
-                    aria-label={earned ? `${a.name}，已钤印` : `${a.name}，进度 ${a.progress.now}/${a.progress.target}`}
-                    data-tier-name={TIER_NAME[a.tier] ?? '印章'}
-                    className={[
-                      s.seal,
-                      earned ? (TIER_CLASS[a.tier] ?? s.sealInk) : s.sealGhost,
-                      isOpen ? s.sealOpen : '',
-                    ].filter(Boolean).join(' ')}
-                    onClick={() => setOpenSeal(isOpen ? null : a.id)}
-                  >
-                    <span className={s.sealState}>{earned ? '已钤' : '待刻'}</span>
-                    <span className={s.sealFace} aria-hidden="true">
-                      <span className={s.sealGlyph}>{a.glyph}</span>
-                    </span>
-                    <span className={s.sealName}>{a.name}</span>
-                    {!earned && (
-                      <span className={s.sealProgress}>
-                        <span className={s.sealProgressTrack} aria-hidden="true">
-                          <span style={{ width: `${progressPct}%` }} />
-                        </span>
-                        <span className={s.sealProgressText}>{a.progress.now}/{a.progress.target}</span>
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            <div className={`${s.collapse} ${openAch ? s.open : ''}`}>
-              <div
-                id="achievement-detail"
-                role="region"
-                aria-labelledby={shownAch ? `achievement-${shownAch.id}` : undefined}
-                inert={!openAch}
-              >
-                {shownAch && (
-                  <div className={s.sealDetail}>
-                    <p className={s.sealDetailName}>
-                      {shownAch.glyph} {shownAch.name}
-                      {shownAch.earnedAt === null && <span className={s.sealDetailGhost}> · 虚印</span>}
-                    </p>
-                    <p className={s.sealDetailDesc}>{shownAch.desc}</p>
-                    {shownAch.earnedAt !== null ? (
-                      <p className={s.sealDetailEvidence}>
-                        {shownAch.evidence ?? '印已钤下。'}
-                        <span className={s.sealDetailDate}> · {fmtDateTime(shownAch.earnedAt)} 钤印</span>
-                      </p>
-                    ) : (
-                      <p className={s.sealDetailEvidence}>
-                        进度 <b className={s.num}>{shownAch.progress.now}/{shownAch.progress.target}</b>,印还没刻满。
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
+        <AchievementWall achievements={achievements} />
       </section>
 
       {/* ── 卷二·教学编年史:events×reports 并轨的会话日志,倒序,默认最近 6 条 ── */}

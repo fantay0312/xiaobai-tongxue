@@ -1,73 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Achievement } from '../../engine/achievements';
 import s from './AchievementWall.module.css';
+import motion from './AchievementSealMotion.module.css';
+import { useSealCeremony } from './useSealCeremony';
 
-const SEEN_SEALS_KEY = 'xiaobai-growth-seals-seen-v2';
 const TIER_NAME: Record<Achievement['tier'], string> = {
   ink: '墨印',
   cinnabar: '朱印',
   gold: '金印',
 };
-
-function sealMark(achievement: Achievement): string | null {
-  return achievement.earnedAt ? `${achievement.id}@${achievement.earnedAt}` : null;
-}
-
-function readSeenSeals(): Set<string> {
-  try {
-    const raw = sessionStorage.getItem(SEEN_SEALS_KEY);
-    const parsed: unknown = raw ? JSON.parse(raw) : [];
-    return new Set(Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function writeSeenSeals(marks: string[]): void {
-  try {
-    sessionStorage.setItem(SEEN_SEALS_KEY, JSON.stringify(marks));
-  } catch {
-    // 无痕/受限存储下只失去跨页面去重，印章本身仍可正常使用。
-  }
-}
-
-function newestAchievement(achievements: Achievement[]): Achievement | null {
-  return achievements.reduce<Achievement | null>((newest, item) => {
-    if (!item.earnedAt) return newest;
-    if (!newest?.earnedAt || item.earnedAt > newest.earnedAt) return item;
-    return newest;
-  }, null);
-}
-
-function useSealCeremony(achievements: Achievement[]): string | null {
-  const [celebratingId, setCelebratingId] = useState<string | null>(null);
-  const previousMarksRef = useRef<Set<string> | null>(null);
-  const earnedSignature = achievements.map(sealMark).filter(Boolean).join('|');
-
-  useEffect(() => {
-    const earned = achievements.filter((item) => item.earnedAt !== null);
-    const currentMarks = new Set(earned.map(sealMark).filter((mark): mark is string => mark !== null));
-    const previousMarks = previousMarksRef.current;
-    const seenMarks = previousMarks ?? readSeenSeals();
-    const newlyEarned = earned.filter((item) => {
-      const mark = sealMark(item);
-      return mark !== null && !seenMarks.has(mark);
-    });
-
-    previousMarksRef.current = currentMarks;
-    writeSeenSeals([...currentMarks]);
-    const newest = newestAchievement(newlyEarned);
-    if (newest) setCelebratingId(newest.id);
-  }, [achievements, earnedSignature]);
-
-  useEffect(() => {
-    if (!celebratingId) return undefined;
-    const timer = window.setTimeout(() => setCelebratingId(null), 2200);
-    return () => window.clearTimeout(timer);
-  }, [celebratingId]);
-
-  return celebratingId;
-}
 
 function SealTextureDefs() {
   return (
@@ -118,10 +59,17 @@ function SealArtwork({ achievement, earned }: { achievement: Achievement; earned
   );
 
   return (
-    <svg className={s.sealArtwork} viewBox="0 0 128 128" aria-hidden="true">
-      <g className={earned ? s.inkedArtwork : s.carvedArtwork} filter={earned ? 'url(#achievement-seal-rough)' : undefined}>
+    <svg className={`${s.sealArtwork} ${motion.sealArtwork}`} viewBox="0 0 128 128" aria-hidden="true">
+      <g className={earned ? s.inkedArtwork : s.carvedArtwork}>
         {shape}
         <text x="64" y="84" textAnchor="middle" className={s.artworkGlyph}>{achievement.glyph}</text>
+        {earned ? (
+          <g className={s.wearMarks}>
+            <path d="M31 45l11-2M88 34l7 4M82 99l13-2" />
+            <circle cx="42" cy="91" r="1.8" />
+            <circle cx="101" cy="68" r="1.35" />
+          </g>
+        ) : null}
       </g>
     </svg>
   );
@@ -130,13 +78,13 @@ function SealArtwork({ achievement, earned }: { achievement: Achievement; earned
 function StampPress() {
   return (
     <>
-      <span className={s.stampTool} aria-hidden="true">
-        <span className={s.stampKnob} />
-        <span className={s.stampStem} />
-        <span className={s.stampBase} />
+      <span className={motion.stampTool} aria-hidden="true">
+        <span className={motion.stampKnob} />
+        <span className={motion.stampStem} />
+        <span className={motion.stampBase} />
       </span>
-      <span className={s.inkBloom} aria-hidden="true" />
-      <span className={s.inkFlecks} aria-hidden="true">
+      <span className={motion.inkBloom} aria-hidden="true" />
+      <span className={motion.inkFlecks} aria-hidden="true">
         {Array.from({ length: 8 }, (_, index) => <i key={index} />)}
       </span>
     </>
@@ -146,11 +94,12 @@ function StampPress() {
 interface SealButtonProps {
   achievement: Achievement;
   celebrating: boolean;
+  pending: boolean;
   open: boolean;
-  onToggle: () => void;
+  onToggle: (fromKeyboard: boolean) => void;
 }
 
-function SealButton({ achievement, celebrating, open, onToggle }: SealButtonProps) {
+function SealButton({ achievement, celebrating, pending, open, onToggle }: SealButtonProps) {
   const earned = achievement.earnedAt !== null;
   const progress = achievement.progress.target > 0
     ? Math.min(100, (achievement.progress.now / achievement.progress.target) * 100)
@@ -163,8 +112,8 @@ function SealButton({ achievement, celebrating, open, onToggle }: SealButtonProp
       aria-expanded={open}
       aria-controls="achievement-detail"
       aria-label={earned ? `${achievement.name}，已钤印` : `${achievement.name}，进度 ${achievement.progress.now}/${achievement.progress.target}`}
-      className={`${s.seal} ${s[`tier${achievement.tier}`]} ${earned ? s.earned : s.locked} ${open ? s.sealOpen : ''} ${celebrating ? s.celebrating : ''}`}
-      onClick={onToggle}
+      className={`${s.seal} ${s[`tier${achievement.tier}`]} ${earned ? s.earned : s.locked} ${open ? s.sealOpen : ''} ${pending ? motion.pending : ''} ${celebrating ? motion.celebrating : ''}`}
+      onClick={(event) => onToggle(event.detail === 0)}
     >
       <span className={s.sealWash} aria-hidden="true" />
       <span className={s.sealMeta}>
@@ -175,7 +124,7 @@ function SealButton({ achievement, celebrating, open, onToggle }: SealButtonProp
         <SealArtwork achievement={achievement} earned={earned} />
         {celebrating ? <StampPress /> : null}
       </span>
-      <span className={s.sealName}>{achievement.name}</span>
+      <span className={`${s.sealName} ${motion.sealName}`}>{achievement.name}</span>
       <span className={s.sealCriterion}>{earned ? '此印有据' : achievement.desc}</span>
       {!earned ? (
         <span className={s.sealProgress}>
@@ -196,7 +145,7 @@ function fmtDateTime(iso: string): string {
 function SealDetail({ achievement }: { achievement: Achievement }) {
   const earned = achievement.earnedAt !== null;
   return (
-    <div className={s.sealDetail}>
+    <div className={`${s.sealDetail} ${s[`tier${achievement.tier}`]} ${earned ? s.earned : s.locked}`}>
       <SealArtwork achievement={achievement} earned={earned} />
       <div className={s.detailBody}>
         <p className={s.sealDetailName}>{achievement.name}<span> · {TIER_NAME[achievement.tier]}{earned ? '' : '虚位'}</span></p>
@@ -212,7 +161,9 @@ function SealDetail({ achievement }: { achievement: Achievement }) {
 
 export function AchievementWall({ achievements }: { achievements: Achievement[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
-  const celebratingId = useSealCeremony(achievements);
+  const detailRef = useRef<HTMLDivElement | null>(null);
+  const scrollTimerRef = useRef<number | null>(null);
+  const { celebratingId, pendingIds } = useSealCeremony(achievements);
   const earnedCount = achievements.filter((item) => item.earnedAt !== null).length;
   const openAchievement = achievements.find((item) => item.id === openId) ?? null;
   const lastOpenRef = useRef<Achievement | null>(null);
@@ -222,6 +173,23 @@ export function AchievementWall({ achievements }: { achievements: Achievement[] 
     () => achievements.find((item) => item.id === celebratingId) ?? null,
     [achievements, celebratingId],
   );
+
+  useEffect(() => () => {
+    if (scrollTimerRef.current !== null) window.clearTimeout(scrollTimerRef.current);
+  }, []);
+
+  const toggleAchievement = (id: string, fromKeyboard: boolean) => {
+    const nextId = openId === id ? null : id;
+    setOpenId(nextId);
+    if (scrollTimerRef.current !== null) window.clearTimeout(scrollTimerRef.current);
+    if (!nextId) return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const scrollImmediately = reduceMotion || fromKeyboard;
+    scrollTimerRef.current = window.setTimeout(() => {
+      detailRef.current?.scrollIntoView({ behavior: scrollImmediately ? 'auto' : 'smooth', block: 'nearest' });
+      scrollTimerRef.current = null;
+    }, scrollImmediately ? 0 : 360);
+  };
 
   if (achievements.length === 0) return <p className={s.empty}>册页尚空——先去开一课，印章自会一枚枚落上来。</p>;
 
@@ -238,26 +206,29 @@ export function AchievementWall({ achievements }: { achievements: Achievement[] 
           <p>{earnedCount === 0 ? '章坯已备，只等课堂把它们一枚枚唤醒。' : '每一道缺口、每一处浓淡，都对应一段真实课堂。'}</p>
           <span>{earnedCount}/{achievements.length} · 点击印面翻看来历</span>
         </div>
-        {celebratingAchievement ? (
-          <div className={s.ceremonyNote} role="status" aria-live="polite">
-            <span>新章入谱</span><b>「{celebratingAchievement.name}」</b>
+        <div className={s.ceremonySlot}>
+          {celebratingAchievement ? (
+            <div className={`${s.ceremonyNote} ${motion.ceremonyNote}`} role="status" aria-live="polite">
+              <span>新章入谱</span><b>「{celebratingAchievement.name}」</b>
+            </div>
+          ) : null}
+        </div>
+        <div className={`${s.detailCollapse} ${openAchievement ? s.detailOpen : ''}`}>
+          <div ref={detailRef} id="achievement-detail" role="region" aria-labelledby={shownAchievement ? `achievement-${shownAchievement.id}` : undefined} inert={!openAchievement}>
+            {shownAchievement ? <SealDetail achievement={shownAchievement} /> : null}
           </div>
-        ) : null}
+        </div>
         <div className={s.sealWall}>
           {achievements.map((achievement) => (
             <SealButton
               key={achievement.id}
               achievement={achievement}
               celebrating={achievement.id === celebratingId}
+              pending={pendingIds.has(achievement.id)}
               open={achievement.id === openId}
-              onToggle={() => setOpenId((current) => current === achievement.id ? null : achievement.id)}
+              onToggle={(fromKeyboard) => toggleAchievement(achievement.id, fromKeyboard)}
             />
           ))}
-        </div>
-        <div className={`${s.detailCollapse} ${openAchievement ? s.detailOpen : ''}`}>
-          <div id="achievement-detail" role="region" aria-labelledby={shownAchievement ? `achievement-${shownAchievement.id}` : undefined} inert={!openAchievement}>
-            {shownAchievement ? <SealDetail achievement={shownAchievement} /> : null}
-          </div>
         </div>
       </div>
     </div>

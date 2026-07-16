@@ -1,0 +1,297 @@
+.album {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: 5.75rem minmax(0, 1fr);
+  overflow: visible;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-paper);
+}
+
+.album::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(34rem 18rem at 76% 10%, var(--lilac-wash), transparent 72%),
+    radial-gradient(28rem 20rem at 18% 88%, var(--reed-wash), transparent 76%),
+    repeating-linear-gradient(2deg, transparent 0 5px, var(--ink-wash) 5px 6px);
+  opacity: 0.28;
+  mix-blend-mode: multiply;
+}
+
+.textureDefs { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+.albumSpine {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap);
+  padding: var(--gap) var(--gap-tight);
+  color: var(--moon-on-ink);
+  background: var(--inkstone);
+  border-right: 1px solid var(--inkstone-line);
+}
+
+.spineTitle {
+  writing-mode: vertical-rl;
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  letter-spacing: 0.28em;
+  text-indent: 0.28em;
+}
+
+.spineCount {
+  display: grid;
+  justify-items: center;
+  margin-top: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.spineCount b { font-family: var(--font-display); font-size: var(--fs-title); font-weight: 400; line-height: 1; }
+.spineCount small { color: var(--moonsoft-on-ink); font-size: var(--fs-tiny); letter-spacing: 0.14em; }
+
+.spineSeal {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  color: var(--seal-red);
+  border: 1px solid var(--seal-red);
+  font-family: var(--font-display);
+  transform: rotate(-4deg);
+}
+
+.albumBody { position: relative; z-index: 1; min-width: 0; padding: var(--gap) clamp(0.8rem, 2vw, 1.5rem) var(--gap-loose); }
+
+.albumNote {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding: 0 var(--gap-tight) var(--gap);
+  border-bottom: 1px solid var(--paper-edge);
+  font-size: var(--fs-small);
+}
+
+.albumNote p { font-family: var(--font-display); color: var(--ink-soft); }
+.albumNote > span { flex: none; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.ceremonySlot { height: 0; }
+
+.ceremonyNote {
+  position: absolute;
+  z-index: 9;
+  top: 0.7rem;
+  right: clamp(0.8rem, 2vw, 1.5rem);
+  display: flex;
+  align-items: center;
+  gap: var(--gap-hair);
+  padding: 0.35rem 0.7rem;
+  pointer-events: none;
+  color: var(--paper);
+  background: var(--seal-red);
+  box-shadow: var(--shadow-lift);
+  font-family: var(--font-display);
+}
+
+.ceremonyNote span { font-size: var(--fs-tiny); letter-spacing: 0.16em; }
+.ceremonyNote b { font-size: var(--fs-small); }
+
+.sealWall {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-left: 1px solid var(--paper-edge);
+}
+
+.seal {
+  --seal-tone: var(--ink);
+  position: relative;
+  min-width: 0;
+  min-height: 14.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-hair);
+  padding: var(--gap-tight) clamp(0.55rem, 1.4vw, 1rem) var(--gap);
+  color: var(--seal-tone);
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--paper-edge);
+  border-bottom: 1px solid var(--paper-edge);
+  border-radius: 0;
+  text-align: center;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.sealWash {
+  position: absolute;
+  z-index: -1;
+  inset: 0.28rem;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 42%, color-mix(in oklch, var(--seal-tone) 9%, transparent), transparent 70%);
+  opacity: 0;
+  transition: opacity var(--t-fast) var(--ease-out);
+}
+
+.seal:hover .sealWash,
+.sealOpen .sealWash { opacity: 1; }
+
+.seal:active { transform: scale(0.985); }
+.seal:focus-visible { z-index: 4; outline: 2px solid var(--azure); outline-offset: -3px; }
+.sealOpen { z-index: 2; box-shadow: inset 0 -3px 0 var(--seal-tone); }
+
+.tierink { --seal-tone: var(--ink); }
+.tiercinnabar { --seal-tone: var(--seal-red); }
+.tiergold { --seal-tone: var(--amber-ink); }
+.locked.tierink { --seal-tone: color-mix(in oklch, var(--dust), var(--ink) 12%); }
+.locked.tiercinnabar { --seal-tone: color-mix(in oklch, var(--dust), var(--seal-red) 18%); }
+.locked.tiergold { --seal-tone: color-mix(in oklch, var(--dust), var(--amber-ink) 20%); }
+
+.sealMeta {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  color: var(--ink-faint);
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.1em;
+}
+
+.earned .sealMeta span:first-child { color: var(--seal-tone); }
+
+.artworkStage {
+  position: relative;
+  width: clamp(5.7rem, 8vw, 7rem);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  margin-top: 0.15rem;
+}
+
+.seal:nth-child(4n + 1) .artworkStage { transform: rotate(-1.7deg); }
+.seal:nth-child(4n + 2) .artworkStage { transform: rotate(0.8deg); }
+.seal:nth-child(4n + 3) .artworkStage { transform: rotate(-0.5deg); }
+.seal:nth-child(4n) .artworkStage { transform: rotate(1.35deg); }
+
+.sealArtwork { display: block; width: 100%; height: 100%; overflow: visible; color: var(--seal-tone); }
+.outerStroke, .innerStroke, .registrationMarks { fill: none; stroke: currentcolor; }
+.outerStroke { stroke-width: 5.5; }
+.innerStroke { stroke-width: 2; opacity: 0.72; }
+.registrationMarks { stroke-width: 2.8; stroke-linecap: square; opacity: 0.7; }
+
+.artworkGlyph {
+  fill: currentcolor;
+  font-family: var(--font-display);
+  font-size: 3.7rem;
+  font-weight: 700;
+}
+
+.wearMarks { fill: var(--paper); stroke: var(--paper); stroke-width: 1.6; stroke-linecap: round; opacity: 0.64; }
+
+.inkedArtwork { opacity: 0.93; filter: url('#achievement-seal-rough'); }
+.carvedArtwork { opacity: 0.5; }
+.locked .sealArtwork {
+  filter: drop-shadow(-1px -1px 0 var(--paper)) drop-shadow(1px 1px 0 var(--ink-wash));
+}
+
+.sealName {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  line-height: 1.2;
+  letter-spacing: 0.18em;
+  text-indent: 0.18em;
+}
+
+.earned .sealName { color: var(--seal-tone); }
+
+.sealCriterion {
+  min-height: 2.8em;
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--ink-faint);
+  font-size: var(--fs-tiny);
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.earned .sealCriterion { color: var(--ink-soft); letter-spacing: 0.12em; }
+
+.sealProgress {
+  width: min(100%, 8rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gap-hair);
+  margin-top: auto;
+}
+
+.sealProgressTrack { height: 3px; overflow: hidden; background: var(--ink-wash); transform: skewX(-12deg); }
+.sealProgressTrack > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--jade);
+  transform-origin: left center;
+  transition: transform var(--t-slow) var(--ease-out);
+}
+.sealProgressText { color: var(--ink-soft); font-family: var(--font-code); font-size: var(--fs-tiny); font-variant-numeric: tabular-nums; }
+
+.detailCollapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--t-med) var(--ease-out); }
+.detailCollapse > div { min-height: 0; overflow: hidden; }
+.detailOpen { grid-template-rows: 1fr; }
+
+.sealDetail {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gap);
+  margin: var(--gap) var(--gap-tight) 0;
+  padding: var(--gap);
+  color: var(--ink);
+  background: var(--paper-shade);
+  border-block: 1px solid var(--line-strong);
+}
+
+.sealDetail .sealArtwork { width: 5rem; color: var(--seal-tone); }
+.detailBody { min-width: 0; }
+.sealDetailName { font-family: var(--font-display); font-size: var(--fs-sub); }
+.sealDetailName span { color: var(--ink-faint); font-size: var(--fs-tiny); font-weight: 400; letter-spacing: 0.1em; }
+.sealDetailDesc { margin-top: 0.15rem; color: var(--ink-soft); font-size: var(--fs-small); }
+.sealDetailEvidence { margin-top: var(--gap-hair); color: var(--ink); font-size: var(--fs-small); }
+.sealDetailEvidence b { font-family: var(--font-code); }
+.sealDetailEvidence span { color: var(--ink-faint); font-family: var(--font-code); font-size: var(--fs-tiny); }
+.empty { color: var(--ink-faint); font-family: var(--font-display); }
+
+@media (max-width: 720px) {
+  .album { grid-template-columns: 1fr; }
+  .albumSpine { flex-direction: row; justify-content: space-between; padding: var(--gap-tight) var(--gap); border-right: 0; border-bottom: 1px solid var(--inkstone-line); }
+  .spineTitle { writing-mode: horizontal-tb; font-size: var(--fs-body); }
+  .spineCount { display: flex; align-items: baseline; gap: var(--gap-hair); margin: 0 0 0 auto; }
+  .spineCount b { font-size: var(--fs-sub); }
+  .spineSeal { width: 1.65rem; height: 1.65rem; }
+  .albumNote { align-items: flex-start; flex-direction: column; gap: 0.1rem; }
+  .ceremonySlot { position: relative; height: 2.25rem; }
+  .ceremonyNote { top: 0.25rem; right: 0; width: max-content; margin: 0; }
+  .sealWall { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .seal { min-height: 13.75rem; }
+}
+
+@media (max-width: 560px) {
+  .albumBody { padding-inline: 0.55rem; }
+  .sealWall { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .seal { min-height: 13.35rem; padding-inline: 0.45rem; }
+  .artworkStage { width: clamp(5.25rem, 27vw, 6.2rem); }
+  .sealCriterion { min-height: 2.6em; }
+  .ceremonyNote { right: 0; }
+  .sealDetail { grid-template-columns: 4rem minmax(0, 1fr); margin-inline: 0; padding: var(--gap-tight); }
+  .sealDetail .sealArtwork { width: 4rem; }
+  .inkedArtwork, .locked .sealArtwork { filter: none; }
+}
