@@ -1,17 +1,31 @@
-# 计划:小白「升级+进化」双轨成长(2026-07-13)
+# 计划:使用感受反馈优化轮(2026-07-16)
 
-方案与全部接线细节见同目录 `design.md`(本轮规格书,实现代理按它执行)。
+依据 `doc/使用感受反馈/`(两位试用者:md+2 PDF)。Fable 编排,Codex(GPT-5.6)执行,Opus 4.8 探索(工作流 wf_e5409d9f-c08,5 向勘查已归档于会话)。
 
-## 执行序
+## 反馈 → 批次映射
 
-1. **并行实现**(Workflow `xiaobai-level-evolution`,Opus 执行代理):
-   - 代理 A(引擎+存储):新建 `engine/evolution.ts`;改 `engine/honors.ts`、`store/appStore.ts`(endSession 重算 + persist v4 migrate)、`store/sync.ts`(拉档消毒重算);`scripts/simulate.ts` 追加「成长双轨」断言节并跑绿。
-   - 代理 B(UI):成长册卷首(五方牌条件铭文 + 学识经验条 + 化形指引)、HonorRoll(学识进账/晋级签)、JourneyRibbon(学识一小段)。
-2. **三视角对抗审查**(引擎数学与事件溯源 / 设计法典与 React / 回归猎手),结构化 findings 回主线程。
-3. **主线程收口**:按 findings 修复 → `npm run simulate` + `tsc -b` + `npm run build` + oxlint 全绿 → 浏览器过 growth/home/review(Chrome 扩展可用时)→ 更新 progress.md 与记忆。
+| 反馈 | 批次 |
+|:--|:--|
+| 黑板随对话变长、左侧小白滚出视野(两人共提) | A 视口锁 |
+| 答小白自己提的延伸问反被判"跟今天知识没关系" | B-P1 |
+| 为推备课路线硬切话题、前言不搭后语 | B-P2 |
+| 切换太快没反应过来 | B-P3 |
+| 困惑表情怪;想要点击互动+开窍萌动画 | C |
+| 备课像零散知识,想要"讲课节奏"串线 | D-C1 |
+| 100 分找不到补学模块 | D-C2 |
+| 不知道掌握情况、啥时候停手 | D-C3 |
+| 排行榜(科举榜)/用户自传资料备课 | 路线图,写回应文档,本轮不实现 |
 
-## 风险与对策
+## 执行序(同一工作树,严格串行,每批后主线程 git diff 审查+门禁)
 
-- learningLevel 是导演难度旋钮 → 进化新规则会让"单课程深耕"档的课堂略变容易:设计上有意(多学科→更成熟的小白),已记录。
-- 旧档降阶(迁移诚实重算)→ v4 migrate + sync sanitize 双闸,消费方(LEVEL_NAME 下标/mood)由回归猎手核对。
-- 两代理同工作树并行 → 文件所有权互斥;构建门禁只在主线程收口时统一跑。
+1. **批次 A+B(Codex 会话 1)**:AppShell 加 `.locked`(只锁高不染色,勿复用 .board);evaluator 补小白上一问上下文防跑题误判(mock 词面重叠守卫+api prompt 扩展,保 [system,user] 形状);renderer 承接语(mock 桥接前缀+api actionBrief 指令,probeLine 子串保留);节奏放缓(打字机停顿/气泡拆分二选一,优先 UI 级)。
+2. **批次 C(Codex 会话 2)**:2D 精灵小白(three.js 已退役!)——困惑帧修缮、点头/点脸互动反应、开窍庆祝动效。等形象重探索代理结果后派发。
+3. **批次 D(Codex 会话 3)**:prep 叁区自动派生"讲课节奏"引言(纯函数,零改 38 topic 文件);review 空盲区支路加"本场无需补学"注记;导演纯代码 readiness 线索(模糊请考,不泄机关)。
+4. **收口**:tsc/build/simulate(+livetest 若引擎 prompt 变)→ 浏览器抽查 → `doc/使用感受反馈/回应与改进.md` → progress.md/记忆。
+
+## 不可破约束(探索确认)
+
+- simulate 断言:偏题→stay_confused(:289-292)、R4 拉回无"没关系吧"(:275)、开窍衔接 probeLine(:177-182)、零泄漏(:183)、金句引文(:201)。
+- 导演纯代码;泄漏出口唯一 speakXiaobai;网关只收 [system]/[system,user];mock 模板零术语(槽位注入)。
+- 设计:global(rise)/var(--ease-loop)/reduced-motion 全站压制;色一律 tokens(春雾书院:丁香 --azure/芦苇 --jade/暮紫 --board);XiaobaiAvatar props 契约冻结(可选扩展需评审);弹层豁免不外延。
+- P1 守卫不能"上一句是问句就放行"——小白几乎每句都带问,会杀掉偏题断言;须词面重叠/语义响应判定。
