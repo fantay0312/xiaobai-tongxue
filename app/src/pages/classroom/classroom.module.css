@@ -94,6 +94,21 @@
 }
 .endBtn:hover:enabled { background: var(--azure-deep); transform: translateY(-1px); }
 .endBtn:disabled { opacity: 0.55; cursor: default; }
+.endBtnReady {
+  position: relative;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--reed) 34%, transparent);
+}
+.endBtnReady::after {
+  content: '';
+  position: absolute;
+  top: -0.28rem;
+  right: -0.28rem;
+  width: 0.52rem;
+  aspect-ratio: 1;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  background: var(--jade);
+}
 
 .modeBanner {
   flex: 0 0 auto;
@@ -129,13 +144,36 @@
 }
 /* 台灯光晕落在小白身上(与门厅 lampNest 同语言,暖色取木色系材质色) */
 .boardFrame {
-  padding: 0.4rem;
+  --avatar-frame-pad: 0.4rem;
+  position: relative;
+  display: inline-flex;
+  padding: var(--avatar-frame-pad);
   border-radius: 50%;
   background: radial-gradient(
     closest-side,
     color-mix(in oklab, var(--wood-sheen) 34%, transparent),
     transparent 74%
   );
+  cursor: pointer;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+.boardFrame:focus { outline: none; }
+.boardFrame:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 3px;
+}
+.boardFrame[aria-disabled='true'] { cursor: default; }
+.boardFrame[aria-disabled='false']:active { transform: scale(0.99); }
+.tapBlush {
+  position: absolute;
+  inset: var(--avatar-frame-pad);
+  z-index: 1;
+  border-radius: 46% 46% 42% 42%;
+  background:
+    radial-gradient(ellipse 12% 7% at 30% 54%, var(--lilac-wash) 0 42%, transparent 75%),
+    radial-gradient(ellipse 12% 7% at 66% 54%, var(--lilac-wash) 0 42%, transparent 75%);
+  pointer-events: none;
+  animation: tapBlush 900ms var(--ease-out) backwards;
 }
 /* 木桌牌:讲台上那块刻字的深木名牌 */
 .plate {
@@ -681,6 +719,11 @@
   from { transform: translateX(24px); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
+@keyframes tapBlush {
+  0% { opacity: 0; }
+  24% { opacity: 1; }
+  100% { opacity: 0; }
+}
 
 /* 880px 是讲台+黑板双栏的场景专属折点(应用式布局,不随全站 960 档) */
 @media (max-width: 880px) {
@@ -699,7 +742,7 @@
     overflow: visible;
     background: var(--paper-warm);
   }
-  .boardFrame { padding: 0.2rem; }
+  .boardFrame { --avatar-frame-pad: 0.2rem; }
   .plate { margin-top: 0; }
   .stageHint { display: none; }
   .stageThinking { margin-left: auto; }

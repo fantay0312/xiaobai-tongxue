@@ -10,6 +10,7 @@ import type {
   SessionMode, SessionReport, TopicState, XiaobaiGlobal,
 } from '../types';
 import { getTopic, TOPICS } from '../data';
+import { XIAOBAI_EXAM_READY_LINE } from '../data/xiaobaiLines';
 import {
   applyEvents, buildReport, decide, DEFLECTION_LINE, evaluate, extractTeacherTerms,
   initialTopicState, isExtractionAttempt, openingCard, replayTopicState, runXiaobaiQuiz, speakXiaobai,
@@ -218,8 +219,11 @@ export const useAppStore = create<AppState>()(
         try {
           const state = get().topicState(topic.topicId);
           const g = get().global;
+          const lastXiaobaiText = [...live.messages].reverse()
+            .find((message) => message.role === 'xiaobai')?.text ?? null;
           const evalResult = await evaluate({
-            utterance: text, topic, state, pendingMcId: live.pendingMcId, settings,
+            utterance: text, lastXiaobaiText, topic, state,
+            pendingMcId: live.pendingMcId, settings,
           });
           // 长 await 期间用户可能已退出教室/开启新会话:陈旧续体不得写入事件流与新会话
           if (get().live?.sessionId !== sessionId) return;
@@ -258,18 +262,23 @@ export const useAppStore = create<AppState>()(
           });
           if (get().live?.sessionId !== sessionId) return;
 
+          const shouldCueExam = decision.examReady === true && live.examCuedAt === undefined;
           const newMessages: ChatMessage[] = [
             msg('xiaobai', speak.text, { action: decision.action, mood: speak.mood }),
           ];
+          if (shouldCueExam) {
+            newMessages.push(msg('xiaobai', XIAOBAI_EXAM_READY_LINE, { mood: 'happy' }));
+          }
           if (decision.systemNote) newMessages.push(msg('system', decision.systemNote));
 
           set((s) => s.live && s.live.sessionId === sessionId ? {
             live: {
               ...s.live,
               busy: false,
-              mood: speak.mood,
+              mood: shouldCueExam ? 'happy' : speak.mood,
               pendingMcId: decision.pendingMcAfter,
               lookupChecklistId: decision.action === 'propose_lookup' ? card.targetChecklistId : null,
+              examCuedAt: shouldCueExam ? s.live.traces.length + 1 : s.live.examCuedAt,
               ended: decision.forceEnd,
               messages: [...s.live.messages, ...newMessages],
               traces: [...s.live.traces, {

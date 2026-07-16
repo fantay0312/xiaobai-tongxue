@@ -32,6 +32,7 @@
 }
 
 .motion {
+  z-index: 0;
   width: 100%;
   height: 100%;
 }
@@ -56,11 +57,164 @@
   animation: speakingNod 1.4s var(--ease-loop) infinite;
 }
 
+.confusedThought {
+  position: absolute;
+  top: 8cqi;
+  left: 5cqi;
+  z-index: 2;
+  width: 30cqi;
+  height: 29cqi;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.thoughtMark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 27cqi;
+  height: 21cqi;
+  border: max(1px, 1cqi) solid currentColor;
+  border-radius: 52% 46% 50% 44%;
+  background: color-mix(in oklab, var(--paper) 86%, transparent);
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: 15cqi;
+  font-weight: 700;
+  line-height: 1;
+  transform: rotate(-4deg);
+}
+
+.thoughtMark::before,
+.thoughtMark::after {
+  content: '';
+  position: absolute;
+  border: max(1px, 0.8cqi) solid currentColor;
+  border-radius: 50%;
+  background: inherit;
+}
+
+.thoughtMark::before {
+  right: 2cqi;
+  bottom: -6cqi;
+  width: 5cqi;
+  height: 5cqi;
+}
+
+.thoughtMark::after {
+  right: -2cqi;
+  bottom: -11cqi;
+  width: 2.5cqi;
+  height: 2.5cqi;
+}
+
+.avatar[data-mood='confused'] .confusedThought {
+  opacity: 1;
+  animation: thoughtAppear var(--t-med) var(--ease-out) backwards;
+}
+
+.avatar[data-mood='confused'] .thoughtMark {
+  animation: thoughtFloat 2.6s var(--ease-loop) infinite;
+}
+
+.board .thoughtMark {
+  background: color-mix(in oklab, var(--board-deep) 86%, transparent);
+  color: var(--chalk-soft);
+}
+
+.ahaBloom {
+  position: absolute;
+  inset: 11cqi;
+  z-index: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--reed-wash), transparent 68%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.board .ahaBloom {
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--chalk-jade) 20%, transparent),
+    transparent 68%
+  );
+}
+
+.ahaMarks {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  color: var(--reed-ink);
+  pointer-events: none;
+}
+
+.board .ahaMarks {
+  color: var(--chalk-jade);
+}
+
+.ahaMarks i {
+  --spark-angle: 0deg;
+  position: absolute;
+  width: 1.5cqi;
+  height: 9cqi;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0;
+  transform: rotate(var(--spark-angle));
+}
+
+.ahaMarks i::after {
+  content: '';
+  position: absolute;
+  top: 3.75cqi;
+  left: -3.75cqi;
+  width: 9cqi;
+  height: 1.5cqi;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ahaMarks i:nth-child(1) {
+  --spark-angle: -16deg;
+  top: 28cqi;
+  left: 11cqi;
+}
+
+.ahaMarks i:nth-child(2) {
+  --spark-angle: 7deg;
+  top: 9cqi;
+  left: 49cqi;
+}
+
+.ahaMarks i:nth-child(3) {
+  --spark-angle: 18deg;
+  top: 25cqi;
+  right: 12cqi;
+}
+
+.avatar[data-mood='aha'] .ahaBloom {
+  animation: ahaBloom 1.05s var(--ease-out) backwards;
+}
+
+.avatar[data-mood='aha'] .ahaMarks i {
+  animation: inkSparkRise 0.82s var(--ease-out) backwards;
+}
+
+.avatar[data-mood='aha'] .ahaMarks i:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.avatar[data-mood='aha'] .ahaMarks i:nth-child(3) {
+  animation-delay: 160ms;
+}
+
 .levelMark {
   position: absolute;
   right: 7%;
   bottom: 7%;
-  z-index: 2;
+  z-index: 3;
   display: grid;
   place-items: center;
   width: 1.75em;
@@ -96,7 +250,33 @@
   50% { transform: translateY(-1.5%); }
 }
 
+@keyframes thoughtAppear {
+  from { opacity: 0; transform: translateY(3cqi); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes thoughtFloat {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-2cqi) rotate(-4deg); }
+}
+
+@keyframes ahaBloom {
+  0% { opacity: 0; transform: scale(0.68); }
+  38% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.16); }
+}
+
+@keyframes inkSparkRise {
+  0% { opacity: 0; transform: translateY(7cqi) scale(0.72) rotate(var(--spark-angle)); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-6cqi) scale(1) rotate(var(--spark-angle)); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .avatar,
-  .speaking .motion { animation: none; }
+  .speaking .motion,
+  .confusedThought,
+  .thoughtMark,
+  .ahaBloom,
+  .ahaMarks i { animation: none; }
 }

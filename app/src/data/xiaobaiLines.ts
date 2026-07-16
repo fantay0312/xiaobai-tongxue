@@ -4,7 +4,43 @@
  * 注意:各数组的首个模板顺序不可随意调整(simulate.ts 按 seed 取模选中的台词有断言依赖,
  * 如偏题拉回必须落在含「今天/知识点」的模板上)。新增模板一律追加在末尾。
  */
-import type { LineTemplates } from '../types';
+import type { LineTemplates, Persona } from '../types';
+
+/** 达到送考门槛后的固定提示；不含数值、清单或误区信息。 */
+export const XIAOBAI_EXAM_READY_LINE =
+  '老师,今日的功课我心里大概有谱了——您要是觉得讲得差不多,就送我去考场试试吧!';
+
+/** 回应小白自己题外追问后的收笔台词:只致谢,不硬推课程路线。 */
+export const XIAOBAI_TANGENT_ACKS: Record<Persona, readonly string[]> = {
+  好奇型: [
+    '哦,原来是这样!老师这句我记进小本本了。',
+    '明白啦,多谢老师解惑!我先把这句记在本子上。',
+  ],
+  严谨型: [
+    '明白了,老师这番解答我记下了。',
+    '原来如此,这一句我先认真记在本子上。',
+  ],
+  杠精型: [
+    '行,这回算老师答明白了,我记下啦。',
+    '好吧,这句有道理,我先记在本子上。',
+  ],
+};
+
+/** 开窍复述与下一问之间的接榫,{probe} 必须原样落入最终台词。 */
+export const XIAOBAI_PROBE_BRIDGES: Record<Persona, readonly string[]> = {
+  好奇型: [
+    '这句我先记进小本本,再请教老师:{probe}',
+    '我顺着老师这句话再问一句:{probe}',
+  ],
+  严谨型: [
+    '这句我记下了,再确认一处:{probe}',
+    '顺着老师刚才的话,我再请教一处:{probe}',
+  ],
+  杠精型: [
+    '这句先算讲通了,不过我还要问:{probe}',
+    '行,我接着老师这句话再问:{probe}',
+  ],
+};
 
 export const XIAOBAI_LINES: LineTemplates = {
   好奇型: {

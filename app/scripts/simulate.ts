@@ -10,6 +10,7 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEMO_SCRIPT, TOPICS } from '../src/data';
+import { XIAOBAI_EXAM_READY_LINE } from '../src/data/xiaobaiLines';
 import { OS_TOPIC_IDS } from '../src/data/topics/os';
 import {
   applyEvent, buildReport, decide, evaluate, extractTeacherTerms, initialTopicState,
@@ -48,9 +49,11 @@ const now = () => new Date().toISOString();
 // ───────────────────────── 断言收集 ─────────────────────────
 
 let failures = 0;
+let assertions = 0;
 const dataIssues: string[] = [];
 
 function check(name: string, cond: boolean, detail = ''): void {
+  assertions += 1;
   if (cond) {
     console.log(`  ✓ ${name}`);
   } else {
@@ -70,6 +73,7 @@ interface Sim {
   traces: TurnTrace[];
   events: LearnEvent[];
   forceEnded: boolean;
+  examCuedAt?: number;
 }
 
 function newSim(topic: Topic, learningLevel: XiaobaiGlobal['learningLevel'] = 1): Sim {
@@ -89,12 +93,30 @@ interface TurnOut {
   forceEnd: boolean;
   hits: string[];
   mcResult: string | null;
+  offTopic: boolean;
+  answeredTangent: boolean;
+  coverage: number;
+  examReady: boolean;
+  examCued: boolean;
+}
+
+/** 镜像 appStore 的会话内一次性闸门；回放同一决策与结束后消费都不得增发。 */
+function appendExamCue(sim: Sim, examReady: boolean, turn: number): boolean {
+  if (!examReady || sim.examCuedAt !== undefined || sim.forceEnded) return false;
+  sim.messages.push({
+    id: uid(), role: 'xiaobai', text: XIAOBAI_EXAM_READY_LINE, mood: 'happy', t: now(),
+  });
+  sim.examCuedAt = turn;
+  return true;
 }
 
 async function teachTurn(sim: Sim, text: string): Promise<TurnOut> {
   const { topic } = sim;
+  const lastXiaobaiText = [...sim.messages].reverse()
+    .find((message) => message.role === 'xiaobai')?.text ?? null;
   const evalResult = await evaluate({
-    utterance: text, topic, state: sim.state, pendingMcId: sim.pendingMcId, settings: MOCK,
+    utterance: text, lastXiaobaiText, topic, state: sim.state,
+    pendingMcId: sim.pendingMcId, settings: MOCK,
   });
   const decision = decide({
     evalResult, topic, state: sim.state, global: sim.global, mode: 'teach',
@@ -122,9 +144,11 @@ async function teachTurn(sim: Sim, text: string): Promise<TurnOut> {
     settings: MOCK, seed: sim.traces.length + 1,
   });
 
+  const turn = sim.traces.length + 1;
   sim.messages.push(teacherMsg, { id: uid(), role: 'xiaobai', text: speak.text, t: now() });
+  const examCued = appendExamCue(sim, decision.examReady === true, turn);
   sim.traces.push({
-    turn: sim.traces.length + 1, teacherText: text, evalResult, card,
+    turn, teacherText: text, evalResult, card,
     xiaobaiText: speak.text, leakageRetries: speak.leakageRetries, t: now(),
   });
   sim.pendingMcId = decision.pendingMcAfter;
@@ -134,8 +158,9 @@ async function teachTurn(sim: Sim, text: string): Promise<TurnOut> {
   console.log(`  [轮${sim.traces.length}] 老师:${short(text)}`);
   console.log(`         评估:命中[${evalResult.checklistHits.join(',') || '—'}]`
     + ` 卡壳=${evalResult.stuckSignal ? '是' : '否'} 偏题=${evalResult.offTopic ? '是' : '否'}`
+    + ` 回应追问=${evalResult.answeredTangent ? '是' : '否'}`
     + ` 金句=${evalResult.goldenAnalogy ? '是' : '否'} 误区=${evalResult.mcEvent ? `${evalResult.mcEvent.mcId}:${evalResult.mcEvent.result}` : '—'}`);
-  console.log(`         导演:${decision.action}${card.targetChecklistId ? ` → ${card.targetChecklistId}` : ''}${decision.systemNote ? ` ‖ 系统:${short(decision.systemNote)}` : ''}`);
+  console.log(`         导演:${decision.action}${card.targetChecklistId ? ` → ${card.targetChecklistId}` : ''}${decision.examReady ? ' ‖ 可送考' : ''}${decision.systemNote ? ` ‖ 系统:${short(decision.systemNote)}` : ''}`);
   console.log(`         小白:${short(speak.text, 52)} (mood=${speak.mood}, 泄漏重试=${speak.leakageRetries})`);
 
   return {
@@ -148,6 +173,11 @@ async function teachTurn(sim: Sim, text: string): Promise<TurnOut> {
     forceEnd: decision.forceEnd,
     hits: evalResult.checklistHits,
     mcResult: evalResult.mcEvent ? `${evalResult.mcEvent.mcId}:${evalResult.mcEvent.result}` : null,
+    offTopic: evalResult.offTopic,
+    answeredTangent: evalResult.answeredTangent,
+    coverage: topic.checklist.length > 0 ? sim.state.hitChecklist.length / topic.checklist.length : 0,
+    examReady: decision.examReady === true,
+    examCued,
   };
 }
 
@@ -180,6 +210,14 @@ async function simCorrectPath(topic: Topic, script: DemoLine[]): Promise<void> {
       const item = topic.checklist.find((c) => c.id === o.targetChecklistId);
       return item ? o.xiaobaiText.includes(item.probeLine) : true;
     }));
+  check('开窍复述与下一问之间有承接短句',
+    outs.every((o) => {
+      if (o.action !== 'express_understanding' || !o.targetChecklistId) return true;
+      const item = topic.checklist.find((c) => c.id === o.targetChecklistId);
+      if (!item) return true;
+      const beforeProbe = o.xiaobaiText.slice(0, o.xiaobaiText.indexOf(item.probeLine));
+      return /再请教老师|再确认一处|再问一句|顺着老师|不过我还要问|接着老师/.test(beforeProbe);
+    }));
   check('全程零泄漏(重试=0 且无兜底)', outs.every((o) => o.leakageRetries === 0 && o.xiaobaiText !== FALLBACK_LINE),
     outs.map((o, i) => (o.leakageRetries > 0 ? `轮${i + 1} 泄漏[${o.leaked.join(',')}]` : '')).filter(Boolean).join(';'));
 
@@ -198,6 +236,16 @@ async function simCorrectPath(topic: Topic, script: DemoLine[]): Promise<void> {
   check('最终 checklist 全命中',
     sim.state.hitChecklist.length === topic.checklist.length,
     `命中 ${sim.state.hitChecklist.join(',')} / 共 ${topic.checklist.length} 项`);
+  const cueIndexes = outs.flatMap((out, index) => out.examCued ? [index] : []);
+  const thresholdIndex = outs.findIndex((out) => out.coverage >= 0.8);
+  check('完整讲课的送考提示恰好出现一次',
+    cueIndexes.length === 1
+    && sim.messages.filter((message) => message.text === XIAOBAI_EXAM_READY_LINE).length === 1,
+    `提示轮:${cueIndexes.map((index) => index + 1).join(',') || '无'}`);
+  check('送考提示只在覆盖达到八成之后出现',
+    thresholdIndex >= 0 && cueIndexes[0] >= thresholdIndex
+    && outs.slice(0, thresholdIndex).every((out) => !out.examReady && !out.examCued),
+    `过线轮:${thresholdIndex + 1},提示轮:${(cueIndexes[0] ?? -1) + 1}`);
   check('金句类比已收录', sim.events.some((e) => e.type === 'golden_analogy_saved'));
 
   const quiz = runXiaobaiQuiz(topic, sim.state);
@@ -213,6 +261,16 @@ async function simCorrectPath(topic: Topic, script: DemoLine[]): Promise<void> {
   check('覆盖度 = 1.0', report.radar.覆盖度 === 1);
   check('纠错力 = 1.0', report.radar.纠错力 === 1);
   check('逻辑结构 ≥ 0.7', report.radar.逻辑结构 >= 0.7, `实得 ${report.radar.逻辑结构}`);
+
+  const cueCountBeforeReplay = sim.messages.filter(
+    (message) => message.text === XIAOBAI_EXAM_READY_LINE,
+  ).length;
+  const replayCued = appendExamCue(sim, true, sim.traces.length);
+  sim.forceEnded = true;
+  const endingCued = appendExamCue(sim, true, sim.traces.length);
+  check('回放或结束会话不重复送考提示',
+    !replayCued && !endingCued
+    && sim.messages.filter((message) => message.text === XIAOBAI_EXAM_READY_LINE).length === cueCountBeforeReplay);
 
   console.log('  最终五维雷达:');
   for (const [k, v] of dims) console.log(`    ${k.padEnd(4, '　')} ${'█'.repeat(Math.round(v * 20)).padEnd(20, '·')} ${v.toFixed(2)}`);
@@ -287,9 +345,51 @@ async function simOffTopic(topic: Topic, script: DemoLine[]): Promise<void> {
   const evCount = sim.events.length;
   const out = await teachTurn(sim, off);
   check('偏题 → stay_confused(角色内拉回)', out.action === 'stay_confused', `实际 ${out.action}`);
+  check('真正偏题不被“回答追问”守卫放过', out.offTopic && !out.answeredTangent);
   check('拉回台词提到"今天要讲/知识点"', /知识点|今天/.test(out.xiaobaiText), out.xiaobaiText);
   check('偏题轮不产生命中/误区事件',
     sim.events.slice(evCount).every((e) => !['checklist_hit', 'misconception_injected', 'misconception_corrected', 'misconception_adopted'].includes(e.type)));
+  check('真正偏题轮不发出送考提示', !out.examReady && !out.examCued);
+}
+
+/** 即使课况已越过八成且误区全纠正，真偏题本身也不能成为提示触发器。 */
+async function simReadyOffTopicGuard(topic: Topic, script: DemoLine[]): Promise<void> {
+  const off = offTopicLine(script);
+  if (!off) return;
+  console.log(`\n── [${topic.title}] 送考提示偏题守卫 ──`);
+  const sim = newSim(topic);
+  const hitCount = Math.ceil(topic.checklist.length * 0.8);
+  sim.state = {
+    ...sim.state,
+    hitChecklist: topic.checklist.slice(0, hitCount).map((item) => item.id),
+    mcStates: Object.fromEntries(topic.misconceptions.map((mc) => [mc.mcId, '已纠正'])),
+  };
+  const out = await teachTurn(sim, off);
+  check('已越过八成时真偏题仍不触发送考提示',
+    out.offTopic && !out.examReady && !out.examCued
+    && sim.messages.every((message) => message.text !== XIAOBAI_EXAM_READY_LINE));
+}
+
+// ───────────────────────── ④-B 回答小白自己的题外追问 ─────────────────────────
+
+async function simAnsweredTangent(topic: Topic): Promise<void> {
+  console.log(`\n── [${topic.title}] 回答小白题外追问仿真 ──`);
+  const sim = newSim(topic);
+  sim.messages.push({
+    id: uid(), role: 'xiaobai', text: '老师,词表是怎么收集来的?', t: now(),
+  });
+  const eventCount = sim.events.length;
+  const out = await teachTurn(
+    sim,
+    '词表通常是从许多文章里慢慢收集来的,再逐条整理,最后存进本子里备用。',
+  );
+  check('回答上一问的内容词有交集 → answeredTangent 且不判偏题',
+    out.answeredTangent && !out.offTopic);
+  check('回答题外追问只致谢收笔,不说“没关系/回正题”',
+    out.action === 'express_understanding' && /小本本|本子|记下/.test(out.xiaobaiText)
+    && !/没关系|正题|知识点/.test(out.xiaobaiText), out.xiaobaiText);
+  check('回答题外追问不产生命中或误区事件',
+    out.hits.length === 0 && sim.events.length === eventCount && out.mcResult === null);
 }
 
 // ───────────────────────── ⑤ 学习力节奏(§7.1)─────────────────────────
@@ -586,7 +686,11 @@ async function main(): Promise<void> {
   }
 
   const shallow = teachable.find((t) => t.topicId === 'shallow-copy');
-  if (shallow) runLeakageBenchmark(shallow);
+  if (shallow) {
+    await simAnsweredTangent(shallow);
+    await simReadyOffTopicGuard(shallow, DEMO_SCRIPT[shallow.topicId] ?? []);
+    runLeakageBenchmark(shallow);
+  }
   runGuardBenchmark();
   runGrowthDualTrack();
 
@@ -621,7 +725,9 @@ async function main(): Promise<void> {
     console.log('\n── 数据体检:未发现问题 ✓(单字关键词/带空格英文关键词/空题库均已检查)──');
   }
 
-  console.log(`\n================================\n断言结果:${failures === 0 ? '全部通过 ✓' : `${failures} 项失败 ✗`}`);
+  console.log(`\n================================\n断言结果:${
+    failures === 0 ? `${assertions} 项全部通过 ✓` : `${failures}/${assertions} 项失败 ✗`
+  }`);
   if (failures > 0) process.exitCode = 1;
 }
 

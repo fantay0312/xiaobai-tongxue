@@ -252,7 +252,11 @@ export default function ReviewPage() {
               </div>
             )}
             {report.blindSpots.length === 0 ? (
-              <p className={s.muted}>这次没有留下盲区——小白全都听懂了。</p>
+              <p className={s.muted}>
+                {report.masteredNow
+                  ? '本场满分出师,没有留下盲区——「补学小径」只在小白答错或被带偏时才会出现。'
+                  : '这次没有留下盲区——小白全都听懂了。「补学小径」只在小白答错或被带偏时才会出现。'}
+              </p>
             ) : (
               <>
                 <p className={s.blindLead}>下面每一条,都是小白还没转过弯来的地方。带补学微路径的,三步就能把它讲明白。</p>

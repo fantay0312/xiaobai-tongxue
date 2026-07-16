@@ -62,6 +62,7 @@ export function XiaobaiAvatar({
       aria-label={`小白正在${MOOD_LABELS[mood]}`}
       data-mood={mood}
     >
+      <span className={styles.ahaBloom} aria-hidden="true" />
       <span className={styles.motion} aria-hidden="true">
         {assetFailed ? <span className={styles.fallback}>白</span> : (
           <img
@@ -74,6 +75,14 @@ export function XiaobaiAvatar({
             onError={() => setAssetFailed(true)}
           />
         )}
+      </span>
+      <span className={styles.confusedThought} aria-hidden="true">
+        <span className={styles.thoughtMark}>?</span>
+      </span>
+      <span className={styles.ahaMarks} aria-hidden="true">
+        <i />
+        <i />
+        <i />
       </span>
       <span className={styles.levelMark} aria-hidden="true">{LEVEL_MARKS[level - 1]}</span>
     </div>

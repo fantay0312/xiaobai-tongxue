@@ -465,7 +465,28 @@
   white-space: nowrap;
 }
 
-/* ── 讲课路线图:竖排教学大纲,层级徽章 + 小白追问引文 ── */
+/* ── 讲课路线图:先用双线纸条串起节奏,再落竖排大纲与小白追问 ── */
+.flowNote {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--gap);
+  align-items: start;
+  margin-top: var(--gap);
+  padding: var(--gap-tight) var(--gap-hair);
+  border-block: 3px double var(--line-strong);
+}
+.flowLabel {
+  padding-top: 0.2rem;
+  color: var(--azure-deep);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.16em;
+  white-space: nowrap;
+}
+.flowText {
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  line-height: 2;
+}
 .roadmap {
   list-style: none;
   margin: var(--gap) 0 0;
@@ -1148,6 +1169,7 @@ button.stepCurrent:hover { background: var(--azure-wash); }
   }
   .collapseHead { padding: 0.8rem var(--gap-tight); }
   .collapseInner { padding: 0 var(--gap-tight); margin-left: 0.85rem; }
+  .flowNote { grid-template-columns: 1fr; gap: var(--gap-hair); }
   .roadmap::before { display: none; }
   .roadStep,
   .roadAmbush {

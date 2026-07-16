@@ -91,8 +91,11 @@ interface TurnOut {
 async function teachTurn(sim: Sim, text: string): Promise<TurnOut> {
   const { topic } = sim;
   const t0 = Date.now();
+  const lastXiaobaiText = [...sim.messages].reverse()
+    .find((message) => message.role === 'xiaobai')?.text ?? null;
   const evalResult = await evaluate({
-    utterance: text, topic, state: sim.state, pendingMcId: sim.pendingMcId, settings: SETTINGS,
+    utterance: text, lastXiaobaiText, topic, state: sim.state,
+    pendingMcId: sim.pendingMcId, settings: SETTINGS,
   });
   const decision = decide({
     evalResult, topic, state: sim.state, global: sim.global, mode: 'teach',

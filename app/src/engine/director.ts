@@ -24,8 +24,10 @@ export interface Decision {
   systemNote: string | null;
   /** R4:结束会话退回备课 */
   forceEnd: boolean;
-  /** 会话结束后建议的下一步(用于 R4 提示) */
-  pendingMcAfter: string | null; // 本轮之后处于"已注入待判定"的误区
+  /** 本轮达到模糊送考提示门槛；展示层只消费布尔值，不得外泄判定细节 */
+  examReady?: true;
+  /** 本轮之后处于“已注入待判定”的误区 */
+  pendingMcAfter: string | null;
 }
 
 const LEVEL_ORDER: QuestionLevel[] = ['L1', 'L2', 'L3', 'L4', 'L5'];
@@ -147,11 +149,38 @@ export function decide(input: DecideInput): Decision {
   }): Decision => {
     stateDelta.level = deriveLevel(topic, hitNow);
     if (hitNow.length > 0 && state.knowledgeState === '没懂') stateDelta.knowledgeState = '半懂';
+    const pendingMcAfter = opts?.pendingMcAfter !== undefined
+      ? opts.pendingMcAfter
+      : (pendingMcId ?? null);
+    const mcStatesAfter: Record<string, McState> = {
+      ...state.mcStates,
+      ...(stateDelta.mcStates ?? {}),
+    };
+    const coverage = topic.checklist.length > 0
+      ? new Set(hitNow).size / topic.checklist.length
+      : 0;
+    const madeReadinessProgress = ev.checklistHits.length > 0
+      || ev.mcEvent?.result === 'corrected';
+    const noWaitingToInject = topic.misconceptions.every(
+      (mc) => (mcStatesAfter[mc.mcId] ?? '待注入') !== '待注入',
+    );
+    const noAdoptedUncorrected = topic.misconceptions.every(
+      (mc) => mcStatesAfter[mc.mcId] !== '被带偏',
+    );
+    const noActiveMisconception = pendingMcAfter === null && topic.misconceptions.every(
+      (mc) => mcStatesAfter[mc.mcId] !== '已注入',
+    );
+    const examReady = input.mode !== 'review'
+      && madeReadinessProgress
+      && !ev.stuckSignal && !ev.offTopic && !ev.answeredTangent
+      && coverage >= 0.8
+      && noWaitingToInject && noAdoptedUncorrected && noActiveMisconception;
     return {
       action, card, events, stateDelta, mood,
       systemNote: opts?.systemNote ?? null,
       forceEnd: opts?.forceEnd ?? false,
-      pendingMcAfter: opts?.pendingMcAfter !== undefined ? opts.pendingMcAfter : (pendingMcId ?? null),
+      ...(examReady ? { examReady: true as const } : {}),
+      pendingMcAfter,
     };
   };
 
@@ -191,6 +220,12 @@ export function decide(input: DecideInput): Decision {
     });
   }
   stateDelta.stuckStreak = 0;
+
+  // ── 优先级 1.4:老师回答了小白自己的题外追问 ──
+  // 只收住并致谢,不命中 checklist、不注入误区,也不立刻硬推下一问。
+  if (ev.answeredTangent) {
+    return done('express_understanding', baseCard('express_understanding'), 'happy');
+  }
 
   // ── 优先级 1.5:偏题围栏 ──
   if (ev.offTopic) {

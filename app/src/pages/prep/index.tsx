@@ -21,6 +21,7 @@ import { Tour, type TourStep } from '../../components/tour/Tour';
 import { Icon } from '../../components/ui/Icon';
 import type { Misconception, PrepReference, QuestionLevel } from '../../types';
 import { useDocTitle } from '../../hooks/useDocTitle';
+import { deriveTeachingFlow } from './flow';
 import s from './prep.module.css';
 
 /** 追问层级 → 路线图徽章文案(checklist 无 L4;L4 = 误区注入,以途中试探标记呈现) */
@@ -536,6 +537,10 @@ function PrepRoom({ topicId }: { topicId: string }) {
                 <p className={s.sectionHint}>
                   你要把下面 {topic.checklist.length} 件事讲明白——小白到时候大概会这么问。
                 </p>
+                <div className={s.flowNote}>
+                  <span className={s.flowLabel}>讲课节奏</span>
+                  <p className={s.flowText}>{deriveTeachingFlow(topic)}</p>
+                </div>
                 <ol className={s.roadmap}>
                   {topic.checklist.map((item, i) => (
                     <Fragment key={item.id}>

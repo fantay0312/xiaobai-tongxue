@@ -5,7 +5,14 @@
  * 挂载契约:store.live 存在且 topicId 吻合则直接接管,否则 startSession(topicId, mode)。
  * 下课:endSession() → /exam/:sessionId → /review/:sessionId;R4 退回备课:abandonSession() → /prep/:topicId。
  */
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+} from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 import { getDemoScript, getTopic } from '../../data';
@@ -75,6 +82,18 @@ function buildTeachTour(mode: SessionMode): TourStep[] {
   ];
 }
 
+const TRAILING_PROBE_PAUSE_MS = 760;
+
+/** 尾句为追问时,找出它前面的句界;消息正文不插标记,回放与引文保持干净。 */
+function trailingProbePauseAfter(text: string): number | null {
+  const questionEnd = Math.max(text.lastIndexOf('?'), text.lastIndexOf('？'));
+  if (questionEnd < 0 || text.slice(questionEnd + 1).trim()) return null;
+  for (let i = questionEnd - 1; i >= 0; i -= 1) {
+    if (/[。!?！？]/.test(text[i])) return i + 1;
+  }
+  return null;
+}
+
 /** 打字机逐字浮现(像在想怎么说) */
 function TypewriterText({ text, animate, onTick, onDone }: {
   text: string;
@@ -93,16 +112,21 @@ function TypewriterText({ text, animate, onTick, onDone }: {
     }
     setN(0);
     let v = 0;
-    const id = window.setInterval(() => {
+    let timer = 0;
+    const pauseAfter = trailingProbePauseAfter(text);
+    const step = () => {
       v += 1;
       setN(v);
       cbRef.current.onTick?.();
       if (v >= text.length) {
-        window.clearInterval(id);
         cbRef.current.onDone?.();
+        return;
       }
-    }, 26);
-    return () => window.clearInterval(id);
+      timer = window.setTimeout(step, v === pauseAfter ? TRAILING_PROBE_PAUSE_MS : 26);
+    };
+    if (text.length === 0) cbRef.current.onDone?.();
+    else timer = window.setTimeout(step, 26);
+    return () => window.clearTimeout(timer);
   }, [text, animate]);
 
   const typing = animate && n < text.length;
@@ -302,6 +326,11 @@ export default function ClassroomPage() {
   const [draft, setDraft] = useState('');
   const [demoOpen, setDemoOpen] = useState(false);
   const [typingNow, setTypingNow] = useState(false);
+  const [tapMood, setTapMood] = useState<XiaobaiMood | null>(null);
+  const [tapReactionId, setTapReactionId] = useState(0);
+  const [reducedMotion] = useState(
+    () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
+  );
 
   /** 挂载时已存在的消息不再重放打字机 */
   const preExistingRef = useRef<Set<string> | null>(null);
@@ -313,6 +342,16 @@ export default function ClassroomPage() {
   const finishedRef = useRef(new Set<string>());
   const streamRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const tapTimerRef = useRef(0);
+
+  useEffect(() => {
+    if (live?.busy) {
+      window.clearTimeout(tapTimerRef.current);
+      tapTimerRef.current = 0;
+      setTapMood(null);
+    }
+    return () => window.clearTimeout(tapTimerRef.current);
+  }, [live?.busy]);
 
   // ── 跨页契约:接管或开新会话 ──
   useEffect(() => {
@@ -336,9 +375,14 @@ export default function ClassroomPage() {
     ? [...live.messages].reverse().find((m) => m.role === 'xiaobai')
     : undefined;
   const animateId =
-    lastXiaobai && !preIds.has(lastXiaobai.id) && !finishedRef.current.has(lastXiaobai.id)
+    !reducedMotion && lastXiaobai
+      && !preIds.has(lastXiaobai.id) && !finishedRef.current.has(lastXiaobai.id)
       ? lastXiaobai.id
       : null;
+  const delayedSystemId = animateId && live
+    ? live.messages.find((message, index) =>
+      message.role === 'system' && live.messages[index - 1]?.id === animateId)?.id ?? null
+    : null;
 
   useEffect(() => {
     if (animateId) setTypingNow(true);
@@ -379,6 +423,28 @@ export default function ClassroomPage() {
     }
   };
 
+  const triggerTapReaction = (mood: 'confused' | 'happy') => {
+    if (live.busy) return;
+    window.clearTimeout(tapTimerRef.current);
+    setTapMood(mood);
+    setTapReactionId((id) => id + 1);
+    tapTimerRef.current = window.setTimeout(() => {
+      tapTimerRef.current = 0;
+      setTapMood(null);
+    }, 900);
+  };
+  const onXiaobaiPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (!e.isPrimary || e.button !== 0 || live.busy) return;
+    const bounds = e.currentTarget.getBoundingClientRect();
+    const pointerY = (e.clientY - bounds.top) / bounds.height;
+    triggerTapReaction(pointerY < 0.38 ? 'confused' : 'happy');
+  };
+  const onXiaobaiKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.repeat || (e.key !== 'Enter' && e.key !== ' ')) return;
+    e.preventDefault();
+    triggerTapReaction('happy');
+  };
+
   const quit = () => {
     abandonSession();
     navigate('/study');
@@ -416,6 +482,8 @@ export default function ClassroomPage() {
   const lastSystemText = [...live.messages].reverse().find((m) => m.role === 'system')?.text;
   const finishLabel = mode === 'review' ? '完成温故' : '送小白赴考';
   const finishIcon = mode === 'review' ? 'pen' : 'route';
+  const examCued = mode !== 'review' && live.examCuedAt !== undefined;
+  const displayedMood = live.busy ? 'thinking' : tapMood ?? live.mood;
 
   return (
     <div className={s.room}>
@@ -432,7 +500,7 @@ export default function ClassroomPage() {
         {!live.ended && (
           <button
             type="button"
-            className={s.endBtn}
+            className={`${s.endBtn} ${examCued ? s.endBtnReady : ''}`}
             data-tour="end"
             onClick={dismissClass}
             disabled={live.busy}
@@ -453,14 +521,24 @@ export default function ClassroomPage() {
       <div className={s.main}>
         {/* ── 左 1/3:讲台(暖光晕下的小白) ── */}
         <aside className={s.stage} data-tour="stage">
-          <div className={s.boardFrame}>
+          <div
+            className={s.boardFrame}
+            role="button"
+            tabIndex={0}
+            aria-label="逗逗小白"
+            aria-disabled={live.busy}
+            aria-live="off"
+            onPointerDown={onXiaobaiPointerDown}
+            onKeyDown={onXiaobaiKeyDown}
+          >
             <XiaobaiAvatar
-              mood={live.busy ? 'thinking' : live.mood}
+              mood={displayedMood}
               level={g.learningLevel}
               speaking={typingNow}
               size={170}
               variant="board"
             />
+            {tapMood ? <span key={tapReactionId} className={s.tapBlush} aria-hidden="true" /> : null}
           </div>
           <div className={s.plate}>
             <div className={s.plateName}>小白</div>
@@ -482,10 +560,12 @@ export default function ClassroomPage() {
             <div className={s.stream} ref={streamRef}>
               {live.messages.map((m) =>
               m.role === 'system' ? (
-                <div key={m.id} className={s.rowSys}>
-                  <span className={s.sysTag}>导演</span>
-                  {m.text}
-                </div>
+                m.id === delayedSystemId ? null : (
+                  <div key={m.id} className={s.rowSys}>
+                    <span className={s.sysTag}>导演</span>
+                    {m.text}
+                  </div>
+                )
               ) : m.role === 'teacher' ? (
                 isGoldenRow(m.text) ? (
                   <div key={m.id} className={`${s.rowT} ${s.rowGold}`}>

@@ -228,6 +228,7 @@ export interface EvalResult {
   mcEvent: { mcId: string; result: 'corrected' | 'adopted' | 'pending' } | null;
   stuckSignal: boolean;
   offTopic: boolean;
+  answeredTangent: boolean;                      // 回应小白上一句的课外追问
   goldenAnalogy: string | null;                  // 检测到的高质量类比原句
   reasoning: string;                             // 一句话决策依据(证据链展示)
 }
@@ -313,6 +314,7 @@ export interface LiveSession {
   mood: XiaobaiMood;
   pendingMcId: string | null;      // 已注入待判定的误区
   lookupChecklistId: string | null; // R2 查书面板当前卡片
+  examCuedAt?: number;             // 本场第几轮已给过模糊送考提示(会话内一次)
   ended: boolean;
   busy: boolean;                   // 等待小白回应
 }

@@ -28,6 +28,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const boardMode = false;
   // 宣传页场景:头部退为透明静置,随海报一起滚走
   const landingMode = pathname === '/';
+  const appLocked = pathname.startsWith('/teach');
   const authMode = pathname === '/login';
   const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -52,11 +53,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [authStatus]);
 
-  const shellClass = boardMode
+  const shellVariantClass = boardMode
     ? `${styles.shell} ${styles.board}`
     : landingMode
       ? `${styles.shell} ${styles.landing}`
       : authMode ? `${styles.shell} ${styles.auth}` : styles.shell;
+  const shellClass = `${shellVariantClass}${appLocked ? ` ${styles.locked}` : ''}`;
 
   return (
     <div className={shellClass}>
