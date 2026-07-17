@@ -23,7 +23,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import dns from 'node:dns';
-import { createEmailAuth, createResendSender, normalizeEmail } from './email-auth.mjs';
+import {
+  createEmailAuth,
+  createResendSender,
+  emailSendErrorMessage,
+  normalizeEmail,
+  safeDiagnosticMessage,
+} from './email-auth.mjs';
+import { passwordSchemeOf } from './credential-format.mjs';
 import {
   applyPasswordOverrides,
   updatePassword,
@@ -58,8 +65,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 if (process.argv[2] === 'hash') {
   const pw = process.argv[3];
   if (!pw) { console.error('用法: node index.mjs hash <密码>'); process.exit(2); }
-  const { salt, hash } = await createPasswordService().hash(pw);
-  console.log(JSON.stringify({ name: '改成账号名', salt, hash }));
+  const credentials = await createPasswordService().hash(pw);
+  console.log(JSON.stringify({ name: '改成账号名', ...credentials }));
   process.exit(0);
 }
 
@@ -139,6 +146,9 @@ let emailAuth = null;
 if (RESEND_API_KEY && RESEND_FROM) {
   emailAuth = createEmailAuth({
     sendCode: createResendSender({ apiKey: RESEND_API_KEY, from: RESEND_FROM }),
+    onSendError: (error) => {
+      console.error('[email-auth] 验证码上游失败:', emailSendErrorMessage(error));
+    },
   });
 }
 const passwordService = createPasswordService();
@@ -269,7 +279,9 @@ function sameAccount(left, right) {
  */
 function credentialRevision(user) {
   if (typeof user?.salt !== 'string' || typeof user?.hash !== 'string') return null;
-  return crypto.createHash('sha256').update(`${user.salt}\0${user.hash}`).digest('hex');
+  const scheme = passwordSchemeOf(user);
+  if (!scheme) return null;
+  return crypto.createHash('sha256').update(`${scheme}\0${user.salt}\0${user.hash}`).digest('hex');
 }
 
 /** 登录/找回验证码绑定到“账号 + 当前邮箱验证版本”，邮箱换绑后旧码自然失效。 */
@@ -434,28 +446,22 @@ function authRateBucket(map, key, windowMs) {
   return item;
 }
 
-function takeRegistrationAttempt(ip) {
-  const hits = authRateBucket(regHits, ip, LOGIN_WINDOW);
+function takeRateLimitedAttempt(map, key, windowMs, maximum) {
+  const hits = authRateBucket(map, key, windowMs);
   if (!hits) return { ok: false, error: 'auth-busy', retryAfter: 60 };
-  if (hits.count >= REG_MAX_PER_WINDOW) {
+  if (hits.count >= maximum) {
     return { ok: false, error: 'too-many-attempts', retryAfter: Math.max(1, Math.ceil((hits.resetAt - Date.now()) / 1000)) };
   }
   hits.count += 1;
   return { ok: true };
 }
 
+function takeRegistrationAttempt(ip) {
+  return takeRateLimitedAttempt(regHits, ip, LOGIN_WINDOW, REG_MAX_PER_WINDOW);
+}
+
 function takeAuthRequest(ip) {
-  const hits = authRateBucket(authHits, ip, AUTH_WINDOW);
-  if (!hits) return { ok: false, error: 'auth-busy', retryAfter: 60 };
-  if (hits.count >= AUTH_MAX_PER_MIN) {
-    return {
-      ok: false,
-      error: 'too-many-attempts',
-      retryAfter: Math.max(1, Math.ceil((hits.resetAt - Date.now()) / 1000)),
-    };
-  }
-  hits.count += 1;
-  return { ok: true };
+  return takeRateLimitedAttempt(authHits, ip, AUTH_WINDOW, AUTH_MAX_PER_MIN);
 }
 
 /** 单账号的分钟窗+日封顶通用检查:超限返回错误码字符串,未超返回 null */
@@ -707,8 +713,12 @@ async function handleAuthRequest(req, res, handler) {
     }, 5_000);
     bodyTimer.unref();
     await handler(req, res);
-  } catch {
-    console.error('[auth] 未预期内部错误');
+  } catch (error) {
+    const detail = safeDiagnosticMessage(
+      error instanceof Error ? error.message : 'unknown-error',
+      300,
+    );
+    console.error('[auth] 未预期内部错误:', detail);
     if (!res.headersSent) send(res, 500, { error: 'internal-error' });
   } finally {
     if (bodyTimer) clearTimeout(bodyTimer);
@@ -726,6 +736,33 @@ function issueSession(req, res, name, status = 200) {
   const secure = !ALLOW_INSECURE_AUTH || requestUsesTrustedHttps(req) ? '; Secure' : '';
   send(res, status, authPayload(name), {
     'Set-Cookie': `${COOKIE}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${Math.floor(SESSION_TTL / 1000)}${secure}`,
+  });
+}
+
+/**
+ * 旧凭据登录成功后在账号密码锁内渐进升级。CAS 失败表示等待期间密码已变化，
+ * 此时旧密码不得再签发会话；单纯落盘失败则保留旧凭据并允许本次已验证登录。
+ */
+async function upgradePasswordAfterVerification(user, password, expectedRevision) {
+  if (!passwordService.needsRehash(user)) return user;
+  return withCredentialMutation(user.name, async () => {
+    const locked = findUser(user.name);
+    if (!sameAccount(locked, user)) return null;
+    if (credentialRevision(locked) !== expectedRevision) {
+      // 另一并发登录可能已完成同密码升级；重新验证新版本可区分“仅重哈希”和真实改密。
+      return await passwordService.verify(locked, password) ? locked : null;
+    }
+    const credentials = await passwordService.hash(password);
+    const current = findUser(user.name);
+    if (!sameAccount(current, user)) return null;
+    if (credentialRevision(current) !== expectedRevision) {
+      return await passwordService.verify(current, password) ? current : null;
+    }
+    if (!persistPassword(current.name, credentials)) {
+      console.error('[auth] 旧密码哈希升级未能持久化,保留兼容凭据');
+      return current;
+    }
+    return findUser(user.name);
   });
 }
 
@@ -758,9 +795,14 @@ async function handleLogin(req, res) {
   }
   // scrypt 是异步的；等待期间可能发生改密或邮箱换绑。必须重做标识符归属
   // 并比对凭据版本，禁止旧密码/旧邮箱的在途请求在变更后签发 SID。
-  const current = findUserByIdentifier(identifier);
+  let current = findUserByIdentifier(identifier);
   if (!sameAccount(current, user) || !verifiedRevision
     || credentialRevision(current) !== verifiedRevision) {
+    return send(res, 401, { error: 'invalid-credentials' });
+  }
+  current = await upgradePasswordAfterVerification(current, password, verifiedRevision);
+  const resolved = findUserByIdentifier(identifier);
+  if (!current || !sameAccount(resolved, current)) {
     return send(res, 401, { error: 'invalid-credentials' });
   }
   fails.count = Math.max(0, fails.count - 1);
@@ -838,17 +880,18 @@ async function handleEmailCode(req, res) {
   }
   const email = normalizeEmail(body?.email);
   // 未知登录邮箱不触发真实发信,但与已存在账号共用限流/冷却/返回形状与近似延迟
-  const loginUser = body?.purpose === 'login' ? findUserByEmail(email) : null;
-  const deliver = body?.purpose !== 'login' || Boolean(loginUser);
+  const emailOwner = findUserByEmail(email);
+  const deliver = body?.purpose === 'login' ? Boolean(emailOwner) : !emailOwner;
   const result = await emailAuth.requestCode({
     email,
     purpose: body?.purpose,
-    ...(body?.purpose === 'login' ? { subject: publicEmailSubject(loginUser, email, 'login') } : {}),
+    ...(body?.purpose === 'login' ? { subject: publicEmailSubject(emailOwner, email, 'login') } : {}),
     ip,
     deliver,
+    opaqueDelivery: true,
   });
-  // 登录发信上游故障也不得反向暴露“该邮箱存在”
-  if (!result.ok && body?.purpose === 'login' && result.error === 'email-unavailable') {
+  // 登录/注册的真实发信上游故障也必须与抑制发送同形，避免反向暴露邮箱归属。
+  if (!result.ok && result.error === 'email-unavailable') {
     return send(res, 200, { ok: true, retryAfter: 60 });
   }
   if (!result.ok) return sendEmailAuthError(res, result);
@@ -889,6 +932,7 @@ async function handlePasswordCode(req, res) {
     subject: publicEmailSubject(user, email, 'reset-password'),
     ip: clientIp(req),
     deliver: Boolean(user),
+    opaqueDelivery: true,
   });
   // 未知邮箱和真实邮件上游故障都保持同形，不反向暴露账号归属。
   if (!result.ok && result.error === 'email-unavailable') {
@@ -968,9 +1012,10 @@ async function handleAccountEmailCode(req, res) {
     subject,
     ip: clientIp(req),
     deliver,
+    opaqueDelivery: true,
   });
-  // Resend 等待是异步边界；期间改密/换绑会撤销 SID 并改变版本。
-  // 旧请求不得对已变更账号宣告发码成功，其码也因 subject 版本不同而不可消费。
+  // 后台投递已启动；回应前重验 SID/版本。其后即使换绑或改密，
+  // 异步落下的旧 subject 验证码也无法在新版本中消费。
   const currentSession = currentUser(req);
   const current = currentSession ? findUser(currentSession.name) : null;
   if (!currentSession || currentSession.token !== session.token
@@ -1073,9 +1118,9 @@ function inviteOk(given) {
 }
 
 async function buildRegisteredUser(name, email, password) {
-  const { salt, hash } = await passwordService.hash(password);
+  const credentials = await passwordService.hash(password);
   const createdAt = new Date().toISOString();
-  return { name, email, emailVerifiedAt: createdAt, salt, hash, createdAt };
+  return { name, email, emailVerifiedAt: createdAt, ...credentials, createdAt };
 }
 
 function persistRegisteredUser(user) {

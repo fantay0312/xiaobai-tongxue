@@ -120,7 +120,8 @@
   overlay 是该预置账号的运行时权威邮箱，因此即使 `config.users` 原行已有验证邮箱，换绑后也会由
   overlay 覆盖；重启后仍使用新邮箱并重做全局唯一性校验。
 - `config.users` 的密码修改不回写只读配置，而是原子写入
-  `password-overrides.json`：`[{name,salt,hash,changedAt}]`。覆盖只能指向现存预置账号，
+  `password-overrides.json`：`[{name,passwordScheme,salt,hash,changedAt}]`。旧行可缺省
+  `passwordScheme`（按 `scrypt-v1` 读取），新写入统一为 `scrypt-v2`。覆盖只能指向现存预置账号，
   名称、scrypt 凭据、ISO 时间或对象形状任一异常都会 fail-closed 拒绝启动。
 - 任一用户只要配置了 `email` 就必须同时有合法 `emailVerifiedAt`；不再把“管理员写了邮箱但
   没有验证时间”的账号当成已验证。旧配置若已有这类行，发布前应删除该 `email` 让用户登录后补绑，
@@ -230,7 +231,7 @@ systemctl status xiaobai
 journalctl -u xiaobai -f
 
 # 新增账号:本地生成哈希 → 填进服务器 config.json 的 users → 重启
-node index.mjs hash '新密码'      # 输出 {name,salt,hash},把 name 改成账号名
+node index.mjs hash '新密码'      # 输出 {name,passwordScheme,salt,hash},把 name 改成账号名
 systemctl restart xiaobai
 
 # 换 DeepSeek 密钥:改 config.json 的 apiKey → systemctl restart xiaobai
@@ -248,8 +249,9 @@ npm test
 > `coach` 是备课助教「小砚」(备课页右下角宠物),温度恒 0.5、上限 700 token,
 > 尾部护栏已改写为三角色措辞。**下次发布若只发前端不发网关:旧网关把未知 role
 > 按 xiaobai 处理(上限 400 token),且旧护栏措辞只承认「小白/评估器」两角色,
-> 会和助教人设打架、答非所问——发布时记得同步 `scp server/index.mjs` 到
-> `/opt/xiaobai/server/` 并 `systemctl restart xiaobai`。**
+> 会和助教人设打架、答非所问。发布时必须成套同步全部非测试 `.mjs`
+> 运行时文件、`package.json` 与 `check-runtime.mjs`，不能只上传 `index.mjs`；
+> 覆盖前先备份 `/var/lib/xiaobai` 的账号状态 JSON，回滚旧运行时时也要同步恢复旧格式状态。**
 
 ## 重新发布前端
 

@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useAuthStore, type AuthField } from '../../store/authStore';
+import {
+  CODE_RE, EMAIL_RE, mapPasswordIssueField, useCooldown, type Issue,
+} from '../../hooks/useAuthForm';
 import { EmailCodeField } from './EmailCodeField';
 import fs from './EmailCodeField.module.css';
 import s from './login.module.css';
@@ -9,16 +12,8 @@ interface PasswordResetFormProps {
   onSuccess: () => void;
 }
 
-type Issue = { field: AuthField; message: string };
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const CODE_RE = /^\d{6}$/;
 const ID_PREFIX = 'password-reset';
 const FEEDBACK_ID = `${ID_PREFIX}-feedback`;
-
-function resetIssueField(field: AuthField | undefined): AuthField {
-  return field === 'password' ? 'newPassword' : field ?? 'form';
-}
 
 export function PasswordResetForm({ onBusyChange, onSuccess }: PasswordResetFormProps) {
   const requestPasswordResetCode = useAuthStore((state) => state.requestPasswordResetCode);
@@ -31,17 +26,9 @@ export function PasswordResetForm({ onBusyChange, onSuccess }: PasswordResetForm
   const [feedback, setFeedback] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [resetting, setResetting] = useState(false);
-  const [cooldownUntil, setCooldownUntil] = useState(0);
-  const [clock, setClock] = useState(() => Date.now());
+  const { cooldown, resetCooldown, startCooldown } = useCooldown();
   const operation = useRef(0);
-  const cooldown = Math.max(0, Math.ceil((cooldownUntil - clock) / 1000));
   const busy = sending || resetting;
-
-  useEffect(() => {
-    if (cooldownUntil <= clock) return;
-    const timer = window.setTimeout(() => setClock(Date.now()), Math.min(1000, cooldownUntil - clock));
-    return () => window.clearTimeout(timer);
-  }, [clock, cooldownUntil]);
 
   useEffect(() => () => { operation.current += 1; }, []);
 
@@ -61,12 +48,6 @@ export function PasswordResetForm({ onBusyChange, onSuccess }: PasswordResetForm
     document.getElementById(fieldId[issue.field] ?? '')?.focus();
   }, [issue]);
 
-  const startCooldown = (seconds: number) => {
-    const now = Date.now();
-    setClock(now);
-    setCooldownUntil(now + Math.max(0, seconds) * 1000);
-  };
-
   const clearIssue = (field: AuthField) => {
     setIssue((current) => current?.field === field || current?.field === 'form' ? null : current);
   };
@@ -74,7 +55,7 @@ export function PasswordResetForm({ onBusyChange, onSuccess }: PasswordResetForm
   const changeEmail = (value: string) => {
     setEmail(value);
     setCode('');
-    setCooldownUntil(0);
+    resetCooldown();
     setFeedback(null);
     setIssue((current) => current?.field === 'email' || current?.field === 'code'
       || current?.field === 'form' ? null : current);
@@ -96,7 +77,7 @@ export function PasswordResetForm({ onBusyChange, onSuccess }: PasswordResetForm
     setSending(false);
     if (!result.ok) {
       setIssue({
-        field: resetIssueField(result.field),
+        field: mapPasswordIssueField(result.field),
         message: result.message ?? '验证码发送失败，请稍后再试',
       });
       if (result.retryAfter) startCooldown(result.retryAfter);
@@ -132,7 +113,7 @@ export function PasswordResetForm({ onBusyChange, onSuccess }: PasswordResetForm
     setResetting(false);
     if (!result.ok) {
       setIssue({
-        field: resetIssueField(result.field),
+        field: mapPasswordIssueField(result.field),
         message: result.message ?? '密码重设失败，请稍后再试',
       });
       if (result.retryAfter) startCooldown(result.retryAfter);

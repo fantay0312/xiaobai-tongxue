@@ -1,34 +1,13 @@
-import { canonicalName } from './auth-security.mjs';
+import {
+  canonicalName,
+  requireCredentials,
+  requireExactKeys,
+  requireRecord,
+  requireStoredName,
+} from './credential-format.mjs';
 
-const SALT_RE = /^[0-9a-f]{32}$/;
-const HASH_RE = /^[0-9a-f]{128}$/;
-const CREDENTIAL_KEYS = 'hash,salt';
-const OVERRIDE_KEYS = 'changedAt,hash,name,salt';
-
-function requireRecord(value, label) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error(`${label}: expected-object`);
-  }
-  return value;
-}
-
-function requireExactKeys(value, expected, label) {
-  if (Object.keys(value).sort().join(',') !== expected) {
-    throw new Error(`${label}: bad-shape`);
-  }
-}
-
-function requireCredentials(value, label, exact = false) {
-  const record = requireRecord(value, label);
-  if (exact) requireExactKeys(record, CREDENTIAL_KEYS, label);
-  if (typeof record.salt !== 'string' || !SALT_RE.test(record.salt)) {
-    throw new Error(`${label}: bad-salt`);
-  }
-  if (typeof record.hash !== 'string' || !HASH_RE.test(record.hash)) {
-    throw new Error(`${label}: bad-hash`);
-  }
-  return { salt: record.salt, hash: record.hash };
-}
+const OVERRIDE_KEYS_LEGACY = 'changedAt,hash,name,salt';
+const OVERRIDE_KEYS_CURRENT = 'changedAt,hash,name,passwordScheme,salt';
 
 function requireIsoTimestamp(value, label) {
   if (typeof value !== 'string') throw new Error(`${label}: bad-changed-at`);
@@ -37,14 +16,6 @@ function requireIsoTimestamp(value, label) {
     throw new Error(`${label}: bad-changed-at`);
   }
   return value;
-}
-
-function requireStoredName(user, label) {
-  const record = requireRecord(user, label);
-  const normalized = typeof record.name === 'string' ? record.name.trim().normalize('NFC') : '';
-  const canonical = canonicalName(record.name);
-  if (!canonical || record.name !== normalized) throw new Error(`${label}: bad-name`);
-  return { canonical, name: record.name };
 }
 
 function validateUsers(value, source) {
@@ -81,7 +52,11 @@ export function validatePasswordOverrides(configUsers, raw) {
   return raw.map((candidate, index) => {
     const label = `password-overrides.json[${index}]`;
     const record = requireRecord(candidate, label);
-    requireExactKeys(record, OVERRIDE_KEYS, label);
+    requireExactKeys(
+      record,
+      record.passwordScheme === undefined ? OVERRIDE_KEYS_LEGACY : OVERRIDE_KEYS_CURRENT,
+      label,
+    );
     const identity = requireStoredName(record, label);
     if (seen.has(identity.canonical)) throw new Error(`${label}: duplicate-name`);
     seen.add(identity.canonical);
@@ -94,12 +69,19 @@ export function validatePasswordOverrides(configUsers, raw) {
   });
 }
 
+function withCredentials(user, credentials) {
+  const next = { ...user, salt: credentials.salt, hash: credentials.hash };
+  if (credentials.passwordScheme === undefined) delete next.passwordScheme;
+  else next.passwordScheme = credentials.passwordScheme;
+  return next;
+}
+
 export function applyPasswordOverrides(configUsers, overrides) {
   const validated = validatePasswordOverrides(configUsers, overrides);
   const byName = new Map(validated.map((item) => [canonicalName(item.name), item]));
   return configUsers.map((user) => {
     const override = byName.get(canonicalName(user.name));
-    return override ? { ...user, salt: override.salt, hash: override.hash } : { ...user };
+    return override ? withCredentials(user, override) : { ...user };
   });
 }
 
@@ -135,7 +117,7 @@ export function updatePassword(
   }
 
   const nextRegistrations = registrations.map((user, index) => index === registeredIndex
-    ? { ...user, ...credentials, passwordChangedAt: changedAt }
+    ? { ...withCredentials(user, credentials), passwordChangedAt: changedAt }
     : { ...user });
   return makeResult(configUsers, nextRegistrations, currentOverrides, 'registrations');
 }

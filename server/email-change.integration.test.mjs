@@ -1,104 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import net from 'node:net';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { spawn } from 'node:child_process';
-import { once } from 'node:events';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import {
+  accountHeaders,
+  codeFor,
+  copyRuntimeModules,
+  installFakeResend,
+  launchGateway,
+  login,
+  me,
+  openPort,
+  postJson,
+  resendMessages,
+  sessionCookie,
+  stopChild,
+} from './integration.test-harness.mjs';
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
 const VERIFIED_AT = '2026-07-14T00:00:00.000Z';
 function passwordUser(name, password, email) {
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = crypto.scryptSync(password, salt, 64).toString('hex');
   return { name, salt, hash, ...(email ? { email, emailVerifiedAt: VERIFIED_AT } : {}) };
 }
-async function openPort() {
-  const probe = net.createServer();
-  await new Promise((resolve, reject) => probe.listen(0, '127.0.0.1', resolve).once('error', reject));
-  const address = probe.address();
-  const port = typeof address === 'object' && address ? address.port : 0;
-  await new Promise((resolve) => probe.close(resolve));
-  return port;
-}
-async function waitForReady(child) {
-  await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('gateway-start-timeout')), 5_000);
-    const onData = (chunk) => {
-      if (!chunk.toString().includes('网关已启动')) return;
-      clearTimeout(timer);
-      child.stdout.off('data', onData);
-      resolve();
-    };
-    child.stdout.on('data', onData);
-    child.once('exit', (code) => {
-      clearTimeout(timer);
-      reject(new Error(`gateway-exited-${code}`));
-    });
-  });
-}
-async function launch(root, resendLog) {
-  const child = spawn(process.execPath, ['--require', './fake-resend.cjs', 'index.mjs'], {
-    cwd: root,
-    env: {
-      ...process.env,
-      RESEND_API_KEY: 'test-only-key',
-      RESEND_FROM: '小白同学 <noreply@example.com>',
-      RESEND_TEST_LOG: resendLog,
-    },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  await waitForReady(child);
-  return child;
-}
-async function stop(child) {
-  if (!child || child.exitCode !== null) return;
-  const exited = once(child, 'exit');
-  child.kill('SIGTERM');
-  await exited;
-}
-async function postJson(url, body, headers = {}) {
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
-    body: JSON.stringify(body),
-  });
-  return { response, payload: await response.json() };
-}
-function sessionCookie(response) {
-  return response.headers.get('set-cookie')?.split(';', 1)[0] ?? null;
-}
-function accountHeaders(cookie, name) {
-  return { Cookie: cookie, 'X-Xiaobai-User': encodeURIComponent(name) };
-}
-async function login(base, identifier, password, expectedName) {
-  const result = await postJson(`${base}/api/login`, { identifier, password });
-  assert.equal(result.response.status, 200);
-  assert.equal(result.payload.user.name, expectedName);
-  const cookie = sessionCookie(result.response);
-  assert.ok(cookie);
-  return { ...result, cookie };
-}
-async function me(base, cookie) {
-  const response = await fetch(`${base}/api/me`, { headers: { Cookie: cookie } });
-  assert.equal(response.status, 200);
-  return response.json();
-}
-async function resendMessages(file) {
-  const raw = await readFile(file, 'utf8').catch(() => '');
-  return raw.trim() ? raw.trim().split('\n').map((line) => JSON.parse(line)) : [];
-}
-async function codeFor(file, email) {
-  const message = (await resendMessages(file)).findLast((item) => item.to?.[0] === email);
-  assert.ok(message, `missing Resend message for ${email}`);
-  const match = message.text.match(/\b(\d{6})\b/);
-  assert.ok(match);
-  return { code: match[1], message };
-}
-
 test('verified accounts change email safely while legacy first-binding remains supported', async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), 'xiaobai-email-change-test-'));
   const dist = path.join(root, 'dist');
@@ -109,21 +35,8 @@ test('verified accounts change email safely while legacy first-binding remains s
   await mkdir(dist);
   await mkdir(data);
   await writeFile(path.join(dist, 'index.html'), '<!doctype html><title>test</title>');
-  for (const file of ['index.mjs', 'email-auth.mjs', 'auth-security.mjs', 'password-credentials.mjs']) {
-    await copyFile(path.join(HERE, file), path.join(root, file));
-  }
-  await writeFile(path.join(root, 'fake-resend.cjs'), `
-const { appendFileSync } = require('node:fs');
-const nativeFetch = globalThis.fetch;
-globalThis.fetch = async (input, init) => {
-  const url = typeof input === 'string' ? input : input?.url ?? String(input);
-  if (url === 'https://api.resend.com/emails') {
-    appendFileSync(process.env.RESEND_TEST_LOG, String(init?.body ?? '') + '\\n');
-    return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
-  }
-  return nativeFetch(input, init);
-};
-`);
+  await copyRuntimeModules(root);
+  await installFakeResend(root);
 
   const configured = passwordUser('ConfigUser', 'config-password', 'config-default@example.com');
   const registered = passwordUser('RegisteredUser', 'registered-password', 'registered-old@example.com');
@@ -138,8 +51,8 @@ globalThis.fetch = async (input, init) => {
     port, distDir: './dist', dataDir: data, allowInsecureAuth: true, users: [configured],
   }));
 
-  let child = await launch(root, resendLog);
-  t.after(async () => { await stop(child); await rm(root, { recursive: true, force: true }); });
+  let child = await launchGateway(root, resendLog);
+  t.after(async () => { await stopChild(child); await rm(root, { recursive: true, force: true }); });
   const base = `http://127.0.0.1:${port}`;
 
   const configLogin = await login(base, configured.name, 'config-password', configured.name);
@@ -298,8 +211,8 @@ globalThis.fetch = async (input, init) => {
   assert.equal(registrations.find((user) => user.name === legacy.name).email,
     'legacy-new@example.com');
 
-  await stop(child);
-  child = await launch(root, resendLog);
+  await stopChild(child);
+  child = await launchGateway(root, resendLog);
   await login(base, 'config-new@example.com', 'config-password', configured.name);
   for (const identifier of ['config-old@example.com', 'config-default@example.com']) {
     const oldLogin = await postJson(`${base}/api/login`, {

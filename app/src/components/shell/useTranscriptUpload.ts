@@ -45,6 +45,7 @@ export function useTranscriptUpload(enabled: boolean) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const emptyUploadRef = useRef<HTMLButtonElement>(null);
+  const previewButtonRef = useRef<HTMLButtonElement>(null);
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
   const confirmDeleteRef = useRef<HTMLButtonElement>(null);
   const mountedRef = useRef(true);
@@ -52,12 +53,13 @@ export function useTranscriptUpload(enabled: boolean) {
   const previewAbortRef = useRef<AbortController | null>(null);
   const previewUrlRef = useRef<string | null>(null);
 
-  const releasePreview = useCallback(() => {
+  const releasePreview = useCallback((returnFocus = false) => {
     previewAbortRef.current?.abort();
     previewAbortRef.current = null;
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
     previewUrlRef.current = null;
     setPreviewUrl(null);
+    if (returnFocus) window.requestAnimationFrame(() => previewButtonRef.current?.focus());
   }, []);
 
   useEffect(() => {
@@ -134,6 +136,7 @@ export function useTranscriptUpload(enabled: boolean) {
       setTranscript(uploaded);
       setConfirmingDelete(false);
       setNotice(replacing ? '成绩单已替换，新档案已保存。' : '成绩单已上传并保存。');
+      if (!replacing) window.requestAnimationFrame(() => previewButtonRef.current?.focus());
     } catch (error) {
       if (mountedRef.current && !isAbortError(error)) setIssue(errorHint(error));
     } finally { endAction(ctrl); }
@@ -213,7 +216,7 @@ export function useTranscriptUpload(enabled: boolean) {
 
   return {
     loading, transcript, action, issue, notice, confirmingDelete, previewUrl,
-    inputRef, emptyUploadRef, deleteButtonRef, confirmDeleteRef,
+    inputRef, emptyUploadRef, previewButtonRef, deleteButtonRef, confirmDeleteRef,
     chooseFile, handleFile, handlePreview, handleDownload,
     requestDelete, cancelDelete, handleDelete, releasePreview,
   };

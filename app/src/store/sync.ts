@@ -1,47 +1,32 @@
-/**
- * 按账号服务器存档同步 —— 登录态下学习数据与网关 /api/state 保持一致,换设备登录即还原。
- * 载荷 = { global, events, reports } 三件:
- *   拉:登录/会话恢复(authed)时取回服务器档 —— 有档 → 覆盖本地并重放派生态;
- *      无档 → 本地数据归属当前账号(lastSyncUser 相同或从未同步)则上传认领,
- *      归属别的账号则清空重开(换号登录不把上一位老师的学习史带进新账号)。
- *   推:appStore 三件变化后去抖 3s PUT;失败退避重试;页面隐藏时尽力冲刷。
- * 防互踩:PUT 带 baseVersion(上次见到的服务器 updatedAt),不符则 409 —— 客户端拉回远端档,
- *   按 id 并集合并 events/reports 后重推(双开页签/两台设备同时用,谁都不清掉谁)。
- * 守门:拉档没成功或旧账号尚未补录邮箱时一律不拉不推 —— 未验证会话与空档新机器都不许碰服务器档。
- * 纪律:settings/asrSettings(含密钥)永不进载荷;live(进行中会话)不同步;
- *      standalone(无网关)完全旁路,离线演示行为与从前一字不差。
- */
+/** 按账号拉/推学习档；变更以独立操作持久化，密钥与课堂态永不入档。 */
 import { DEFAULT_GLOBAL, revokeLiveImages, useAppStore } from './appStore';
 import { useAuthStore } from './authStore';
+import {
+  applySyncDelta, claimLocalHistoryOwner, rememberLocalHistoryOwner, sanitizeSyncPayload,
+  type PendingSyncOperation, type SyncPayload,
+} from './pendingSync';
+import { pendingSyncQueue } from './pendingSyncQueue';
 import { API_BASE, gatewayFetch } from '../lib/api';
 import { TOPICS } from '../data';
-// 进化派生(升期):不进 barrel 的纯函数,按路径直连
 import { deriveEvolution } from '../engine/evolution';
-import type { LearnEvent, SessionReport, XiaobaiGlobal } from '../types';
 
 const LAST_USER_KEY = 'xiaobai-sync-user';
+const OWNER_MARKER_KEY = 'xiaobai-sync-owner-initialized';
 const DEBOUNCE_MS = 3000;
 const RETRY_MS = 15_000;
-/** Chrome 对 keepalive 请求体的硬限 ≈64KB(按字节),超限的档退回常规 fetch(尽力而为) */
 const KEEPALIVE_LIMIT = 60 * 1024;
-
-interface SyncPayload {
-  global: XiaobaiGlobal;
-  events: LearnEvent[];
-  reports: SessionReport[];
-}
-
-let applyingRemote = false; // 正在把服务器档灌回本地:期间的 store 变化不回推
+let applyingRemote = false;
 let pushTimer = 0;
 let dirty = false;
 let started = false;
-/** 账号/鉴权状态真正变化时递增；所有在飞响应落地前必须核对。 */
 let syncGeneration = 0;
 let observedAuthKey: string | null = null;
-/** 拉档成功后才等于当前账号名:是"允许推送"的闸门(空档新机不许覆写服务器老档) */
 let syncedUser: string | null = null;
-/** 上次见到的服务器档版本(updatedAt),PUT 时作为 baseVersion 防互踩 */
 let serverVersion: string | null = null;
+let serverState: SyncPayload | null = null;
+let pushPromise: Promise<void> | null = null;
+let remoteRefreshEpoch = 0;
+let appliedRefreshEpoch = 0;
 
 function syncIsCurrent(generation: number, user: string): boolean {
   const auth = useAuthStore.getState();
@@ -50,118 +35,64 @@ function syncIsCurrent(generation: number, user: string): boolean {
 }
 
 function snapshot(): SyncPayload {
-  const s = useAppStore.getState();
-  return { global: s.global, events: s.events, reports: s.reports };
+  const state = useAppStore.getState();
+  return { global: state.global, events: state.events, reports: state.reports };
 }
 
-/** 远端档消毒:字段缺失/被手工改坏时以默认值补齐、坏行丢弃——档坏最多丢数据,不许砸崩页面 */
-function sanitize(remote: Partial<SyncPayload>): SyncPayload {
-  const global: XiaobaiGlobal = {
-    ...DEFAULT_GLOBAL,
-    ...(remote.global && typeof remote.global === 'object' ? remote.global : {}),
+function emptyState(): SyncPayload {
+  return {
+    global: { ...DEFAULT_GLOBAL, relationshipMemory: [], goldenAnalogies: [] },
+    events: [], reports: [],
   };
-  if (!Array.isArray(global.relationshipMemory)) global.relationshipMemory = [];
-  if (!Array.isArray(global.goldenAnalogies)) global.goldenAnalogies = [];
-  // 事件行必须五脏俱全(id/t/type/topicId/payload):派生层(重放/回忆/成就)默认这些字段在
-  const events = (Array.isArray(remote.events) ? remote.events : [])
-    .filter((e): e is LearnEvent => {
-      const ev = e as LearnEvent | null;
-      return !!ev && typeof ev === 'object'
-        && typeof ev.id === 'string' && typeof ev.t === 'string'
-        && typeof ev.type === 'string' && typeof ev.topicId === 'string'
-        && !!ev.payload && typeof ev.payload === 'object';
-    });
-  const reports = (Array.isArray(remote.reports) ? remote.reports : [])
-    .filter((r): r is SessionReport => !!r && typeof r === 'object');
-  // 远端旧规则档拉档即校准:按进化新规则(跨课程广度)从消毒后的事件流重算修行阶
-  // (topicsMastered 是历史累计计数、不受广度影响,留存不动)
-  global.learningLevel = deriveEvolution(events, TOPICS).stage;
-  return { global, events, reports };
 }
 
-/** 409 冲突时的并集合并:events/reports 按 id 并集(时间序),global 留本地(最新操作在本机) */
-function mergeRemote(remote: SyncPayload): void {
-  const cur = useAppStore.getState();
-  const seenE = new Set(cur.events.map((e) => e.id));
-  const events = [...cur.events, ...remote.events.filter((e) => !seenE.has(e.id))]
-    .sort((a, b) => a.t.localeCompare(b.t));
-  const seenR = new Set(cur.reports.map((r) => r.sessionId));
-  const reports = [...cur.reports, ...remote.reports.filter((r) => !seenR.has(r.sessionId))]
-    .sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+function replaceLocal(state: SyncPayload): void {
+  applyingRemote = true;
+  try {
+    revokeLiveImages(useAppStore.getState().live);
+    useAppStore.setState({ ...state, topicStates: {}, live: null });
+    useAppStore.getState().rebuildStates();
+  } finally { applyingRemote = false; }
+}
+
+function commitMerged(state: SyncPayload): void {
   applyingRemote = true;
   try {
     useAppStore.setState({
-      events,
-      reports,
+      events: state.events,
+      reports: state.reports,
       topicStates: {},
-      // 修行阶 = 事件流的纯派生:并集后的事件可能带来别台设备的出师,按合并流重算,
-      // 否则重推的快照会是"学识与修行阶自相矛盾"的档(不变式:learningLevel ≡ deriveEvolution(events).stage)
-      global: { ...cur.global, learningLevel: deriveEvolution(events, TOPICS).stage },
+      global: { ...state.global, learningLevel: deriveEvolution(state.events, TOPICS).stage },
     });
     useAppStore.getState().rebuildStates();
-  } finally {
-    applyingRemote = false;
-  }
+  } finally { applyingRemote = false; }
 }
 
-async function fetchRemote(): Promise<{ state: Partial<SyncPayload> | null; updatedAt: string | null } | null> {
+function sanitize(remote: Partial<SyncPayload>): SyncPayload {
+  const state = sanitizeSyncPayload(remote, DEFAULT_GLOBAL);
+  state.global.learningLevel = deriveEvolution(state.events, TOPICS).stage;
+  return state;
+}
+
+function applyOperations(base: SyncPayload, operations: PendingSyncOperation[]): SyncPayload {
+  return operations.reduce((state, operation) => applySyncDelta(state, operation.delta), base);
+}
+
+async function fetchRemote(): Promise<{
+  state: Partial<SyncPayload> | null;
+  updatedAt: string | null;
+} | null> {
   try {
-    const res = await gatewayFetch(`${API_BASE}/state`);
-    if (!res.ok) return null;
-    const data: unknown = await res.json();
-    const doc = data as { state?: unknown; updatedAt?: unknown };
+    const response = await gatewayFetch(`${API_BASE}/state`);
+    if (!response.ok) return null;
+    const value: unknown = await response.json();
+    const document = value as { state?: unknown; updatedAt?: unknown };
     return {
-      state: doc?.state && typeof doc.state === 'object' ? (doc.state as Partial<SyncPayload>) : null,
-      updatedAt: typeof doc?.updatedAt === 'string' ? doc.updatedAt : null,
+      state: document?.state && typeof document.state === 'object'
+        ? document.state as Partial<SyncPayload> : null,
+      updatedAt: typeof document?.updatedAt === 'string' ? document.updatedAt : null,
     };
-  } catch {
-    return null;
-  }
-}
-
-async function push(useKeepalive = false, isRetryAfterConflict = false): Promise<void> {
-  // 闸门:必须是"已完成拉档"的当前账号才许推——防空档新机覆写、防换号期间的旧定时器串档
-  const user = syncedUser;
-  const generation = syncGeneration;
-  if (!user || !syncIsCurrent(generation, user)) return;
-  dirty = false;
-  const body = JSON.stringify({ state: snapshot(), baseVersion: serverVersion });
-  const bytes = new Blob([body]).size;
-  try {
-    const res = await gatewayFetch(`${API_BASE}/state`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-      ...(useKeepalive && bytes <= KEEPALIVE_LIMIT ? { keepalive: true } : {}),
-    });
-    if (!syncIsCurrent(generation, user)) return;
-    if (res.status === 409 && !isRetryAfterConflict) {
-      // 别的页签/设备先写了:拉回远端并集合并,换新版本号重推一次
-      const remote = await fetchRemote();
-      if (!syncIsCurrent(generation, user)) return;
-      if (remote?.state) {
-        mergeRemote(sanitize(remote.state));
-        serverVersion = remote.updatedAt;
-        return push(false, true);
-      }
-      dirty = true;
-      return;
-    }
-    if (res.status === 401) return;
-    if (!res.ok) {
-      dirty = true;
-      scheduleRetry();
-      return;
-    }
-    const data: unknown = await res.json().catch(() => null);
-    if (!syncIsCurrent(generation, user)) return;
-    const updatedAt = (data as { updatedAt?: unknown })?.updatedAt;
-    if (typeof updatedAt === 'string') serverVersion = updatedAt;
-  } catch {
-    if (!syncIsCurrent(generation, user)) return;
-    dirty = true; // 离线:退避后重试,或等下一次变化
-    scheduleRetry();
-  }
+  } catch { return null; }
 }
 
 function schedulePush(delay = DEBOUNCE_MS): void {
@@ -177,103 +108,188 @@ function scheduleRetry(): void {
   }, RETRY_MS);
 }
 
+async function performPush(useKeepalive = false, retriedConflict = false): Promise<void> {
+  const user = syncedUser;
+  const generation = syncGeneration;
+  if (!user || !serverState || !syncIsCurrent(generation, user)) return;
+  try {
+    if (appliedRefreshEpoch < remoteRefreshEpoch) {
+      const refreshEpoch = remoteRefreshEpoch;
+      const remote = await fetchRemote();
+      if (!syncIsCurrent(generation, user)) return;
+      if (!remote) {
+        dirty = true;
+        scheduleRetry();
+        return;
+      }
+      serverState = remote.state ? sanitize(remote.state) : emptyState();
+      serverVersion = remote.updatedAt;
+      appliedRefreshEpoch = refreshEpoch;
+      commitMerged(applyOperations(serverState, pendingSyncQueue.list(user)));
+      if (appliedRefreshEpoch < remoteRefreshEpoch) {
+        schedulePush(0);
+        return;
+      }
+    }
+    const operations = pendingSyncQueue.list(user);
+    if (!operations.length) {
+      dirty = false;
+      return;
+    }
+    const state = applyOperations(serverState, operations);
+    const body = JSON.stringify({ state, baseVersion: serverVersion });
+    dirty = false;
+    const response = await gatewayFetch(`${API_BASE}/state`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      ...(useKeepalive && new Blob([body]).size <= KEEPALIVE_LIMIT ? { keepalive: true } : {}),
+    });
+    if (!syncIsCurrent(generation, user)) return;
+    if (response.status === 401) {
+      dirty = true;
+      scheduleRetry();
+      return;
+    }
+    if (response.status === 409 && !retriedConflict) {
+      const refreshEpoch = remoteRefreshEpoch;
+      const remote = await fetchRemote();
+      if (!syncIsCurrent(generation, user)) return;
+      if (remote) {
+        serverState = remote.state ? sanitize(remote.state) : emptyState();
+        serverVersion = remote.updatedAt;
+        appliedRefreshEpoch = refreshEpoch;
+        commitMerged(applyOperations(serverState, pendingSyncQueue.list(user)));
+        dirty = true;
+        return performPush(false, true);
+      }
+    }
+    if (!response.ok) {
+      dirty = true;
+      scheduleRetry();
+      return;
+    }
+    const value: unknown = await response.json().catch(() => null);
+    if (!syncIsCurrent(generation, user)) return;
+    const updatedAt = (value as { updatedAt?: unknown })?.updatedAt;
+    if (typeof updatedAt === 'string') serverVersion = updatedAt;
+    serverState = state;
+    pendingSyncQueue.clear(user, operations.map((operation) => operation.id));
+    const remaining = pendingSyncQueue.list(user);
+    commitMerged(applyOperations(state, remaining));
+    if (remaining.length || appliedRefreshEpoch < remoteRefreshEpoch) schedulePush(0);
+  } catch {
+    if (!syncIsCurrent(generation, user)) return;
+    dirty = true;
+    scheduleRetry();
+  }
+}
+
+function push(useKeepalive = false): Promise<void> {
+  if (pushPromise) return pushPromise;
+  const task = performPush(useKeepalive);
+  pushPromise = task;
+  const release = () => { if (pushPromise === task) pushPromise = null; };
+  void task.then(release, release);
+  return task;
+}
+
 function flushNow(): void {
   if (!dirty) return;
   window.clearTimeout(pushTimer);
   void push(true);
 }
 
-/** 登录/会话恢复:先拉服务器档,决定谁覆盖谁;成功后才开推送闸门 */
 async function adopt(user: string, generation: number): Promise<boolean> {
+  const refreshEpoch = remoteRefreshEpoch;
   const remote = await fetchRemote();
   if (!syncIsCurrent(generation, user)) return false;
-  if (!remote) return false; // 拉档失败:闸门不开,这一轮完全不同步
+  if (!remote) return false;
+  let base = remote.state ? sanitize(remote.state) : emptyState();
+  serverVersion = remote.updatedAt;
+  appliedRefreshEpoch = refreshEpoch;
 
-  if (remote.state) {
-    const clean = sanitize(remote.state);
-    applyingRemote = true;
-    try {
-      revokeLiveImages(useAppStore.getState().live);
-      useAppStore.setState({ ...clean, topicStates: {}, live: null });
-      useAppStore.getState().rebuildStates();
-    } finally {
-      applyingRemote = false;
-    }
-    serverVersion = remote.updatedAt;
-    syncedUser = user;
-  } else {
-    // 服务器无档:本地若是别的账号留下的学习史,清空再认领
-    let lastUser: string | null = null;
-    let ownerKnown = true;
-    try { lastUser = localStorage.getItem(LAST_USER_KEY); } catch { ownerKnown = false; }
-    if (!syncIsCurrent(generation, user)) return false;
-    if (!ownerKnown || (lastUser && lastUser.toLowerCase() !== user.toLowerCase())) {
-      applyingRemote = true;
-      try {
-        useAppStore.getState().resetAll();
-      } finally {
-        applyingRemote = false;
+  if (!remote.state) {
+    if (claimLocalHistoryOwner(localStorage, LAST_USER_KEY, OWNER_MARKER_KEY, user)) {
+      const operations = pendingSyncQueue.list(user);
+      if (!operations.some((operation) => operation.delta.kind === 'merge')) {
+        pendingSyncQueue.prepend(user, { kind: 'merge', state: snapshot() });
       }
+    } else {
+      replaceLocal(base);
     }
-    serverVersion = null;
-    syncedUser = user; // 先开闸门再首推(push 闸门要看它)
+  }
+
+  serverState = base;
+  syncedUser = user;
+  const operations = pendingSyncQueue.list(user);
+  replaceLocal(applyOperations(base, operations));
+  if (operations.length || appliedRefreshEpoch < remoteRefreshEpoch) {
+    dirty = true;
     await push();
     if (!syncIsCurrent(generation, user)) return false;
   }
-  if (!syncIsCurrent(generation, user)) return false;
-  try { localStorage.setItem(LAST_USER_KEY, user); } catch { /* 存储不可用:仅失去归属检查 */ }
+  rememberLocalHistoryOwner(localStorage, LAST_USER_KEY, OWNER_MARKER_KEY, user);
   return true;
 }
 
-/** App 启动时装一次:订阅两个 store,拉/推自动进行 */
 export function initStateSync(): void {
   if (started) return;
   started = true;
-
   let adoptRetryTimer = 0;
   const onAuth = (status: string, user: string | null, emailBindingRequired: boolean) => {
     const authKey = `${status}\0${user ?? ''}\0${emailBindingRequired ? 'restricted' : 'ready'}`;
     if (authKey === observedAuthKey) return;
     observedAuthKey = authKey;
     syncGeneration += 1;
-    // 任何登录态变化都先掐掉挂起的推送:旧账号的去抖定时器绝不许在新账号会话里开火
     window.clearTimeout(pushTimer);
     window.clearTimeout(adoptRetryTimer);
     dirty = false;
+    serverState = null;
+    pushPromise = null;
+    remoteRefreshEpoch = 0;
+    appliedRefreshEpoch = 0;
     if (status === 'authed' && user && !emailBindingRequired) {
-      if (syncedUser !== user) {
-        syncedUser = null;
-        serverVersion = null;
-        const tryAdopt = () => {
-          const generation = syncGeneration;
-          if (!syncIsCurrent(generation, user)) return;
-          void adopt(user, generation).then((ok) => {
-            // 拉档失败(断网/网关重启):30s 后再试,直到成功或登出
-            if (!ok && syncIsCurrent(generation, user)) {
-              adoptRetryTimer = window.setTimeout(tryAdopt, 30_000);
-            }
-          });
-        };
-        tryAdopt();
-      }
+      syncedUser = null;
+      serverVersion = null;
+      const tryAdopt = () => {
+        const generation = syncGeneration;
+        if (!syncIsCurrent(generation, user)) return;
+        void adopt(user, generation).catch(() => false).then((ok) => {
+          if (!ok && syncIsCurrent(generation, user)) {
+            adoptRetryTimer = window.setTimeout(tryAdopt, 30_000);
+          }
+        });
+      };
+      tryAdopt();
     } else {
       syncedUser = null;
       serverVersion = null;
     }
   };
-  useAuthStore.subscribe((s) => onAuth(s.status, s.user, s.emailBindingRequired));
-  // initStateSync 装载时会话可能已恢复(装载顺序/HMR),补一次当前态
+
+  useAuthStore.subscribe((state) => onAuth(state.status, state.user, state.emailBindingRequired));
   const auth = useAuthStore.getState();
   onAuth(auth.status, auth.user, auth.emailBindingRequired);
-
-  useAppStore.subscribe((state, prev) => {
+  useAppStore.subscribe((state, previous) => {
     if (applyingRemote) return;
-    const auth = useAuthStore.getState();
-    if (auth.status !== 'authed' || auth.emailBindingRequired) return;
-    if (state.global === prev.global && state.events === prev.events && state.reports === prev.reports) return;
-    schedulePush();
+    const currentAuth = useAuthStore.getState();
+    if (currentAuth.status !== 'authed' || currentAuth.emailBindingRequired || !currentAuth.user) return;
+    if (state.global === previous.global && state.events === previous.events
+      && state.reports === previous.reports) return;
+    const before = { global: previous.global, events: previous.events, reports: previous.reports };
+    const after = { global: state.global, events: state.events, reports: state.reports };
+    const reset = state.global === DEFAULT_GLOBAL && !state.events.length && !state.reports.length;
+    if (!pendingSyncQueue.capture(currentAuth.user, before, after, reset)) return;
+    if (syncedUser === currentAuth.user && serverState) schedulePush();
   });
-
+  window.addEventListener('storage', (event) => {
+    const auth = useAuthStore.getState();
+    const eventUser = syncedUser ?? (auth.status === 'authed' && !auth.emailBindingRequired ? auth.user : null);
+    if (!eventUser || !pendingSyncQueue.isUserKey(eventUser, event.key)) return;
+    if (event.newValue === null) remoteRefreshEpoch += 1;
+    if (syncedUser === eventUser && serverState) schedulePush(0);
+  });
   window.addEventListener('pagehide', flushNow);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') flushNow();

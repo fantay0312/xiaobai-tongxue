@@ -5,6 +5,7 @@ import {
   updatePassword,
   validatePasswordOverrides,
 } from './password-credentials.mjs';
+import { PASSWORD_SCHEME_CURRENT } from './credential-format.mjs';
 
 const OLD_SALT = 'a'.repeat(32);
 const OLD_HASH = 'b'.repeat(128);
@@ -73,6 +74,22 @@ test('override credentials and timestamps use strict persisted formats', () => {
       /bad-changed-at/,
     );
   }
+});
+
+test('versioned password credentials accept the current scheme and reject unknown schemes', () => {
+  const configured = [user('Teacher')];
+  const versioned = override('Teacher', { passwordScheme: PASSWORD_SCHEME_CURRENT });
+  assert.deepEqual(validatePasswordOverrides(configured, [versioned]), [versioned]);
+  assert.throws(
+    () => validatePasswordOverrides(configured, [
+      override('Teacher', { passwordScheme: 'scrypt-future' }),
+    ]),
+    /bad-password-scheme/,
+  );
+  assert.throws(
+    () => validatePasswordOverrides(configured, [override('Teacher', { passwordScheme: null })]),
+    /bad-password-scheme/,
+  );
 });
 
 test('applies overrides without mutating configured users or leaking metadata', () => {

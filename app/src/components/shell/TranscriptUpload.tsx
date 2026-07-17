@@ -74,7 +74,13 @@ export function TranscriptUpload({ enabled = true }: TranscriptUploadProps) {
           </div>
 
           <div className={s.actions} aria-label="成绩单操作">
-            <button type="button" className={s.actionBtn} disabled={busy} onClick={() => void model.handlePreview()}>
+            <button
+              ref={model.previewButtonRef}
+              type="button"
+              className={s.actionBtn}
+              disabled={busy}
+              onClick={() => void model.handlePreview()}
+            >
               <Icon name={isImage ? 'image' : 'file'} size={15} />
               {action === 'preview' ? '正在准备…' : previewUrl ? '收起预览' : '预览'}
             </button>
@@ -144,7 +150,7 @@ export function TranscriptUpload({ enabled = true }: TranscriptUploadProps) {
               <strong id="transcript-preview-title">成绩单预览</strong>
               <span>{transcript.name}</span>
             </div>
-            <button type="button" onClick={model.releasePreview} aria-label="收起成绩单预览">
+            <button type="button" onClick={() => model.releasePreview(true)} aria-label="收起成绩单预览">
               <Icon name="x" size={17} />
             </button>
           </header>

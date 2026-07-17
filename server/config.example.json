@@ -13,9 +13,9 @@
   "asrModel": "qwen/qwen3-asr-flash-2026-02-10",
   "asrApiKey": "",
   "resendApiKey": "",
-  "resendFrom": "小白同学 <noreply@mail.tradingvane.com>",
+  "resendFrom": "小白同学 <noreply@example.com>",
   "inviteCode": "",
-  "dataDir": "",
+  "dataDir": "/var/lib/xiaobai",
   "allowInsecureAuth": false,
   "sessionTtlHours": 72,
   "users": []

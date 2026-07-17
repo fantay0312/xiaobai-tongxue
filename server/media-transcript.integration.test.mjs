@@ -1,17 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import crypto from 'node:crypto';
 import net from 'node:net';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
-  copyFile, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile,
+  mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile,
 } from 'node:fs/promises';
-import { spawn } from 'node:child_process';
-import { once } from 'node:events';
 import { tmpdir } from 'node:os';
+import {
+  authHeaders,
+  childExitCode,
+  copyRuntimeModules,
+  login,
+  openPort,
+  stopChild,
+  waitForReady,
+} from './integration.test-harness.mjs';
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
 const VERIFIED_AT = '2026-07-17T00:00:00.000Z';
 const FILE_LIMIT = 8 * 1024 * 1024;
 const PNG = Buffer.concat([
@@ -32,65 +39,6 @@ function passwordUser(name, password, email) {
     salt,
     hash,
     ...(email ? { email, emailVerifiedAt: VERIFIED_AT } : {}),
-  };
-}
-
-async function openPort() {
-  const probe = net.createServer();
-  await new Promise((resolve, reject) => probe.listen(0, '127.0.0.1', resolve).once('error', reject));
-  const address = probe.address();
-  const port = typeof address === 'object' && address ? address.port : 0;
-  await new Promise((resolve) => probe.close(resolve));
-  return port;
-}
-
-async function waitForReady(child) {
-  await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('gateway-start-timeout')), 5_000);
-    const onData = (chunk) => {
-      if (!chunk.toString().includes('网关已启动')) return;
-      clearTimeout(timer);
-      child.stdout.off('data', onData);
-      resolve();
-    };
-    child.stdout.on('data', onData);
-    child.once('exit', (code) => {
-      clearTimeout(timer);
-      reject(new Error(`gateway-exited-${code}`));
-    });
-  });
-}
-
-async function stopChild(child) {
-  if (child.exitCode !== null || child.signalCode !== null) return;
-  const exited = once(child, 'exit');
-  child.kill('SIGTERM');
-  await exited;
-}
-
-async function childExitCode(child) {
-  if (child.exitCode !== null) return child.exitCode;
-  const [code] = await once(child, 'exit');
-  return code;
-}
-
-async function login(base, user, password) {
-  const response = await fetch(`${base}/api/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ identifier: user.name, password }),
-  });
-  assert.equal(response.status, 200);
-  const cookie = response.headers.get('set-cookie')?.split(';', 1)[0];
-  assert.ok(cookie);
-  return cookie;
-}
-
-function authHeaders(user, cookie, extra = {}) {
-  return {
-    Cookie: cookie,
-    'X-Xiaobai-User': encodeURIComponent(user.name),
-    ...extra,
   };
 }
 
@@ -151,9 +99,7 @@ test('vision and transcript APIs enforce protected media boundaries and account 
   await mkdir(dist);
   await mkdir(data);
   await writeFile(path.join(dist, 'index.html'), '<!doctype html><title>test</title>');
-  for (const file of ['index.mjs', 'email-auth.mjs', 'auth-security.mjs', 'password-credentials.mjs']) {
-    await copyFile(path.join(HERE, file), path.join(root, file));
-  }
+  await copyRuntimeModules(root);
   await writeFile(path.join(root, 'fake-vision.cjs'), `
 const { appendFileSync } = require('node:fs');
 const nativeFetch = globalThis.fetch;
@@ -209,12 +155,12 @@ globalThis.fetch = async (input, init) => {
   });
   await waitForReady(child);
   const base = `http://127.0.0.1:${port}`;
-  const aliceCookie = await login(base, alice, 'alice-password');
-  const bobCookie = await login(base, bob, 'bob-password');
-  const carolCookie = await login(base, carol, 'carol-password');
-  const daveCookie = await login(base, dave, 'dave-password');
-  const eveCookie = await login(base, eve, 'eve-password');
-  const legacyCookie = await login(base, legacy, 'legacy-password');
+  const aliceCookie = (await login(base, alice.name, 'alice-password', alice.name)).cookie;
+  const bobCookie = (await login(base, bob.name, 'bob-password', bob.name)).cookie;
+  const carolCookie = (await login(base, carol.name, 'carol-password', carol.name)).cookie;
+  const daveCookie = (await login(base, dave.name, 'dave-password', dave.name)).cookie;
+  const eveCookie = (await login(base, eve.name, 'eve-password', eve.name)).cookie;
+  const legacyCookie = (await login(base, legacy.name, 'legacy-password', legacy.name)).cookie;
   const aliceHeaders = authHeaders(alice, aliceCookie);
   const bobHeaders = authHeaders(bob, bobCookie);
   const carolHeaders = authHeaders(carol, carolCookie);
@@ -422,9 +368,7 @@ test('vision configuration keeps main credentials same-origin and rejects insecu
   await mkdir(dist);
   await mkdir(data);
   await writeFile(path.join(dist, 'index.html'), '<!doctype html><title>test</title>');
-  for (const file of ['index.mjs', 'email-auth.mjs', 'auth-security.mjs', 'password-credentials.mjs']) {
-    await copyFile(path.join(HERE, file), path.join(root, file));
-  }
+  await copyRuntimeModules(root);
   const children = [];
   t.after(async () => {
     for (const child of children) await stopChild(child);
@@ -454,7 +398,7 @@ test('vision configuration keeps main credentials same-origin and rejects insecu
   children.push(disabledChild);
   await waitForReady(disabledChild);
   const base = `http://127.0.0.1:${port}`;
-  const cookie = await login(base, user, 'vision-password');
+  const cookie = (await login(base, user.name, 'vision-password', user.name)).cookie;
   await expectJson(await fetch(`${base}/api/vision`, {
     method: 'POST',
     headers: authHeaders(user, cookie, { 'Content-Type': 'image/png' }),

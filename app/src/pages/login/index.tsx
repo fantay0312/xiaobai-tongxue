@@ -5,6 +5,7 @@ import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { Icon } from '../../components/ui/Icon';
 import { useAuthStore, type AuthField } from '../../store/authStore';
 import { useDocTitle } from '../../hooks/useDocTitle';
+import { CODE_RE, EMAIL_RE, NAME_RE, useCooldown, type Issue } from '../../hooks/useAuthForm';
 import { EmailCodeField } from './EmailCodeField';
 import { PasswordResetForm } from './PasswordResetForm';
 import fs from './EmailCodeField.module.css';
@@ -12,11 +13,6 @@ import s from './login.module.css';
 
 type Mode = 'login' | 'register' | 'reset';
 type LoginMethod = 'password' | 'email-code';
-type Issue = { field: AuthField; message: string };
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const NAME_RE = /^[\p{Script=Han}A-Za-z0-9_-]{2,20}$/u;
-const CODE_RE = /^\d{6}$/;
 
 function containsControlCharacter(value: string): boolean {
   for (const character of value) {
@@ -76,8 +72,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [resetFlowBusy, setResetFlowBusy] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
-  const [cooldownUntil, setCooldownUntil] = useState(0);
-  const [clock, setClock] = useState(() => Date.now());
+  const { cooldown, resetCooldown, startCooldown } = useCooldown();
 
   const bindingEmail = status === 'authed' && emailBindingRequired;
   const canRegister = !bindingEmail && emailAuthAvailable && registrationAvailable;
@@ -88,14 +83,7 @@ export default function LoginPage() {
   const usesEmailCode = bindingEmail || registering || emailCodeLogin;
   const usesAccountCredentials = !bindingEmail && !emailCodeLogin && !resetting;
   const next = safeNextPath(params.get('next') || '/study');
-  const cooldown = Math.max(0, Math.ceil((cooldownUntil - clock) / 1000));
   useDocTitle(bindingEmail ? '补录验证邮箱' : resetting ? '找回密码' : registering ? '递帖注册' : '登入书斋');
-
-  useEffect(() => {
-    if (cooldownUntil <= clock) return;
-    const timer = window.setTimeout(() => setClock(Date.now()), Math.min(1000, cooldownUntil - clock));
-    return () => window.clearTimeout(timer);
-  }, [clock, cooldownUntil]);
 
   useEffect(() => {
     if (!issue || issue.field === 'form') return;
@@ -106,19 +94,13 @@ export default function LoginPage() {
     document.getElementById(fieldId[issue.field] ?? '')?.focus();
   }, [issue]);
 
-  const startCooldown = (seconds: number) => {
-    const now = Date.now();
-    setClock(now);
-    setCooldownUntil(now + Math.max(0, seconds) * 1000);
-  };
-
   const clearFieldIssue = (field: AuthField) => {
     setIssue((current) => current?.field === field || current?.field === 'form' ? null : current);
   };
 
   const resetSensitiveState = () => {
     setPassword(''); setCurrentPassword(''); setCode(''); setInvite('');
-    setIssue(null); setFeedback(null); setCooldownUntil(0);
+    setIssue(null); setFeedback(null); resetCooldown();
   };
 
   const switchMode = (nextMode: Mode) => {
@@ -149,7 +131,7 @@ export default function LoginPage() {
   };
 
   const changeEmail = (value: string) => {
-    setEmail(value); setCode(''); setCooldownUntil(0); setFeedback(null);
+    setEmail(value); setCode(''); resetCooldown(); setFeedback(null);
     setIssue((current) => current?.field === 'email' || current?.field === 'code' || current?.field === 'form'
       ? null : current);
   };
@@ -227,7 +209,7 @@ export default function LoginPage() {
       return;
     }
     if (useAuthStore.getState().emailBindingRequired) {
-      setPassword(''); setEmail(''); setCode(''); setCooldownUntil(0);
+      setPassword(''); setEmail(''); setCode(''); resetCooldown();
       setFeedback('账号已验证，请补录常用邮箱后继续');
       return;
     }
@@ -243,7 +225,7 @@ export default function LoginPage() {
       setIssue({ field: result.field ?? 'form', message: result.message ?? '退出失败，请稍后再试' });
       return;
     }
-    setEmail(''); setCode(''); setPassword(''); setCooldownUntil(0);
+    setEmail(''); setCode(''); setPassword(''); resetCooldown();
   };
 
   if (status === 'unknown') {

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { EmailCodeField } from '../../pages/login/EmailCodeField';
 import fieldStyles from '../../pages/login/EmailCodeField.module.css';
-import { useAuthStore, type AuthField } from '../../store/authStore';
+import { CODE_RE, EMAIL_RE, useCooldown, type Issue } from '../../hooks/useAuthForm';
+import { useAuthStore } from '../../store/authStore';
 import styles from './ProfileEmailChange.module.css';
 
 interface ProfileEmailChangeProps {
@@ -9,10 +10,6 @@ interface ProfileEmailChangeProps {
   onSuccess: () => void;
 }
 
-type Issue = { field: AuthField; message: string };
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const CODE_RE = /^\d{6}$/;
 const ID_PREFIX = 'profile-email-change';
 const FEEDBACK_ID = `${ID_PREFIX}-feedback`;
 
@@ -26,17 +23,9 @@ export function ProfileEmailChange({ onCancel, onSuccess }: ProfileEmailChangePr
   const [feedback, setFeedback] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [changing, setChanging] = useState(false);
-  const [cooldownUntil, setCooldownUntil] = useState(0);
-  const [clock, setClock] = useState(() => Date.now());
+  const { cooldown, resetCooldown, startCooldown } = useCooldown();
   const operation = useRef(0);
-  const cooldown = Math.max(0, Math.ceil((cooldownUntil - clock) / 1000));
   const busy = sending || changing;
-
-  useEffect(() => {
-    if (cooldownUntil <= clock) return;
-    const timer = window.setTimeout(() => setClock(Date.now()), Math.min(1000, cooldownUntil - clock));
-    return () => window.clearTimeout(timer);
-  }, [clock, cooldownUntil]);
 
   useEffect(() => () => { operation.current += 1; }, []);
 
@@ -47,16 +36,10 @@ export function ProfileEmailChange({ onCancel, onSuccess }: ProfileEmailChangePr
     document.getElementById(target)?.focus();
   }, [issue]);
 
-  const startCooldown = (seconds: number) => {
-    const now = Date.now();
-    setClock(now);
-    setCooldownUntil(now + Math.max(0, seconds) * 1000);
-  };
-
   const changeDraftEmail = (value: string) => {
     setEmail(value);
     setCode('');
-    setCooldownUntil(0);
+    resetCooldown();
     setFeedback(null);
     setIssue((current) => current?.field === 'email' || current?.field === 'code'
       || current?.field === 'form' ? null : current);

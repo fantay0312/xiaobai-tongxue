@@ -73,17 +73,6 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      onClose();
-    };
-    document.addEventListener('keydown', closeOnEscape, true);
-    return () => document.removeEventListener('keydown', closeOnEscape, true);
-  }, [onClose, open]);
-
-  useEffect(() => {
     if (open) return;
     setEmailEditorOpen(false);
     setEmailNotice(null);
