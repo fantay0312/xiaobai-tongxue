@@ -212,10 +212,20 @@ export interface LearnEvent {
 
 // ───────────────────────── 讲解舱运行时 ─────────────────────────
 
+/** 课堂图片只存当前页签的 object URL 与展示元数据；不存 Blob/base64/识别文本。 */
+export interface ImageAttachment {
+  objectUrl: string;
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
+  width: number;
+  height: number;
+  byteSize: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'teacher' | 'xiaobai' | 'system';
   text: string;
+  image?: ImageAttachment;
   action?: DirectorAction;
   mood?: XiaobaiMood;
   t: string;

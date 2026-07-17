@@ -11,7 +11,7 @@
  * 纪律:settings/asrSettings(含密钥)永不进载荷;live(进行中会话)不同步;
  *      standalone(无网关)完全旁路,离线演示行为与从前一字不差。
  */
-import { DEFAULT_GLOBAL, useAppStore } from './appStore';
+import { DEFAULT_GLOBAL, revokeLiveImages, useAppStore } from './appStore';
 import { useAuthStore } from './authStore';
 import { API_BASE, gatewayFetch } from '../lib/api';
 import { TOPICS } from '../data';
@@ -193,6 +193,7 @@ async function adopt(user: string, generation: number): Promise<boolean> {
     const clean = sanitize(remote.state);
     applyingRemote = true;
     try {
+      revokeLiveImages(useAppStore.getState().live);
       useAppStore.setState({ ...clean, topicStates: {}, live: null });
       useAppStore.getState().rebuildStates();
     } finally {

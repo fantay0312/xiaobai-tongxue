@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/authStore';
 import { Icon } from '../ui/Icon';
 import { ProfileEmailChange } from './ProfileEmailChange';
 import { ProfilePasswordChange } from './ProfilePasswordChange';
+import { TranscriptUpload } from './TranscriptUpload';
 import styles from './ProfileDialog.module.css';
 
 interface ProfileDialogProps {
@@ -241,6 +242,11 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
               }}
             />
           ) : null}
+        </section>
+
+        <section className={styles.section} aria-labelledby="transcript-title">
+          <h3 className={styles.sectionTitle} id="transcript-title">我的成绩单</h3>
+          <TranscriptUpload enabled={!emailBindingRequired} />
         </section>
 
         <section className={styles.section} aria-labelledby="entries-title">

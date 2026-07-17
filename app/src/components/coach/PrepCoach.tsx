@@ -1,5 +1,5 @@
 /**
- * 备课助教「小砚」—— 备课页右下角的墨滴小书童。
+ * 备课助教「小砚」—— 备课页右下角的完整人物桌面小精灵。
  * 点击展开答疑面板;LLM 走 engine/coach(proxy/api),失败或本地模式降级离线锦囊。
  * 只在 /prep 挂载:讲解舱里它就是答案机(防作弊红线),课堂绝不出现。
  * 问答记录按知识点缓存在 engine/coach 的模块级 Map(会话内换页不丢,登出清空,刷新即清)。
@@ -19,6 +19,7 @@ const now = () => new Date().toISOString();
 
 /** 首次引导气泡:点开过一次就永久收起 */
 const HINT_KEY = 'xiaobai-coach-hint-done';
+const XIAOYAN_ASSET_URL = `${import.meta.env.BASE_URL}xiaoyan-prep-coach.webp`;
 
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
@@ -202,6 +203,7 @@ export function PrepCoach({ topic }: { topic: Topic }) {
     <div className={s.root}>
       {open && (
         <section
+          id="prep-coach-panel"
           className={s.panel}
           role="dialog"
           aria-label="备课助教小砚"
@@ -210,7 +212,6 @@ export function PrepCoach({ topic }: { topic: Topic }) {
           }}
         >
           <header className={s.panelHead}>
-            <span className={s.headFace} aria-hidden="true"><PetFace /></span>
             <span className={s.panelName}>小砚 · 备课助教</span>
             <span className={settings.mode === 'mock' ? s.chipOffline : s.chipLive}>
               {settings.mode === 'mock' ? '离线锦囊' : '已连线'}
@@ -265,6 +266,7 @@ export function PrepCoach({ topic }: { topic: Topic }) {
               className={s.input}
               rows={1}
               maxLength={800}
+              aria-label="向备课助教提问"
               placeholder="问小砚:这一段怎么讲?"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -283,59 +285,21 @@ export function PrepCoach({ topic }: { topic: Topic }) {
         ref={petBtnRef}
         type="button"
         className={s.petBtn}
+        data-state={busy ? 'thinking' : open ? 'listening' : 'idle'}
         data-tour="coach"
         onClick={toggle}
         aria-expanded={open}
+        aria-controls="prep-coach-panel"
+        aria-haspopup="dialog"
         aria-label={open ? '收起备课助教' : '召唤备课助教小砚'}
         title="小砚 · 备课助教"
       >
-        <PetSvg />
+        <img className={s.pet} src={XIAOYAN_ASSET_URL} alt="" draggable={false} />
+        <span className={s.petSpark} aria-hidden="true">✦</span>
+        <span className={s.petAction} aria-hidden="true">
+          {busy ? '翻材料中…' : open ? '我在听' : '小砚'}
+        </span>
       </button>
     </div>
-  );
-}
-
-/** 墨滴小书童:趴在砚台上的一滴墨,呼吸浮动 + 眨眼 */
-function PetSvg() {
-  return (
-    <svg className={s.pet} viewBox="0 0 64 64" aria-hidden="true">
-      {/* 砚台 */}
-      <rect x="13" y="49" width="38" height="8" rx="4" fill="currentColor" opacity="0.28" />
-      <ellipse cx="32" cy="50" rx="15" ry="2.6" fill="currentColor" opacity="0.36" />
-      {/* 墨滴本体(呼吸浮动) */}
-      <g className={s.petBody}>
-        <path
-          d="M32 10 C 26 19, 16 25, 16 36.5 A 16 15.5 0 0 0 48 36.5 C 48 25, 38 19, 32 10 Z"
-          fill="currentColor"
-        />
-        {/* 高光 */}
-        <ellipse cx="25" cy="27" rx="3.4" ry="5" fill="#fff" opacity="0.18" transform="rotate(-18 25 27)" />
-        {/* 眼睛(眨) */}
-        <g className={s.petEyes}>
-          <ellipse cx="26" cy="37" rx="2.5" ry="3.4" fill="var(--paper, #f6f1e5)" />
-          <ellipse cx="38" cy="37" rx="2.5" ry="3.4" fill="var(--paper, #f6f1e5)" />
-        </g>
-        {/* 腮红 */}
-        <circle cx="21.5" cy="42" r="2" fill="var(--cinnabar, #bc4630)" opacity="0.4" />
-        <circle cx="42.5" cy="42" r="2" fill="var(--cinnabar, #bc4630)" opacity="0.4" />
-        {/* 嘴 */}
-        <path d="M30 43.5 q2 1.8 4 0" stroke="var(--paper, #f6f1e5)" strokeWidth="1.3" strokeLinecap="round" fill="none" />
-      </g>
-    </svg>
-  );
-}
-
-/** 面板头像:同一只小砚的头部特写 */
-function PetFace() {
-  return (
-    <svg viewBox="14 18 36 32" aria-hidden="true">
-      <path
-        d="M32 10 C 26 19, 16 25, 16 36.5 A 16 15.5 0 0 0 48 36.5 C 48 25, 38 19, 32 10 Z"
-        fill="currentColor"
-      />
-      <ellipse cx="26" cy="37" rx="2.5" ry="3.4" fill="var(--paper, #f6f1e5)" />
-      <ellipse cx="38" cy="37" rx="2.5" ry="3.4" fill="var(--paper, #f6f1e5)" />
-      <path d="M30 43.5 q2 1.8 4 0" stroke="var(--paper, #f6f1e5)" strokeWidth="1.3" strokeLinecap="round" fill="none" />
-    </svg>
   );
 }
