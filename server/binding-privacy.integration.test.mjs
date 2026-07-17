@@ -1,15 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import net from 'node:net';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { spawn } from 'node:child_process';
-import { once } from 'node:events';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import {
+  accountHeaders,
+  codeFor,
+  copyRuntimeModules,
+  installFakeResend,
+  launchGateway,
+  login,
+  openPort,
+  postJson,
+  stopChild,
+} from './integration.test-harness.mjs';
+import { PASSWORD_SCHEME_CURRENT } from './credential-format.mjs';
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
 const VERIFIED_AT = '2026-07-14T00:00:00.000Z';
 
 function passwordUser(name, password, email) {
@@ -23,41 +30,6 @@ function passwordUser(name, password, email) {
   };
 }
 
-async function openPort() {
-  const probe = net.createServer();
-  await new Promise((resolve, reject) => probe.listen(0, '127.0.0.1', resolve).once('error', reject));
-  const address = probe.address();
-  const port = typeof address === 'object' && address ? address.port : 0;
-  await new Promise((resolve) => probe.close(resolve));
-  return port;
-}
-
-async function waitForReady(child) {
-  await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('gateway-start-timeout')), 5_000);
-    const onData = (chunk) => {
-      if (!chunk.toString().includes('网关已启动')) return;
-      clearTimeout(timer);
-      child.stdout.off('data', onData);
-      resolve();
-    };
-    child.stdout.on('data', onData);
-    child.once('exit', (code) => {
-      clearTimeout(timer);
-      reject(new Error(`gateway-exited-${code}`));
-    });
-  });
-}
-
-async function postJson(url, body, headers = {}) {
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
-    body: JSON.stringify(body),
-  });
-  return { response, payload: await response.json() };
-}
-
 test('binding endpoints suppress occupied-email enumeration and still consume limits', async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), 'xiaobai-binding-privacy-test-'));
   const dist = path.join(root, 'dist');
@@ -66,68 +38,36 @@ test('binding endpoints suppress occupied-email enumeration and still consume li
   await mkdir(dist);
   await mkdir(data);
   await writeFile(path.join(dist, 'index.html'), '<!doctype html><title>test</title>');
-  for (const file of ['index.mjs', 'email-auth.mjs', 'auth-security.mjs', 'password-credentials.mjs']) {
-    await copyFile(path.join(HERE, file), path.join(root, file));
-  }
-  await writeFile(path.join(root, 'fake-resend.cjs'), `
-const { appendFileSync } = require('node:fs');
-const nativeFetch = globalThis.fetch;
-globalThis.fetch = async (input, init) => {
-  const url = typeof input === 'string' ? input : input?.url ?? String(input);
-  if (url === 'https://api.resend.com/emails') {
-    const body = String(init?.body ?? '');
-    appendFileSync(process.env.RESEND_TEST_LOG, body + '\\n');
-    const status = body.includes('failure@example.com') ? 503 : 200;
-    return new Response('{}', { status, headers: { 'Content-Type': 'application/json' } });
-  }
-  return nativeFetch(input, init);
-};
-`);
+  await copyRuntimeModules(root);
+  await installFakeResend(root);
 
   const legacy = passwordUser('LegacyBinder', 'legacy-password');
   const existing = passwordUser('ExistingUser', 'existing-password', 'owned@example.com');
-  await writeFile(path.join(data, 'registered-users.json'), JSON.stringify([existing]));
+  const registerOwner = passwordUser(
+    'RegisterOwner', 'register-password', 'register-owned@example.com',
+  );
+  await writeFile(path.join(data, 'registered-users.json'), JSON.stringify([existing, registerOwner]));
   const port = await openPort();
   await writeFile(path.join(root, 'config.json'), JSON.stringify({
     port,
     distDir: './dist',
     dataDir: data,
     allowInsecureAuth: true,
+    inviteCode: 'test-invite',
     users: [legacy],
   }));
 
-  const child = spawn(process.execPath, ['--require', './fake-resend.cjs', 'index.mjs'], {
-    cwd: root,
-    env: {
-      ...process.env,
-      RESEND_API_KEY: 'test-only-key',
-      RESEND_FROM: '小白同学 <noreply@example.com>',
-      RESEND_TEST_LOG: resendLog,
-    },
-    stdio: ['ignore', 'pipe', 'pipe'],
+  const child = await launchGateway(root, resendLog, {
+    RESEND_FAIL_EMAILS: 'failure@example.com,register-failure@example.com',
   });
   t.after(async () => {
-    if (child.exitCode === null) {
-      const exited = once(child, 'exit');
-      child.kill('SIGTERM');
-      await exited;
-    }
+    await stopChild(child);
     await rm(root, { recursive: true, force: true });
   });
-  await waitForReady(child);
   const base = `http://127.0.0.1:${port}`;
 
-  const login = await postJson(`${base}/api/login`, {
-    identifier: legacy.name,
-    password: 'legacy-password',
-  });
-  assert.equal(login.response.status, 200);
-  const cookie = login.response.headers.get('set-cookie')?.split(';', 1)[0];
-  assert.ok(cookie);
-  const authHeaders = {
-    Cookie: cookie,
-    'X-Xiaobai-User': encodeURIComponent(legacy.name),
-  };
+  const loginResult = await login(base, legacy.name, 'legacy-password', legacy.name);
+  const authHeaders = accountHeaders(loginResult.cookie, legacy.name);
 
   const occupied = await postJson(`${base}/api/account/email-code`, {
     email: 'OWNED@EXAMPLE.COM',
@@ -167,4 +107,67 @@ globalThis.fetch = async (input, init) => {
   }, authHeaders);
   assert.equal(finishOccupied.response.status, 400);
   assert.deepEqual(finishOccupied.payload, { error: 'invalid-or-expired-code' });
+
+  const messagesBeforeRegister = (await readFile(resendLog, 'utf8')).trim().split('\n').length;
+  const occupiedRegister = await postJson(`${base}/api/auth/email-code`, {
+    email: 'REGISTER-OWNED@EXAMPLE.COM', purpose: 'register', invite: 'test-invite',
+  });
+  assert.equal(occupiedRegister.response.status, 200);
+  assert.deepEqual(occupiedRegister.payload, { ok: true, retryAfter: 60 });
+  assert.equal((await readFile(resendLog, 'utf8')).trim().split('\n').length, messagesBeforeRegister);
+
+  const occupiedRegisterAgain = await postJson(`${base}/api/auth/email-code`, {
+    email: 'register-owned@example.com', purpose: 'register', invite: 'test-invite',
+  });
+  assert.equal(occupiedRegisterAgain.response.status, 429);
+  assert.equal(occupiedRegisterAgain.payload.error, 'send-too-frequent');
+
+  const failedRegister = await postJson(`${base}/api/auth/email-code`, {
+    email: 'register-failure@example.com', purpose: 'register', invite: 'test-invite',
+  });
+  assert.equal(failedRegister.response.status, 200);
+  assert.deepEqual(failedRegister.payload, occupiedRegister.payload);
+  assert.equal(
+    (await readFile(resendLog, 'utf8')).trim().split('\n').length,
+    messagesBeforeRegister + 1,
+  );
+  const failedRegistrationPassword = `${crypto.randomBytes(12).toString('base64url')}Aa1!`;
+  const failedRegistration = await postJson(`${base}/api/register`, {
+    username: 'MustNotRegister',
+    password: failedRegistrationPassword,
+    email: 'register-failure@example.com',
+    code: '000000',
+    invite: 'test-invite',
+  });
+  assert.equal(failedRegistration.response.status, 400);
+  assert.deepEqual(failedRegistration.payload, { error: 'invalid-or-expired-code' });
+
+  const availableRegister = await postJson(`${base}/api/auth/email-code`, {
+    email: 'register-available@example.com', purpose: 'register', invite: 'test-invite',
+  });
+  assert.equal(availableRegister.response.status, 200);
+  assert.deepEqual(availableRegister.payload, occupiedRegister.payload);
+  assert.equal(
+    (await readFile(resendLog, 'utf8')).trim().split('\n').length,
+    messagesBeforeRegister + 2,
+  );
+  const availableCode = await codeFor(resendLog, 'register-available@example.com');
+  const registrationPassword = `${crypto.randomBytes(12).toString('base64url')}Aa1!`;
+  const registration = await postJson(`${base}/api/register`, {
+    username: 'FreshTeacher',
+    password: registrationPassword,
+    email: 'register-available@example.com',
+    code: availableCode.code,
+    invite: 'test-invite',
+  });
+  assert.equal(registration.response.status, 200);
+  assert.equal(registration.payload.user.name, 'FreshTeacher');
+  await login(base, 'FreshTeacher', registrationPassword, 'FreshTeacher');
+  const registrations = JSON.parse(await readFile(
+    path.join(data, 'registered-users.json'), 'utf8',
+  ));
+  assert.equal(
+    registrations.find((user) => user.name === 'FreshTeacher').passwordScheme,
+    PASSWORD_SCHEME_CURRENT,
+  );
 });

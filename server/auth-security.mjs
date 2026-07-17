@@ -2,17 +2,23 @@ import crypto from 'node:crypto';
 import net from 'node:net';
 import { promisify } from 'node:util';
 import { normalizeEmail } from './email-auth.mjs';
+import {
+  PASSWORD_SCHEME_CURRENT,
+  PASSWORD_SCHEME_LEGACY,
+  canonicalName,
+  passwordSchemeOf,
+  requireCredentials,
+  requireStoredName,
+} from './credential-format.mjs';
+
+export { canonicalName };
 
 const scryptAsync = promisify(crypto.scrypt);
-const NAME_RE = /^[\p{Script=Han}A-Za-z0-9_-]{2,20}$/u;
-const SALT_RE = /^[0-9a-f]{32}$/;
-const HASH_RE = /^[0-9a-f]{128}$/;
-
-export function canonicalName(value) {
-  if (typeof value !== 'string') return null;
-  const normalized = value.trim().normalize('NFC');
-  return NAME_RE.test(normalized) ? normalized.toLowerCase() : null;
-}
+const SCRYPT_PARAMETERS = Object.freeze({
+  [PASSWORD_SCHEME_LEGACY]: Object.freeze({ N: 2 ** 14, r: 8, p: 1, maxmem: 32 * 1024 * 1024 }),
+  // 提高 N 并用 p=3 增加 CPU 成本，同时把单次内存控制在约 32MiB，避免 8 路鉴权并发耗尽主机。
+  [PASSWORD_SCHEME_CURRENT]: Object.freeze({ N: 2 ** 15, r: 8, p: 3, maxmem: 40 * 1024 * 1024 }),
+});
 
 export function encodedIdentityMatches(value, currentName) {
   if (typeof value !== 'string' || value.length === 0 || value.length > 256) return false;
@@ -33,10 +39,8 @@ function validTimestamp(value) {
 function validateUser(user, source, index) {
   const label = `${source}[${index}]`;
   if (!user || typeof user !== 'object' || Array.isArray(user)) throw new Error(`${label}: bad-user`);
-  const normalizedName = typeof user.name === 'string' ? user.name.trim().normalize('NFC') : '';
-  if (!canonicalName(user.name) || user.name !== normalizedName) throw new Error(`${label}: bad-name`);
-  if (typeof user.salt !== 'string' || !SALT_RE.test(user.salt)) throw new Error(`${label}: bad-salt`);
-  if (typeof user.hash !== 'string' || !HASH_RE.test(user.hash)) throw new Error(`${label}: bad-hash`);
+  requireStoredName(user, label);
+  requireCredentials(user, label);
   if (user.email === undefined) {
     if (user.emailVerifiedAt !== undefined) throw new Error(`${label}: verification-without-email`);
     return user;
@@ -179,8 +183,8 @@ export function revokeUserSessions(sessions, nameValue) {
   return revoked;
 }
 
-async function defaultDerive(password, salt, length) {
-  return Buffer.from(await scryptAsync(password, salt, length));
+async function defaultDerive(password, salt, length, parameters) {
+  return Buffer.from(await scryptAsync(password, salt, length, parameters));
 }
 
 export function createPasswordService(options = {}) {
@@ -188,13 +192,24 @@ export function createPasswordService(options = {}) {
   const dummy = {
     salt: options.dummySalt ?? crypto.randomBytes(16).toString('hex'),
     hash: (options.dummyHash ?? crypto.randomBytes(64)).toString('hex'),
+    passwordScheme: PASSWORD_SCHEME_CURRENT,
   };
 
   async function verify(user, password) {
     const target = user ?? dummy;
     try {
+      const scheme = passwordSchemeOf(target);
+      if (!scheme) return false;
       const expected = Buffer.from(target.hash, 'hex');
-      const actual = await derive(password, target.salt, expected.length);
+      // 每次都顺序执行 legacy + current，两类账号和未知账号的 KDF 工作量保持同形；
+      // 渐进迁移期间不能用耗时差反向枚举“账号是否存在/是否已升级”。
+      const legacyActual = await derive(
+        password, target.salt, expected.length, SCRYPT_PARAMETERS[PASSWORD_SCHEME_LEGACY],
+      );
+      const currentActual = await derive(
+        password, target.salt, expected.length, SCRYPT_PARAMETERS[PASSWORD_SCHEME_CURRENT],
+      );
+      const actual = scheme === PASSWORD_SCHEME_CURRENT ? currentActual : legacyActual;
       const equal = expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
       return Boolean(user) && equal;
     } catch {
@@ -204,11 +219,18 @@ export function createPasswordService(options = {}) {
 
   async function hash(password) {
     const salt = crypto.randomBytes(16).toString('hex');
-    const derived = await derive(password, salt, 64);
-    return { salt, hash: Buffer.from(derived).toString('hex') };
+    const derived = await derive(password, salt, 64, SCRYPT_PARAMETERS[PASSWORD_SCHEME_CURRENT]);
+    return {
+      salt,
+      hash: Buffer.from(derived).toString('hex'),
+      passwordScheme: PASSWORD_SCHEME_CURRENT,
+    };
   }
 
-  return { verify, hash };
+  const needsRehash = (user) => Boolean(user)
+    && passwordSchemeOf(user) !== PASSWORD_SCHEME_CURRENT;
+
+  return { verify, hash, needsRehash };
 }
 
 export function createAuthGate(options = {}) {

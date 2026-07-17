@@ -1,0 +1,182 @@
+.button {
+  position: relative;
+  display: block;
+  width: clamp(9.25rem, 12vw, 10.75rem);
+  aspect-ratio: 2 / 3;
+  padding: 0;
+  overflow: visible;
+  isolation: isolate;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.button::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  right: 14%;
+  bottom: 0.1rem;
+  left: 19%;
+  height: 0.66rem;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--ink) 17%, transparent);
+  filter: blur(5px);
+  transform: scaleX(0.9);
+  transform-origin: 50% 50%;
+}
+
+.button:focus-visible {
+  border-radius: 0.85rem;
+  outline: 2px dashed var(--azure);
+  outline-offset: -0.15rem;
+}
+
+.figure {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  filter: drop-shadow(0 0.38rem 0.42rem color-mix(in oklab, var(--ink) 18%, transparent));
+  transform: scale(1);
+  transform-origin: 50% 100%;
+  transition: transform 160ms var(--ease-out), opacity 160ms var(--ease-out);
+}
+
+/* 脚底始终钉在桌面：待机只做呼吸、倾听只做重心倾斜，不整人悬浮。 */
+.button[data-state='idle'] .figure {
+  animation: petBreathing 3.8s ease-in-out infinite;
+}
+.button[data-state='listening'] .figure {
+  animation: petListening 2.4s ease-in-out infinite;
+}
+.button[data-state='explaining'] .figure {
+  animation: petPresent 620ms var(--ease-out) both;
+}
+
+@keyframes petBreathing {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scaleX(1.004) scaleY(1.009); }
+}
+
+@keyframes petListening {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(0.35deg); }
+}
+
+@keyframes petPresent {
+  from { transform: rotate(-0.8deg) scale(0.985); }
+  to { transform: rotate(0deg) scale(1); }
+}
+
+.atlas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  width: 300%;
+  max-width: none;
+  height: auto;
+  user-select: none;
+  pointer-events: none;
+}
+
+.fallback {
+  position: absolute;
+  inset: 14% 20% 4%;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 45% 45% 16% 16%;
+  background: linear-gradient(155deg, var(--paper), var(--azure-wash));
+  box-shadow: var(--shadow-paper);
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  letter-spacing: 0.18em;
+  writing-mode: vertical-rl;
+}
+.fallback i { color: var(--amber); font-style: normal; }
+
+.button:active .figure {
+  animation: none;
+  transform: scale(0.985);
+}
+
+.reply {
+  position: absolute;
+  z-index: 2;
+  top: 8%;
+  right: 76%;
+  padding: 0.25rem 0.58rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: 0.48rem;
+  background: color-mix(in oklab, var(--paper) 94%, transparent);
+  box-shadow: var(--shadow-paper);
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.05em;
+  line-height: 1.4;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(0.3rem, 0.2rem);
+  transition: transform 180ms var(--ease-out), opacity 180ms var(--ease-out);
+}
+
+.reply::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -0.3rem;
+  width: 0.48rem;
+  height: 0.48rem;
+  border-top: 1px solid var(--paper-edge);
+  border-right: 1px solid var(--paper-edge);
+  background: color-mix(in oklab, var(--paper) 94%, transparent);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.button:focus-visible .reply,
+.button[data-state='working'] .reply,
+.button[data-state='thinking'] .reply,
+.button[data-state='explaining'] .reply {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+.button[aria-expanded='true'] .reply {
+  opacity: 0;
+  transform: translate(0.3rem, 0.2rem);
+}
+
+@media (hover: hover) {
+  .button:hover .reply {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  .button[aria-expanded='true']:hover .reply {
+    opacity: 0;
+    transform: translate(0.3rem, 0.2rem);
+  }
+}
+
+@media (max-width: 960px) {
+  .button { width: 7.4rem; }
+}
+
+@media (max-width: 560px) {
+  .button { width: 5.8rem; }
+  .reply { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .figure,
+  .reply {
+    animation: none !important;
+    transition: none;
+  }
+}

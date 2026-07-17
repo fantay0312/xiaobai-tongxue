@@ -1,5 +1,8 @@
 import crypto from 'node:crypto';
 import { performance } from 'node:perf_hooks';
+export {
+  createResendSender, emailSendErrorMessage, safeDiagnosticMessage,
+} from './email-delivery.mjs';
 
 const PURPOSES = new Set(['login', 'register', 'bind', 'change-email', 'reset-password']);
 const DEFAULT_LIMITS = Object.freeze({
@@ -83,61 +86,6 @@ function pruneMap(map, predicate) {
   for (const [key, value] of map) if (predicate(value)) map.delete(key);
 }
 
-function emailCopy(purpose, code) {
-  const action = purpose === 'register' ? '注册'
-    : purpose === 'bind' ? '绑定邮箱'
-      : purpose === 'change-email' ? '换绑邮箱'
-        : purpose === 'reset-password' ? '重置密码' : '登录';
-  const description = purpose === 'bind'
-    ? '你正在为小白同学账号绑定邮箱。'
-    : purpose === 'change-email'
-      ? '你正在为小白同学账号更换验证邮箱。'
-      : purpose === 'reset-password'
-        ? '你正在重置小白同学账号密码。'
-        : `你正在${action}小白同学。`;
-  const subject = `【小白同学】${action}验证码`;
-  const text = `${description}验证码：${code}。验证码 10 分钟内有效，请勿转告他人。`;
-  const html = `<div style="font-family:system-ui,sans-serif;color:#24211d">`
-    + `<p>${description}</p>`
-    + `<p style="font-size:30px;letter-spacing:8px;font-weight:700">${code}</p>`
-    + '<p>验证码 10 分钟内有效，请勿转告他人。</p></div>';
-  return { subject, text, html };
-}
-
-export function createResendSender(options) {
-  const {
-    apiKey,
-    from,
-    endpoint = 'https://api.resend.com/emails',
-    fetchImpl = globalThis.fetch,
-    timeoutMs = 10_000,
-  } = options ?? {};
-  if (!apiKey || !from || typeof fetchImpl !== 'function') {
-    throw new Error('resend-not-configured');
-  }
-
-  return async ({ email, code, purpose, idempotencyKey }) => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const response = await fetchImpl(endpoint, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'Idempotency-Key': idempotencyKey,
-          'User-Agent': 'xiaobai-gateway/1.0',
-        },
-        body: JSON.stringify({ from, to: [email], ...emailCopy(purpose, code) }),
-        signal: controller.signal,
-      });
-      if (!response.ok) throw new Error('resend-request-failed');
-    } finally {
-      clearTimeout(timer);
-    }
-  };
-}
-
 function cleanupState(state, at = state.now()) {
   pruneMap(state.codes, (item) => item.expiresAt <= at);
   pruneMap(state.cooldowns, (until) => until <= at);
@@ -170,6 +118,20 @@ async function padSendResponse(state, startedAt, targetMs) {
   if (remaining > 0) await state.sleep(remaining);
 }
 
+async function deliverCode(state, { email, key, purpose, subject }) {
+  const code = String(state.randomInt(0, 1_000_000)).padStart(6, '0');
+  const nonce = crypto.randomBytes(16).toString('hex');
+  await state.sendCode({ email, code, purpose, idempotencyKey: `xiaobai-otp-${nonce}` });
+  state.codes.set(key, {
+    nonce, digest: hmacCode(state.secret, email, purpose, subject, nonce, code),
+    expiresAt: state.now() + state.limits.codeTtlMs, attempts: 0,
+  });
+}
+
+function reportSendFailure(state, error) {
+  try { state.onSendError(error); } catch { /* 诊断钩子不得改变公开认证行为 */ }
+}
+
 async function requestCode(state, input) {
   const email = normalizeEmail(input?.email);
   const purpose = input?.purpose;
@@ -195,21 +157,33 @@ async function requestCode(state, input) {
   state.pendingEmails.add(email);
   const responseStartedAt = state.elapsedNow();
   const targetDelayMs = responseDelayTarget(state);
+  const success = { ok: true, retryAfter: Math.ceil(state.limits.sendCooldownMs / 1000) };
+  if (input?.opaqueDelivery) {
+    if (input?.deliver === false) {
+      try {
+        await padSendResponse(state, responseStartedAt, targetDelayMs);
+      } finally {
+        state.pendingEmails.delete(email);
+      }
+    } else {
+      // 隐藏邮箱归属的公开发码不等 Resend 长尾；成功后才异步写码。
+      void deliverCode(state, { email, key, purpose, subject })
+        .catch((error) => reportSendFailure(state, error))
+        .finally(() => state.pendingEmails.delete(email));
+      await padSendResponse(state, responseStartedAt, targetDelayMs);
+    }
+    return success;
+  }
   let result;
   try {
     if (input?.deliver === false) {
-      result = { ok: true, retryAfter: Math.ceil(state.limits.sendCooldownMs / 1000) };
+      result = success;
     } else {
-      const code = String(state.randomInt(0, 1_000_000)).padStart(6, '0');
-      const nonce = crypto.randomBytes(16).toString('hex');
-      await state.sendCode({ email, code, purpose, idempotencyKey: `xiaobai-otp-${nonce}` });
-      state.codes.set(key, {
-        nonce, digest: hmacCode(state.secret, email, purpose, subject, nonce, code),
-        expiresAt: state.now() + state.limits.codeTtlMs, attempts: 0,
-      });
-      result = { ok: true, retryAfter: Math.ceil(state.limits.sendCooldownMs / 1000) };
+      await deliverCode(state, { email, key, purpose, subject });
+      result = success;
     }
-  } catch {
+  } catch (error) {
+    reportSendFailure(state, error);
     result = { ok: false, error: 'email-unavailable' };
   } finally {
     try {
@@ -265,6 +239,7 @@ export function createEmailAuth(options) {
     elapsedNow: options?.elapsedNow ?? (() => performance.now()),
     jitterRandomInt: options?.jitterRandomInt ?? crypto.randomInt,
     sleep: options?.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
+    onSendError: typeof options?.onSendError === 'function' ? options.onSendError : () => {},
     limits: { ...DEFAULT_LIMITS, ...(options?.limits ?? {}) },
     codes: new Map(),
     cooldowns: new Map(),

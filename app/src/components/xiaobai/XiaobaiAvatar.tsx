@@ -51,7 +51,11 @@ export function XiaobaiAvatar({
   variant = 'paper',
 }: XiaobaiAvatarProps) {
   const [assetFailed, setAssetFailed] = useState(false);
-  const frame = SPRITE_FRAMES[mood];
+  const normalizedMood: XiaobaiMood = Object.prototype.hasOwnProperty.call(SPRITE_FRAMES, mood)
+    ? mood : 'idle';
+  const frame = SPRITE_FRAMES[normalizedMood];
+  const levelMark = Number.isInteger(level) && level >= 1 && level <= LEVEL_MARKS.length
+    ? LEVEL_MARKS[level - 1] ?? LEVEL_MARKS[0] : LEVEL_MARKS[0];
   const className = [styles.avatar, styles[variant], speaking ? styles.speaking : '']
     .filter(Boolean).join(' ');
   return (
@@ -59,8 +63,8 @@ export function XiaobaiAvatar({
       className={className}
       style={{ width: size, height: size }}
       role="img"
-      aria-label={`小白正在${MOOD_LABELS[mood]}`}
-      data-mood={mood}
+      aria-label={`小白正在${MOOD_LABELS[normalizedMood]}`}
+      data-mood={normalizedMood}
     >
       <span className={styles.ahaBloom} aria-hidden="true" />
       <span className={styles.motion} aria-hidden="true">
@@ -84,7 +88,7 @@ export function XiaobaiAvatar({
         <i />
         <i />
       </span>
-      <span className={styles.levelMark} aria-hidden="true">{LEVEL_MARKS[level - 1]}</span>
+      <span className={styles.levelMark} aria-hidden="true">{levelMark}</span>
     </div>
   );
 }

@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type {
-  AsrSettings, ChatMessage, LearnEvent, LiveSession, LlmSettings, Persona,
+  AsrSettings, ChatMessage, EvalResult, LearnEvent, LiveSession, LlmSettings, Persona,
   SessionMode, SessionReport, TopicState, XiaobaiGlobal,
 } from '../types';
 import { getTopic, TOPICS } from '../data';
@@ -22,6 +22,8 @@ import { recallGreetingLine } from '../engine/recall';
 import { deriveEvolution } from '../engine/evolution';
 // 语音转写默认配置:同为浏览器专用模块,不走 barrel
 import { DEFAULT_ASR } from '../engine/asr';
+import type { PreparedImageAttachment } from '../lib/imageAttachment';
+import { describeTeachingImage } from '../lib/vision';
 
 const uid = () => (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
 const now = () => new Date().toISOString();
@@ -66,6 +68,42 @@ function msg(role: ChatMessage['role'], text: string, extra?: Partial<ChatMessag
   return { id: uid(), role, text, t: now(), ...extra };
 }
 
+export interface SubmitTeachingResult {
+  accepted: boolean;
+  error?: string;
+}
+
+function privateImageUtterance(text: string, description: string): string {
+  const observed = `[本轮图片观察，仅供当前评估与回应：${description}]`;
+  return text ? `${text}\n${observed}` : observed;
+}
+
+function normalizedQuote(text: string): string {
+  return text.toLowerCase().replace(/[^\p{Script=Han}a-z0-9]/gu, '');
+}
+
+/** 图片识别原文不进事件、trace 或金句，只保留教学判定结果。 */
+function privateEvalToRecord(evalResult: EvalResult, visibleText: string): EvalResult {
+  const golden = evalResult.goldenAnalogy;
+  const visibleNorm = normalizedQuote(visibleText);
+  const goldenNorm = golden ? normalizedQuote(golden) : '';
+  return {
+    ...evalResult,
+    accuracyFlags: evalResult.accuracyFlags.map((flag) => ({
+      checklistId: flag.checklistId,
+      note: '图片辅助讲解中的表述需复核',
+    })),
+    goldenAnalogy: golden && goldenNorm.length >= 4 && visibleNorm.includes(goldenNorm) ? golden : null,
+    reasoning: '结合本轮文字与图片完成评估（图片内容不入档）',
+  };
+}
+
+export function revokeLiveImages(live: LiveSession | null): void {
+  for (const message of live?.messages ?? []) {
+    if (message.image) URL.revokeObjectURL(message.image.objectUrl);
+  }
+}
+
 export interface AppState {
   global: XiaobaiGlobal;
   events: LearnEvent[];
@@ -81,7 +119,7 @@ export interface AppState {
   rebuildStates: () => void;
 
   startSession: (topicId: string, mode: SessionMode) => Promise<void>;
-  submitTeaching: (text: string) => Promise<void>;
+  submitTeaching: (text: string, image?: PreparedImageAttachment) => Promise<SubmitTeachingResult>;
   closeLookup: () => void;
   endSession: () => string | null;
   abandonSession: () => void;
@@ -145,6 +183,7 @@ export const useAppStore = create<AppState>()(
       startSession: async (topicId, mode) => {
         const topic = getTopic(topicId);
         if (!topic || topic.locked) return;
+        revokeLiveImages(get().live);
         const g = get().global;
         const state = get().topicState(topicId);
         const sessionId = `T${now().slice(0, 10).replaceAll('-', '')}-${uid().slice(0, 4)}`;
@@ -193,43 +232,83 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      submitTeaching: async (text) => {
+      submitTeaching: async (text, image) => {
         const { live, settings } = get();
         const topic = live ? getTopic(live.topicId) : undefined;
-        if (!live || !topic || live.busy || live.ended || !text.trim()) return;
+        const visibleText = text.trim();
+        if (!live || !topic || live.busy || live.ended || (!visibleText && !image)) {
+          return { accepted: false };
+        }
 
         const sessionId = live.sessionId;
-        const teacherMsg = msg('teacher', text.trim());
-        set((s) => s.live ? {
-          live: { ...s.live, busy: true, mood: 'thinking', lookupChecklistId: null, messages: [...s.live.messages, teacherMsg] },
+        const safeUtterance = visibleText || '（老师展示了一张辅助讲图）';
+        const createTeacherMessage = () => msg('teacher', visibleText, image ? {
+          image: {
+            ...image.attachment,
+            // 待发预览与气泡分持两个 URL：页面卸载可立即收回预览，不会截断在飞识图。
+            objectUrl: URL.createObjectURL(image.blob),
+          },
+        } : undefined);
+        let teacherMsg: ChatMessage | null = null;
+        let teacherAccepted = false;
+        set((s) => s.live?.sessionId === sessionId ? {
+          live: { ...s.live, busy: true, mood: 'thinking', lookupChecklistId: null },
         } : {});
 
         // 入口守门:这一轮若是「套答案/角色反转/窃取提示词」而非讲课,当场婉拒,
         // 不进评估/导演/渲染链,不推进任何状态(检查清单命中、误区判定一概不发生)。
-        if (isExtractionAttempt(text)) {
-          set((s) => s.live && s.live.sessionId === sessionId ? {
-            live: {
-              ...s.live, busy: false, mood: 'confused',
-              messages: [...s.live.messages, msg('xiaobai', DEFLECTION_LINE, { mood: 'confused' })],
-            },
-          } : {});
-          return;
+        if (isExtractionAttempt(visibleText)) {
+          teacherMsg = createTeacherMessage();
+          set((s) => {
+            if (!s.live || s.live.sessionId !== sessionId || !teacherMsg) return {};
+            teacherAccepted = true;
+            return {
+              live: {
+                ...s.live, busy: false, mood: 'confused',
+                messages: [
+                  ...s.live.messages,
+                  teacherMsg,
+                  msg('xiaobai', DEFLECTION_LINE, { mood: 'confused' }),
+                ],
+              },
+            };
+          });
+          if (!teacherAccepted && teacherMsg.image) URL.revokeObjectURL(teacherMsg.image.objectUrl);
+          return { accepted: teacherAccepted };
         }
 
         try {
+          const description = image ? await describeTeachingImage(image.blob, settings) : null;
+          if (get().live?.sessionId !== sessionId) return { accepted: false, error: 'teaching-stale' };
+          const privateUtterance = description
+            ? privateImageUtterance(visibleText, description)
+            : visibleText;
+          teacherMsg = createTeacherMessage();
+          const privateTeacherMsg: ChatMessage = { ...teacherMsg, text: privateUtterance };
+          set((s) => {
+            if (!s.live || s.live.sessionId !== sessionId || !teacherMsg) return {};
+            teacherAccepted = true;
+            return { live: { ...s.live, messages: [...s.live.messages, teacherMsg] } };
+          });
+          if (!teacherAccepted) {
+            if (teacherMsg.image) URL.revokeObjectURL(teacherMsg.image.objectUrl);
+            return { accepted: false, error: 'teaching-stale' };
+          }
+
           const state = get().topicState(topic.topicId);
           const g = get().global;
           const lastXiaobaiText = [...live.messages].reverse()
             .find((message) => message.role === 'xiaobai')?.text ?? null;
-          const evalResult = await evaluate({
-            utterance: text, lastXiaobaiText, topic, state,
+          const privateEval = await evaluate({
+            utterance: privateUtterance, lastXiaobaiText, topic, state,
             pendingMcId: live.pendingMcId, settings,
           });
+          const evalResult = image ? privateEvalToRecord(privateEval, visibleText) : privateEval;
           // 长 await 期间用户可能已退出教室/开启新会话:陈旧续体不得写入事件流与新会话
-          if (get().live?.sessionId !== sessionId) return;
+          if (get().live?.sessionId !== sessionId) return { accepted: true };
           const decision = decide({
             evalResult, topic, state, global: g, mode: live.mode,
-            pendingMcId: live.pendingMcId, turn: live.traces.length, utterance: text,
+            pendingMcId: live.pendingMcId, turn: live.traces.length, utterance: safeUtterance,
           });
 
           // 复习模式:纠正成功即复习通过
@@ -251,16 +330,24 @@ export const useAppStore = create<AppState>()(
           });
 
           const stateAfter = get().topicState(topic.topicId);
-          const card = {
+          const recordCard = {
             ...decision.card,
             recentTeacherTerms: extractTeacherTerms([...live.messages, teacherMsg], topic),
           };
+          const privateMessages = [...live.messages, privateTeacherMsg];
+          const privateCard = {
+            ...decision.card,
+            paraphraseSource: decision.card.paraphraseSource === safeUtterance
+              ? privateUtterance
+              : decision.card.paraphraseSource,
+            recentTeacherTerms: extractTeacherTerms(privateMessages, topic),
+          };
           const speak = await speakXiaobai({
-            card, topic, state: stateAfter,
-            recentMessages: [...live.messages, teacherMsg],
+            card: privateCard, topic, state: stateAfter,
+            recentMessages: privateMessages,
             settings, seed: live.traces.length + 1,
           });
-          if (get().live?.sessionId !== sessionId) return;
+          if (get().live?.sessionId !== sessionId) return { accepted: true };
 
           const shouldCueExam = decision.examReady === true && live.examCuedAt === undefined;
           const newMessages: ChatMessage[] = [
@@ -277,14 +364,14 @@ export const useAppStore = create<AppState>()(
               busy: false,
               mood: shouldCueExam ? 'happy' : speak.mood,
               pendingMcId: decision.pendingMcAfter,
-              lookupChecklistId: decision.action === 'propose_lookup' ? card.targetChecklistId : null,
+              lookupChecklistId: decision.action === 'propose_lookup' ? recordCard.targetChecklistId : null,
               examCuedAt: shouldCueExam ? s.live.traces.length + 1 : s.live.examCuedAt,
               ended: decision.forceEnd,
               messages: [...s.live.messages, ...newMessages],
               traces: [...s.live.traces, {
                 turn: s.live.traces.length + 1,
-                teacherText: text,
-                evalResult, card,
+                teacherText: safeUtterance,
+                evalResult, card: recordCard,
                 xiaobaiText: speak.text,
                 leakageRetries: speak.leakageRetries,
                 t: now(),
@@ -308,13 +395,24 @@ export const useAppStore = create<AppState>()(
               },
             }));
           }
-        } catch {
+          return { accepted: true };
+        } catch (error) {
+          if (!teacherAccepted) {
+            set((s) => s.live?.sessionId === sessionId ? {
+              live: { ...s.live, busy: false, mood: 'confused' },
+            } : {});
+            return {
+              accepted: false,
+              error: error instanceof Error ? error.message : 'vision-failed',
+            };
+          }
           set((s) => s.live && s.live.sessionId === sessionId ? {
             live: {
               ...s.live, busy: false, mood: 'confused',
               messages: [...s.live.messages, msg('xiaobai', '呀,我走神了……老师你刚说到哪了?再讲一遍呗。', { mood: 'confused' })],
             },
           } : {});
+          return { accepted: true };
         }
       },
 
@@ -370,6 +468,7 @@ export const useAppStore = create<AppState>()(
         }], live.sessionId);
 
         set((s) => ({ reports: [...s.reports, report], live: null }));
+        revokeLiveImages(live);
         return report.sessionId;
       },
 
@@ -384,6 +483,7 @@ export const useAppStore = create<AppState>()(
           }], live.sessionId);
         }
         set({ live: null });
+        revokeLiveImages(live);
       },
 
       completePrep: (topicId, correctCount, total) => {
@@ -414,9 +514,12 @@ export const useAppStore = create<AppState>()(
       setPersona: (p) => set((s) => ({ global: { ...s.global, persona: p } })),
       setSettings: (partial) => set((s) => ({ settings: { ...s.settings, ...partial } })),
       setAsrSettings: (partial) => set((s) => ({ asrSettings: { ...s.asrSettings, ...partial } })),
-      resetAll: () => set({
-        global: DEFAULT_GLOBAL, events: [], reports: [], topicStates: {}, live: null,
-      }),
+      resetAll: () => {
+        revokeLiveImages(get().live);
+        set({
+          global: DEFAULT_GLOBAL, events: [], reports: [], topicStates: {}, live: null,
+        });
+      },
     }),
     {
       name: 'xiaobai-store-v1',

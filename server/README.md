@@ -1,8 +1,8 @@
 # 小白同学 · 生产网关
 
-零业务依赖 Node(≥18)网关:静态托管前端 + 密码/邮箱验证码会话 + LLM 代理 +
-语音转写代理 + 按账号学习存档。
-**DeepSeek、OpenRouter(ASR)与 Resend 密钥只存服务器，永远不出现在前端产物里。**
+零业务依赖 Node(≥18)网关:静态托管前端 + 密码/邮箱验证码会话 + LLM/视觉代理 +
+语音转写代理 + 按账号学习存档与成绩单文件。
+**LLM、视觉、OpenRouter(ASR)与 Resend 密钥只存服务器，永远不出现在前端产物里。**
 
 ## 当前部署(2026-07-06,HTTPS 入口 2026-07-13 起)
 
@@ -75,14 +75,19 @@
 - 密码 scrypt 均走异步线程池;未知用户也执行同参数 dummy scrypt。鉴权请求先做
   单 IP 30 次/分钟入场限流，通过后才消耗全局 120 次/分钟额度；并发槽独立限 8，
   鉴权请求体 5 秒绝对超时，避免单一来源或慢速请求拖垮全局登录。
-- `/api/chat` `/api/asr` `/api/state` 均必须登录且已验证邮箱；restricted session 一律返回
+- `/api/chat` `/api/asr` `/api/vision` `/api/state` `/api/transcript*` 均必须登录且已验证邮箱；restricted session 一律返回
   `403 email-verification-required`，只能访问 `/api/me`、登出与上述两个绑定接口。
-- `/api/chat` `/api/asr` `/api/state` 还必须带 ASCII 请求头
+- 上述受保护资源还必须带 ASCII 请求头
   `X-Xiaobai-User: encodeURIComponent(当前用户名)`;解码后与 Cookie 会话账号不一致则
   `401 identity-mismatch`，阻止共享 Cookie 的跨标签页旧账号状态污染新账号。
 - `/api/asr`(2026-07-13 起):语音转写代理。浏览器上传 WAV 原始体(≤8MB),
   网关持 `asrApiKey` 转发 `asrUpstreamUrl`(默认 OpenRouter `/v1/audio/transcriptions`,
   模型 `asrModel` 默认 qwen3-asr-flash);`asrApiKey` 为空 = 功能关闭(503)
+- `/api/vision`:课堂图片理解代理。浏览器上传 JPEG/PNG/WebP 原始体(≤8MB)，网关按魔数
+  验证后转为 data URL 发给 OpenAI 兼容视觉模型，返回 `{description}`，原图不落盘。
+- `/api/transcript`:每账号一份成绩单。支持 PDF/JPEG/PNG/WebP 原始体(≤8MB)，魔数校验；
+  文件与元数据写入 `dataDir/transcripts/<sha256(账号小写)>.{bin,json}`，两个文件均以
+  0600 单文件原子替换，读取时再以大小、类型和 SHA-256 失败关闭校验。
 - `/api/state`(2026-07-13 起):按账号学习存档。GET 取回 / PUT 覆盖(整包 LWW),
   落盘 `dataDir/userdata/<sha256(账号小写)>.json`(0600 原子写,上限 2MB)——
   换设备登录同一账号,学习记录自动还原
@@ -93,10 +98,12 @@
   多维限流先整体检查再原子计数，失败维度不污染其他额度;
   验码还有 IP 窗口与容量上限，IPv6 按 `/64` 聚合。
   聊天按**账号名** 12 次/分钟 + 400 次/日(重复登录铸新会话无法绕过);
-  转写按账号 10 次/分钟 + 300 次/日;存档读写按账号 30 次/分钟
+  视觉按账号 8 次/分钟 + 120 次/日、全局最多 4 个并发；转写按账号 10 次/分钟 +
+  300 次/日；存档与成绩单资源各按账号 30 次/分钟。视觉与成绩单上传体有独立
+  15 秒绝对超时；成绩单 PUT 还限全局 4 个、每账号 1 个同时在飞
 - **部署注意**:systemd 单元 `ProtectSystem=strict` 把 `/opt/xiaobai` 挂只读,
   注册状态与预置账号邮箱 overlay 写在 `StateDirectory=xiaobai`（即
-  `/var/lib/xiaobai/{registered-users.json,email-bindings.json,password-overrides.json}`），
+  `/var/lib/xiaobai/{registered-users.json,email-bindings.json,password-overrides.json,userdata/,transcripts/}`），
   生产 `config.json` 必须配 `"dataDir": "/var/lib/xiaobai"`;不配 dataDir 时回落
   网关同目录(本地裸跑用)。启动时用独立 probe 文件验证写权限，不重写真实注册表;
   `config.users`、`registered-users.json`、`email-bindings.json` 与 `password-overrides.json`
@@ -113,11 +120,65 @@
   overlay 是该预置账号的运行时权威邮箱，因此即使 `config.users` 原行已有验证邮箱，换绑后也会由
   overlay 覆盖；重启后仍使用新邮箱并重做全局唯一性校验。
 - `config.users` 的密码修改不回写只读配置，而是原子写入
-  `password-overrides.json`：`[{name,salt,hash,changedAt}]`。覆盖只能指向现存预置账号，
+  `password-overrides.json`：`[{name,passwordScheme,salt,hash,changedAt}]`。旧行可缺省
+  `passwordScheme`（按 `scrypt-v1` 读取），新写入统一为 `scrypt-v2`。覆盖只能指向现存预置账号，
   名称、scrypt 凭据、ISO 时间或对象形状任一异常都会 fail-closed 拒绝启动。
 - 任一用户只要配置了 `email` 就必须同时有合法 `emailVerifiedAt`；不再把“管理员写了邮箱但
   没有验证时间”的账号当成已验证。旧配置若已有这类行，发布前应删除该 `email` 让用户登录后补绑，
   或在确认归属后同时补上真实验证时间。
+
+## 图片理解与成绩单 API
+
+视觉代理默认回落既有 `upstreamBaseUrl/upstreamModel/apiKey`。若课堂模型不支持图片，须在
+`config.json` 单独配置支持 OpenAI Chat Completions 图片内容格式的端点：
+
+```json
+{
+  "visionUpstreamUrl": "https://视觉服务.example/v1",
+  "upstreamModelVision": "视觉模型名",
+  "visionApiKey": "仅服务器保存的密钥"
+}
+```
+
+`upstreamModelVision` 可独立留空回落主模型。`visionApiKey` **仅在视觉端点与
+`upstreamBaseUrl` 同源时**才可留空回落主 `apiKey`；异源 `visionUpstreamUrl` 未显式配密钥时
+`/api/vision` 关闭，绝不会把主密钥发给另一域名。视觉端点生产只允许 HTTPS；
+`allowInsecureAuth:true` 时也只额外允许 loopback HTTP 测试端点。上传体限时 15 秒，
+上游请求限时 60 秒，全局最多 4 个同时在飞；服务器只发送一条受控观察任务和图片，
+不接受客户端自定义视觉 prompt。
+
+客户端调用约定：
+
+```text
+POST /api/vision
+Content-Type: image/png | image/jpeg | image/webp
+X-Xiaobai-User: encodeURIComponent(当前用户名)
+Body: 原始图片字节
+→ 200 {"description":"图片中的课堂内容……"}
+
+GET /api/transcript
+→ 200 {"file":null}
+→ 200 {"file":{"name":"成绩单.pdf","type":"application/pdf","size":1234,"updatedAt":"..."}}
+
+PUT /api/transcript
+Content-Type: application/pdf | image/png | image/jpeg | image/webp
+X-File-Name: encodeURIComponent(原始文件名)
+Body: 原始文件字节
+→ 200 {"file":{...}}
+
+GET /api/transcript/file
+→ 原始文件下载
+
+DELETE /api/transcript
+→ 200 {"ok":true}
+```
+
+扩展名不作为文件身份依据，服务器按 PDF/JPEG/PNG/WebP 魔数裁决，同时要求声明的
+`Content-Type` 与检测结果一致。`X-File-Name` 经解码、去路径、去控制/方向字符后，
+强制换成检测类型的扩展名，且只写进元数据，不参与磁盘路径。替换和删除按账号串行；
+二进制与元数据是两个独立原子替换，不声称跨进程崩溃事务性，不一致时会失败关闭并可通过
+重新上传或删除恢复。下载响应为 `no-store`。视觉图片不会写入磁盘，成绩单不会混入
+`/api/state` 学习 JSON。
 
 ## Resend 配置
 
@@ -170,10 +231,11 @@ systemctl status xiaobai
 journalctl -u xiaobai -f
 
 # 新增账号:本地生成哈希 → 填进服务器 config.json 的 users → 重启
-node index.mjs hash '新密码'      # 输出 {name,salt,hash},把 name 改成账号名
+node index.mjs hash '新密码'      # 输出 {name,passwordScheme,salt,hash},把 name 改成账号名
 systemctl restart xiaobai
 
 # 换 DeepSeek 密钥:改 config.json 的 apiKey → systemctl restart xiaobai
+# 单配视觉模型:改 visionUpstreamUrl/upstreamModelVision/visionApiKey → 重启
 # 换 ASR(OpenRouter)密钥:改 config.json 的 asrApiKey → systemctl restart xiaobai
 # 换 Resend 密钥:改 /etc/xiaobai/xiaobai.env 的 RESEND_API_KEY → systemctl restart xiaobai
 
@@ -187,8 +249,9 @@ npm test
 > `coach` 是备课助教「小砚」(备课页右下角宠物),温度恒 0.5、上限 700 token,
 > 尾部护栏已改写为三角色措辞。**下次发布若只发前端不发网关:旧网关把未知 role
 > 按 xiaobai 处理(上限 400 token),且旧护栏措辞只承认「小白/评估器」两角色,
-> 会和助教人设打架、答非所问——发布时记得同步 `scp server/index.mjs` 到
-> `/opt/xiaobai/server/` 并 `systemctl restart xiaobai`。**
+> 会和助教人设打架、答非所问。发布时必须成套同步全部非测试 `.mjs`
+> 运行时文件、`package.json` 与 `check-runtime.mjs`，不能只上传 `index.mjs`；
+> 覆盖前先备份 `/var/lib/xiaobai` 的账号状态 JSON，回滚旧运行时时也要同步恢复旧格式状态。**
 
 ## 重新发布前端
 

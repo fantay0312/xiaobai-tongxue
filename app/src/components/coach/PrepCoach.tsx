@@ -1,17 +1,12 @@
-/**
- * 备课助教「小砚」—— 备课页右下角的墨滴小书童。
- * 点击展开答疑面板;LLM 走 engine/coach(proxy/api),失败或本地模式降级离线锦囊。
- * 只在 /prep 挂载:讲解舱里它就是答案机(防作弊红线),课堂绝不出现。
- * 问答记录按知识点缓存在 engine/coach 的模块级 Map(会话内换页不丢,登出清空,刷新即清)。
- */
+/** 备课页专属桌宠助教；问答按知识点保留于当前会话。 */
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useAppStore } from '../../store/appStore';
-import {
-  appendCoachMessage, askCoach, COACH_QUICK_ASKS, getCoachThread, mockCoachReply,
-  type CoachMessage,
-} from '../../engine/coach';
+import { appendCoachMessage, askCoach, COACH_QUICK_ASKS, getCoachThread, mockCoachReply,
+  type CoachMessage } from '../../engine/coach';
 import type { Topic } from '../../types';
 import { Icon } from '../ui/Icon';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { XiaoyanPet, type XiaoyanPetState } from './XiaoyanPet';
 import s from './coach.module.css';
 
 const uid = () => (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
@@ -19,14 +14,8 @@ const now = () => new Date().toISOString();
 
 /** 首次引导气泡:点开过一次就永久收起 */
 const HINT_KEY = 'xiaobai-coach-hint-done';
-
-const prefersReducedMotion = () =>
-  typeof window !== 'undefined' &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
 /** 已放映过打字机的回复 id(模块级,面板开合/换页不重放) */
 const revealedIds = new Set<string>();
-
 /** 等待期状态轮播:小砚不能干等,要让人看见它在干活 */
 const THINK_LINES = [
   '小砚翻着这门课的备课材料…',
@@ -77,7 +66,7 @@ function CoachTypewriter({ text, animate, onTick, onDone }: {
 export function PrepCoach({ topic }: { topic: Topic }) {
   const settings = useAppStore((st) => st.settings);
   const [open, setOpen] = useState(false);
-  /** 正在等回复的知识点 id:busy 态只作用于所属知识点,换页不锁新页的输入 */
+  /** 正在等回复的知识点 id；同一时刻只发一条，避免跨页回复串扰。 */
   const [busyTid, setBusyTid] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState<CoachMessage[]>(() => getCoachThread(topic.topicId));
@@ -89,10 +78,10 @@ export function PrepCoach({ topic }: { topic: Topic }) {
   const petBtnRef = useRef<HTMLButtonElement>(null);
   /* 长 await 续体必须校验知识点未切换(同 submitTeaching 的 sessionId 纪律) */
   const topicIdRef = useRef(topic.topicId);
+  const reducedMotion = useReducedMotion();
 
   const busy = busyTid === topic.topicId;
-
-  /* 等待期状态轮播(仅 busy 时转) */
+  const inputLocked = busyTid !== null;
   const [thinkIdx, setThinkIdx] = useState(0);
   useEffect(() => {
     if (!busy) return;
@@ -116,9 +105,16 @@ export function PrepCoach({ topic }: { topic: Topic }) {
   /** 当前应放映打字机的回复:最新一条、未放映过的小砚消息 */
   const lastMsg = messages[messages.length - 1];
   const animatingId =
-    lastMsg && lastMsg.role === 'coach' && !revealedIds.has(lastMsg.id) && !prefersReducedMotion()
+    lastMsg && lastMsg.role === 'coach' && !revealedIds.has(lastMsg.id) && !reducedMotion
       ? lastMsg.id
       : null;
+  const petState: XiaoyanPetState = busy
+    ? 'working'
+    : open && animatingId
+      ? 'explaining'
+      : open
+        ? 'listening'
+        : 'idle';
   /* 放映被打断(关面板/换知识点/离开备课页)也算放映过——重开不整条重放 */
   useEffect(() => {
     if (!open || !animatingId) return;
@@ -163,6 +159,7 @@ export function PrepCoach({ topic }: { topic: Topic }) {
     const text = raw.trim();
     if (!text || busyTid !== null) return;
     const tid = topic.topicId;
+    inputRef.current?.focus();
     setDraft('');
     setBusyTid(tid);
     const history = getCoachThread(tid);
@@ -202,6 +199,7 @@ export function PrepCoach({ topic }: { topic: Topic }) {
     <div className={s.root}>
       {open && (
         <section
+          id="prep-coach-panel"
           className={s.panel}
           role="dialog"
           aria-label="备课助教小砚"
@@ -210,7 +208,6 @@ export function PrepCoach({ topic }: { topic: Topic }) {
           }}
         >
           <header className={s.panelHead}>
-            <span className={s.headFace} aria-hidden="true"><PetFace /></span>
             <span className={s.panelName}>小砚 · 备课助教</span>
             <span className={settings.mode === 'mock' ? s.chipOffline : s.chipLive}>
               {settings.mode === 'mock' ? '离线锦囊' : '已连线'}
@@ -220,8 +217,7 @@ export function PrepCoach({ topic }: { topic: Topic }) {
             </button>
           </header>
           <p className={s.panelTopic}>正在陪你备《{topic.title}》——问答不进课堂记录,放心打草稿。</p>
-          {/* 动画区对读屏隐藏:逐字变更 + 状态轮播会把 live region 轰炸成噪音 */}
-          <div className={s.msgList} ref={listRef} aria-hidden="true">
+          <div className={s.msgList} ref={listRef}>
             <div className={`${s.msg} ${s.msgCoach}`}>
               老师好,我是小砚。开场白、讲课顺序、类比、误区试探怎么接——这节课的事都能问我。
             </div>
@@ -246,14 +242,17 @@ export function PrepCoach({ topic }: { topic: Topic }) {
               </div>
             )}
           </div>
-          {/* 读屏通道:忙碌播一次、回复全文播一次 */}
           <div className={s.srOnly} aria-live="polite">
             {busy ? '小砚思考中' : lastCoachText}
           </div>
+          <span id="prep-coach-input-status" className={s.srOnly}>
+            {inputLocked ? (busy ? '小砚正在回复' : '小砚正在处理另一节备课') : '可以提问'}
+          </span>
           {messages.length === 0 && !busy && (
             <div className={s.chips}>
               {COACH_QUICK_ASKS.map((q) => (
-                <button key={q} type="button" className={s.chip} onClick={() => void send(q)}>
+                <button key={q} type="button" className={s.chip} disabled={inputLocked}
+                  onClick={() => void send(q)}>
                   {q}
                 </button>
               ))}
@@ -265,12 +264,17 @@ export function PrepCoach({ topic }: { topic: Topic }) {
               className={s.input}
               rows={1}
               maxLength={800}
-              placeholder="问小砚:这一段怎么讲?"
+              readOnly={inputLocked}
+              aria-disabled={inputLocked}
+              aria-describedby="prep-coach-input-status"
+              aria-label="向备课助教提问"
+              placeholder={busy ? '小砚正在回复…'
+                : inputLocked ? '小砚正在处理另一节备课…' : '问小砚:这一段怎么讲?'}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onKeyDown}
             />
-            <button type="submit" className={s.sendBtn} disabled={busy || !draft.trim()}>
+            <button type="submit" className={s.sendBtn} disabled={inputLocked || !draft.trim()}>
               递上
             </button>
           </form>
@@ -279,63 +283,17 @@ export function PrepCoach({ topic }: { topic: Topic }) {
       {!open && hintOn && (
         <span className={s.hint} aria-hidden="true">备课卡住了?找小砚</span>
       )}
-      <button
+      <XiaoyanPet
         ref={petBtnRef}
-        type="button"
-        className={s.petBtn}
+        state={petState} suppressReply={hintOn}
         data-tour="coach"
         onClick={toggle}
         aria-expanded={open}
+        aria-controls="prep-coach-panel"
+        aria-haspopup="dialog"
         aria-label={open ? '收起备课助教' : '召唤备课助教小砚'}
         title="小砚 · 备课助教"
-      >
-        <PetSvg />
-      </button>
-    </div>
-  );
-}
-
-/** 墨滴小书童:趴在砚台上的一滴墨,呼吸浮动 + 眨眼 */
-function PetSvg() {
-  return (
-    <svg className={s.pet} viewBox="0 0 64 64" aria-hidden="true">
-      {/* 砚台 */}
-      <rect x="13" y="49" width="38" height="8" rx="4" fill="currentColor" opacity="0.28" />
-      <ellipse cx="32" cy="50" rx="15" ry="2.6" fill="currentColor" opacity="0.36" />
-      {/* 墨滴本体(呼吸浮动) */}
-      <g className={s.petBody}>
-        <path
-          d="M32 10 C 26 19, 16 25, 16 36.5 A 16 15.5 0 0 0 48 36.5 C 48 25, 38 19, 32 10 Z"
-          fill="currentColor"
-        />
-        {/* 高光 */}
-        <ellipse cx="25" cy="27" rx="3.4" ry="5" fill="#fff" opacity="0.18" transform="rotate(-18 25 27)" />
-        {/* 眼睛(眨) */}
-        <g className={s.petEyes}>
-          <ellipse cx="26" cy="37" rx="2.5" ry="3.4" fill="var(--paper, #f6f1e5)" />
-          <ellipse cx="38" cy="37" rx="2.5" ry="3.4" fill="var(--paper, #f6f1e5)" />
-        </g>
-        {/* 腮红 */}
-        <circle cx="21.5" cy="42" r="2" fill="var(--cinnabar, #bc4630)" opacity="0.4" />
-        <circle cx="42.5" cy="42" r="2" fill="var(--cinnabar, #bc4630)" opacity="0.4" />
-        {/* 嘴 */}
-        <path d="M30 43.5 q2 1.8 4 0" stroke="var(--paper, #f6f1e5)" strokeWidth="1.3" strokeLinecap="round" fill="none" />
-      </g>
-    </svg>
-  );
-}
-
-/** 面板头像:同一只小砚的头部特写 */
-function PetFace() {
-  return (
-    <svg viewBox="14 18 36 32" aria-hidden="true">
-      <path
-        d="M32 10 C 26 19, 16 25, 16 36.5 A 16 15.5 0 0 0 48 36.5 C 48 25, 38 19, 32 10 Z"
-        fill="currentColor"
       />
-      <ellipse cx="26" cy="37" rx="2.5" ry="3.4" fill="var(--paper, #f6f1e5)" />
-      <ellipse cx="38" cy="37" rx="2.5" ry="3.4" fill="var(--paper, #f6f1e5)" />
-      <path d="M30 43.5 q2 1.8 4 0" stroke="var(--paper, #f6f1e5)" strokeWidth="1.3" strokeLinecap="round" fill="none" />
-    </svg>
+    </div>
   );
 }

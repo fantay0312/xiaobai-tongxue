@@ -36,6 +36,7 @@ function harness(options = {}) {
 test('normalizeEmail accepts conservative addresses and canonicalizes case', () => {
   assert.equal(normalizeEmail(' Teacher.Name+os@Example.COM '), 'teacher.name+os@example.com');
   assert.equal(normalizeEmail('a@sub.example.com'), 'a@sub.example.com');
+  assert.equal(normalizeEmail('tag!value@b.c'), 'tag!value@b.c');
   for (const invalid of ['', 'a@localhost', '.a@example.com', 'a..b@example.com', 'a@@example.com']) {
     assert.equal(normalizeEmail(invalid), null);
   }
@@ -58,6 +59,35 @@ test('Resend adapter sends fixed transactional payload and required headers', as
   const body = JSON.parse(request.init.body);
   assert.deepEqual(body.to, ['teacher@example.com']);
   assert.match(body.text, /012345/);
+});
+
+test('Resend adapter preserves bounded redacted diagnostics for non-OK responses', async () => {
+  const sender = createResendSender({
+    apiKey: 'test-secret',
+    from: '小白同学 <noreply@example.com>',
+    fetchImpl: async () => ({
+      ok: false,
+      status: 422,
+      text: async () => `invalid recipient tag!value@b.c code=012345 `
+        + `{"code":"654321","token":"re_${'s'.repeat(80)}"} `
+        + `{"password":"hunter2"} naked 111222 ${'x'.repeat(300)}`,
+    }),
+  });
+  await assert.rejects(
+    () => sender({
+      email: 'teacher@example.com', code: '012345', purpose: 'login', idempotencyKey: 'otp-1',
+    }),
+    (error) => {
+      assert.match(error.message, /resend-request-failed:422/);
+      assert.match(error.message, /\[redacted-email\]/);
+      assert.doesNotMatch(
+        error.message,
+        /tag!value@b\.c|012345|654321|111222|re_s{20}|hunter2/,
+      );
+      assert.ok(error.message.length < 280);
+      return true;
+    },
+  );
 });
 
 test('code is bound to email and purpose, then consumed exactly once', async () => {
@@ -209,7 +239,7 @@ test('global sender limit protects Resend from distributed bursts', async () => 
   assert.equal(limited.error, 'too-many-attempts');
 });
 
-test('suppressed login request has the same response without sending or storing a code', async () => {
+test('suppressed login and register requests respond normally without storing a code', async () => {
   let delayed = 0;
   const { auth, sent } = harness({ sleep: async (ms) => { delayed = ms; } });
   const result = await auth.requestCode({
@@ -220,6 +250,14 @@ test('suppressed login request has the same response without sending or storing 
   assert.equal(sent.length, 0);
   assert.equal(auth.consumeCode({
     email: 'missing@example.com', purpose: 'login', code: '123456', ip: 'ip-1',
+  }).ok, false);
+  const register = await auth.requestCode({
+    email: 'occupied@example.com', purpose: 'register', ip: 'ip-2', deliver: false,
+  });
+  assert.deepEqual(register, result);
+  assert.equal(sent.length, 0);
+  assert.equal(auth.consumeCode({
+    email: 'occupied@example.com', purpose: 'register', code: '123456', ip: 'ip-2',
   }).ok, false);
 });
 
@@ -270,6 +308,36 @@ test('slow sender is not delayed again after exceeding the jittered minimum', as
   assert.equal(result.ok, true);
   assert.equal(elapsed, 650);
   assert.deepEqual(sleeps, []);
+});
+
+test('opaque delivery returns on the shared delay and stores the code only after send succeeds', async () => {
+  let deliveredCode = '';
+  let finishDelivery;
+  const sleeps = [];
+  const { auth } = harness({
+    sendCode: ({ code }) => new Promise((resolve) => {
+      deliveredCode = code;
+      finishDelivery = resolve;
+    }),
+    jitterRandomInt: () => 100,
+    sleep: async (ms) => { sleeps.push(ms); },
+  });
+
+  const result = await auth.requestCode({
+    email: 'opaque@example.com', purpose: 'login', ip: 'ip-1',
+    deliver: true, opaqueDelivery: true,
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(sleeps, [500]);
+  assert.equal(auth.consumeCode({
+    email: 'opaque@example.com', purpose: 'login', code: deliveredCode, ip: 'ip-1',
+  }).ok, false);
+
+  finishDelivery();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(auth.consumeCode({
+    email: 'opaque@example.com', purpose: 'login', code: deliveredCode, ip: 'ip-1',
+  }).ok, true);
 });
 
 test('fast sender failure is padded to the same jittered minimum', async () => {

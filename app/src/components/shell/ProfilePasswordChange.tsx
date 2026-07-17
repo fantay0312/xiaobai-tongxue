@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import fieldStyles from '../../pages/login/EmailCodeField.module.css';
+import { mapPasswordIssueField, type Issue } from '../../hooks/useAuthForm';
 import { useAuthStore, type AuthField } from '../../store/authStore';
 import styles from './ProfileEmailChange.module.css';
 
@@ -8,14 +9,8 @@ interface ProfilePasswordChangeProps {
   onSuccess: () => void;
 }
 
-type Issue = { field: AuthField; message: string };
-
 const ID_PREFIX = 'profile-password-change';
 const FEEDBACK_ID = `${ID_PREFIX}-feedback`;
-
-function passwordIssueField(field: AuthField | undefined): AuthField {
-  return field === 'password' ? 'newPassword' : field ?? 'form';
-}
 
 export function ProfilePasswordChange({ onCancel, onSuccess }: ProfilePasswordChangeProps) {
   const changePassword = useAuthStore((state) => state.changePassword);
@@ -71,7 +66,7 @@ export function ProfilePasswordChange({ onCancel, onSuccess }: ProfilePasswordCh
     setChanging(false);
     if (!result.ok) {
       setIssue({
-        field: passwordIssueField(result.field),
+        field: mapPasswordIssueField(result.field),
         message: result.message ?? '密码更改失败，请稍后再试',
       });
       return;

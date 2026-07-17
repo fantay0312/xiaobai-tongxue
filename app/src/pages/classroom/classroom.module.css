@@ -310,6 +310,26 @@
   overflow-wrap: anywhere;
   line-height: 1.8;
 }
+.bubbleTWithImage {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gap-hair);
+  padding: 0.35rem;
+}
+.teacherImage {
+  display: block;
+  inline-size: auto;
+  max-inline-size: min(100%, 24rem);
+  block-size: auto;
+  max-block-size: 17rem;
+  object-fit: contain;
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  background: var(--paper);
+}
+.teacherText { display: block; }
+.bubbleTWithImage .teacherText { padding: 0.15rem 0.45rem 0.35rem; }
 /* 纸便签贴在黑板上,一张张微微歪着(交替倾角;气泡无 hover 变换,静态 transform 安全) */
 .rowT:nth-child(odd) .bubbleT { transform: rotate(0.35deg); }
 .rowT:nth-child(even) .bubbleT { transform: rotate(-0.3deg); }
@@ -487,8 +507,16 @@
   padding: var(--gap-tight) clamp(1rem, 3vw, 2.5rem);
   align-items: stretch;
 }
+.inputCompose {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+}
 .input {
   flex: 1;
+  width: 100%;
   background: var(--paper);
   color: var(--ink);
   border: 1px solid var(--line-strong);
@@ -505,6 +533,59 @@
 }
 .input:disabled { opacity: 0.55; }
 .input::placeholder { color: var(--ink-faint); }
+.imageDraft {
+  display: grid;
+  grid-template-columns: 4.8rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gap-tight);
+  padding: 0.35rem 0.45rem;
+  background: var(--paper-shade);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
+}
+.imageDraftThumb {
+  display: block;
+  width: 4.8rem;
+  height: 3.4rem;
+  object-fit: cover;
+  border-radius: var(--radius-tag);
+  border: 1px solid var(--paper-edge);
+  background: var(--paper);
+}
+.imageDraftMeta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+.imageDraftMeta strong {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 500;
+}
+.imageDraftMeta small { color: var(--ink-faint); font-size: var(--fs-tiny); }
+.imageRemove {
+  align-self: stretch;
+  padding-inline: 0.65rem;
+  background: none;
+  color: var(--ink-soft);
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  font-size: var(--fs-tiny);
+  transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+}
+.imageRemove:hover:enabled { color: var(--ink); border-color: var(--line-strong); }
+.imageRemove:disabled { opacity: 0.55; cursor: default; }
+.imageStatus {
+  min-height: 1.2em;
+  color: var(--ink-soft);
+  font-size: var(--fs-tiny);
+  line-height: 1.4;
+}
+.fileInput { display: none; }
 .inputSide {
   display: flex;
   flex-direction: column;
@@ -537,7 +618,8 @@
   gap: var(--gap-hair);
 }
 
-/* 麦克风:青描边幽灵钮,与实心发送钮同高同族 */
+/* 图片/拍照/麦克风:青描边幽灵钮,与实心发送钮同高同族 */
+.mediaBtn,
 .micBtn {
   display: inline-flex;
   align-items: center;
@@ -557,8 +639,12 @@
     color var(--t-fast) var(--ease-out),
     transform var(--t-fast) var(--ease-out);
 }
+.mediaBtn { font-family: var(--font-display); white-space: nowrap; }
+.mediaBtn:hover:enabled,
 .micBtn:hover:enabled { background: var(--azure-wash); transform: translateY(-1px); }
+.mediaBtn:active:enabled,
 .micBtn:active:enabled { transform: translateY(1px); }
+.mediaBtn:disabled,
 .micBtn:disabled { opacity: 0.55; cursor: default; }
 
 /* 采音中:钮面转朱砂(实时采音提醒属警示语义),红点用 --ease-loop 呼吸 */
@@ -761,6 +847,15 @@
   .plateRow:nth-of-type(n + 3) { display: none; }
   .boardObj { margin: var(--gap-tight) var(--gap-tight) 0; }
   .stream { border-width: 5px; padding: var(--gap-tight); }
-  .inputBar { padding-bottom: max(var(--gap-tight), env(safe-area-inset-bottom)); }
+  .inputBar {
+    flex-direction: column;
+    padding-bottom: max(var(--gap-tight), env(safe-area-inset-bottom));
+  }
+  .inputSide { flex-direction: row; align-items: center; }
+  .sideBtns { margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+  .imageDraft { grid-template-columns: 4.2rem minmax(0, 1fr) auto; }
+  .imageDraftThumb { width: 4.2rem; height: 3.2rem; }
+  .bubbleT { max-width: 90%; }
+  .teacherImage { max-block-size: 13rem; }
   .sendBtn { padding-inline: 0.8rem; }
 }

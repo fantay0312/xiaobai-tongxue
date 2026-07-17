@@ -43,10 +43,10 @@
 
 .dialog::backdrop {
   background: color-mix(in oklab, var(--ink) 40%, transparent);
-  animation: backdropIn var(--t-med) var(--ease-out) backwards;
+  animation: backdrop-in var(--t-med) var(--ease-out) backwards;
 }
 
-@keyframes backdropIn {
+@keyframes backdrop-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }

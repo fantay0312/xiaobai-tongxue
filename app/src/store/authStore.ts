@@ -452,7 +452,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword, newPassword }),
       }, true);
-      if (!response.ok) return await apiFailure(response, `密码更改失败（${response.status}）`);
+      if (!response.ok) {
+        if (response.status >= 500 && queuedRefresh === null) queuedRefresh = false;
+        return await apiFailure(response, `密码更改失败（${response.status}）`);
+      }
       const payload = await readPayload(response);
       if (generation !== currentAuthEpoch()) return supersededAuthResult();
       const user = userName(payload, get().user ?? '');

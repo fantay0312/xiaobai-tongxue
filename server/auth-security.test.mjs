@@ -15,6 +15,7 @@ import {
   userHasVerifiedEmail,
   validateUserSets,
 } from './auth-security.mjs';
+import { PASSWORD_SCHEME_CURRENT } from './credential-format.mjs';
 
 function user(name, email) {
   return {
@@ -186,7 +187,33 @@ test('password service performs the same derivation for known and unknown users'
   const known = { salt: 'a'.repeat(32), hash: Buffer.alloc(64, 9).toString('hex') };
   assert.equal(await service.verify(known, 'password'), true);
   assert.equal(await service.verify(null, 'password'), false);
-  assert.equal(calls, 2);
+  assert.equal(calls, 4);
+});
+
+test('password service preserves legacy verification and versions stronger new hashes', async () => {
+  const calls = [];
+  const derive = async (_password, _salt, length, parameters) => {
+    calls.push(parameters);
+    return Buffer.alloc(length, 7);
+  };
+  const service = createPasswordService({ derive, dummyHash: Buffer.alloc(64, 4) });
+  const legacy = { salt: 'a'.repeat(32), hash: Buffer.alloc(64, 7).toString('hex') };
+  const current = { ...legacy, passwordScheme: PASSWORD_SCHEME_CURRENT };
+
+  assert.equal(await service.verify(legacy, 'password'), true);
+  assert.equal(await service.verify(current, 'password'), true);
+  assert.equal(service.needsRehash(legacy), true);
+  assert.equal(service.needsRehash(current), false);
+  assert.equal(calls[0].N, 2 ** 14);
+  assert.ok(calls[1].N > calls[0].N);
+  assert.equal(calls[2].N, calls[0].N);
+  assert.equal(calls[3].N, calls[1].N);
+
+  const hashed = await service.hash('new-password');
+  assert.equal(hashed.passwordScheme, PASSWORD_SCHEME_CURRENT);
+  assert.match(hashed.salt, /^[0-9a-f]{32}$/);
+  assert.match(hashed.hash, /^[0-9a-f]{128}$/);
+  assert.ok(calls.at(-1).N > 2 ** 14);
 });
 
 test('auth gate enforces concurrency and minute budgets atomically', () => {

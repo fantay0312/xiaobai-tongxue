@@ -10,6 +10,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type ChangeEvent,
   type KeyboardEvent,
   type PointerEvent,
 } from 'react';
@@ -25,6 +26,14 @@ import { useDocTitle } from '../../hooks/useDocTitle';
 // 语音转写与录音都是浏览器专用模块,按路径直引,不走 engine barrel
 import { transcribe } from '../../engine/asr';
 import { blobToWav16k, startRecording, type Recorder } from '../../lib/audio';
+import {
+  IMAGE_INPUT_ACCEPT,
+  imageAttachmentErrorHint,
+  prepareImageAttachment,
+  revokeImageAttachment,
+  type PreparedImageAttachment,
+} from '../../lib/imageAttachment';
+import { visionErrorHint } from '../../lib/vision';
 import s from './classroom.module.css';
 
 // 讲课进行中「不给学生看牌」:导演动作(误区注入/开窍复述/救援层级)一律不在现场显示——
@@ -61,7 +70,7 @@ function buildTeachTour(mode: SessionMode): TourStep[] {
     {
       target: '[data-tour="input"]',
       title: '开讲',
-      text: '在这里把知识讲给我听,Enter 发送。用老师自己的话讲,别背书——背书我听不懂。',
+      text: '在这里把知识讲给我听，也可选图或拍照辅助讲解，Enter 发送。用老师自己的话讲，别背书——背书我听不懂。',
     },
     {
       target: '[data-tour="mic"]',
@@ -300,6 +309,27 @@ function XiaobaiBubble({ m, animate, onTick, onDone }: {
   );
 }
 
+function TeacherBubble({ message, golden }: { message: ChatMessage; golden: boolean }) {
+  return (
+    <div className={`${s.rowT} ${golden ? s.rowGold : ''}`}>
+      <div className={`${s.bubbleT} ${message.image ? s.bubbleTWithImage : ''}`}>
+        {message.image ? (
+          <img
+            className={s.teacherImage}
+            src={message.image.objectUrl}
+            width={message.image.width}
+            height={message.image.height}
+            alt="老师本轮上传的辅助讲图"
+            decoding="async"
+          />
+        ) : null}
+        {message.text ? <span className={s.teacherText}>{message.text}</span> : null}
+      </div>
+      {golden ? <span className={s.goldNote}>﹝小白把这句记进小本本了﹞</span> : null}
+    </div>
+  );
+}
+
 export default function ClassroomPage() {
   const { topicId = '' } = useParams();
   const [sp] = useSearchParams();
@@ -324,6 +354,9 @@ export default function ClassroomPage() {
   const demoLines = demoEnabled ? getDemoScript(topicId) : [];
 
   const [draft, setDraft] = useState('');
+  const [pendingImage, setPendingImage] = useState<PreparedImageAttachment | null>(null);
+  const [imagePreparing, setImagePreparing] = useState(false);
+  const [imageHint, setImageHint] = useState('');
   const [demoOpen, setDemoOpen] = useState(false);
   const [typingNow, setTypingNow] = useState(false);
   const [tapMood, setTapMood] = useState<XiaobaiMood | null>(null);
@@ -342,7 +375,40 @@ export default function ClassroomPage() {
   const finishedRef = useRef(new Set<string>());
   const streamRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const pendingImageRef = useRef<PreparedImageAttachment | null>(null);
+  const imageTaskRef = useRef(0);
+  const imageTopicRef = useRef(topicId);
+  const disposedRef = useRef(false);
+  const sendingRef = useRef(false);
+  const sendGenerationRef = useRef(0);
   const tapTimerRef = useRef(0);
+
+  useEffect(() => {
+    // React StrictMode 会在开发环境执行 setup→cleanup→setup，每次 setup 都要恢复挂载态。
+    disposedRef.current = false;
+    return () => {
+      disposedRef.current = true;
+      imageTaskRef.current += 1;
+      sendGenerationRef.current += 1;
+      sendingRef.current = false;
+      if (pendingImageRef.current) revokeImageAttachment(pendingImageRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (imageTopicRef.current === topicId) return;
+    imageTopicRef.current = topicId;
+    imageTaskRef.current += 1;
+    sendGenerationRef.current += 1;
+    sendingRef.current = false;
+    if (pendingImageRef.current) revokeImageAttachment(pendingImageRef.current);
+    pendingImageRef.current = null;
+    setPendingImage(null);
+    setImagePreparing(false);
+    setImageHint('');
+  }, [topicId]);
 
   useEffect(() => {
     if (live?.busy) {
@@ -409,17 +475,81 @@ export default function ClassroomPage() {
     );
   }
 
-  const canSend = !live.busy && !live.ended && draft.trim().length > 0;
-  const send = () => {
-    if (!canSend) return;
+  const replacePendingImage = (next: PreparedImageAttachment | null, revokePrevious = true) => {
+    const previous = pendingImageRef.current;
+    if (revokePrevious && previous && previous !== next) revokeImageAttachment(previous);
+    pendingImageRef.current = next;
+    setPendingImage(next);
+  };
+  const chooseImage = async (file: File | undefined) => {
+    if (!file || live.busy || imagePreparing) return;
+    const task = imageTaskRef.current + 1;
+    imageTaskRef.current = task;
+    setImagePreparing(true);
+    setImageHint('正在把图片夹进讲义…');
+    try {
+      const prepared = await prepareImageAttachment(file);
+      if (disposedRef.current || imageTaskRef.current !== task) {
+        revokeImageAttachment(prepared);
+        return;
+      }
+      replacePendingImage(prepared);
+      setImageHint('图片已夹好，可以配上讲解再发');
+    } catch (error) {
+      if (!disposedRef.current && imageTaskRef.current === task) {
+        setImageHint(imageAttachmentErrorHint(error));
+      }
+    } finally {
+      if (!disposedRef.current && imageTaskRef.current === task) setImagePreparing(false);
+    }
+  };
+  const onImageSelected = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+    void chooseImage(file);
+  };
+  const removePendingImage = () => {
+    if (live.busy || imagePreparing) return;
+    replacePendingImage(null);
+    setImageHint('已移除辅助讲图');
+    inputRef.current?.focus();
+  };
+
+  const canSend = !live.busy && !live.ended && !imagePreparing
+    && (draft.trim().length > 0 || pendingImage !== null);
+  const send = async () => {
+    if (!canSend || sendingRef.current) return;
+    sendingRef.current = true;
+    const generation = sendGenerationRef.current + 1;
+    sendGenerationRef.current = generation;
+    const sessionId = live.sessionId;
     const text = draft;
-    setDraft('');
-    void submitTeaching(text);
+    const image = pendingImageRef.current ?? undefined;
+    if (!image) setDraft('');
+    else setImageHint('小白正在看这张图…');
+    try {
+      const result = await submitTeaching(text, image);
+      const stillCurrent = !disposedRef.current
+        && sendGenerationRef.current === generation
+        && useAppStore.getState().live?.sessionId === sessionId;
+      if (!stillCurrent) return;
+      if (result.accepted) {
+        // 等待期间用户可能点了演示话术；新草稿不能被旧请求清掉。
+        setDraft((current) => current === text ? '' : current);
+        if (image && pendingImageRef.current === image) replacePendingImage(null);
+        setImageHint('');
+        return;
+      }
+      if (!image) setDraft((current) => current || text);
+      if (image) setImageHint(visionErrorHint(result.error));
+    } finally {
+      if (sendGenerationRef.current === generation) sendingRef.current = false;
+    }
   };
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      send();
+      void send();
     }
   };
 
@@ -483,6 +613,8 @@ export default function ClassroomPage() {
   const finishLabel = mode === 'review' ? '完成温故' : '送小白赴考';
   const finishIcon = mode === 'review' ? 'pen' : 'route';
   const examCued = mode !== 'review' && live.examCuedAt !== undefined;
+  const latestTeacher = [...live.messages].reverse().find((message) => message.role === 'teacher');
+  const isLookingAtImage = live.busy && (pendingImage !== null || latestTeacher?.image !== undefined);
   const displayedMood = live.busy ? 'thinking' : tapMood ?? live.mood;
 
   return (
@@ -548,7 +680,11 @@ export default function ClassroomPage() {
               心情:{MOOD_ZH[live.busy ? 'thinking' : live.mood]} · 已讲 {live.traces.length} 轮
             </div>
           </div>
-          {live.busy && <div className={s.stageThinking}>小白正在琢磨…</div>}
+          {live.busy && (
+            <div className={s.stageThinking}>
+              {isLookingAtImage ? '小白正在看图…' : '小白正在琢磨…'}
+            </div>
+          )}
           <p className={s.stageHint}>
             把知识讲给小白听——它没读过标准答案,你的话就是它的全部教材。
           </p>
@@ -567,16 +703,7 @@ export default function ClassroomPage() {
                   </div>
                 )
               ) : m.role === 'teacher' ? (
-                isGoldenRow(m.text) ? (
-                  <div key={m.id} className={`${s.rowT} ${s.rowGold}`}>
-                    <div className={s.bubbleT}>{m.text}</div>
-                    <span className={s.goldNote}>﹝小白把这句记进小本本了﹞</span>
-                  </div>
-                ) : (
-                  <div key={m.id} className={s.rowT}>
-                    <div className={s.bubbleT}>{m.text}</div>
-                  </div>
-                )
+                <TeacherBubble key={m.id} message={m} golden={isGoldenRow(m.text)} />
               ) : (
                 <XiaobaiBubble
                   key={m.id}
@@ -590,7 +717,7 @@ export default function ClassroomPage() {
             {live.busy && (
               <div className={s.rowX}>
                 <div className={s.thinking}>
-                  小白正在琢磨
+                  {isLookingAtImage ? '小白正在看图' : '小白正在琢磨'}
                   <span className={s.dots}><i>.</i><i>.</i><i>.</i></span>
                 </div>
               </div>
@@ -657,22 +784,96 @@ export default function ClassroomPage() {
                     </div>
                   </div>
                 )}
-                <div className={s.inputBar} data-tour="input">
-                  <textarea
-                    ref={inputRef}
-                    className={s.input}
-                    value={draft}
-                    rows={3}
-                    placeholder="把这个知识点讲给小白听……(Enter 发送,Shift+Enter 换行)"
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={onKey}
-                    disabled={live.busy}
-                  />
+                <div className={s.inputBar} data-tour="input" aria-busy={live.busy || imagePreparing}>
+                  <div className={s.inputCompose}>
+                    {pendingImage ? (
+                      <div className={s.imageDraft} role="group" aria-label="待发送的辅助讲图">
+                        <img
+                          className={s.imageDraftThumb}
+                          src={pendingImage.attachment.objectUrl}
+                          width={pendingImage.attachment.width}
+                          height={pendingImage.attachment.height}
+                          alt="待发送的辅助讲图预览"
+                        />
+                        <span className={s.imageDraftMeta}>
+                          <strong>辅助讲图已夹好</strong>
+                          <small>
+                            {pendingImage.attachment.width} × {pendingImage.attachment.height}
+                            {' · '}{Math.max(1, Math.round(pendingImage.attachment.byteSize / 1024))}KB
+                          </small>
+                        </span>
+                        <button
+                          type="button"
+                          className={s.imageRemove}
+                          onClick={removePendingImage}
+                          disabled={live.busy || imagePreparing}
+                          aria-label="移除待发送的辅助讲图"
+                        >
+                          移除
+                        </button>
+                      </div>
+                    ) : null}
+                    <textarea
+                      ref={inputRef}
+                      className={s.input}
+                      value={draft}
+                      rows={3}
+                      placeholder="把知识点讲给小白听，也可附图或拍照……"
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={onKey}
+                      disabled={live.busy}
+                      aria-describedby={imageHint ? 'classroom-image-status' : undefined}
+                    />
+                    {imageHint ? (
+                      <span id="classroom-image-status" className={s.imageStatus} role="status">
+                        {imageHint}
+                      </span>
+                    ) : null}
+                  </div>
                   <div className={s.inputSide}>
-                    <span className={s.count}>{draft.length} 字</span>
+                    <span className={s.count}>
+                      {imagePreparing ? '图片处理中…' : `${draft.length} 字${pendingImage ? ' · 1 图' : ''}`}
+                    </span>
                     <div className={s.sideBtns}>
+                      <input
+                        ref={galleryInputRef}
+                        className={s.fileInput}
+                        type="file"
+                        accept={IMAGE_INPUT_ACCEPT}
+                        onChange={onImageSelected}
+                        tabIndex={-1}
+                      />
+                      <input
+                        ref={cameraInputRef}
+                        className={s.fileInput}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={onImageSelected}
+                        tabIndex={-1}
+                      />
+                      <button
+                        type="button"
+                        className={s.mediaBtn}
+                        onClick={() => galleryInputRef.current?.click()}
+                        disabled={live.busy || imagePreparing}
+                        title="从相册选一张辅助讲图"
+                      >
+                        <Icon name="image" size={15} />
+                        图片
+                      </button>
+                      <button
+                        type="button"
+                        className={s.mediaBtn}
+                        onClick={() => cameraInputRef.current?.click()}
+                        disabled={live.busy || imagePreparing}
+                        title="拍照作为辅助讲图"
+                      >
+                        <Icon name="camera" size={15} />
+                        拍照
+                      </button>
                       <MicButton
-                        disabled={live.ended}
+                        disabled={live.ended || live.busy || imagePreparing}
                         onText={(text) => {
                           setDraft((d) => (d.trim() ? `${d.replace(/\s+$/, '')}\n${text}` : text));
                           inputRef.current?.focus();
@@ -681,7 +882,7 @@ export default function ClassroomPage() {
                       <button
                         type="button"
                         className={s.sendBtn}
-                        onClick={send}
+                        onClick={() => void send()}
                         disabled={!canSend}
                       >
                         <Icon name="send" size={16} />
