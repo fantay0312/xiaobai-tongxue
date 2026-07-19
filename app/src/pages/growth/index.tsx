@@ -14,6 +14,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { LearnEvent, LearnEventType, Persona, SessionMode, SessionReport, XiaobaiMood } from '../../types';
 import { useAppStore } from '../../store/appStore';
 import { getTopic, TOPICS } from '../../data';
+import { STAR_LINKS } from '../../data/starLinks';
 import { deriveAchievements, deriveTeacherRank } from '../../engine/achievements';
 import { nextStep } from '../../engine/journey';
 // 双轨成长引擎:同 achievements/journey 惯例按路径直接 import,不进 engine barrel
@@ -25,7 +26,7 @@ import { XiaobaiLetter } from '../../components/story/XiaobaiLetter';
 import { MemoryPanorama } from '../../components/story/MemoryPanorama';
 import { Icon, type IconName } from '../../components/ui/Icon';
 import { useDocTitle } from '../../hooks/useDocTitle';
-import { KnowledgeMap, type MapNode } from './KnowledgeMap';
+import { KnowledgeMap, type MapNode, type NodeStatus } from './KnowledgeMap';
 import { AchievementWall } from './AchievementWall';
 import s from './growth.module.css';
 
@@ -71,6 +72,24 @@ const EVENT_LABEL: Record<LearnEventType, string> = {
 };
 
 const MODE_LABEL: Record<SessionMode, string> = { teach: '讲解', reteach: '重讲', review: '复习' };
+
+/* 巡天筛选器五态(与星图 NodeStatus 咬合);次序 = 出师→衰减→学习中→未学→未开放 */
+const STATUS_FILTERS: { key: NodeStatus; label: string }[] = [
+  { key: 'mastered', label: '出师' },
+  { key: 'forgotten', label: '衰减待复习' },
+  { key: 'learning', label: '学习中' },
+  { key: 'unlearned', label: '未学' },
+  { key: 'locked', label: '未开放' },
+];
+
+/* 状态→图例色点:复用星图图例的 swatch 配色,筛选器与星链行同一套色语 */
+const STATUS_SWATCH: Record<NodeStatus, string> = {
+  mastered: s.swJade,
+  forgotten: s.swAmber,
+  learning: s.swAzure,
+  unlearned: s.swDust,
+  locked: s.swLocked,
+};
 
 const fmtDateTime = (iso: string) =>
   new Date(iso).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
@@ -189,6 +208,7 @@ export default function GrowthPage() {
   const resetAll = useAppStore((st) => st.resetAll);
 
   const [selected, setSelected] = useState<string | null>(null);
+  const [statusFocus, setStatusFocus] = useState<NodeStatus | null>(null);
   const [oldPages, setOldPages] = useState(false);
   const [reviewBusy, setReviewBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -249,6 +269,22 @@ export default function GrowthPage() {
   const shownNode = selNode ?? lastNodeRef.current;
   const shownEvents = shownNode ? events.filter((e) => e.topicId === shownNode.topic.topicId) : [];
   const forgottenNodes = nodes.filter((n) => n.status === 'forgotten');
+
+  // 巡天筛选器的实时计数:每一态多少颗星,直接从 nodes 数,不新造状态
+  const statusCounts = nodes.reduce(
+    (acc, n) => { acc[n.status] += 1; return acc; },
+    { mastered: 0, forgotten: 0, learning: 0, unlearned: 0, locked: 0 } as Record<NodeStatus, number>,
+  );
+
+  // 选中星的星链邻居(用缓存的 shownNode,折叠动画中不塌空);端点均来自 STAR_LINKS
+  const linkNeighbors = shownNode
+    ? STAR_LINKS.flatMap((l) => {
+      const id = shownNode.topic.topicId;
+      if (l.a === id) return [{ id: l.b, note: l.note }];
+      if (l.b === id) return [{ id: l.a, note: l.note }];
+      return [];
+    })
+    : [];
 
   const mood: XiaobaiMood =
     global.learningLevel >= 5 ? 'proud' : global.topicsMastered > 0 ? 'happy' : PERSONA_MOOD[global.persona];
@@ -534,15 +570,33 @@ export default function GrowthPage() {
           <KnowledgeMap
             nodes={nodes}
             selectedId={selected}
+            statusFocus={statusFocus}
             onSelect={(tid) => setSelected(selected === tid ? null : tid)}
           />
         </div>
-        <div className={s.legendRow}>
-          <span><span className={`${s.swatch} ${s.swJade}`} />出师</span>
-          <span><span className={`${s.swatch} ${s.swAmber}`} />衰减待复习</span>
-          <span><span className={`${s.swatch} ${s.swAzure}`} />学习中</span>
-          <span><span className={`${s.swatch} ${s.swDust}`} />未学</span>
-          <span><span className={`${s.swatch} ${s.swLocked}`} />未开放</span>
+        {/* 图例升为「巡天筛选器」:点一态,余星连线视觉下沉(不卸载,量测/Tab 序稳);
+            再点或点「全览」复位。计数实时派生自 nodes。 */}
+        <div className={s.filterRow} role="group" aria-label="巡天筛选:按状态聚焦星宿">
+          <button
+            type="button"
+            className={s.filterChip}
+            aria-pressed={statusFocus === null}
+            onClick={() => setStatusFocus(null)}
+          >
+            全览 <b className={s.filterCount}>{nodes.length}</b>
+          </button>
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              className={s.filterChip}
+              aria-pressed={statusFocus === f.key}
+              onClick={() => setStatusFocus((cur) => (cur === f.key ? null : f.key))}
+            >
+              <span className={`${s.swatch} ${STATUS_SWATCH[f.key]}`} aria-hidden="true" />
+              {f.label} <b className={s.filterCount}>{statusCounts[f.key]}</b>
+            </button>
+          ))}
         </div>
 
         {/* 遗忘不再是干瘪一行:每个雾里的知识点是一封「小白的来信」(doc §8),
@@ -581,6 +635,33 @@ export default function GrowthPage() {
                     要点 {shownNode.state.hitChecklist.length}/{shownNode.topic.checklist.length}
                   </span>
                 </div>
+                {/* 星链行:这颗星在星图里牵着的邻星,点一枚即跳选(证据链随之切换);
+                    未开放的邻星按星图纪律禁用,不做空跳 */}
+                {linkNeighbors.length > 0 && (
+                  <div className={s.starLinkRow}>
+                    <span className={s.starLinkLabel}>星链</span>
+                    <div className={s.starLinkChips}>
+                      {linkNeighbors.map((nb) => {
+                        const nbNode = nodes.find((n) => n.topic.topicId === nb.id);
+                        const nbStatus = nbNode?.status ?? 'locked';
+                        const nbTitle = nbNode?.topic.title ?? getTopic(nb.id)?.title ?? nb.id;
+                        return (
+                          <button
+                            key={nb.id}
+                            type="button"
+                            className={s.starLinkChip}
+                            disabled={nbStatus === 'locked'}
+                            onClick={() => setSelected(nb.id)}
+                          >
+                            <span className={`${s.swatch} ${STATUS_SWATCH[nbStatus]}`} aria-hidden="true" />
+                            <span className={s.starLinkTitle}>{nbTitle}</span>
+                            <span className={s.starLinkNote}>{nb.note}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 {shownNode.status === 'forgotten' && (
                   <button
                     type="button"

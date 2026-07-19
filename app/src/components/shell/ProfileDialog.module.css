@@ -1,29 +1,37 @@
+/* 私章:书斋名帖上的落款方印 —— 印泥红走 --seal-red 别名(印章豁免,勿写警示 --cinnabar) */
 .mark {
   display: grid;
   place-items: center;
   width: 4rem;
   height: 4rem;
   flex: none;
-  border: 1px solid color-mix(in oklab, var(--azure) 48%, var(--paper-edge));
-  border-radius: 50%;
-  background: var(--azure);
-  box-shadow: inset 0 0 0 3px var(--paper), 0 3px 12px var(--azure-wash);
+  border: 0;
+  border-radius: var(--radius-s);
+  background: var(--seal-red);
   color: var(--paper);
   font-family: var(--font-display);
   font-size: var(--fs-title);
   font-weight: 700;
   line-height: 1;
+  transform: rotate(-3deg);
+  /* 白文印面:细白纸内圈钤在印底里,像全站其它私章 */
+  box-shadow:
+    inset 0 0 0 3px var(--seal-red),
+    inset 0 0 0 4px color-mix(in oklab, var(--paper) 32%, transparent),
+    var(--shadow-paper);
 }
 
 .mark[data-compact='true'] {
   width: 1.9rem;
   height: 1.9rem;
-  box-shadow: inset 0 0 0 2px var(--paper);
   font-size: var(--fs-small);
+  box-shadow:
+    inset 0 0 0 2px var(--seal-red),
+    inset 0 0 0 3px color-mix(in oklab, var(--paper) 30%, transparent);
 }
 
 .dialog {
-  width: min(32rem, calc(100vw - 2 * var(--gap)));
+  width: min(34rem, calc(100vw - 2 * var(--gap)));
   max-height: min(42rem, calc(100dvh - 2 * var(--gap)));
   margin: auto;
   padding: 0;
@@ -105,30 +113,44 @@
   scrollbar-width: thin;
 }
 
+/* 名帖芯:丁香/芦苇双色水迹渐入,3px 装裱衬边 + 细紫界栏钤一枚私章 */
 .identity {
+  position: relative;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--gap);
-  padding: var(--gap) clamp(var(--gap), 5vw, var(--gap-loose));
-  background: var(--paper-warm);
+  padding: clamp(var(--gap), 4vw, var(--gap-loose)) clamp(var(--gap), 5vw, var(--gap-loose)) var(--gap);
   border-bottom: 1px solid var(--paper-edge);
+  background:
+    radial-gradient(20rem 13rem at 8% -18%, var(--lilac-wash), transparent 58%),
+    radial-gradient(22rem 15rem at 100% 128%, var(--reed-wash), transparent 60%),
+    var(--paper-blush);
+  box-shadow:
+    inset 0 0 0 3px var(--paper-blush),
+    inset 0 0 0 4px color-mix(in oklab, var(--paper-edge) 78%, transparent);
 }
 
-.identityCopy { min-width: 0; }
+.identityCopy {
+  min-width: 0;
+  padding-left: var(--gap);
+  border-left: 1px solid color-mix(in oklab, var(--paper-edge) 82%, var(--lilac));
+}
 
+/* 帖眉:小字楷体宽字距,像名帖抬头 */
 .accountKind {
-  margin-bottom: 0.18rem;
+  margin-bottom: 0.28rem;
   color: var(--ink-faint);
+  font-family: var(--font-display);
   font-size: var(--fs-tiny);
-  letter-spacing: 0.12em;
+  letter-spacing: 0.28em;
 }
 
 .userName {
   overflow: hidden;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: var(--fs-sub);
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-overflow: ellipsis;
@@ -136,7 +158,7 @@
 }
 
 .email {
-  margin-top: 0.25rem;
+  margin-top: 0.28rem;
   overflow: hidden;
   color: var(--ink-soft);
   font-size: var(--fs-small);
@@ -144,29 +166,38 @@
   white-space: nowrap;
 }
 
+/* 验证签:锐角小签(朱文小印制式),文字走 -ink 档 */
 .secureBadge,
 .pendingBadge {
-  padding: 0.22rem 0.4rem;
+  align-self: start;
+  padding: 0.24rem 0.46rem;
   border-radius: var(--radius-tag);
+  font-family: var(--font-display);
   font-size: var(--fs-tiny);
+  letter-spacing: 0.08em;
   white-space: nowrap;
 }
 
 .secureBadge {
+  border: 1px solid color-mix(in oklab, var(--jade) 42%, transparent);
   background: var(--jade-wash);
   color: var(--jade-ink);
 }
 
 .pendingBadge {
+  border: 1px solid color-mix(in oklab, var(--cinnabar) 42%, transparent);
   background: var(--cinnabar-wash);
   color: var(--cinnabar);
 }
 
+/* 眉批:退到最轻的一行,左侧一道界线 */
 .intro {
   margin: var(--gap) clamp(var(--gap), 5vw, var(--gap-loose)) 0;
-  color: var(--ink-soft);
-  font-size: var(--fs-small);
-  line-height: 1.75;
+  padding-left: var(--gap-tight);
+  border-left: 2px solid var(--paper-edge);
+  color: var(--ink-faint);
+  font-size: var(--fs-tiny);
+  line-height: 1.7;
 }
 
 .section {
@@ -175,13 +206,27 @@
 
 .section:last-child { margin-bottom: var(--gap); }
 
+/* 题头制式「双线书版式」:小字楷体题 + 2px 墨色短线叠在通栏细线上 */
 .sectionTitle {
-  margin-bottom: var(--gap-hair);
-  color: var(--ink-faint);
+  position: relative;
+  margin-bottom: var(--gap-tight);
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--line-strong);
+  color: var(--ink);
   font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  font-weight: 600;
-  letter-spacing: 0.18em;
+  font-size: var(--fs-small);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.sectionTitle::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 2.25rem;
+  height: 2px;
+  background: var(--ink);
 }
 
 .statusList {
@@ -195,9 +240,16 @@
   gap: var(--gap-tight);
   min-height: 3.5rem;
   padding-block: var(--gap-tight);
+  padding-inline: var(--gap-hair);
+  transition: background var(--t-fast) var(--ease-out);
 }
 
+.statusRow:hover { background: var(--lilac-wash); }
+
 .statusRow + .statusRow { border-top: 1px solid var(--paper-edge); }
+
+/* 已加密态走芦青,邮箱凭证走主动作丁香 */
+.statusIconOk { color: var(--jade-ink); }
 .statusIcon { color: var(--azure); }
 
 .statusRow div {
@@ -222,26 +274,37 @@
 }
 
 .statusRow small {
+  padding: 0.18rem 0.4rem;
+  border-radius: var(--radius-tag);
+  background: var(--jade-wash);
   color: var(--jade-ink);
   font-size: var(--fs-tiny);
+  letter-spacing: 0.06em;
   white-space: nowrap;
 }
 
-.statusRow small[data-pending='true'] { color: var(--cinnabar); }
+.statusRow small[data-pending='true'] {
+  background: var(--cinnabar-wash);
+  color: var(--cinnabar);
+}
 
 .emailToggle {
   min-height: 44px;
-  padding: 0.35rem 0.45rem;
-  border: 0;
-  border-radius: var(--radius-s);
-  background: transparent;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-tag);
+  background: var(--paper);
   color: var(--azure-deep);
   font-family: var(--font-display);
   font-size: var(--fs-tiny);
   white-space: nowrap;
+  transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
 
-.emailToggle:hover { background: var(--azure-wash); }
+.emailToggle:hover {
+  border-color: color-mix(in oklab, var(--azure) 48%, var(--paper-edge));
+  background: var(--azure-wash);
+}
 
 .emailNotice {
   margin-top: var(--gap-tight);
@@ -261,23 +324,42 @@
   gap: var(--gap-tight);
   width: 100%;
   min-height: 3.7rem;
-  padding: var(--gap-tight) 0;
+  padding: var(--gap-tight) var(--gap-hair);
   border: 0;
   background: transparent;
   color: var(--ink-soft);
   text-align: left;
   text-decoration: none;
-  transition: color var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
+  transition: background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
 }
 
 .entry + .entry { border-top: 1px solid var(--paper-edge); }
 
 .entry:hover {
+  background: var(--lilac-wash);
   color: var(--azure-deep);
-  transform: translateX(2px);
 }
 
-.entry span {
+/* 入口图标坐在一方芦苇雾纸砖里 */
+.entryTile {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  flex: none;
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  background: var(--paper-warm);
+  color: var(--azure-deep);
+  transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+}
+
+.entry:hover .entryTile {
+  border-color: color-mix(in oklab, var(--azure) 40%, var(--paper-edge));
+  background: var(--azure-wash);
+}
+
+.entryCopy {
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -294,6 +376,17 @@
 .entry small {
   color: var(--ink-faint);
   font-size: var(--fs-tiny);
+}
+
+.entryChevron {
+  flex: none;
+  color: var(--ink-faint);
+  transition: transform var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+}
+
+.entry:hover .entryChevron {
+  transform: translateX(3px);
+  color: var(--azure-deep);
 }
 
 .foot {
@@ -321,17 +414,19 @@
   justify-content: center;
   gap: var(--gap-hair);
   margin-left: auto;
-  padding: 0.5rem 0.8rem;
+  padding: 0.5rem 0.85rem;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-s);
   background: var(--paper);
   color: var(--ink-soft);
+  font-family: var(--font-display);
   font-size: var(--fs-small);
-  transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+  transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
 }
 
 .logoutBtn:hover:not(:disabled) {
   border-color: var(--cinnabar);
+  background: var(--cinnabar-wash);
   color: var(--cinnabar);
 }
 
@@ -349,6 +444,10 @@
     padding: var(--gap);
   }
 
+  .identityCopy {
+    padding-left: var(--gap-tight);
+  }
+
   .mark { width: 3.5rem; height: 3.5rem; }
   .secureBadge,
   .pendingBadge { grid-column: 2; justify-self: start; }
@@ -363,8 +462,12 @@
   .dialog::backdrop { animation: none; }
 
   .entry,
+  .entryTile,
+  .entryChevron,
+  .statusRow,
+  .emailToggle,
   .closeBtn,
   .logoutBtn { transition: none; }
 
-  .entry:hover { transform: none; }
+  .entry:hover .entryChevron { transform: none; }
 }

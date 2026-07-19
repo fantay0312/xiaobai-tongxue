@@ -64,68 +64,71 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className={shellClass}>
       <header className={styles.header}>
-        <NavLink to="/" className={styles.brand} aria-label="回到首页">
-          <Seal className={styles.seal} />
-          <span className={styles.brandName}>小白同学</span>
-          <span className={styles.brandRule} aria-hidden="true" />
-          <span className={styles.brandMotto}>教然后知困</span>
-        </NavLink>
+        {/* 版心内壳:内容收进 72rem 居中栏,品牌落款与每页正文左缘对齐 */}
+        <div className={styles.headerInner}>
+          <NavLink to="/" className={styles.brand} aria-label="回到首页">
+            <Seal className={styles.seal} />
+            <span className={styles.brandName}>小白同学</span>
+            <span className={styles.brandRule} aria-hidden="true" />
+            <span className={styles.brandMotto}>教然后知困</span>
+          </NavLink>
 
-        {landingMode ? (
-          <nav className={styles.nav} aria-label="入口">
-            <NavLink to="/study" className={styles.loginBtn}>进入书斋</NavLink>
-          </nav>
-        ) : (
-        <nav className={styles.nav} aria-label="主导航">
-          {NAV_LINKS.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={link.end}
-              className={({ isActive }) =>
-                isActive ? `${styles.link} ${styles.linkActive}` : styles.link
-              }
-              data-tour={link.to === '/growth' ? 'nav-growth' : undefined}
-            >
-              {link.label}
-            </NavLink>
-          ))}
+          {landingMode ? (
+            <nav className={styles.nav} aria-label="入口">
+              <NavLink to="/study" className={styles.loginBtn}>进入书斋</NavLink>
+            </nav>
+          ) : (
+          <nav className={styles.nav} aria-label="主导航">
+            {NAV_LINKS.map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                end={link.end}
+                className={({ isActive }) =>
+                  isActive ? `${styles.link} ${styles.linkActive}` : styles.link
+                }
+                data-tour={link.to === '/growth' ? 'nav-growth' : undefined}
+              >
+                {link.label}
+              </NavLink>
+            ))}
 
-          <span className={styles.navRule} aria-hidden="true" />
+            <span className={styles.navRule} aria-hidden="true" />
 
-          {authStatus === 'anon' && (
-            <NavLink to="/login" className={styles.loginBtn}>
-              登入
-            </NavLink>
-          )}
-          {authStatus === 'authed' && (
+            {authStatus === 'anon' && (
+              <NavLink to="/login" className={styles.loginBtn}>
+                登入
+              </NavLink>
+            )}
+            {authStatus === 'authed' && (
+              <button
+                type="button"
+                className={styles.profileTrigger}
+                aria-haspopup="dialog"
+                aria-expanded={profileOpen}
+                aria-controls="profile-dialog"
+                aria-label={`打开 ${authUser ?? ''} 的个人中心`}
+                onClick={() => setProfileOpen(true)}
+                title={`打开 ${authUser ?? ''} 的个人中心`}
+              >
+                <ProfileMark name={authUser} compact />
+                <span className={styles.profileName}>{authUser}</span>
+                <Icon name="chevron-down" size={14} className={styles.profileChevron} />
+              </button>
+            )}
             <button
               type="button"
-              className={styles.profileTrigger}
+              className={styles.gearBtn}
+              onClick={openSettings}
               aria-haspopup="dialog"
-              aria-expanded={profileOpen}
-              aria-controls="profile-dialog"
-              aria-label={`打开 ${authUser ?? ''} 的个人中心`}
-              onClick={() => setProfileOpen(true)}
-              title={`打开 ${authUser ?? ''} 的个人中心`}
+              aria-label="打开设置"
+              title="设置"
             >
-              <ProfileMark name={authUser} compact />
-              <span className={styles.profileName}>{authUser}</span>
-              <Icon name="chevron-down" size={14} className={styles.profileChevron} />
+              <Icon name="settings" size={16} />
             </button>
+          </nav>
           )}
-          <button
-            type="button"
-            className={styles.gearBtn}
-            onClick={openSettings}
-            aria-haspopup="dialog"
-            aria-label="打开设置"
-            title="设置"
-          >
-            <Icon name="settings" size={16} />
-          </button>
-        </nav>
-        )}
+        </div>
       </header>
 
       {!landingMode && <StoryTrail pathname={pathname} board={boardMode} />}

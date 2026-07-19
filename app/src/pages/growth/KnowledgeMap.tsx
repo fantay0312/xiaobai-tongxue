@@ -32,6 +32,7 @@ interface StarPoint {
 
 interface MeasuredStarLink extends StarLink {
   path: string;
+  mid: StarPoint;
 }
 
 interface LinkOverlayLayout {
@@ -180,17 +181,26 @@ function centerWithin(element: HTMLElement, ancestor: HTMLElement): StarPoint | 
   return current === ancestor ? { x, y } : null;
 }
 
-function curvedLinkPath(from: StarPoint, to: StarPoint, index: number): string {
+/** 星链弧路 + 札记落点:path 与旧版逐字节一致(几何冻结),另返二次贝塞尔 t=0.5 中点。 */
+function curvedLink(from: StarPoint, to: StarPoint, index: number): { path: string; mid: StarPoint } {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const length = Math.hypot(dx, dy);
-  if (length === 0) return `M ${from.x} ${from.y}`;
+  if (length === 0) return { path: `M ${from.x} ${from.y}`, mid: { x: from.x, y: from.y } };
 
   const bow = Math.min(48, Math.max(14, length * 0.075)) * (index % 2 === 0 ? 1 : -1);
   const controlX = (from.x + to.x) / 2 - (dy / length) * bow;
   const controlY = (from.y + to.y) / 2 + (dx / length) * bow;
   const round = (value: number) => Number(value.toFixed(1));
-  return `M ${round(from.x)} ${round(from.y)} Q ${round(controlX)} ${round(controlY)} ${round(to.x)} ${round(to.y)}`;
+  // 二次贝塞尔中点 = 0.25·起 + 0.5·控 + 0.25·止,札记标签就落在这
+  const mid = {
+    x: round(0.25 * from.x + 0.5 * controlX + 0.25 * to.x),
+    y: round(0.25 * from.y + 0.5 * controlY + 0.25 * to.y),
+  };
+  return {
+    path: `M ${round(from.x)} ${round(from.y)} Q ${round(controlX)} ${round(controlY)} ${round(to.x)} ${round(to.y)}`,
+    mid,
+  };
 }
 
 function AmbientDust({ realmIndex, rows }: { realmIndex: number; rows: number }) {
@@ -221,11 +231,13 @@ function AmbientDust({ realmIndex, rows }: { realmIndex: number; rows: number })
 }
 
 export function KnowledgeMap({
-  nodes, selectedId, onSelect,
+  nodes, selectedId, onSelect, statusFocus = null,
 }: {
   nodes: MapNode[];
   selectedId: string | null;
   onSelect: (topicId: string) => void;
+  /** 巡天筛选:聚焦某一态,其余星与连线视觉下沉(不卸载,量测/Tab 序不动)。 */
+  statusFocus?: NodeStatus | null;
 }) {
   const realms = groupByCourse(nodes);
   const chartRef = useRef<HTMLDivElement>(null);
@@ -248,6 +260,11 @@ export function KnowledgeMap({
     if (!activeIds.has(link.b)) linkedStarIds.add(link.b);
   }
 
+  // 巡天总览:满天星总数 / 已出师(点亮)/ 衰减(雾中)——一行真言,不做统计盘
+  const totalStars = nodes.length;
+  const litStars = nodes.filter((node) => node.status === 'mastered').length;
+  const fogStars = nodes.filter((node) => node.status === 'forgotten').length;
+
   useLayoutEffect(() => {
     const chart = chartRef.current;
     if (!chart) return undefined;
@@ -268,7 +285,9 @@ export function KnowledgeMap({
       const links = STAR_LINKS.flatMap((link, index) => {
         const from = centers.get(link.a);
         const to = centers.get(link.b);
-        return from && to ? [{ ...link, path: curvedLinkPath(from, to, index) }] : [];
+        if (!from || !to) return [];
+        const { path, mid } = curvedLink(from, to, index);
+        return [{ ...link, path, mid }];
       });
       if (!disposed) {
         setLinkLayout({ width: chart.clientWidth, height: chart.clientHeight, links });
@@ -295,7 +314,15 @@ export function KnowledgeMap({
 
   return (
     <div className={s.starAtlas}>
-      <div ref={chartRef} className={s.skyChart} role="group" aria-label="盲区星图:按课程分垣,一讲一星">
+      <div
+        ref={chartRef}
+        className={[s.skyChart, statusFocus ? s.skyFocused : ''].filter(Boolean).join(' ')}
+        role="group"
+        aria-label="盲区星图:按课程分垣,一讲一星"
+      >
+        <p className={s.skySurvey}>
+          满天 <b>{totalStars}</b> 星 · 已点亮 <b>{litStars}</b> · 雾中 <b>{fogStars}</b>
+        </p>
         <svg
           className={s.crossLinkOverlay}
           width={linkLayout.width}
@@ -328,6 +355,18 @@ export function KnowledgeMap({
                   ].filter(Boolean).join(' ')}
                   d={link.path}
                 />
+                {/* 札记只在星链被点亮时显形,楷体小字;stroke 描一圈砚墨底托稳可读性 */}
+                {highlighted && (
+                  <text
+                    className={s.crossLinkNote}
+                    x={link.mid.x}
+                    y={link.mid.y}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                  >
+                    {link.note}
+                  </text>
+                )}
               </g>
             );
           })}
@@ -346,7 +385,7 @@ export function KnowledgeMap({
             <section key={realm.course} className={s.skyRealm} aria-labelledby={realmTitleId}>
               <header className={s.skyHead}>
                 <span className={s.skyNo} aria-hidden="true">
-                  {REALM_NUMS[realmIndex] ?? String(realmIndex + 1)}垣
+                  <b className={s.skyNoChar}>{REALM_NUMS[realmIndex] ?? String(realmIndex + 1)}</b>垣
                 </span>
                 <div>
                   <h3 id={realmTitleId} className={s.skyTitle}>《{realm.course}》</h3>
@@ -415,6 +454,7 @@ export function KnowledgeMap({
                             STATUS_CLASS[node.status],
                             selected ? s.starSelected : '',
                             linkedStarIds.has(node.topic.topicId) ? s.starLinked : '',
+                            statusFocus && node.status !== statusFocus ? s.starDimmed : '',
                           ].filter(Boolean).join(' ')}
                           disabled={locked}
                           aria-label={nodeLabel(node)}

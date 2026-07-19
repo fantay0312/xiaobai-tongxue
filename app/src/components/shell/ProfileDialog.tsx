@@ -166,7 +166,7 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
           <h3 className={styles.sectionTitle} id="security-title">认证与安全</h3>
           <div className={styles.statusList}>
             <div className={styles.statusRow}>
-              <Icon name="circle-check" size={17} className={styles.statusIcon} />
+              <Icon name="circle-check" size={17} className={styles.statusIconOk} />
               <div><strong>服务器会话</strong><span>已安全登录</span></div>
               <small>有效</small>
             </div>
@@ -192,7 +192,7 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
               )}
             </div>
             <div className={styles.statusRow}>
-              <Icon name="circle-check" size={17} className={styles.statusIcon} />
+              <Icon name="circle-check" size={17} className={styles.statusIconOk} />
               <div><strong>登录密码</strong><span>用于邮箱或账号 + 密码登录</span></div>
               <button
                 ref={passwordToggleRef}
@@ -242,26 +242,26 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
           <h3 className={styles.sectionTitle} id="entries-title">学习与账户</h3>
           <nav className={styles.entries} aria-label="个人中心入口">
             <Link className={styles.entry} to="/study" onClick={onClose}>
-              <Icon name="book-open" size={18} />
-              <span><strong>回到书斋</strong><small>继续选择课程与知识点</small></span>
-              <Icon name="chevron-right" size={16} />
+              <span className={styles.entryTile}><Icon name="book-open" size={18} /></span>
+              <span className={styles.entryCopy}><strong>回到书斋</strong><small>继续选择课程与知识点</small></span>
+              <Icon name="chevron-right" size={16} className={styles.entryChevron} />
             </Link>
             <Link className={styles.entry} to="/growth" onClick={onClose}>
-              <Icon name="graduation" size={18} />
-              <span><strong>查看成长册</strong><small>回看教学轨迹与小白成长</small></span>
-              <Icon name="chevron-right" size={16} />
+              <span className={styles.entryTile}><Icon name="graduation" size={18} /></span>
+              <span className={styles.entryCopy}><strong>查看成长册</strong><small>回看教学轨迹与小白成长</small></span>
+              <Icon name="chevron-right" size={16} className={styles.entryChevron} />
             </Link>
             {emailBindingRequired ? (
               <Link className={styles.entry} to="/login?next=%2Fstudy" onClick={onClose}>
-                <Icon name="mail" size={18} />
-                <span><strong>补录验证邮箱</strong><small>完成验证后解锁备课与讲解</small></span>
-                <Icon name="chevron-right" size={16} />
+                <span className={styles.entryTile}><Icon name="mail" size={18} /></span>
+                <span className={styles.entryCopy}><strong>补录验证邮箱</strong><small>完成验证后解锁备课与讲解</small></span>
+                <Icon name="chevron-right" size={16} className={styles.entryChevron} />
               </Link>
             ) : null}
             <button className={styles.entry} type="button" onClick={onOpenSettings}>
-              <Icon name="settings" size={18} />
-              <span><strong>偏好设置</strong><small>调整台词、语音与引路</small></span>
-              <Icon name="chevron-right" size={16} />
+              <span className={styles.entryTile}><Icon name="settings" size={18} /></span>
+              <span className={styles.entryCopy}><strong>偏好设置</strong><small>调整台词、语音与引路</small></span>
+              <Icon name="chevron-right" size={16} className={styles.entryChevron} />
             </button>
           </nav>
         </section>

@@ -167,109 +167,190 @@
 
 /* 小白蹲侧 + 《学记》引文 + 参赛信息位 → 收拢进 styles/anchor.module.css(与宣传页共用) */
 
-/* ── 学习闭环一条横带 ──
-   R2 纸色节奏:旅程带(warm)之后落一档 paper-shade,区块界限不再靠猜;
-   R4 收纳:窄屏横滚 + 边缘渐隐,≥960px 改 13 轨网格(7 步 + 6 箭头)整条摊开不滚 */
+/* ── 一课的走法:墨线路线图 ──
+   R5 去卡改线:不再是 paper-shade 圆角描边卡,整段直接落纸面,坐在旅程带与书架之间。
+   题头(bookplate 制式)+ 一条细墨线穿七个句读节点;≥960 七等分摊满版心不滚,
+   窄屏一条横滚线沿用边缘渐隐(mask 只落在滚动条上,外面不再裹框)。 */
 
 .loop {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-tight);
-  padding: var(--gap) clamp(var(--gap), 3vw, var(--gap-loose));
-  background:
-    radial-gradient(65% 160% at 100% 50%, var(--reed-wash), transparent 74%),
-    var(--paper-shade);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  overflow-x: auto;
   margin-bottom: var(--gap-section);
-  /* 边缘渐隐(#000 是 mask 通道,不是配色) */
+}
+
+/* 题头:2px 墨短线叠通栏 hairline,与书架题头同一制式,左对齐 */
+.loopHead {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap);
+  margin-bottom: var(--gap-loose);
+  padding-bottom: var(--gap-tight);
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.loopHead::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 2.5rem;
+  height: 2px;
+  background: var(--ink);
+}
+
+.loopTitle {
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+
+.loopNote {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+
+/* 路线:窄屏一条横滚线(边缘渐隐,#000 是 mask 通道不是配色) */
+.route {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
   mask-image: linear-gradient(90deg, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
 }
 
+.route::-webkit-scrollbar {
+  display: none;
+}
+
 @media (min-width: 960px) {
-  .loop {
+  /* ≥960:七等分摊满版心,墨线拉通,不滚不渐隐 */
+  .route {
     display: grid;
-    /* 7 个步骤列 + 6 条箭头轨(轨宽 = --gap,与 .loopArrow 的 min-width 对齐) */
-    grid-template-columns: repeat(6, minmax(0, 1fr) var(--gap)) minmax(0, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     overflow-x: visible;
     mask-image: none;
   }
-
-  .loopStep {
-    min-width: 0;
-  }
-
-  .loopDesc {
-    white-space: normal;
-    line-height: 1.5;
-  }
-
-  .loopArrow {
-    min-width: 0;
-  }
 }
 
-.loopStep {
-  flex: none;
+/* 节点:上编号 / 句读珠 / 下讲名 / 底注,四件顺墨线成柱 */
+.node {
+  flex: 0 0 6.5rem;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--gap-hair);
+  text-align: center;
 }
 
-.loopNum {
+@media (min-width: 960px) {
+  .node {
+    flex: none;
+    min-width: 0;
+  }
+}
+
+.nodeNum {
   font-family: var(--font-display);
   font-size: var(--fs-tiny);
   letter-spacing: 0.2em;
   color: var(--ink-faint);
 }
 
-.loopName {
+/* 一条细墨线:满节点宽,相邻节点首尾相接成通线;句读珠纸底盖线,成"线上串珠" */
+.nodeRail {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 0.875rem;
+}
+
+.nodeRail::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--ink-faint);
+  transform: translateY(-50%);
+}
+
+/* 首珠自珠心起、末珠至珠心止,通线两端不空悬 */
+.node:first-child .nodeRail::before {
+  left: 50%;
+}
+
+.nodeEnd .nodeRail::before {
+  right: 50%;
+}
+
+.nodeDot {
+  position: relative;
+  z-index: 1;
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 1.5px solid var(--ink-soft);
+  border-radius: 50%;
+  background: var(--paper);
+}
+
+.nodeName {
   font-family: var(--font-display);
   font-size: var(--fs-sub);
   font-weight: 700;
   color: var(--ink);
-  white-space: nowrap;
 }
 
-.loopDesc {
+.nodeDesc {
+  max-width: 8em;
   font-size: var(--fs-tiny);
+  line-height: 1.5;
   color: var(--ink-soft);
-  white-space: nowrap;
+  text-wrap: balance; /* 折行两行均分,不许孤字坠行 */
 }
 
-.loopArrow {
+/* 终点「出师」:双圈小印(芦青掌握义,非印泥红朱印)+ 入珠前一记方向小勾 */
+.nodeSeal {
   position: relative;
-  flex: 1 1 var(--gap-loose);
-  min-width: var(--gap);
-  height: 1px;
-  background: var(--ink-faint);
+  z-index: 1;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 1.5px solid var(--jade);
+  border-radius: 50%;
+  background: var(--paper);
 }
 
-.loopArrow::after {
+.nodeSeal::after {
   content: '';
   position: absolute;
-  right: 0;
-  top: -3px;
-  width: 6px;
-  height: 6px;
-  border-top: 1px solid var(--ink-faint);
-  border-right: 1px solid var(--ink-faint);
-  transform: rotate(45deg);
+  inset: 2px;
+  border: 1px solid var(--jade);
+  border-radius: 50%;
 }
 
-.loopArrowEnd {
-  background: var(--jade);
+.nodeEnd .nodeRail::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: calc(50% - 0.6rem);
+  width: 5px;
+  height: 5px;
+  border-top: 1.5px solid var(--jade);
+  border-right: 1.5px solid var(--jade);
+  transform: translateY(-50%) rotate(45deg);
 }
 
-.loopArrowEnd::after {
-  border-color: var(--jade);
+/* 「出师」大字用 --jade,小字号(编号/底注)必须落 -ink 文字档 */
+.nodeEnd .nodeName {
+  color: var(--jade);
 }
 
-/* 「出师」步:大字用 --jade,小字号(desc/num 11px)必须用 -ink 文字档 */
-.loopEnd .loopName { color: var(--jade); }
-.loopEnd .loopDesc,
-.loopEnd .loopNum {
+.nodeEnd .nodeNum,
+.nodeEnd .nodeDesc {
   color: var(--jade-ink);
 }
 

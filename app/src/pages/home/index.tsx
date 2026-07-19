@@ -3,7 +3,7 @@
  * 大字楷体主张 + 《学记》竖排引文(全站精神锚点)+ 故事层 + 学习闭环横带 + 知识点书架。
  * 故事层二选一:零履历给「拜师帖」(书信体世界观),有履历给「旅程带」(称号印 + 当下一步)。
  */
-import { Fragment, type MouseEvent } from 'react';
+import { type MouseEvent } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { MentorLetter } from '../../components/story/MentorLetter';
@@ -115,28 +115,36 @@ export default function HomePage() {
       {/* ── 故事层:拜师帖(零履历) / 旅程带(有履历) ── */}
       {hasStory ? <JourneyRibbon /> : <MentorLetter />}
 
-      {/* ── 学习闭环一条横带 ── */}
+      {/* ── 一课的走法:墨线路线图(题头 + 一线穿七节点,不裹卡) ── */}
       <section
         className={`${styles.loop} ${styles.enter}`}
         style={{ animationDelay: '260ms' }}
         aria-label="学习闭环:备课、讲解、赴考、批注、补学、再讲"
         data-tour="loop"
       >
-        {LOOP_STEPS.map((step, i) => (
-          <Fragment key={step.name}>
-            {i > 0 && <span className={styles.loopArrow} aria-hidden="true" />}
-            <div className={styles.loopStep}>
-              <span className={styles.loopNum}>{step.num}</span>
-              <span className={styles.loopName}>{step.name}</span>
-              <span className={styles.loopDesc}>{step.desc}</span>
+        <header className={styles.loopHead}>
+          <h2 className={styles.loopTitle}>一课的走法</h2>
+          <p className={styles.loopNote}>六步一环，教到出师为止</p>
+        </header>
+        <div className={styles.route}>
+          {LOOP_STEPS.map((step) => (
+            <div key={step.name} className={styles.node}>
+              <span className={styles.nodeNum}>{step.num}</span>
+              <span className={styles.nodeRail} aria-hidden="true">
+                <span className={styles.nodeDot} />
+              </span>
+              <span className={styles.nodeName}>{step.name}</span>
+              <span className={styles.nodeDesc}>{step.desc}</span>
             </div>
-          </Fragment>
-        ))}
-        <span className={`${styles.loopArrow} ${styles.loopArrowEnd}`} aria-hidden="true" />
-        <div className={`${styles.loopStep} ${styles.loopEnd}`}>
-          <span className={styles.loopNum}>终</span>
-          <span className={styles.loopName}>出师</span>
-          <span className={styles.loopDesc}>图谱点亮</span>
+          ))}
+          <div className={`${styles.node} ${styles.nodeEnd}`}>
+            <span className={styles.nodeNum}>终</span>
+            <span className={styles.nodeRail} aria-hidden="true">
+              <span className={styles.nodeSeal} />
+            </span>
+            <span className={styles.nodeName}>出师</span>
+            <span className={styles.nodeDesc}>图谱点亮</span>
+          </div>
         </div>
       </section>
 

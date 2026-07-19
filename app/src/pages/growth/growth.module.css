@@ -786,11 +786,37 @@
   background:
     radial-gradient(52rem 20rem at 18% -4%, color-mix(in oklch, var(--azure) 26%, transparent), transparent 62%),
     radial-gradient(40rem 26rem at 88% 108%, color-mix(in oklch, var(--azure) 14%, transparent), transparent 66%),
+    /* 一道斜贯夜空的银河:丁香—雾白极淡水迹,只让天有层次,不作噪点纹理 */
+    linear-gradient(
+      122deg,
+      transparent 34%,
+      color-mix(in oklch, var(--lilac) 7%, transparent) 45%,
+      color-mix(in oklch, var(--moon-on-ink) 5%, transparent) 50%,
+      color-mix(in oklch, var(--lilac) 7%, transparent) 55%,
+      transparent 66%
+    ),
     linear-gradient(168deg, var(--inkstone), var(--inkstone-deep));
   box-shadow:
     inset 0 0 0 4px color-mix(in oklch, var(--inkstone) 55%, transparent),
     inset 0 0 0 5px var(--inkstone-line),
     var(--shadow-paper);
+}
+
+/* 巡天总览:贴在夜空顶檐的一行真言,quiet 芦色小字,数字走 code 字体 */
+.skySurvey {
+  position: relative;
+  z-index: 3;
+  margin: 0 0 var(--gap-tight);
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.05em;
+  color: var(--moonsoft-on-ink);
+}
+
+.skySurvey b {
+  font-family: var(--font-code);
+  font-weight: 700;
+  color: var(--moon-on-ink);
 }
 
 /* 三垣共用一片夜空:只留松缓呼吸，不再画课程分隔带。 */
@@ -815,24 +841,33 @@
   background: color-mix(in oklch, var(--inkstone-deep) 78%, transparent);
 }
 
+/* 垣号做成真正的题签:大楷「壹」压住,小「垣」收边,右一道细界与课名分栏 */
 .skyNo {
   align-self: stretch;
   display: flex;
-  align-items: center;
+  align-items: baseline;
+  gap: 0.12em;
   padding-right: var(--gap-tight);
-  border-right: 1px solid color-mix(in oklch, var(--moonsoft-on-ink) 24%, transparent);
+  border-right: 1px solid color-mix(in oklch, var(--moonsoft-on-ink) 30%, transparent);
   color: var(--moonsoft-on-ink);
   font-family: var(--font-display);
   font-size: var(--fs-tiny);
+  letter-spacing: 0.08em;
+}
+
+.skyNoChar {
+  font-size: var(--fs-sub);
   font-weight: 700;
-  letter-spacing: 0.12em;
+  line-height: 1;
+  color: var(--moon-on-ink);
 }
 
 .skyTitle {
   font-family: var(--font-display);
   font-size: var(--fs-small);
+  font-weight: 700;
   color: var(--moon-on-ink);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
 }
 
 .skySub {
@@ -852,17 +887,22 @@
   text-align: left;
 }
 
-/* 满天星点齐:锐角小签(朱文小印制式),星图里唯一的"完成"高光 */
+/* 满天星点齐:朱文印制式的双线框(内框—细缝—外圈,皆走 sky-lit 芦光),
+   星图里两处法定高光之一,给出师多一分仪轨 */
 .skyDone {
   justify-self: end;
-  padding: 0.15rem 0.45rem;
+  padding: 0.18rem 0.5rem;
   border: 1px solid var(--sky-lit);
   border-radius: var(--radius-tag);
+  background: color-mix(in oklch, var(--sky-lit) 8%, transparent);
+  box-shadow:
+    0 0 0 1px var(--inkstone-deep),
+    0 0 0 2px color-mix(in oklch, var(--sky-lit) 42%, transparent);
   color: var(--sky-lit);
   font-family: var(--font-display);
   font-size: var(--fs-tiny);
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
 }
 
 .skyField {
@@ -878,7 +918,27 @@
   height: 100%;
   overflow: visible;
   pointer-events: none;
+  transition: opacity var(--t-med) var(--ease-out);
 }
+
+/* 星链札记:楷体小字落在弧线中点;paint-order:stroke 先描一圈砚墨底,
+   再填月色字面,深空里也读得清;札记从不吃指针事件 */
+.crossLinkNote {
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  fill: var(--moon-on-ink);
+  stroke: var(--inkstone-deep);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+  pointer-events: none;
+}
+
+/* 巡天筛选态:非聚焦的连线层整体下沉,聚焦那一态的星自然浮出 */
+.skyFocused .skyLines,
+.skyFocused .crossLinkOverlay { opacity: 0.26; }
 
 .crossLink,
 .crossLinkGlow {
@@ -940,6 +1000,7 @@
   height: 100%;
   overflow: visible;
   pointer-events: none;
+  transition: opacity var(--t-med) var(--ease-out);
 }
 
 /* 铺底星尘:基准亮度由 TSX 内联 --dust-o 下发,呼吸只在基准值上摆动 */
@@ -1019,7 +1080,15 @@
   color: var(--moon-on-ink);
   text-align: center;
   cursor: pointer;
+  transition: opacity var(--t-med) var(--ease-out);
 }
+
+/* 巡天筛选下沉态:非聚焦的星退到低透明度,但仍可点(纯视觉,不禁用不卸载);
+   键盘聚焦/悬停即复明,焦点环不许跟着沉底(WCAG 2.4.7) */
+.starDimmed { opacity: 0.24; }
+
+.starDimmed:focus-visible,
+.starDimmed:hover:not(:disabled) { opacity: 1; }
 
 .starBtn:focus-visible {
   outline: 2px solid var(--moon-on-ink);
@@ -1050,6 +1119,22 @@
   overflow: visible;
 }
 
+/* 命座环:选中时淡入的虚线外环(只 opacity/scale 过渡,绝不长转),
+   在星心外圈一寸处,像命盘上圈出的那一宿 */
+.starGlyph::after {
+  content: '';
+  position: absolute;
+  inset: -0.45rem;
+  border-radius: 50%;
+  border: 1px dashed color-mix(in oklch, var(--moon-on-ink) 52%, transparent);
+  opacity: 0;
+  transform: scale(0.82);
+  transition:
+    opacity var(--t-med) var(--ease-out),
+    transform var(--t-med) var(--ease-out);
+  pointer-events: none;
+}
+
 .glyphRing {
   fill: none;
   stroke: var(--sky-lit);
@@ -1076,6 +1161,11 @@
 .starSelected .starGlyph {
   border-color: var(--moon-on-ink);
   background: color-mix(in oklch, var(--moon-on-ink) 10%, transparent);
+}
+
+.starSelected .starGlyph::after {
+  opacity: 0.9;
+  transform: scale(1);
 }
 
 .starLinked .starGlyph {
@@ -1139,8 +1229,16 @@
 
 .starMastered .glyphRing { opacity: 0.85; }
 
+/* 出师星呼吸辉光:长周期(6.5s)小幅辉光起伏,夜空有生气而不喧闹;
+   往复动画走 --ease-loop,reduced-motion 下停 */
 .starMastered .starGlyph {
   filter: drop-shadow(0 0 7px color-mix(in oklch, var(--sky-lit) 65%, transparent));
+  animation: starPulse 6.5s var(--ease-loop) infinite alternate;
+}
+
+@keyframes starPulse {
+  from { filter: drop-shadow(0 0 6px color-mix(in oklch, var(--sky-lit) 52%, transparent)); }
+  to { filter: drop-shadow(0 0 9px color-mix(in oklch, var(--sky-lit) 80%, transparent)); }
 }
 
 .starMastered .starState { color: var(--sky-lit); }
@@ -1209,19 +1307,62 @@
 @media (prefers-reduced-motion: reduce) {
   .dustStar { animation: none; }
   .starForgotten .starFog { animation: none; }
+  .starMastered .starGlyph { animation: none; }
+  .starGlyph::after,
+  .starBtn,
+  .skyLines,
+  .crossLinkOverlay { transition: none; }
+  .starSelected .starGlyph::after { transform: none; }
   .starBtn:hover:not(:disabled) .starGlyph,
   .starBtn:focus-visible .starGlyph { transform: none; }
 }
 
 
-.legendRow {
+/* 巡天筛选器:图例升为可点小签,一态一签带实时计数,按下即聚焦该态 */
+.filterRow {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--gap);
-  font-size: var(--fs-tiny);
-  /* 图例落在 shade 带上,faint 档会看不清,提半档 */
-  color: var(--ink-soft);
+  gap: var(--gap-tight);
   margin-top: var(--gap-tight);
+}
+
+.filterChip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.24rem 0.6rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-tag);
+  background: none;
+  color: var(--ink-soft);
+  font-family: var(--font-body);
+  font-size: var(--fs-tiny);
+  cursor: pointer;
+  transition:
+    border-color var(--t-fast) var(--ease-out),
+    color var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out);
+}
+
+/* 触区补到 ≥40px:视觉不变,负 inset 的透明 ::after 撑开可点面(法典 R8) */
+.filterChip::after {
+  content: '';
+  position: absolute;
+  inset: -0.5rem;
+}
+
+.filterChip:hover { border-color: var(--azure); color: var(--azure); }
+
+.filterChip[aria-pressed='true'] {
+  border-color: var(--azure);
+  background: var(--azure-wash);
+  color: var(--azure);
+}
+
+.filterCount {
+  font-family: var(--font-code);
+  font-weight: 700;
 }
 
 .swatch {
@@ -1231,6 +1372,10 @@
   border-radius: 50%;
   margin-right: 0.35em;
 }
+
+/* 小签内的色点靠 flex gap 排距,清掉 swatch 自带的右外边距免得双份留白 */
+.filterChip .swatch,
+.starLinkChip .swatch { margin-right: 0; }
 
 .swJade { background: var(--jade); }
 .swAmber { background: var(--amber); }
@@ -1292,6 +1437,65 @@
 /* 被带偏是误区语义,朱砂落笔处;金句 chip 借 amber-ink 与金印同调 */
 .chipCinnabar { color: var(--cinnabar); border-color: var(--cinnabar); background: var(--cinnabar-wash); }
 .chipGold { color: var(--amber-ink); border-color: var(--amber); background: var(--amber-wash); }
+
+/* 星链行:证据链面板里这颗星牵着的邻星,点一枚即跳选;锐角小签,与 .chip 同族气质 */
+.starLinkRow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--gap-hair) var(--gap-tight);
+  margin-bottom: var(--gap-tight);
+}
+
+.starLinkLabel {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+}
+
+.starLinkChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-hair);
+}
+
+.starLinkChip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  padding: 0.18rem 0.5rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-tag);
+  background: none;
+  color: var(--ink-soft);
+  font-family: var(--font-body);
+  font-size: var(--fs-tiny);
+  cursor: pointer;
+  transition:
+    border-color var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out);
+}
+
+/* 触区补到 ≥40px:纵向撑够;横向收在 gap-hair 半距内,免得相邻签命中区互叠误触 */
+.starLinkChip::after {
+  content: '';
+  position: absolute;
+  inset: -0.5rem -0.15rem;
+}
+
+.starLinkChip:hover:not(:disabled) {
+  border-color: var(--azure);
+  background: var(--azure-wash);
+}
+
+.starLinkChip:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.starLinkTitle { font-family: var(--font-display); color: var(--ink); }
+
+.starLinkNote { color: var(--ink-faint); }
 
 .timeline {
   list-style: none;

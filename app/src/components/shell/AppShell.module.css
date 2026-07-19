@@ -28,18 +28,34 @@
   position: sticky;
   top: 0;
   z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gap);
-  padding: 0.6rem clamp(var(--gap), 4vw, var(--gap-loose));
-  background: color-mix(in oklch, var(--paper) 91%, transparent);
+  /* 极淡春雾:丁香→芦苇一抹低彩叠在纸色磨砂之上,与下方界栏同一走向,让顶栏归春雾世界 */
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--lilac) 5%, transparent),
+      color-mix(in oklch, var(--reed) 5%, transparent)
+    ),
+    color-mix(in oklch, var(--paper) 91%, transparent);
   backdrop-filter: blur(14px) saturate(112%);
   border-bottom: 1px solid var(--paper-edge);
 }
 
-/* 一笔双色界栏把整站调色锚钉在最常见的应用壳层,不把粉绿铺满控件。 */
-.header::after {
+/* 版心内壳:内容收进 72rem 居中栏,品牌与每页正文左缘对齐;
+   横竖内衬都落在内壳,.header 满幅只负责磨砂底与满幅纸边 */
+.headerInner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  max-width: var(--page-max);
+  margin-inline: auto;
+  padding: 0.6rem clamp(var(--gap), 4vw, var(--gap-loose));
+}
+
+/* 一笔双色界栏把整站调色锚钉在最常见的应用壳层,不把粉绿铺满控件。
+   挂在版心内壳上,两端随内容左右缘收放(内衬即偏移),不再满幅横贯。 */
+.headerInner::after {
   content: '';
   position: absolute;
   left: clamp(var(--gap), 4vw, var(--gap-loose));
@@ -57,18 +73,19 @@
 }
 
 /* 宣传页场景:头部融进海报——透明、无界栏、不吸顶,随页滚走;
-   限宽与 landing .page 同一版心(74rem),品牌落款才与海报栅格对齐 */
+   74rem 海报版心移到内壳(与 landing .page 同版心),品牌落款才与海报栅格对齐 */
 .landing .header {
   position: static;
   background: transparent;
   backdrop-filter: none;
   border-bottom-color: transparent;
-  width: 100%;
-  max-width: 74rem;
-  margin-inline: auto;
 }
 
-.landing .header::after { display: none; }
+.landing .headerInner {
+  max-width: 74rem;
+}
+
+.landing .headerInner::after { display: none; }
 
 /* ── 品牌落款:白文印 + 楷体字标 + 界栏 + 铭 ── */
 
@@ -197,6 +214,14 @@
   transition: color var(--t-fast) var(--ease-out);
 }
 
+/* 命中区:视觉不变,纵向撑到 ≥40px(触控目标基线)。
+   句读点占了 ::after,命中区改用透明 ::before,不遮点、不改版式 */
+.link::before {
+  content: '';
+  position: absolute;
+  inset: -0.5rem 0;
+}
+
 /* 句读点:古人圈点文章,读到哪点到哪 */
 .link::after {
   content: '';
@@ -249,6 +274,7 @@
 /* ── 登入:唯一描边药丸,与导航文字区分层级 ── */
 
 .loginBtn {
+  position: relative;
   font-family: var(--font-display);
   font-size: var(--fs-small);
   letter-spacing: 0.18em;
@@ -260,6 +286,13 @@
   transition:
     background var(--t-fast) var(--ease-out),
     border-color var(--t-fast) var(--ease-out);
+}
+
+/* 命中区撑到 ≥40px,药丸视觉不变 */
+.loginBtn::after {
+  content: '';
+  position: absolute;
+  inset: -0.4rem 0;
 }
 
 .loginBtn:hover {
@@ -294,9 +327,10 @@
   transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
 
+/* 触发器 hover 走站点动作色:淡丁香晕 + 纸边圈,而非通用墨晕 */
 .profileTrigger:hover {
   border-color: var(--paper-edge);
-  background: var(--ink-wash);
+  background: var(--lilac-wash);
 }
 
 .profileName {
