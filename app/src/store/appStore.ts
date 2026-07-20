@@ -173,9 +173,18 @@ export const useAppStore = create<AppState>()(
 
       rebuildStates: () => {
         const { events } = get();
+        // 单遍按 topicId 分桶,消除 replayTopicState 对每个 topic 的全量重扫(O(topics×events)→O(events));
+        // replayTopicState 内部仍按 topicId 过滤,喂已过滤切片 = 无操作,重放语义与整流逐字一致
+        const byTopic = new Map<string, LearnEvent[]>();
+        for (const ev of events) {
+          const bucket = byTopic.get(ev.topicId);
+          if (bucket) bucket.push(ev);
+          else byTopic.set(ev.topicId, [ev]);
+        }
+        const EMPTY: LearnEvent[] = [];
         const topicStates: Record<string, TopicState> = {};
         for (const topic of TOPICS) {
-          if (!topic.locked) topicStates[topic.topicId] = replayTopicState(topic, events);
+          if (!topic.locked) topicStates[topic.topicId] = replayTopicState(topic, byTopic.get(topic.topicId) ?? EMPTY);
         }
         set({ topicStates });
       },
