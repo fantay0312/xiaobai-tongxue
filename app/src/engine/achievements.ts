@@ -21,6 +21,7 @@ export interface Achievement {
   earnedAt: string | null;               // 触发事件的 t;未达成为 null
   progress: { now: number; target: number };
   evidence: string | null;               // 触发事件的证据链原文
+  triggerTopicId?: string | null;        // 落印那一刻触发事件所属的课(印记来历);未达成为 null
 }
 
 export interface TeacherRank {
@@ -70,6 +71,7 @@ function countSeal(
     earnedAt: trigger?.t ?? null,
     progress: { now: matched.length, target },
     evidence: trigger?.evidence ?? null,
+    triggerTopicId: trigger?.topicId ?? null,
   };
 }
 
@@ -143,6 +145,7 @@ export function deriveAchievements(input: AchievementInput): Achievement[] {
       earnedAt: perfect?.t ?? null,
       progress: { now: bestScore, target: 100 },
       evidence: perfect?.evidence ?? null,
+      triggerTopicId: perfect?.topicId ?? null,
     },
     countSeal('swift-master', '顿悟', '悟', `${SWIFT_TURNS} 轮之内把一门课讲到出师`, 'cinnabar', swift, 1),
     countSeal('first-master', '出师', '师', '第一门课讲到小白出师', 'cinnabar', masteries, 1),
@@ -155,6 +158,7 @@ export function deriveAchievements(input: AchievementInput): Achievement[] {
       earnedAt: dailyTrigger?.t ?? null,
       progress: { now: bestRun, target: DAILY_RUN },
       evidence: dailyTrigger?.evidence ?? null,
+      triggerTopicId: dailyTrigger?.topicId ?? null,
     },
     countSeal('review-pass', '温故', '温', '小白忘了的,你帮他重新想了起来', 'ink', of('review_passed'), 1),
     countSeal('night-read', '夜读', '夜', '子夜灯下,仍有讲书声', 'ink', nightly, 1),
@@ -165,6 +169,7 @@ export function deriveAchievements(input: AchievementInput): Achievement[] {
       earnedAt: fullTrigger?.t ?? null,
       progress: { now: masteredIds.size, target: Math.max(1, openTopics.length) },
       evidence: fullTrigger?.evidence ?? null,
+      triggerTopicId: fullTrigger?.topicId ?? null,
     },
   ];
 }

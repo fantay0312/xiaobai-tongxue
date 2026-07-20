@@ -114,6 +114,81 @@
   border-left: 2px solid var(--azure-wash);
 }
 
+/* ── 遗忘曲线显形:出师课保持度迷你条 ── */
+.retList {
+  list-style: none;
+  margin: var(--gap-tight) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+}
+.retItem { display: flex; flex-direction: column; gap: 0.28rem; }
+.retHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--gap-hair) var(--gap-tight);
+}
+.retTitle {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  color: var(--ink);
+}
+.retNote {
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  letter-spacing: 0.04em;
+}
+/* 槽:纸阴底 + 细边;条本身不做 width 过渡(只 transform/opacity 纪律,且为一次性派生渲染) */
+.retTrack {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--paper-shade);
+  border: 1px solid var(--paper-edge);
+  overflow: hidden;
+}
+.retFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  /* 芦苇绿 = 尚清晰 */
+  background: var(--jade);
+}
+/* 藤黄 = 已衰减(语义唯一暖色) */
+.retFillFog { background: var(--amber); }
+
+/* ── 跨课记忆线:小白自己连起来的 ── */
+.crossBlock {
+  margin-top: var(--gap-tight);
+  padding-top: var(--gap-tight);
+  border-top: 1px dashed var(--paper-edge);
+}
+.crossHead {
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.16em;
+  color: var(--jade-ink);
+}
+.crossList {
+  list-style: none;
+  margin: var(--gap-hair) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+}
+/* 连线句走楷体,左沿芦苇晕色标记「生长/连接」语义 */
+.crossList li {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  line-height: 1.9;
+  padding-left: var(--gap-tight);
+  border-left: 2px solid var(--jade-wash);
+}
+
 /* 匣底去处:按钮(本页卷目滚动)与 Link(跨页路由)同衣;焦点环走全站基线,不压 */
 .anchorLink {
   display: inline-flex;

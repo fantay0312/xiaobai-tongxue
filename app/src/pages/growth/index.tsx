@@ -20,7 +20,7 @@ import { nextStep } from '../../engine/journey';
 // 双轨成长引擎:同 achievements/journey 惯例按路径直接 import,不进 engine barrel
 import { STAGE_RULES, deriveWisdom, deriveEvolution } from '../../engine/evolution';
 import { deriveXiaobaiLetter } from '../../engine/story';
-import { deriveMemoryPanorama, deriveRelationshipLines } from '../../engine/recall';
+import { deriveMemoryPanorama, deriveRelationshipLines, deriveTopicRecall } from '../../engine/recall';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { XiaobaiLetter } from '../../components/story/XiaobaiLetter';
 import { MemoryPanorama } from '../../components/story/MemoryPanorama';
@@ -244,6 +244,11 @@ export default function GrowthPage() {
   const wisdomPct = wisdom.forNext > 0 ? Math.min(100, (wisdom.intoLevel / wisdom.forNext) * 100) : 100;
 
   const earnedCount = achievements.filter((a) => a.earnedAt !== null).length;
+  // 星图↔印章叙事桥:距《全谱》还差几星(全谱印的真实进度差)+ 已落印几枚(实印数)
+  const fullMapSeal = achievements.find((a) => a.id === 'full-map');
+  const starsToFull = fullMapSeal
+    ? Math.max(0, fullMapSeal.progress.target - fullMapSeal.progress.now)
+    : 0;
   const shownChronicle = oldPages ? chronicle : chronicle.slice(0, 6);
 
   const nodes: MapNode[] = TOPICS.map((t) => {
@@ -270,6 +275,15 @@ export default function GrowthPage() {
   const shownEvents = shownNode ? events.filter((e) => e.topicId === shownNode.topic.topicId) : [];
   const forgottenNodes = nodes.filter((n) => n.status === 'forgotten');
 
+  // 逐星记忆:选中星时派生「小白记得」——命中要点/金句/已纠正心魔/留存,空则不渲染
+  const shownRecallId = shownNode?.topic.topicId ?? null;
+  const recall = useMemo(
+    () => (shownRecallId
+      ? deriveTopicRecall({ topicId: shownRecallId, events, reports, topicStates, topics: TOPICS })
+      : null),
+    [shownRecallId, events, reports, topicStates],
+  );
+
   // 巡天筛选器的实时计数:每一态多少颗星,直接从 nodes 数,不新造状态
   const statusCounts = nodes.reduce(
     (acc, n) => { acc[n.status] += 1; return acc; },
@@ -280,8 +294,8 @@ export default function GrowthPage() {
   const linkNeighbors = shownNode
     ? STAR_LINKS.flatMap((l) => {
       const id = shownNode.topic.topicId;
-      if (l.a === id) return [{ id: l.b, note: l.note }];
-      if (l.b === id) return [{ id: l.a, note: l.note }];
+      if (l.a === id) return [{ id: l.b, note: l.note, cluster: l.cluster }];
+      if (l.b === id) return [{ id: l.a, note: l.note, cluster: l.cluster }];
       return [];
     })
     : [];
@@ -485,7 +499,7 @@ export default function GrowthPage() {
           <span className={s.volNo}>卷一</span>印章墙
           <small>{earnedCount}/{achievements.length} 枚实印 · 课堂有迹，落印有据</small>
         </h2>
-        <AchievementWall achievements={achievements} />
+        <AchievementWall achievements={achievements} litStars={statusCounts.mastered} />
       </section>
 
       {/* ── 卷二·教学编年史:events×reports 并轨的会话日志,倒序,默认最近 6 条 ── */}
@@ -571,6 +585,7 @@ export default function GrowthPage() {
             nodes={nodes}
             selectedId={selected}
             statusFocus={statusFocus}
+            bridge={{ toFull: starsToFull, seals: earnedCount }}
             onSelect={(tid) => setSelected(selected === tid ? null : tid)}
           />
         </div>
@@ -656,6 +671,7 @@ export default function GrowthPage() {
                             <span className={`${s.swatch} ${STATUS_SWATCH[nbStatus]}`} aria-hidden="true" />
                             <span className={s.starLinkTitle}>{nbTitle}</span>
                             <span className={s.starLinkNote}>{nb.note}</span>
+                            {nb.cluster ? <span className={s.starLinkCluster}>{nb.cluster}</span> : null}
                           </button>
                         );
                       })}
@@ -672,6 +688,63 @@ export default function GrowthPage() {
                     小白说它忘了 <Icon name="arrow-right" size={15} /> 帮它复习
                   </button>
                 )}
+                {/* 逐星记忆:evidence 日志之上先渲染「小白记得」——册页语域,称呼「先生/它」;
+                    每块空则不渲染,recall 为 null 整段隐去(deriveTopicRecall 防御式消费) */}
+                {recall && (
+                  recall.rememberedPoints.length > 0
+                  || recall.goldenQuotes.length > 0
+                  || recall.clearedDemons.length > 0
+                  || recall.retention !== null
+                  || recall.lastOutcome
+                ) ? (
+                  <div className={s.recallCard}>
+                    <p className={s.recallHead}>小白记得<small>上堂课,它把这些收进了小本子</small></p>
+                    {recall.lastOutcome ? <p className={s.recallOutcome}>{recall.lastOutcome}</p> : null}
+                    {recall.rememberedPoints.length > 0 && (
+                      <div className={s.recallRow}>
+                        <span className={s.recallTag}>还记得的要点</span>
+                        <span className={s.recallVals}>
+                          {recall.rememberedPoints.map((p) => (
+                            <span key={p} className={s.recallChip}>{p}</span>
+                          ))}
+                        </span>
+                      </div>
+                    )}
+                    {recall.goldenQuotes.length > 0 && (
+                      <div className={s.recallRow}>
+                        <span className={s.recallTag}>还念着的比方</span>
+                        <span className={s.recallVals}>
+                          {recall.goldenQuotes.map((q) => (
+                            <span key={q} className={s.recallQuote}>「{q}」</span>
+                          ))}
+                        </span>
+                      </div>
+                    )}
+                    {recall.clearedDemons.length > 0 && (
+                      <div className={s.recallRow}>
+                        <span className={s.recallTag}>已放下的心魔</span>
+                        <span className={s.recallVals}>
+                          {recall.clearedDemons.map((d) => (
+                            <span key={d} className={s.recallDemon}>{d}</span>
+                          ))}
+                        </span>
+                      </div>
+                    )}
+                    {(recall.retention !== null || recall.daysToFog !== null) && (
+                      <p className={s.recallMeta}>
+                        {recall.retention !== null && (
+                          <>它对这门的掌握留存 <b className={s.num}>{Math.round(recall.retention * 100)}</b>%</>
+                        )}
+                        {recall.retention !== null && recall.daysToFog !== null ? ' · ' : null}
+                        {recall.daysToFog !== null && (recall.daysToFog < 0
+                          ? <>已过复习期 <b className={s.num}>{Math.abs(recall.daysToFog)}</b> 天</>
+                          : recall.daysToFog === 0
+                            ? <>今日起雾</>
+                            : <>距起雾还有 <b className={s.num}>{recall.daysToFog}</b> 天</>)}
+                      </p>
+                    )}
+                  </div>
+                ) : null}
                 <h3 className={s.h3} style={{ marginTop: 'var(--gap-tight)' }}>掌握度证据链</h3>
                 {shownEvents.length === 0 ? (
                   <p className={s.muted}>还没有任何事件——这个知识点还没开讲。</p>

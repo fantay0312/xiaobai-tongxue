@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Seal } from '../../components/shell/Seal';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
+import type { XiaobaiMood } from '../../types';
 import { Icon } from '../../components/ui/Icon';
 import { useAuthStore, type AuthField } from '../../store/authStore';
 import { useDocTitle } from '../../hooks/useDocTitle';
@@ -82,6 +83,16 @@ export default function LoginPage() {
     && emailAuthAvailable && loginMethod === 'email-code';
   const usesEmailCode = bindingEmail || registering || emailCodeLogin;
   const usesAccountCredentials = !bindingEmail && !emailCodeLogin && !resetting;
+  // 卷首小白:表情与台词随当前帖态切换(纯派生,不入 store)
+  const avatarMood: XiaobaiMood = bindingEmail ? 'thinking'
+    : registering ? 'shy'
+    : resetting ? 'thinking'
+    : 'curious';
+  const plateVoice = bindingEmail ? '先生的名帖，还差一笔。'
+    : registering ? '初次递帖？小生这厢有礼。'
+    : resetting ? '先生忘了口令？小生陪先生慢慢寻。'
+    : emailCodeLogin ? '先生今日也来教小生？'
+    : '先生又来授业了？';
   const next = safeNextPath(params.get('next') || '/study');
   useDocTitle(bindingEmail ? '补录验证邮箱' : resetting ? '找回密码' : registering ? '递帖注册' : '登入书斋');
 
@@ -254,12 +265,13 @@ export default function LoginPage() {
     <div className={s.page}>
       <div className={s.split}>
         <aside className={s.plate}>
-          <Seal className={s.plateSeal} />
+          <p className={s.plateVoice} lang="zh">{plateVoice}</p>
           <div className={s.plateAvatar} aria-hidden="true">
-            <XiaobaiAvatar mood={bindingEmail ? 'thinking' : 'curious'} level={1} variant="paper" size={150} />
+            <XiaobaiAvatar mood={avatarMood} level={1} variant="paper" size={150} />
           </div>
           <p className={s.plateMotto} lang="zh">教<br />然<br />后<br />知<br />困</p>
           <p className={s.plateGloss}>把知识讲给会追问的<br />AI 学生「小白」听</p>
+          <Seal className={s.straddleSeal} />
         </aside>
 
         <section className={s.form} aria-labelledby="auth-title">
@@ -363,18 +375,24 @@ export default function LoginPage() {
           </form>}
 
           <footer className={s.foot}>
-            <span>{bindingEmail ? '验证完成前，此账号无法进入使用页面'
-              : resetting ? '验证码只会发送到已绑定的注册邮箱'
-              : registering ? '邮箱验证为必填项' : canRegister ? '新用户可验证邮箱注册' : '新账号注册暂未开放'}</span>
-            {bindingEmail ? (
-              <button className={s.bindingLogout} type="button" disabled={busy || sendingCode}
-                onClick={() => void exitBinding()}>退出账号</button>
-            ) : resetting ? (
-              <button className={s.bindingLogout} type="button" disabled={resetFlowBusy}
-                onClick={() => switchMode('login')}>
-                {resetFlowBusy ? '正在处理…' : '返回密码登录'}
-              </button>
-            ) : <Link className={s.backLink} to="/study"><Icon name="arrow-left" size={15} />先随便看看</Link>}
+            <p className={s.footSign}>
+              <span className={s.footSeal} aria-hidden="true">问</span>
+              春雾书院 · 敬候赐教
+            </p>
+            <div className={s.footRow}>
+              <span>{bindingEmail ? '验证完成前，此账号无法进入使用页面'
+                : resetting ? '验证码只会发送到已绑定的注册邮箱'
+                : registering ? '邮箱验证为必填项' : canRegister ? '新用户可验证邮箱注册' : '新账号注册暂未开放'}</span>
+              {bindingEmail ? (
+                <button className={s.bindingLogout} type="button" disabled={busy || sendingCode}
+                  onClick={() => void exitBinding()}>退出账号</button>
+              ) : resetting ? (
+                <button className={s.bindingLogout} type="button" disabled={resetFlowBusy}
+                  onClick={() => switchMode('login')}>
+                  {resetFlowBusy ? '正在处理…' : '返回密码登录'}
+                </button>
+              ) : <Link className={s.backLink} to="/study"><Icon name="arrow-left" size={15} />先随便看看</Link>}
+            </div>
           </footer>
         </section>
       </div>

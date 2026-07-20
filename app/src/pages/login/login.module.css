@@ -8,7 +8,10 @@
     radial-gradient(80% 72% at 6% 96%, color-mix(in oklch, var(--reed) 30%, transparent), transparent 64%);
 }
 
+/* 双栏册页卡:左卷首(plate)+右拜师帖(form),骑缝印压接缝成破格瞬间 */
 .split {
+  position: relative;
+  isolation: isolate;
   display: grid;
   grid-template-columns: minmax(17rem, 0.72fr) minmax(25rem, 1fr);
   align-items: stretch;
@@ -21,11 +24,25 @@
   animation: global(rise) var(--t-slow) var(--ease-out) backwards;
 }
 
+/* 宣纸纤维:交错低透明细线,只在无子背景处(帖身/form)透出,plate 自带底纹遮住 */
+.split::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(94deg, transparent 0 4px, color-mix(in oklch, var(--ink) 4%, transparent) 4px 5px),
+    repeating-linear-gradient(-88deg, transparent 0 7px, color-mix(in oklch, var(--lilac-ink) 4%, transparent) 7px 8px);
+  mix-blend-mode: multiply;
+}
+
 .plate {
   position: relative;
+  z-index: 2;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto minmax(10rem, 1fr) auto;
+  grid-template-rows: auto minmax(7rem, 1fr) auto;
   align-items: center;
   gap: var(--gap-tight);
   padding: clamp(1.5rem, 3vw, 2.5rem);
@@ -46,16 +63,26 @@
   background: linear-gradient(var(--lilac), var(--reed), transparent);
 }
 
-.plateSeal {
-  grid-column: 1 / -1;
-  width: 3.1rem;
-  height: 3.1rem;
-  filter: drop-shadow(0 3px 8px var(--cinnabar-wash));
-  transform: rotate(-3deg);
+/* 小白台词丝带:楷体一句,左侧丁香缎带边,随 mode 切换语气 */
+.plateVoice {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+  max-width: 14rem;
+  padding: 0.3rem 0.7rem 0.35rem;
+  background: color-mix(in oklch, var(--paper) 78%, transparent);
+  border-left: 2.5px solid var(--lilac);
+  border-radius: 0 var(--radius-tag) var(--radius-tag) 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  line-height: 1.7;
+  letter-spacing: 0.03em;
+  color: var(--ink-soft);
 }
 
 .plateAvatar {
   grid-column: 1;
+  grid-row: 2;
   justify-self: center;
   align-self: center;
   filter: drop-shadow(0 0.7rem 1rem color-mix(in oklch, var(--lilac) 24%, transparent));
@@ -63,6 +90,8 @@
 
 .plateMotto {
   grid-column: 2;
+  grid-row: 1 / -1;
+  align-self: start;
   font-family: var(--font-display);
   font-size: clamp(1.65rem, 3vw, 2.2rem);
   font-weight: 700;
@@ -72,7 +101,8 @@
 }
 
 .plateGloss {
-  grid-column: 1 / -1;
+  grid-column: 1;
+  grid-row: 3;
   font-family: var(--font-display);
   font-size: var(--fs-small);
   line-height: 1.9;
@@ -80,19 +110,93 @@
   color: var(--ink-soft);
 }
 
-.form {
-  display: flex;
-  flex-direction: column;
-  padding: clamp(1.5rem, 3.4vw, 2.7rem);
+/* 骑缝印:问学印绝对定位压过 plate/form 接缝竖线,落印般轻旋入位——本页唯一破格 */
+.straddleSeal {
+  position: absolute;
+  right: 0;
+  bottom: clamp(1.8rem, 20%, 3.6rem);
+  z-index: 4;
+  width: 3.35rem;
+  height: 3.35rem;
+  transform: translate(50%, 0) rotate(-8deg);
+  filter: drop-shadow(0 4px 10px var(--cinnabar-wash));
+  animation: sealDrop var(--t-slow) var(--ease-out) 200ms backwards;
 }
 
+@keyframes sealDrop {
+  from { opacity: 0; transform: translate(50%, -0.5rem) rotate(-26deg) scale(1.12); }
+  to { opacity: 1; transform: translate(50%, 0) rotate(-8deg) scale(1); }
+}
+
+/* 帖身:信封双框 + 右上折角 + 帖首眉批 + 底部落款(技法借 story/letter,勿跨模块 import) */
+.form {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1.75rem, 3.6vw, 2.9rem);
+}
+
+/* 信封双框:1px 界框 + 3px 纸垫 + 内衬细线,压在文本层下(z-index:-1) */
+.form::before {
+  content: '';
+  position: absolute;
+  inset: clamp(0.75rem, 1.5vw, 1.15rem);
+  z-index: -1;
+  pointer-events: none;
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  box-shadow: inset 0 0 0 3px var(--paper), inset 0 0 0 4px var(--paper-edge);
+  animation: letterIn var(--t-slow) var(--ease-out) 200ms backwards;
+}
+
+/* 右上折角:外半片露页色(像裁掉的角),内半片压深一档折翼 */
+.form::after {
+  content: '';
+  position: absolute;
+  top: clamp(0.75rem, 1.5vw, 1.15rem);
+  right: clamp(0.75rem, 1.5vw, 1.15rem);
+  z-index: -1;
+  pointer-events: none;
+  width: 1.3rem;
+  height: 1.3rem;
+  background: linear-gradient(225deg, var(--paper) 48%, var(--paper-edge) 48%);
+}
+
+/* 展信:自上沿揭开轻轻落定(borrow letter :31-42);仅界框动,文本不位移 */
+@keyframes letterIn {
+  from {
+    opacity: 0;
+    clip-path: inset(0 0 62% 0 round var(--radius-s));
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0 round var(--radius-s));
+    transform: none;
+  }
+}
+
+/* 帖首眉批:楷体空铺标签 + 丁香批注短划 */
 .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
   margin-bottom: 0.5rem;
   font-family: var(--font-display);
   font-size: var(--fs-tiny);
   letter-spacing: 0.34em;
   text-indent: 0.34em;
   color: var(--azure);
+}
+
+.eyebrow::before {
+  content: '';
+  flex: none;
+  width: 0.9rem;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--lilac);
 }
 
 .title {
@@ -111,42 +215,51 @@
   line-height: 1.75;
 }
 
+/* 双签纸签制式:选中态如贴上一枚带丁香签头的纸签,远处一眼可辨 */
 .modes {
   display: flex;
-  gap: var(--gap);
-  margin-bottom: var(--gap-tight);
+  gap: var(--gap-hair);
+  margin-bottom: var(--gap);
   border-bottom: 1px solid var(--paper-edge);
 }
 
 .modeBtn {
   position: relative;
   min-height: 44px;
-  padding: 0.45rem 0.15rem 0.55rem;
-  border: 0;
+  padding: 0.5rem 1.05rem 0.6rem;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--radius-s) var(--radius-s) 0 0;
   background: none;
   color: var(--ink-faint);
   font-family: var(--font-display);
   font-size: var(--fs-body);
   letter-spacing: 0.22em;
   text-indent: 0.22em;
-  transition: color var(--t-fast) var(--ease-out);
+  transition: color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
 }
 
-.modeBtn::after {
+.modeBtn:hover { color: var(--ink-soft); background: color-mix(in oklch, var(--paper) 55%, transparent); }
+
+.modeBtn[aria-pressed='true'] {
+  color: var(--ink);
+  background: var(--paper);
+  border-color: var(--paper-edge);
+  box-shadow: inset 0 2.5px 0 var(--lilac);
+  cursor: default;
+}
+
+/* 签脚压住 modes 基线,让选中签与帖身连成一片 */
+.modeBtn[aria-pressed='true']::after {
   content: '';
   position: absolute;
   right: 0;
   bottom: -1px;
   left: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--lilac-ink), var(--reed));
-  opacity: 0;
-  transition: opacity var(--t-fast) var(--ease-out);
+  background: var(--paper);
 }
 
-.modeBtn:hover { color: var(--ink-soft); }
-.modeBtn[aria-pressed='true'] { color: var(--ink); cursor: default; }
-.modeBtn[aria-pressed='true']::after { opacity: 1; }
 .modeBtn:disabled { cursor: wait; opacity: 0.58; }
 
 .methodSwitch {
@@ -231,47 +344,107 @@
   margin-top: 0.25rem;
 }
 
+/* 朱批:反馈行左侧一道朱笔竖线(错误朱砂/成功芦青),feedbackSlot 已留位不抖版 */
 .error,
 .success {
+  position: relative;
   margin: 0;
+  padding-left: 0.85rem;
   font-size: var(--fs-small);
   animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 
-.error { color: var(--cinnabar); }
-.success { color: var(--jade-ink); }
+.error::before,
+.success::before {
+  content: '';
+  position: absolute;
+  top: 0.12em;
+  bottom: 0.12em;
+  left: 0;
+  width: 3px;
+  border-radius: 1px;
+}
 
+.error { color: var(--cinnabar); }
+.error::before { background: linear-gradient(var(--cinnabar), color-mix(in oklch, var(--cinnabar) 32%, transparent)); }
+
+.success { color: var(--jade-ink); }
+.success::before { background: linear-gradient(var(--jade), color-mix(in oklch, var(--jade) 32%, transparent)); }
+
+/* 落印入斋:印泥色钤章按钮,悬停轻旋落定(仅 transform/背景色)。
+   [登记破格] 本页第二处破格(另一处=骑缝印 straddleSeal):submit 按「落印」隐喻走印泥红,
+   属印章豁免的刻意延伸,与全站 azure 主 CTA 约定的分叉经审查确认保留——审查勿再报警。 */
 .submit {
+  position: relative;
   min-height: 44px;
   margin-top: 0.2rem;
-  padding: 0.7rem;
+  padding: 0.72rem;
   border: 0;
-  border-radius: var(--radius-s);
-  background: var(--azure);
+  border-radius: var(--radius-tag);
+  background: color-mix(in oklch, var(--seal-red) 80%, var(--ink) 20%);
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--paper) 32%, transparent);
   color: var(--paper);
   font-family: var(--font-display);
   font-size: var(--fs-body);
   font-weight: 700;
-  letter-spacing: 0.2em;
-  text-indent: 0.2em;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
   transition: background var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
 }
 
-.submit:hover:not(:disabled) { background: var(--azure-deep); transform: translateY(-1px); }
-.submit:active:not(:disabled) { transform: translateY(1px); }
+.submit:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--seal-red) 68%, var(--ink) 32%);
+  transform: rotate(-1.2deg) translateY(-1px);
+}
+
+.submit:active:not(:disabled) { transform: rotate(0deg) translateY(1px) scale(0.99); }
 .submit:disabled { opacity: 0.55; cursor: not-allowed; }
 .submit[data-busy='true'] { opacity: 1; cursor: progress; }
 
+/* 底部落款区:小白私章 + 春雾书院署名,与提示/返回行分层 */
 .foot {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: var(--gap-tight);
   margin-top: var(--gap);
   padding-top: var(--gap-tight);
   border-top: 1px solid var(--paper-edge);
   color: var(--ink-faint);
   font-size: var(--fs-tiny);
+}
+
+.footSign {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-hair);
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+}
+
+.footSeal {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 1.5px solid var(--seal-red);
+  border-radius: var(--radius-tag);
+  color: var(--seal-red);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  transform: rotate(-4deg);
+}
+
+.footRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-tight);
 }
 
 .backLink,
@@ -336,31 +509,73 @@
 
 @media (max-width: 720px) {
   .split { grid-template-columns: minmax(0, 1fr); }
+  /* 中屏保帖:卷首横向压条,仍留住帖首箴言 + 一句台词,帖身不塌 */
   .plate {
-    display: flex;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: var(--gap);
+    row-gap: var(--gap-hair);
     min-height: 5.5rem;
     padding: var(--gap-tight) var(--gap);
     border-right: 0;
     border-bottom: 1px solid var(--paper-edge);
   }
   .plate::after { display: none; }
-  .plateSeal { width: 2.4rem; height: 2.4rem; flex: none; }
+  .plateVoice {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+    max-width: none;
+  }
+  .plateAvatar {
+    grid-column: 1;
+    grid-row: 1 / -1;
+  }
   .plateAvatar > * { width: 70px !important; height: 70px !important; }
-  .plateMotto { margin-left: auto; font-size: var(--fs-sub); }
+  .plateMotto {
+    grid-column: 3;
+    grid-row: 1 / -1;
+    align-self: center;
+    margin-left: auto;
+    font-size: var(--fs-sub);
+  }
   .plateMotto br { display: none; }
-  .plateGloss { display: none; }
+  .plateGloss {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+    font-size: var(--fs-tiny);
+    line-height: 1.5;
+  }
+  .plateGloss br { display: none; }
+  /* 骑缝印改骑横向接缝(卷首下沿);落印关键帧只写竖向straddle,改随卡片入场即可 */
+  .straddleSeal {
+    top: auto;
+    bottom: 0;
+    right: var(--gap);
+    width: 2.5rem;
+    height: 2.5rem;
+    transform: translate(0, 50%) rotate(-8deg);
+    animation: none;
+  }
 }
 
 @media (max-width: 560px) {
   .page { place-items: start center; padding: var(--gap-tight); padding-bottom: max(var(--gap-tight), env(safe-area-inset-bottom)); }
   .split { border-radius: var(--radius-s); }
-  .plate { gap: var(--gap-tight); padding: var(--gap-hair) var(--gap-tight); }
-  .plateSeal { width: 2rem; height: 2rem; }
+  .plate { column-gap: var(--gap-tight); padding: var(--gap-hair) var(--gap-tight); }
+  .plateVoice { padding: 0.2rem 0.5rem; font-size: var(--fs-tiny); }
   .plateAvatar > * { width: 58px !important; height: 58px !important; }
   .plateMotto { font-size: var(--fs-small); letter-spacing: 0.03em; }
-  .form { padding: 1.25rem var(--gap); }
+  .plateGloss { display: none; }
+  .straddleSeal { right: var(--gap-tight); width: 2.1rem; height: 2.1rem; }
+  .form { padding: 1.4rem var(--gap); }
+  .form::before,
+  .form::after { inset: 0.6rem; }
+  .form::after { inset: auto; top: 0.6rem; right: 0.6rem; }
   .sub { margin-bottom: var(--gap-tight); }
   .bindingAccount { gap: var(--gap-hair); margin-bottom: var(--gap-tight); }
   .bindingAccount small { padding-left: var(--gap-hair); }
-  .foot { align-items: flex-start; flex-wrap: wrap; }
+  .footRow { align-items: flex-start; flex-wrap: wrap; }
 }

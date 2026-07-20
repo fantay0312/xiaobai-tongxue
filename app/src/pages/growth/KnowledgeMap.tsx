@@ -55,9 +55,53 @@ const STAR_MAX_X = VIEW_W - 46;
 
 const REALM_NUMS = ['壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌'];
 
-/* 四芒星芒(sparkle):viewBox -14..14,由 CSS 按状态上色/缩放 */
-const STAR_PATH =
-  'M0,-11 C1.2,-3.6 3.6,-1.2 11,0 C3.6,1.2 1.2,3.6 0,11 C-1.2,3.6 -3.6,1.2 -11,0 C-3.6,-1.2 -1.2,-3.6 0,-11 Z';
+/* 三垣星官题号:课名 → 真星官垣名(大楷)。命座考据是本项灵魂,
+   缺表课程回退到 REALM_NUMS 泛称,不硬绑下标。 */
+const REALM_ENCLOSURES: Record<string, string> = {
+  大模型训练: '紫微',
+  操作系统原理: '天市',
+  Python程序设计: '太微',
+  'Python 程序设计': '太微',
+};
+
+function enclosureOf(course: string, realmIndex: number): string {
+  return REALM_ENCLOSURES[course] ?? `${REALM_NUMS[realmIndex] ?? String(realmIndex + 1)}`;
+}
+
+/* 天文星形:实心星核 + 四道长短不一的衍射芒(8 顶点星形多边形,
+   四长芒沿正向、四短点在 45° 收腰)。viewBox -14..14 不动,只作为 .glyphStar 的 d。
+   三变体按 topicId 哈希取样,让星野有肌理不复读同一 glyph。 */
+const STAR_VARIANTS = [
+  // 均衡芒
+  'M11,0 L1.4,1.4 L0,11.5 L-1.4,1.4 L-11,0 L-1.4,-1.4 L0,-12 L1.4,-1.4 Z',
+  // 竖长芒
+  'M9,0 L1.3,1.3 L0,12 L-1.3,1.3 L-9,0 L-1.3,-1.3 L0,-12.5 L1.3,-1.3 Z',
+  // 横展芒
+  'M12.5,0 L1.5,1.5 L0,9.5 L-1.5,1.5 L-12,0 L-1.5,-1.5 L0,-9.5 L1.5,-1.5 Z',
+] as const;
+
+/* 星链连接度:一颗星在 STAR_LINKS 中被牵到的次数——牵得多者为星官主星,理应更亮更大。
+   由真实策展星链派生(非手写会漂移的数),渲染间稳定。 */
+const LINK_DEGREE = (() => {
+  const map = new Map<string, number>();
+  for (const link of STAR_LINKS) {
+    map.set(link.a, (map.get(link.a) ?? 0) + 1);
+    map.set(link.b, (map.get(link.b) ?? 0) + 1);
+  }
+  return map;
+})();
+
+/** 星等:主星(牵 ≥2 链)最亮、支线星(牵 1 链)居中、散场星(无链)最暗。
+    返回缩放乘数,只作用于内层 .glyphStar 与 drop-shadow 辉光(经 --star-mag 下发)。 */
+function starMagnitude(topicId: string): number {
+  const degree = LINK_DEGREE.get(topicId) ?? 0;
+  return degree >= 2 ? 1.16 : degree === 1 ? 1.02 : 0.9;
+}
+
+/** 星形变体:同一 topicId 永远同一形,刷新不漂移。 */
+function starVariant(topicId: string): string {
+  return STAR_VARIANTS[Math.floor(hash01(topicId, 3) * STAR_VARIANTS.length)] ?? STAR_VARIANTS[0];
+}
 
 const STATUS_TEXT: Record<NodeStatus, string> = {
   mastered: '星火已明',
@@ -203,17 +247,36 @@ function curvedLink(from: StarPoint, to: StarPoint, index: number): { path: stri
   };
 }
 
-function AmbientDust({ realmIndex, rows }: { realmIndex: number; rows: number }) {
+function AmbientDust({ realmIndex, rows, points }: { realmIndex: number; rows: number; points: StarPoint[] }) {
   const rand = lcg(realmIndex + 1);
+  const fieldH = rows * ROW_H;
   const count = rows * 16;
-  const dots = Array.from({ length: count }, (_, i) => ({
-    key: i,
-    cx: 12 + rand() * (VIEW_W - 24),
-    cy: 8 + rand() * (rows * ROW_H - 16),
-    r: 0.7 + rand() * 1.1,
-    opacity: 0.1 + rand() * 0.22,
-    delay: rand() * 5.2,
-  }));
+  const dots = Array.from({ length: count }, (_, i) => {
+    // 六成星尘向星位聚拢(亮星附近密),四成铺散空场——夜空有疏密纵深
+    const near = points.length > 0 && rand() < 0.6;
+    if (near) {
+      const anchor = points[Math.floor(rand() * points.length)];
+      // 两个均匀分布相加近高斯:越靠星心越密
+      const jx = (rand() + rand() - 1) * 30;
+      const jy = (rand() + rand() - 1) * 30;
+      return {
+        key: i,
+        cx: clamp(anchor.x + jx, 6, VIEW_W - 6),
+        cy: clamp(anchor.y + jy, 6, fieldH - 6),
+        r: 0.6 + rand() * 1.3,
+        opacity: 0.14 + rand() * 0.24,
+        delay: rand() * 5.2,
+      };
+    }
+    return {
+      key: i,
+      cx: 12 + rand() * (VIEW_W - 24),
+      cy: 8 + rand() * (fieldH - 16),
+      r: 0.6 + rand() * 0.85,
+      opacity: 0.07 + rand() * 0.16,
+      delay: rand() * 5.2,
+    };
+  });
   return (
     <g>
       {dots.map((d) => (
@@ -231,13 +294,15 @@ function AmbientDust({ realmIndex, rows }: { realmIndex: number; rows: number })
 }
 
 export function KnowledgeMap({
-  nodes, selectedId, onSelect, statusFocus = null,
+  nodes, selectedId, onSelect, statusFocus = null, bridge = null,
 }: {
   nodes: MapNode[];
   selectedId: string | null;
   onSelect: (topicId: string) => void;
   /** 巡天筛选:聚焦某一态,其余星与连线视觉下沉(不卸载,量测/Tab 序不动)。 */
   statusFocus?: NodeStatus | null;
+  /** 星图↔印章叙事桥:距《全谱》还差几星、已落印几枚(由 achievements 派生,防御式渲染)。 */
+  bridge?: { toFull: number; seals: number } | null;
 }) {
   const realms = groupByCourse(nodes);
   const chartRef = useRef<HTMLDivElement>(null);
@@ -322,6 +387,12 @@ export function KnowledgeMap({
       >
         <p className={s.skySurvey}>
           满天 <b>{totalStars}</b> 星 · 已点亮 <b>{litStars}</b> · 雾中 <b>{fogStars}</b>
+          {bridge ? (
+            <span className={s.skyBridge}>
+              {bridge.toFull > 0 ? <>距《全谱》还差 <b>{bridge.toFull}</b> 星</> : <>《全谱》已成</>}
+              {' · '}已落印 <b>{bridge.seals}</b> 枚
+            </span>
+          ) : null}
         </p>
         <svg
           className={s.crossLinkOverlay}
@@ -385,7 +456,7 @@ export function KnowledgeMap({
             <section key={realm.course} className={s.skyRealm} aria-labelledby={realmTitleId}>
               <header className={s.skyHead}>
                 <span className={s.skyNo} aria-hidden="true">
-                  <b className={s.skyNoChar}>{REALM_NUMS[realmIndex] ?? String(realmIndex + 1)}</b>垣
+                  <b className={s.skyNoChar}>{enclosureOf(realm.course, realmIndex)}</b>垣
                 </span>
                 <div>
                   <h3 id={realmTitleId} className={s.skyTitle}>《{realm.course}》</h3>
@@ -398,7 +469,10 @@ export function KnowledgeMap({
                   : <p className={s.skyHint}>沿星轨而行,点一颗星,看它的证据。</p>}
               </header>
 
-              <div className={s.skyField} style={{ height: `${fieldH / 16}rem` }}>
+              <div
+                className={[s.skyField, [s.skyTintA, s.skyTintB, s.skyTintC][realmIndex % 3]].filter(Boolean).join(' ')}
+                style={{ height: `${fieldH / 16}rem` }}
+              >
                 <svg
                   className={s.skyLines}
                   viewBox={`0 0 ${VIEW_W} ${fieldH}`}
@@ -406,7 +480,7 @@ export function KnowledgeMap({
                   aria-hidden="true"
                   focusable="false"
                 >
-                  <AmbientDust realmIndex={realmIndex} rows={rows} />
+                  <AmbientDust realmIndex={realmIndex} rows={rows} points={points} />
                   {realm.nodes.slice(1).map((node, index) => {
                     const kind = segmentKind(realm.nodes[index], node);
                     const from = points[index];
@@ -433,6 +507,9 @@ export function KnowledgeMap({
                     const point = points[index];
                     const locked = node.status === 'locked';
                     const selected = selectedId === node.topic.topicId;
+                    // 星等由星链连接度派生,星形按 topicId 哈希取样(确定性,不漂移)
+                    const magnitude = starMagnitude(node.topic.topicId);
+                    const glyphD = starVariant(node.topic.topicId);
                     const slotStyle: CSSProperties = {
                       left: `${(point.x / VIEW_W) * 100}%`,
                       top: `${(point.y / fieldH) * 100}%`,
@@ -470,10 +547,15 @@ export function KnowledgeMap({
                           ))}
                         >
                           <span className={s.starFog} aria-hidden="true" />
-                          <span className={s.starGlyph} data-star-anchor aria-hidden="true">
+                          <span
+                            className={s.starGlyph}
+                            data-star-anchor
+                            aria-hidden="true"
+                            style={locked ? undefined : ({ '--star-mag': magnitude } as CSSProperties)}
+                          >
                             <svg viewBox="-14 -14 28 28" focusable="false">
                               <circle className={s.glyphRing} r="11.5" />
-                              <path className={s.glyphStar} d={STAR_PATH} />
+                              <path className={s.glyphStar} d={glyphD} />
                             </svg>
                             <span className={s.starOrder}>
                               {String(index + 1).padStart(2, '0')}

@@ -56,6 +56,48 @@ export function MemoryPanorama({ layers }: Props) {
                   <li key={i}>{line}</li>
                 ))}
               </ul>
+              {/* 遗忘曲线显形:每门出师课的保持度迷你条(芦苇绿=尚清晰,藤黄=已衰减) */}
+              {layer.retentions && layer.retentions.length > 0 && (
+                <ul className={s.retList}>
+                  {layer.retentions.map((r, i) => {
+                    const pct = Math.round(r.retention * 100);
+                    return (
+                      <li key={i} className={s.retItem}>
+                        <div className={s.retHead}>
+                          <span className={s.retTitle}>《{r.title}》</span>
+                          <span className={s.retNote}>
+                            掌握度 {pct}% ·{' '}
+                            {r.daysToFog == null
+                              ? '暂稳'
+                              : r.daysToFog === 0
+                                ? '今日起雾'
+                                : r.fogged
+                                  ? `已起雾 ${Math.abs(r.daysToFog)} 天`
+                                  : `再 ${r.daysToFog} 天起雾`}
+                          </span>
+                        </div>
+                        <div className={s.retTrack} aria-hidden="true">
+                          <span
+                            className={`${s.retFill} ${r.fogged ? s.retFillFog : ''}`}
+                            style={{ width: `${Math.max(4, pct)}%` }}
+                          />
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {/* 跨课记忆线:小白自己把两门课连起来的关联 */}
+              {layer.crossLinks && layer.crossLinks.length > 0 && (
+                <div className={s.crossBlock}>
+                  <p className={s.crossHead}>小白自己连起来的</p>
+                  <ul className={s.crossList}>
+                    {layer.crossLinks.map((c, i) => (
+                      <li key={i}>{c.line}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {layer.anchor && (
                 targetId !== null ? (
                   <button

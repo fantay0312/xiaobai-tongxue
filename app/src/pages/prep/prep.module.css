@@ -109,6 +109,133 @@
   .headGrid { grid-template-columns: 1fr; gap: var(--gap); }
 }
 
+/* ── 记忆回执纸条「接着上次讲」:双线纸条制式(呼应 .flowNote),册页语域称「先生」 ── */
+.recall {
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
+  margin-bottom: var(--gap-tight);
+  background: var(--paper-warm);
+  border: 1px solid var(--line-strong);
+  /* 双线上沿,一眼是「翻旧账」的纸条 */
+  border-top: 3px double var(--line-strong);
+  border-radius: var(--radius-s);
+  padding: var(--gap) clamp(var(--gap-tight), 3vw, var(--gap-loose));
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+}
+.recallHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-tight);
+  flex-wrap: wrap;
+}
+.recallLabel {
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  color: var(--azure-deep);
+  letter-spacing: 0.08em;
+}
+/* 「接着上次讲」旁的小落款:上次温书距今多久 */
+.recallWhen {
+  font-size: var(--fs-tiny);
+  color: var(--ink-soft); /* paper-warm 卡底上 ink-faint 不达 AA */
+  letter-spacing: 0.1em;
+}
+.recallOutcome {
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  color: var(--ink);
+  line-height: 1.9;
+}
+.recallField {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-tight);
+  flex-wrap: wrap;
+}
+.recallFieldLabel {
+  flex: 0 0 auto;
+  font-size: var(--fs-tiny);
+  color: var(--ink-soft); /* paper-warm 卡底上 ink-faint 不达 AA */
+  letter-spacing: 0.16em;
+  padding-top: 0.15rem;
+}
+.recallChips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-hair);
+}
+/* 记得的要点:芦苇绿细签(掌握/生长语义) */
+.recallChip {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  color: var(--jade-ink);
+  background: var(--jade-wash);
+  border: 1px solid color-mix(in oklab, var(--jade) 34%, transparent);
+  border-radius: var(--radius-tag);
+  padding: 0.06rem 0.5rem;
+  line-height: 1.7;
+}
+/* 清掉的心魔:墨色细签(已收服,不再示警朱砂) */
+.recallChipDemon {
+  color: var(--ink-soft);
+  background: var(--ink-wash);
+  border-color: var(--paper-edge);
+}
+.recallQuotes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+}
+/* 裱起来的金句:楷体,左沿丁香细线(引文语义) */
+.recallQuote {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  line-height: 1.9;
+  padding-left: var(--gap-tight);
+  border-left: 2px solid var(--lilac-ink);
+}
+.recallRet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.recallRetHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-tight);
+  flex-wrap: wrap;
+}
+.recallRetNote {
+  font-size: var(--fs-tiny);
+  color: var(--ink-soft); /* paper-warm 卡底上 ink-faint 不达 AA */
+  letter-spacing: 0.04em;
+}
+/* 槽 + 条:一次性派生渲染,不做 width 过渡(只 transform/opacity 纪律) */
+.recallRetTrack {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--paper-shade);
+  border: 1px solid var(--paper-edge);
+  overflow: hidden;
+}
+.recallRetFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  /* 芦苇绿 = 尚清晰 */
+  background: var(--jade);
+}
+/* 藤黄 = 已衰减(语义唯一暖色) */
+.recallRetFillFog { background: var(--amber); }
+
 /* ── 不对称双列:内容 + 眉批 ── */
 .layout {
   display: grid;
@@ -1185,6 +1312,7 @@ button.stepCurrent:hover { background: var(--azure-wash); }
 
 @media (prefers-reduced-motion: reduce) {
   .head,
+  .recall,
   .section,
   .aside,
   .probe,

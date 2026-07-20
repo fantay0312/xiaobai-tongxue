@@ -113,28 +113,51 @@
   scrollbar-width: thin;
 }
 
-/* 名帖芯:丁香/芦苇双色水迹渐入,3px 装裱衬边 + 细紫界栏钤一枚私章 */
+/* 书斋名帖:丁香/芦苇双色水迹 + 极淡竖乌丝栏,3px 装裱衬边;整帖可点,翻开成长册 */
 .identity {
   position: relative;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--gap);
-  padding: clamp(var(--gap), 4vw, var(--gap-loose)) clamp(var(--gap), 5vw, var(--gap-loose)) var(--gap);
+  display: flex;
+  flex-direction: column;
+  padding: clamp(var(--gap), 4vw, var(--gap-loose)) clamp(var(--gap), 5vw, var(--gap-loose));
   border-bottom: 1px solid var(--paper-edge);
+  color: var(--ink);
+  text-decoration: none;
   background:
     radial-gradient(20rem 13rem at 8% -18%, var(--lilac-wash), transparent 58%),
     radial-gradient(22rem 15rem at 100% 128%, var(--reed-wash), transparent 60%),
+    repeating-linear-gradient(90deg, transparent 0 calc(1.6rem - 1px), color-mix(in oklab, var(--paper-edge) 24%, transparent) calc(1.6rem - 1px) 1.6rem),
     var(--paper-blush);
   box-shadow:
     inset 0 0 0 3px var(--paper-blush),
     inset 0 0 0 4px color-mix(in oklab, var(--paper-edge) 78%, transparent);
+  transition: box-shadow var(--t-med) var(--ease-out);
 }
 
-.identityCopy {
+/* 悬停:装裱衬边由淡紫收紧成丁香,像把名帖端起来看 */
+.identity:hover {
+  box-shadow:
+    inset 0 0 0 3px var(--paper-blush),
+    inset 0 0 0 4px color-mix(in oklab, var(--lilac) 52%, var(--paper-edge)),
+    var(--shadow-paper);
+}
+
+/* 帖文:左侧一道文武界栏(粗左细右),框住抬头与身份签 */
+.plate {
+  position: relative;
   min-width: 0;
   padding-left: var(--gap);
-  border-left: 1px solid color-mix(in oklab, var(--paper-edge) 82%, var(--lilac));
+}
+
+.plate::before {
+  content: '';
+  position: absolute;
+  top: 0.15rem;
+  bottom: 0.15rem;
+  left: 0;
+  width: 4px;
+  background:
+    linear-gradient(color-mix(in oklab, var(--lilac) 58%, var(--paper-edge)), color-mix(in oklab, var(--lilac) 58%, var(--paper-edge))) left / 2px 100% no-repeat,
+    linear-gradient(color-mix(in oklab, var(--lilac) 30%, var(--paper-edge)), color-mix(in oklab, var(--lilac) 30%, var(--paper-edge))) right / 1px 100% no-repeat;
 }
 
 /* 帖眉:小字楷体宽字距,像名帖抬头 */
@@ -157,8 +180,51 @@
   white-space: nowrap;
 }
 
-.email {
-  margin-top: 0.28rem;
+/* 学习身份三签:师道称号朱文小印 + 修行阶 + 学识等级,数值全从引擎派生 */
+.creds {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-hair);
+  margin-top: 0.5rem;
+}
+
+/* 师道称号:朱文小签(印章语境走 --seal-red,非警示) */
+.rankChip {
+  padding: 0.16rem 0.5rem;
+  border: 1px solid color-mix(in oklab, var(--seal-red) 55%, transparent);
+  border-radius: var(--radius-tag);
+  background: var(--seal-red-wash);
+  color: color-mix(in oklch, var(--seal-red) 70%, var(--ink) 30%); /* wash 底上加深到 ≥AA */
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+}
+
+/* 修行阶 / 学识:退到丁香墨的中性签,不与朱印抢重音 */
+.credChip {
+  padding: 0.16rem 0.5rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-tag);
+  background: color-mix(in oklab, var(--paper) 55%, transparent);
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.emailLine {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-hair);
+  min-width: 0;
+  margin-top: var(--gap-tight);
+}
+
+.emailText {
   overflow: hidden;
   color: var(--ink-soft);
   font-size: var(--fs-small);
@@ -166,11 +232,41 @@
   white-space: nowrap;
 }
 
-/* 验证签:锐角小签(朱文小印制式),文字走 -ink 档 */
+/* 落款行:右下角「授课凭帖」+ 升格到落款位的方印(本弹层的破格瞬间) */
+.colophon {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--gap-tight);
+  margin-top: var(--gap);
+  padding-top: var(--gap-tight);
+}
+
+.colophonText {
+  color: var(--ink-faint);
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.22em;
+  white-space: nowrap;
+}
+
+/* 方印落在落款位:比抬头旧位小一档,悬停时轻按如钤印 */
+.colophon .mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: var(--fs-sub);
+  transition: transform var(--t-med) var(--ease-out);
+}
+
+.identity:hover .colophon .mark {
+  transform: rotate(-3deg) scale(0.94);
+}
+
+/* 验证签:锐角小签(朱文小印制式) */
 .secureBadge,
 .pendingBadge {
-  align-self: start;
-  padding: 0.24rem 0.46rem;
+  flex: none;
+  padding: 0.2rem 0.44rem;
   border-radius: var(--radius-tag);
   font-family: var(--font-display);
   font-size: var(--fs-tiny);
@@ -184,10 +280,11 @@
   color: var(--jade-ink);
 }
 
+/* 待补录是待办不是错误:丁香待办签,朱砂只留真错误 */
 .pendingBadge {
-  border: 1px solid color-mix(in oklab, var(--cinnabar) 42%, transparent);
-  background: var(--cinnabar-wash);
-  color: var(--cinnabar);
+  border: 1px solid color-mix(in oklab, var(--lilac) 45%, var(--paper-edge));
+  background: var(--lilac-wash);
+  color: var(--ink-soft);
 }
 
 /* 眉批:退到最轻的一行,左侧一道界线 */
@@ -283,9 +380,10 @@
   white-space: nowrap;
 }
 
+/* 待验证是待办不是错误:丁香待办签,与名帖待补录签同语 */
 .statusRow small[data-pending='true'] {
-  background: var(--cinnabar-wash);
-  color: var(--cinnabar);
+  background: var(--lilac-wash);
+  color: var(--ink-soft);
 }
 
 .emailToggle {
@@ -313,8 +411,11 @@
   line-height: 1.55;
 }
 
+/* 门径卡片:各自成砖,间隔留白——与上方账簿细行(statusList)刻意分家,破同构长清单 */
 .entries {
-  border-block: 1px solid var(--paper-edge);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
 }
 
 .entry {
@@ -323,24 +424,24 @@
   align-items: center;
   gap: var(--gap-tight);
   width: 100%;
-  min-height: 3.7rem;
-  padding: var(--gap-tight) var(--gap-hair);
-  border: 0;
-  background: transparent;
+  min-height: 3.4rem;
+  padding: var(--gap-tight);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  background: var(--paper-warm);
   color: var(--ink-soft);
   text-align: left;
   text-decoration: none;
-  transition: background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+  transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
 }
 
-.entry + .entry { border-top: 1px solid var(--paper-edge); }
-
 .entry:hover {
-  background: var(--lilac-wash);
+  border-color: color-mix(in oklab, var(--lilac) 45%, var(--paper-edge));
+  background: var(--paper-blush);
   color: var(--azure-deep);
 }
 
-/* 入口图标坐在一方芦苇雾纸砖里 */
+/* 入口图标坐在一方雾纸砖里(卡内衬砖,与卡面分色) */
 .entryTile {
   display: grid;
   place-items: center;
@@ -349,7 +450,7 @@
   flex: none;
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius-s);
-  background: var(--paper-warm);
+  background: var(--paper);
   color: var(--azure-deep);
   transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
@@ -438,19 +539,9 @@
     max-height: calc(100dvh - 1.5rem);
   }
 
-  .identity {
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: var(--gap-tight);
-    padding: var(--gap);
-  }
-
-  .identityCopy {
-    padding-left: var(--gap-tight);
-  }
-
-  .mark { width: 3.5rem; height: 3.5rem; }
-  .secureBadge,
-  .pendingBadge { grid-column: 2; justify-self: start; }
+  .identity { padding: var(--gap); }
+  .plate { padding-left: var(--gap-tight); }
+  .colophon .mark { width: 2.2rem; height: 2.2rem; }
   .intro,
   .section { margin-inline: var(--gap); }
   .foot { align-items: stretch; flex-direction: column; }
@@ -461,6 +552,8 @@
   .dialog[open],
   .dialog::backdrop { animation: none; }
 
+  .identity,
+  .colophon .mark,
   .entry,
   .entryTile,
   .entryChevron,
@@ -469,5 +562,6 @@
   .closeBtn,
   .logoutBtn { transition: none; }
 
+  .identity:hover .colophon .mark { transform: none; }
   .entry:hover .entryChevron { transform: none; }
 }

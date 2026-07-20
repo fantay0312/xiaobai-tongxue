@@ -819,6 +819,10 @@
   color: var(--moon-on-ink);
 }
 
+/* 叙事桥续句:接在巡天总览后,一道中点分隔,窄屏自然折行 */
+.skyBridge { margin-left: 0.5em; color: var(--moonsoft-on-ink); }
+.skyBridge::before { content: '·'; margin: 0 0.45em 0 0; opacity: 0.7; }
+
 /* 三垣共用一片夜空:只留松缓呼吸，不再画课程分隔带。 */
 .skyRealm { position: relative; }
 
@@ -909,6 +913,11 @@
   position: relative;
   margin-top: calc(-1 * var(--gap-hair));
 }
+
+/* 三垣微分天色:每垣一层极淡星域辉,给夜空纵深(垫在星轨/星宿之下,不吃指针) */
+.skyTintA { background: radial-gradient(72% 92% at 26% 2%, color-mix(in oklch, var(--lilac) 7%, transparent), transparent 66%); }
+.skyTintB { background: radial-gradient(72% 92% at 74% 2%, color-mix(in oklch, var(--azure) 9%, transparent), transparent 66%); }
+.skyTintC { background: radial-gradient(78% 100% at 50% 100%, color-mix(in oklch, var(--reed) 7%, transparent), transparent 70%); }
 
 .crossLinkOverlay {
   position: absolute;
@@ -1142,11 +1151,13 @@
   opacity: 0;
 }
 
+/* --star-mag:星等乘数(由 KnowledgeMap 按星链连接度下发),只缩放内层星形与辉光,
+   不动 3rem 锚盒(冻结契约);缺省 1 时形同旧值 */
 .glyphStar {
   fill: color-mix(in oklch, var(--moonsoft-on-ink) 26%, transparent);
   stroke: var(--sky-dim);
   stroke-width: 1;
-  transform: scale(0.72);
+  transform: scale(calc(0.72 * var(--star-mag, 1)));
   transform-origin: center;
   transition: transform var(--t-fast) var(--ease-out);
 }
@@ -1224,7 +1235,7 @@
 .starMastered .glyphStar {
   fill: var(--sky-lit);
   stroke: none;
-  transform: scale(1);
+  transform: scale(var(--star-mag, 1));
 }
 
 .starMastered .glyphRing { opacity: 0.85; }
@@ -1232,13 +1243,13 @@
 /* 出师星呼吸辉光:长周期(6.5s)小幅辉光起伏,夜空有生气而不喧闹;
    往复动画走 --ease-loop,reduced-motion 下停 */
 .starMastered .starGlyph {
-  filter: drop-shadow(0 0 7px color-mix(in oklch, var(--sky-lit) 65%, transparent));
+  filter: drop-shadow(0 0 calc(7px * var(--star-mag, 1)) color-mix(in oklch, var(--sky-lit) 65%, transparent));
   animation: starPulse 6.5s var(--ease-loop) infinite alternate;
 }
 
 @keyframes starPulse {
-  from { filter: drop-shadow(0 0 6px color-mix(in oklch, var(--sky-lit) 52%, transparent)); }
-  to { filter: drop-shadow(0 0 9px color-mix(in oklch, var(--sky-lit) 80%, transparent)); }
+  from { filter: drop-shadow(0 0 calc(6px * var(--star-mag, 1)) color-mix(in oklch, var(--sky-lit) 52%, transparent)); }
+  to { filter: drop-shadow(0 0 calc(9px * var(--star-mag, 1)) color-mix(in oklch, var(--sky-lit) 80%, transparent)); }
 }
 
 .starMastered .starState { color: var(--sky-lit); }
@@ -1247,11 +1258,11 @@
 .starLearning .glyphStar {
   fill: var(--sky-azure);
   stroke: none;
-  transform: scale(0.9);
+  transform: scale(calc(0.9 * var(--star-mag, 1)));
 }
 
 .starLearning .starGlyph {
-  filter: drop-shadow(0 0 5px color-mix(in oklch, var(--sky-azure) 45%, transparent));
+  filter: drop-shadow(0 0 calc(5px * var(--star-mag, 1)) color-mix(in oklch, var(--sky-azure) 45%, transparent));
 }
 
 .starLearning .starState { color: var(--sky-azure); }
@@ -1260,11 +1271,11 @@
 .starForgotten .glyphStar {
   fill: var(--sky-amber);
   stroke: none;
-  transform: scale(0.88);
+  transform: scale(calc(0.88 * var(--star-mag, 1)));
 }
 
 .starForgotten .starGlyph {
-  filter: drop-shadow(0 0 5px color-mix(in oklch, var(--sky-amber) 50%, transparent));
+  filter: drop-shadow(0 0 calc(5px * var(--star-mag, 1)) color-mix(in oklch, var(--sky-amber) 50%, transparent));
 }
 
 .starForgotten .starState { color: var(--sky-amber); }
@@ -1434,9 +1445,9 @@
 .chipJade { color: var(--jade-ink); border-color: var(--jade); background: var(--jade-wash); }
 .chipAmber { color: var(--amber-ink); border-color: var(--amber); background: var(--amber-wash); }
 .chipAzure { color: var(--azure); border-color: var(--azure); background: var(--azure-wash); }
-/* 被带偏是误区语义,朱砂落笔处;金句 chip 借 amber-ink 与金印同调 */
+/* 被带偏是误区语义,朱砂落笔处;金句 chip 钤鎏金,与金印同调(藤黄归还衰减专用) */
 .chipCinnabar { color: var(--cinnabar); border-color: var(--cinnabar); background: var(--cinnabar-wash); }
-.chipGold { color: var(--amber-ink); border-color: var(--amber); background: var(--amber-wash); }
+.chipGold { color: var(--gold-ink); border-color: var(--gold); background: color-mix(in oklch, var(--gold) 14%, transparent); }
 
 /* 星链行:证据链面板里这颗星牵着的邻星,点一枚即跳选;锐角小签,与 .chip 同族气质 */
 .starLinkRow {
@@ -1496,6 +1507,89 @@
 .starLinkTitle { font-family: var(--font-display); color: var(--ink); }
 
 .starLinkNote { color: var(--ink-faint); }
+
+/* 星官名:札记右侧一道细界后的考据标注(青字楷体),点出这条星链归哪一星官 */
+.starLinkCluster {
+  padding-left: 0.4em;
+  border-left: 1px solid var(--paper-edge);
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.06em;
+  color: var(--azure);
+}
+
+/* 逐星记忆卡:证据链之上的「小白记得」digest —— 芦青左沿,浅暖底,册页语域 */
+.recallCard {
+  margin-top: var(--gap-tight);
+  padding: var(--gap-tight) var(--gap);
+  background: var(--paper-warm);
+  border: 1px solid var(--paper-edge);
+  border-left: 3px solid color-mix(in oklch, var(--jade) 55%, transparent);
+  border-radius: var(--radius-s);
+}
+
+.recallHead {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  color: var(--jade-ink);
+  letter-spacing: 0.1em;
+}
+
+.recallHead small {
+  margin-left: var(--gap-hair);
+  font-weight: 400;
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+}
+
+.recallOutcome { margin-top: var(--gap-hair); font-family: var(--font-display); font-size: var(--fs-small); color: var(--ink); }
+
+.recallRow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--gap-hair) var(--gap-tight);
+  margin-top: var(--gap-hair);
+}
+
+.recallTag {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.12em;
+  color: var(--ink-faint);
+}
+
+.recallVals { display: flex; flex-wrap: wrap; gap: var(--gap-hair); }
+
+.recallChip {
+  font-style: normal;
+  font-size: var(--fs-tiny);
+  padding: 0.05rem 0.5rem;
+  border: 1px solid var(--jade);
+  border-radius: var(--radius-s);
+  color: var(--jade-ink);
+  background: var(--jade-wash);
+}
+
+.recallQuote { font-style: normal; font-family: var(--font-display); font-size: var(--fs-small); color: var(--ink); line-height: 1.7; }
+
+/* 已放下的心魔:误区语义,朱砂一道删线划过(收得极淡,不喧宾) */
+.recallDemon {
+  font-style: normal;
+  font-size: var(--fs-tiny);
+  padding: 0.05rem 0.5rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  color: var(--ink-soft);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in oklch, var(--cinnabar) 55%, transparent);
+}
+
+.recallMeta { margin-top: var(--gap-hair); font-size: var(--fs-tiny); color: var(--ink-soft); /* paper-warm 底上 ink-faint 不达 AA */ }
+.recallMeta .num { color: var(--jade-ink); }
 
 .timeline {
   list-style: none;

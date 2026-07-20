@@ -87,7 +87,7 @@
   background: linear-gradient(90deg, var(--lilac), var(--reed) 62%, transparent 92%);
 }
 
-/* 巨字水印:一笔淡墨「教」压在纸底,像书法练习纸的范字 */
+/* 巨字水印:一枚淡墨「教」压在纸底,像书法练习纸的范字 */
 .heroGlyph {
   position: absolute;
   right: -0.06em;
@@ -98,21 +98,24 @@
   font-weight: 700;
   font-size: clamp(16rem, 34vw, 26rem);
   line-height: 1;
-  color: var(--lilac-ink);
-  opacity: 0.075;
+  /* 双层淡墨范字:淡丁香填底 + 深丁香描边,投屏方读得出笔画,仍是练习纸底的范字肌理,不抢主张。
+     text-stroke 不支持时退化为纯填字,不影响可读 */
+  color: color-mix(in oklab, var(--lilac-ink) 82%, var(--paper));
+  -webkit-text-stroke: 2px var(--lilac-deep);
+  opacity: 0.13;
   pointer-events: none;
   user-select: none;
   /* 淡墨呼吸:极缓的浓淡往复,像墨迹未干(reduced-motion 关闭);
-     加浓轮:范字整体提半档存在感,仍是练习纸底的淡墨,不抢主张 */
+     升到投屏可读档,描边给足边缘对比,故填底透明度仍留在背景层 */
   animation: glyphBreathe 7.5s var(--ease-loop) infinite alternate;
 }
 
 @keyframes glyphBreathe {
   from {
-    opacity: 0.042;
+    opacity: 0.1;
   }
   to {
-    opacity: 0.07;
+    opacity: 0.155;
   }
 }
 
@@ -242,6 +245,78 @@
 
 /* 小白立于主张旁 + 《学记》引文 → 收拢进 styles/anchor.module.css(与门厅共用) */
 
+/* 小白灯下:头像身后一枚暖灯光晕(材质暖色 --wood-sheen,不动藤黄语义色);
+   与门厅 lampNest 同手法,宣传页自写一份,灯圈更大一档,压住海报首屏的暖气 */
+.lampNest {
+  position: relative;
+}
+
+.lampNest::before {
+  content: '';
+  position: absolute;
+  top: -2rem;
+  left: 50%;
+  width: 19rem;
+  height: 19rem;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--wood-sheen) 40%, transparent),
+    transparent 72%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* 小白自白:楷体候教引白。与门厅 dreamQuote 不同文不同框——门厅是「愿望」,这里是开课前的「候教」;
+   芦苇调(生长/求学)区别于门厅的丁香调,尾角上指小白,像它在头像下递上一句话 */
+.selfQuote {
+  position: relative;
+  width: min(17rem, 74vw);
+  margin: var(--gap-tight) 0 0;
+  padding: var(--gap-tight) var(--gap);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  line-height: 1.9;
+  text-align: left;
+  color: var(--ink-soft);
+  background: linear-gradient(
+    150deg,
+    color-mix(in oklch, var(--paper) 84%, var(--reed) 16%),
+    var(--paper-warm)
+  );
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius) var(--radius) 2px var(--radius);
+  box-shadow: var(--shadow-paper);
+}
+
+.selfQuote::after {
+  content: '';
+  position: absolute;
+  left: 1.6rem;
+  top: -0.42rem;
+  width: 0.8rem;
+  height: 0.8rem;
+  background: color-mix(in oklch, var(--paper) 84%, var(--reed) 16%);
+  border-left: 1px solid var(--line-strong);
+  border-top: 1px solid var(--line-strong);
+  transform: rotate(45deg);
+}
+
+.selfQuoteLabel {
+  display: block;
+  margin-bottom: 0.15rem;
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.18em;
+  color: var(--reed-ink);
+}
+
+/* 三列重心再平衡:《学记》眉批列与小白列再拉开一档,右侧不再挤成一堆 */
+.heroQuote {
+  margin-left: var(--gap);
+}
+
 /* ── 理念:一整段大字,不装进任何卡片 ── */
 
 .why {
@@ -272,6 +347,136 @@
   color: var(--ink-soft);
   padding-left: var(--gap);
   border-left: 3px solid var(--reed);
+}
+
+/* ── 泄漏防线:前置的可信度爆点。一条独立横带,红裸值划废 → 靛青闸门 → 黛绿守后值 ── */
+
+.guard {
+  padding: var(--gap-loose) 0 0;
+}
+
+.guardInner {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: clamp(var(--gap), 3vw, var(--gap-loose));
+  padding: clamp(var(--gap), 3.5vw, var(--gap-loose)) clamp(var(--gap), 4vw, 2.75rem);
+  background:
+    radial-gradient(90% 130% at 0% 0%, var(--azure-wash), transparent 62%),
+    linear-gradient(150deg, var(--paper-warm), var(--paper-shade));
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-paper);
+}
+
+/* 「界」防线徽:大字淡靛描边范字,压在左侧作章(与机制「界」印同一字,呼应白名单机制) */
+.guardMark {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 7vw, 5rem);
+  font-weight: 700;
+  line-height: 1;
+  color: color-mix(in oklab, var(--azure) 80%, var(--paper));
+  -webkit-text-stroke: 1.5px var(--azure-deep);
+  opacity: 0.22;
+}
+
+.guardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+  min-width: 0;
+}
+
+.guardKicker {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  letter-spacing: 0.32em;
+  color: var(--ink-soft); /* 暖纸底上 ink-faint 不达 AA */
+}
+
+.guardContrast {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: clamp(var(--gap), 3vw, var(--gap-loose));
+}
+
+.guardCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+}
+
+/* 裸奔值:朱线划废(警示语义,故走 --cinnabar 非印泥红) */
+.guardFrom {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3.5vw, 2.6rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink-faint);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in oklab, var(--cinnabar) 62%, transparent);
+  text-decoration-thickness: 3px;
+}
+
+/* 闸门后守值:黛绿最大字,全页第一硬指标的落点 */
+.guardTo {
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 5.5vw, 4rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--jade);
+}
+
+.guardColLabel {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  letter-spacing: 0.16em;
+  color: var(--ink-soft);
+}
+
+/* 「闸」门:靛青小印(主动作色=白名单防线本身),两侧引线像一道关卡 */
+.guardGate {
+  position: relative;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  color: var(--azure);
+  border: 1.5px solid color-mix(in oklab, var(--azure) 55%, transparent);
+  border-radius: var(--radius-s);
+  background: var(--azure-wash);
+}
+
+.guardGate::before,
+.guardGate::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: clamp(0.5rem, 2vw, 1.1rem);
+  height: 1px;
+  background: color-mix(in oklab, var(--azure) 45%, transparent);
+}
+
+.guardGate::before {
+  right: 100%;
+}
+
+.guardGate::after {
+  left: 100%;
+}
+
+.guardNote {
+  max-width: 40em;
+  font-size: var(--fs-small);
+  line-height: 1.9;
+  color: var(--ink-soft); /* 暖纸底上 ink-faint 不达 AA */
 }
 
 /* ── 通用章节头 ── */
@@ -326,6 +531,71 @@
   border-top: 1px solid var(--paper-edge);
   /* 锚点滚动落点让出吸顶余量 */
   scroll-margin-top: var(--gap-loose);
+}
+
+.actTimeline {
+  position: relative;
+}
+
+/* 四幕时间轴:一条自左向右描进的墨线,四枚句读珠沿线落印(装饰,宽屏专属) */
+.actRail {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* 与 actRow 同栏宽同栏距,句读珠才落在四张卡中心的正上方 */
+  gap: clamp(var(--gap-tight), 1.8vw, var(--gap));
+  height: 1.5rem;
+  margin: 0 clamp(var(--gap), 2.5vw, var(--gap-loose)) var(--gap);
+}
+
+/* 墨线:进视口前收成一点,进视口后 inkdraw 自左向右拉通(reduced-motion 直接定格满宽) */
+.actRail::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--lilac-ink), var(--reed) 88%);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.actRail.shown::before {
+  animation: global(inkdraw) var(--t-slow) var(--ease-out) forwards;
+}
+
+/* 句读珠:每格居中一枚纸底墨圈,随线到达处落印(sealstamp) */
+.actNode {
+  justify-self: center;
+  align-self: center;
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 1.5px solid var(--lilac-ink);
+  border-radius: 50%;
+  background: var(--paper);
+  opacity: 0;
+  transform: translateY(-0.5rem);
+}
+
+.actRail.shown .actNode {
+  animation: global(sealstamp) var(--t-med) var(--ease-out) both;
+}
+
+.actRail.shown .actNode:nth-child(1) {
+  animation-delay: 120ms;
+}
+
+.actRail.shown .actNode:nth-child(2) {
+  animation-delay: 260ms;
+}
+
+.actRail.shown .actNode:nth-child(3) {
+  animation-delay: 400ms;
+}
+
+.actRail.shown .actNode:nth-child(4) {
+  animation-delay: 540ms;
 }
 
 .actRow {
@@ -451,12 +721,54 @@
   flex-direction: column;
   gap: var(--gap);
   padding: clamp(var(--gap-loose), 5vw, 3.25rem) clamp(var(--gap), 4vw, 3.25rem);
-  /* 黑板上方补一束夜自习灯光(--board-glow),空板等待滚动显现时也不是一块死黑 */
+  /* 黑板上方补一束夜自习灯光(--board-glow);底缘再压一道极淡粉笔灰(材质区分:黑板=粉笔灰面),
+     空板等待滚动显现时也不是一块死黑。粉笔层作背景层始终在台词之下,不需另起层叠上下文 */
   background:
+    linear-gradient(0deg, color-mix(in oklab, var(--chalk) 6%, transparent), transparent 12%),
     radial-gradient(120% 85% at 78% 0%, var(--board-glow), transparent 58%),
     var(--board-scene-bg);
   border: 1px solid var(--board-line);
   border-radius: var(--radius-l);
+}
+
+/* 三拍逐条落编排:说话人名先亮(不位移),气泡随后自上落进(bubblefall);
+   stagger 走 sceneBoard 直接子序,IntersectionObserver 加 .shown 即触发。
+   底部 reduced-motion 兜底把两者直接显出,不留空白 */
+.beatReveal .speaker {
+  opacity: 0;
+  transition: opacity var(--t-med) var(--ease-out);
+}
+
+.beatReveal .bubble {
+  opacity: 0;
+}
+
+.beatReveal.shown .speaker {
+  opacity: 1;
+}
+
+.beatReveal.shown .bubble {
+  animation: global(bubblefall) var(--t-med) var(--ease-out) both;
+}
+
+.sceneBoard > .beatReveal:nth-child(1) .bubble {
+  animation-delay: 130ms;
+}
+
+.sceneBoard > .beatReveal:nth-child(2) .speaker {
+  transition-delay: 170ms;
+}
+
+.sceneBoard > .beatReveal:nth-child(2) .bubble {
+  animation-delay: 300ms;
+}
+
+.sceneBoard > .beatReveal:nth-child(3) .speaker {
+  transition-delay: 340ms;
+}
+
+.sceneBoard > .beatReveal:nth-child(3) .bubble {
+  animation-delay: 470ms;
 }
 
 .beat {
@@ -570,8 +882,9 @@
 .proofRow {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  /* 加浓轮:实证带落在瓷青底上,上下改强边线,四个数字才像"一条带" */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* 加浓轮:实证带落在瓷青底上,上下改强边线,三个课程规模数字连成"一条带"
+     (泄漏率已单拎到 hero 后的独立横带,数字带只留现算的课程/知识点/误区规模) */
   background: var(--paper-warm);
   border-block: 1px solid var(--line-strong);
 }
@@ -618,24 +931,6 @@
   font-size: 0.45em;
   font-weight: 700;
   color: var(--azure);
-}
-
-/* 泄漏率:裸奔值划朱线作废,闸门值归黛绿 */
-.statFrom {
-  font-size: 0.62em;
-  color: var(--ink-faint);
-  text-decoration: line-through;
-  text-decoration-color: color-mix(in oklab, var(--cinnabar) 55%, transparent);
-  text-decoration-thickness: 2px;
-}
-
-.statArrow {
-  font-size: 0.5em;
-  color: var(--ink-faint);
-}
-
-.statTo {
-  color: var(--jade);
 }
 
 .statLabel {
@@ -878,12 +1173,55 @@
   padding-top: 0;
 }
 
+/* 书目题头一行:分课小印 + 《课名》 + 眉注短句(接 courseCovers 策展文案) */
+.cataHead {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.7rem;
+  margin: 0;
+}
+
+/* 分课小印:书目语境走墨印(与机制朱印分档,不再往页面加红),小签制式点缀讲名 */
+.cataMark {
+  flex: none;
+  align-self: center;
+  display: inline-grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  color: var(--ink-soft);
+  border: 1px solid color-mix(in oklab, var(--ink) 32%, transparent);
+  border-radius: var(--radius-tag);
+  background: var(--ink-wash);
+}
+
 .cataCourse {
   font-family: var(--font-display);
   font-size: var(--fs-sub);
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--ink);
+}
+
+/* 眉注短句:宋体点缀(法典:--font-serif 仅眉注),接 courseCovers.eyebrow */
+.cataEyebrow {
+  font-family: var(--font-serif);
+  font-size: var(--fs-small);
+  letter-spacing: 0.08em;
+  color: var(--reed-ink);
+}
+
+/* 策展摘句:楷体一行金句,接 courseCovers.blurb */
+.cataBlurb {
+  margin: var(--gap-hair) 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  line-height: 1.9;
+  color: var(--ink-soft);
 }
 
 .cataNames {
@@ -907,17 +1245,70 @@
    呼应"教室的灯已经亮了"。全页深色块只此与课堂实录两处,不再加 ── */
 
 .band {
+  position: relative;
+  overflow: hidden;
   margin-top: var(--gap-section);
   padding: clamp(var(--gap-loose), 7vw, 5rem) clamp(var(--gap), 5vw, var(--gap-section));
+  /* 材质区分:砚=石面反光——一道极淡斜向反光扫过面,再压深靛砚墨底(灯的暖芯改由 .bandLamp 落) */
   background:
-    radial-gradient(120% 95% at 80% 0%, color-mix(in oklch, var(--amber) 15%, transparent), transparent 55%),
+    linear-gradient(115deg, transparent 34%, color-mix(in oklab, var(--moon-on-ink) 6%, transparent) 47%, transparent 60%),
     linear-gradient(160deg, var(--inkstone), var(--inkstone-deep));
   border: 1px solid var(--inkstone-line);
   border-radius: var(--radius-l);
+}
+
+/* 案头暖灯:一盏灯的光斑落在砚面右上,兑现"灯已亮"(藤黄暖芯,极缓灯焰呼吸)。
+   全页深色块仍只黑板 + 砚墨两处——灯是砚上的光,不是第三块深色 */
+.bandLamp {
+  position: absolute;
+  top: -7rem;
+  right: 9%;
+  width: 24rem;
+  height: 24rem;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklch, var(--amber) 34%, transparent),
+    color-mix(in oklch, var(--amber) 12%, transparent) 44%,
+    transparent 72%
+  );
+  pointer-events: none;
+  z-index: 0;
+  animation: global(lampbreathe) 5.5s var(--ease-loop) infinite alternate;
+}
+
+/* 主文列坐灯下 */
+.bandMain {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--gap);
+}
+
+/* 品牌落款:问学印(--seal-red 由 Seal 组件内部落)+ 院名,像画心右下的一枚钤印 */
+.bandSign {
+  position: absolute;
+  right: clamp(var(--gap), 5vw, var(--gap-section));
+  bottom: clamp(var(--gap), 5vw, var(--gap-section));
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
+}
+
+.bandSeal {
+  width: 2.6rem;
+  height: 2.6rem;
+  filter: drop-shadow(0 2px 6px color-mix(in oklab, var(--inkstone-deep) 60%, transparent));
+}
+
+.bandSignText {
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.2em;
+  color: var(--moonsoft-on-ink);
 }
 
 .bandKicker {
@@ -981,7 +1372,17 @@
     font-size: clamp(12rem, 44vw, 18rem);
   }
 
+  /* 单列时引文回落左对齐,撤掉与小白列拉开的左距 */
+  .heroQuote {
+    margin-left: 0;
+  }
+
   /* 引文/小白的窄屏回退在 anchor.module.css */
+
+  /* 幕次墨线时间轴只映射四栏并排,单列堆叠时隐去,幕次仍由卡内 actNo 承担 */
+  .actRail {
+    display: none;
+  }
 
   .actRow {
     grid-template-columns: 1fr;
@@ -1016,6 +1417,17 @@
 
   .stat:nth-child(n + 3) {
     border-top: 1px solid var(--paper-edge);
+  }
+
+  /* 防线徽让位:窄屏收起大字「界」,腾给对比数字 */
+  .guardMark {
+    display: none;
+  }
+
+  /* 品牌落款回到常流,坠在 CTA 之下,避让窄屏正文 */
+  .bandSign {
+    position: static;
+    margin-top: var(--gap-loose);
   }
 
   .beat {
@@ -1057,5 +1469,28 @@
   .caseLink:hover .vol,
   .caseLink:hover .volArt {
     transform: none;
+  }
+
+  /* 墨线时间轴直接定格满宽,句读珠直接显出,不留描进过程 */
+  .actRail::before {
+    transform: scaleX(1);
+    animation: none;
+  }
+
+  .actRail .actNode {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+
+  /* 黑板三拍直接显出:说话人与气泡都在位,不逐条落 */
+  .beatReveal .speaker,
+  .beatReveal .bubble {
+    opacity: 1;
+    animation: none;
+  }
+
+  .bandLamp {
+    animation: none;
   }
 }

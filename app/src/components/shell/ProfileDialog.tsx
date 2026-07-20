@@ -1,7 +1,12 @@
 /** 用户明确要求的个人中心弹层；沿用设置册页的淡墨罩、焦点与滚动纪律。 */
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import { useAppStore } from '../../store/appStore';
+import { TOPICS } from '../../data';
+// 学习身份三引擎:同 growth 页按路径直连纯派生,不进 engine barrel
+import { deriveTeacherRank } from '../../engine/achievements';
+import { deriveWisdom, deriveEvolution } from '../../engine/evolution';
 import { Icon } from '../ui/Icon';
 import { ProfileEmailChange } from './ProfileEmailChange';
 import { ProfilePasswordChange } from './ProfilePasswordChange';
@@ -18,6 +23,15 @@ function profileInitial(name: string | null): string {
   return Array.from(name?.trim() || '师')[0] ?? '师';
 }
 
+/* 修行阶名(evolution 五阶,口径同 engine/evolution 文档);阶序由 deriveEvolution 派生,名固定不漂 */
+const STAGE_NAMES: Record<1 | 2 | 3 | 4 | 5, string> = {
+  1: '嫩芽期',
+  2: '开窍期',
+  3: '求索期',
+  4: '问难期',
+  5: '出师期',
+};
+
 export function ProfileMark({ name, compact = false }: { name: string | null; compact?: boolean }) {
   return (
     <span className={styles.mark} data-compact={compact || undefined} aria-hidden="true">
@@ -31,6 +45,18 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
   const emailMasked = useAuthStore((state) => state.emailMasked);
   const emailBindingRequired = useAuthStore((state) => state.emailBindingRequired);
   const logout = useAuthStore((state) => state.logout);
+  // 学习身份:师道称号 / 修行阶 / 学识等级,全部从真实事件流纯派生(手法照 growth 页)
+  const global = useAppStore((state) => state.global);
+  const events = useAppStore((state) => state.events);
+  const reports = useAppStore((state) => state.reports);
+  const topicStates = useAppStore((state) => state.topicStates);
+  const rank = useMemo(
+    () => deriveTeacherRank({ events, reports, global, topicStates, topics: TOPICS }),
+    [events, reports, global, topicStates],
+  );
+  const wisdom = useMemo(() => deriveWisdom(events), [events]);
+  const evolution = useMemo(() => deriveEvolution(events, TOPICS), [events]);
+  const stageName = STAGE_NAMES[evolution.stage];
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [logoutIssue, setLogoutIssue] = useState<string | null>(null);
   const [emailEditorOpen, setEmailEditorOpen] = useState(false);
@@ -146,17 +172,32 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
       </header>
 
       <div className={styles.scroll}>
-        <section className={styles.identity} aria-label="账号身份">
-          <ProfileMark name={user} />
-          <div className={styles.identityCopy}>
+        <Link
+          className={styles.identity}
+          to="/growth"
+          onClick={onClose}
+          aria-label={`${user ?? '你'} · 师道${rank.title} · 修行${stageName} · 学识第 ${wisdom.level} 级 · ${emailSummary},点按翻开成长册`}
+        >
+          <div className={styles.plate}>
             <p className={styles.accountKind}>授课账号</p>
             <p className={styles.userName}>{user}</p>
-            <p className={styles.email}>{emailSummary}</p>
+            <div className={styles.creds}>
+              <span className={styles.rankChip}>{rank.title}</span>
+              <span className={styles.credChip}>修行 · {stageName}</span>
+              <span className={styles.credChip}>学识第 {wisdom.level} 级</span>
+            </div>
+            <p className={styles.emailLine}>
+              <span className={styles.emailText}>{emailSummary}</span>
+              <span className={emailBindingRequired ? styles.pendingBadge : styles.secureBadge}>
+                {emailBindingRequired ? '待补录' : '已验证'}
+              </span>
+            </p>
           </div>
-          <span className={emailBindingRequired ? styles.pendingBadge : styles.secureBadge}>
-            {emailBindingRequired ? '待补录' : '已验证'}
+          <span className={styles.colophon} aria-hidden="true">
+            <span className={styles.colophonText}>春雾书院 · 授课凭帖</span>
+            <ProfileMark name={user} />
           </span>
-        </section>
+        </Link>
 
         <p className={styles.intro} id="profile-description">
           这里收拢你的账号凭证与学习入口。会话凭证由服务器安全保管，不会写入页面存储。
@@ -165,11 +206,6 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
         <section className={styles.section} aria-labelledby="security-title">
           <h3 className={styles.sectionTitle} id="security-title">认证与安全</h3>
           <div className={styles.statusList}>
-            <div className={styles.statusRow}>
-              <Icon name="circle-check" size={17} className={styles.statusIconOk} />
-              <div><strong>服务器会话</strong><span>已安全登录</span></div>
-              <small>有效</small>
-            </div>
             <div className={styles.statusRow}>
               <Icon name="mail" size={17} className={styles.statusIcon} />
               <div><strong>邮箱凭证</strong><span>{emailSummary}</span></div>

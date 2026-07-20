@@ -85,3 +85,23 @@ a { color: var(--azure); text-decoration: none; }
     transition-delay: 0ms !important;
   }
 }
+
+/* 宣传页专属入场帧(landing 追加,唯一定义在此;模块内一律 animation: global(名字) 引用,
+   裸名会被 postcss-modules 哈希致失效)。往复类仍须配 --ease-loop,单向配 --ease-out。
+   reduced-motion 由上方全局兜底压成 0.01ms + forwards 定格,再由 landing 模块补显式定格。 */
+@keyframes inkdraw {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes sealstamp {
+  from { opacity: 0; transform: translateY(-0.5rem); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes bubblefall {
+  from { opacity: 0; transform: translateY(-0.6rem); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes lampbreathe {
+  from { opacity: 0.82; }
+  to { opacity: 1; }
+}

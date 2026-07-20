@@ -82,6 +82,8 @@
 
 .albumNote p { font-family: var(--font-display); color: var(--ink-soft); }
 .albumNote > span { flex: none; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+/* 星图叙事桥:芦青一档,承接掌握/点亮语义;font-style 归正(法典禁斜体强调) */
+.albumStars { margin-left: 0.35em; font-style: normal; color: var(--jade-ink); }
 .ceremonySlot { height: 0; }
 
 .ceremonyNote {
@@ -148,10 +150,11 @@
 
 .tierink { --seal-tone: var(--ink); }
 .tiercinnabar { --seal-tone: var(--seal-red); }
-.tiergold { --seal-tone: var(--amber-ink); }
+/* 金印钤鎏金 --gold-ink,不再借藤黄(藤黄归还衰减专用) */
+.tiergold { --seal-tone: var(--gold-ink); }
 .locked.tierink { --seal-tone: color-mix(in oklch, var(--dust), var(--ink) 12%); }
 .locked.tiercinnabar { --seal-tone: color-mix(in oklch, var(--dust), var(--seal-red) 18%); }
-.locked.tiergold { --seal-tone: color-mix(in oklch, var(--dust), var(--amber-ink) 20%); }
+.locked.tiergold { --seal-tone: color-mix(in oklch, var(--dust), var(--gold-ink) 20%); }
 
 .sealMeta {
   width: 100%;
@@ -268,6 +271,8 @@
 .sealDetailEvidence { margin-top: var(--gap-hair); color: var(--ink); font-size: var(--fs-small); }
 .sealDetailEvidence b { font-family: var(--font-code); }
 .sealDetailEvidence span { color: var(--ink-faint); font-family: var(--font-code); font-size: var(--fs-tiny); }
+/* 印记来历:出自哪一课,楷体小注,鎏金一档呼应金印语气 */
+.sealDetailFrom { margin-top: var(--gap-hair); font-family: var(--font-display); font-size: var(--fs-tiny); letter-spacing: 0.08em; color: var(--gold-ink); }
 .empty { color: var(--ink-faint); font-family: var(--font-display); }
 
 @media (max-width: 720px) {
@@ -280,8 +285,9 @@
   .albumNote { align-items: flex-start; flex-direction: column; gap: 0.1rem; }
   .ceremonySlot { position: relative; height: 2.25rem; }
   .ceremonyNote { top: 0.25rem; right: 0; width: max-content; margin: 0; }
-  .sealWall { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .seal { min-height: 13.75rem; }
+  /* 16 印在此档留 4 列(4×4 整墙),不落 3 列的「5 行+1 孤印」缺角(审计 R7) */
+  .sealWall { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .seal { min-height: 13.75rem; padding-inline: clamp(0.4rem, 1vw, 1rem); }
 }
 
 @media (max-width: 560px) {

@@ -9,10 +9,12 @@
  * 侧栏「备课五步」= 锚点导航:点击平滑滚动到分节,IntersectionObserver 高亮当前在读分节。
  * 右下角常驻备课助教「小砚」(PrepCoach)——只在备课页出现,课堂(/teach)是防作弊红线。
  */
-import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
-import { getTopic } from '../../data';
+import { getTopic, TOPICS } from '../../data';
+// 记忆回执:engine/recall 纯派生(不进 barrel),按路径直连
+import { deriveTopicRecall, type TopicRecall } from '../../engine/recall';
 import { getSelfTest } from '../../data/selfTest';
 import { getFigures } from '../../components/diagrams';
 import { Md } from '../../components/Md';
@@ -126,6 +128,95 @@ function Collapse({ title, tag, tagTone, defaultOpen, children }: {
   );
 }
 
+/**
+ * 「接着上次讲」记忆回执纸条:小白对这门课的记忆(册页语域,称「先生」)。
+ * 只在 deriveTopicRecall 非 null 且有可显示内容时露面——首学该课不渲染。
+ * 展示项对齐工单:上次日期 / 结局句 / 记得的要点 / 裱起来的金句 / 清掉的心魔 / 保持度。
+ * 评估隐身:仅要点名(prep 页路线图本已展示)、金句原文、心魔策展名与真实衰减数。
+ */
+function RecallCard({ recall }: { recall: TopicRecall }) {
+  const hasContent =
+    !!recall.lastOutcome ||
+    recall.rememberedPoints.length > 0 ||
+    recall.goldenQuotes.length > 0 ||
+    recall.clearedDemons.length > 0 ||
+    recall.retention != null;
+  if (!hasContent) return null;
+
+  const daysAgo =
+    recall.lastStudiedAt != null
+      ? Math.max(0, Math.round((Date.now() - recall.lastStudiedAt) / 86400000))
+      : null;
+  const whenLabel = daysAgo == null ? null : daysAgo === 0 ? '就在今天' : `${daysAgo} 天前`;
+  const pct = recall.retention != null ? Math.round(recall.retention * 100) : null;
+  const fogged = recall.daysToFog != null && recall.daysToFog <= 0;
+
+  return (
+    <aside className={s.recall} aria-label="小白对这门课的记忆">
+      <div className={s.recallHead}>
+        <span className={s.recallLabel}>接着上次讲</span>
+        {whenLabel && <span className={s.recallWhen}>上次温书 · {whenLabel}</span>}
+      </div>
+      {recall.lastOutcome && <p className={s.recallOutcome}>{recall.lastOutcome}</p>}
+
+      {recall.rememberedPoints.length > 0 && (
+        <div className={s.recallField}>
+          <span className={s.recallFieldLabel}>还记得</span>
+          <ul className={s.recallChips}>
+            {recall.rememberedPoints.map((p, i) => (
+              <li key={i} className={s.recallChip}>{p}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {recall.clearedDemons.length > 0 && (
+        <div className={s.recallField}>
+          <span className={s.recallFieldLabel}>清掉的心魔</span>
+          <ul className={s.recallChips}>
+            {recall.clearedDemons.map((d, i) => (
+              <li key={i} className={`${s.recallChip} ${s.recallChipDemon}`}>{d}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {recall.goldenQuotes.length > 0 && (
+        <ul className={s.recallQuotes}>
+          {/* 金句为原文逐字,内容可能重复出现在多处——用稳定索引作 key */}
+          {recall.goldenQuotes.map((q, i) => (
+            <li key={i} className={s.recallQuote}>「{q}」</li>
+          ))}
+        </ul>
+      )}
+
+      {pct != null && (
+        <div className={s.recallRet}>
+          <div className={s.recallRetHead}>
+            <span className={s.recallFieldLabel}>保持度</span>
+            <span className={s.recallRetNote}>
+              {pct}% ·{' '}
+              {recall.daysToFog == null
+                ? '暂稳'
+                : recall.daysToFog === 0
+                  ? '今日起雾'
+                  : fogged
+                    ? `已起雾 ${Math.abs(recall.daysToFog)} 天`
+                    : `再 ${recall.daysToFog} 天起雾`}
+            </span>
+          </div>
+          <div className={s.recallRetTrack} aria-hidden="true">
+            <span
+              className={`${s.recallRetFill} ${fogged ? s.recallRetFillFog : ''}`}
+              style={{ width: `${Math.max(4, pct)}%` }}
+            />
+          </div>
+        </div>
+      )}
+    </aside>
+  );
+}
+
 export default function PrepPage() {
   const { topicId = '' } = useParams();
   // 按知识点重挂载:路由参数变化时 React Router 复用同一元素,摸底作答/自检勾选/
@@ -140,6 +231,10 @@ function PrepRoom({ topicId }: { topicId: string }) {
   const usable = !!topic && !topic.locked;
   const completePrep = useAppStore((st) => st.completePrep);
   const prepDone = useAppStore((st) => st.topicStates[topicId]?.prepDone ?? false);
+  // 记忆回执数据源:事件流 / 报告 / 主题状态(备课页原本不订阅,此处按需取,不改 store)
+  const events = useAppStore((st) => st.events);
+  const reports = useAppStore((st) => st.reports);
+  const topicStates = useAppStore((st) => st.topicStates);
 
   /** 摸底第一波(判断题):已作答的选择(true=判"对",false=判"错") */
   const [answers, setAnswers] = useState<boolean[]>([]);
@@ -155,6 +250,11 @@ function PrepRoom({ topicId }: { topicId: string }) {
   const submittedRef = useRef(false);
 
   /* 派生态提前算(hooks 必须在提前 return 之前):不可用主题一律给空 */
+  // 记忆回执:首学该课(零事件)deriveTopicRecall 返回 null → 顶部纸条完全不渲染
+  const recall = useMemo(
+    () => (usable ? deriveTopicRecall({ topicId, events, reports, topicStates, topics: TOPICS }) : null),
+    [usable, topicId, events, reports, topicStates],
+  );
   const probes = usable ? topic!.misconceptions.slice(0, 3) : [];
   const selfTest = usable ? getSelfTest(topicId) : [];
   const probesDone = usable && answers.length >= probes.length;
@@ -350,6 +450,9 @@ function PrepRoom({ topicId }: { topicId: string }) {
 
       <div className={s.layout}>
         <main className={s.main}>
+          {/* ── 记忆回执:接着上次讲(首学该课不渲染) ── */}
+          {recall && <RecallCard recall={recall} />}
+
           {/* ── 壹 · 摸底快测 ── */}
           <section
             id={SECTIONS[0].id}

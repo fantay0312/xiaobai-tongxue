@@ -10,6 +10,7 @@ import { useEffect, useRef, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
+import { Seal } from '../../components/shell/Seal';
 import { Icon } from '../../components/ui/Icon';
 import { TOPICS, XIAOBAI_LINES } from '../../data';
 import { COURSE_COVERS } from '../../data/courseCovers';
@@ -117,19 +118,11 @@ const leakPair =
     ? { from: fmtRate(leakReport.naiveLeakRate), to: fmtRate(leakReport.guardedLeakRate) }
     : undefined;
 
-const STATS: {
-  label: string;
-  note: string;
-  num?: string;
-  unit?: string;
-  pair?: { from: string; to: string };
-}[] = [
+/* 泄漏防线单拎到 hero 后的独立横带(可信度爆点),数字带只留三项现算课程规模统计 */
+const STATS: { num: string; unit: string; label: string; note: string }[] = [
   { num: String(COURSE_COUNT), unit: '门', label: '已开课程', note: '分学科排架,任何学科都能上架开教室' },
   { num: String(TOPICS.length), unit: '个', label: '知识点', note: '含图谱占位知识点,课程版图持续铺开' },
   { num: String(MC_COUNT), unit: '套', label: '预埋误区剧本', note: '每套自带触发台词与纠偏判据,课上现场埋雷' },
-  leakPair
-    ? { pair: leakPair, label: '泄漏防线实测', note: '对抗样本下的术语泄漏率:裸输出 → 白名单闸门' }
-    : { num: '待测', label: '泄漏防线实测', note: '对抗样本下的术语泄漏率:裸输出 → 白名单闸门' },
 ];
 
 /** 书架预览:按 course 分组,保持 TOPICS 陈列顺序(与门厅书架同一分组逻辑) */
@@ -218,12 +211,22 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className={`${anchor.heroAvatar} ${s.enter}`} style={{ animationDelay: '160ms' }}>
+        <div
+          className={`${anchor.heroAvatar} ${s.lampNest} ${s.enter}`}
+          style={{ animationDelay: '160ms' }}
+        >
           <XiaobaiAvatar variant="paper" mood="curious" level={level} size={200} />
           <p className={anchor.avatarCaption}>你的 AI 学生 · 小白</p>
+          <blockquote className={s.selfQuote}>
+            <span className={s.selfQuoteLabel}>小白 · 候教</span>
+            听说今日有位先生要来教我——我把不懂的都攒着,就等您开讲。
+          </blockquote>
         </div>
 
-        <blockquote className={`${anchor.quote} ${s.enter}`} style={{ animationDelay: '120ms' }}>
+        <blockquote
+          className={`${anchor.quote} ${s.heroQuote} ${s.enter}`}
+          style={{ animationDelay: '120ms' }}
+        >
           <p className={anchor.quoteText}>
             教然后知困,
             <br />
@@ -245,25 +248,61 @@ export default function LandingPage() {
         </p>
       </section>
 
+      {/* ── 泄漏防线:前置的可信度爆点。红裸值划废 → 靛青闸门 → 黛绿守后值,数字仍从 leakageReport 现算 ── */}
+      <section className={s.guard} aria-label="泄漏防线实测">
+        <div className={`${s.guardInner} ${s.reveal}`} data-reveal>
+          <span className={s.guardMark} aria-hidden="true">界</span>
+          <div className={s.guardBody}>
+            <p className={s.guardKicker}>泄漏防线 · 对抗实测</p>
+            <div className={s.guardContrast}>
+              {leakPair && (
+                <>
+                  <span className={s.guardCol}>
+                    <span className={s.guardFrom}>{leakPair.from}</span>
+                    <span className={s.guardColLabel}>裸输出</span>
+                  </span>
+                  <span className={s.guardGate} aria-hidden="true">闸</span>
+                </>
+              )}
+              <span className={s.guardCol}>
+                <span className={s.guardTo}>{leakPair ? leakPair.to : '待测'}</span>
+                <span className={s.guardColLabel}>白名单闸门</span>
+              </span>
+            </div>
+            <p className={s.guardNote}>
+              对抗样本一再追问下的术语泄漏率——学生不该比老师先知道答案。
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ── 四幕流程 ── */}
       <section className={s.acts} id="how" aria-label="四幕流程">
         <header className={`${s.secHead} ${s.reveal}`} data-reveal>
           <p className={s.secKicker}>一堂课,四幕</p>
           <h2 className={s.secTitle}>从备课到出师</h2>
         </header>
-        <div className={s.actRow}>
-          {ACTS.map((act, i) => (
-            <article
-              key={act.name}
-              className={`${s.act} ${s.reveal}`}
-              data-reveal
-              style={{ transitionDelay: `${i * 90}ms` }}
-            >
-              <p className={s.actNo}>{act.act}</p>
-              <h3 className={s.actName}>{act.name}</h3>
-              <p className={s.actDesc}>{act.desc}</p>
-            </article>
-          ))}
+        <div className={s.actTimeline}>
+          {/* 一条自左向右描进的墨线 + 四枚沿线落印的句读珠(纯装饰,宽屏才出) */}
+          <div className={s.actRail} data-reveal aria-hidden="true">
+            {ACTS.map((act) => (
+              <span key={act.name} className={s.actNode} />
+            ))}
+          </div>
+          <div className={s.actRow}>
+            {ACTS.map((act, i) => (
+              <article
+                key={act.name}
+                className={`${s.act} ${s.reveal}`}
+                data-reveal
+                style={{ transitionDelay: `${i * 90}ms` }}
+              >
+                <p className={s.actNo}>{act.act}</p>
+                <h3 className={s.actName}>{act.name}</h3>
+                <p className={s.actDesc}>{act.desc}</p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -275,23 +314,16 @@ export default function LandingPage() {
         </header>
 
         <div className={s.sceneBoard}>
-          <div className={`${s.beat} ${s.beatTeacher} ${s.reveal}`} data-reveal>
+          {/* 三拍逐条落:说话人名先亮,气泡再自上落进——像黑板上一行行被写下(stagger 走 nth-child) */}
+          <div className={`${s.beat} ${s.beatTeacher} ${s.beatReveal}`} data-reveal>
             <p className={s.speaker}>老师 · 你</p>
             <p className={s.bubble}>{TEACH_LINE}</p>
           </div>
-          <div
-            className={`${s.beat} ${s.beatXiaobai} ${s.reveal}`}
-            data-reveal
-            style={{ transitionDelay: '120ms' }}
-          >
+          <div className={`${s.beat} ${s.beatXiaobai} ${s.beatReveal}`} data-reveal>
             <p className={s.speaker}>小白</p>
             <p className={s.bubble}>{AHA_LINE}</p>
           </div>
-          <div
-            className={`${s.beat} ${s.beatXiaobai} ${s.beatTrap} ${s.reveal}`}
-            data-reveal
-            style={{ transitionDelay: '240ms' }}
-          >
+          <div className={`${s.beat} ${s.beatXiaobai} ${s.beatTrap} ${s.beatReveal}`} data-reveal>
             <p className={s.speaker}>小白 · 它真诚地坚持一个错误直觉</p>
             <p className={s.bubble}>{M1.triggerLine}</p>
           </div>
@@ -323,18 +355,8 @@ export default function LandingPage() {
               style={{ transitionDelay: `${i * 70}ms` }}
             >
               <p className={s.statNum}>
-                {t.pair ? (
-                  <>
-                    <span className={s.statFrom}>{t.pair.from}</span>
-                    <span className={s.statArrow} aria-hidden="true">→</span>
-                    <span className={s.statTo}>{t.pair.to}</span>
-                  </>
-                ) : (
-                  <>
-                    {t.num}
-                    <em className={s.statUnit}>{t.unit}</em>
-                  </>
-                )}
+                {t.num}
+                <em className={s.statUnit}>{t.unit}</em>
               </p>
               <p className={s.statLabel}>{t.label}</p>
               <p className={s.statNote}>{t.note}</p>
@@ -420,17 +442,27 @@ export default function LandingPage() {
               const open = topics.filter((t) => !t.locked);
               const names = open.slice(0, 3).map((t) => t.title);
               const bindCount = topics.length - open.length;
+              const cover = COURSE_COVERS[course];
               return (
-                <p key={course} className={s.cataRow}>
-                  <span className={s.cataCourse}>《{course}》</span>
-                  <span className={s.cataNames}>
+                <div key={course} className={s.cataRow}>
+                  <p className={s.cataHead}>
+                    {cover && (
+                      <span className={s.cataMark} aria-hidden="true">
+                        {cover.mark}
+                      </span>
+                    )}
+                    <span className={s.cataCourse}>《{course}》</span>
+                    {cover && <span className={s.cataEyebrow}>{cover.eyebrow}</span>}
+                  </p>
+                  {cover && <p className={s.cataBlurb}>{cover.blurb}</p>}
+                  <p className={s.cataNames}>
                     {names.join(' · ')}
                     <span className={s.cataCount}>
                       {open.length > names.length ? ` ……共 ${open.length} 讲可开讲` : ` · 共 ${open.length} 讲可开讲`}
                       {bindCount > 0 ? `,另 ${bindCount} 讲装订中` : ''}
                     </span>
-                  </span>
-                </p>
+                  </p>
+                </div>
               );
             })}
             <p className={s.cataNote}>
@@ -443,12 +475,19 @@ export default function LandingPage() {
 
       {/* ── 结尾 CTA:砚墨收尾锚点,一盏灯的余光——教室的灯已经亮了 ── */}
       <section className={`${s.band} ${s.reveal}`} data-reveal aria-label="开始教学">
-        <p className={s.bandKicker}>教室的灯已经亮了</p>
-        <h2 className={s.bandTitle}>现在,轮到你来教了</h2>
-        <Link className={s.bandCta} to="/study">
-          进入书斋,开始教学
-          <span className={s.ctaSeal} aria-hidden="true">教</span>
-        </Link>
+        <span className={s.bandLamp} aria-hidden="true" />
+        <div className={s.bandMain}>
+          <p className={s.bandKicker}>教室的灯已经亮了</p>
+          <h2 className={s.bandTitle}>现在,轮到你来教了</h2>
+          <Link className={s.bandCta} to="/study">
+            进入书斋,开始教学
+            <span className={s.ctaSeal} aria-hidden="true">教</span>
+          </Link>
+        </div>
+        <div className={s.bandSign} aria-hidden="true">
+          <Seal className={s.bandSeal} />
+          <span className={s.bandSignText}>春雾书院 · 问学</span>
+        </div>
       </section>
     </div>
   );

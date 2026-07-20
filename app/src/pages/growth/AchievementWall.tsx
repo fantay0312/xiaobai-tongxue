@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Achievement } from '../../engine/achievements';
+import { getTopic } from '../../data';
 import s from './AchievementWall.module.css';
 import motion from './AchievementSealMotion.module.css';
 import { useSealCeremony } from './useSealCeremony';
@@ -144,6 +145,10 @@ function fmtDateTime(iso: string): string {
 
 function SealDetail({ achievement }: { achievement: Achievement }) {
   const earned = achievement.earnedAt !== null;
+  // 印记来历:落印那一刻触发事件所属的课(仅实印显示,虚位无来历)
+  const fromTopic = earned && achievement.triggerTopicId
+    ? getTopic(achievement.triggerTopicId)?.title ?? null
+    : null;
   return (
     <div className={`${s.sealDetail} ${s[`tier${achievement.tier}`]} ${earned ? s.earned : s.locked}`}>
       <SealArtwork achievement={achievement} earned={earned} />
@@ -154,12 +159,13 @@ function SealDetail({ achievement }: { achievement: Achievement }) {
           {earned ? (achievement.evidence ?? '印已钤下。') : <>尚差 <b>{Math.max(0, achievement.progress.target - achievement.progress.now)}</b> 步，印位暂留。</>}
           {achievement.earnedAt ? <span> · {fmtDateTime(achievement.earnedAt)} 钤印</span> : null}
         </p>
+        {fromTopic ? <p className={s.sealDetailFrom}>出自〈{fromTopic}〉</p> : null}
       </div>
     </div>
   );
 }
 
-export function AchievementWall({ achievements }: { achievements: Achievement[] }) {
+export function AchievementWall({ achievements, litStars }: { achievements: Achievement[]; litStars?: number }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const detailRef = useRef<HTMLDivElement | null>(null);
   const scrollTimerRef = useRef<number | null>(null);
@@ -203,7 +209,11 @@ export function AchievementWall({ achievements }: { achievements: Achievement[] 
       </aside>
       <div className={s.albumBody}>
         <div className={s.albumNote}>
-          <p>{earnedCount === 0 ? '章坯已备，只等课堂把它们一枚枚唤醒。' : '每一道缺口、每一处浓淡，都对应一段真实课堂。'}</p>
+          <p>
+            {earnedCount === 0 ? '章坯已备，只等课堂把它们一枚枚唤醒。' : '每一道缺口、每一处浓淡，都对应一段真实课堂。'}
+            {/* 叙事桥:印章墙反指星图——同一套成就,一屏落印、一屏点亮 */}
+            {typeof litStars === 'number' && litStars > 0 ? <em className={s.albumStars}>星图里已点亮 {litStars} 星。</em> : null}
+          </p>
           <span>{earnedCount}/{achievements.length} · 点击印面翻看来历</span>
         </div>
         <div className={s.ceremonySlot}>
