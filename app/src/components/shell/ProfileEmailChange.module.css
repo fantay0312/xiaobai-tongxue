@@ -19,10 +19,10 @@
 
 .title {
   color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-family: var(--font-serif);
+  font-size: var(--fs-sub);
+  font-weight: 600;
+  letter-spacing: 0.03em;
 }
 
 .copy {

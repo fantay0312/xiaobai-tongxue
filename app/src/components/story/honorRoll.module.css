@@ -22,6 +22,20 @@
   margin-bottom: var(--gap-tight);
 }
 
+/* 存根眉签:打字机档,独占一行压在标题之上 */
+.eyebrow {
+  flex-basis: 100%;
+  margin-bottom: var(--gap-hair);
+}
+
+/* 撕票线:标题栏与印章排之间的裁切位,「沿此撕开」小字靠右 */
+.tear {
+  display: flex;
+  justify-content: flex-end;
+  margin: var(--gap-tight) 0;
+  padding-top: var(--gap-hair);
+}
+
 .title {
   margin: 0;
   font-family: var(--font-display);

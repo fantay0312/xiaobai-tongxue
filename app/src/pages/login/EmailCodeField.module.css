@@ -4,10 +4,12 @@
   gap: var(--gap-hair);
 }
 
+/* 票据字段签:打字机小签制式(四声部——字段签/眉批走打字机档) */
 .label {
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-small);
-  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
   color: var(--ink-soft);
 }
 
@@ -50,16 +52,19 @@
   gap: var(--gap-tight);
 }
 
+/* 取码票根钮:铅字小签制式的锐角票券钮(radius-tag),azure 小字合规 */
 .sendCode {
   min-width: 7.5rem;
   min-height: 44px;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-s);
+  border-radius: var(--radius-tag);
   background: var(--paper-warm);
   color: var(--azure-deep);
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-small);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
 

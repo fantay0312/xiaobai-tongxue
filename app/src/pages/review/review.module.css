@@ -19,12 +19,14 @@
 
 /* ── 档案头 ── */
 
+/* 卷宗眉批:打字机小签(编号/分区题签一律走这一档) */
 .chapterKicker {
   margin-bottom: var(--gap-hair);
   color: var(--azure-deep);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  letter-spacing: 0.2em;
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
 }
 
 .crumb {
@@ -52,6 +54,20 @@
   width: 2.5rem;
   height: 2px;
   background: var(--ink);
+}
+
+/* 转戳:本页唯一一枚旋转邮戳,压在题头右上留白里(非常规瞬间) */
+.headStamp {
+  position: absolute;
+  top: -0.25rem;
+  right: 0;
+  color: var(--terra);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  .headStamp { display: none; }
 }
 
 .title {
@@ -250,6 +266,7 @@
   margin-top: var(--gap);
 }
 
+/* 金句票根:麦色纸票卡(texture 由 TSX 叠),顶栏一行打字机小签 */
 .goldenCard {
   margin: 0;
   max-width: 30rem;
@@ -257,6 +274,18 @@
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   padding: var(--gap) var(--gap) var(--gap-tight);
+}
+
+.goldenTag {
+  display: block;
+  margin-bottom: var(--gap-tight);
+  padding-bottom: var(--gap-hair);
+  border-bottom: 1px dashed var(--paper-edge);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  color: var(--azure-deep);
 }
 
 .goldenText {
@@ -294,9 +323,24 @@
   }
 }
 
+/* 雷达票框:细暖灰边 + 打字机图注,像一张贴了画像的检测单 */
 .radarWrap {
   max-width: 560px;
   margin-left: calc(-1 * clamp(0rem, 3vw, 2.5rem));
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+  padding: var(--gap-tight) var(--gap-tight) var(--gap-hair);
+  background: var(--paper);
+}
+
+.radarCaption {
+  margin-top: var(--gap-hair);
+  text-align: center;
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  color: var(--ink-faint);
 }
 
 /* 逐维朱批列:维名 + 墨青分条 + 分值增量,全部与雷达同源同算法 */
@@ -581,7 +625,13 @@
   color: var(--ink);
 }
 
-.sevTag { font-size: var(--fs-tiny); color: var(--ink-faint); letter-spacing: 0.08em; }
+.sevTag {
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-faint);
+}
 
 .blindEvidence {
   margin-top: var(--gap-hair);
@@ -715,6 +765,7 @@
 
 /* ── 小白测验成绩单 ── */
 
+/* 放榜票据:麦色纸大票,票根(分数)与细目以撕票虚线分开 */
 .quizCard {
   background: var(--paper-warm);
   border: 1px solid var(--line-strong);
@@ -729,6 +780,31 @@
 
 @media (max-width: 720px) {
   .quizCard { grid-template-columns: 1fr; }
+}
+
+/* 分数票根:右缘一道撕票虚线,窄屏转到底缘 */
+.quizStub {
+  padding-right: var(--gap-loose);
+  border-right: 2px dashed var(--ink-wash);
+}
+
+@media (max-width: 720px) {
+  .quizStub {
+    padding-right: 0;
+    padding-bottom: var(--gap);
+    border-right: none;
+    border-bottom: 2px dashed var(--ink-wash);
+  }
+}
+
+.quizStubLabel {
+  display: block;
+  margin-bottom: var(--gap-hair);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  color: var(--ink-faint);
 }
 
 .quizScore {
@@ -827,11 +903,15 @@
   color: var(--ink-faint);
 }
 
+/* 事件签:铅字小签制式(锐角 radius-tag + 打字机大写宽距) */
 .tag {
   flex: none;
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   padding: 0 0.45rem;
-  border-radius: var(--radius-s);
+  border-radius: var(--radius-tag);
   border: 1px solid var(--line-strong);
   background: var(--paper);
   color: var(--ink-soft);

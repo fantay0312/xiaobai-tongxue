@@ -10,12 +10,12 @@
   scroll-margin-top: calc(var(--gap-loose) + var(--gap));
 }
 
-/* R2 双线书版式:2px 墨色短线叠在通栏 hairline 上,题头有骨 */
+/* 题头:打字机眉批小签 + 衬线大题,收在暖灰 hairline 上(叠 2px 墨短线作骨) */
 .head {
   position: relative;
   display: flex;
-  align-items: baseline;
-  gap: var(--gap);
+  flex-direction: column;
+  gap: var(--gap-hair);
   margin-bottom: var(--gap-loose);
   padding-bottom: var(--gap-tight);
   border-bottom: 1px solid var(--paper-edge);
@@ -29,6 +29,21 @@
   width: 2.5rem;
   height: 2px;
   background: var(--ink);
+}
+
+.eyebrow {
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  color: var(--ink-faint);
+}
+
+.headRow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--gap);
 }
 
 .title {
@@ -220,12 +235,12 @@
   font-size: var(--fs-small);
 }
 
-/* 书口小字:汉字讲数 + 出师计数,月白直书深布 */
+/* 书口小字:汉字讲数 + 出师计数(书口编号档,铅字小签),月白直书深布 */
 .volMeta {
   position: relative;
   z-index: 2;
   flex: none;
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
   letter-spacing: 0.12em;
   color: var(--moon-on-ink);
@@ -291,10 +306,10 @@
 }
 
 .openName {
-  font-family: var(--font-display);
+  font-family: var(--font-serif);
   font-size: var(--fs-sub);
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   color: var(--ink);
 }
 
@@ -353,9 +368,10 @@
 
 .coverEyebrow {
   margin-bottom: var(--gap-hair);
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
-  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
   color: var(--azure);
 }
 
@@ -375,15 +391,17 @@
   color: var(--ink-soft);
 }
 
-/* 「出师 x/y」小签:朱文小印同制式的锐角小片 */
+/* 「出师 x/y」小签:铅字小签制式的锐角小片(打字机大写+宽字距) */
 .courseNote {
   flex: none;
   padding: 0.125rem var(--gap-hair);
   background: var(--paper);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-tag);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
-  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   color: var(--ink-soft);
 }
 
@@ -618,16 +636,18 @@
   background: color-mix(in oklab, var(--azure-deep) 80%, var(--ink));
 }
 
+/* 砚赭:暖炭里透一点深赭陶,像旧牛皮布面 */
 .tone2 {
-  background: color-mix(in oklab, var(--azure-deep) 40%, var(--dust));
+  background: color-mix(in oklab, var(--inkstone) 58%, var(--terra-deep));
 }
 
 .tone3 {
   background: color-mix(in oklab, var(--wood-deep) 62%, var(--ink));
 }
 
+/* 橄榄墨:深橄榄压墨,与掌握档的亮黛绿拉开 */
 .tone4 {
-  background: color-mix(in oklab, var(--azure) 10%, var(--paper-warm));
+  background: color-mix(in oklab, var(--reed) 42%, var(--ink));
 }
 
 .tone5 {

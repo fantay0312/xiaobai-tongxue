@@ -17,6 +17,7 @@ import { nextStep } from '../../engine/journey';
 import { Icon } from '../ui/Icon';
 import { LETTER_CLOSED_EVENT, LETTER_OPEN_EVENT } from '../tour/tourState';
 import s from './story.module.css';
+import paper from '../../styles/paper.module.css';
 
 /** 每次页面加载只自动展帖一次(刷新即重置;演示场景要能重复看,故不落盘) */
 let autoOpenedThisLoad = false;
@@ -146,7 +147,7 @@ export function MentorLetter() {
         <div className={s.overlay} onClick={onBackdrop} onKeyDown={onKeyDown}>
           <div
             ref={dialogRef}
-            className={s.letterCard}
+            className={`${s.letterCard} ${paper.texture}`}
             role="dialog"
             aria-modal="true"
             aria-label="小白的拜师帖"
@@ -156,7 +157,15 @@ export function MentorLetter() {
               <Icon name="x" size={19} />
             </button>
 
-            <p className={s.letterHead} aria-hidden="true">拜师帖</p>
+            <div className={s.letterStub}>
+              <p className={`${paper.typeLabel} ${s.letterEyebrow}`} aria-hidden="true">聘书 · INVITATION</p>
+              <p className={s.letterHead} aria-hidden="true">拜师帖</p>
+              <p className={`${paper.typeLabel} ${s.letterMeta}`} aria-hidden="true">学徒小白 · 敬呈先生</p>
+            </div>
+
+            <div className={`${paper.perfLine} ${s.letterPerf}`} aria-hidden="true">
+              <span className={paper.perfNote}>沿此展帖 · 见字如晤</span>
+            </div>
 
             <div className={s.letterBody}>
               <p className={s.salute}>先生台鉴:</p>

@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import type { MemoryLayer } from '../../engine/recall';
 import { Icon } from '../ui/Icon';
 import s from './memory.module.css';
+import paper from '../../styles/paper.module.css';
 
 interface Props {
   layers: MemoryLayer[];
@@ -33,7 +34,7 @@ export function MemoryPanorama({ layers }: Props) {
         {layers.map((layer) => {
           const targetId = layer.anchor ? inPageId(layer.anchor.to) : null;
           return (
-            <article key={layer.key} className={s.box}>
+            <article key={layer.key} className={`${s.box} ${paper.texture}`}>
               <header className={s.head}>
                 <span className={s.no} aria-hidden="true">{layer.no}</span>
                 <h3 className={s.name}>{layer.name}</h3>

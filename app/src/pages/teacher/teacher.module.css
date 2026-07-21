@@ -34,36 +34,35 @@
   margin-bottom: var(--gap);
 }
 
-/* 第二道细线:卷宗封皮的「双栏界格」感 */
-.head::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 3px;
-  border-bottom: 1px solid var(--paper-edge);
-}
-
-/* 双线书版式的墨骨:一段 2px 墨色短线压在通栏界格上(R2) */
+/* 卷宗题头墨骨:通栏 hairline 上压一段 2px 墨色短线(登记簿的界栏起手 tick) */
 .head::before {
   content: '';
   position: absolute;
   left: 0;
-  bottom: -2px;
+  bottom: -1px;
   width: 2.5rem;
   height: 2px;
-  background: linear-gradient(90deg, var(--lilac-ink), var(--reed));
+  background: var(--ink);
 }
 
+/* 打字机眉批:铅字大写小签领起卷宗(题头新制式) */
 .headKicker {
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
+  text-transform: uppercase;
   color: var(--azure);
-  letter-spacing: 0.28em;
+  letter-spacing: var(--track-label);
   margin-bottom: var(--gap-hair);
 }
 
-.title { font-size: var(--fs-title); color: var(--ink); }
+/* 衬线题名:加拉蒙+宋体作卷宗大字(600 字重) */
+.title {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: var(--fs-title);
+  color: var(--ink);
+  letter-spacing: 0.01em;
+}
 
 /* 楷体眉注:提要文字随卷宗气质走 */
 .demoNote {
@@ -75,37 +74,29 @@
 
 .demoNote strong { color: var(--ink-soft); }
 
-.seal {
-  flex: none;
-  padding: 0.4rem 0.6rem;
-  border: 2px solid var(--azure);
-  border-radius: var(--radius-s);
-  color: var(--azure);
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  letter-spacing: 0.22em;
-  text-indent: 0.22em;
-  transform: rotate(6deg);
-  opacity: 0.8;
+/* 教务处官戳:题头右上一枚墨线双圈虚戳(paper.stamp 制式),本页唯一的「非常规瞬间」。
+   墨线戳走墨系(非印泥朱),色随 currentColor;.seal 退为定位容器 */
+.seal { flex: none; }
+
+.deptStamp {
+  color: var(--ink-soft);
+  opacity: 0.72;
 }
 
-/* 编号小印:与成长册卷号小印同制式,单字用字距+缩进对中。
-   本轮翻成「白文印」——靛青满底压月白字,给每节题头一枚看得见的墨色锚点(R2) */
+/* 编号小印:登记簿的分节索引,翻成铅字小签——靛青满底压奶油纸字,大写+宽字距 */
 .secNo {
   display: inline-block;
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
-  font-weight: 400;
+  text-transform: uppercase;
   color: var(--paper);
   background: var(--azure);
-  border: 1px solid var(--azure);
-  border-radius: var(--radius-s);
-  padding: 0 0.4rem;
+  border-radius: var(--radius-tag);
+  padding: 0.05rem 0.4rem;
   margin-right: var(--gap-tight);
-  letter-spacing: 0.18em;
-  text-indent: 0.18em;
-  vertical-align: 0.14em;
-  line-height: 1.6;
+  letter-spacing: var(--track-label);
+  vertical-align: 0.12em;
+  line-height: 1.5;
 }
 
 /* ── ① 档案总览带:案头小印卡 ── */
@@ -132,10 +123,11 @@
 .statValue { display: flex; align-items: baseline; gap: 0.25rem; }
 
 .statNum {
-  font-family: var(--font-code);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-stat);
   line-height: 1;
   color: var(--ink);
+  letter-spacing: 0.01em;
 }
 
 .statJade { color: var(--jade); }
@@ -146,9 +138,10 @@
 .statLabel {
   display: block;
   margin-top: var(--gap-hair);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  letter-spacing: 0.1em;
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
   color: var(--ink-faint);
 }
 
@@ -198,20 +191,23 @@
 
 .emptyLead { max-width: 36em; font-size: var(--fs-body); color: var(--ink-soft); }
 
+/* 空态 CTA:主动作实底按钮制式(solid --azure,悬停加深并微抬,按压回落) */
 .btnGhost {
   display: inline-flex;
   align-items: center;
   gap: var(--gap-hair);
-  font-family: var(--font-display);
-  color: var(--azure);
+  font-family: var(--font-body);
+  color: var(--paper);
+  background: var(--azure);
   border: 1px solid var(--azure);
   border-radius: var(--radius-s);
   padding: 0.45rem 1.1rem;
   text-decoration: none;
-  transition: background var(--t-fast) var(--ease-out);
+  transition: background var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
 }
 
-.btnGhost:hover { background: var(--azure-wash); }
+.btnGhost:hover { background: var(--azure-deep); border-color: var(--azure-deep); transform: translateY(-1px); }
+.btnGhost:active { transform: translateY(0); }
 
 /* ── 版块 ── */
 
@@ -236,6 +232,8 @@
 /* 分节题:双线书版式(R2)——通栏 hairline 收底,再压一段 2px 墨色短线作骨,编号小印领头 */
 .h2 {
   position: relative;
+  font-family: var(--font-serif);
+  font-weight: 600;
   font-size: var(--fs-sub);
   color: var(--ink);
   margin-bottom: var(--gap-tight);
@@ -247,13 +245,14 @@
   content: '';
   position: absolute;
   left: 0;
-  bottom: -2px;
+  bottom: -1px;
   width: 2.5rem;
   height: 2px;
-  background: linear-gradient(90deg, var(--lilac-ink), var(--reed));
+  background: var(--ink);
 }
 
 .h2 small {
+  font-family: var(--font-body);
   font-size: var(--fs-tiny);
   color: var(--ink-faint);
   font-weight: 400;
@@ -280,9 +279,9 @@
 .barSvg {
   min-width: 640px; width: 100%; height: auto; display: block; }
 
-.barLabel { font-family: var(--font-display); font-size: 14px; fill: var(--ink); }
+.barLabel { font-family: var(--font-typewriter); font-size: 14px; letter-spacing: 0.02em; fill: var(--ink); }
 
-.barTopic { font-size: 11px; fill: var(--ink-faint); }
+.barTopic { font-family: var(--font-typewriter); font-size: 11px; letter-spacing: 0.04em; fill: var(--ink-faint); }
 
 /* 淡点栅线:刻度背景,比轴线更虚一档 */
 .barGrid { stroke: var(--dust); stroke-width: 1; stroke-dasharray: 2 5; opacity: 0.55; }
@@ -303,12 +302,12 @@
 
 .barHigh { fill: var(--cinnabar); }
 
-.barCount { font-family: var(--font-code); font-size: 12px; font-weight: 600; fill: var(--ink-soft); }
+.barCount { font-family: var(--font-typewriter); font-size: 12px; font-weight: 600; letter-spacing: 0.02em; fill: var(--ink-soft); }
 
-/* 程度小签:楷体撑字距,贴在计数后作 chip 状短注 */
-.barSev { font-family: var(--font-display); font-size: 11px; font-weight: 400; letter-spacing: 0.08em; fill: var(--ink-faint); }
+/* 程度小签:铅字撑字距,贴在计数后作 chip 状短注 */
+.barSev { font-family: var(--font-typewriter); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; fill: var(--ink-faint); }
 
-.barSevHigh { font-family: var(--font-display); font-size: 11px; font-weight: 400; letter-spacing: 0.08em; fill: var(--cinnabar); }
+.barSevHigh { font-family: var(--font-typewriter); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; fill: var(--cinnabar); }
 
 .barAxis { stroke: var(--paper-edge); stroke-width: 1; }
 
@@ -331,12 +330,13 @@
   font-size: var(--fs-small);
 }
 
-/* 表头压 paper-shade 横带 + 强边线收底,楷体撑字距 —— 栏目题签要「框得住」数据区(R2/R3) */
+/* 表头压 paper-shade 横带 + 强边线收底,铅字小签大写撑字距 —— 栏目题签要「框得住」数据区(R2/R3) */
 .table th {
   text-align: left;
-  font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: 0.1em;
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
   color: var(--ink-soft);
   background: var(--paper-shade);
   border-bottom: 1px solid var(--line-strong);
@@ -352,35 +352,40 @@
   white-space: nowrap;
 }
 
-/* 不用斑马纹,行悬停一层淡墨即可(晕染而非高亮) */
+/* 登记簿斑马纹:偶行落麦色纸,给密表一道可循的横向节拍(R;悬停/被带偏行按下方叠序覆盖) */
+.table tbody tr:nth-child(even) td { background: var(--paper-warm); }
+
+/* 行悬停一层淡墨(晕染而非高亮);置于斑马纹后以同特指度胜出 */
 .table tbody tr:hover td { background: var(--ink-wash); }
 
-.numCell { font-family: var(--font-code); color: var(--ink-soft); }
+.numCell { font-family: var(--font-typewriter); color: var(--ink-soft); }
 
-.numInline { font-family: var(--font-code); }
+.numInline { font-family: var(--font-typewriter); }
 
 .courseCell { font-size: var(--fs-tiny); color: var(--ink-faint); }
 
-/* 课程书脊小签:左沿加厚如书脊 */
+/* 课程书脊小签:左沿加厚如书脊,铅字小签制式 */
 .courseChip {
   display: inline-block;
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
+  text-transform: uppercase;
   color: var(--ink-soft);
   background: var(--paper);
   border: 1px solid var(--paper-edge);
   border-left: 3px solid var(--azure);
-  border-radius: 2px var(--radius-s) var(--radius-s) 2px;
+  border-radius: 2px var(--radius-tag) var(--radius-tag) 2px;
   padding: 0 0.45rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   line-height: 1.7;
   white-space: nowrap;
 }
 
 .titleCell { font-family: var(--font-display); }
 
-/* 被带偏还没纠正的行:朱砂弱底,提示先补学;悬停也不许被淡墨盖掉语义色 */
-.rowAdopted td,
+/* 被带偏还没纠正的行:朱砂弱底,提示先补学;表内特指度提到 tr.rowAdopted 档,
+   压过斑马纹与悬停(含悬停时的三类联合),语义色不许被盖 */
+.table tbody tr.rowAdopted td,
 .table tbody tr.rowAdopted:hover td { background: var(--cinnabar-wash); }
 
 .masteryCell { display: inline-flex; align-items: center; gap: var(--gap-hair); }
@@ -411,12 +416,16 @@
 
 /* ── 状态 chip:细边小胶囊,wash 底上小字用 *-ink 变体保对比度 ── */
 
+/* 状态票签:铅字小签制式(大写+宽字距+锐角),wash 底上小字走 *-ink 变体保对比度 */
 .chip {
   display: inline-block;
   padding: 0.08rem 0.5rem;
-  border-radius: 999px;
+  border-radius: var(--radius-tag);
   border: 1px solid;
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   line-height: 1.5;
   white-space: nowrap;
 }
@@ -551,7 +560,7 @@
   align-items: center;
   gap: var(--gap-hair);
   margin-top: var(--gap-hair);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: var(--fs-small);
   color: var(--azure);
   text-decoration: none;
@@ -572,6 +581,8 @@
 /* 与各节 .h2 同一套双线书版式,对齐全页题头节奏(R2;台身不动) */
 .leakTitle {
   position: relative;
+  font-family: var(--font-serif);
+  font-weight: 600;
   font-size: var(--fs-sub);
   color: var(--ink);
   margin-bottom: var(--gap);
@@ -583,7 +594,7 @@
   content: '';
   position: absolute;
   left: 0;
-  bottom: -2px;
+  bottom: -1px;
   width: 2.5rem;
   height: 2px;
   background: var(--ink);
@@ -600,9 +611,9 @@
 .leakSide { min-width: 0; }
 
 .leakNum {
-  /* 数字纪律:率是数值,落 code 字体;
+  /* 数字纪律:率是数值,落铅字打字机档(登记簿的排字机数字);
      stat 档而非 hero 档:侧栏卡约 380px 宽,hero 字阶下对比构图必然折行 */
-  font-family: var(--font-code);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-stat);
   line-height: 1;
 }
@@ -622,14 +633,14 @@
 .leakArrow { font-family: var(--font-display); color: var(--ink-faint); font-size: var(--fs-small); }
 
 .leakPlaque {
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
   color: var(--azure-deep);
   border: 1px solid var(--azure-deep);
-  border-radius: var(--radius-s);
-  padding: 0.05rem 0.5rem;
-  letter-spacing: 0.18em;
-  text-indent: 0.18em;
+  border-radius: var(--radius-tag);
+  padding: 0.1rem 0.5rem;
+  letter-spacing: var(--track-label);
   white-space: nowrap;
 }
 

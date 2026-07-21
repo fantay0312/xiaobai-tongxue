@@ -9,6 +9,7 @@ import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { MentorLetter } from '../../components/story/MentorLetter';
 import { JourneyRibbon } from '../../components/story/JourneyRibbon';
 import { Tour, type TourStep } from '../../components/tour/Tour';
+import { RoundStamp } from '../../components/ui/RoundStamp';
 import { Bookshelf } from './Bookshelf';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import styles from './home.module.css';
@@ -123,8 +124,19 @@ export default function HomePage() {
         data-tour="loop"
       >
         <header className={styles.loopHead}>
-          <h2 className={styles.loopTitle}>一课的走法</h2>
-          <p className={styles.loopNote}>六步一环，教到出师为止</p>
+          <div className={styles.loopHeadText}>
+            <p className={styles.loopEyebrow}>THE LESSON LOOP · 一课六步</p>
+            <div className={styles.loopTitleRow}>
+              <h2 className={styles.loopTitle}>一课的走法</h2>
+              <p className={styles.loopNote}>六步一环，教到出师为止</p>
+            </div>
+          </div>
+          <RoundStamp
+            className={styles.loopStamp}
+            text="小白同学 · 教然后知困 · "
+            size={78}
+            dur={60}
+          />
         </header>
         <div className={styles.route}>
           {LOOP_STEPS.map((step) => (

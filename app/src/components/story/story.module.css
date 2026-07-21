@@ -104,14 +104,14 @@
   }
 }
 
-/* 信纸本体:保留信封式双框 + 竖排帖名;margin auto 让长信在小视口可整封滚动 */
+/* 信帖本体:一张待检的邀请票——票根存根(帖名戳)+ 撕票线 + 手写正文;
+   margin auto 让长信在小视口可整封滚动 */
 .letterCard {
   position: relative;
   width: min(42rem, 100%);
   margin: auto;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: clamp(var(--gap), 4vw, var(--gap-loose));
+  display: flex;
+  flex-direction: column;
   padding: var(--gap-loose) clamp(var(--gap), 4vw, var(--gap-loose));
   background: var(--paper-warm);
   border: 1px solid var(--paper-edge);
@@ -180,16 +180,38 @@
   outline-offset: 2px;
 }
 
-/* 帖名竖排,如信封题签 */
+/* 票根存根:打字机眉签 + 衬线帖名 + 打字机落款小签,像邀请票的抬头栏 */
+.letterStub {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding-bottom: var(--gap);
+}
+
+.letterEyebrow {
+  color: var(--azure);
+}
+
+/* 帖名:衬线大字题头(横排),替下旧竖排题签 */
 .letterHead {
-  writing-mode: vertical-rl;
-  font-family: var(--font-display);
+  font-family: var(--font-serif);
   font-size: var(--fs-title);
-  font-weight: 700;
-  letter-spacing: 0.4em;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-indent: 0.18em;
   color: var(--ink);
-  padding-right: clamp(var(--gap-tight), 2vw, var(--gap));
-  border-right: 1px solid var(--paper-edge);
+}
+
+.letterMeta {
+  color: var(--ink-faint);
+}
+
+/* 撕票线:存根与正文之间的裁切位,配「沿此展帖」小字 */
+.letterPerf {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--gap-hair);
+  margin-bottom: var(--gap);
 }
 
 .letterBody {
@@ -502,16 +524,8 @@
     flex-basis: 12em;
   }
 
-  .letterCard {
-    grid-template-columns: 1fr;
-  }
-
   .letterHead {
-    writing-mode: horizontal-tb;
-    padding-right: 0;
-    padding-bottom: var(--gap-tight);
-    border-right: none;
-    border-bottom: 1px solid var(--paper-edge);
+    font-size: var(--fs-sub);
   }
 
   .newSealName {

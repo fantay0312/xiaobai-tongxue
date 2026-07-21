@@ -13,6 +13,9 @@
     "livetest": "tsx scripts/livetest.ts"
   },
   "dependencies": {
+    "@fontsource/cormorant-garamond": "^5.3.0",
+    "@fontsource/courier-prime": "^5.3.0",
+    "@fontsource/dm-sans": "^5.3.0",
     "lucide-react": "^1.24.0",
     "lxgw-wenkai-screen-webfont": "^1.7.0",
     "react": "^19.2.7",

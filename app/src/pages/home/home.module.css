@@ -40,11 +40,13 @@
   inset: 10% -8% 4% 42%;
   border-radius: 54% 46% 42% 58%;
   background:
-    radial-gradient(ellipse at 42% 36%, color-mix(in oklch, var(--lilac) 26%, transparent), transparent 62%),
-    radial-gradient(ellipse at 70% 70%, color-mix(in oklch, var(--reed) 24%, transparent), transparent 67%);
+    radial-gradient(ellipse at 42% 36%, color-mix(in oklch, var(--terra) 10%, transparent), transparent 60%),
+    radial-gradient(ellipse at 70% 70%, color-mix(in oklch, var(--reed) 10%, transparent), transparent 65%);
   transform: rotate(-5deg);
   pointer-events: none;
 }
+
+/* 首屏底温 —— 极淡暖纸渍(材质档,非发光渐变):赭陶/橄榄各压 10% 当纸上一片旧影 */
 
 .heroMain {
   display: flex;
@@ -54,20 +56,24 @@
 }
 
 .kicker {
-  /* 与宣传页 kicker 同制式(楷体) */
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  letter-spacing: 0.32em;
-  color: var(--reed-ink);
+  /* 眉批标签改铅字打字机小签制式:大写+宽字距(全站分区眉批统一档) */
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  color: var(--ink-faint);
 }
 
 .claim {
+  /* 题头走衬线(全局 h1 已 serif 600),此处只定字阶/字距/色 */
   font-size: var(--fs-hero);
   letter-spacing: 0.04em;
   color: var(--ink);
 }
 
+/* 「你教会」= 中文签名位:楷体点睛压赭陶,衬线大题里嵌一笔手写 */
 .claim em {
+  font-family: var(--font-display);
   font-style: normal;
   color: var(--azure);
 }
@@ -79,24 +85,32 @@
   color: var(--ink-soft);
 }
 
+/* 主动作按钮:实赭陶票据钮,悬停沉一档并微抬,按压回落 */
 .cta {
   display: inline-block;
   margin-top: var(--gap-tight);
   padding: var(--gap-tight) calc(var(--gap) * 1.75);
   background: var(--azure);
   color: var(--paper);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: var(--fs-sub);
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   border-radius: var(--radius-s);
-  box-shadow: 0 0.7rem 1.8rem color-mix(in oklch, var(--lilac) 24%, transparent);
-  transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+  box-shadow: var(--shadow-paper);
+  transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out);
 }
 
 .cta:hover {
   background: var(--azure-deep);
   transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+}
+
+.cta:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-paper);
 }
 
 .cta:focus-visible {
@@ -111,8 +125,7 @@
   padding: var(--gap-tight) var(--gap);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius) var(--radius) var(--radius) 2px;
-  background:
-    linear-gradient(145deg, color-mix(in oklch, var(--paper) 88%, var(--lilac) 12%), var(--paper-warm));
+  background: linear-gradient(145deg, var(--paper), var(--paper-warm));
   color: var(--ink-soft);
   font-family: var(--font-display);
   font-size: var(--fs-small);
@@ -135,9 +148,11 @@
 
 .dreamQuote span {
   display: block;
+  font-family: var(--font-typewriter);
+  text-transform: uppercase;
   color: var(--azure-deep);
   font-size: var(--fs-tiny);
-  letter-spacing: 0.18em;
+  letter-spacing: var(--track-label);
   margin-bottom: 0.15rem;
 }
 
@@ -176,11 +191,11 @@
   margin-bottom: var(--gap-section);
 }
 
-/* 题头:2px 墨短线叠通栏 hairline,与书架题头同一制式,左对齐 */
+/* 题头:打字机眉批小签 + 衬线大题,收在暖灰 hairline 上;右端一枚慢转官戳 */
 .loopHead {
   position: relative;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--gap);
   margin-bottom: var(--gap-loose);
   padding-bottom: var(--gap-tight);
@@ -197,19 +212,54 @@
   background: var(--ink);
 }
 
+.loopHeadText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+}
+
+.loopEyebrow {
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  color: var(--ink-faint);
+}
+
+.loopTitleRow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--gap);
+}
+
 .loopTitle {
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-family: var(--font-serif);
+  font-size: var(--fs-title);
+  font-weight: 600;
+  letter-spacing: 0.04em;
   color: var(--ink);
 }
 
 .loopNote {
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-small);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.1em;
   color: var(--ink-faint);
+}
+
+/* 眉批处的慢转墨线邮戳(全页唯一一枚转戳),推到题头右端 */
+.loopStamp {
+  margin-left: auto;
+  flex: none;
+  color: var(--ink-soft);
+  opacity: 0.7;
+}
+
+@media (max-width: 560px) {
+  .loopStamp {
+    display: none;
+  }
 }
 
 /* 路线:窄屏一条横滚线(边缘渐隐,#000 是 mask 通道不是配色) */
@@ -252,7 +302,7 @@
 }
 
 .nodeNum {
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
   letter-spacing: 0.2em;
   color: var(--ink-faint);
@@ -299,9 +349,9 @@
 }
 
 .nodeName {
-  font-family: var(--font-display);
+  font-family: var(--font-serif);
   font-size: var(--fs-sub);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ink);
 }
 

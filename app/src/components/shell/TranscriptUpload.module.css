@@ -155,11 +155,14 @@
 }
 
 .archiveBadge {
-  padding: 0.2rem 0.42rem;
+  padding: 0.2rem 0.44rem;
   border-radius: var(--radius-tag);
   background: var(--jade-wash);
   color: var(--jade-ink);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
   white-space: nowrap;
 }
 

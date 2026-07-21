@@ -8,17 +8,19 @@
  */
 import { useEffect, useRef, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { Scissors } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { Seal } from '../../components/shell/Seal';
-import { Icon } from '../../components/ui/Icon';
+import { Icon, type IconName } from '../../components/ui/Icon';
+import { RoundStamp } from '../../components/ui/RoundStamp';
 import { TOPICS, XIAOBAI_LINES } from '../../data';
 import { COURSE_COVERS } from '../../data/courseCovers';
 import { tokenizationDemo, tokenizationTopic } from '../../data/topics/tokenization';
 import type { Topic } from '../../types';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import s from './landing.module.css';
-import anchor from '../../styles/anchor.module.css';
+import paper from '../../styles/paper.module.css';
 
 const ACTS: { act: string; name: string; desc: string }[] = [
   {
@@ -124,6 +126,8 @@ const STATS: { num: string; unit: string; label: string; note: string }[] = [
   { num: String(TOPICS.length), unit: '个', label: '知识点', note: '含图谱占位知识点,课程版图持续铺开' },
   { num: String(MC_COUNT), unit: '套', label: '预埋误区剧本', note: '每套自带触发台词与纠偏判据,课上现场埋雷' },
 ];
+/* 数字带三栏的领读图标章(纯装饰,墨/赭陶/芥末三底,呼应参考稿 Check-in/Wifi/Breakfast 行) */
+const STAT_ICONS: IconName[] = ['library', 'book-open', 'swords'];
 
 /** 书架预览:按 course 分组,保持 TOPICS 陈列顺序(与门厅书架同一分组逻辑) */
 function groupByCourse(topics: Topic[]): { course: string; topics: Topic[] }[] {
@@ -186,12 +190,17 @@ export default function LandingPage() {
 
   return (
     <div className={s.page} ref={pageRef}>
-      {/* ── 首屏海报:主张 + 小白 + 竖排《学记》 ── */}
+      {/* ── 首屏海报:旅宿前台叠卡阵 —— 暖灰受业凭单 · 赭陶邀请卡 · 芥末讲堂钥匙卡 ── */}
       <section className={s.hero}>
-        <span className={s.heroGlyph} aria-hidden="true">教</span>
+        {/* 巨字环形铅字盘水印:慢转压在右上,宽屏专属 */}
+        <div className={s.heroWatermark} aria-hidden="true">
+          <RoundStamp text="小白同学 · 教然后知困 · 费曼反转 · 受业书斋 · " size={380} dur={20} />
+        </div>
 
-        <div className={s.heroMain}>
-          <p className={`${s.kicker} ${s.enter}`}>费曼反转式学习智能体</p>
+        <div className={s.heroLede}>
+          <p className={`${paper.typeLabel} ${s.heroEyebrow} ${s.enter}`}>
+            费曼反转式学习智能体 · NO.001
+          </p>
           <h1 className={`${s.claim} ${s.enter}`} style={{ animationDelay: '70ms' }}>
             不是 AI 教你,
             <br />
@@ -211,29 +220,86 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div
-          className={`${anchor.heroAvatar} ${s.lampNest} ${s.enter}`}
-          style={{ animationDelay: '160ms' }}
-        >
-          <XiaobaiAvatar variant="paper" mood="curious" level={level} size={200} />
-          <p className={anchor.avatarCaption}>你的 AI 学生 · 小白</p>
-          <blockquote className={s.selfQuote}>
-            <span className={s.selfQuoteLabel}>小白 · 候教</span>
-            听说今日有位先生要来教我——我把不懂的都攒着,就等您开讲。
-          </blockquote>
-        </div>
+        <div className={`${s.heroStack} ${s.enter}`} style={{ animationDelay: '120ms' }}>
+          {/* ① 暖灰收据:受业凭单 */}
+          <article className={`${s.ticket} ${s.receipt} ${paper.tiltR} ${paper.texture}`}>
+            <span className={`${paper.verticalRail} ${s.receiptRail}`} aria-hidden="true">
+              XIAOBAI · 受业凭单 · TRADINGVANE
+            </span>
+            <div className={`${paper.stamp} ${s.receiptStamp}`} aria-hidden="true">
+              <span className={paper.stampInner}>
+                受业凭单
+                <br />
+                OFFICIAL
+                <br />
+                NO. 001
+              </span>
+            </div>
+            <dl className={s.receiptFields}>
+              <div className={s.field}>
+                <dt className={paper.typeLabel}>学生名</dt>
+                <dd className={s.fieldVal}>小白 · 你来教</dd>
+              </div>
+              <div className={s.field}>
+                <dt className={paper.typeLabel}>开课</dt>
+                <dd className={s.fieldVal}>今日</dd>
+              </div>
+              <div className={s.field}>
+                <dt className={paper.typeLabel}>出师凭据</dt>
+                <dd className={s.fieldVal}>看你讲得清不清</dd>
+              </div>
+            </dl>
+            <div className={s.receiptTear}>
+              <span className={paper.perfLine} />
+              <span className={s.tearNote}>
+                <Scissors size={12} strokeWidth={1.8} aria-hidden="true" />
+                <span className={paper.perfNote}>沿此撕开 · 留存</span>
+              </span>
+            </div>
+          </article>
 
-        <blockquote
-          className={`${anchor.quote} ${s.heroQuote} ${s.enter}`}
-          style={{ animationDelay: '120ms' }}
-        >
-          <p className={anchor.quoteText}>
-            教然后知困,
-            <br />
-            知困然后能自强
-          </p>
-          <cite className={anchor.quoteFrom}>《礼记 · 学记》</cite>
-        </blockquote>
+          {/* ② 赭陶邀请卡 */}
+          <article className={`${s.ticket} ${s.invite} ${paper.tiltL} ${paper.texture}`}>
+            <div className={s.inviteRing} aria-hidden="true">
+              <RoundStamp text="ENTER THE STUDY · 去书斋看看 · " size={132} dur={40} />
+            </div>
+            <span className={`${paper.verticalRail} ${s.inviteRail}`} aria-hidden="true">
+              XIAOBAI STUDIO · 候教中
+            </span>
+            <div className={s.inviteBody}>
+              <XiaobaiAvatar variant="paper" mood="curious" level={level} size={92} />
+              <p className={s.inviteHead}>去书斋看看</p>
+              <p className={`${paper.typeLabel} ${s.inviteSub}`}>A STUDENT IS WAITING</p>
+            </div>
+          </article>
+
+          {/* ③ 芥末讲堂钥匙卡(全页唯一芥末票卡 + 唯一墨圆钮 hero action) */}
+          <article className={`${s.ticket} ${s.keycard} ${paper.texture}`}>
+            <span className={paper.notch} aria-hidden="true" />
+            <div className={s.keyTop}>
+              <p className={`${paper.typeLabel} ${s.keyEyebrow}`}>讲堂钥匙 · KEY CARD</p>
+              <Seal className={s.keySeal} />
+            </div>
+            <h2 className={s.keyTitle}>
+              教然后
+              <br />
+              <em>知困</em>
+            </h2>
+            <div className={s.keyFoot}>
+              <span className={s.keyBadge} aria-hidden="true">
+                <span className={paper.typeLabel}>讲堂 No</span>
+                <span className={s.keyBadgeNum}>001</span>
+              </span>
+              <span className={s.keyEnterWrap}>
+                <Link className={s.keyEnter} to="/study" aria-label="进入书斋,开始教学">
+                  <Icon name="arrow-right" size={22} className={s.keyEnterIcon} />
+                  <Icon name="book-open" size={22} className={s.keyEnterIconAlt} />
+                </Link>
+                <span className={`${paper.typeLabel} ${s.keyCaption}`}>进入书斋</span>
+              </span>
+            </div>
+          </article>
+        </div>
       </section>
 
       {/* ── 理念:费曼学习法一句话 ── */}
@@ -354,6 +420,9 @@ export default function LandingPage() {
               data-reveal
               style={{ transitionDelay: `${i * 70}ms` }}
             >
+              <span className={`${s.statChip} ${s[`statChip${i}`]}`} aria-hidden="true">
+                <Icon name={STAT_ICONS[i]} size={18} />
+              </span>
               <p className={s.statNum}>
                 {t.num}
                 <em className={s.statUnit}>{t.unit}</em>
@@ -486,7 +555,7 @@ export default function LandingPage() {
         </div>
         <div className={s.bandSign} aria-hidden="true">
           <Seal className={s.bandSeal} />
-          <span className={s.bandSignText}>春雾书院 · 问学</span>
+          <span className={s.bandSignText}>学伴书斋 · 问学</span>
         </div>
       </section>
     </div>

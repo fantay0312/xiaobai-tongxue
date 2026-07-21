@@ -1,12 +1,13 @@
-/* 全局外壳:宣纸底导航;/teach 下切夜自习深色透明变体 */
+/* 全局外壳:奶油纸底前台;/teach 下切夜自习深色透明变体 */
 
 .shell {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  /* 奶油纸上两抹极淡暖区(麦色纸/陶粉纸),做前台大堂的光,不堆彩色科技渐变 */
   background:
-    radial-gradient(36rem 20rem at 10% 0%, color-mix(in oklch, var(--lilac) 10%, transparent), transparent 72%),
-    radial-gradient(42rem 24rem at 94% 8%, color-mix(in oklch, var(--reed) 9%, transparent), transparent 74%);
+    radial-gradient(36rem 20rem at 10% 0%, color-mix(in oklch, var(--paper-warm) 62%, transparent), transparent 72%),
+    radial-gradient(42rem 24rem at 94% 8%, color-mix(in oklch, var(--paper-blush) 55%, transparent), transparent 74%);
 }
 
 .locked {
@@ -28,15 +29,9 @@
   position: sticky;
   top: 0;
   z-index: 40;
-  /* 极淡春雾:丁香→芦苇一抹低彩叠在纸色磨砂之上,与下方界栏同一走向,让顶栏归春雾世界 */
-  background:
-    linear-gradient(
-      90deg,
-      color-mix(in oklch, var(--lilac) 5%, transparent),
-      color-mix(in oklch, var(--reed) 5%, transparent)
-    ),
-    color-mix(in oklch, var(--paper) 91%, transparent);
-  backdrop-filter: blur(14px) saturate(112%);
+  /* 前台台面:奶油纸磨砂,一道暖灰界栏收底;不再叠彩色渐变 */
+  background: color-mix(in oklch, var(--paper) 90%, transparent);
+  backdrop-filter: blur(14px) saturate(104%);
   border-bottom: 1px solid var(--paper-edge);
 }
 
@@ -53,8 +48,8 @@
   padding: 0.6rem clamp(var(--gap), 4vw, var(--gap-loose));
 }
 
-/* 一笔双色界栏把整站调色锚钉在最常见的应用壳层,不把粉绿铺满控件。
-   挂在版心内壳上,两端随内容左右缘收放(内衬即偏移),不再满幅横贯。 */
+/* 版心界栏:暖灰细线随内容左右缘收放(内衬即偏移),把台面锚在内容列上,
+   与满幅 border-bottom 同 y 叠成一道更实的内容栏界线。 */
 .headerInner::after {
   content: '';
   position: absolute;
@@ -62,8 +57,8 @@
   right: clamp(var(--gap), 4vw, var(--gap-loose));
   bottom: -1px;
   height: 1px;
-  background: linear-gradient(90deg, var(--lilac), var(--reed) 68%, transparent 94%);
-  opacity: 0.72;
+  background: var(--line-strong);
+  opacity: 0.85;
   pointer-events: none;
 }
 
@@ -87,7 +82,7 @@
 
 .landing .headerInner::after { display: none; }
 
-/* ── 品牌落款:白文印 + 楷体字标 + 界栏 + 铭 ── */
+/* ── 品牌落款:白文印 + 宋体字标 + 界栏 + 打字机铭 ── */
 
 .brand {
   display: inline-flex;
@@ -114,12 +109,12 @@
 }
 
 .brandName {
-  font-family: var(--font-display);
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-family: var(--font-serif);
+  font-size: 1.28rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   white-space: nowrap;
-  transform: translateY(1px); /* 楷体视觉基线微调,与印章光学对齐 */
+  transform: translateY(0.5px); /* 宋体视觉基线微调,与印章光学对齐 */
 }
 
 .brandRule {
@@ -130,10 +125,11 @@
 }
 
 .brandMotto {
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
-  letter-spacing: 0.32em;
-  margin-right: -0.32em; /* 抵消末字间距 */
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  margin-right: calc(-1 * var(--track-label)); /* 抵消末字间距 */
   color: var(--ink-faint);
   white-space: nowrap;
   transform: translateY(1px);
@@ -180,9 +176,8 @@
   }
 
   .loginBtn {
-    padding: 0.28rem 0.75rem;
+    padding: 0.28rem 0.8rem;
     letter-spacing: 0.1em;
-    text-indent: 0.1em;
   }
 
   /* 认证页小屏只留品牌章与设置，避免完整站内导航挤压成竖排。 */
@@ -194,7 +189,7 @@
   }
 }
 
-/* ── 导航链接:当前路由缀一枚句读墨点 ── */
+/* ── 导航链接:打字机铅字小签,当前路由缀一枚赭陶圆点(参考稿侧栏「My Wallet」点)── */
 
 .nav {
   display: flex;
@@ -204,49 +199,57 @@
 
 .link {
   position: relative;
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  letter-spacing: 0.09em;
-  /* ink-soft 而非 ink-faint:faint 在宣纸上仅 ~3.6:1,正文字号不达 AA */
-  color: var(--ink-soft);
-  padding: var(--gap-hair) 0.1em;
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-small);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  color: var(--ink);
+  /* 未选态压到 .55,与参考稿侧栏收起项同调;命中区/焦点态复原 */
+  opacity: 0.55;
+  padding: var(--gap-hair) 0.1em var(--gap-hair) 0.85rem; /* 左留一枚圆点位 */
   white-space: nowrap;
-  transition: color var(--t-fast) var(--ease-out);
+  transition: color var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out);
 }
 
 /* 命中区:视觉不变,纵向撑到 ≥40px(触控目标基线)。
-   句读点占了 ::after,命中区改用透明 ::before,不遮点、不改版式 */
+   赭陶圆点占了 ::after,命中区仍用透明 ::before,不遮点、不改版式 */
 .link::before {
   content: '';
   position: absolute;
   inset: -0.5rem 0;
 }
 
-/* 句读点:古人圈点文章,读到哪点到哪 */
+/* 赭陶圆点:当前路由亮起(6px 图形档,--terra 图形不受 ≥24px 文字限) */
 .link::after {
   content: '';
   position: absolute;
-  left: 50%;
-  bottom: -3px;
-  width: 4px;
-  height: 4px;
+  left: 0;
+  top: 50%;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: currentColor;
-  transform: translateX(-50%) scale(0);
+  background: var(--terra);
+  transform: translateY(-50%) scale(0);
   transition: transform var(--t-fast) var(--ease-out);
 }
 
 .link:hover {
-  color: var(--ink);
+  opacity: 1;
+  color: var(--azure);
+}
+
+/* 键盘焦点:不得让可聚焦元素停在压暗态 */
+.link:focus-visible {
+  opacity: 1;
 }
 
 .linkActive {
-  color: var(--azure-deep);
+  opacity: 1;
+  color: var(--ink);
 }
 
 .linkActive::after {
-  background: var(--reed-ink);
-  transform: translateX(-50%) scale(1);
+  transform: translateY(-50%) scale(1);
 }
 
 .board .link {
@@ -271,21 +274,23 @@
   background: var(--board-line);
 }
 
-/* ── 登入:唯一描边药丸,与导航文字区分层级 ── */
+/* ── 登入:赭陶实底小药丸(站点主动作制式),与导航铅字签拉开层级 ── */
 
 .loginBtn {
   position: relative;
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  letter-spacing: 0.18em;
-  text-indent: 0.18em; /* 双字居中补偿 */
-  color: var(--ink);
-  padding: 0.32rem 1rem;
-  border: 1px solid color-mix(in oklch, var(--lilac-ink) 58%, var(--paper-edge));
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  color: var(--paper);
+  background: var(--azure);
+  padding: 0.4rem 1.05rem;
+  border: 1px solid var(--azure);
   border-radius: 999px;
   transition:
     background var(--t-fast) var(--ease-out),
-    border-color var(--t-fast) var(--ease-out);
+    border-color var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
 }
 
 /* 命中区撑到 ≥40px,药丸视觉不变 */
@@ -296,8 +301,13 @@
 }
 
 .loginBtn:hover {
-  background: var(--lilac-wash);
-  border-color: var(--lilac-ink);
+  background: var(--azure-deep);
+  border-color: var(--azure-deep);
+  transform: translateY(-1px);
+}
+
+.loginBtn:active {
+  transform: translateY(0);
 }
 
 .board .loginBtn {
@@ -327,10 +337,10 @@
   transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
 
-/* 触发器 hover 走站点动作色:淡丁香晕 + 纸边圈,而非通用墨晕 */
+/* 触发器 hover 走站点动作色:淡赭陶晕 + 纸边圈,而非通用墨晕 */
 .profileTrigger:hover {
   border-color: var(--paper-edge);
-  background: var(--lilac-wash);
+  background: var(--azure-wash);
 }
 
 .profileName {

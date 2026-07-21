@@ -16,6 +16,7 @@ import { demonName } from '../../engine/story';
 import { Radar } from '../review/Radar';
 import { Icon } from '../../components/ui/Icon';
 import { useDocTitle } from '../../hooks/useDocTitle';
+import paper from '../../styles/paper.module.css';
 import s from './teacher.module.css';
 
 // ── 展示词表(与复盘页同一套口径,评价语言不允许分叉) ──
@@ -196,7 +197,11 @@ export default function TeacherPage() {
             全部数据来自<strong>本机真实学习记录</strong>,由事件流实时派生,无一处模拟。
           </p>
         </div>
-        <div className={s.seal}>教务实录</div>
+        <div className={s.seal} aria-hidden="true">
+          <span className={`${paper.stamp} ${s.deptStamp}`}>
+            <span className={paper.stampInner}>教务处 · 实录 · OFFICIAL</span>
+          </span>
+        </div>
       </header>
 
       {/* ① 档案总览带 */}

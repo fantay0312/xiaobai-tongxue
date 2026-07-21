@@ -85,7 +85,14 @@
   padding: 0.08rem 0.55rem;
 }
 
-.statLabel { font-size: var(--fs-tiny); color: var(--ink-faint); }
+/* 账簿键名:打字机档小签,与右侧 code 字体统计值一墨一栏 */
+.statLabel {
+  font-family: var(--font-typewriter);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+}
 
 /* 数字纪律:统计值整体落 code 字体(等宽数字,汉字回退无碍) */
 .statValue {

@@ -1,0 +1,110 @@
+/* 票据工艺公共件 —— 全站共享(precedent: anchor.module.css)。
+   页面 import 本文件后与自家类名并用:className={`${styles.card} ${paper.texture}`}。
+   只放"工艺",不放布局;各页布局仍自包含。 */
+
+/* 纸纹浮层:给票卡/色块盖一层分形噪点包浆。宿主须 position:relative。
+   multiply 混合在深底(墨/赭陶/芥末)上同样成立。 */
+.texture {
+  position: relative;
+  overflow: hidden;
+}
+.texture::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' fill='white'/%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.15'/%3E%3C/svg%3E");
+  opacity: 0.4;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+/* 打字机小签:大写+宽字距的铅字标签(编号/眉批/分区题签)。
+   中文照样用:字距由 --track-label 统一。颜色由使用处自定(默认弱提示墨)。 */
+.typeLabel {
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  color: var(--ink-faint);
+}
+
+/* 竖排边栏字:贴在票卡边缘的细小铅字(网址/电话/索书号制式) */
+.verticalRail {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-family: var(--font-typewriter);
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  opacity: 0.6;
+}
+
+/* 撕票线:票根与正票之间的虚线裁切位。配 .perfNote 小字「沿此撕开」 */
+.perfLine {
+  border-top: 2px dashed var(--ink-wash);
+}
+.perfNote {
+  font-family: var(--font-typewriter);
+  font-size: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-faint);
+}
+
+/* 官戳:双圈虚线圆章,默认墨线制式(红戳请在使用处覆盖 color: var(--seal-red))。
+   外圈实线内圈虚线,整体微斜;中心多行小字由使用处排。 */
+.stamp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 6rem;
+  height: 6rem;
+  border: 1px solid color-mix(in oklch, currentColor, transparent 70%);
+  border-radius: 50%;
+  transform: rotate(-12deg);
+  color: var(--ink);
+}
+.stampInner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 5rem;
+  height: 5rem;
+  border: 1px dashed color-mix(in oklch, currentColor, transparent 60%);
+  border-radius: 50%;
+  font-family: var(--font-typewriter);
+  font-size: 0.625rem;
+  line-height: 1.35;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+
+/* 票卡斜置:叠卡阵列的手贴感。hover 回正半度(transform 过渡豁免:桌面叠卡专用)。
+   入场动画宿主勿再叠 transform(global rise to 帧 transform:none 会压死斜置)——
+   斜置一律套在子层。 */
+.tiltL {
+  transform: rotate(-2deg);
+  transition: transform var(--t-med) var(--ease-out);
+}
+.tiltL:hover { transform: rotate(-1deg); }
+.tiltR {
+  transform: rotate(3deg);
+  transition: transform var(--t-med) var(--ease-out);
+}
+.tiltR:hover { transform: rotate(2deg); }
+
+/* 检票口:票卡顶缘中央的半圆挂孔(设计稿 key card 缺口)。
+   颜色=页面底色,盖在票卡上缘;宿主须 position:relative。 */
+.notch {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8rem;
+  height: 4rem;
+  background: var(--paper);
+  border-radius: 0 0 999px 999px;
+  box-shadow: inset 0 -2px 6px var(--ink-wash);
+}

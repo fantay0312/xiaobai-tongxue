@@ -8,6 +8,7 @@ import { useAuthStore } from '../../store/authStore';
 import { sexagenaryLabel } from '../../engine/story';
 import type { SessionReport, Topic } from '../../types';
 import s from './certificate.module.css';
+import paper from '../../styles/paper.module.css';
 
 const CN_DIGITS = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
 
@@ -26,12 +27,19 @@ export function MasteryCertificate({ topic, report }: { topic: Topic; report: Se
   const teacherName = user ?? '先生';
 
   return (
-    <section className={s.cert} aria-label="结业证书">
+    <section className={`${s.cert} ${paper.texture}`} aria-label="结业证书">
+      <div className={s.officialWrap} aria-hidden="true">
+        <div className={paper.stamp}>
+          <div className={paper.stampInner}>官凭<br />出师<br />OFFICIAL</div>
+        </div>
+      </div>
+      <p className={`${paper.typeLabel} ${s.eyebrow}`} aria-hidden="true">CERTIFICATE OF MASTERY · 结业执照</p>
       <h2 className={s.certTitle}>结业证书</h2>
       <p className={s.certBody}>兹有弟子小白,习《{topic.course} · {topic.title}》</p>
       <p className={s.certBody}>问难{cnCount(report.turnCount)}回,心魔尽除,今已出师</p>
       <p className={s.certTeacher}>授业师:{teacherName}</p>
       <p className={s.certDate}>{sexagenaryLabel(report.endedAt)} 于书院</p>
+      <p className={`${paper.typeLabel} ${s.serial}`} aria-hidden="true">NO. {topic.topicId}</p>
       <span className={s.certSeal} aria-hidden="true">出师</span>
     </section>
   );

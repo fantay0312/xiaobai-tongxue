@@ -9,6 +9,7 @@ import { useDocTitle } from '../../hooks/useDocTitle';
 import { CODE_RE, EMAIL_RE, NAME_RE, useCooldown, type Issue } from '../../hooks/useAuthForm';
 import { EmailCodeField } from './EmailCodeField';
 import { PasswordResetForm } from './PasswordResetForm';
+import paper from '../../styles/paper.module.css';
 import fs from './EmailCodeField.module.css';
 import s from './login.module.css';
 
@@ -275,6 +276,9 @@ export default function LoginPage() {
         </aside>
 
         <section className={s.form} aria-labelledby="auth-title">
+          <span className={s.ticketGrain} aria-hidden="true" />
+          <span className={s.punch} aria-hidden="true" />
+          <span className={`${paper.verticalRail} ${s.rail}`} aria-hidden="true">听课证 · ADMISSION</span>
           <p className={s.eyebrow}>{bindingEmail ? '补全名帖' : resetting ? '重校名帖' : '凭帖入斋'}</p>
           <h1 className={s.title} id="auth-title">
             {bindingEmail ? '绑定验证邮箱' : resetting ? '找回密码' : registering ? '递帖注册' : '登入书斋'}
@@ -307,6 +311,10 @@ export default function LoginPage() {
               {emailCodeLogin ? '改用邮箱或账号 + 密码' : '改用邮箱验证码'}
             </button>
           ) : null}
+
+          <div className={`${paper.perfLine} ${s.tear}`} aria-hidden="true">
+            <span className={paper.perfNote}>沿此撕开 · 听课存根</span>
+          </div>
 
           {resetting ? (
             <PasswordResetForm
@@ -377,7 +385,7 @@ export default function LoginPage() {
           <footer className={s.foot}>
             <p className={s.footSign}>
               <span className={s.footSeal} aria-hidden="true">问</span>
-              春雾书院 · 敬候赐教
+              学伴书斋 · 敬候赐教
             </p>
             <div className={s.footRow}>
               <span>{bindingEmail ? '验证完成前，此账号无法进入使用页面'

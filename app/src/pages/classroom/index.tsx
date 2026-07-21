@@ -693,6 +693,9 @@ export default function ClassroomPage() {
         {/* ── 右 2/3:木框黑板(对话流写在板上,板下粉笔槽) ── */}
         <section className={s.chat}>
           <div className={s.boardObj} data-tour="board">
+            <span className={s.boardChit} aria-hidden="true">
+              {mode === 'review' ? '温故' : mode === 'reteach' ? '重讲' : '夜课'}
+            </span>
             <div className={s.stream} ref={streamRef}>
               {live.messages.map((m) =>
               m.role === 'system' ? (

@@ -156,13 +156,15 @@
 .locked.tiercinnabar { --seal-tone: color-mix(in oklch, var(--dust), var(--seal-red) 18%); }
 .locked.tiergold { --seal-tone: color-mix(in oklch, var(--dust), var(--gold-ink) 20%); }
 
+/* 印格顶栏的档级/状态小签走打字机小签(铅字大写),像邮票册每格的目录字 */
 .sealMeta {
   width: 100%;
   display: flex;
   justify-content: space-between;
   color: var(--ink-faint);
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
+  text-transform: uppercase;
   letter-spacing: 0.1em;
 }
 

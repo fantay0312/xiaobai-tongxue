@@ -1,0 +1,12 @@
+/* 环形铅字盘:匀速慢转(linear 属旋转豁免),时长由 --stamp-dur 内联下发 */
+.spin {
+  animation: global(spinslow) var(--stamp-dur, 60s) linear infinite;
+}
+
+.ring {
+  fill: currentColor;
+  font-family: var(--font-typewriter);
+  font-size: 6.5px; /* viewBox 100 坐标系内的字号,随 size 等比缩放 */
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+}

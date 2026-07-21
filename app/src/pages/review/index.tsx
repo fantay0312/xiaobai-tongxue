@@ -16,9 +16,11 @@ import { HonorRoll } from '../../components/story/HonorRoll';
 import { MasteryCertificate } from '../../components/story/MasteryCertificate';
 import { XiaobaiDiary } from '../../components/story/XiaobaiDiary';
 import { Icon } from '../../components/ui/Icon';
+import { RoundStamp } from '../../components/ui/RoundStamp';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { Radar } from './Radar';
 import { RemedyPath } from './RemedyPath';
+import paper from '../../styles/paper.module.css';
 import s from './review.module.css';
 
 const MODE_LABEL: Record<SessionMode, string> = {
@@ -134,6 +136,9 @@ export default function ReviewPage() {
   return (
     <div className={s.page}>
       <header className={`${s.head} ${s.rise}`} style={rise(0)}>
+        <div className={s.headStamp}>
+          <RoundStamp text="灯下批注 · 教然后知困 · " size={92} dur={54} />
+        </div>
         <p className={s.chapterKicker}>第四章 · 灯下批注</p>
         <p className={s.crumb}><Link to="/study">书斋门厅</Link> / 教学档案</p>
         <h1 className={s.title}>{topic?.title ?? report.topicId}</h1>
@@ -170,9 +175,10 @@ export default function ReviewPage() {
             {report.goldenAnalogies.length > 0 && (
               <div className={s.goldenRow}>
                 {report.goldenAnalogies.map((g) => (
-                  <figure key={g} className={s.goldenCard}>
+                  <figure key={g} className={`${s.goldenCard} ${paper.texture}`}>
+                    <span className={s.goldenTag}>金句收录 · GOLDEN QUOTE</span>
                     <blockquote className={s.goldenText}>{g}</blockquote>
-                    <figcaption className={s.goldenFrom}>金句收藏 · 已收录进教学素材库 · 出自「{topic?.title ?? report.topicId}」</figcaption>
+                    <figcaption className={s.goldenFrom}>已收录进教学素材库 · 出自「{topic?.title ?? report.topicId}」</figcaption>
                   </figure>
                 ))}
               </div>
@@ -193,6 +199,7 @@ export default function ReviewPage() {
             <div className={s.radarSplit}>
               <div className={s.radarWrap}>
                 <Radar radar={report.radar} delta={report.radarDelta} />
+                <p className={s.radarCaption} aria-hidden="true">五维讲解画像 · TEACHING RADAR</p>
               </div>
               <div className={s.dimCol}>
                 <ul className={s.dimList}>
@@ -307,8 +314,9 @@ export default function ReviewPage() {
           <section className={`${s.section} ${s.rise}`} style={rise(4)}>
             <h2 className={s.h2}>伍 · 放榜细目<small>考的是小白,不是你</small></h2>
             {report.quiz ? (
-              <div className={s.quizCard}>
-                <div>
+              <div className={`${s.quizCard} ${paper.texture}`}>
+                <div className={s.quizStub}>
+                  <span className={s.quizStubLabel}>成绩单 · SCORECARD</span>
                   <span className={s.quizScore}>{report.quiz.score}</span>
                   <span className={s.quizUnit}>分</span>
                   <p className={s.quizCaption}>小白只答得出你教明白的东西——它答错的题,就是你没讲清的地方。</p>

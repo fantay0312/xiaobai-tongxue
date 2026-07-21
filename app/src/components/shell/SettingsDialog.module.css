@@ -93,10 +93,10 @@
 }
 
 .title {
-  font-family: var(--font-display);
+  font-family: var(--font-serif);
   font-size: var(--fs-sub);
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   color: var(--ink);
 }
 
@@ -154,12 +154,15 @@
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.5rem 0.65rem;
+  padding: 0.5rem 0.65rem 0.5rem 0.85rem; /* 左留一枚圆点位 */
   border: none;
   border-radius: var(--radius-s);
   background: transparent;
   color: var(--ink-soft);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-small);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
   text-align: left;
   transition:
     background var(--t-fast) var(--ease-out),
@@ -177,17 +180,17 @@
   font-weight: 600;
 }
 
-/* 目录"当前章"的墨签:选中项左缘一枚短墨线 */
+/* 目录"当前章"标记:选中项左缘一枚赭陶圆点(6px 图形档) */
 .railBtn[aria-selected='true']::before {
   content: '';
   position: absolute;
-  left: 0;
+  left: 0.28rem;
   top: 50%;
-  width: 2px;
-  height: 1.1em;
+  width: 6px;
+  height: 6px;
   transform: translateY(-50%);
-  background: var(--azure);
-  border-radius: 1px;
+  background: var(--terra);
+  border-radius: 50%;
 }
 
 .railIcon {
@@ -215,9 +218,10 @@
 }
 
 .paneTitle {
-  font-family: var(--font-display);
+  font-family: var(--font-serif);
   font-size: var(--fs-sub);
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--ink);
 }
 

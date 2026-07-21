@@ -7,6 +7,7 @@ import type { Topic } from '../../types';
 import { Icon } from '../ui/Icon';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { XiaoyanPet, type XiaoyanPetState } from './XiaoyanPet';
+import paper from '../../styles/paper.module.css';
 import s from './coach.module.css';
 
 const uid = () => (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
@@ -207,7 +208,7 @@ export function PrepCoach({ topic }: { topic: Topic }) {
             if (e.key === 'Escape' && !e.nativeEvent.isComposing) close();
           }}
         >
-          <header className={s.panelHead}>
+          <header className={`${s.panelHead} ${paper.texture}`}>
             <span className={s.panelName}>小砚 · 备课助教</span>
             <span className={settings.mode === 'mock' ? s.chipOffline : s.chipLive}>
               {settings.mode === 'mock' ? '离线锦囊' : '已连线'}

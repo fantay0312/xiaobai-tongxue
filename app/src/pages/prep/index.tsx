@@ -21,9 +21,11 @@ import { Md } from '../../components/Md';
 import { PrepCoach } from '../../components/coach/PrepCoach';
 import { Tour, type TourStep } from '../../components/tour/Tour';
 import { Icon } from '../../components/ui/Icon';
+import { RoundStamp } from '../../components/ui/RoundStamp';
 import type { Misconception, PrepReference, QuestionLevel } from '../../types';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { deriveTeachingFlow } from './flow';
+import paper from '../../styles/paper.module.css';
 import s from './prep.module.css';
 
 /** 追问层级 → 路线图徽章文案(checklist 无 L4;L4 = 误区注入,以途中试探标记呈现) */
@@ -152,7 +154,10 @@ function RecallCard({ recall }: { recall: TopicRecall }) {
   const fogged = recall.daysToFog != null && recall.daysToFog <= 0;
 
   return (
-    <aside className={s.recall} aria-label="小白对这门课的记忆">
+    <aside className={`${s.recall} ${paper.texture}`} aria-label="小白对这门课的记忆">
+      <span className={`${paper.perfNote} ${s.recallTear}`} aria-hidden="true">
+        上次的存根 · 沿此撕开
+      </span>
       <div className={s.recallHead}>
         <span className={s.recallLabel}>接着上次讲</span>
         {whenLabel && <span className={s.recallWhen}>上次温书 · {whenLabel}</span>}
@@ -432,7 +437,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
         <Link to="/study" className={s.back}><Icon name="arrow-left" size={15} />回书斋</Link>
         <div className={s.headGrid}>
           <div>
-            <p className={s.course}>第一章 · 入书房温书 · {topic.course}</p>
+            <p className={`${paper.typeLabel} ${s.course}`}>第一章 · 入书房温书 · {topic.course}</p>
             <h1 className={s.title}>{topic.title}</h1>
             <p className={s.tagline}>{topic.tagline}</p>
           </div>
@@ -446,6 +451,8 @@ function PrepRoom({ topicId }: { topicId: string }) {
             <span className={s.prepNoteSeal} aria-hidden="true">白</span>
           </aside>
         </div>
+        {/* 全页唯一慢转邮戳:钤在问笺一角的邮驿戳(装饰性,RoundStamp 自带 aria-hidden) */}
+        <RoundStamp className={s.headStamp} text="备课台 · 教然后知困 · " size={74} dur={54} />
       </header>
 
       <div className={s.layout}>
@@ -459,9 +466,12 @@ function PrepRoom({ topicId }: { topicId: string }) {
             className={`${s.section} ${s.bandShade}`}
             style={{ animationDelay: '80ms' }}
           >
-            <h2 className={s.sectionTitle}>
-              <span className={s.sectionNum}>壹</span>摸底快测
-            </h2>
+            <div className={s.secHead}>
+              <span className={`${paper.typeLabel} ${s.secEyebrow}`}>备课台 · NO.01</span>
+              <h2 className={s.sectionTitle}>
+                <span className={s.sectionNum}>壹</span>摸底快测
+              </h2>
+            </div>
             <p className={s.sectionHint}>
               开讲之前,先看看你现在站在哪。判断下面的说法对不对:
               {!quizDone && (
@@ -622,9 +632,12 @@ function PrepRoom({ topicId }: { topicId: string }) {
             <>
               {/* ── 贰 · 教学任务卡 ── */}
               <section id={SECTIONS[1].id} className={s.section}>
-                <h2 className={s.sectionTitle}>
-                  <span className={s.sectionNum}>贰</span>教学任务卡
-                </h2>
+                <div className={s.secHead}>
+                  <span className={`${paper.typeLabel} ${s.secEyebrow}`}>备课台 · NO.02</span>
+                  <h2 className={s.sectionTitle}>
+                    <span className={s.sectionNum}>贰</span>教学任务卡
+                  </h2>
+                </div>
                 <div className={s.taskCard}>
                   <span className={s.taskPin} aria-hidden="true" />
                   <span className={s.taskLabel}><Icon name="clipboard" size={16} />教 学 任 务</span>
@@ -634,9 +647,12 @@ function PrepRoom({ topicId }: { topicId: string }) {
 
               {/* ── 叁 · 讲课路线图 ── */}
               <section id={SECTIONS[2].id} className={`${s.section} ${s.bandWarm}`}>
-                <h2 className={s.sectionTitle}>
-                  <span className={s.sectionNum}>叁</span>讲课路线图
-                </h2>
+                <div className={s.secHead}>
+                  <span className={`${paper.typeLabel} ${s.secEyebrow}`}>备课台 · NO.03</span>
+                  <h2 className={s.sectionTitle}>
+                    <span className={s.sectionNum}>叁</span>讲课路线图
+                  </h2>
+                </div>
                 <p className={s.sectionHint}>
                   你要把下面 {topic.checklist.length} 件事讲明白——小白到时候大概会这么问。
                 </p>
@@ -683,10 +699,13 @@ function PrepRoom({ topicId }: { topicId: string }) {
 
               {/* ── 肆 · 材料包 ── */}
               <section id={SECTIONS[3].id} className={s.section}>
-                <h2 className={s.sectionTitle}>
-                  <span className={s.sectionNum}>肆</span>研读材料包
-                  <span className={s.readTime}>全读约 {readMinutes} 分钟</span>
-                </h2>
+                <div className={s.secHead}>
+                  <span className={`${paper.typeLabel} ${s.secEyebrow}`}>备课台 · NO.04</span>
+                  <h2 className={s.sectionTitle}>
+                    <span className={s.sectionNum}>肆</span>研读材料包
+                    <span className={s.readTime}>全读约 {readMinutes} 分钟</span>
+                  </h2>
+                </div>
                 <p className={s.sectionHint}>
                   {wrongMcs.length > 0
                     ? '已按你的错题展开了相关部分;带着任务卡上的问题读。'
@@ -842,9 +861,12 @@ function PrepRoom({ topicId }: { topicId: string }) {
 
               {/* ── 伍 · 自检清单 ── */}
               <section id={SECTIONS[4].id} className={`${s.section} ${s.bandShade}`}>
-                <h2 className={s.sectionTitle}>
-                  <span className={s.sectionNum}>伍</span>备课自检
-                </h2>
+                <div className={s.secHead}>
+                  <span className={`${paper.typeLabel} ${s.secEyebrow}`}>备课台 · NO.05</span>
+                  <h2 className={s.sectionTitle}>
+                    <span className={s.sectionNum}>伍</span>备课自检
+                  </h2>
+                </div>
                 <p className={s.sectionHint}>对着清单问自己,都能点头再上讲台。</p>
                 <ul className={s.checkList}>
                   {topic.prep.selfCheck.map((item, i) => {

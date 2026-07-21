@@ -25,6 +25,7 @@ import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { XiaobaiLetter } from '../../components/story/XiaobaiLetter';
 import { MemoryPanorama } from '../../components/story/MemoryPanorama';
 import { Icon, type IconName } from '../../components/ui/Icon';
+import { RoundStamp } from '../../components/ui/RoundStamp';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { KnowledgeMap, type MapNode, type NodeStatus } from './KnowledgeMap';
 import { AchievementWall } from './AchievementWall';
@@ -319,6 +320,8 @@ export default function GrowthPage() {
       {/* ── 卷首·师徒:弟子画像立轴 + 修行阶牌 + 性情之笺 + 师道/下一步双卡 ── */}
       <header className={`${s.hero} ${s.rise}`} style={rise(0)}>
         <figure className={s.portrait}>
+          {/* 卷首骑缝章:全页唯一转戳,钤在弟子画像立轴一角,像档案封皮上的学籍朱印 */}
+          <RoundStamp text="学籍档案 · 教然后知困 · " size={72} dur={50} className={s.portraitStamp} />
           <p className={s.portraitMark} aria-hidden="true">弟 子 画 像</p>
           <div className={s.portraitStage}>
             <XiaobaiAvatar mood={mood} level={global.learningLevel} variant="paper" size={200} />

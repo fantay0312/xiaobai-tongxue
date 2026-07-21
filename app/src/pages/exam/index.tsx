@@ -6,10 +6,12 @@ import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { useAppStore } from '../../store/appStore';
 import type { XiaobaiQuizResult } from '../../types';
 import { useDocTitle } from '../../hooks/useDocTitle';
+import { RoundStamp } from '../../components/ui/RoundStamp';
 import { ExamQuestion } from './ExamQuestion';
 import {
   BEAT_INDEX, EXAM_BEATS, deriveUnderstanding, examWhisper, thinkingDuration, type ExamBeat,
 } from './examStory';
+import paper from '../../styles/paper.module.css';
 import s from './exam.module.css';
 
 type ExamPhase = 'sendoff' | 'question' | 'result';
@@ -135,9 +137,12 @@ export default function ExamPage() {
         <section className={s.sendoff} aria-labelledby="exam-title">
           <div className={s.avatarSide}>
             <span className={s.gateMark} aria-hidden="true"><Icon name="school" size={23} /></span>
+            <div className={s.examStamp}>
+              <RoundStamp text="准考验讫 · 考场之内先生不得代答 · " size={82} dur={56} />
+            </div>
             <XiaobaiAvatar mood="shy" level={level} variant="paper" size={190} />
             <span className={s.satchel}>小书箱已背好</span>
-            <div className={s.ticket} aria-label="小白的准考证">
+            <div className={`${s.ticket} ${paper.texture}`} aria-label="小白的准考证">
               <p className={s.ticketHead}>
                 准考证
                 <span className={s.ticketStamp} aria-hidden="true">考</span>
@@ -148,6 +153,10 @@ export default function ExamPage() {
                 <div><dt>试题</dt><dd>{quiz.answers.length} 道</dd></div>
                 <div><dt>监考</dt><dd>导演</dd></div>
               </dl>
+              <p className={`${paper.perfLine} ${s.ticketAdmit}`}>
+                <span className={paper.perfNote}>凭此证入场</span>
+                <span className={paper.perfNote}>ADMIT ONE</span>
+              </p>
             </div>
           </div>
           <div className={s.sendoffBody}>

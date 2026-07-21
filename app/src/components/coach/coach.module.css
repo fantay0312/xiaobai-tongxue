@@ -54,12 +54,15 @@
   color: var(--ink);
   letter-spacing: 0.04em;
 }
+/* 连线状态 → 打字机小签(锐角票据签) */
 .chipLive,
 .chipOffline {
   margin-left: auto;
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
+  text-transform: uppercase;
   border: 1px solid currentColor;
-  border-radius: 999px;
+  border-radius: var(--radius-tag);
   padding: 1px 8px;
   letter-spacing: 0.08em;
   white-space: nowrap;
@@ -200,7 +203,7 @@
 .chip {
   background: none;
   border: 1px solid var(--paper-edge);
-  border-radius: 999px;
+  border-radius: var(--radius-tag);
   color: var(--ink-soft);
   font-size: var(--fs-tiny);
   font-family: var(--font-display);
@@ -251,9 +254,10 @@
   font-size: var(--fs-small);
   padding: 0.48rem 0.9rem;
   cursor: pointer;
-  transition: transform var(--t-fast) var(--ease-out);
+  transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
 }
-.sendBtn:hover:enabled { transform: translateY(-1px); }
+.sendBtn:hover:enabled { background: var(--azure-deep); transform: translateY(-1px); }
+.sendBtn:active:enabled { transform: translateY(1px); }
 .sendBtn:disabled { background: var(--dust); cursor: default; }
 
 @media (max-width: 720px) {

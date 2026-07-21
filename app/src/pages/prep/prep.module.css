@@ -19,7 +19,12 @@
   align-items: flex-start;
   gap: var(--gap-tight);
 }
-.notFoundTitle { font-size: var(--fs-title); color: var(--ink); }
+.notFoundTitle {
+  font-size: var(--fs-title);
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-weight: 600;
+}
 .notFoundText {
   color: var(--ink-soft);
   font-family: var(--font-display);
@@ -28,7 +33,19 @@
 }
 
 /* ── 页头 ── */
-.head { animation: global(rise) var(--t-med) var(--ease-out) backwards; }
+.head {
+  position: relative;
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
+}
+/* 页面的「非常规瞬间」:一枚慢转邮戳钤在课前问笺一角(全页唯一转戳,装饰性 aria-hidden) */
+.headStamp {
+  position: absolute;
+  right: -0.25rem;
+  bottom: -1.1rem;
+  color: var(--azure);
+  opacity: 0.5;
+  pointer-events: none;
+}
 .back { display: inline-flex; align-items: center; gap: var(--gap-hair); font-size: var(--fs-small); color: var(--ink-faint); }
 .back:hover { color: var(--azure); }
 .headGrid {
@@ -98,7 +115,14 @@
   padding-right: 2.1rem;
 }
 .prepNoteText { margin-top: 0.15rem; font-family: var(--font-display); color: var(--ink); line-height: 1.8; }
-.title { font-size: var(--fs-title); margin-top: var(--gap-hair); }
+/* 题头衬线:全站题头一律 --font-serif 600(题头/大字声部) */
+.title {
+  font-size: var(--fs-title);
+  margin-top: var(--gap-hair);
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
 .tagline {
   color: var(--ink-soft);
   font-family: var(--font-display);
@@ -107,21 +131,29 @@
 
 @media (max-width: 760px) {
   .headGrid { grid-template-columns: 1fr; gap: var(--gap); }
+  /* 单列后问笺占满宽,邮戳收起,免得压住信笺文字 */
+  .headStamp { display: none; }
 }
 
-/* ── 记忆回执纸条「接着上次讲」:双线纸条制式(呼应 .flowNote),册页语域称「先生」 ── */
+/* ── 记忆回执「接着上次讲」:一张收据票根 —— 上缘撕票虚线 + 存根小字,册页语域称「先生」 ── */
 .recall {
   animation: global(rise) var(--t-med) var(--ease-out) backwards;
   margin-bottom: var(--gap-tight);
   background: var(--paper-warm);
   border: 1px solid var(--line-strong);
-  /* 双线上沿,一眼是「翻旧账」的纸条 */
-  border-top: 3px double var(--line-strong);
+  /* 撕票线:上缘裁切位,一眼是从上次那叠里撕下来的票根 */
+  border-top: 2px dashed var(--ink-wash);
   border-radius: var(--radius-s);
-  padding: var(--gap) clamp(var(--gap-tight), 3vw, var(--gap-loose));
+  padding: calc(var(--gap-tight) + 0.1rem) clamp(var(--gap-tight), 3vw, var(--gap-loose)) var(--gap);
   display: flex;
   flex-direction: column;
   gap: var(--gap-tight);
+}
+/* 票根存根小字:贴着撕票线的铅字批注(paper.perfNote 给字族/字号) */
+.recallTear {
+  align-self: flex-start;
+  color: var(--ink-faint);
+  letter-spacing: 0.16em;
 }
 .recallHead {
   display: flex;
@@ -275,14 +307,26 @@
     radial-gradient(90% 140% at 0% 100%, var(--reed-wash), transparent 74%),
     var(--paper-shade);
 }
-/* 区块题头「双线书版式」(R2):2px 墨色短线叠在通栏 1px 细线上,比孤零零的细线有骨 */
+/* 区块题头(票据版式):打字机眉批小签「备课台 · NO.0X」压在衬线题名之上,
+   题名下压一道通栏细线 + 2px 墨色短线,呼应铅字油印讲义的分节栏 */
+.secHead {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.secEyebrow {
+  color: var(--ink-faint);
+  /* paper.typeLabel 已给字族/字号/字距/大写;此处只校色 */
+}
 .sectionTitle {
   position: relative;
+  font-family: var(--font-serif);
+  font-weight: 600;
   font-size: var(--fs-sub);
   display: flex;
   align-items: center;
   gap: var(--gap-tight);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   padding-bottom: 0.55rem;
   border-bottom: 1px solid var(--line-strong);
 }
@@ -369,6 +413,7 @@
   gap: var(--gap-tight);
   margin-top: var(--gap-tight);
 }
+/* 判断题「对/错」→ 票据小签(锐角 radius-tag) */
 .probeBtns button {
   width: 4.5rem;
   min-height: 2.5rem;
@@ -376,7 +421,7 @@
   border: 1px solid var(--azure);
   background: none;
   color: var(--azure);
-  border-radius: var(--radius-s);
+  border-radius: var(--radius-tag);
   font-size: var(--fs-body);
   font-family: var(--font-display);
   transition:
@@ -525,7 +570,7 @@
   text-align: left;
   background: var(--paper);
   border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-s);
+  border-radius: var(--radius-tag);
   padding: 0.45rem 0.8rem;
   color: var(--ink);
   font-size: var(--fs-body);
@@ -602,10 +647,13 @@
   padding: var(--gap-tight) var(--gap-hair);
   border-block: 3px double var(--line-strong);
 }
+/* 打字机小签:铅字大写宽距(小字走深赭 azure-deep 保 AA) */
 .flowLabel {
   padding-top: 0.2rem;
   color: var(--azure-deep);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
+  text-transform: uppercase;
   letter-spacing: 0.16em;
   white-space: nowrap;
 }
@@ -639,6 +687,7 @@
   align-items: flex-start;
   animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
+/* 路线图徽章 → 小听课证/票据小签:锐角(radius-tag)+ 打字机层级号 */
 .roadBadge,
 .roadBadgeWarn {
   flex: 0 0 auto;
@@ -647,10 +696,12 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 0.2rem 0;
+  padding: 0.22rem 0;
   margin-top: 0.35rem;
-  border-radius: 999px;
+  border-radius: var(--radius-tag);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
+  text-transform: uppercase;
   letter-spacing: 0.08em;
   background: var(--paper);
   border: 1px solid var(--azure);
@@ -806,7 +857,9 @@
   left: 1.2rem;
   background: var(--azure);
   color: var(--paper);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
+  text-transform: uppercase;
   letter-spacing: 0.3em;
   padding: 2px 8px 2px 12px;
   border-radius: var(--radius-tag);
@@ -949,11 +1002,18 @@
   flex-direction: column;
   gap: var(--gap-tight);
 }
+/* 延伸书单 → 借书卡/索引卡:细边卡片,朱文小印钤在卡角 */
 .refItem {
   display: flex;
   gap: var(--gap-tight);
   align-items: flex-start;
+  padding: var(--gap-tight);
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius);
+  transition: border-color var(--t-fast) var(--ease-out);
 }
+.refItem:hover { border-color: var(--line-strong); }
 /* kind 徽章:朱文小印(红字白底、方寸一枚)——印章语境走 --seal-red 别名 */
 .refSeal {
   flex: 0 0 auto;
@@ -1078,9 +1138,11 @@
   line-height: 1.85;
 }
 .videoHost {
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
   color: var(--ink-faint);
-  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
 /* ── 自检清单 ── */
@@ -1150,9 +1212,11 @@
   animation-delay: 160ms;
 }
 .asideTitle {
-  font-size: var(--fs-body);
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: var(--fs-sub);
   color: var(--ink);
-  letter-spacing: 0.15em;
+  letter-spacing: 0.04em;
 }
 .stepList {
   list-style: none;

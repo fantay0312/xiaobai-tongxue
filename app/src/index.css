@@ -5,14 +5,10 @@
 html, body { margin: 0; padding: 0; overflow-x: clip; min-height: 100%; }
 
 body {
-  /* 春雾纸底:丁香与芦苇只以水迹进入大底,可交互表面仍用不透明纸色保证可读性。 */
-  background:
-    radial-gradient(42rem 30rem at 8% 4%, color-mix(in oklch, var(--lilac) 18%, transparent), transparent 72%),
-    radial-gradient(48rem 34rem at 94% 16%, color-mix(in oklch, var(--reed) 16%, transparent), transparent 70%),
-    radial-gradient(52rem 32rem at 20% 92%, color-mix(in oklch, var(--reed) 10%, transparent), transparent 74%),
-    radial-gradient(44rem 28rem at 88% 86%, color-mix(in oklch, var(--lilac) 11%, transparent), transparent 72%),
-    var(--paper);
-  background-attachment: fixed;
+  /* 奶油纸底:平铺一层 SVG 分形噪点当纸纹,不再用色渍渐变拉氛围——
+     票据风的层次由纸色分档(--paper-warm/-blush/-shade)与暖灰界栏承担。 */
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
   color: var(--ink);
   font-family: var(--font-body);
   font-size: var(--fs-body);
@@ -22,9 +18,22 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* 全站胶片颗粒浮层:盖在一切之上(含弹层),0.03 透明度只作包浆,不碍交互 */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  z-index: 2147483000;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
 #root { min-height: 100dvh; }
 
-h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; line-height: 1.3; margin: 0; }
+/* 题头一律 serif(西文加拉蒙+中文宋体);楷体(--font-display)退位为
+   小白台词/手写批注专用声部,模块内需要手写感时自取 */
+h1, h2, h3, h4 { font-family: var(--font-serif); font-weight: 600; line-height: 1.3; margin: 0; }
 p { margin: 0; }
 button { font-family: inherit; cursor: pointer; }
 input, textarea { font-family: inherit; caret-color: var(--azure); }
@@ -38,27 +47,27 @@ a { color: var(--azure); text-decoration: none; }
   display: grid;
   place-items: center;
   color: var(--ink-faint);
-  font-family: var(--font-display);
-  letter-spacing: 0.16em;
+  font-family: var(--font-typewriter);
+  letter-spacing: var(--track-label);
 }
 
-::selection { background: var(--lilac); color: var(--ink); }
+::selection { background: var(--terra); color: var(--paper); }
 
-/* 全站滚动条:细签制式。裸灰粗滚动条压在书架/横滚条上是本轮"加浓"诊断的显性糙点。
-   Firefox 走 scrollbar-*;WebKit 走伪元素。讲解舱(color-scheme:dark)沿用同规格,thumb 色自动可辨。 */
+/* 全站滚动条:细签制式,暖灰包浆(设计稿 #D1D1C9 · 6px 档)。
+   讲解舱(color-scheme:dark)沿用同规格,thumb 色自动可辨。 */
 * {
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in oklch, var(--lilac), transparent 28%) transparent;
+  scrollbar-color: var(--paper-edge) transparent;
 }
 *::-webkit-scrollbar { width: 8px; height: 8px; }
 *::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb {
-  background: color-mix(in oklch, var(--lilac), transparent 28%);
+  background: var(--paper-edge);
   border-radius: 4px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
-*::-webkit-scrollbar-thumb:hover { background-color: var(--lilac); }
+*::-webkit-scrollbar-thumb:hover { background-color: var(--line-strong); }
 
 /* 全站键盘焦点基线:模块内的定制焦点环(更高特异度)会覆盖这条 */
 :focus-visible {
@@ -72,6 +81,13 @@ a { color: var(--azure); text-decoration: none; }
 @keyframes rise {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
+}
+
+/* 邮戳/环形铅字盘慢转(唯一定义):模块内写 animation: global(spinslow) 20s|60s linear infinite。
+   linear 属旋转专用豁免(匀速转盘无缓动可言);reduced-motion 由下方全局兜底压停。 */
+@keyframes spinslow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {

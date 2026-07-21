@@ -73,26 +73,29 @@
 
 .muted { color: var(--ink-faint); }
 
-/* 卷号小印:章回感的来源,细边小方,楷体撑字距;青底衬一层让章号在带上立得住 */
+/* 卷号小印:章回编号章,铅字小签制式,锐角小方;赭陶底衬一层让章号在带上立得住 */
 .volNo {
   display: inline-block;
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-small);
   color: var(--azure);
   border: 1px solid var(--azure);
-  border-radius: var(--radius-s);
+  border-radius: var(--radius-tag);
   background: var(--azure-wash);
   padding: 0 0.45rem;
   margin-right: var(--gap-tight);
-  letter-spacing: 0.18em;
-  text-indent: 0.18em;
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  text-indent: var(--track-label);
   vertical-align: 0.12em;
 }
 
+/* 卷首眉批:打字机小签,压在衬线大题之上(DESIGN.md 题头制式) */
 .volMark {
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-small);
   color: var(--azure);
+  text-transform: uppercase;
   letter-spacing: 0.22em;
   margin-bottom: var(--gap-hair);
 }
@@ -120,6 +123,7 @@
 /* 弟子画像:册页里裱起来的一幅小像 —— 双框衬纸,题签在上,展签在下;
    立轴加宽到 ~300-320px 与右列平衡(加浓轮:卷首孤挂左上、右半空);描边升强边线档(R3) */
 .portrait {
+  position: relative;
   width: clamp(17rem, 22vw, 20rem);
   margin: 0;
   padding: var(--gap-tight) var(--gap-tight) var(--gap);
@@ -130,10 +134,23 @@
   text-align: center;
 }
 
+/* 卷首骑缝章:全页唯一转戳,红印泥别名,钤在立轴右上角压住装裱边(DESIGN.md 印章豁免) */
+.portraitStamp {
+  position: absolute;
+  z-index: 2;
+  top: -0.85rem;
+  right: -0.85rem;
+  color: var(--seal-red);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+/* 展签一律走打字机小签(铅字大写+宽字距),不再借楷体 */
 .portraitMark {
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
   color: var(--ink-faint);
+  text-transform: uppercase;
   letter-spacing: 0.3em;
   text-indent: 0.3em;
   padding-bottom: var(--gap-hair);
@@ -186,17 +203,18 @@
   transform: rotate(-4deg);
 }
 
-/* 展签:随性情皮肤联动的小铭牌 */
+/* 展签:随性情皮肤联动的小铭牌,走打字机小签 */
 .portraitNote {
   display: inline-block;
   padding: 0.1rem 0.7rem;
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
   color: var(--ink-soft);
+  text-transform: uppercase;
   letter-spacing: 0.14em;
   background: var(--paper);
   border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-s);
+  border-radius: var(--radius-tag);
 }
 
 .heroBody { min-width: 0; }
@@ -212,7 +230,7 @@
 
 .levelNow { color: var(--azure); }
 
-/* 学识经验条:升级轨的连续反馈——细进度条,轨走淡墨、填充靛青(与师道卡 rankBar 同制);
+/* 学识经验条:升级轨的连续反馈——账簿刻度条,细边框方槽 + 赭陶填充,标签走打字机小签;
    宽度可过渡,不做位置过渡(法典既定制式:进度条宽度是 transform/opacity 之外的例外) */
 .wisdom { margin: calc(-1 * var(--gap-tight)) 0 var(--gap-loose); }
 
@@ -225,25 +243,28 @@
 }
 
 .wisdomLabel {
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-small);
   color: var(--azure);
+  text-transform: uppercase;
   letter-spacing: 0.12em;
 }
 
-.wisdomGap { font-size: var(--fs-tiny); color: var(--ink-faint); }
+.wisdomGap { font-family: var(--font-typewriter); font-size: var(--fs-tiny); color: var(--ink-faint); }
 
+/* 学识条=账簿刻度条:细边框圈住的方槽,填充压其内(不再走胶囊圆头);数字走 code 字体 */
 .wisdomTrack {
-  height: 5px;
-  border-radius: 999px;
-  background: var(--ink-wash);
+  height: 8px;
+  border-radius: var(--radius-tag);
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
   overflow: hidden;
 }
 
 .wisdomFill {
   display: block;
   height: 100%;
-  border-radius: inherit;
+  border-radius: 0;
   background: linear-gradient(90deg, var(--azure), var(--azure-deep));
   transition: width var(--t-slow) var(--ease-out);
 }
@@ -273,7 +294,7 @@
   border: 1px solid var(--amber);
 }
 
-.dreamLabel { color: var(--amber-ink); font-size: var(--fs-tiny); letter-spacing: 0.16em; }
+.dreamLabel { font-family: var(--font-typewriter); text-transform: uppercase; color: var(--amber-ink); font-size: var(--fs-tiny); letter-spacing: 0.16em; }
 .dreamText { margin-top: 0.1rem; font-family: var(--font-display); color: var(--ink); }
 .dreamProgress { color: var(--ink-faint); font-size: var(--fs-tiny); white-space: nowrap; }
 
@@ -325,7 +346,7 @@
   font-size: var(--fs-tiny);
 }
 
-.graduationLabel { color: var(--jade-ink); font-size: var(--fs-tiny); letter-spacing: 0.16em; }
+.graduationLabel { font-family: var(--font-typewriter); text-transform: uppercase; color: var(--jade-ink); font-size: var(--fs-tiny); letter-spacing: 0.16em; }
 .graduationQuote { margin-top: 0.16rem; font-family: var(--font-display); font-size: var(--fs-sub); color: var(--ink); }
 .graduationProof { margin-top: var(--gap-hair); color: var(--ink-faint); font-size: var(--fs-tiny); }
 
@@ -434,9 +455,10 @@
 .personaBlock { margin-bottom: var(--gap-loose); }
 
 .blockLabel {
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-small);
   color: var(--azure);
+  text-transform: uppercase;
   letter-spacing: 0.18em;
   margin-bottom: var(--gap-tight);
 }
@@ -557,9 +579,10 @@
 .rankBody { min-width: 0; flex: 1; }
 
 .rankLabel {
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
   color: var(--moonsoft-on-ink);
+  text-transform: uppercase;
   letter-spacing: 0.14em;
 }
 
@@ -601,9 +624,10 @@
 }
 
 .journeyLabel {
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
   color: var(--azure-deep);
+  text-transform: uppercase;
   letter-spacing: 0.22em;
 }
 
@@ -717,11 +741,13 @@
 
 .marginTag {
   display: inline-block;
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
   color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-s);
+  border-radius: var(--radius-tag);
   padding: 0 0.4rem;
   margin-right: var(--gap-hair);
 }
@@ -1347,8 +1373,10 @@
   border-radius: var(--radius-tag);
   background: none;
   color: var(--ink-soft);
-  font-family: var(--font-body);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   cursor: pointer;
   transition:
     border-color var(--t-fast) var(--ease-out),
@@ -1460,8 +1488,9 @@
 
 .starLinkLabel {
   flex: none;
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
+  text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--ink-faint);
 }
@@ -1556,8 +1585,9 @@
 
 .recallTag {
   flex: none;
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
+  text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--ink-faint);
 }

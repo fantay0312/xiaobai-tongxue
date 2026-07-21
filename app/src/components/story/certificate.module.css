@@ -42,9 +42,16 @@
   }
 }
 
+/* 眉签:打字机执照抬头(编号档,大写宽距) */
+.eyebrow {
+  color: var(--azure);
+  margin-bottom: var(--gap-tight);
+}
+
 .certTitle {
+  font-family: var(--font-serif);
   font-size: var(--fs-title);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ink);
   letter-spacing: 0.6em;
   text-indent: 0.6em; /* 抵消末字后的字距,四字视觉居中 */
@@ -57,11 +64,14 @@
   line-height: 2.1;
 }
 
-/* 整张证书最重要的一行:授业师落款,务必放大(doc §7) */
+/* 整张证书最重要的一行:授业师落款,务必放大(doc §7)。
+   衬线斜体是本站"手写签名位",落款以此点睛 */
 .certTeacher {
   margin-top: var(--gap);
+  font-family: var(--font-serif);
+  font-style: italic;
   font-size: var(--fs-stat);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ink);
   letter-spacing: 0.06em;
   line-height: 1.4;
@@ -72,6 +82,31 @@
   font-size: var(--fs-small);
   color: var(--ink-soft);
   letter-spacing: 0.18em;
+}
+
+/* 执照编号小签:打字机档,盖在证书末尾如收据流水号 */
+.serial {
+  margin-top: var(--gap);
+  color: var(--ink-faint);
+}
+
+/* 官凭墨戳:双圈虚线制式(paper.stamp),墨线档,斜盖在证书左上;
+   与右下的朱红「出师」私章分列两角,一墨一朱 */
+.officialWrap {
+  position: absolute;
+  top: var(--gap-loose);
+  left: clamp(var(--gap), 6vw, var(--gap-section));
+  color: var(--ink-soft);
+  transform: scale(0.82);
+  transform-origin: top left;
+  pointer-events: none;
+}
+
+/* 窄屏:双角戳会压住居中正文,官墨戳收起,只留末尾朱印 */
+@media (max-width: 640px) {
+  .officialWrap {
+    display: none;
+  }
 }
 
 /* 「出师」朱印:斜盖在落款一侧,方章制式与全站私章一族 */

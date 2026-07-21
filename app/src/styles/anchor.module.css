@@ -19,7 +19,7 @@
   color: var(--ink-faint);
 }
 
-/* 《学记》竖排引文 —— 如古籍眉批立于最右(加浓轮:界栏升强边线档,眉批才立得住) */
+/* 《学记》竖排引文 —— 老书扉页制式:宋体大字竖排,赭陶竖线压边 */
 .quote {
   margin: 0;
   writing-mode: vertical-rl;
@@ -27,21 +27,21 @@
   flex-direction: column; /* 块轴:右→左,引文在右,落款在左 */
   gap: var(--gap-tight);
   padding: var(--gap) 0 var(--gap) var(--gap);
-  border-left: 2px solid var(--reed); /* 芦苇竖线,让精神锚点与主丁香形成双调 */
+  border-left: 2px solid var(--terra); /* 赭陶竖线,精神锚点的点睛档 */
   justify-self: end;
 }
 
 .quoteText {
-  font-family: var(--font-display);
+  font-family: var(--font-serif);
   font-size: var(--fs-title);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.28em;
   line-height: 1.9;
   color: var(--ink);
 }
 
 .quoteFrom {
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-style: normal;
   font-size: var(--fs-small);
   letter-spacing: 0.24em;

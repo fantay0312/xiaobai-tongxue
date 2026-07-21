@@ -88,7 +88,9 @@
   border-top: 1px solid var(--line-strong);
   color: var(--ink-faint);
   font-size: var(--fs-tiny);
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .beatStep span { color: inherit; }
@@ -116,7 +118,7 @@
   background: linear-gradient(90deg, var(--lilac-ink), var(--reed));
 }
 
-/* 编号章:小方签,不抢朱砂 */
+/* 编号章:铅字小方签(打字机大写宽距),不抢朱砂 */
 .questionNo {
   display: inline-flex;
   align-items: center;
@@ -125,7 +127,8 @@
   border-radius: var(--radius-tag);
   background: var(--azure-wash);
   color: var(--azure-deep);
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
+  text-transform: uppercase;
   font-size: var(--fs-tiny);
   letter-spacing: 0.14em;
 }
@@ -161,7 +164,7 @@
 }
 
 .miniAvatar { width: 92px; height: 92px; }
-.thoughtLabel { color: var(--azure-deep); font-size: var(--fs-tiny); letter-spacing: 0.18em; }
+.thoughtLabel { font-family: var(--font-typewriter); text-transform: uppercase; color: var(--azure-deep); font-size: var(--fs-tiny); letter-spacing: var(--track-label); }
 .thoughtText { margin-top: 0.2rem; font-family: var(--font-display); font-size: var(--fs-sub); color: var(--ink); line-height: 1.9; }
 
 .caret {

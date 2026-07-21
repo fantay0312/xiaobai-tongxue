@@ -194,7 +194,7 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
             </p>
           </div>
           <span className={styles.colophon} aria-hidden="true">
-            <span className={styles.colophonText}>春雾书院 · 授课凭帖</span>
+            <span className={styles.colophonText}>学伴书斋 · 授课凭帖</span>
             <ProfileMark name={user} />
           </span>
         </Link>

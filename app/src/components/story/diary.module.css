@@ -13,12 +13,15 @@
   font-family: var(--font-display);
 }
 
-/* 首行日期天气,右对齐如手写日记的抬头 */
+/* 首行日期天气,右对齐如账簿抬头的流水时戳(打字机档);
+   天气与日期同色同级——铁纪律不变,仅换字体声部,天气仍是唯一不动声色的信号 */
 .dateLine {
   text-align: right;
-  font-size: var(--fs-sub);
+  font-family: var(--font-typewriter);
+  text-transform: uppercase;
+  font-size: var(--fs-small);
   color: var(--ink-soft);
-  letter-spacing: 0.12em;
+  letter-spacing: var(--track-label);
   margin-bottom: var(--gap);
 }
 

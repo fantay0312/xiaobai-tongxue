@@ -65,18 +65,19 @@
   }
 }
 
-/* ── 首屏海报 ── */
+/* ── 首屏海报:旅宿前台叠卡阵 ── */
 
 .hero {
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: clamp(var(--gap), 5vw, var(--gap-section));
   align-items: center;
-  padding: clamp(3.5rem, 9vw, 7rem) 0 var(--gap-section);
+  padding: clamp(3.5rem, 9vw, 6.5rem) 0 var(--gap-section);
 }
 
+/* 底缘暖灰界栏:细线分区,不用阴影 */
 .hero::after {
   content: '';
   position: absolute;
@@ -84,74 +85,50 @@
   right: 0;
   bottom: 0;
   height: 1px;
-  background: linear-gradient(90deg, var(--lilac), var(--reed) 62%, transparent 92%);
+  background: var(--paper-edge);
 }
 
-/* 巨字水印:一枚淡墨「教」压在纸底,像书法练习纸的范字 */
-.heroGlyph {
+/* 巨字环形铅字盘水印:慢转压右上,10% 淡墨,<960px 收起(hero 溢出裁去,不致横向滚动) */
+.heroWatermark {
   position: absolute;
-  right: -0.06em;
-  top: 50%;
-  transform: translateY(-52%);
+  top: -7rem;
+  right: -7rem;
   z-index: 0;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(16rem, 34vw, 26rem);
-  line-height: 1;
-  /* 双层淡墨范字:淡丁香填底 + 深丁香描边,投屏方读得出笔画,仍是练习纸底的范字肌理,不抢主张。
-     text-stroke 不支持时退化为纯填字,不影响可读 */
-  color: color-mix(in oklab, var(--lilac-ink) 82%, var(--paper));
-  -webkit-text-stroke: 2px var(--lilac-deep);
-  opacity: 0.13;
+  color: var(--ink);
+  opacity: 0.1;
   pointer-events: none;
   user-select: none;
-  /* 淡墨呼吸:极缓的浓淡往复,像墨迹未干(reduced-motion 关闭);
-     升到投屏可读档,描边给足边缘对比,故填底透明度仍留在背景层 */
-  animation: glyphBreathe 7.5s var(--ease-loop) infinite alternate;
 }
 
-@keyframes glyphBreathe {
-  from {
-    opacity: 0.1;
-  }
-  to {
-    opacity: 0.155;
-  }
-}
-
-.heroMain,
-.heroAvatar,
-.quote {
+/* ── 左:主张前言 ── */
+.heroLede {
   position: relative;
   z-index: 1;
-}
-
-.heroMain {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--gap);
+  max-width: 34rem;
 }
 
-/* kicker 字距与 secKicker/bandKicker 统一为 0.32em */
-.kicker {
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  letter-spacing: 0.32em;
-  color: var(--reed-ink);
+/* 打字机眉批:深赭陶小字(小字用 --azure 不用 --terra) */
+.heroEyebrow {
+  color: var(--azure);
 }
 
-/* 海报字阶:比门厅的 --fs-hero 再大一档 */
+/* 海报主张:衬线大字 + 斜体点睛(本站"手写签名位") */
 .claim {
-  font-size: clamp(2.4rem, 5.6vw, 4.1rem);
-  line-height: 1.32;
-  letter-spacing: 0.04em;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: clamp(2.4rem, 5.6vw, 4rem);
+  line-height: 1.28;
+  letter-spacing: 0.02em;
   color: var(--ink);
 }
 
 .claim em {
-  font-style: normal;
-  color: var(--azure);
+  font-style: italic;
+  color: var(--terra);
 }
 
 .intro {
@@ -174,21 +151,21 @@
   padding: var(--cta-pad);
   background: var(--azure);
   color: var(--paper);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: var(--fs-sub);
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   border-radius: var(--radius-s);
-  box-shadow: 0 0.8rem 2rem color-mix(in oklch, var(--lilac) 26%, transparent);
+  box-shadow: var(--shadow-paper);
   transition:
     transform var(--t-fast) var(--ease-out),
     background var(--t-fast) var(--ease-out),
     box-shadow var(--t-fast) var(--ease-out);
 }
 
-/* hover 墨色再加深一档(azure-deep 向墨青混),印章微移 */
+/* hover:主动作色加深一档 + 轻抬,印章微移 */
 .cta:hover {
-  background: color-mix(in oklab, var(--azure-deep) 78%, var(--ink));
+  background: var(--azure-deep);
   transform: translateY(-2px);
   box-shadow: var(--shadow-lift);
 }
@@ -243,78 +220,279 @@
   border-color: var(--ink-soft);
 }
 
-/* 小白立于主张旁 + 《学记》引文 → 收拢进 styles/anchor.module.css(与门厅共用) */
-
-/* 小白灯下:头像身后一枚暖灯光晕(材质暖色 --wood-sheen,不动藤黄语义色);
-   与门厅 lampNest 同手法,宣传页自写一份,灯圈更大一档,压住海报首屏的暖气 */
-.lampNest {
+/* ── 右:三张斜置票卡叠放(暖灰凭单 · 赭陶邀请 · 芥末钥匙) ── */
+.heroStack {
   position: relative;
+  z-index: 1;
+  justify-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(26rem, 100%);
+  margin-right: clamp(0.25rem, 1.5vw, 1.5rem);
 }
 
-.lampNest::before {
-  content: '';
-  position: absolute;
-  top: -2rem;
-  left: 50%;
-  width: 19rem;
-  height: 19rem;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: radial-gradient(
-    closest-side,
-    color-mix(in oklab, var(--wood-sheen) 40%, transparent),
-    transparent 72%
-  );
-  pointer-events: none;
-  z-index: -1;
+.ticket {
+  position: relative;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lift);
 }
 
-/* 小白自白:楷体候教引白。与门厅 dreamQuote 不同文不同框——门厅是「愿望」,这里是开课前的「候教」;
-   芦苇调(生长/求学)区别于门厅的丁香调,尾角上指小白,像它在头像下递上一句话 */
-.selfQuote {
-  position: relative;
-  width: min(17rem, 74vw);
-  margin: var(--gap-tight) 0 0;
-  padding: var(--gap-tight) var(--gap);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  line-height: 1.9;
-  text-align: left;
-  color: var(--ink-soft);
-  background: linear-gradient(
-    150deg,
-    color-mix(in oklch, var(--paper) 84%, var(--reed) 16%),
-    var(--paper-warm)
-  );
+/* ① 暖灰受业凭单:纸影底 + 强边线,左缘竖排字 + 右上墨线官戳 + 底缘撕票线 */
+.receipt {
+  align-self: flex-end;
+  z-index: 10;
+  width: min(23rem, 100%);
+  padding: var(--gap) var(--gap) var(--gap-tight) calc(var(--gap) + 1rem);
+  background: color-mix(in oklch, var(--paper-shade) 68%, var(--paper-edge));
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius) var(--radius) 2px var(--radius);
-  box-shadow: var(--shadow-paper);
 }
 
-.selfQuote::after {
-  content: '';
+.receiptRail {
   position: absolute;
-  left: 1.6rem;
-  top: -0.42rem;
-  width: 0.8rem;
-  height: 0.8rem;
-  background: color-mix(in oklch, var(--paper) 84%, var(--reed) 16%);
-  border-left: 1px solid var(--line-strong);
-  border-top: 1px solid var(--line-strong);
-  transform: rotate(45deg);
+  left: 0.55rem;
+  top: var(--gap);
+  bottom: var(--gap);
+  color: var(--ink-soft);
 }
 
-.selfQuoteLabel {
-  display: block;
-  margin-bottom: 0.15rem;
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.18em;
-  color: var(--reed-ink);
+.receiptStamp {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 4.6rem;
+  height: 4.6rem;
+  color: var(--ink-soft);
 }
 
-/* 三列重心再平衡:《学记》眉批列与小白列再拉开一档,右侧不再挤成一堆 */
-.heroQuote {
-  margin-left: var(--gap);
+.receiptStamp > span {
+  width: 3.7rem;
+  height: 3.7rem;
+  font-size: 0.5rem;
+}
+
+.receiptFields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+  margin: 3.75rem 0 var(--gap);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.field dt {
+  color: var(--ink-soft);
+}
+
+.fieldVal {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: var(--fs-sub);
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.receiptTear {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: var(--gap-tight);
+}
+
+.tearNote {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink-faint);
+}
+
+/* ② 赭陶邀请卡:满底赭陶 + 奶油字,左缘半露环形铅字盘,右缘竖排字 */
+.invite {
+  align-self: flex-start;
+  z-index: 20;
+  width: min(21rem, 94%);
+  min-height: 13rem;
+  margin-top: -3.25rem;
+  padding: var(--gap-loose) calc(var(--gap) + 1rem) var(--gap-loose) var(--gap);
+  background: var(--terra);
+  border: 1px solid var(--terra-deep);
+  color: var(--paper);
+}
+
+.inviteRing {
+  position: absolute;
+  left: -1.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--paper);
+  opacity: 0.85;
+}
+
+.inviteRail {
+  position: absolute;
+  right: 0.55rem;
+  top: var(--gap);
+  bottom: var(--gap);
+  color: var(--paper);
+  opacity: 0.8;
+}
+
+.inviteBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gap-tight);
+  padding-left: 3.5rem;
+}
+
+.inviteHead {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 600;
+  font-size: clamp(1.6rem, 3vw, 2rem);
+  line-height: 1.15;
+  color: var(--paper);
+}
+
+.inviteSub {
+  color: color-mix(in oklch, var(--paper) 84%, var(--terra));
+}
+
+/* ③ 芥末讲堂钥匙卡:唯一芥末票卡 + 顶缘检票口 + 墨圆钮 hero action */
+.keycard {
+  align-self: center;
+  z-index: 30;
+  width: min(24rem, 100%);
+  margin-top: -3rem;
+  padding: 2.25rem var(--gap) var(--gap);
+  background: var(--mustard);
+  border: 1px solid color-mix(in oklch, var(--mustard) 58%, var(--ink));
+  color: var(--ink);
+  transform: rotate(-1deg);
+  transition: transform var(--t-med) var(--ease-out);
+}
+
+.keycard:hover {
+  transform: rotate(-1deg) translateY(-5px);
+}
+
+.keyTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+}
+
+.keyEyebrow {
+  color: var(--ink-soft);
+}
+
+.keySeal {
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+}
+
+.keyTitle {
+  margin: var(--gap) 0;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: clamp(2.2rem, 4.5vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.keyTitle em {
+  display: inline-block;
+  margin-left: 1.6rem;
+  font-style: italic;
+}
+
+.keyFoot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--gap);
+  margin-top: var(--gap-tight);
+}
+
+/* 讲堂号徽:虚线小旗,打字机标签 + 大字号数 */
+.keyBadge {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.4rem 0.9rem 0.5rem 0.55rem;
+  border: 1px dashed color-mix(in oklch, var(--ink) 45%, transparent);
+  border-radius: var(--radius-tag);
+  transform: rotate(-2deg);
+}
+
+.keyBadgeNum {
+  font-family: var(--font-typewriter);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+
+.keyEnterWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-hair);
+}
+
+/* 墨圆钮:全页唯一 hero action,砚墨底 + 芥末字,hover 放大并换图标 */
+.keyEnter {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: var(--inkstone);
+  color: var(--mustard);
+  box-shadow: var(--shadow-paper);
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out);
+}
+
+.keyEnter > * {
+  grid-area: 1 / 1;
+  transition: opacity var(--t-fast) var(--ease-out);
+}
+
+.keyEnterIconAlt {
+  opacity: 0;
+}
+
+.keyEnter:hover {
+  transform: scale(1.1);
+  background: var(--inkstone-deep);
+}
+
+.keyEnter:hover .keyEnterIcon {
+  opacity: 0;
+}
+
+.keyEnter:hover .keyEnterIconAlt {
+  opacity: 1;
+}
+
+.keyEnter:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.keyCaption {
+  color: var(--ink-soft);
 }
 
 /* ── 理念:一整段大字,不装进任何卡片 ── */
@@ -390,9 +568,10 @@
 }
 
 .guardKicker {
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-small);
-  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
   color: var(--ink-soft); /* 暖纸底上 ink-faint 不达 AA */
 }
 
@@ -411,9 +590,9 @@
 
 /* 裸奔值:朱线划废(警示语义,故走 --cinnabar 非印泥红) */
 .guardFrom {
-  font-family: var(--font-display);
+  font-family: var(--font-serif);
   font-size: clamp(1.6rem, 3.5vw, 2.6rem);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
   color: var(--ink-faint);
   text-decoration: line-through;
@@ -423,9 +602,9 @@
 
 /* 闸门后守值:黛绿最大字,全页第一硬指标的落点 */
 .guardTo {
-  font-family: var(--font-display);
+  font-family: var(--font-serif);
   font-size: clamp(2.4rem, 5.5vw, 4rem);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1;
   color: var(--jade);
 }
@@ -511,15 +690,18 @@
 }
 
 .secKicker {
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-small);
-  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
   color: var(--ink-faint);
 }
 
 .secTitle {
+  font-family: var(--font-serif);
+  font-weight: 600;
   font-size: var(--fs-title);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   color: var(--ink);
 }
 
@@ -626,10 +808,11 @@
 .actNo {
   align-self: flex-start;
   padding: 0.22em 0.35em 0.22em 0.55em;
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
   font-weight: 700;
-  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
   color: var(--seal-red);
   border: 1px solid color-mix(in oklab, var(--seal-red) 55%, transparent);
   border-radius: var(--radius-tag);
@@ -638,8 +821,10 @@
 }
 
 .actName {
+  font-family: var(--font-serif);
+  font-weight: 600;
   font-size: clamp(1.35rem, 2.4vw, 1.8rem);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   color: var(--ink);
 }
 
@@ -698,8 +883,10 @@
 }
 
 .cardName {
+  font-family: var(--font-serif);
+  font-weight: 600;
   font-size: var(--fs-sub);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   color: var(--ink);
 }
 
@@ -798,6 +985,7 @@
 .bubble {
   margin: 0;
   padding: var(--gap-tight) var(--gap);
+  font-family: var(--font-display);
   font-size: var(--fs-body);
   line-height: 2;
   color: var(--chalk);
@@ -912,15 +1100,40 @@
   border-left: none;
 }
 
+/* 领读图标章:圆底铅笔图标,墨/赭陶/芥末三底(呼应参考稿 Check-in/Wifi/Breakfast 领读行) */
+.statChip {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  margin-bottom: var(--gap-hair);
+  border-radius: 50%;
+}
+
+.statChip0 {
+  background: var(--inkstone);
+  color: var(--mustard);
+}
+
+.statChip1 {
+  background: var(--terra);
+  color: var(--paper);
+}
+
+.statChip2 {
+  background: var(--mustard);
+  color: var(--ink);
+}
+
 /* 大数字楷体,小注细宋;加浓轮:数字提大半档,墨色压实,量词转靛青点睛 */
 .statNum {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 0.15em;
-  font-family: var(--font-display);
+  font-family: var(--font-serif);
   font-size: clamp(1.9rem, 3.5vw, 2.75rem);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.25;
   letter-spacing: 0.02em;
   color: var(--ink);
@@ -934,10 +1147,11 @@
 }
 
 .statLabel {
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-small);
   font-weight: 700;
-  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
   color: var(--ink);
 }
 
@@ -1312,15 +1526,18 @@
 }
 
 .bandKicker {
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-small);
-  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
   color: var(--moonsoft-on-ink);
 }
 
 .bandTitle {
+  font-family: var(--font-serif);
+  font-weight: 600;
   font-size: clamp(1.7rem, 3.6vw, 2.7rem);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   color: var(--moon-on-ink);
 }
 
@@ -1357,6 +1574,11 @@
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  /* 环形水印仅宽屏(≥960px)出现 */
+  .heroWatermark {
+    display: none;
+  }
 }
 
 @media (max-width: 56rem) {
@@ -1366,18 +1588,13 @@
     padding-top: var(--gap-loose);
   }
 
-  .heroGlyph {
-    top: 0;
-    transform: none;
-    font-size: clamp(12rem, 44vw, 18rem);
+  /* 单列时叠卡阵回到常流居中,撤掉贴右的微距 */
+  .heroStack {
+    justify-self: start;
+    width: 100%;
+    max-width: 26rem;
+    margin: var(--gap) auto 0;
   }
-
-  /* 单列时引文回落左对齐,撤掉与小白列拉开的左距 */
-  .heroQuote {
-    margin-left: 0;
-  }
-
-  /* 引文/小白的窄屏回退在 anchor.module.css */
 
   /* 幕次墨线时间轴只映射四栏并排,单列堆叠时隐去,幕次仍由卡内 actNo 承担 */
   .actRail {
@@ -1460,15 +1677,17 @@
 
 /* reduced-motion 补充:置于文件末尾保证覆盖前文同特异性规则 */
 @media (prefers-reduced-motion: reduce) {
-  .heroGlyph {
-    animation: none;
-  }
-
   .cta:hover .ctaSeal,
   .bandCta:hover .ctaSeal,
   .caseLink:hover .vol,
-  .caseLink:hover .volArt {
+  .caseLink:hover .volArt,
+  .keyEnter:hover {
     transform: none;
+  }
+
+  /* 钥匙卡保留静态斜置,只撤掉 hover 抬升 */
+  .keycard:hover {
+    transform: rotate(-1deg);
   }
 
   /* 墨线时间轴直接定格满宽,句读珠直接显出,不留描进过程 */

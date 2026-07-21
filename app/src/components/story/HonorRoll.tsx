@@ -7,6 +7,7 @@
  */
 import type { SessionHonors } from '../../engine/honors';
 import s from './honorRoll.module.css';
+import paper from '../../styles/paper.module.css';
 
 /** 与讲解舱名牌/成长册弟子阶同一套学级名 */
 const LEVEL_NAME = ['嫩芽期', '开窍期', '求索期', '问难期', '出师期'] as const;
@@ -24,11 +25,15 @@ export function HonorRoll({ honors }: { honors: SessionHonors }) {
   const levelName = (lv: number) => LEVEL_NAME[Math.min(5, Math.max(1, lv)) - 1];
 
   return (
-    <section className={s.roll} aria-label="下课钤印">
+    <section className={`${s.roll} ${paper.texture}`} aria-label="下课钤印">
       <header className={s.head}>
+        <p className={`${paper.typeLabel} ${s.eyebrow}`} aria-hidden="true">SEALS OF THE DAY · 印记存根</p>
         <h2 className={s.title}>下课钤印</h2>
         <p className={s.note}>这一课落下的荣誉,件件有据——印匣全帙收在成长册卷一。</p>
       </header>
+      <div className={`${paper.perfLine} ${s.tear}`} aria-hidden="true">
+        <span className={paper.perfNote}>沿此撕开 · 印匣存根收执</span>
+      </div>
       <div className={s.row}>
         {newSeals.map((a, i) => (
           <div key={a.id} className={`${s.chip} ${s[TIER_CLASS[a.tier]]}`} style={stamp(i)}>

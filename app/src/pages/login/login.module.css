@@ -1,5 +1,6 @@
 .page {
   flex: 1;
+  width: 100%;
   display: grid;
   place-items: center;
   padding: var(--gap-loose) var(--gap);
@@ -88,13 +89,14 @@
   filter: drop-shadow(0 0.7rem 1rem color-mix(in oklch, var(--lilac) 24%, transparent));
 }
 
+/* 《学记》精神锚点「教然后知困」:竖排宋体(serif 声部),题头档 */
 .plateMotto {
   grid-column: 2;
   grid-row: 1 / -1;
   align-self: start;
-  font-family: var(--font-display);
+  font-family: var(--font-serif);
   font-size: clamp(1.65rem, 3vw, 2.2rem);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.28;
   letter-spacing: 0.05em;
   color: var(--ink);
@@ -177,16 +179,63 @@
   }
 }
 
-/* 帖首眉批:楷体空铺标签 + 丁香批注短划 */
+/* ── 听课证工艺:纸纹 / 检票挂孔 / 贴边索票号 / 撕票线 ── */
+
+/* 票纸颗粒:帖身自带的分形噪点(form::before 已占用作信封框,故独立浮层铺纹) */
+.ticketGrain {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' fill='white'/%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.15'/%3E%3C/svg%3E");
+  opacity: 0.32;
+  mix-blend-mode: multiply;
+}
+
+/* 检票挂孔:票顶缘中央的半圆钥匙卡挂孔(内容左对齐,顶心留白不压字) */
+.punch {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 2;
+  width: 4.6rem;
+  height: 1.5rem;
+  transform: translateX(-50%);
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-top: 0;
+  border-radius: 0 0 999px 999px;
+  box-shadow: inset 0 -2px 5px var(--ink-wash);
+  pointer-events: none;
+}
+
+/* 贴边索票号:票右缘竖排铅字小字(verticalRail 供排版,本类只定位) */
+.rail {
+  position: absolute;
+  top: 50%;
+  right: clamp(0.35rem, 1vw, 0.7rem);
+  z-index: 2;
+  transform: translateY(-50%);
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+
+/* 撕票线:票根(题头+双签)与正票(填帖)之间的虚线裁切位,配 perfNote 小字 */
+.tear {
+  margin: var(--gap-tight) 0 var(--gap);
+  padding-top: 0.5rem;
+}
+
+/* 票首眉批:打字机小签(编号/眉批档)+ 赭陶裁票短划,压在衬线票名之上 */
 .eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
   margin-bottom: 0.5rem;
-  font-family: var(--font-display);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
-  letter-spacing: 0.34em;
-  text-indent: 0.34em;
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
   color: var(--azure);
 }
 
@@ -199,11 +248,12 @@
   background: var(--lilac);
 }
 
+/* 票名:衬线题头(宋体/加拉蒙),weight 600 —— 题头一律走 serif 声部 */
 .title {
-  font-family: var(--font-display);
+  font-family: var(--font-serif);
   font-size: var(--fs-title);
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--ink);
 }
 
@@ -232,10 +282,10 @@
   border-radius: var(--radius-s) var(--radius-s) 0 0;
   background: none;
   color: var(--ink-faint);
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  letter-spacing: 0.22em;
-  text-indent: 0.22em;
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-small);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
   transition: color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
 }
 
@@ -401,7 +451,8 @@
 .submit:disabled { opacity: 0.55; cursor: not-allowed; }
 .submit[data-busy='true'] { opacity: 1; cursor: progress; }
 
-/* 底部落款区:小白私章 + 春雾书院署名,与提示/返回行分层 */
+/* 底部落款区:小白私章 + 学伴书斋署名,与提示/返回行分层 */
+/* 底部落款区:票券底缝细则走打字机小签(页脚小字档);footSign 另立署名声部 */
 .foot {
   display: flex;
   flex-direction: column;
@@ -410,6 +461,8 @@
   padding-top: var(--gap-tight);
   border-top: 1px solid var(--paper-edge);
   color: var(--ink-faint);
+  font-family: var(--font-typewriter);
+  letter-spacing: 0.04em;
   font-size: var(--fs-tiny);
 }
 
@@ -493,7 +546,7 @@
 }
 
 .noticeSeal { width: 2.75rem; height: 2.75rem; transform: rotate(-3deg); }
-.noticeTitle { margin-top: 0.25rem; color: var(--ink); font-size: var(--fs-title); }
+.noticeTitle { margin-top: 0.25rem; color: var(--ink); font-family: var(--font-serif); font-weight: 600; font-size: var(--fs-title); }
 .noticeText { color: var(--ink-soft); font-size: var(--fs-small); line-height: 1.8; }
 .noticeLink { gap: var(--gap-hair); }
 .noticeLink:hover { text-decoration: underline; }
@@ -509,6 +562,8 @@
 
 @media (max-width: 720px) {
   .split { grid-template-columns: minmax(0, 1fr); }
+  /* 单栏时票右缘吃紧,索票号竖签让位 */
+  .rail { display: none; }
   /* 中屏保帖:卷首横向压条,仍留住帖首箴言 + 一句台词,帖身不塌 */
   .plate {
     grid-template-columns: auto minmax(0, 1fr) auto;

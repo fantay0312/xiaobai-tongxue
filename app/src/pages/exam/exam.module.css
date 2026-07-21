@@ -75,6 +75,20 @@
   border-radius: 50%;
 }
 
+/* 转戳:送考台唯一一枚旋转官戳(准考验讫),压在候考区右上角 */
+.examStamp {
+  position: absolute;
+  top: var(--gap);
+  right: var(--gap);
+  color: var(--azure-deep);
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  .examStamp { display: none; }
+}
+
 .satchel {
   padding: 0.28rem 0.85rem;
   border: 1px solid var(--line-strong);
@@ -137,8 +151,25 @@
   font-size: var(--fs-tiny);
 }
 
-.ticketRows dt { flex: none; color: var(--ink-faint); letter-spacing: 0.2em; }
+.ticketRows dt {
+  flex: none;
+  min-width: 3.4em;
+  font-family: var(--font-typewriter);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+}
 .ticketRows dd { margin: 0; color: var(--ink-soft); }
+
+/* 准考证票根:底缘撕票虚线 + 验讫小字,坐实"听课证/准考证"制式 */
+.ticketAdmit {
+  margin-top: var(--gap-tight);
+  padding-top: var(--gap-hair);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-tight);
+}
 
 .sendoffBody {
   display: flex;
@@ -159,14 +190,16 @@
 .sendoffBody > :nth-child(4), .resultMain > :nth-child(4) { animation-delay: 210ms; }
 .sendoffBody > :nth-child(n + 5), .resultMain > :nth-child(n + 5) { animation-delay: 280ms; }
 
+/* 章节眉批:打字机小签(编号/分区题签一律走这一档) */
 .kicker {
   display: inline-flex;
   align-items: center;
   gap: var(--gap-hair);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
   color: var(--azure-deep);
-  letter-spacing: 0.22em;
+  letter-spacing: var(--track-label);
 }
 
 /* 双线书版式的短墨线:给章节 kicker 一点骨(R2) */
@@ -259,18 +292,31 @@
 .result .kicker { color: var(--moonsoft-on-ink); }
 .result .kicker::before { background: var(--moonsoft-on-ink); }
 
+/* 放榜朱印:双圈官戳制式(外实圈+内虚圈),红戳走 --seal-red 豁免 —— 两处铺张之一 */
 .resultSeal {
+  position: relative;
   align-self: start;
-  width: 3.4rem;
-  height: 3.4rem;
+  width: 4rem;
+  height: 4rem;
   display: grid;
   place-items: center;
   border: 2px solid var(--seal-red);
+  border-radius: 50%;
   color: var(--seal-red);
   background: var(--seal-red-wash);
-  font-family: var(--font-display);
+  font-family: var(--font-serif);
+  font-weight: 600;
   font-size: var(--fs-title);
   transform: rotate(-6deg);
+}
+
+.resultSeal::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px dashed var(--seal-red);
+  border-radius: 50%;
+  opacity: 0.6;
 }
 
 .resultTitle { margin-top: var(--gap-hair); font-size: var(--fs-hero); color: var(--moon-on-ink); }
