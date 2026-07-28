@@ -46,7 +46,7 @@ test('Resend adapter sends fixed transactional payload and required headers', as
   let request;
   const sender = createResendSender({
     apiKey: 'test-secret',
-    from: '小白同学 <noreply@mail.tradingvane.com>',
+    from: '小白同学 <noreply@mail.tokentosea.com>',
     fetchImpl: async (url, init) => { request = { url, init }; return { ok: true }; },
   });
   await sender({

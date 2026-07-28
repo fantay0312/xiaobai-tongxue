@@ -6,21 +6,30 @@
  * / (宣传页)下头部退为透明静置变体,随海报滚走;品牌落款回宣传页,「书斋」导航到 /study。
  * 宣传页头部不放应用内导航/登入/设置——对外只留品牌与「进入书斋」一个入口。
  */
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { ProfileDialog, ProfileMark } from './ProfileDialog';
-import { SettingsDialog } from './SettingsDialog';
 import { Seal } from './Seal';
 import { StoryTrail } from '../story/StoryTrail';
 import { Icon } from '../ui/Icon';
 import { useAuthStore } from '../../store/authStore';
 import styles from './AppShell.module.css';
 
+const ProfileDialog = lazy(() =>
+  import('./ProfileDialog').then((module) => ({ default: module.ProfileDialog })),
+);
+const SettingsDialog = lazy(() =>
+  import('./SettingsDialog').then((module) => ({ default: module.SettingsDialog })),
+);
+
 const NAV_LINKS: { to: string; label: string; end: boolean }[] = [
   { to: '/study', label: '书斋', end: true },
   { to: '/growth', label: '成长册', end: false },
   { to: '/teacher', label: '教师看板', end: false },
 ];
+
+function profileInitial(name: string | null): string {
+  return Array.from(name?.trim() || '师')[0] ?? '师';
+}
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
@@ -111,7 +120,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 onClick={() => setProfileOpen(true)}
                 title={`打开 ${authUser ?? ''} 的个人中心`}
               >
-                <ProfileMark name={authUser} compact />
+                <span className={styles.profileMark} aria-hidden="true">
+                  {profileInitial(authUser)}
+                </span>
                 <span className={styles.profileName}>{authUser}</span>
                 <Icon name="chevron-down" size={14} className={styles.profileChevron} />
               </button>
@@ -135,12 +146,16 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className={styles.main}>{children}</main>
 
-      <ProfileDialog
-        open={profileOpen && authStatus === 'authed'}
-        onClose={closeProfile}
-        onOpenSettings={openSettingsFromProfile}
-      />
-      <SettingsDialog open={settingsOpen} onClose={closeSettings} />
+      {!landingMode && (
+        <Suspense fallback={null}>
+          <ProfileDialog
+            open={profileOpen && authStatus === 'authed'}
+            onClose={closeProfile}
+            onOpenSettings={openSettingsFromProfile}
+          />
+          <SettingsDialog open={settingsOpen} onClose={closeSettings} />
+        </Suspense>
+      )}
     </div>
   );
 }

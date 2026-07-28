@@ -23,6 +23,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import dns from 'node:dns';
+import net from 'node:net';
 import {
   createEmailAuth,
   createResendSender,
@@ -39,20 +40,31 @@ import {
 import {
   authTransportAllowed,
   bindVerifiedEmail,
+  bindVerifiedPhone,
   canonicalName,
   changeVerifiedEmail,
+  changeVerifiedPhone,
   createAuthGate,
   createPasswordService,
   encodedIdentityMatches,
   ipRateKey,
   isLoopbackAddress,
   maskEmail,
+  maskPhone,
+  normalizeMainlandPhone,
   protectedAccessError,
   requestUsesTrustedHttps,
   revokeUserSessions,
   userHasVerifiedEmail,
+  userHasVerifiedPhone,
   validateUserSets,
 } from './auth-security.mjs';
+import { createTencentCaptcha } from './tencent-captcha.mjs';
+import { createPhoneAuth } from './phone-auth.mjs';
+import { createTencentSmsSender } from './tencent-sms.mjs';
+import { createProductionStorage } from './production-storage.mjs';
+import { commitThenRefresh } from './committed-mutation.mjs';
+import { classifyInboundWebhookError } from './inbound-webhook-response.mjs';
 
 // 腾讯云主机无 IPv6 出网,而 openrouter.ai 等上游把 AAAA 排在解析结果前面;
 // Node fetch(undici)不做 Happy Eyeballs,按序拿 IPv6 直连会 ENETUNREACH 秒败
@@ -142,6 +154,16 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY
   || (typeof cfg.resendApiKey === 'string' ? cfg.resendApiKey : '');
 const RESEND_FROM = process.env.RESEND_FROM
   || (typeof cfg.resendFrom === 'string' ? cfg.resendFrom : '');
+let productionStorage = null;
+try {
+  productionStorage = await createProductionStorage(process.env);
+} catch (error) {
+  console.error(
+    '[fatal] PostgreSQL、Redis 或 COS 生产存储初始化失败:',
+    safeDiagnosticMessage(error instanceof Error ? error.message : 'storage-init-failed'),
+  );
+  process.exit(2);
+}
 let emailAuth = null;
 if (RESEND_API_KEY && RESEND_FROM) {
   emailAuth = createEmailAuth({
@@ -151,11 +173,43 @@ if (RESEND_API_KEY && RESEND_FROM) {
     },
   });
 }
+const SMS_SDK_APP_ID = process.env.SMS_SDK_APP_ID ?? '';
+const SMS_SIGN_NAME = process.env.SMS_SIGN_NAME ?? '';
+const SMS_TEMPLATE_ID = process.env.SMS_TEMPLATE_ID ?? '';
+const SMS_SECRET_ID = process.env.SMS_SECRET_ID ?? process.env.TENCENTCLOUD_SECRET_ID ?? '';
+const SMS_SECRET_KEY = process.env.SMS_SECRET_KEY ?? process.env.TENCENTCLOUD_SECRET_KEY ?? '';
+const SMS_SESSION_TOKEN = process.env.SMS_SESSION_TOKEN
+  ?? process.env.TENCENTCLOUD_SESSION_TOKEN ?? '';
+let phoneAuth = null;
+if (SMS_SDK_APP_ID && SMS_SIGN_NAME && SMS_TEMPLATE_ID && SMS_SECRET_ID && SMS_SECRET_KEY) {
+  phoneAuth = createPhoneAuth({
+    otpStore: productionStorage?.redisOtp ?? null,
+    sendCode: createTencentSmsSender({
+      secretId: SMS_SECRET_ID,
+      secretKey: SMS_SECRET_KEY,
+      sessionToken: SMS_SESSION_TOKEN,
+      sdkAppId: SMS_SDK_APP_ID,
+      signName: SMS_SIGN_NAME,
+      templateId: SMS_TEMPLATE_ID,
+      loginTemplateId: process.env.SMS_LOGIN_TEMPLATE_ID ?? '',
+      bindTemplateId: process.env.SMS_BIND_TEMPLATE_ID ?? '',
+      resetTemplateId: process.env.SMS_RESET_TEMPLATE_ID ?? '',
+      region: process.env.SMS_REGION || 'ap-guangzhou',
+    }),
+    onSendError: (error) => {
+      const message = error instanceof Error ? error.message : 'sms-send-failed';
+      console.error('[phone-auth] 短信上游失败:', safeDiagnosticMessage(message));
+    },
+  });
+}
 const passwordService = createPasswordService();
 const authGate = createAuthGate({ maxConcurrent: 8, maxPerMinute: 120 });
+const captchaService = createTencentCaptcha();
 if (!API_KEY) console.warn('[warn] config.apiKey 为空,/api/chat 将全部 502');
 if (!INVITE_CODE) console.warn('[warn] config.inviteCode 未配置,/api/register 关闭');
 if (!emailAuth) console.warn('[warn] Resend 密钥或发件人未配置,邮箱登录与注册关闭');
+if (!phoneAuth) console.warn('[warn] 腾讯云短信应用、模板或 CAM 凭据未完整配置,手机号认证关闭');
+if (!captchaService.available) console.warn('[warn] 腾讯云验证码应用或调用凭据未完整配置,登录与邮箱发码将拒绝');
 if (ALLOW_INSECURE_AUTH) console.warn('[warn] allowInsecureAuth=true,仅允许用于本地/测试');
 if (!ASR_KEY) console.warn('[warn] config.asrApiKey 为空,/api/asr 关闭');
 if (!VISION_KEY) {
@@ -164,6 +218,9 @@ if (!VISION_KEY) {
     : 'visionApiKey/apiKey 均为空';
   console.warn(`[warn] ${reason},/api/vision 关闭`);
 }
+if (!productionStorage) {
+  console.warn('[warn] 未配置生产存储,用户状态与成绩单使用本机兼容存储');
+}
 
 // ───────────────────────── 注册用户(落盘持久化) ─────────────────────────
 /** 生产 systemd 把 /opt/xiaobai 挂只读(ProtectSystem=strict),状态文件必须写进
@@ -171,28 +228,56 @@ if (!VISION_KEY) {
 const DATA_DIR = typeof cfg.dataDir === 'string' && cfg.dataDir ? cfg.dataDir : HERE;
 const REG_PATH = path.join(DATA_DIR, 'registered-users.json');
 const BINDINGS_PATH = path.join(DATA_DIR, 'email-bindings.json');
+const PHONE_BINDINGS_PATH = path.join(DATA_DIR, 'phone-bindings.json');
 const PASSWORD_OVERRIDES_PATH = path.join(DATA_DIR, 'password-overrides.json');
 const MAX_REG_USERS = 500; // 邀请码泄露时的最后一道闸:名额封顶
 let CONFIG_USERS = [];
 let USERS = [];
 let regUsers = [];
 let emailBindings = [];
+let phoneBindings = [];
 let passwordOverrides = [];
 try {
   const loadedRegistrations = existsSync(REG_PATH) ? JSON.parse(readFileSync(REG_PATH, 'utf8')) : [];
   const loadedBindings = existsSync(BINDINGS_PATH) ? JSON.parse(readFileSync(BINDINGS_PATH, 'utf8')) : [];
+  const loadedPhoneBindings = existsSync(PHONE_BINDINGS_PATH)
+    ? JSON.parse(readFileSync(PHONE_BINDINGS_PATH, 'utf8')) : [];
   const loadedPasswordOverrides = existsSync(PASSWORD_OVERRIDES_PATH)
     ? JSON.parse(readFileSync(PASSWORD_OVERRIDES_PATH, 'utf8')) : [];
   passwordOverrides = validatePasswordOverrides(CONFIG_USER_SOURCE, loadedPasswordOverrides);
   CONFIG_USERS = applyPasswordOverrides(CONFIG_USER_SOURCE, passwordOverrides);
-  const validated = validateUserSets(CONFIG_USERS, loadedRegistrations, loadedBindings);
+  const validated = validateUserSets(
+    CONFIG_USERS, loadedRegistrations, loadedBindings, loadedPhoneBindings,
+  );
   USERS = validated.users;
   regUsers = validated.registrations;
   emailBindings = validated.bindings;
+  phoneBindings = validated.phoneBindings;
 } catch (e) {
   // 任一行畸形、悬空绑定或全局重名都拒绝启动:禁止静默丢用户/邮箱归属
   console.error('[fatal] 用户、邮箱绑定或密码覆盖表校验失败,请人工修复:', e?.message);
   process.exit(2);
+}
+
+if (productionStorage) {
+  try {
+    const stored = await productionStorage.bootstrapUsers({
+      configured: USERS,
+      registered: regUsers,
+    });
+    const validated = validateUserSets(stored.configured, stored.registered);
+    CONFIG_USERS = validated.users;
+    USERS = validated.users;
+    regUsers = validated.registrations;
+    emailBindings = [];
+    phoneBindings = [];
+  } catch (error) {
+    console.error(
+      '[fatal] 用户数据库迁移或载入失败:',
+      safeDiagnosticMessage(error instanceof Error ? error.message : 'user-storage-failed'),
+    );
+    process.exit(2);
+  }
 }
 
 /** 原子写:先落临时文件再 rename,进程中途被杀不会留半截 JSON */
@@ -208,7 +293,7 @@ function persistJson(file, value) {
 }
 
 // 只写独立 probe,绝不在启动时重写真实注册表
-if (emailAuth) {
+if (emailAuth || phoneAuth) {
   const probe = path.join(DATA_DIR, `.registry-write-probe-${process.pid}`);
   try {
     writeFileSync(probe, '', { mode: 0o600, flag: 'wx' });
@@ -253,6 +338,29 @@ function findUser(name) {
   return USERS.find(match) ?? regUsers.find(match) ?? null;
 }
 
+if (productionStorage) {
+  try {
+    let importedStates = 0;
+    for (const user of [...USERS, ...regUsers]) {
+      const file = userStatePath(user.name);
+      if (!existsSync(file)) continue;
+      const document = JSON.parse(readFileSync(file, 'utf8'));
+      const state = document?.state;
+      if (!state || typeof state !== 'object' || Array.isArray(state)) continue;
+      if (await productionStorage.importStateIfMissing(user, state)) importedStates += 1;
+    }
+    if (importedStates > 0) {
+      console.log(`[storage] 已迁移 ${importedStates} 份本机学习存档到 PostgreSQL`);
+    }
+  } catch (error) {
+    console.error(
+      '[fatal] 本机学习存档迁移失败:',
+      safeDiagnosticMessage(error instanceof Error ? error.message : 'state-import-failed'),
+    );
+    process.exit(2);
+  }
+}
+
 /** 邮箱仅做规范化后的精确匹配;旧账号没有 email 仍可走密码登录 */
 function findUserByEmail(email) {
   const key = normalizeEmail(email);
@@ -261,10 +369,55 @@ function findUserByEmail(email) {
   return USERS.find(match) ?? regUsers.find(match) ?? null;
 }
 
+function findUserByPhone(phoneValue) {
+  const phone = normalizeMainlandPhone(phoneValue);
+  if (!phone) return null;
+  const match = (user) => userHasVerifiedPhone(user)
+    && normalizeMainlandPhone(user.phone) === phone;
+  return USERS.find(match) ?? regUsers.find(match) ?? null;
+}
+
 /** 密码登录统一标识符:优先按账号名查找,再按已验证邮箱查找。
  *  findUserByEmail 本身只接受 emailVerifiedAt 合法的邮箱,旧账号不会因未验证数据被放行。 */
 function findUserByIdentifier(identifier) {
   return findUser(identifier) ?? findUserByEmail(identifier);
+}
+
+function plainEmailAddress(value) {
+  if (typeof value !== 'string') return null;
+  const bracketed = value.match(/<([^<>]+)>/);
+  return normalizeEmail(bracketed?.[1] ?? value);
+}
+
+function resolveInboundUserId({ email }) {
+  const inboundDomain = (process.env.RESEND_INBOUND_DOMAIN || 'mail.tokentosea.com').toLowerCase();
+  const recipients = Array.isArray(email?.to) ? email.to : [email?.to];
+  for (const recipient of recipients) {
+    const address = plainEmailAddress(recipient);
+    if (!address) continue;
+    const splitAt = address.lastIndexOf('@');
+    if (address.slice(splitAt + 1) !== inboundDomain) continue;
+    const user = findUser(address.slice(0, splitAt));
+    if (user?.id) return user.id;
+  }
+  const fallback = findUser(process.env.RESEND_INBOUND_USER);
+  if (fallback?.id) return fallback.id;
+  throw new Error('inbound-recipient-unmapped');
+}
+
+let resendInboundProcessor = null;
+if (productionStorage && process.env.RESEND_WEBHOOK_SECRET) {
+  try {
+    resendInboundProcessor = productionStorage.createInboundProcessor(resolveInboundUserId);
+  } catch (error) {
+    console.error(
+      '[fatal] Resend 入站邮件处理器初始化失败:',
+      safeDiagnosticMessage(error instanceof Error ? error.message : 'inbound-init-failed'),
+    );
+    process.exit(2);
+  }
+} else if (productionStorage) {
+  console.warn('[warn] RESEND_WEBHOOK_SECRET 未配置,入站邮件暂不可用');
 }
 
 function sameAccount(left, right) {
@@ -308,8 +461,29 @@ function publicEmailSubject(user, emailValue, purpose) {
   return `reset:${version}`;
 }
 
-function emailBindingRequired(name) {
-  return !userHasVerifiedEmail(findUser(name));
+function phoneOwnershipSubject(user, phoneValue) {
+  const phone = normalizeMainlandPhone(phoneValue);
+  const name = canonicalName(user?.name);
+  if (!name || !phone || !userHasVerifiedPhone(user)
+    || normalizeMainlandPhone(user.phone) !== phone) return null;
+  const digest = crypto.createHash('sha256')
+    .update(`${name}\0${phone}\0${user.phoneVerifiedAt}`)
+    .digest('hex');
+  return `owner:${digest}`;
+}
+
+function publicPhoneSubject(user, phoneValue, purpose) {
+  const phone = normalizeMainlandPhone(phoneValue);
+  const ownership = phoneOwnershipSubject(user, phone);
+  if (!ownership) {
+    const digest = crypto.createHash('sha256').update(phone ?? 'invalid-phone').digest('hex');
+    return `unowned:${digest}`;
+  }
+  if (purpose !== 'reset-password') return ownership;
+  const revision = credentialRevision(user);
+  if (!revision) return `invalid:${crypto.createHash('sha256').update(ownership).digest('hex')}`;
+  const version = crypto.createHash('sha256').update(`${ownership}\0${revision}`).digest('hex');
+  return `reset:${version}`;
 }
 
 function accountEmailPurpose(user) {
@@ -328,16 +502,34 @@ function accountEmailSubject(user, purpose) {
   return `account:${version}`;
 }
 
+function accountPhonePurpose(user) {
+  return userHasVerifiedPhone(user) ? 'change-phone' : 'bind';
+}
+
+function accountPhoneSubject(user, purpose) {
+  const name = canonicalName(user?.name);
+  const revision = credentialRevision(user);
+  if (!name || !revision) return null;
+  const ownership = userHasVerifiedPhone(user)
+    ? phoneOwnershipSubject(user, user.phone) : 'unbound';
+  const version = crypto.createHash('sha256')
+    .update(`${name}\0${purpose}\0${revision}\0${ownership}`)
+    .digest('hex');
+  return `account:${version}`;
+}
+
 function authPayload(name) {
   const user = findUser(name);
   return {
     user: { name },
     emailBindingRequired: !userHasVerifiedEmail(user),
     emailMasked: userHasVerifiedEmail(user) ? maskEmail(user.email) : null,
+    phoneBindingRequired: !userHasVerifiedPhone(user),
+    phoneMasked: userHasVerifiedPhone(user) ? maskPhone(user.phone) : null,
   };
 }
 
-function rejectUnverifiedEmail(res, session) {
+function rejectRestrictedAccount(res, session) {
   const error = protectedAccessError(findUser(session.name));
   if (!error) return false;
   send(res, 403, { error });
@@ -379,6 +571,7 @@ setInterval(() => {
   for (const [k, v] of stateHits) if (v.resetAt < now) stateHits.delete(k);
   for (const [k, v] of transcriptHits) if (v.resetAt < now) transcriptHits.delete(k);
   emailAuth?.cleanup(now);
+  phoneAuth?.cleanup(now);
   const today = new Date().toISOString().slice(0, 10);
   for (const [k, v] of chatDaily) if (v.day !== today) chatDaily.delete(k);
   for (const [k, v] of asrDaily) if (v.day !== today) asrDaily.delete(k);
@@ -490,6 +683,22 @@ function clientIp(req) {
   return ipRateKey(direct);
 }
 
+function captchaUserIp(req) {
+  const normalize = (value) => {
+    if (typeof value !== 'string') return '';
+    let address = value.trim().replace(/^\[|\]$/g, '').split('%', 1)[0];
+    const mapped = address.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+    if (mapped && net.isIP(mapped[1]) === 4) address = mapped[1];
+    return net.isIP(address) ? address : '';
+  };
+  const direct = normalize(req.socket.remoteAddress);
+  if (direct && isLoopbackAddress(direct)) {
+    const forwarded = normalize(req.headers['x-real-ip']);
+    if (forwarded) return forwarded;
+  }
+  return direct || 'unknown';
+}
+
 function getCookie(req, name) {
   const raw = req.headers.cookie ?? '';
   for (const part of raw.split(';')) {
@@ -522,7 +731,7 @@ function protectedUser(req, res) {
     send(res, 401, { error: 'identity-mismatch' });
     return null;
   }
-  if (rejectUnverifiedEmail(res, user)) return null;
+  if (rejectRestrictedAccount(res, user)) return null;
   return user;
 }
 
@@ -739,6 +948,58 @@ function issueSession(req, res, name, status = 200) {
   });
 }
 
+function sendCaptchaError(res, result) {
+  const status = result.error === 'captcha-required'
+    ? 428 : result.error === 'captcha-failed' ? 403 : 503;
+  return send(res, status, { error: result.error });
+}
+
+async function verifyCaptcha(req, res, scene, body) {
+  const result = await captchaService.verify(scene, body?.captcha, captchaUserIp(req));
+  if (result.ok) return true;
+  sendCaptchaError(res, result);
+  return false;
+}
+
+async function handleCaptchaChallenge(req, res) {
+  if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
+  let body;
+  try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  const result = captchaService.issueChallenge(body?.scene);
+  if (!result.ok) return sendCaptchaError(res, result);
+  const { ok: _ok, ...challenge } = result;
+  send(res, 200, challenge);
+}
+
+async function handleResendWebhook(req, res) {
+  if (!resendInboundProcessor) return send(res, 503, { error: 'inbound-email-unavailable' });
+  if (!authTransportAllowed(req, ALLOW_INSECURE_AUTH)) {
+    return send(res, 426, { error: 'https-required' }, { Upgrade: 'TLS/1.2' });
+  }
+  let payload;
+  try {
+    payload = await readRaw(req, 1024 * 1024, 10_000);
+  } catch (error) {
+    return sendMediaBodyError(res, error);
+  }
+  try {
+    const result = await resendInboundProcessor.process({
+      payload,
+      headers: req.headers,
+    });
+    return send(res, 200, { ok: true, status: result.status });
+  } catch (error) {
+    const response = classifyInboundWebhookError(error);
+    const diagnostic = safeDiagnosticMessage(response.message);
+    if (response.logLevel === 'warn') {
+      console.warn('[inbound-email] 策略拒绝:', diagnostic);
+    } else {
+      console.error('[inbound-email] 处理失败:', diagnostic);
+    }
+    return send(res, response.statusCode, response.body);
+  }
+}
+
 /**
  * 旧凭据登录成功后在账号密码锁内渐进升级。CAS 失败表示等待期间密码已变化，
  * 此时旧密码不得再签发会话；单纯落盘失败则保留旧凭据并允许本次已验证登录。
@@ -758,7 +1019,7 @@ async function upgradePasswordAfterVerification(user, password, expectedRevision
     if (credentialRevision(current) !== expectedRevision) {
       return await passwordService.verify(current, password) ? current : null;
     }
-    if (!persistPassword(current.name, credentials)) {
+    if (!await persistPassword(current.name, credentials)) {
       console.error('[auth] 旧密码哈希升级未能持久化,保留兼容凭据');
       return current;
     }
@@ -771,6 +1032,7 @@ async function handleLogin(req, res) {
   const ip = clientIp(req);
   let body;
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  if (!await verifyCaptcha(req, res, 'login', body)) return;
   // identifier 是新契约;username 仅用于兼容旧客户端。若显式提交 identifier,
   // 即使其形状错误也不回退 username,避免两个互相矛盾的身份字段产生歧义。
   const identifier = body && Object.hasOwn(body, 'identifier') ? body.identifier : body?.username;
@@ -863,6 +1125,69 @@ function sendEmailAuthError(res, result, invalidStatus = 400) {
   return send(res, invalidStatus, { error: 'invalid-or-expired-code' });
 }
 
+function sendPhoneAuthError(res, result, invalidStatus = 400) {
+  const retry = result.retryAfter ? { 'Retry-After': String(result.retryAfter) } : {};
+  if (result.error === 'too-many-attempts' || result.error === 'send-too-frequent'
+    || result.error === 'auth-busy') {
+    return send(res, 429, {
+      error: result.error,
+      retryAfter: result.retryAfter ?? 60,
+    }, retry);
+  }
+  if (result.error === 'sms-auth-busy') return send(res, 503, { error: result.error }, retry);
+  if (result.error === 'sms-unavailable') return send(res, 502, { error: result.error });
+  if (result.error === 'bad-phone' || result.error === 'bad-purpose'
+    || result.error === 'bad-subject') {
+    return send(res, 400, { error: result.error });
+  }
+  return send(res, invalidStatus, { error: 'invalid-or-expired-code' });
+}
+
+async function handleSmsCode(req, res) {
+  if (!phoneAuth) return send(res, 503, { error: 'sms-auth-unavailable' });
+  if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
+  let body;
+  try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  if (body?.purpose !== 'login' && body?.purpose !== 'reset-password') {
+    return send(res, 400, { error: 'bad-purpose' });
+  }
+  if (!await verifyCaptcha(req, res, 'sms', body)) return;
+  const phone = normalizeMainlandPhone(body?.phone);
+  const user = findUserByPhone(phone);
+  const result = await phoneAuth.requestCode({
+    phone,
+    purpose: body.purpose,
+    subject: publicPhoneSubject(user, phone, body.purpose),
+    ip: clientIp(req),
+    deliver: Boolean(user),
+    opaqueDelivery: true,
+  });
+  if (!result.ok) return sendPhoneAuthError(res, result);
+  send(res, 200, { ok: true, retryAfter: result.retryAfter });
+}
+
+async function handlePhoneLogin(req, res) {
+  if (!phoneAuth) return send(res, 503, { error: 'sms-auth-unavailable' });
+  if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
+  let body;
+  try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  if (!await verifyCaptcha(req, res, 'login', body)) return;
+  const phone = normalizeMainlandPhone(body?.phone);
+  const user = findUserByPhone(phone);
+  const result = await phoneAuth.consumeCode({
+    phone,
+    code: body?.code,
+    purpose: 'login',
+    subject: publicPhoneSubject(user, phone, 'login'),
+    ip: clientIp(req),
+  });
+  if (!result.ok) return sendPhoneAuthError(res, result, 401);
+  if (!user || normalizeMainlandPhone(user.phone) !== result.phone) {
+    return send(res, 401, { error: 'invalid-credentials' });
+  }
+  issueSession(req, res, user.name);
+}
+
 async function handleEmailCode(req, res) {
   if (!emailAuth) return send(res, 503, { error: 'email-auth-unavailable' });
   if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
@@ -871,6 +1196,7 @@ async function handleEmailCode(req, res) {
   if (body?.purpose !== 'login' && body?.purpose !== 'register') {
     return send(res, 400, { error: 'bad-purpose' });
   }
+  if (!await verifyCaptcha(req, res, 'email', body)) return;
   const ip = clientIp(req);
   if (body?.purpose === 'register') {
     if (!registrationAvailable()) return send(res, 403, { error: 'registration-disabled' });
@@ -903,6 +1229,7 @@ async function handleEmailLogin(req, res) {
   if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
   let body;
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  if (!await verifyCaptcha(req, res, 'login', body)) return;
   const email = normalizeEmail(body?.email);
   const user = findUserByEmail(email);
   const result = emailAuth.consumeCode({
@@ -924,6 +1251,7 @@ async function handlePasswordCode(req, res) {
   if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
   let body;
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  if (!await verifyCaptcha(req, res, 'email', body)) return;
   const email = normalizeEmail(body?.email);
   const user = findUserByEmail(email);
   const result = await emailAuth.requestCode({
@@ -976,7 +1304,48 @@ async function handlePasswordReset(req, res) {
       || credentialRevision(currentOwner) !== expectedRevision) {
       return send(res, 400, { error: 'invalid-or-expired-code' });
     }
-    if (!persistPassword(currentOwner.name, credentials)) {
+    if (!await persistPassword(currentOwner.name, credentials)) {
+      return send(res, 500, { error: 'persist-failed' });
+    }
+    revokeUserSessions(sessions, currentOwner.name);
+    issueSession(req, res, currentOwner.name);
+  });
+}
+
+async function handlePhonePasswordReset(req, res) {
+  if (!phoneAuth) return send(res, 503, { error: 'sms-auth-unavailable' });
+  if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
+  let body;
+  try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  const password = validateNewPassword(res, body?.newPassword);
+  if (!password) return;
+  const phone = normalizeMainlandPhone(body?.phone);
+  const user = findUserByPhone(phone);
+  const expectedRevision = credentialRevision(user);
+  const verified = await phoneAuth.consumeCode({
+    phone,
+    code: body?.code,
+    purpose: 'reset-password',
+    subject: publicPhoneSubject(user, phone, 'reset-password'),
+    ip: clientIp(req),
+  });
+  if (!verified.ok) return sendPhoneAuthError(res, verified);
+  if (!user || normalizeMainlandPhone(user.phone) !== verified.phone) {
+    return send(res, 400, { error: 'invalid-or-expired-code' });
+  }
+  await withCredentialMutation(user.name, async () => {
+    const lockedOwner = findUserByPhone(verified.phone);
+    if (!sameAccount(lockedOwner, user) || !expectedRevision
+      || credentialRevision(lockedOwner) !== expectedRevision) {
+      return send(res, 400, { error: 'invalid-or-expired-code' });
+    }
+    const credentials = await passwordService.hash(password);
+    const currentOwner = findUserByPhone(verified.phone);
+    if (!sameAccount(currentOwner, user)
+      || credentialRevision(currentOwner) !== expectedRevision) {
+      return send(res, 400, { error: 'invalid-or-expired-code' });
+    }
+    if (!await persistPassword(currentOwner.name, credentials)) {
       return send(res, 500, { error: 'persist-failed' });
     }
     revokeUserSessions(sessions, currentOwner.name);
@@ -994,6 +1363,7 @@ async function handleAccountEmailCode(req, res) {
   if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
   let body;
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  if (!await verifyCaptcha(req, res, 'email', body)) return;
   user = await requireCurrentPassword(req, res, user, body?.currentPassword);
   if (!user) return;
   const email = normalizeEmail(body?.email);
@@ -1056,7 +1426,7 @@ async function handleAccountEmail(req, res) {
     ip: clientIp(req),
   });
   if (!verified.ok) return sendEmailAuthError(res, verified);
-  const persisted = persistVerifiedEmail(user.name, verified.email, purpose);
+  const persisted = await persistVerifiedEmail(user.name, verified.email, purpose);
   if (!persisted.ok) {
     if (['email-taken', 'email-already-bound', 'email-unchanged', 'email-not-bound']
       .includes(persisted.error)) {
@@ -1066,6 +1436,84 @@ async function handleAccountEmail(req, res) {
     return send(res, 500, { error: 'persist-failed' });
   }
   // 只有持久化成功才升级会话；撤销同账号全部旧 restricted SID，再签发一个新 SID。
+  revokeUserSessions(sessions, user.name);
+  issueSession(req, res, user.name);
+}
+
+async function handleAccountPhoneCode(req, res) {
+  if (!phoneAuth) return send(res, 503, { error: 'sms-auth-unavailable' });
+  const session = currentUser(req);
+  if (!session) return send(res, 401, { error: 'login-required' });
+  if (!clientIdentityMatches(req, session)) {
+    return send(res, 401, { error: 'identity-mismatch' });
+  }
+  let user = findUser(session.name);
+  if (!user) return send(res, 401, { error: 'login-required' });
+  if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
+  let body;
+  try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  if (!await verifyCaptcha(req, res, 'sms', body)) return;
+  user = await requireCurrentPassword(req, res, user, body?.currentPassword);
+  if (!user) return;
+  const phone = normalizeMainlandPhone(body?.phone);
+  if (!phone) return send(res, 400, { error: 'bad-phone' });
+  const purpose = accountPhonePurpose(user);
+  const subject = accountPhoneSubject(user, purpose);
+  const revision = credentialRevision(user);
+  const owner = findUserByPhone(phone);
+  const deliver = !owner || sameAccount(owner, user);
+  const result = await phoneAuth.requestCode({
+    phone,
+    purpose,
+    subject,
+    ip: clientIp(req),
+    deliver,
+    opaqueDelivery: true,
+  });
+  const currentSession = currentUser(req);
+  const current = currentSession ? findUser(currentSession.name) : null;
+  if (!currentSession || currentSession.token !== session.token
+    || !sameAccount(current, user) || credentialRevision(current) !== revision
+    || accountPhoneSubject(current, purpose) !== subject) {
+    return send(res, 401, { error: 'login-required' });
+  }
+  if (!result.ok) return sendPhoneAuthError(res, result);
+  send(res, 200, { ok: true, retryAfter: result.retryAfter });
+}
+
+async function handleAccountPhone(req, res) {
+  if (!phoneAuth) return send(res, 503, { error: 'sms-auth-unavailable' });
+  const session = currentUser(req);
+  if (!session) return send(res, 401, { error: 'login-required' });
+  if (!clientIdentityMatches(req, session)) {
+    return send(res, 401, { error: 'identity-mismatch' });
+  }
+  let user = findUser(session.name);
+  if (!user) return send(res, 401, { error: 'login-required' });
+  if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
+  let body;
+  try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  user = await requireCurrentPassword(req, res, user, body?.currentPassword);
+  if (!user) return;
+  const phone = normalizeMainlandPhone(body?.phone);
+  if (!phone) return send(res, 400, { error: 'bad-phone' });
+  const purpose = accountPhonePurpose(user);
+  const verified = await phoneAuth.consumeCode({
+    phone,
+    code: body?.code,
+    purpose,
+    subject: accountPhoneSubject(user, purpose),
+    ip: clientIp(req),
+  });
+  if (!verified.ok) return sendPhoneAuthError(res, verified);
+  const persisted = await persistVerifiedPhone(user.name, verified.phone, purpose);
+  if (!persisted.ok) {
+    if (['phone-taken', 'phone-already-bound', 'phone-unchanged', 'phone-not-bound']
+      .includes(persisted.error)) {
+      return send(res, 409, { error: 'phone-unavailable' });
+    }
+    return send(res, 500, { error: 'persist-failed' });
+  }
   revokeUserSessions(sessions, user.name);
   issueSession(req, res, user.name);
 }
@@ -1103,7 +1551,9 @@ async function handleAccountPassword(req, res) {
       || !sameAccount(current, lockedUser) || credentialRevision(current) !== revision) {
       return send(res, 401, { error: 'login-required' });
     }
-    if (!persistPassword(current.name, credentials)) return send(res, 500, { error: 'persist-failed' });
+    if (!await persistPassword(current.name, credentials)) {
+      return send(res, 500, { error: 'persist-failed' });
+    }
     revokeUserSessions(sessions, current.name);
     issueSession(req, res, current.name);
   });
@@ -1123,13 +1573,47 @@ async function buildRegisteredUser(name, email, password) {
   return { name, email, emailVerifiedAt: createdAt, ...credentials, createdAt };
 }
 
-function persistRegisteredUser(user) {
+async function refreshUsersFromDatabase() {
+  const stored = await productionStorage.reloadUsers();
+  const validated = validateUserSets(stored.configured, stored.registered);
+  CONFIG_USERS = validated.users;
+  USERS = validated.users;
+  regUsers = validated.registrations;
+  emailBindings = [];
+  phoneBindings = [];
+}
+
+async function commitProductionMutation(scope, commit) {
+  await commitThenRefresh({
+    commit,
+    refresh: refreshUsersFromDatabase,
+    onRefreshFailure: (error) => {
+      console.error(
+        `[fatal] ${scope} 已提交数据库但内存重载失败，立即退出以恢复权威状态:`,
+        safeDiagnosticMessage(error instanceof Error ? error.message : 'reload-failed'),
+      );
+      process.exit(1);
+    },
+  });
+}
+
+async function persistRegisteredUser(user) {
   try {
-    const validated = validateUserSets(CONFIG_USERS, [...regUsers, user], emailBindings);
+    const validated = validateUserSets(
+      CONFIG_USERS, [...regUsers, user], emailBindings, phoneBindings,
+    );
+    if (productionStorage) {
+      await commitProductionMutation(
+        'register',
+        () => productionStorage.createRegisteredUser(user),
+      );
+      return true;
+    }
     persistJson(REG_PATH, validated.registrations);
     USERS = validated.users;
     regUsers = validated.registrations;
     emailBindings = validated.bindings;
+    phoneBindings = validated.phoneBindings;
     return true;
   } catch (e) {
     console.error('[register] 落盘失败:', e?.message);
@@ -1137,14 +1621,30 @@ function persistRegisteredUser(user) {
   }
 }
 
-function persistVerifiedEmail(name, email, purpose) {
+async function persistVerifiedEmail(name, email, purpose) {
   let updated;
   try {
     const update = purpose === 'bind' ? bindVerifiedEmail : changeVerifiedEmail;
-    updated = update(CONFIG_USERS, regUsers, emailBindings, name, email, new Date().toISOString());
+    updated = update(
+      CONFIG_USERS, regUsers, emailBindings, name, email, new Date().toISOString(), phoneBindings,
+    );
+    if (productionStorage) {
+      const user = findUser(name);
+      if (!user?.id) throw new Error('user-not-found');
+      const target = updated.users.find((item) => sameAccount(item, user))
+        ?? updated.registrations.find((item) => sameAccount(item, user));
+      await commitProductionMutation(
+        'account-email',
+        () => productionStorage.updateContact(user, 'email', email, target?.emailVerifiedAt),
+      );
+      return { ok: true };
+    }
     const file = updated.source === 'bindings' ? BINDINGS_PATH : REG_PATH;
     const value = updated.source === 'bindings' ? updated.bindings : updated.registrations;
     persistJson(file, value);
+    updated = validateUserSets(
+      CONFIG_USERS, updated.registrations, updated.bindings, phoneBindings,
+    );
   } catch (e) {
     console.error('[account-email] 落盘失败:', e?.message);
     return { ok: false, error: e?.message ?? 'persist-failed' };
@@ -1152,12 +1652,58 @@ function persistVerifiedEmail(name, email, purpose) {
   USERS = updated.users;
   regUsers = updated.registrations;
   emailBindings = updated.bindings;
+  phoneBindings = updated.phoneBindings;
   return { ok: true };
 }
 
-function persistPassword(name, credentials) {
+async function persistVerifiedPhone(name, phone, purpose) {
   let updated;
   try {
+    const update = purpose === 'bind' ? bindVerifiedPhone : changeVerifiedPhone;
+    updated = update(
+      CONFIG_USERS, regUsers, phoneBindings, name, phone, new Date().toISOString(), emailBindings,
+    );
+    if (productionStorage) {
+      const user = findUser(name);
+      if (!user?.id) throw new Error('user-not-found');
+      const target = updated.users.find((item) => sameAccount(item, user))
+        ?? updated.registrations.find((item) => sameAccount(item, user));
+      await commitProductionMutation(
+        'account-phone',
+        () => productionStorage.updateContact(user, 'phone', phone, target?.phoneVerifiedAt),
+      );
+      return { ok: true };
+    }
+    const file = updated.source === 'bindings' ? PHONE_BINDINGS_PATH : REG_PATH;
+    const value = updated.source === 'bindings'
+      ? updated.phoneBindings : updated.registrations;
+    persistJson(file, value);
+    updated = validateUserSets(
+      CONFIG_USERS, updated.registrations, emailBindings, updated.phoneBindings,
+    );
+  } catch (e) {
+    console.error('[account-phone] 落盘失败:', e?.message);
+    return { ok: false, error: e?.message ?? 'persist-failed' };
+  }
+  USERS = updated.users;
+  regUsers = updated.registrations;
+  emailBindings = updated.bindings;
+  phoneBindings = updated.phoneBindings;
+  return { ok: true };
+}
+
+async function persistPassword(name, credentials) {
+  let updated;
+  try {
+    if (productionStorage) {
+      const user = findUser(name);
+      if (!user?.id) throw new Error('user-not-found');
+      await commitProductionMutation(
+        'account-password',
+        () => productionStorage.updatePassword(user, credentials),
+      );
+      return true;
+    }
     updated = updatePassword(
       CONFIG_USER_SOURCE,
       regUsers,
@@ -1169,11 +1715,14 @@ function persistPassword(name, credentials) {
     const file = updated.source === 'overrides' ? PASSWORD_OVERRIDES_PATH : REG_PATH;
     const value = updated.source === 'overrides' ? updated.overrides : updated.registrations;
     persistJson(file, value);
-    const validated = validateUserSets(updated.users, updated.registrations, emailBindings);
+    const validated = validateUserSets(
+      updated.users, updated.registrations, emailBindings, phoneBindings,
+    );
     CONFIG_USERS = updated.users;
     USERS = validated.users;
     regUsers = validated.registrations;
     emailBindings = validated.bindings;
+    phoneBindings = validated.phoneBindings;
     passwordOverrides = updated.overrides;
     return true;
   } catch (e) {
@@ -1225,7 +1774,7 @@ async function handleRegister(req, res) {
   if (findUser(name)) return send(res, 409, { error: 'name-taken' });
   if (findUserByEmail(email)) return send(res, 409, { error: 'email-taken' });
   if (regUsers.length >= MAX_REG_USERS) return send(res, 503, { error: 'registry-full' });
-  if (!persistRegisteredUser(user)) return send(res, 500, { error: 'persist-failed' });
+  if (!await persistRegisteredUser(user)) return send(res, 500, { error: 'persist-failed' });
   console.log(`[register] 新用户: ${name} (${ip}), 总注册数 ${regUsers.length}`);
   issueSession(req, res, name, 200);
 }
@@ -1245,10 +1794,14 @@ function handleMe(req, res) {
       user: null,
       emailBindingRequired: false,
       emailMasked: null,
+      phoneBindingRequired: false,
+      phoneMasked: null,
     }),
     authRequired: true,
-    emailAuthAvailable: Boolean(emailAuth && transportAvailable),
-    registrationAvailable: registrationAvailable() && transportAvailable,
+    captchaAvailable: captchaService.available && transportAvailable,
+    emailAuthAvailable: Boolean(emailAuth && captchaService.available && transportAvailable),
+    smsAuthAvailable: Boolean(phoneAuth && captchaService.available && transportAvailable),
+    registrationAvailable: registrationAvailable() && captchaService.available && transportAvailable,
     inviteRequired: Boolean(INVITE_CODE),
   });
 }
@@ -1261,7 +1814,7 @@ async function handleChat(req, res) {
   const u = currentUser(req);
   if (!u) return send(res, 401, { error: 'login-required' });
   if (!clientIdentityMatches(req, u)) return send(res, 401, { error: 'identity-mismatch' });
-  if (rejectUnverifiedEmail(res, u)) return;
+  if (rejectRestrictedAccount(res, u)) return;
 
   // 限流按账号名而非会话 token:重复登录铸新会话无法刷新额度
   const rate = chatHits.get(u.name) ?? { count: 0, resetAt: Date.now() + 60_000 };
@@ -1450,7 +2003,7 @@ async function handleAsr(req, res) {
   const u = currentUser(req);
   if (!u) return send(res, 401, { error: 'login-required' });
   if (!clientIdentityMatches(req, u)) return send(res, 401, { error: 'identity-mismatch' });
-  if (rejectUnverifiedEmail(res, u)) return;
+  if (rejectRestrictedAccount(res, u)) return;
   if (!ASR_KEY) return send(res, 503, { error: 'asr-disabled' });
   const limited = rateCheck(u.name, ASR_MAX_PER_MIN, ASR_MAX_PER_DAY, asrHits, asrDaily);
   if (limited) return send(res, 429, { error: limited });
@@ -1500,13 +2053,26 @@ async function handleAsrInner(req, res) {
 
 /** 按账号学习存档:GET 取回 / PUT 覆盖(整包 LWW,客户端去抖推送)。
  *  只当不透明 JSON 桶存取,不解释内容 —— 但形状上限死:顶层必须是对象,尺寸 ≤ STATE_LIMIT */
-function handleStateGet(req, res) {
+async function handleStateGet(req, res) {
   const u = currentUser(req);
   if (!u) return send(res, 401, { error: 'login-required' });
   if (!clientIdentityMatches(req, u)) return send(res, 401, { error: 'identity-mismatch' });
-  if (rejectUnverifiedEmail(res, u)) return;
+  if (rejectRestrictedAccount(res, u)) return;
   const limited = rateCheck(u.name, STATE_MAX_PER_MIN, null, stateHits, null);
   if (limited) return send(res, 429, { error: limited });
+  if (productionStorage) {
+    try {
+      const user = findUser(u.name);
+      const record = await productionStorage.getState(user);
+      return send(res, 200, {
+        state: record?.state ?? null,
+        updatedAt: record?.updatedAt ? new Date(record.updatedAt).toISOString() : null,
+      });
+    } catch (error) {
+      console.error('[state] PostgreSQL 读档失败:', safeDiagnosticMessage(error?.message));
+      return send(res, 500, { error: 'persist-failed' });
+    }
+  }
   const file = userStatePath(u.name);
   if (!existsSync(file)) return send(res, 200, { state: null, updatedAt: null });
   try {
@@ -1523,7 +2089,7 @@ async function handleStatePut(req, res) {
   const u = currentUser(req);
   if (!u) return send(res, 401, { error: 'login-required' });
   if (!clientIdentityMatches(req, u)) return send(res, 401, { error: 'identity-mismatch' });
-  if (rejectUnverifiedEmail(res, u)) return;
+  if (rejectRestrictedAccount(res, u)) return;
   const limited = rateCheck(u.name, STATE_MAX_PER_MIN, null, stateHits, null);
   if (limited) return send(res, 429, { error: limited });
   let body;
@@ -1533,6 +2099,38 @@ async function handleStatePut(req, res) {
   const state = body?.state;
   if (state === null || typeof state !== 'object' || Array.isArray(state)) {
     return send(res, 400, { error: 'bad-shape' });
+  }
+  if (productionStorage) {
+    try {
+      const user = findUser(u.name);
+      const current = await productionStorage.getState(user);
+      const currentVersion = current?.updatedAt
+        ? new Date(current.updatedAt).toISOString()
+        : null;
+      const baseVersion = typeof body?.baseVersion === 'string' ? body.baseVersion : null;
+      if (currentVersion !== baseVersion) {
+        return send(res, 409, { error: 'conflict', updatedAt: currentVersion });
+      }
+      const stored = await productionStorage.putState(
+        user,
+        state,
+        current?.revision ?? 0,
+      );
+      return send(res, 200, {
+        ok: true,
+        updatedAt: new Date(stored.updatedAt).toISOString(),
+      });
+    } catch (error) {
+      if (error?.message === 'learning-state-conflict') {
+        const latest = await productionStorage.getState(findUser(u.name)).catch(() => null);
+        return send(res, 409, {
+          error: 'conflict',
+          updatedAt: latest?.updatedAt ? new Date(latest.updatedAt).toISOString() : null,
+        });
+      }
+      console.error('[state] PostgreSQL 写档失败:', safeDiagnosticMessage(error?.message));
+      return send(res, 500, { error: 'persist-failed' });
+    }
   }
   const file = userStatePath(u.name);
   // 乐观并发:客户端带 baseVersion(上次见到的 updatedAt);已有档且版本对不上 → 409,
@@ -1688,14 +2286,45 @@ function replaceTranscript(name, body, media, originalName) {
   return publicTranscriptMeta(stored);
 }
 
+if (productionStorage) {
+  try {
+    let importedTranscripts = 0;
+    for (const user of [...USERS, ...regUsers]) {
+      if (await productionStorage.getTranscript(user, false)) continue;
+      const legacy = loadTranscript(user.name, true);
+      if (!legacy) continue;
+      await productionStorage.putTranscript(user, {
+        body: legacy.body,
+        name: legacy.meta.name,
+        type: legacy.meta.type,
+      });
+      importedTranscripts += 1;
+    }
+    if (importedTranscripts > 0) {
+      console.log(`[storage] 已迁移 ${importedTranscripts} 份本机成绩单到 COS`);
+    }
+  } catch (error) {
+    console.error(
+      '[fatal] 本机成绩单迁移失败:',
+      safeDiagnosticMessage(error instanceof Error ? error.message : 'transcript-import-failed'),
+    );
+    process.exit(2);
+  }
+}
+
 async function handleTranscriptGet(req, res) {
   const user = transcriptUser(req, res);
   if (!user) return;
   try {
     const record = await withTranscriptMutation(
-      user.name, () => loadTranscript(user.name, false),
+      user.name,
+      () => productionStorage
+        ? productionStorage.getTranscript(findUser(user.name), false)
+        : loadTranscript(user.name, false),
     );
-    send(res, 200, { file: record?.meta ?? null });
+    send(res, 200, {
+      file: record?.meta ? publicTranscriptMeta(record.meta) : null,
+    });
   } catch (e) {
     console.error('[transcript] 读取元数据失败:', e?.message);
     send(res, 500, { error: 'stored-file-invalid' });
@@ -1727,9 +2356,16 @@ async function handleTranscriptPut(req, res) {
     }
     const originalName = safeOriginalName(req, media.extension);
     const meta = await withTranscriptMutation(
-      user.name, () => replaceTranscript(user.name, body, media, originalName),
+      user.name,
+      () => productionStorage
+        ? productionStorage.putTranscript(findUser(user.name), {
+          body,
+          name: originalName,
+          type: media.type,
+        })
+        : replaceTranscript(user.name, body, media, originalName),
     );
-    send(res, 200, { file: meta });
+    send(res, 200, { file: publicTranscriptMeta(meta) });
   } catch (e) {
     console.error('[transcript] 写入失败:', e?.message);
     send(res, 500, { error: 'persist-failed' });
@@ -1743,7 +2379,10 @@ async function handleTranscriptFile(req, res) {
   if (!user) return;
   try {
     const record = await withTranscriptMutation(
-      user.name, () => loadTranscript(user.name, true),
+      user.name,
+      () => productionStorage
+        ? productionStorage.getTranscript(findUser(user.name), true)
+        : loadTranscript(user.name, true),
     );
     if (!record) return send(res, 404, { error: 'not-found' });
     const extension = record.meta.type === 'application/pdf'
@@ -1767,11 +2406,18 @@ async function handleTranscriptDelete(req, res) {
   const user = transcriptUser(req, res);
   if (!user) return;
   try {
-    await withTranscriptMutation(user.name, () => {
-      const paths = transcriptPaths(user.name);
-      if (existsSync(paths.file)) unlinkSync(paths.file);
-      if (existsSync(paths.meta)) unlinkSync(paths.meta);
-    });
+    await withTranscriptMutation(
+      user.name,
+      () => {
+        if (productionStorage) {
+          return productionStorage.deleteTranscript(findUser(user.name));
+        }
+        const paths = transcriptPaths(user.name);
+        if (existsSync(paths.file)) unlinkSync(paths.file);
+        if (existsSync(paths.meta)) unlinkSync(paths.meta);
+        return undefined;
+      },
+    );
     send(res, 200, { ok: true });
   } catch (e) {
     console.error('[transcript] 删除失败:', e?.message);
@@ -1788,7 +2434,12 @@ const MIME = {
 };
 
 function serveStatic(req, res, urlPath) {
-  let rel = decodeURIComponent(urlPath);
+  let rel;
+  try {
+    rel = decodeURIComponent(urlPath);
+  } catch {
+    return send(res, 400, 'bad-path');
+  }
   if (rel.endsWith('/')) rel += 'index.html';
   const file = path.normalize(path.join(DIST, rel));
   // 必须带分隔符比较:裸 startsWith(DIST) 会放行 /opt/xiaobai/distX 这类同前缀兄弟目录
@@ -1821,13 +2472,24 @@ const server = http.createServer((req, res) => {
     pathname = pathname.slice(PREFIX.length) || '/';
   }
   if (pathname.startsWith('/api/')) {
+    if (pathname === '/api/webhooks/resend' && req.method === 'POST') {
+      return void handleResendWebhook(req, res);
+    }
+    if (pathname === '/api/captcha/challenge' && req.method === 'POST') {
+      return void handleAuthRequest(req, res, handleCaptchaChallenge);
+    }
     if (pathname === '/api/login' && req.method === 'POST') return void handleAuthRequest(req, res, handleLogin);
     if (pathname === '/api/login/email' && req.method === 'POST') return void handleAuthRequest(req, res, handleEmailLogin);
+    if (pathname === '/api/login/phone' && req.method === 'POST') return void handleAuthRequest(req, res, handlePhoneLogin);
     if (pathname === '/api/auth/email-code' && req.method === 'POST') return void handleAuthRequest(req, res, handleEmailCode);
+    if (pathname === '/api/auth/sms-code' && req.method === 'POST') return void handleAuthRequest(req, res, handleSmsCode);
     if (pathname === '/api/auth/password-code' && req.method === 'POST') return void handleAuthRequest(req, res, handlePasswordCode);
     if (pathname === '/api/auth/password-reset' && req.method === 'POST') return void handleAuthRequest(req, res, handlePasswordReset);
+    if (pathname === '/api/auth/password-reset/phone' && req.method === 'POST') return void handleAuthRequest(req, res, handlePhonePasswordReset);
     if (pathname === '/api/account/email-code' && req.method === 'POST') return void handleAuthRequest(req, res, handleAccountEmailCode);
     if (pathname === '/api/account/email' && req.method === 'POST') return void handleAuthRequest(req, res, handleAccountEmail);
+    if (pathname === '/api/account/phone-code' && req.method === 'POST') return void handleAuthRequest(req, res, handleAccountPhoneCode);
+    if (pathname === '/api/account/phone' && req.method === 'POST') return void handleAuthRequest(req, res, handleAccountPhone);
     if (pathname === '/api/account/password' && req.method === 'POST') return void handleAuthRequest(req, res, handleAccountPassword);
     if (pathname === '/api/register' && req.method === 'POST') return void handleAuthRequest(req, res, handleRegister);
     if (pathname === '/api/logout' && req.method === 'POST') return handleLogout(req, res);
@@ -1835,7 +2497,7 @@ const server = http.createServer((req, res) => {
     if (pathname === '/api/chat' && req.method === 'POST') return void handleChat(req, res);
     if (pathname === '/api/asr' && req.method === 'POST') return void handleAsr(req, res);
     if (pathname === '/api/vision' && req.method === 'POST') return void handleVision(req, res);
-    if (pathname === '/api/state' && req.method === 'GET') return handleStateGet(req, res);
+    if (pathname === '/api/state' && req.method === 'GET') return void handleStateGet(req, res);
     if (pathname === '/api/state' && req.method === 'PUT') return void handleStatePut(req, res);
     if (pathname === '/api/transcript/file' && req.method === 'GET') return void handleTranscriptFile(req, res);
     if (pathname === '/api/transcript' && req.method === 'GET') return void handleTranscriptGet(req, res);
@@ -1847,7 +2509,23 @@ const server = http.createServer((req, res) => {
   serveStatic(req, res, pathname === '/' ? '/index.html' : pathname);
 });
 
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '127.0.0.1', () => {
   const registration = registrationAvailable() ? `开放(已注册 ${regUsers.length})` : '关闭';
-  console.log(`小白同学网关已启动: http://0.0.0.0:${PORT} (dist: ${DIST}, model: ${MODEL}, coach: ${MODEL_COACH}, vision: ${VISION_KEY ? MODEL_VISION : '关闭'}, asr: ${ASR_KEY ? ASR_MODEL : '关闭'}, 邮箱验证: ${emailAuth ? '开启' : '关闭'}, 注册: ${registration})`);
+  console.log(`小白同学网关已启动: http://127.0.0.1:${PORT} (dist: ${DIST}, model: ${MODEL}, coach: ${MODEL_COACH}, vision: ${VISION_KEY ? MODEL_VISION : '关闭'}, asr: ${ASR_KEY ? ASR_MODEL : '关闭'}, 腾讯验证码: ${captchaService.available ? '开启' : '关闭'}, 邮箱验证: ${emailAuth ? '开启' : '关闭'}, 手机验证: ${phoneAuth ? '开启' : '关闭'}, 注册: ${registration})`);
 });
+
+let shuttingDown = false;
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[shutdown] ${signal}`);
+  const deadline = setTimeout(() => process.exit(1), 15_000);
+  deadline.unref();
+  await new Promise((resolve) => server.close(resolve));
+  await productionStorage?.close();
+  clearTimeout(deadline);
+  process.exit(0);
+}
+
+process.once('SIGTERM', () => { void shutdown('SIGTERM'); });
+process.once('SIGINT', () => { void shutdown('SIGINT'); });

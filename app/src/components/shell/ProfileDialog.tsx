@@ -9,6 +9,7 @@ import { deriveTeacherRank } from '../../engine/achievements';
 import { deriveWisdom, deriveEvolution } from '../../engine/evolution';
 import { Icon } from '../ui/Icon';
 import { ProfileEmailChange } from './ProfileEmailChange';
+import { ProfilePhoneChange } from './ProfilePhoneChange';
 import { ProfilePasswordChange } from './ProfilePasswordChange';
 import { TranscriptUpload } from './TranscriptUpload';
 import styles from './ProfileDialog.module.css';
@@ -44,6 +45,8 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
   const user = useAuthStore((state) => state.user);
   const emailMasked = useAuthStore((state) => state.emailMasked);
   const emailBindingRequired = useAuthStore((state) => state.emailBindingRequired);
+  const phoneMasked = useAuthStore((state) => state.phoneMasked);
+  const phoneBindingRequired = useAuthStore((state) => state.phoneBindingRequired);
   const logout = useAuthStore((state) => state.logout);
   // 学习身份:师道称号 / 修行阶 / 学识等级,全部从真实事件流纯派生(手法照 growth 页)
   const global = useAppStore((state) => state.global);
@@ -61,11 +64,14 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
   const [logoutIssue, setLogoutIssue] = useState<string | null>(null);
   const [emailEditorOpen, setEmailEditorOpen] = useState(false);
   const [emailNotice, setEmailNotice] = useState<string | null>(null);
+  const [phoneEditorOpen, setPhoneEditorOpen] = useState(false);
+  const [phoneNotice, setPhoneNotice] = useState<string | null>(null);
   const [passwordEditorOpen, setPasswordEditorOpen] = useState(false);
   const [passwordNotice, setPasswordNotice] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const emailToggleRef = useRef<HTMLButtonElement>(null);
+  const phoneToggleRef = useRef<HTMLButtonElement>(null);
   const passwordToggleRef = useRef<HTMLButtonElement>(null);
   const backdropArmed = useRef(false);
 
@@ -102,6 +108,8 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
     if (open) return;
     setEmailEditorOpen(false);
     setEmailNotice(null);
+    setPhoneEditorOpen(false);
+    setPhoneNotice(null);
     setPasswordEditorOpen(false);
     setPasswordNotice(null);
   }, [open]);
@@ -139,6 +147,11 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
     window.requestAnimationFrame(() => emailToggleRef.current?.focus());
   };
 
+  const closePhoneEditor = () => {
+    setPhoneEditorOpen(false);
+    window.requestAnimationFrame(() => phoneToggleRef.current?.focus());
+  };
+
   const closePasswordEditor = () => {
     setPasswordEditorOpen(false);
     window.requestAnimationFrame(() => passwordToggleRef.current?.focus());
@@ -147,6 +160,7 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
   if (!open) return null;
 
   const emailSummary = emailBindingRequired ? '尚未绑定验证邮箱' : emailMasked ?? '邮箱已完成验证';
+  const phoneSummary = phoneBindingRequired ? '尚未绑定验证手机号' : phoneMasked ?? '手机号已完成验证';
 
   return (
     <dialog
@@ -176,7 +190,7 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
           className={styles.identity}
           to="/growth"
           onClick={onClose}
-          aria-label={`${user ?? '你'} · 师道${rank.title} · 修行${stageName} · 学识第 ${wisdom.level} 级 · ${emailSummary},点按翻开成长册`}
+          aria-label={`${user ?? '你'} · 师道${rank.title} · 修行${stageName} · 学识第 ${wisdom.level} 级 · ${phoneSummary} · ${emailSummary},点按翻开成长册`}
         >
           <div className={styles.plate}>
             <p className={styles.accountKind}>授课账号</p>
@@ -186,6 +200,12 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
               <span className={styles.credChip}>修行 · {stageName}</span>
               <span className={styles.credChip}>学识第 {wisdom.level} 级</span>
             </div>
+            <p className={styles.emailLine}>
+              <span className={styles.emailText}>{phoneSummary}</span>
+              <span className={phoneBindingRequired ? styles.pendingBadge : styles.secureBadge}>
+                {phoneBindingRequired ? '待绑定' : '已验证'}
+              </span>
+            </p>
             <p className={styles.emailLine}>
               <span className={styles.emailText}>{emailSummary}</span>
               <span className={emailBindingRequired ? styles.pendingBadge : styles.secureBadge}>
@@ -207,6 +227,29 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
           <h3 className={styles.sectionTitle} id="security-title">认证与安全</h3>
           <div className={styles.statusList}>
             <div className={styles.statusRow}>
+              <Icon name="phone" size={17} className={styles.statusIcon} />
+              <div><strong>手机凭证</strong><span>{phoneSummary}</span></div>
+              {phoneBindingRequired ? <small data-pending="true">待验证</small> : (
+                <button
+                  ref={phoneToggleRef}
+                  className={styles.emailToggle}
+                  type="button"
+                  aria-expanded={phoneEditorOpen}
+                  aria-controls="profile-phone-change"
+                  onClick={() => {
+                    setPhoneNotice(null);
+                    setEmailNotice(null);
+                    setPasswordNotice(null);
+                    setEmailEditorOpen(false);
+                    setPasswordEditorOpen(false);
+                    setPhoneEditorOpen((current) => !current);
+                  }}
+                >
+                  {phoneEditorOpen ? '收起' : '更换手机号'}
+                </button>
+              )}
+            </div>
+            <div className={styles.statusRow}>
               <Icon name="mail" size={17} className={styles.statusIcon} />
               <div><strong>邮箱凭证</strong><span>{emailSummary}</span></div>
               {emailBindingRequired ? <small data-pending="true">待验证</small> : (
@@ -218,7 +261,9 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
                   aria-controls="profile-email-change"
                   onClick={() => {
                     setEmailNotice(null);
+                    setPhoneNotice(null);
                     setPasswordNotice(null);
+                    setPhoneEditorOpen(false);
                     setPasswordEditorOpen(false);
                     setEmailEditorOpen((current) => !current);
                   }}
@@ -239,6 +284,8 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
                 onClick={() => {
                   setPasswordNotice(null);
                   setEmailNotice(null);
+                  setPhoneNotice(null);
+                  setPhoneEditorOpen(false);
                   setEmailEditorOpen(false);
                   setPasswordEditorOpen((current) => !current);
                 }}
@@ -247,8 +294,18 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
               </button>
             </div>
           </div>
+          {phoneNotice ? <p className={styles.emailNotice} role="status">{phoneNotice}</p> : null}
           {emailNotice ? <p className={styles.emailNotice} role="status">{emailNotice}</p> : null}
           {passwordNotice ? <p className={styles.emailNotice} role="status">{passwordNotice}</p> : null}
+          {!phoneBindingRequired && phoneEditorOpen ? (
+            <ProfilePhoneChange
+              onCancel={closePhoneEditor}
+              onSuccess={() => {
+                setPhoneNotice('验证手机号已更换，新的验证码登录与找回凭证现已生效。');
+                closePhoneEditor();
+              }}
+            />
+          ) : null}
           {!emailBindingRequired && emailEditorOpen ? (
             <ProfileEmailChange
               onCancel={closeEmailEditor}
@@ -271,7 +328,7 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
 
         <section className={styles.section} aria-labelledby="transcript-title">
           <h3 className={styles.sectionTitle} id="transcript-title">我的成绩单</h3>
-          <TranscriptUpload enabled={!emailBindingRequired} />
+          <TranscriptUpload enabled={!emailBindingRequired && !phoneBindingRequired} />
         </section>
 
         <section className={styles.section} aria-labelledby="entries-title">
@@ -291,6 +348,13 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
               <Link className={styles.entry} to="/login?next=%2Fstudy" onClick={onClose}>
                 <span className={styles.entryTile}><Icon name="mail" size={18} /></span>
                 <span className={styles.entryCopy}><strong>补录验证邮箱</strong><small>完成验证后解锁备课与讲解</small></span>
+                <Icon name="chevron-right" size={16} className={styles.entryChevron} />
+              </Link>
+            ) : null}
+            {phoneBindingRequired ? (
+              <Link className={styles.entry} to="/login?next=%2Fstudy" onClick={onClose}>
+                <span className={styles.entryTile}><Icon name="phone" size={18} /></span>
+                <span className={styles.entryCopy}><strong>绑定验证手机号</strong><small>完成验证后解锁全部业务页面</small></span>
                 <Icon name="chevron-right" size={16} className={styles.entryChevron} />
               </Link>
             ) : null}

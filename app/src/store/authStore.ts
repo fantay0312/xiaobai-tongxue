@@ -2,12 +2,14 @@
 import { create } from 'zustand';
 import { advanceAuthEpoch, API_BASE, currentAuthEpoch, gatewayFetch, setGatewayIdentity } from '../lib/api';
 import { broadcastAuthChange } from '../lib/authChannel';
+import { CaptchaError, requestCaptchaProof, type CaptchaProof } from '../lib/tencentCaptcha';
 import { clearCoachThreads } from '../engine/coach';
 
 export type AuthStatus = 'unknown' | 'standalone' | 'anon' | 'authed' | 'unavailable';
-export type AuthField = 'email' | 'code' | 'username' | 'password' | 'currentPassword'
+export type AuthField = 'email' | 'phone' | 'code' | 'username' | 'password' | 'currentPassword'
   | 'newPassword' | 'confirmPassword' | 'invite' | 'form';
 export type EmailCodePurpose = 'login' | 'register';
+export type SmsCodePurpose = 'login' | 'reset-password';
 
 export interface AuthResult {
   ok: boolean;
@@ -29,7 +31,10 @@ interface AuthState {
   user: string | null;
   emailMasked: string | null;
   emailBindingRequired: boolean;
+  phoneMasked: string | null;
+  phoneBindingRequired: boolean;
   emailAuthAvailable: boolean;
+  smsAuthAvailable: boolean;
   registrationAvailable: boolean;
   inviteRequired: boolean;
   init: () => Promise<void>;
@@ -39,8 +44,14 @@ interface AuthState {
   bindEmail: (email: string, code: string, currentPassword: string) => Promise<AuthResult>;
   requestEmailChangeCode: (email: string, currentPassword: string) => Promise<AuthResult>;
   changeEmail: (email: string, code: string, currentPassword: string) => Promise<AuthResult>;
-  requestPasswordResetCode: (email: string) => Promise<AuthResult>;
-  resetPassword: (email: string, code: string, newPassword: string) => Promise<AuthResult>;
+  requestSmsCode: (phone: string, purpose: SmsCodePurpose) => Promise<AuthResult>;
+  loginWithPhoneCode: (phone: string, code: string) => Promise<AuthResult>;
+  requestPhoneBindingCode: (phone: string, currentPassword: string) => Promise<AuthResult>;
+  bindPhone: (phone: string, code: string, currentPassword: string) => Promise<AuthResult>;
+  requestPasswordResetCode: (phone: string) => Promise<AuthResult>;
+  resetPassword: (phone: string, code: string, newPassword: string) => Promise<AuthResult>;
+  requestEmailPasswordResetCode: (email: string) => Promise<AuthResult>;
+  resetPasswordWithEmail: (email: string, code: string, newPassword: string) => Promise<AuthResult>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<AuthResult>;
   login: (identifier: string, password: string) => Promise<AuthResult>;
   loginWithEmailCode: (email: string, code: string) => Promise<AuthResult>;
@@ -68,6 +79,8 @@ type ErrorInfo = { message: string; field?: AuthField };
 const API_ERRORS: Record<string, ErrorInfo> = {
   'invalid-email': { message: '邮箱格式不正确，请核对后再试', field: 'email' },
   'bad-email': { message: '邮箱格式不正确，请核对后再试', field: 'email' },
+  'invalid-phone': { message: '请输入中国大陆 11 位手机号', field: 'phone' },
+  'bad-phone': { message: '请输入中国大陆 11 位手机号', field: 'phone' },
   'invalid-code': { message: '验证码不正确或已失效，请重新获取', field: 'code' },
   'invalid-or-expired-code': { message: '验证码不正确或已失效，请重新获取', field: 'code' },
   'bad-code': { message: '验证码不正确或已失效，请重新获取', field: 'code' },
@@ -84,16 +97,26 @@ const API_ERRORS: Record<string, ErrorInfo> = {
   'invite-required': { message: '请输入管理员发放的邀请码', field: 'invite' },
   'email-auth-disabled': { message: '邮箱验证码服务暂不可用，请使用账号密码登录' },
   'email-auth-unavailable': { message: '邮箱验证码服务暂不可用，请使用账号密码登录' },
+  'sms-auth-disabled': { message: '手机验证码服务暂不可用，请使用其他方式登录' },
+  'sms-auth-unavailable': { message: '手机验证码服务暂不可用，请使用其他方式登录' },
+  'sms-unavailable': { message: '手机验证码服务暂不可用，请稍后再试' },
+  'phone-unavailable': { message: '暂时无法使用该手机号，请更换手机号或稍后再试', field: 'phone' },
   'email-unavailable': { message: '该邮箱暂时无法接收验证码，请更换邮箱或稍后再试', field: 'email' },
   'registration-disabled': { message: '注册暂未开放，请联系管理员' },
   'registry-full': { message: '注册名额已满，请联系管理员' },
   'too-many-attempts': { message: '尝试过于频繁，请稍后再试' },
   'send-too-frequent': { message: '验证码发送太频繁，请稍后再试' },
   'email-auth-busy': { message: '验证码服务繁忙，请稍后再试' },
+  'sms-auth-busy': { message: '短信验证码服务繁忙，请稍后再试' },
   'email-verification-required': { message: '请先完成邮箱验证后再继续' },
   'mail-send-failed': { message: '验证码暂时无法发送，请稍后再试' },
+  'sms-send-failed': { message: '短信验证码暂时无法发送，请稍后再试' },
   'persist-failed': { message: '账号暂时无法保存，请稍后再试' },
   'https-required': { message: '为保护账号安全，请通过 HTTPS 访问后再试' },
+  'captcha-required': { message: '请先完成安全验证后再试' },
+  'captcha-failed': { message: '安全验证未通过，请重试' },
+  'captcha-unavailable': { message: '安全验证服务暂不可用，请稍后再试' },
+  'phone-verification-required': { message: '请先绑定并验证手机号后再继续', field: 'phone' },
 };
 
 const AUTH_TIMEOUT_MS = 10_000;
@@ -130,6 +153,22 @@ function networkFailure(error: unknown): AuthResult {
     ok: false,
     message: timedOut ? '服务器响应超时，请稍后重试' : '无法连接服务器，请检查网络后重试',
     field: 'form',
+  };
+}
+
+function captchaFailure(error: unknown): AuthResult | null {
+  if (!(error instanceof CaptchaError)) return null;
+  const messages: Record<typeof error.reason, string> = {
+    cancelled: '安全验证已取消，请完成验证后再试',
+    failed: '安全验证未通过，请重试',
+    'rate-limited': '安全验证请求过于频繁，请稍后再试',
+    unavailable: '安全验证服务暂不可用，请稍后再试',
+  };
+  return {
+    ok: false,
+    message: messages[error.reason],
+    field: 'form',
+    ...(error.retryAfter ? { retryAfter: error.retryAfter } : {}),
   };
 }
 
@@ -215,12 +254,34 @@ function maskedEmail(payload: Record<string, unknown>): string | null {
   return typeof value === 'string' && value.length <= 254 && value.includes('*') ? value : null;
 }
 
+function needsPhoneBinding(payload: Record<string, unknown>): boolean {
+  return payload.phoneBindingRequired === true;
+}
+
+function maskedPhone(payload: Record<string, unknown>): string | null {
+  const value = payload.phoneMasked;
+  return typeof value === 'string' && value.length <= 32 && value.includes('*') ? value : null;
+}
+
+function phoneState(payload: Record<string, unknown>): Pick<
+  AuthState,
+  'phoneMasked' | 'phoneBindingRequired'
+> {
+  return {
+    phoneMasked: maskedPhone(payload),
+    phoneBindingRequired: needsPhoneBinding(payload),
+  };
+}
+
 export const useAuthStore = create<AuthState>()((set, get) => ({
   status: 'unknown',
   user: null,
   emailMasked: null,
   emailBindingRequired: false,
+  phoneMasked: null,
+  phoneBindingRequired: false,
   emailAuthAvailable: false,
+  smsAuthAvailable: false,
   registrationAvailable: false,
   inviteRequired: false,
 
@@ -237,9 +298,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         if (response.ok) {
           const data = await readPayload(response);
           if (generation !== currentAuthEpoch()) return;
+          const captchaAvailable = data.captchaAvailable === true;
           const capabilities = {
-            emailAuthAvailable: data.emailAuthAvailable === true,
-            registrationAvailable: data.registrationAvailable === true,
+            emailAuthAvailable: captchaAvailable && data.emailAuthAvailable === true,
+            smsAuthAvailable: captchaAvailable && data.smsAuthAvailable === true,
+            registrationAvailable: captchaAvailable && data.registrationAvailable === true,
             inviteRequired: data.inviteRequired === true,
           };
           if (data.authRequired === false) {
@@ -247,7 +310,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
             setGatewayIdentity(null);
             set({
               status: 'standalone', user: null, emailMasked: null,
-              emailBindingRequired: false, ...capabilities,
+              emailBindingRequired: false, phoneMasked: null,
+              phoneBindingRequired: false, ...capabilities,
             });
           } else {
             const name = userName(data, '');
@@ -258,10 +322,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
             setGatewayIdentity(name || null);
             set(name ? {
               status: 'authed', user: name, emailMasked: maskedEmail(data),
-              emailBindingRequired: needsEmailBinding(data), ...capabilities,
+              emailBindingRequired: needsEmailBinding(data), ...phoneState(data), ...capabilities,
             } : {
               status: 'anon', user: null, emailMasked: null,
-              emailBindingRequired: false, ...capabilities,
+              emailBindingRequired: false, phoneMasked: null,
+              phoneBindingRequired: false, ...capabilities,
             });
           }
           return;
@@ -279,7 +344,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     setGatewayIdentity(null);
     set({
       status, user: null, emailMasked: null, emailBindingRequired: false,
-      emailAuthAvailable: false, registrationAvailable: false, inviteRequired: false,
+      phoneMasked: null, phoneBindingRequired: false,
+      emailAuthAvailable: false, smsAuthAvailable: false,
+      registrationAvailable: false, inviteRequired: false,
     });
   },
 
@@ -292,36 +359,41 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     if (failClosed) {
       clearCoachThreads();
       setGatewayIdentity(null);
-      set({ status: 'unknown', user: null, emailMasked: null, emailBindingRequired: false });
+      set({
+        status: 'unknown', user: null, emailMasked: null, emailBindingRequired: false,
+        phoneMasked: null, phoneBindingRequired: false,
+      });
     }
     await get().init();
   },
 
   requestEmailCode: async (email, purpose, invite) => {
     try {
+      const captcha = await requestCaptchaProof('email');
       const response = await fetchWithTimeout(`${API_BASE}/auth/email-code`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, purpose, ...(invite ? { invite } : {}) }),
+        body: JSON.stringify({ email, purpose, ...(invite ? { invite } : {}), captcha }),
       });
       if (!response.ok) return await apiFailure(response, `验证码发送失败（${response.status}）`);
       const payload = await readPayload(response);
       return { ok: true, retryAfter: retrySeconds(response, payload, 60) };
     } catch (error) {
-      return networkFailure(error);
+      return captchaFailure(error) ?? networkFailure(error);
     }
   },
 
   requestEmailBindingCode: async (email, currentPassword) => {
     try {
+      const captcha = await requestCaptchaProof('email');
       const response = await gatewayFetchWithTimeout(`${API_BASE}/account/email-code`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, currentPassword }),
+        body: JSON.stringify({ email, currentPassword, captcha }),
       }, true);
       if (!response.ok) return await apiFailure(response, `验证码发送失败（${response.status}）`);
       const payload = await readPayload(response);
       return { ok: true, retryAfter: retrySeconds(response, payload, 60) };
     } catch (error) {
-      return networkFailure(error);
+      return captchaFailure(error) ?? networkFailure(error);
     }
   },
 
@@ -344,7 +416,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         return { ok: false, message: '登录状态已变化，请重新操作', field: 'form' };
       }
       setGatewayIdentity(user);
-      set({ status: 'authed', user, emailMasked: maskedEmail(payload), emailBindingRequired: false });
+      set({
+        status: 'authed', user, emailMasked: maskedEmail(payload), emailBindingRequired: false,
+        ...phoneState(payload),
+      });
       broadcastAuthChange();
       return { ok: true };
     } catch (error) {
@@ -357,15 +432,16 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 
   requestEmailChangeCode: async (email, currentPassword) => {
     try {
+      const captcha = await requestCaptchaProof('email');
       const response = await gatewayFetchWithTimeout(`${API_BASE}/account/email-code`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, currentPassword }),
+        body: JSON.stringify({ email, currentPassword, captcha }),
       }, true);
       if (!response.ok) return await emailChangeFailure(response, `验证码发送失败（${response.status}）`);
       const payload = await readPayload(response);
       return { ok: true, retryAfter: retrySeconds(response, payload, 60) };
     } catch (error) {
-      return networkFailure(error);
+      return captchaFailure(error) ?? networkFailure(error);
     }
   },
 
@@ -389,7 +465,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         return { ok: false, message: '邮箱状态未能确认，请重新打开个人中心查看', field: 'form' };
       }
       setGatewayIdentity(user);
-      set({ status: 'authed', user, emailMasked: nextEmailMasked, emailBindingRequired: false });
+      set({
+        status: 'authed', user, emailMasked: nextEmailMasked, emailBindingRequired: false,
+        ...phoneState(payload),
+      });
       broadcastAuthChange();
       return { ok: true };
     } catch (error) {
@@ -401,21 +480,22 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }
   },
 
-  requestPasswordResetCode: async (email) => {
+  requestEmailPasswordResetCode: async (email) => {
     try {
+      const captcha = await requestCaptchaProof('email');
       const response = await fetchWithTimeout(`${API_BASE}/auth/password-code`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, captcha }),
       });
       if (!response.ok) return await apiFailure(response, `验证码发送失败（${response.status}）`);
       const payload = await readPayload(response);
       return { ok: true, retryAfter: retrySeconds(response, payload, 60) };
     } catch (error) {
-      return networkFailure(error);
+      return captchaFailure(error) ?? networkFailure(error);
     }
   },
 
-  resetPassword: async (email, code, newPassword) => {
+  resetPasswordWithEmail: async (email, code, newPassword) => {
     const generation = beginAuthMutation();
     try {
       const response = await fetchWithTimeout(`${API_BASE}/auth/password-reset`, {
@@ -433,7 +513,142 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       setGatewayIdentity(user);
       set({
         status: 'authed', user, emailMasked: maskedEmail(payload),
-        emailBindingRequired: needsEmailBinding(payload),
+        emailBindingRequired: needsEmailBinding(payload), ...phoneState(payload),
+      });
+      broadcastAuthChange();
+      return { ok: true };
+    } catch (error) {
+      queuedRefresh = true;
+      return networkFailure(error);
+    } finally {
+      finishAuthMutation(get);
+    }
+  },
+
+  requestSmsCode: async (phone, purpose) => {
+    try {
+      const captcha = await requestCaptchaProof('sms');
+      const response = await fetchWithTimeout(`${API_BASE}/auth/sms-code`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, purpose, captcha }),
+      });
+      if (!response.ok) return await apiFailure(response, `短信验证码发送失败（${response.status}）`);
+      const payload = await readPayload(response);
+      return { ok: true, retryAfter: retrySeconds(response, payload, 60) };
+    } catch (error) {
+      return captchaFailure(error) ?? networkFailure(error);
+    }
+  },
+
+  loginWithPhoneCode: async (phone, code) => {
+    let captcha: CaptchaProof;
+    try {
+      captcha = await requestCaptchaProof('login');
+    } catch (error) {
+      return captchaFailure(error) ?? networkFailure(error);
+    }
+    const generation = beginAuthMutation();
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/login/phone`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, code, captcha }),
+      });
+      if (response.status === 401) {
+        return { ok: false, message: '手机号或验证码不正确', field: 'code' };
+      }
+      if (!response.ok) return await apiFailure(response, '手机号或验证码不正确');
+      const payload = await readPayload(response);
+      if (generation !== currentAuthEpoch()) return supersededAuthResult();
+      const user = userName(payload, phone);
+      setGatewayIdentity(user);
+      set({
+        status: 'authed', user, emailMasked: maskedEmail(payload),
+        emailBindingRequired: needsEmailBinding(payload), ...phoneState(payload),
+      });
+      broadcastAuthChange();
+      return { ok: true };
+    } catch (error) {
+      queuedRefresh = true;
+      return networkFailure(error);
+    } finally {
+      finishAuthMutation(get);
+    }
+  },
+
+  requestPhoneBindingCode: async (phone, currentPassword) => {
+    try {
+      const captcha = await requestCaptchaProof('sms');
+      const response = await gatewayFetchWithTimeout(`${API_BASE}/account/phone-code`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, currentPassword, captcha }),
+      }, true);
+      if (!response.ok) return await apiFailure(response, `短信验证码发送失败（${response.status}）`);
+      const payload = await readPayload(response);
+      return { ok: true, retryAfter: retrySeconds(response, payload, 60) };
+    } catch (error) {
+      return captchaFailure(error) ?? networkFailure(error);
+    }
+  },
+
+  bindPhone: async (phone, code, currentPassword) => {
+    const generation = beginAuthMutation();
+    try {
+      const response = await gatewayFetchWithTimeout(`${API_BASE}/account/phone`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, code, currentPassword }),
+      }, true);
+      if (!response.ok) {
+        if (response.status >= 500 && queuedRefresh === null) queuedRefresh = false;
+        return await apiFailure(response, `手机号绑定失败（${response.status}）`);
+      }
+      const payload = await readPayload(response);
+      if (generation !== currentAuthEpoch()) return supersededAuthResult();
+      const user = userName(payload, get().user ?? '');
+      const nextPhoneMasked = maskedPhone(payload);
+      if (!user || !nextPhoneMasked || payload.phoneBindingRequired !== false) {
+        if (queuedRefresh === null) queuedRefresh = false;
+        return { ok: false, message: '手机号状态未能确认，请重新打开个人中心查看', field: 'form' };
+      }
+      setGatewayIdentity(user);
+      set({
+        status: 'authed', user,
+        emailMasked: maskedEmail(payload) ?? get().emailMasked,
+        emailBindingRequired: payload.emailBindingRequired === undefined
+          ? get().emailBindingRequired : needsEmailBinding(payload),
+        phoneMasked: nextPhoneMasked,
+        phoneBindingRequired: false,
+      });
+      broadcastAuthChange();
+      return { ok: true };
+    } catch (error) {
+      if (queuedRefresh === null) queuedRefresh = false;
+      return networkFailure(error);
+    } finally {
+      finishAuthMutation(get);
+    }
+  },
+
+  requestPasswordResetCode: async (phone) => get().requestSmsCode(phone, 'reset-password'),
+
+  resetPassword: async (phone, code, newPassword) => {
+    const generation = beginAuthMutation();
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/auth/password-reset/phone`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, code, newPassword }),
+      });
+      if (!response.ok) return await apiFailure(response, `密码重设失败（${response.status}）`);
+      const payload = await readPayload(response);
+      if (generation !== currentAuthEpoch()) return supersededAuthResult();
+      const user = userName(payload, '');
+      if (!user) {
+        queuedRefresh = true;
+        return { ok: false, message: '登录状态未能确认，请使用新密码重新登录', field: 'form' };
+      }
+      setGatewayIdentity(user);
+      set({
+        status: 'authed', user, emailMasked: maskedEmail(payload),
+        emailBindingRequired: needsEmailBinding(payload), ...phoneState(payload),
       });
       broadcastAuthChange();
       return { ok: true };
@@ -466,6 +681,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           emailMasked: maskedEmail(payload) ?? get().emailMasked,
           emailBindingRequired: payload.emailBindingRequired === undefined
             ? get().emailBindingRequired : needsEmailBinding(payload),
+          phoneMasked: maskedPhone(payload) ?? get().phoneMasked,
+          phoneBindingRequired: payload.phoneBindingRequired === undefined
+            ? get().phoneBindingRequired : needsPhoneBinding(payload),
         });
       }
       broadcastAuthChange();
@@ -479,11 +697,17 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   },
 
   login: async (identifier, password) => {
+    let captcha: CaptchaProof;
+    try {
+      captcha = await requestCaptchaProof('login');
+    } catch (error) {
+      return captchaFailure(error) ?? networkFailure(error);
+    }
     const generation = beginAuthMutation();
     try {
       const response = await fetchWithTimeout(`${API_BASE}/login`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password }),
+        body: JSON.stringify({ identifier, password, captcha }),
       });
       if (response.status === 401) {
         return { ok: false, message: '邮箱、账号或密码不正确', field: 'form' };
@@ -495,7 +719,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       setGatewayIdentity(user);
       set({
         status: 'authed', user, emailMasked: maskedEmail(payload),
-        emailBindingRequired: needsEmailBinding(payload),
+        emailBindingRequired: needsEmailBinding(payload), ...phoneState(payload),
       });
       broadcastAuthChange();
       return { ok: true };
@@ -508,11 +732,17 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   },
 
   loginWithEmailCode: async (email, code) => {
+    let captcha: CaptchaProof;
+    try {
+      captcha = await requestCaptchaProof('login');
+    } catch (error) {
+      return captchaFailure(error) ?? networkFailure(error);
+    }
     const generation = beginAuthMutation();
     try {
       const response = await fetchWithTimeout(`${API_BASE}/login/email`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code }),
+        body: JSON.stringify({ email, code, captcha }),
       });
       if (!response.ok) return await apiFailure(response, '邮箱或验证码不正确');
       const payload = await readPayload(response);
@@ -521,7 +751,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       setGatewayIdentity(user);
       set({
         status: 'authed', user, emailMasked: maskedEmail(payload),
-        emailBindingRequired: needsEmailBinding(payload),
+        emailBindingRequired: needsEmailBinding(payload), ...phoneState(payload),
       });
       broadcastAuthChange();
       return { ok: true };
@@ -547,7 +777,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       setGatewayIdentity(user);
       set({
         status: 'authed', user, emailMasked: maskedEmail(payload),
-        emailBindingRequired: needsEmailBinding(payload),
+        emailBindingRequired: needsEmailBinding(payload), ...phoneState(payload),
       });
       broadcastAuthChange();
       return { ok: true };
@@ -562,7 +792,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   logout: async () => {
     const generation = beginAuthMutation();
     setGatewayIdentity(null);
-    set({ status: 'unknown', user: null, emailMasked: null, emailBindingRequired: false });
+    set({
+      status: 'unknown', user: null, emailMasked: null, emailBindingRequired: false,
+      phoneMasked: null, phoneBindingRequired: false,
+    });
     try {
       const response = await fetchWithTimeout(`${API_BASE}/logout`, { method: 'POST' });
       if (!response.ok) {
@@ -573,7 +806,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       }
       if (generation !== currentAuthEpoch()) return supersededAuthResult();
       clearCoachThreads();
-      set({ status: 'anon', user: null, emailMasked: null, emailBindingRequired: false });
+      set({
+        status: 'anon', user: null, emailMasked: null, emailBindingRequired: false,
+        phoneMasked: null, phoneBindingRequired: false,
+      });
       broadcastAuthChange();
       return { ok: true };
     } catch (error) {

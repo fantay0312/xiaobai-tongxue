@@ -4,8 +4,21 @@ import type { AuthField } from '../store/authStore';
 export type Issue = { field: AuthField; message: string };
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const MAINLAND_PHONE_RE = /^1[3-9]\d{9}$/;
 export const CODE_RE = /^\d{6}$/;
 export const NAME_RE = /^[\p{Script=Han}A-Za-z0-9_-]{2,20}$/u;
+
+export function normalizeMainlandPhoneInput(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  const localDigits = digits.startsWith('0086') ? digits.slice(4)
+    : digits.startsWith('86') && digits.length > 11 ? digits.slice(2)
+      : digits;
+  return localDigits.slice(0, 11);
+}
+
+export function mainlandPhoneToE164(value: string): string {
+  return `+86${value}`;
+}
 
 export function mapPasswordIssueField(field: AuthField | undefined): AuthField {
   return field === 'password' ? 'newPassword' : field ?? 'form';

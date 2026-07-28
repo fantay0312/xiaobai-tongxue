@@ -3,26 +3,32 @@ import assert from 'node:assert/strict';
 import {
   authTransportAllowed,
   bindVerifiedEmail,
+  bindVerifiedPhone,
   canonicalName,
   changeVerifiedEmail,
+  changeVerifiedPhone,
   createAuthGate,
   createPasswordService,
   encodedIdentityMatches,
   ipRateKey,
   maskEmail,
+  maskPhone,
+  normalizeMainlandPhone,
   protectedAccessError,
   revokeUserSessions,
   userHasVerifiedEmail,
+  userHasVerifiedPhone,
   validateUserSets,
 } from './auth-security.mjs';
 import { PASSWORD_SCHEME_CURRENT } from './credential-format.mjs';
 
-function user(name, email) {
+function user(name, email, phone) {
   return {
     name,
     salt: 'a'.repeat(32),
     hash: 'b'.repeat(128),
     ...(email ? { email, emailVerifiedAt: '2026-07-14T00:00:00.000Z' } : {}),
+    ...(phone ? { phone, phoneVerifiedAt: '2026-07-14T00:00:00.000Z' } : {}),
   };
 }
 
@@ -102,7 +108,68 @@ test('binding rejects already-bound users and globally owned email addresses', (
   assert.equal(userHasVerifiedEmail(user('老师', 'teacher@example.com')), true);
   assert.equal(userHasVerifiedEmail(user('旧老师')), false);
   assert.equal(protectedAccessError(user('旧老师')), 'email-verification-required');
-  assert.equal(protectedAccessError(user('老师', 'teacher@example.com')), null);
+  assert.equal(
+    protectedAccessError(user('老师', 'teacher@example.com')),
+    'phone-verification-required',
+  );
+  assert.equal(
+    protectedAccessError(user('老师', 'teacher@example.com', '+8613800138000')),
+    null,
+  );
+});
+
+test('mainland phone overlay is strict, unique, and masks only canonical E.164 values', () => {
+  const configured = [user('老师', 'teacher@example.com')];
+  const registered = [user('学生', 'student@example.com', '+8613900139000')];
+  const bindings = [{
+    name: '老师',
+    phone: '+8613800138000',
+    phoneVerifiedAt: '2026-07-14T01:00:00.000Z',
+  }];
+  const result = validateUserSets(configured, registered, [], bindings);
+  assert.equal(result.users[0].phone, '+8613800138000');
+  assert.equal(userHasVerifiedPhone(result.users[0]), true);
+  assert.equal(normalizeMainlandPhone('13800138000'), '+8613800138000');
+  assert.equal(normalizeMainlandPhone('008613800138000'), '+8613800138000');
+  assert.equal(normalizeMainlandPhone('+85291234567'), null);
+  assert.equal(maskPhone('+8613800138000'), '+86138****8000');
+  assert.throws(
+    () => validateUserSets(configured, registered, [], [{ ...bindings[0], extra: true }]),
+    /bad-shape/,
+  );
+  assert.throws(
+    () => validateUserSets(configured, registered, [], [{
+      ...bindings[0], phone: '+8613900139000',
+    }]),
+    /duplicate-phone/,
+  );
+});
+
+test('verified phone bind/change persists to the correct source and enforces one owner', () => {
+  const configured = [user('老师', 'teacher@example.com')];
+  const registered = [user('学生', 'student@example.com')];
+  const firstAt = '2026-07-14T02:00:00.000Z';
+  const changedAt = '2026-07-15T02:00:00.000Z';
+  const configuredUpdate = bindVerifiedPhone(
+    configured, registered, [], '老师', '13800138000', firstAt,
+  );
+  assert.equal(configuredUpdate.source, 'bindings');
+  assert.equal(configuredUpdate.phoneBindings[0].phone, '+8613800138000');
+  assert.throws(() => bindVerifiedPhone(
+    configured, registered, configuredUpdate.phoneBindings,
+    '学生', '+8613800138000', changedAt,
+  ), /phone-taken/);
+  const registeredUpdate = bindVerifiedPhone(
+    configured, registered, configuredUpdate.phoneBindings,
+    '学生', '+8613900139000', firstAt,
+  );
+  assert.equal(registeredUpdate.source, 'registrations');
+  assert.equal(registeredUpdate.registrations[0].phone, '+8613900139000');
+  const changed = changeVerifiedPhone(
+    configured, registeredUpdate.registrations, configuredUpdate.phoneBindings,
+    '老师', '+8613700137000', changedAt,
+  );
+  assert.equal(changed.phoneBindings[0].phone, '+8613700137000');
 });
 
 test('verified email change updates the correct durable source and remains valid after reload', () => {

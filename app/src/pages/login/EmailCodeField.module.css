@@ -52,6 +52,30 @@
   gap: var(--gap-tight);
 }
 
+.phoneRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  border-bottom: 1.5px solid var(--paper-edge);
+  transition: border-color var(--t-fast) var(--ease-out);
+}
+
+.phoneRow:focus-within { border-bottom-color: var(--azure); }
+
+.phoneRow:has(.input[aria-invalid='true']) { border-bottom-color: var(--cinnabar); }
+
+.phoneRow .input {
+  border-bottom: 0;
+}
+
+.dialCode {
+  padding-right: var(--gap-hair);
+  color: var(--ink-soft);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-small);
+  letter-spacing: 0.04em;
+}
+
 /* 取码票根钮:铅字小签制式的锐角票券钮(radius-tag),azure 小字合规 */
 .sendCode {
   min-width: 7.5rem;

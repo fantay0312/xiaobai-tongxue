@@ -10,6 +10,8 @@ export const API_BASE = `${base.replace(/\/+$/, '')}/api`;
 export const AUTH_EXPIRED_EVENT = 'xiaobai:auth-expired';
 /** 网关明确拒绝未补录邮箱的旧账号时，交给认证层回读 /me 并进入补绑页。 */
 export const EMAIL_BINDING_REQUIRED_EVENT = 'xiaobai:email-binding-required';
+/** 网关拒绝未验证手机号的账号时，交给认证层回读 /me 并进入强制绑号页。 */
+export const PHONE_BINDING_REQUIRED_EVENT = 'xiaobai:phone-binding-required';
 
 let authEpoch = 0;
 let gatewayIdentity: string | null = null;
@@ -35,6 +37,17 @@ async function responseRequiresEmailBinding(response: Response): Promise<boolean
     const payload: unknown = await response.clone().json();
     return !!payload && typeof payload === 'object'
       && (payload as { error?: unknown }).error === 'email-verification-required';
+  } catch {
+    return false;
+  }
+}
+
+async function responseRequiresPhoneBinding(response: Response): Promise<boolean> {
+  if (response.status !== 403) return false;
+  try {
+    const payload: unknown = await response.clone().json();
+    return !!payload && typeof payload === 'object'
+      && (payload as { error?: unknown }).error === 'phone-verification-required';
   } catch {
     return false;
   }
@@ -79,6 +92,10 @@ export async function gatewayFetch(
   if (requestEpoch === authEpoch && typeof window !== 'undefined'
     && await responseRequiresEmailBinding(response) && requestEpoch === authEpoch) {
     window.dispatchEvent(new Event(EMAIL_BINDING_REQUIRED_EVENT));
+  }
+  if (requestEpoch === authEpoch && typeof window !== 'undefined'
+    && await responseRequiresPhoneBinding(response) && requestEpoch === authEpoch) {
+    window.dispatchEvent(new Event(PHONE_BINDING_REQUIRED_EVENT));
   }
   return response;
 }

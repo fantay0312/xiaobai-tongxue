@@ -9,6 +9,7 @@ import { useAuthStore } from '../../store/authStore';
 export function RequireAuth({ children }: { children: ReactNode }) {
   const status = useAuthStore((s) => s.status);
   const emailBindingRequired = useAuthStore((s) => s.emailBindingRequired);
+  const phoneBindingRequired = useAuthStore((s) => s.phoneBindingRequired);
   const init = useAuthStore((s) => s.init);
   const { pathname, search } = useLocation();
   if (status === 'unknown') {
@@ -24,7 +25,8 @@ export function RequireAuth({ children }: { children: ReactNode }) {
       </div>
     );
   }
-  if (status === 'anon' || (status === 'authed' && emailBindingRequired)) {
+  if (status === 'anon'
+    || (status === 'authed' && (emailBindingRequired || phoneBindingRequired))) {
     return <Navigate to={`/login?next=${encodeURIComponent(`${pathname}${search}`)}`} replace />;
   }
   return <>{children}</>;

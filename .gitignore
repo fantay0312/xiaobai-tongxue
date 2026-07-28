@@ -8,6 +8,8 @@ doc/aiapi.md
 doc/服务器相关.md
 doc/openrouter key.md
 doc/resendkey.md
+doc/验证/验证.md
+doc/数据库/
 server/config.json
 
 # 注册用户凭据/按账号学习存档(网关运行时落盘),禁止入库

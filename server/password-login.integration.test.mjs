@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import crypto from 'node:crypto';
+import net from 'node:net';
 import path from 'node:path';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -25,6 +26,20 @@ function passwordUser(name, password, email) {
     hash,
     ...(email ? { email, emailVerifiedAt: VERIFIED_AT } : {}),
   };
+}
+
+async function rawHttpRequest(port, requestPath) {
+  return new Promise((resolve, reject) => {
+    const socket = net.createConnection({ host: '127.0.0.1', port });
+    let response = '';
+    socket.setEncoding('utf8');
+    socket.once('connect', () => {
+      socket.end(`GET ${requestPath} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n`);
+    });
+    socket.on('data', (chunk) => { response += chunk; });
+    socket.once('end', () => resolve(response));
+    socket.once('error', reject);
+  });
 }
 
 test('password login accepts account or verified email without weakening legacy binding', async (t) => {
@@ -60,6 +75,11 @@ test('password login accepts account or verified email without weakening legacy 
   await waitForReady(child);
   const base = `http://127.0.0.1:${port}`;
 
+  const malformedPath = await rawHttpRequest(port, '/%');
+  assert.match(malformedPath, /^HTTP\/1\.1 400 /);
+  assert.equal(child.exitCode, null);
+  assert.equal((await fetch(base)).status, 200);
+
   const configEmail = await postJson(`${base}/api/login`, {
     identifier: '  CONFIG@EXAMPLE.COM  ', password: 'configured-password',
   });
@@ -68,6 +88,8 @@ test('password login accepts account or verified email without weakening legacy 
     user: { name: configured.name },
     emailBindingRequired: false,
     emailMasked: 'c***@example.com',
+    phoneBindingRequired: true,
+    phoneMasked: null,
   });
   assert.ok(configEmail.response.headers.get('set-cookie'));
   const overrides = JSON.parse(await readFile(path.join(data, 'password-overrides.json'), 'utf8'));
@@ -103,6 +125,8 @@ test('password login accepts account or verified email without weakening legacy 
     user: { name: legacy.name },
     emailBindingRequired: true,
     emailMasked: null,
+    phoneBindingRequired: true,
+    phoneMasked: null,
   });
   persistedRegistrations = JSON.parse(
     await readFile(path.join(data, 'registered-users.json'), 'utf8'),

@@ -31,7 +31,7 @@ let appliedRefreshEpoch = 0;
 function syncIsCurrent(generation: number, user: string): boolean {
   const auth = useAuthStore.getState();
   return generation === syncGeneration && auth.status === 'authed'
-    && auth.user === user && !auth.emailBindingRequired;
+    && auth.user === user && !auth.emailBindingRequired && !auth.phoneBindingRequired;
 }
 
 function snapshot(): SyncPayload {
@@ -237,8 +237,14 @@ export function initStateSync(): void {
   if (started) return;
   started = true;
   let adoptRetryTimer = 0;
-  const onAuth = (status: string, user: string | null, emailBindingRequired: boolean) => {
-    const authKey = `${status}\0${user ?? ''}\0${emailBindingRequired ? 'restricted' : 'ready'}`;
+  const onAuth = (
+    status: string,
+    user: string | null,
+    emailBindingRequired: boolean,
+    phoneBindingRequired: boolean,
+  ) => {
+    const restricted = emailBindingRequired || phoneBindingRequired;
+    const authKey = `${status}\0${user ?? ''}\0${restricted ? 'restricted' : 'ready'}`;
     if (authKey === observedAuthKey) return;
     observedAuthKey = authKey;
     syncGeneration += 1;
@@ -249,7 +255,7 @@ export function initStateSync(): void {
     pushPromise = null;
     remoteRefreshEpoch = 0;
     appliedRefreshEpoch = 0;
-    if (status === 'authed' && user && !emailBindingRequired) {
+    if (status === 'authed' && user && !restricted) {
       syncedUser = null;
       serverVersion = null;
       const tryAdopt = () => {
@@ -268,13 +274,19 @@ export function initStateSync(): void {
     }
   };
 
-  useAuthStore.subscribe((state) => onAuth(state.status, state.user, state.emailBindingRequired));
+  useAuthStore.subscribe((state) => onAuth(
+    state.status,
+    state.user,
+    state.emailBindingRequired,
+    state.phoneBindingRequired,
+  ));
   const auth = useAuthStore.getState();
-  onAuth(auth.status, auth.user, auth.emailBindingRequired);
+  onAuth(auth.status, auth.user, auth.emailBindingRequired, auth.phoneBindingRequired);
   useAppStore.subscribe((state, previous) => {
     if (applyingRemote) return;
     const currentAuth = useAuthStore.getState();
-    if (currentAuth.status !== 'authed' || currentAuth.emailBindingRequired || !currentAuth.user) return;
+    if (currentAuth.status !== 'authed' || currentAuth.emailBindingRequired
+      || currentAuth.phoneBindingRequired || !currentAuth.user) return;
     if (state.global === previous.global && state.events === previous.events
       && state.reports === previous.reports) return;
     const before = { global: previous.global, events: previous.events, reports: previous.reports };
@@ -285,7 +297,10 @@ export function initStateSync(): void {
   });
   window.addEventListener('storage', (event) => {
     const auth = useAuthStore.getState();
-    const eventUser = syncedUser ?? (auth.status === 'authed' && !auth.emailBindingRequired ? auth.user : null);
+    const eventUser = syncedUser ?? (
+      auth.status === 'authed' && !auth.emailBindingRequired && !auth.phoneBindingRequired
+        ? auth.user : null
+    );
     if (!eventUser || !pendingSyncQueue.isUserKey(eventUser, event.key)) return;
     if (event.newValue === null) remoteRefreshEpoch += 1;
     if (syncedUser === eventUser && serverState) schedulePush(0);

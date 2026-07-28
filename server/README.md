@@ -1,276 +1,167 @@
-# 小白同学 · 生产网关
+# 小白同学生产网关
 
-零业务依赖 Node(≥18)网关:静态托管前端 + 密码/邮箱验证码会话 + LLM/视觉代理 +
-语音转写代理 + 按账号学习存档与成绩单文件。
-**LLM、视觉、OpenRouter(ASR)与 Resend 密钥只存服务器，永远不出现在前端产物里。**
+Node.js 20+ 网关，负责静态站点、会话、腾讯验证码、邮箱/手机验证码、LLM/视觉/语音代理，以及
+PostgreSQL、Redis、COS 和 Resend 入站邮件。
 
-## 当前部署(2026-07-06,HTTPS 入口 2026-07-13 起)
+生产入口：<https://xiaobai.tokentosea.com/>
 
-- 服务器:106.53.163.57(Debian 13,腾讯云)
-- **主入口(推荐)**:`https://tradingvane.com/xiaobai/` —— 复用同机 tradingvane.com 的
-  Let's Encrypt 证书(`/etc/nginx/sites-available/tradingvane.com` 443 块追加了
-  `/xiaobai/` location,改前备份 `tradingvane.com.bak-xiaobai`)。
-  **语音输入只在这个入口可用**(浏览器只在安全上下文开放麦克风)
-- 旧入口(保留):`http://106.53.163.57/xiaobai/`(nginx `location /xiaobai/` 反代 → 本机 `127.0.0.1:8000`);
-  HTTP 明文,无语音;两个入口是不同 origin,浏览器本地缓存互不相通,但服务器档跟账号走,登录即还原
-- 网关直听 `0.0.0.0:8000`,但云安全组未放行 8000;若在腾讯云控制台放行,
-  `http://106.53.163.57:8000/` 也可直接访问(网关 `pathPrefix` 对两种入口同时兼容)
-- 服务:`systemd` 单元 `xiaobai.service`(开机自启,`User=xiaobai` 非特权用户)
-- 目录:`/opt/xiaobai/{dist,server}`;配置 `/opt/xiaobai/server/config.json`(chmod 600)
-- nginx 变更:仅向 `/etc/nginx/conf.d/tradingvane-ip.conf` **追加**了 `/xiaobai/` location,
-  原站点不受影响;改前备份在同目录 `tradingvane-ip.conf.bak-xiaobai`
+## 生产拓扑
 
-## 鉴权模型
+```text
+浏览器
+  → 腾讯云 CDN（TLS 1.2/1.3、HTTP/2、OCSP、HSTS、HTTP→HTTPS 308）
+  → nginx HTTPS 源站（校验 CDN 专用回源头，透传真实客户端 IP）
+  → Node 网关 127.0.0.1:8000
+      ├─ PostgreSQL：用户、加密联系方式、学习状态、文件元数据、来信
+      ├─ Redis RESP2：短信 OTP、尝试次数与分布式限流（仅 xiaobai:*）
+      ├─ 私有 COS：成绩单与来信附件（xiaobai/*，SSE-COS）
+      ├─ 腾讯云 SMS：手机验证码
+      └─ Resend：发信及 email.received Webhook
+```
 
-- 默认密码通道:`POST /api/login {identifier,password}`，`identifier` 可以是账号名或已验证邮箱，
-  邮箱按去空格、忽略大小写后的规范值匹配；旧客户端的 `{username,password}` 字段继续兼容。
-  未绑定邮箱、未知邮箱和错误密码统一返回 `401 invalid-credentials`，不暴露邮箱归属。
-  没有已验证邮箱的预置账号或旧注册账号按账号名密码登录成功后只取得
-  **restricted session**，响应与 `/api/me` 都带
-  `emailBindingRequired:true`、`emailMasked:null`，必须先完成邮箱绑定：
-  - `POST /api/account/email-code {email,currentPassword}`；
-  - `POST /api/account/email {email,code,currentPassword}`。
-  两个接口都要求 HTTPS、当前 restricted Cookie 以及与 Cookie 账号一致的
-  `X-Xiaobai-User`。绑定码除邮箱与 `purpose=bind` 外还绑定账号 canonical name，不能跨账号消费。
-  已占用邮箱与可用邮箱的发码响应保持一致：占用时不发信、不创建验证码，但仍消耗同一组
-  邮箱/IP/全局发送窗口与冷却；完成绑定也不返回邮箱归属错误。绑定成功先原子持久化，
-  再撤销该账号全部旧 restricted SID 并签发新 SID。
-- 已验证邮箱的账号复用同两个接口执行换绑。服务端自动改用独立
-  `purpose=change-email`，换绑码同时绑定 canonical name、目标新邮箱与发码时的旧邮箱版本；
-  任何一次换绑成功后，基于更旧邮箱状态签发的码都不能再消费。发码阶段的同邮箱、可用邮箱与
-  他人已占用邮箱保持同形 `200`：同邮箱真实发码给当前邮箱，他人已占用时抑制发信。同邮箱的
-  有效码仅在最终提交时以中性 `409 email-unavailable` 拒绝，不写盘、不换 SID。换绑持久化
-  成功后撤销该账号全部旧 SID，只签发一个新 SID。
-- 邮箱验证码:
-  - `POST /api/auth/email-code {email,purpose,invite?}`，`purpose` 仅允许 `login | register`;
-    注册发码必须同时提交正确 `invite`。
-  - `POST /api/login/email {email,code}` 验证成功后发同一种会话 Cookie。
-  - 未注册邮箱请求登录码仍返回同形成功响应并进入同一限流，但不实际发信;
-    服务端加近似发信延迟，减少账号枚举与邮件轰炸。
-  - 验证码是 6 位数字、10 分钟有效、最多试 5 次、一次消费;重发成功后旧码失效。
-    内存仅存进程随机 HMAC 摘要，不存明文码;服务重启后待验证码全部失效。
-- 找回密码与修改密码:
-  - `POST /api/auth/password-code {email}` 只向已绑定的验证邮箱发送重置码；
-    未知邮箱与已知邮箱保持同形、同限流和统一最低响应延迟，不暴露账号归属。
-  - `POST /api/auth/password-reset {email,code,newPassword}` 校验邮箱码后重置密码，
-    撤销该账号全部旧会话并签发新会话。
-  - `POST /api/account/password {currentPassword,newPassword}` 要求当前 Cookie 会话、
-    匹配的 `X-Xiaobai-User` 与正确当前密码；成功后同样撤销其他旧会话。
-  - 新密码统一限制 8–128 位。注册账号直接原子更新
-    `registered-users.json`；只读 `config.users` 账号写入 `password-overrides.json`，
-    重启后先严格校验再叠加。
-- 注册仍是邀请制，但**服务端强制同时验证邮箱码**:
-  `POST /api/register {username,password,email,code,invite}`。`inviteCode`、Resend key 或发件人
-  任意一项缺失时注册 fail-closed 关闭，不会降级成免验证码注册。
-- 注册规则:用户名 2-20 字(汉字/字母/数字/`_`/`-`)、用户名和规范化邮箱各自全站唯一;
-  密码 8-128 位。密码用 scrypt 落盘，邮箱记录 `emailVerifiedAt`，文件仍是
-  `dataDir/registered-users.json`(0600，tmp+rename 原子写)。
-- `/api/me` 保留 `user/authRequired`，并返回
-  `emailBindingRequired/emailMasked/emailAuthAvailable/registrationAvailable/inviteRequired`
-  供前端按服务器真实能力显示入口。`emailMasked` 只向本人会话提供脱敏值。
-- 登录发 HttpOnly Cookie(`xiaobai_sid`,SameSite=Lax,72h)。仅信本机 nginx 的
-  `X-Forwarded-Proto:https`。默认对密码登录、邮箱登录、注册/登录发码、绑定发码/完成绑定
-  fail-closed 拒绝非 HTTPS(`426 https-required`)，生产会话始终带 `Secure`;
-  只有本地/测试显式配 `allowInsecureAuth:true` 才放行 HTTP。
-- 密码 scrypt 均走异步线程池;未知用户也执行同参数 dummy scrypt。鉴权请求先做
-  单 IP 30 次/分钟入场限流，通过后才消耗全局 120 次/分钟额度；并发槽独立限 8，
-  鉴权请求体 5 秒绝对超时，避免单一来源或慢速请求拖垮全局登录。
-- `/api/chat` `/api/asr` `/api/vision` `/api/state` `/api/transcript*` 均必须登录且已验证邮箱；restricted session 一律返回
-  `403 email-verification-required`，只能访问 `/api/me`、登出与上述两个绑定接口。
-- 上述受保护资源还必须带 ASCII 请求头
-  `X-Xiaobai-User: encodeURIComponent(当前用户名)`;解码后与 Cookie 会话账号不一致则
-  `401 identity-mismatch`，阻止共享 Cookie 的跨标签页旧账号状态污染新账号。
-- `/api/asr`(2026-07-13 起):语音转写代理。浏览器上传 WAV 原始体(≤8MB),
-  网关持 `asrApiKey` 转发 `asrUpstreamUrl`(默认 OpenRouter `/v1/audio/transcriptions`,
-  模型 `asrModel` 默认 qwen3-asr-flash);`asrApiKey` 为空 = 功能关闭(503)
-- `/api/vision`:课堂图片理解代理。浏览器上传 JPEG/PNG/WebP 原始体(≤8MB)，网关按魔数
-  验证后转为 data URL 发给 OpenAI 兼容视觉模型，返回 `{description}`，原图不落盘。
-- `/api/transcript`:每账号一份成绩单。支持 PDF/JPEG/PNG/WebP 原始体(≤8MB)，魔数校验；
-  文件与元数据写入 `dataDir/transcripts/<sha256(账号小写)>.{bin,json}`，两个文件均以
-  0600 单文件原子替换，读取时再以大小、类型和 SHA-256 失败关闭校验。
-- `/api/state`(2026-07-13 起):按账号学习存档。GET 取回 / PUT 覆盖(整包 LWW),
-  落盘 `dataDir/userdata/<sha256(账号小写)>.json`(0600 原子写,上限 2MB)——
-  换设备登录同一账号,学习记录自动还原
-- 限流:登录失败按真实客户端 IP(仅信任本机 nginx 的 X-Real-IP)10 次/15 分钟，
-  成功登录不清空该 IP 尚未到期的失败历史，无法用已知有效凭据循环重置;
-  注册尝试(成败都计)8 次/15 分钟/IP,邀请码恒时比对,注册总量封顶 500;
-  发码有邮箱 60s 冷却、5 次/小时，IP 10 次/小时，全局 4 次/秒、200 次/小时、500 次/日;
-  多维限流先整体检查再原子计数，失败维度不污染其他额度;
-  验码还有 IP 窗口与容量上限，IPv6 按 `/64` 聚合。
-  聊天按**账号名** 12 次/分钟 + 400 次/日(重复登录铸新会话无法绕过);
-  视觉按账号 8 次/分钟 + 120 次/日、全局最多 4 个并发；转写按账号 10 次/分钟 +
-  300 次/日；存档与成绩单资源各按账号 30 次/分钟。视觉与成绩单上传体有独立
-  15 秒绝对超时；成绩单 PUT 还限全局 4 个、每账号 1 个同时在飞
-- **部署注意**:systemd 单元 `ProtectSystem=strict` 把 `/opt/xiaobai` 挂只读,
-  注册状态与预置账号邮箱 overlay 写在 `StateDirectory=xiaobai`（即
-  `/var/lib/xiaobai/{registered-users.json,email-bindings.json,password-overrides.json,userdata/,transcripts/}`），
-  生产 `config.json` 必须配 `"dataDir": "/var/lib/xiaobai"`;不配 dataDir 时回落
-  网关同目录(本地裸跑用)。启动时用独立 probe 文件验证写权限，不重写真实注册表;
-  `config.users`、`registered-users.json`、`email-bindings.json` 与 `password-overrides.json`
-  必须是合法数组，任一坏行、
-  悬空 overlay、规范化用户名/邮箱重复都会 fatal 拒绝启动，不再静默丢弃账号。
+旧入口 `/xiaobai/` 只保留到新域名根路径的 308 跳转，不再承担业务。
 
-### 旧账号绑定数据迁移
+## 鉴权契约
 
-- `registered-users.json` 的旧行可以没有 `email/emailVerifiedAt`；完成绑定后原行会原子升级为：
-  `{name,salt,hash,...,email,emailVerifiedAt}`。
-- `config.users` 视为只读，绑定或换绑结果单独写入 `email-bindings.json`：
-  `[{"name":"原账号名","email":"规范化邮箱","emailVerifiedAt":"ISO-8601 时间"}]`。
-  启动时 overlay 只允许指向现存预置账号，并与注册用户一起做全局邮箱唯一性校验。
-  overlay 是该预置账号的运行时权威邮箱，因此即使 `config.users` 原行已有验证邮箱，换绑后也会由
-  overlay 覆盖；重启后仍使用新邮箱并重做全局唯一性校验。
-- `config.users` 的密码修改不回写只读配置，而是原子写入
-  `password-overrides.json`：`[{name,passwordScheme,salt,hash,changedAt}]`。旧行可缺省
-  `passwordScheme`（按 `scrypt-v1` 读取），新写入统一为 `scrypt-v2`。覆盖只能指向现存预置账号，
-  名称、scrypt 凭据、ISO 时间或对象形状任一异常都会 fail-closed 拒绝启动。
-- 任一用户只要配置了 `email` 就必须同时有合法 `emailVerifiedAt`；不再把“管理员写了邮箱但
-  没有验证时间”的账号当成已验证。旧配置若已有这类行，发布前应删除该 `email` 让用户登录后补绑，
-  或在确认归属后同时补上真实验证时间。
+- 密码登录：`POST /api/login`，账号名或已验证邮箱 + 密码 + 登录验证码。
+- 邮箱验证码登录：`POST /api/auth/email-code` → `POST /api/login/email`。
+- 手机验证码登录：`POST /api/auth/sms-code` → `POST /api/login/phone`。
+- 手机重置密码：`POST /api/auth/sms-code`（`purpose=reset-password`）→
+  `POST /api/auth/password-reset/phone`。
+- 邮箱重置密码仍作为次级兜底：
+  `POST /api/auth/password-code` → `POST /api/auth/password-reset`。
+- 绑定/换绑手机：`POST /api/account/phone-code` → `POST /api/account/phone`，
+  两步都要求当前密码，发码还要求腾讯图形验证码。
+- 未绑定手机号的历史用户可以取得受限会话，但所有业务 API 都返回
+  `403 phone-verification-required`，直至完成短信验证绑定。
+- 注册仍是邀请制并要求已验证邮箱；新注册用户登录后同样必须绑定手机号。
+- 短信仅接受中国大陆手机号，后端统一保存为 `+86` E.164。
+- 验证码 6 位、10 分钟有效、最多尝试 5 次、一次消费。Redis 仅保存 HMAC 摘要，不保存明文码。
 
-## 图片理解与成绩单 API
-
-视觉代理默认回落既有 `upstreamBaseUrl/upstreamModel/apiKey`。若课堂模型不支持图片，须在
-`config.json` 单独配置支持 OpenAI Chat Completions 图片内容格式的端点：
+`/api/me` 返回前端所需的能力与门禁状态：
 
 ```json
 {
-  "visionUpstreamUrl": "https://视觉服务.example/v1",
-  "upstreamModelVision": "视觉模型名",
-  "visionApiKey": "仅服务器保存的密钥"
+  "user": null,
+  "emailBindingRequired": false,
+  "phoneBindingRequired": false,
+  "captchaAvailable": true,
+  "emailAuthAvailable": true,
+  "smsAuthAvailable": true
 }
 ```
 
-`upstreamModelVision` 可独立留空回落主模型。`visionApiKey` **仅在视觉端点与
-`upstreamBaseUrl` 同源时**才可留空回落主 `apiKey`；异源 `visionUpstreamUrl` 未显式配密钥时
-`/api/vision` 关闭，绝不会把主密钥发给另一域名。视觉端点生产只允许 HTTPS；
-`allowInsecureAuth:true` 时也只额外允许 loopback HTTP 测试端点。上传体限时 15 秒，
-上游请求限时 60 秒，全局最多 4 个同时在飞；服务器只发送一条受控观察任务和图片，
-不接受客户端自定义视觉 prompt。
+## 数据存储
 
-客户端调用约定：
+- `users`：稳定 UUID、用户名、scrypt 密码凭据和会话版本。
+- `contacts`：邮箱/手机号的 HMAC 查询摘要与 AES-256-GCM 密文，数据库不保存联系方式明文。
+- `learning_states`：按用户保存学习状态，使用 revision 做乐观并发。
+- `user_files`：COS 键、内容类型、大小和 SHA-256；COS 桶保持私有。
+- `inbound_emails`：经 Resend Webhook 签名验证后保存的来信正文和元数据。
+- `auth_audit_events`：预留的鉴权审计表。
 
-```text
-POST /api/vision
-Content-Type: image/png | image/jpeg | image/webp
-X-Xiaobai-User: encodeURIComponent(当前用户名)
-Body: 原始图片字节
-→ 200 {"description":"图片中的课堂内容……"}
+生产启动会幂等导入 `/var/lib/xiaobai` 中的旧用户 JSON 和学习状态；数据库已有记录时不会用旧文件
+覆盖。旧目录继续保留，供发布回滚和迁移核验使用。
 
-GET /api/transcript
-→ 200 {"file":null}
-→ 200 {"file":{"name":"成绩单.pdf","type":"application/pdf","size":1234,"updatedAt":"..."}}
+## 入站邮件
 
-PUT /api/transcript
-Content-Type: application/pdf | image/png | image/jpeg | image/webp
-X-File-Name: encodeURIComponent(原始文件名)
-Body: 原始文件字节
-→ 200 {"file":{...}}
+Webhook：`POST /api/webhooks/resend`
 
-GET /api/transcript/file
-→ 原始文件下载
+只接受 Resend `email.received` 事件，必须使用原始请求体通过 Svix 签名校验。收件地址
+`<账号名>@mail.tokentosea.com` 会映射到同名账号；无法映射时进入生产配置指定的默认收件账号。
+附件先用 Resend 元数据校验单件/总量并在 Redis 原子预留当日配额；拒额时不会下载附件。通过后
+才流式下载并再次核对声明长度与实际长度，随后写入私有 COS，元数据与正文在 PostgreSQL
+事务中提交。默认限制为：
+单件附件 10 MiB、附件不超过 10 个且合计不超过 25 MiB、正文合计不超过 2 MiB、并发处理不超过
+4 封；Redis 按北京时间自然日原子限制单用户 50 封/100 MiB、全站 200 封/500 MiB，同一
+provider message ID 重试不会重复扣额，跨日重试仍归首次预留日。超额事件返回
+`quota-rejected` 并停止入库；附件/正文超限、未知收件人等永久策略拒绝返回 HTTP 200
+`policy-rejected`；下载长度不一致按完整性故障处理，仅它、Redis、PostgreSQL、COS、Resend 网络
+故障或并发繁忙返回 503 让上游重试。零字节附件在下载前按无效元数据拒绝。
 
-DELETE /api/transcript
-→ 200 {"ok":true}
-```
+## 生产环境变量
 
-扩展名不作为文件身份依据，服务器按 PDF/JPEG/PNG/WebP 魔数裁决，同时要求声明的
-`Content-Type` 与检测结果一致。`X-File-Name` 经解码、去路径、去控制/方向字符后，
-强制换成检测类型的扩展名，且只写进元数据，不参与磁盘路径。替换和删除按账号串行；
-二进制与元数据是两个独立原子替换，不声称跨进程崩溃事务性，不一致时会失败关闭并可通过
-重新上传或删除恢复。下载响应为 `no-store`。视觉图片不会写入磁盘，成绩单不会混入
-`/api/state` 学习 JSON。
-
-## Resend 配置
-
-- 发件人使用已验证发送子域:`小白同学 <noreply@mail.tradingvane.com>`。
-- 程序优先读取 `RESEND_API_KEY` / `RESEND_FROM`，再回落 `config.json` 的
-  `resendApiKey` / `resendFrom`。两处都不配默认密钥，配置不完整就关闭邮箱鉴权。
-- 生产 systemd 单元可选读 `/etc/xiaobai/xiaobai.env`:
+只写入 `/etc/xiaobai/xiaobai.env`（`root:root`、`0600`），不要写进仓库、前端 `.env` 或日志。
 
 ```ini
-RESEND_API_KEY=<仅发送权限且限制到发送域的 API Key>
-RESEND_FROM="小白同学 <noreply@mail.tradingvane.com>"
+NODE_ENV=production
+STORAGE_REQUIRED=true
+
+DATABASE_URL=postgresql://...
+DATABASE_SSL_MODE=disable
+DATABASE_ALLOW_PRIVATE_PLAINTEXT=true
+CONTACT_ENCRYPTION_KEY=<32-byte base64>
+
+REDIS_URL=redis://...
+REDIS_ALLOW_PLAINTEXT=true
+OTP_HMAC_KEY=<32-byte base64>
+
+COS_SECRET_ID=...
+COS_SECRET_KEY=...
+COS_BUCKET=...
+COS_REGION=ap-guangzhou
+COS_PREFIX=xiaobai
+
+RESEND_API_KEY=...
+RESEND_FROM=小白同学 <noreply@mail.tokentosea.com>
+RESEND_WEBHOOK_SECRET=...
+RESEND_INBOUND_DOMAIN=mail.tokentosea.com
+RESEND_INBOUND_USER=...
+RESEND_MAX_ATTACHMENT_BYTES=10485760
+RESEND_MAX_ATTACHMENTS=10
+RESEND_MAX_TOTAL_ATTACHMENT_BYTES=26214400
+RESEND_MAX_BODY_BYTES=2097152
+RESEND_MAX_CONCURRENT=4
+RESEND_USER_DAILY_MESSAGE_LIMIT=50
+RESEND_USER_DAILY_BYTE_LIMIT=104857600
+RESEND_GLOBAL_DAILY_MESSAGE_LIMIT=200
+RESEND_GLOBAL_DAILY_BYTE_LIMIT=524288000
+
+SMS_SDK_APP_ID=...
+SMS_SIGN_NAME=...
+SMS_TEMPLATE_ID=...
+SMS_SECRET_ID=...
+SMS_SECRET_KEY=...
+SMS_REGION=ap-guangzhou
 ```
+
+PostgreSQL 与 Redis 的明文连接只允许 RFC1918 私网地址，并且必须显式开启对应的
+`*_ALLOW_PRIVATE_PLAINTEXT` 开关；公网明文地址仍会拒绝启动。Redis 客户端固定 RESP2，避免影响
+同实例中的既有业务。
+
+## 本地运行与验证
+
+未配置生产存储环境变量时，网关自动使用 `/var/lib/xiaobai` 兼容文件存储，便于本地测试。
 
 ```bash
-chown root:root /etc/xiaobai/xiaobai.env
-chmod 600 /etc/xiaobai/xiaobai.env
-```
-
-不要从 `doc/` 读取密钥，不要把密钥写入前端 `.env`、测试、日志或 Git。发信固定走
-`https://api.resend.com/emails`，并附 `User-Agent` 和单次 `Idempotency-Key`。
-
-## HTTPS 生产门禁
-
-`config.example.json` 的 `allowInsecureAuth` 默认 `false`。本地直连 HTTP 联调时才可在本机
-`config.json` 显式改为 `true`，严禁把该开关带到生产。nginx 应同时完成 HTTP 跳转、协议传递和 HSTS:
-
-```nginx
-server {
-    listen 80;
-    server_name tradingvane.com;
-    return 301 https://$host$request_uri;
-}
-
-# tradingvane.com 的 443 server 块
-add_header Strict-Transport-Security "max-age=31536000" always;
-location /xiaobai/ {
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_pass http://127.0.0.1:8000;
-}
-```
-
-先确认整个域名始终可用 HTTPS 再开长时间 HSTS;本配置未加 `includeSubDomains`，避免误锁尚未上线 TLS 的子域。
-
-## 运维速查
-
-```bash
-# 状态 / 日志
-systemctl status xiaobai
-journalctl -u xiaobai -f
-
-# 新增账号:本地生成哈希 → 填进服务器 config.json 的 users → 重启
-node index.mjs hash '新密码'      # 输出 {name,passwordScheme,salt,hash},把 name 改成账号名
-systemctl restart xiaobai
-
-# 换 DeepSeek 密钥:改 config.json 的 apiKey → systemctl restart xiaobai
-# 单配视觉模型:改 visionUpstreamUrl/upstreamModelVision/visionApiKey → 重启
-# 换 ASR(OpenRouter)密钥:改 config.json 的 asrApiKey → systemctl restart xiaobai
-# 换 Resend 密钥:改 /etc/xiaobai/xiaobai.env 的 RESEND_API_KEY → systemctl restart xiaobai
-
-# 后端语法与验证码状态机测试
-cd /opt/xiaobai/server
+cd server
+npm ci
 npm run check
 npm test
+node index.mjs
 ```
 
-> **网关角色(2026-07-06 起为 4 个)**:`xiaobai / evaluator / report / coach`。
-> `coach` 是备课助教「小砚」(备课页右下角宠物),温度恒 0.5、上限 700 token,
-> 尾部护栏已改写为三角色措辞。**下次发布若只发前端不发网关:旧网关把未知 role
-> 按 xiaobai 处理(上限 400 token),且旧护栏措辞只承认「小白/评估器」两角色,
-> 会和助教人设打架、答非所问。发布时必须成套同步全部非测试 `.mjs`
-> 运行时文件、`package.json` 与 `check-runtime.mjs`，不能只上传 `index.mjs`；
-> 覆盖前先备份 `/var/lib/xiaobai` 的账号状态 JSON，回滚旧运行时时也要同步恢复旧格式状态。**
-
-## 重新发布前端
+前端根路径生产构建：
 
 ```bash
 cd app
-mv .env.local /tmp/keep.env.local   # 确保产物不含密钥
-XB_BASE=/xiaobai/ npm run build
-mv /tmp/keep.env.local .env.local
-grep -c "sk-" dist/assets/*.js       # 必须为 0
-COPYFILE_DISABLE=1 tar -czf /tmp/xb-dist.tgz -C dist .
-scp /tmp/xb-dist.tgz root@106.53.163.57:/tmp/
-ssh root@106.53.163.57 'rm -rf /opt/xiaobai/dist/* && tar -xzf /tmp/xb-dist.tgz -C /opt/xiaobai/dist && chown -R xiaobai:xiaobai /opt/xiaobai/dist && rm /tmp/xb-dist.tgz'
+npm ci
+npm run lint
+npm run simulate
+npm run test:sync
+npm run test:landing-data
+npm run build
 ```
 
-## 已知取舍
+发布前必须扫描 `dist/` 和服务器包，确认不存在 API key、数据库密码、短信密钥或本地 `.env`。
 
-- **HTTP 旧入口仅用于无鉴权浏览**:密码、验证码和会话都应走
-  `https://tradingvane.com/xiaobai/`。生产建议把 HTTP `/xiaobai/` 直接 301 到 HTTPS;
-  HTTPS 经本机 nginx 反代时会话 Cookie 自动带 `Secure`。
-- 会话在内存:重启服务=全员重新登录(无持久化依赖,故意保持零依赖)
-- `doc/服务器相关.md`、`doc/aiapi.md`、`doc/openrouter key.md`与 `doc/resendkey.md`
-  均已列入根 `.gitignore`
+## 生产部署约束
+
+- 服务目录：`/opt/xiaobai/{dist,server}`。
+- 配置：`/opt/xiaobai/server/config.json`（`root:xiaobai`、`0640`）。
+- 兼容状态与回滚备份：`/var/lib/xiaobai`。
+- systemd：`xiaobai.service`，以非特权用户 `xiaobai` 运行，代码目录只读。
+- 每次发布先完整备份当前 `/opt/xiaobai`、`/var/lib/xiaobai`、nginx 配置和环境文件，再整体替换
+  runtime bundle；不能只上传 `index.mjs`。
+- 先在候选端口验证 PostgreSQL、Redis、COS、`/api/me` 与静态资源，再切换 8000 服务和 CDN CNAME。
+- 回滚必须同时恢复完整服务包、配置与兼容状态；数据库迁移采用只增不改的版本化 SQL。

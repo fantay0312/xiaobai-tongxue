@@ -1,0 +1,289 @@
+.hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(19rem, 0.72fr);
+  align-items: center;
+  gap: clamp(2.5rem, 7vw, 7rem);
+  min-height: min(47rem, calc(100dvh - var(--header-h)));
+  padding: clamp(3.5rem, 9vw, 7rem) 2.5rem clamp(4rem, 8vw, 6.5rem) 0;
+}
+
+.hero [data-xiaobai-level-mark] { display: none; }
+
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--paper-edge);
+}
+
+.copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.enter {
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
+}
+
+.eyebrow {
+  color: var(--azure);
+}
+
+.title {
+  max-width: none;
+  margin-left: -0.045em;
+  font-size: clamp(3rem, 5.5vw, 4.75rem);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: 0.015em;
+  color: var(--ink);
+}
+
+.title em {
+  font-style: italic;
+  color: var(--terra);
+}
+
+.lede {
+  max-width: 37rem;
+  font-size: clamp(1rem, 1.6vw, 1.2rem);
+  line-height: 2;
+  color: var(--ink-soft);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.75rem;
+  margin-top: 0.4rem;
+}
+
+.primary,
+.secondary {
+  min-height: 2.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.primary {
+  padding: 0.68rem 1.25rem;
+  border-radius: var(--radius-s);
+  background: var(--azure);
+  color: var(--paper);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  box-shadow: var(--shadow-paper);
+}
+
+.primary:hover {
+  transform: translateY(-2px);
+  background: var(--terra-deep);
+}
+
+.secondary {
+  border-bottom: 1px solid var(--dust);
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+}
+
+.secondary:hover {
+  color: var(--ink);
+}
+
+.proofLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--paper-edge);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+
+.proofLine span + span::before {
+  content: '·';
+  margin-right: 1rem;
+  color: var(--terra);
+}
+
+.ticket {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  align-self: center;
+  width: min(100%, 23.5rem);
+  justify-self: end;
+  padding: 2rem;
+  border: 1px solid color-mix(in oklch, var(--mustard) 56%, var(--ink));
+  border-radius: var(--radius);
+  background: var(--mustard);
+  box-shadow: var(--shadow-lift);
+  transform: rotate(1.2deg);
+  transition: transform var(--t-med) var(--ease-out);
+}
+
+.ticket:hover {
+  transform: rotate(0.4deg) translateY(-4px);
+}
+
+.ticketHead,
+.ticketFoot,
+.pupil {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ticketKicker {
+  color: var(--ink-soft);
+}
+
+.ticketTitle {
+  margin-top: 0.2rem;
+  font-size: clamp(1.7rem, 3vw, 2.2rem);
+}
+
+.seal {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+
+.pupil {
+  justify-content: flex-start;
+  margin: 1.4rem 0;
+  padding: 0.9rem;
+  border-block: 1px dashed color-mix(in oklab, var(--ink) 32%, transparent);
+}
+
+.pupilName {
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.pupilRole {
+  margin-top: 0.15rem;
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+}
+
+.ticketMeta {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.ticketMeta div {
+  display: grid;
+  grid-template-columns: 5rem 1fr;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.ticketMeta dt {
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+}
+
+.ticketMeta dd {
+  margin: 0;
+  font-family: var(--font-display);
+  color: var(--ink);
+}
+
+.ticketFoot {
+  margin-top: 1.4rem;
+  padding-top: 0.85rem;
+  border-top: 1px dashed color-mix(in oklab, var(--ink) 38%, transparent);
+}
+
+.ticketFoot a {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  background: var(--inkstone);
+  color: var(--mustard);
+}
+
+.marginalia {
+  position: absolute;
+  top: 5rem;
+  right: -0.15rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  gap: 0.35rem;
+}
+
+.marginalia > p,
+.marginalia > cite {
+  font-size: var(--fs-tiny);
+  font-weight: 400;
+  line-height: 1.5;
+  color: color-mix(in oklab, var(--terra) 22%, transparent);
+}
+
+@media (max-width: 60rem) {
+  .hero {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    padding-right: 0;
+  }
+
+  .ticket {
+    justify-self: center;
+    width: min(100%, 30rem);
+  }
+
+  .marginalia {
+    display: none;
+  }
+}
+
+@media (max-width: 35rem) {
+  .hero {
+    padding-top: 2.75rem;
+  }
+
+  .title {
+    font-size: clamp(2.55rem, 11.3vw, 2.9rem);
+  }
+
+  .ticket {
+    padding: 1.35rem;
+  }
+
+  .proofLine {
+    display: grid;
+  }
+
+  .proofLine span + span::before {
+    margin-right: 0.55rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticket:hover,
+  .primary:hover {
+    transform: none;
+  }
+}

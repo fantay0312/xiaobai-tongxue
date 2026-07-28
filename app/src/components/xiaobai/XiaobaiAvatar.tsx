@@ -88,7 +88,9 @@ export function XiaobaiAvatar({
         <i />
         <i />
       </span>
-      <span className={styles.levelMark} aria-hidden="true">{levelMark}</span>
+      <span className={styles.levelMark} data-xiaobai-level-mark aria-hidden="true">
+        {levelMark}
+      </span>
     </div>
   );
 }

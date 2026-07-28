@@ -30,6 +30,7 @@ const WEBP = Buffer.concat([
   Buffer.from('RIFF'), Buffer.from([0x10, 0x00, 0x00, 0x00]), Buffer.from('WEBPwebp-test-body'),
 ]);
 const PDF = Buffer.from('%PDF-1.7\ntranscript-test\n%%EOF');
+let phoneSequence = 0;
 
 function passwordUser(name, password, email) {
   const salt = crypto.randomBytes(16).toString('hex');
@@ -38,7 +39,12 @@ function passwordUser(name, password, email) {
     name,
     salt,
     hash,
-    ...(email ? { email, emailVerifiedAt: VERIFIED_AT } : {}),
+    ...(email ? {
+      email,
+      emailVerifiedAt: VERIFIED_AT,
+      phone: `+861390000${String(++phoneSequence).padStart(4, '0')}`,
+      phoneVerifiedAt: VERIFIED_AT,
+    } : {}),
   };
 }
 

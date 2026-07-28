@@ -6,15 +6,19 @@ import type { XiaobaiMood } from '../../types';
 import { Icon } from '../../components/ui/Icon';
 import { useAuthStore, type AuthField } from '../../store/authStore';
 import { useDocTitle } from '../../hooks/useDocTitle';
-import { CODE_RE, EMAIL_RE, NAME_RE, useCooldown, type Issue } from '../../hooks/useAuthForm';
+import {
+  CODE_RE, EMAIL_RE, MAINLAND_PHONE_RE, NAME_RE, mainlandPhoneToE164,
+  useCooldown, type Issue,
+} from '../../hooks/useAuthForm';
 import { EmailCodeField } from './EmailCodeField';
+import { PhoneCodeField } from './PhoneCodeField';
 import { PasswordResetForm } from './PasswordResetForm';
 import paper from '../../styles/paper.module.css';
 import fs from './EmailCodeField.module.css';
 import s from './login.module.css';
 
 type Mode = 'login' | 'register' | 'reset';
-type LoginMethod = 'password' | 'email-code';
+type LoginMethod = 'password' | 'phone-code' | 'email-code';
 
 function containsControlCharacter(value: string): boolean {
   for (const character of value) {
@@ -50,15 +54,21 @@ export default function LoginPage() {
   const status = useAuthStore((state) => state.status);
   const user = useAuthStore((state) => state.user);
   const emailBindingRequired = useAuthStore((state) => state.emailBindingRequired);
+  const phoneBindingRequired = useAuthStore((state) => state.phoneBindingRequired);
   const emailAuthAvailable = useAuthStore((state) => state.emailAuthAvailable);
+  const smsAuthAvailable = useAuthStore((state) => state.smsAuthAvailable);
   const registrationAvailable = useAuthStore((state) => state.registrationAvailable);
   const inviteRequired = useAuthStore((state) => state.inviteRequired);
   const init = useAuthStore((state) => state.init);
   const requestEmailCode = useAuthStore((state) => state.requestEmailCode);
   const requestEmailBindingCode = useAuthStore((state) => state.requestEmailBindingCode);
   const bindEmail = useAuthStore((state) => state.bindEmail);
+  const requestSmsCode = useAuthStore((state) => state.requestSmsCode);
+  const requestPhoneBindingCode = useAuthStore((state) => state.requestPhoneBindingCode);
+  const bindPhone = useAuthStore((state) => state.bindPhone);
   const login = useAuthStore((state) => state.login);
   const loginWithEmailCode = useAuthStore((state) => state.loginWithEmailCode);
+  const loginWithPhoneCode = useAuthStore((state) => state.loginWithPhoneCode);
   const register = useAuthStore((state) => state.register);
   const logout = useAuthStore((state) => state.logout);
   const [mode, setMode] = useState<Mode>('login');
@@ -67,6 +77,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [invite, setInvite] = useState('');
   const [issue, setIssue] = useState<Issue | null>(null);
@@ -77,30 +88,39 @@ export default function LoginPage() {
   const { cooldown, resetCooldown, startCooldown } = useCooldown();
 
   const bindingEmail = status === 'authed' && emailBindingRequired;
-  const canRegister = !bindingEmail && emailAuthAvailable && registrationAvailable;
-  const registering = !bindingEmail && mode === 'register' && canRegister;
-  const resetting = !bindingEmail && mode === 'reset' && emailAuthAvailable;
-  const emailCodeLogin = !bindingEmail && mode === 'login'
+  const bindingPhone = status === 'authed' && !emailBindingRequired && phoneBindingRequired;
+  const bindingRequired = bindingEmail || bindingPhone;
+  const canRegister = !bindingRequired && emailAuthAvailable && registrationAvailable;
+  const registering = !bindingRequired && mode === 'register' && canRegister;
+  const resetting = !bindingRequired && mode === 'reset'
+    && (smsAuthAvailable || emailAuthAvailable);
+  const emailCodeLogin = !bindingRequired && mode === 'login'
     && emailAuthAvailable && loginMethod === 'email-code';
+  const phoneCodeLogin = !bindingRequired && mode === 'login'
+    && smsAuthAvailable && loginMethod === 'phone-code';
   const usesEmailCode = bindingEmail || registering || emailCodeLogin;
-  const usesAccountCredentials = !bindingEmail && !emailCodeLogin && !resetting;
+  const usesPhoneCode = bindingPhone || phoneCodeLogin;
+  const usesAccountCredentials = !bindingRequired && !emailCodeLogin && !phoneCodeLogin && !resetting;
   // 卷首小白:表情与台词随当前帖态切换(纯派生,不入 store)
-  const avatarMood: XiaobaiMood = bindingEmail ? 'thinking'
+  const avatarMood: XiaobaiMood = bindingRequired ? 'thinking'
     : registering ? 'shy'
     : resetting ? 'thinking'
     : 'curious';
-  const plateVoice = bindingEmail ? '先生的名帖，还差一笔。'
+  const plateVoice = bindingPhone ? '先生的名帖，还差一枚手机印记。'
+    : bindingEmail ? '先生的名帖，还差一笔。'
     : registering ? '初次递帖？小生这厢有礼。'
     : resetting ? '先生忘了口令？小生陪先生慢慢寻。'
-    : emailCodeLogin ? '先生今日也来教小生？'
+    : emailCodeLogin || phoneCodeLogin ? '先生今日也来教小生？'
     : '先生又来授业了？';
   const next = safeNextPath(params.get('next') || '/study');
-  useDocTitle(bindingEmail ? '补录验证邮箱' : resetting ? '找回密码' : registering ? '递帖注册' : '登入书斋');
+  useDocTitle(bindingPhone ? '绑定验证手机号'
+    : bindingEmail ? '补录验证邮箱'
+      : resetting ? '找回密码' : registering ? '递帖注册' : '登入书斋');
 
   useEffect(() => {
     if (!issue || issue.field === 'form') return;
     const fieldId: Partial<Record<AuthField, string>> = {
-      email: 'auth-email', code: 'auth-code', username: 'auth-username',
+      email: 'auth-email', phone: 'auth-phone', code: 'auth-code', username: 'auth-username',
       password: 'auth-password', currentPassword: 'auth-current-password', invite: 'auth-invite',
     };
     document.getElementById(fieldId[issue.field] ?? '')?.focus();
@@ -119,26 +139,27 @@ export default function LoginPage() {
     if (nextMode === mode || busy || resetFlowBusy || sendingCode
       || (nextMode === 'register' && !canRegister)) return;
     setMode(nextMode);
-    if (nextMode === 'login') setLoginMethod('password');
+    if (nextMode === 'login' && loginMethod === 'email-code' && !emailAuthAvailable) {
+      setLoginMethod(smsAuthAvailable ? 'phone-code' : 'password');
+    }
     resetSensitiveState();
   };
 
   const startPasswordReset = () => {
-    if (busy || resetFlowBusy || sendingCode || !emailAuthAvailable) return;
+    if (busy || resetFlowBusy || sendingCode || (!smsAuthAvailable && !emailAuthAvailable)) return;
     setMode('reset');
     resetSensitiveState();
   };
 
-  const switchLoginMethod = () => {
-    if (busy || sendingCode) return;
-    if (loginMethod === 'password') {
+  const switchLoginMethod = (method: LoginMethod) => {
+    if (busy || sendingCode || method === loginMethod) return;
+    if (method === 'email-code') {
       const normalizedIdentifier = username.trim().toLowerCase();
       if (!email && EMAIL_RE.test(normalizedIdentifier)) setEmail(normalizedIdentifier);
-      setLoginMethod('email-code');
-    } else {
+    } else if (method === 'password') {
       if (!username && email.trim()) setUsername(email.trim().toLowerCase());
-      setLoginMethod('password');
     }
+    setLoginMethod(method);
     resetSensitiveState();
   };
 
@@ -148,15 +169,25 @@ export default function LoginPage() {
       ? null : current);
   };
 
+  const changePhone = (value: string) => {
+    setPhone(value); setCode(''); resetCooldown(); setFeedback(null);
+    setIssue((current) => current?.field === 'phone' || current?.field === 'code'
+      || current?.field === 'form' ? null : current);
+  };
+
   const validate = (): Issue | null => {
-    if (bindingEmail && !currentPassword) {
+    if (bindingRequired && !currentPassword) {
       return { field: 'currentPassword', message: '请输入当前账号密码以确认身份' };
     }
-    if (bindingEmail && currentPassword.length > 128) {
+    if (bindingRequired && currentPassword.length > 128) {
       return { field: 'currentPassword', message: '当前密码不能超过 128 位' };
     }
     if (usesEmailCode && !EMAIL_RE.test(email.trim())) return { field: 'email', message: '请输入有效的邮箱地址' };
     if (usesEmailCode && !CODE_RE.test(code)) return { field: 'code', message: '请输入邮件中的 6 位验证码' };
+    if (usesPhoneCode && !MAINLAND_PHONE_RE.test(phone)) {
+      return { field: 'phone', message: '请输入中国大陆 11 位手机号' };
+    }
+    if (usesPhoneCode && !CODE_RE.test(code)) return { field: 'code', message: '请输入短信中的 6 位验证码' };
     if (usesAccountCredentials && !username.trim()) {
       return { field: 'username', message: registering ? '请输入账号' : '请输入邮箱或账号' };
     }
@@ -175,14 +206,21 @@ export default function LoginPage() {
     if (registering && inviteRequired && !invite.trim()) {
       setIssue({ field: 'invite', message: '请先输入邀请码' }); return;
     }
-    if (!EMAIL_RE.test(normalizedEmail)) {
+    if (usesEmailCode && !EMAIL_RE.test(normalizedEmail)) {
       setIssue({ field: 'email', message: '请输入有效的邮箱地址' }); return;
     }
-    if (bindingEmail && !currentPassword) {
+    if (usesPhoneCode && !MAINLAND_PHONE_RE.test(phone)) {
+      setIssue({ field: 'phone', message: '请输入中国大陆 11 位手机号' }); return;
+    }
+    if (bindingRequired && !currentPassword) {
       setIssue({ field: 'currentPassword', message: '请先输入当前账号密码' }); return;
     }
     setSendingCode(true); setIssue(null); setFeedback(null);
-    const result = bindingEmail
+    const result = bindingPhone
+      ? await requestPhoneBindingCode(mainlandPhoneToE164(phone), currentPassword)
+      : phoneCodeLogin
+        ? await requestSmsCode(mainlandPhoneToE164(phone), 'login')
+        : bindingEmail
       ? await requestEmailBindingCode(normalizedEmail, currentPassword)
       : await requestEmailCode(
         normalizedEmail,
@@ -196,7 +234,7 @@ export default function LoginPage() {
       return;
     }
     startCooldown(Math.max(60, result.retryAfter ?? 60));
-    setFeedback('验证码已发送，请在十分钟内完成验证');
+    setFeedback(`${usesPhoneCode ? '短信' : '邮箱'}验证码已发送，请在十分钟内完成验证`);
   };
 
   const onSubmit = async (event: FormEvent) => {
@@ -206,12 +244,16 @@ export default function LoginPage() {
     if (localIssue) { setIssue(localIssue); setFeedback(null); return; }
     setBusy(true); setIssue(null); setFeedback(null);
     const normalizedEmail = email.trim().toLowerCase();
-    const result = bindingEmail
+    const result = bindingPhone
+      ? await bindPhone(mainlandPhoneToE164(phone), code, currentPassword)
+      : bindingEmail
       ? await bindEmail(normalizedEmail, code, currentPassword)
       : registering
         ? await register({ username: username.trim(), password, email: normalizedEmail, code,
           ...(inviteRequired ? { invite: invite.trim() } : {}) })
-        : emailCodeLogin
+        : phoneCodeLogin
+          ? await loginWithPhoneCode(mainlandPhoneToE164(phone), code)
+          : emailCodeLogin
           ? await loginWithEmailCode(normalizedEmail, code)
           : await login(username.trim(), password);
     setBusy(false);
@@ -220,9 +262,12 @@ export default function LoginPage() {
       if (result.retryAfter) startCooldown(result.retryAfter);
       return;
     }
-    if (useAuthStore.getState().emailBindingRequired) {
-      setPassword(''); setEmail(''); setCode(''); resetCooldown();
-      setFeedback('账号已验证，请补录常用邮箱后继续');
+    const auth = useAuthStore.getState();
+    if (auth.emailBindingRequired || auth.phoneBindingRequired) {
+      setPassword(''); setEmail(''); setPhone(''); setCode(''); resetCooldown();
+      setFeedback(auth.emailBindingRequired
+        ? '账号已验证，请补录常用邮箱后继续'
+        : '账号已验证，请绑定常用手机号后继续');
       return;
     }
     navigate(next, { replace: true });
@@ -237,7 +282,7 @@ export default function LoginPage() {
       setIssue({ field: result.field ?? 'form', message: result.message ?? '退出失败，请稍后再试' });
       return;
     }
-    setEmail(''); setCode(''); setPassword(''); resetCooldown();
+    setEmail(''); setPhone(''); setCode(''); setPassword(''); resetCooldown();
   };
 
   if (status === 'unknown') {
@@ -250,7 +295,7 @@ export default function LoginPage() {
       </AuthNotice>
     );
   }
-  if (status === 'standalone' || (status === 'authed' && !bindingEmail)) {
+  if (status === 'standalone' || (status === 'authed' && !bindingRequired)) {
     const standalone = status === 'standalone';
     return (
       <AuthNotice title={standalone ? '本地演示模式' : '已在书斋中'}
@@ -279,23 +324,28 @@ export default function LoginPage() {
           <span className={s.ticketGrain} aria-hidden="true" />
           <span className={s.punch} aria-hidden="true" />
           <span className={`${paper.verticalRail} ${s.rail}`} aria-hidden="true">听课证 · ADMISSION</span>
-          <p className={s.eyebrow}>{bindingEmail ? '补全名帖' : resetting ? '重校名帖' : '凭帖入斋'}</p>
+          <p className={s.eyebrow}>{bindingRequired ? '补全名帖' : resetting ? '重校名帖' : '凭帖入斋'}</p>
           <h1 className={s.title} id="auth-title">
-            {bindingEmail ? '绑定验证邮箱' : resetting ? '找回密码' : registering ? '递帖注册' : '登入书斋'}
+            {bindingPhone ? '绑定验证手机号'
+              : bindingEmail ? '绑定验证邮箱'
+                : resetting ? '找回密码' : registering ? '递帖注册' : '登入书斋'}
           </h1>
-          <p className={s.sub}>{bindingEmail
+          <p className={s.sub}>{bindingPhone
+            ? '验证常用手机号并确认当前密码。完成前不能访问书斋业务页面。'
+            : bindingEmail
             ? '输入当前密码并验证常用邮箱。完成后才能继续使用备课与讲解功能。'
             : resetting
-            ? '用注册邮箱接收验证码，核验通过后设置新的登录密码。'
+            ? '优先用已绑定手机号验证；无法使用手机号时，可切换已验证邮箱找回。'
             : registering
             ? '验证邮箱并设置账号，注册成功后即可入斋。'
-            : emailCodeLogin ? '输入邮箱验证码，无需密码即可继续。' : '使用邮箱或账号与密码登录。'}</p>
+            : phoneCodeLogin ? '输入手机号与短信验证码，无需密码即可继续。'
+              : emailCodeLogin ? '输入邮箱验证码，无需密码即可继续。' : '使用邮箱或账号与密码登录。'}</p>
 
-          {bindingEmail ? (
+          {bindingRequired ? (
             <div className={s.bindingAccount} aria-label={`当前账号 ${user ?? ''}`}>
               <span>当前账号</span>
               <strong>{user}</strong>
-              <small>邮箱待验证</small>
+              <small>{bindingPhone ? '手机号待验证' : '邮箱待验证'}</small>
             </div>
           ) : !resetting ? <div className={s.modes} role="group" aria-label="登录或注册">
             <button type="button" className={s.modeBtn} aria-pressed={!registering}
@@ -305,11 +355,18 @@ export default function LoginPage() {
               disabled={busy || sendingCode}
               onClick={() => switchMode('register')}>注册</button> : null}
           </div> : null}
-          {!bindingEmail && !registering && !resetting && emailAuthAvailable ? (
-            <button className={s.methodSwitch} type="button" disabled={busy || sendingCode}
-              aria-controls="auth-form" onClick={switchLoginMethod}>
-              {emailCodeLogin ? '改用邮箱或账号 + 密码' : '改用邮箱验证码'}
-            </button>
+          {!bindingRequired && !registering && !resetting ? (
+            <div className={s.loginMethods} role="group" aria-label="登录方式">
+              <button type="button" className={s.methodSwitch} disabled={busy || sendingCode}
+                aria-pressed={loginMethod === 'password'} aria-controls="auth-form"
+                onClick={() => switchLoginMethod('password')}>账号密码</button>
+              {smsAuthAvailable ? <button type="button" className={s.methodSwitch}
+                disabled={busy || sendingCode} aria-pressed={phoneCodeLogin} aria-controls="auth-form"
+                onClick={() => switchLoginMethod('phone-code')}>手机验证码</button> : null}
+              {emailAuthAvailable ? <button type="button" className={s.methodSwitch}
+                disabled={busy || sendingCode} aria-pressed={emailCodeLogin} aria-controls="auth-form"
+                onClick={() => switchLoginMethod('email-code')}>邮箱验证码</button> : null}
+            </div>
           ) : null}
 
           <div className={`${paper.perfLine} ${s.tear}`} aria-hidden="true">
@@ -331,7 +388,7 @@ export default function LoginPage() {
                   onChange={(event) => { setInvite(event.target.value); clearFieldIssue('invite'); }} />
                 <span className={fs.hint} id="auth-invite-hint">获取注册验证码前需要先核验邀请码</span>
               </label> : null}
-              {bindingEmail ? <label className={fs.field} htmlFor="auth-current-password">
+              {bindingRequired ? <label className={fs.field} htmlFor="auth-current-password">
                 <span className={fs.label}>当前账号密码</span>
                 <input id="auth-current-password" className={fs.input} type="password" value={currentPassword}
                   autoFocus autoComplete="current-password" maxLength={128} required disabled={sendingCode}
@@ -342,6 +399,10 @@ export default function LoginPage() {
               </label> : null}
               {usesEmailCode ? <EmailCodeField email={email} code={code} issueField={issue?.field}
                 sending={sendingCode} cooldown={cooldown} onEmailChange={changeEmail}
+                onCodeChange={(value) => { setCode(value); clearFieldIssue('code'); }}
+                onSend={() => void sendCode()} /> : null}
+              {usesPhoneCode ? <PhoneCodeField phone={phone} code={code} issueField={issue?.field}
+                sending={sendingCode} cooldown={cooldown} onPhoneChange={changePhone}
                 onCodeChange={(value) => { setCode(value); clearFieldIssue('code'); }}
                 onSend={() => void sendCode()} /> : null}
               {usesAccountCredentials ? <>
@@ -364,9 +425,9 @@ export default function LoginPage() {
                     onChange={(event) => { setPassword(event.target.value); clearFieldIssue('password'); }} />
                   {registering ? <span className={fs.hint} id="auth-password-hint">至少 8 位</span> : null}
                 </label>
-                {!registering && emailAuthAvailable ? (
+                {!registering && (smsAuthAvailable || emailAuthAvailable) ? (
                   <button className={s.forgotPassword} type="button" onClick={startPasswordReset}>
-                    忘记密码？用邮箱验证码找回
+                    忘记密码？用验证码找回
                   </button>
                 ) : null}
               </> : null}
@@ -378,8 +439,8 @@ export default function LoginPage() {
             </div>
             <button className={s.submit} type="submit" data-busy={busy || undefined}
               disabled={busy || sendingCode}>{busy
-                ? bindingEmail ? '正在核验…' : registering ? '正在注册…' : '正在登录…'
-                : bindingEmail ? '验证并继续' : registering ? '注册并入斋' : '登录'}</button>
+                ? bindingRequired ? '正在核验…' : registering ? '正在注册…' : '正在登录…'
+                : bindingRequired ? '验证并继续' : registering ? '注册并入斋' : '登录'}</button>
           </form>}
 
           <footer className={s.foot}>
@@ -388,10 +449,11 @@ export default function LoginPage() {
               学伴书斋 · 敬候赐教
             </p>
             <div className={s.footRow}>
-              <span>{bindingEmail ? '验证完成前，此账号无法进入使用页面'
-                : resetting ? '验证码只会发送到已绑定的注册邮箱'
+              <span>{bindingPhone ? '完成手机验证前无法进入业务页；忘记密码可退出后用已验证邮箱找回'
+                : bindingEmail ? '验证完成前，此账号无法进入使用页面'
+                : resetting ? '仅向已绑定手机号或已验证邮箱发送验证码'
                 : registering ? '邮箱验证为必填项' : canRegister ? '新用户可验证邮箱注册' : '新账号注册暂未开放'}</span>
-              {bindingEmail ? (
+              {bindingRequired ? (
                 <button className={s.bindingLogout} type="button" disabled={busy || sendingCode}
                   onClick={() => void exitBinding()}>退出账号</button>
               ) : resetting ? (

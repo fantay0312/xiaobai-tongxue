@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test:landing-data": "tsx scripts/landing-data.test.ts",
     "test:sync": "tsx scripts/pending-sync.test.ts",
     "preview": "vite preview",
     "simulate": "tsx scripts/simulate.ts",

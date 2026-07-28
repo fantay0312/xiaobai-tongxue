@@ -1,0 +1,256 @@
+.scene {
+  min-height: 39rem;
+  padding: 1.15rem 1.3rem;
+  color: var(--ink);
+}
+.sceneHeading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--paper-edge);
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
+}
+.sceneHeading span { color: var(--terra-ink); font: 0.62rem/1 var(--font-typewriter); letter-spacing: 0.12em; }
+.sceneHeading h3 { margin: 0.18rem 0 0; font: 700 1.05rem/1.3 var(--font-display); }
+.sceneHeading > p { margin: 0; color: var(--ink-faint); font-size: 0.67rem; white-space: nowrap; }
+
+.prepGrid,
+.reviewGrid,
+.remedyGrid { display: grid; gap: 0.9rem; margin-top: 1rem; animation: global(rise) var(--t-med) var(--ease-out) 80ms backwards; }
+.prepGrid { grid-template-columns: minmax(0, 1.25fr) minmax(10rem, 0.75fr); }
+.quizSheet,
+.taskCard,
+.microLesson,
+.predictionQuiz,
+.outputStep { border: 1px solid var(--paper-edge); background: var(--paper); }
+.quizSheet { padding: 0.9rem; }
+.quizSheet pre,
+.microLesson pre {
+  overflow-x: auto;
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  color: var(--ink-soft);
+  background: var(--paper-shade);
+  font: 0.68rem/1.55 var(--font-code);
+  white-space: pre-wrap;
+}
+.quizSheet h4,
+.predictionQuiz h4 { margin: 0.8rem 0; font: 700 0.82rem/1.55 var(--font-display); }
+.options { display: grid; gap: 0.45rem; }
+.options button,
+.predictionQuiz button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.65rem;
+  color: var(--ink-soft);
+  border: 1px solid var(--paper-edge);
+  background: transparent;
+  font: 0.7rem/1.35 var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+.options button span { display: grid; width: 1.2rem; height: 1.2rem; place-items: center; border-radius: 50%; background: var(--paper-shade); font-size: 0.61rem; }
+.options button:hover,
+.predictionQuiz button:hover { color: var(--ink); background: var(--paper-warm); }
+.options button:focus-visible,
+.predictionQuiz button:focus-visible,
+.reteachFoot a:focus-visible { outline: 2px solid var(--terra-ink); outline-offset: 2px; }
+.optionCorrect { color: var(--jade-ink) !important; border-color: var(--jade) !important; background: var(--jade-wash) !important; }
+.optionWrong { color: var(--cinnabar) !important; border-color: var(--cinnabar) !important; background: var(--cinnabar-wash) !important; }
+.answerRight,
+.answerWrong { margin: 0.65rem 0 0; font: 0.68rem/1.5 var(--font-body); }
+.answerRight { color: var(--jade-ink); }
+.answerWrong { color: var(--cinnabar); }
+.taskCard { padding: 0.9rem; background: var(--mustard-wash); }
+.taskCard > span,
+.microLesson > span,
+.predictionQuiz > span,
+.outputStep > span { color: var(--terra-ink); font: 0.62rem/1 var(--font-typewriter); letter-spacing: 0.1em; }
+.taskCard h4 { margin: 0.65rem 0; font: 700 0.88rem/1.45 var(--font-display); }
+.taskCard p { margin: 0; color: var(--ink-soft); font: 0.72rem/1.65 var(--font-display); }
+.taskCard ul { display: grid; gap: 0.5rem; margin: 0.8rem 0 0; padding: 0; list-style: none; }
+.taskCard li { display: flex; align-items: center; gap: 0.45rem; font-size: 0.66rem; }
+.taskCard svg { color: var(--terra-ink); }
+
+.boardScene { color: var(--chalk); background: var(--board); }
+.boardScene .sceneHeading { border-bottom-color: var(--board-line); }
+.boardScene .sceneHeading span { color: var(--chalk-amber); }
+.boardScene .sceneHeading > p { color: var(--chalk-soft); }
+.classroom {
+  display: grid;
+  min-height: 25.5rem;
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+  animation: global(rise) var(--t-med) var(--ease-out) 80ms backwards;
+}
+.pupilStage { display: flex; align-items: center; flex-direction: column; justify-content: center; border-right: 1px solid var(--board-line); }
+.pupilStage strong { margin-top: 0.6rem; font: 700 0.85rem/1.2 var(--font-display); }
+.pupilStage small { margin-top: 0.25rem; color: var(--chalk-soft); font-size: 0.62rem; }
+.boardStream { display: grid; align-content: start; gap: 0.75rem; padding: 0.5rem 0; }
+.teacherLine,
+.pupilLine { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); gap: 0.6rem; align-items: start; }
+.teacherLine span,
+.pupilLine span { padding-top: 0.45rem; color: var(--chalk-soft); font-size: 0.63rem; }
+.teacherLine p,
+.pupilLine p {
+  margin: 0;
+  padding: 0.72rem 0.82rem;
+  border: 1px solid var(--board-line);
+  font: 0.76rem/1.65 var(--font-display);
+}
+.teacherLine p { background: color-mix(in oklab, var(--board-deep) 78%, transparent); }
+.pupilLine p { color: var(--chalk-jade); border-style: dashed; }
+.misconceptionLine p { color: var(--chalk-amber); }
+.branchOutcomeLine p {
+  color: var(--chalk-amber);
+  border-color: color-mix(in oklab, var(--chalk-amber) 55%, var(--board-line));
+}
+.classroomDock {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) auto auto auto auto;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem;
+  border: 1px solid var(--board-line);
+  background: var(--board-deep);
+}
+.classroomDock p { margin: 0; color: var(--chalk-soft); font-size: 0.68rem; }
+.classroomDock span { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.45rem; color: var(--chalk-soft); font-size: 0.62rem; }
+.classroomDock .sendAction { color: var(--board-deep); background: var(--chalk-amber); }
+.caret { display: inline-block; width: 0.38em; height: 0.9em; margin-left: 0.12em; background: currentcolor; animation: caretBlink 780ms step-end infinite; vertical-align: -0.06em; }
+.modeBanner { margin: 0.75rem 0 0; padding: 0.55rem 0.7rem; color: var(--chalk-amber); border: 1px solid var(--board-line); font: 0.69rem/1.4 var(--font-body); }
+.reteachBoard {
+  display: grid;
+  min-height: 23rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  padding: 1.2rem 1rem;
+  animation: global(rise) var(--t-med) var(--ease-out) 80ms backwards;
+}
+.reteachBoard span { color: var(--chalk-soft); font-size: 0.64rem; }
+.reteachBoard blockquote { margin: 0.55rem 0; padding: 0.8rem; border-left: 2px solid var(--chalk-amber); font: 0.82rem/1.7 var(--font-display); }
+.reteachBoard p { margin: 0; color: var(--chalk-jade); font: 0.76rem/1.6 var(--font-display); }
+.reteachFoot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: 0.7rem; border-top: 1px solid var(--board-line); }
+.reteachFoot strong,
+.reteachFoot a { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.68rem; }
+.reteachFoot strong { color: var(--chalk-jade); }
+.reteachFoot a { color: var(--chalk-amber); text-decoration: none; }
+
+.examScene { background: var(--paper-warm); }
+.examBeats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.45rem; margin: 0.8rem 0 0; padding: 0; list-style: none; }
+.examBeats li { display: flex; align-items: center; gap: 0.35rem; color: var(--ink-faint); font-size: 0.65rem; opacity: 0; animation: beatReveal var(--t-med) var(--ease-out) calc(420ms * var(--beat)) forwards; }
+.examBeats span { display: grid; width: 1.2rem; height: 1.2rem; place-items: center; border-radius: 50%; background: var(--paper-edge); font-size: 0.6rem; }
+.examDesk { display: grid; min-height: 29rem; grid-template-columns: 7.5rem minmax(0, 1fr); align-items: center; gap: 1rem; }
+.examPupil { display: grid; justify-items: center; gap: 0.4rem; }
+.examPupil small { color: var(--ink-faint); font-size: 0.62rem; }
+.examPaper { position: relative; padding: 1rem; border: 1px solid var(--paper-edge); background: var(--paper); box-shadow: var(--shadow-paper); }
+.examPaper > span { color: var(--ink-faint); font: 0.62rem/1 var(--font-typewriter); }
+.examPaper h4 { margin: 0.65rem 0; font: 700 0.92rem/1.55 var(--font-display); }
+.examPaper blockquote { min-height: 4.5rem; margin: 0; padding: 0.75rem; color: var(--ink-soft); border-left: 2px solid var(--terra); background: var(--paper-blush); font: 0.76rem/1.65 var(--font-display); }
+.examVerdict { display: flex; align-items: center; gap: 0.45rem; margin: 0.75rem 0 0; color: var(--cinnabar); font-size: 0.67rem; opacity: 0; animation: verdictReveal var(--t-med) var(--ease-out) 3.5s forwards; }
+
+.reviewScene { background: var(--paper); }
+.reviewGrid { grid-template-columns: 0.62fr 1.38fr; }
+.scoreStub,
+.blindReport { padding: 0.9rem; border: 1px solid var(--paper-edge); }
+.scoreStub { background: var(--mustard-wash); }
+.scoreStub > span,
+.blindReport > span { color: var(--ink-faint); font: 0.6rem/1 var(--font-typewriter); letter-spacing: 0.1em; }
+.scoreStub strong { display: inline-block; margin-top: 0.55rem; color: var(--terra-ink); font: 700 3.3rem/0.9 var(--font-serif); }
+.scoreStub small { margin-left: 0.25rem; color: var(--ink-faint); }
+.scoreStub p { margin: 0.65rem 0 0; font-size: 0.68rem; }
+.blindReport { border-color: color-mix(in oklab, var(--cinnabar) 38%, var(--paper-edge)); background: var(--paper-blush); }
+.blindReport h4 { margin: 0.6rem 0; color: var(--cinnabar); font: 700 0.86rem/1.4 var(--font-display); }
+.blindReport p { margin: 0; color: var(--ink-soft); font: 0.72rem/1.55 var(--font-display); }
+.blindReport strong { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.7rem; color: var(--cinnabar); font-size: 0.66rem; }
+.eventTape { display: grid; gap: 0; margin: 0.9rem 0 0; padding: 0; border: 1px solid var(--paper-edge); list-style: none; animation: global(rise) var(--t-med) var(--ease-out) 160ms backwards; }
+.eventTape li { display: grid; grid-template-columns: 4rem 1fr; gap: 0.7rem; padding: 0.65rem 0.75rem; font-size: 0.68rem; }
+.eventTape li + li { border-top: 1px solid var(--paper-edge); }
+.eventTape time { color: var(--terra-ink); font-family: var(--font-typewriter); }
+.persistenceNote { margin: 0.75rem 0 0; color: var(--ink-faint); font: 0.66rem/1.55 var(--font-display); }
+
+.remedyScene { background: var(--paper-blush); }
+.remedyGrid { grid-template-columns: 1fr 1fr; }
+.microLesson,
+.predictionQuiz { padding: 0.85rem; }
+.microLesson pre { margin-top: 0.65rem; }
+.microLesson p,
+.predictionQuiz p { margin: 0.65rem 0 0; color: var(--ink-soft); font: 0.68rem/1.55 var(--font-display); }
+.predictionQuiz h4 { margin-bottom: 0.55rem; }
+.predictionQuiz > div { display: grid; gap: 0.4rem; }
+.outputStep { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.8rem; margin-top: 0.9rem; padding: 0.8rem; animation: global(rise) var(--t-med) var(--ease-out) 160ms backwards; }
+.outputStep p { margin: 0; color: var(--ink-soft); font: 0.68rem/1.5 var(--font-display); }
+.outputStep strong { display: flex; align-items: center; gap: 0.35rem; color: var(--jade-ink); font-size: 0.66rem; }
+
+@keyframes caretBlink { 50% { opacity: 0; } }
+@keyframes beatReveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes verdictReveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+.scene[data-motion='paused'] *,
+.scene[data-motion='paused'] *::before,
+.scene[data-motion='paused'] *::after {
+  animation-play-state: paused !important;
+}
+
+.scene[data-motion='static'] *,
+.scene[data-motion='static'] *::before,
+.scene[data-motion='static'] *::after {
+  animation: none !important;
+}
+
+.scene[data-motion='static'] .examBeats li,
+.scene[data-motion='static'] .examVerdict {
+  opacity: 1;
+  transform: none;
+}
+
+@media (max-width: 960px) {
+  .scene { min-height: 37rem; }
+  .classroom { grid-template-columns: 7.25rem minmax(0, 1fr); }
+  .pupilStage :global([data-mood]) { width: 96px !important; height: 96px !important; }
+}
+
+@media (max-width: 720px) {
+  .scene { min-height: 0; }
+  .prepGrid,
+  .reviewGrid,
+  .remedyGrid { grid-template-columns: 1fr; }
+  .classroom { grid-template-columns: 1fr; }
+  .pupilStage { flex-direction: row; justify-content: flex-start; gap: 0.6rem; padding-bottom: 0.7rem; border-right: 0; border-bottom: 1px solid var(--board-line); }
+  .pupilStage :global([data-mood]) { width: 68px !important; height: 68px !important; }
+  .classroomDock { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .classroomDock p { grid-column: 1 / -1; }
+  .examDesk { grid-template-columns: 1fr; }
+  .examPupil { grid-template-columns: auto 1fr; justify-content: start; align-items: center; }
+  .outputStep { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .scene { padding: 0.9rem; }
+  .sceneHeading { align-items: flex-start; flex-direction: column; gap: 0.35rem; }
+  .sceneHeading > p { white-space: normal; }
+  .teacherLine,
+  .pupilLine { grid-template-columns: 2rem minmax(0, 1fr); }
+  .classroomDock { grid-template-columns: 1fr 1fr; }
+  .examBeats { grid-template-columns: 1fr 1fr; }
+  .reteachBoard { grid-template-columns: 1fr; }
+  .reteachFoot { align-items: flex-start; flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sceneHeading,
+  .prepGrid,
+  .classroom,
+  .reteachBoard,
+  .eventTape,
+  .outputStep,
+  .examBeats li,
+  .examVerdict,
+  .caret { animation: none; opacity: 1; transform: none; }
+}

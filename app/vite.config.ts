@@ -10,8 +10,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // rolldown 原生分包(advancedChunks):把稳定不变的第三方运行时与庞大的 topics 数据
-        // 各自切成长效缓存块,与页面路由块并行下载。入口会静态引用这两块(预期行为),
-        // 收益是并行下载 + 版本稳定的长效缓存,而非减少总字节。
+        // 各自切成长效缓存块。宣传页不引入 topics；进入课程功能后再按需下载。
         advancedChunks: {
           groups: [
             {

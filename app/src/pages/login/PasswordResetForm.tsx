@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useAuthStore, type AuthField } from '../../store/authStore';
 import {
-  CODE_RE, EMAIL_RE, mapPasswordIssueField, useCooldown, type Issue,
+  CODE_RE, EMAIL_RE, MAINLAND_PHONE_RE, mainlandPhoneToE164, mapPasswordIssueField,
+  useCooldown, type Issue,
 } from '../../hooks/useAuthForm';
 import { EmailCodeField } from './EmailCodeField';
+import { PhoneCodeField } from './PhoneCodeField';
 import fs from './EmailCodeField.module.css';
 import s from './login.module.css';
 
@@ -14,10 +16,19 @@ interface PasswordResetFormProps {
 
 const ID_PREFIX = 'password-reset';
 const FEEDBACK_ID = `${ID_PREFIX}-feedback`;
+type ResetMethod = 'phone' | 'email';
 
 export function PasswordResetForm({ onBusyChange, onSuccess }: PasswordResetFormProps) {
+  const emailAuthAvailable = useAuthStore((state) => state.emailAuthAvailable);
+  const smsAuthAvailable = useAuthStore((state) => state.smsAuthAvailable);
   const requestPasswordResetCode = useAuthStore((state) => state.requestPasswordResetCode);
   const resetPassword = useAuthStore((state) => state.resetPassword);
+  const requestEmailPasswordResetCode = useAuthStore((state) => state.requestEmailPasswordResetCode);
+  const resetPasswordWithEmail = useAuthStore((state) => state.resetPasswordWithEmail);
+  const [method, setMethod] = useState<ResetMethod>(
+    () => useAuthStore.getState().smsAuthAvailable ? 'phone' : 'email',
+  );
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -40,6 +51,7 @@ export function PasswordResetForm({ onBusyChange, onSuccess }: PasswordResetForm
   useEffect(() => {
     if (!issue || issue.field === 'form') return;
     const fieldId: Partial<Record<AuthField, string>> = {
+      phone: `${ID_PREFIX}-phone`,
       email: `${ID_PREFIX}-email`,
       code: `${ID_PREFIX}-code`,
       newPassword: `${ID_PREFIX}-new-password`,
@@ -52,6 +64,15 @@ export function PasswordResetForm({ onBusyChange, onSuccess }: PasswordResetForm
     setIssue((current) => current?.field === field || current?.field === 'form' ? null : current);
   };
 
+  const changePhone = (value: string) => {
+    setPhone(value);
+    setCode('');
+    resetCooldown();
+    setFeedback(null);
+    setIssue((current) => current?.field === 'phone' || current?.field === 'code'
+      || current?.field === 'form' ? null : current);
+  };
+
   const changeEmail = (value: string) => {
     setEmail(value);
     setCode('');
@@ -61,18 +82,33 @@ export function PasswordResetForm({ onBusyChange, onSuccess }: PasswordResetForm
       || current?.field === 'form' ? null : current);
   };
 
+  const switchMethod = (nextMethod: ResetMethod) => {
+    if (busy || nextMethod === method) return;
+    setMethod(nextMethod);
+    setCode('');
+    resetCooldown();
+    setFeedback(null);
+    setIssue(null);
+  };
+
   const sendCode = async () => {
     if (busy || cooldown > 0) return;
     const normalizedEmail = email.trim().toLowerCase();
-    if (!EMAIL_RE.test(normalizedEmail)) {
-      setIssue({ field: 'email', message: '请输入用于注册的有效邮箱地址' });
+    if (method === 'phone' && !MAINLAND_PHONE_RE.test(phone)) {
+      setIssue({ field: 'phone', message: '请输入中国大陆 11 位手机号' });
+      return;
+    }
+    if (method === 'email' && !EMAIL_RE.test(normalizedEmail)) {
+      setIssue({ field: 'email', message: '请输入已验证的有效邮箱地址' });
       return;
     }
     const operationId = ++operation.current;
     setSending(true);
     setIssue(null);
     setFeedback(null);
-    const result = await requestPasswordResetCode(normalizedEmail);
+    const result = method === 'phone'
+      ? await requestPasswordResetCode(mainlandPhoneToE164(phone))
+      : await requestEmailPasswordResetCode(normalizedEmail);
     if (operationId !== operation.current) return;
     setSending(false);
     if (!result.ok) {
@@ -84,7 +120,9 @@ export function PasswordResetForm({ onBusyChange, onSuccess }: PasswordResetForm
       return;
     }
     startCooldown(Math.max(60, result.retryAfter ?? 60));
-    setFeedback('若该邮箱已绑定账号，验证码会发送至邮箱，请在十分钟内完成重设');
+    setFeedback(method === 'phone'
+      ? '若该手机号已绑定账号，验证码会发送至手机，请在十分钟内完成重设'
+      : '若该邮箱已验证，验证码会发送至邮箱，请在十分钟内完成重设');
   };
 
   const submitReset = async (event: FormEvent) => {
@@ -92,8 +130,16 @@ export function PasswordResetForm({ onBusyChange, onSuccess }: PasswordResetForm
     if (busy) return;
     const normalizedEmail = email.trim().toLowerCase();
     let localIssue: Issue | null = null;
-    if (!EMAIL_RE.test(normalizedEmail)) localIssue = { field: 'email', message: '请输入有效的邮箱地址' };
-    else if (!CODE_RE.test(code)) localIssue = { field: 'code', message: '请输入邮件中的 6 位验证码' };
+    if (method === 'phone' && !MAINLAND_PHONE_RE.test(phone)) {
+      localIssue = { field: 'phone', message: '请输入中国大陆 11 位手机号' };
+    } else if (method === 'email' && !EMAIL_RE.test(normalizedEmail)) {
+      localIssue = { field: 'email', message: '请输入已验证的有效邮箱地址' };
+    } else if (!CODE_RE.test(code)) {
+      localIssue = {
+        field: 'code',
+        message: `请输入${method === 'phone' ? '短信' : '邮件'}中的 6 位验证码`,
+      };
+    }
     else if (newPassword.length < 8) localIssue = { field: 'newPassword', message: '新密码至少需要 8 位' };
     else if (newPassword.length > 128) localIssue = { field: 'newPassword', message: '新密码不能超过 128 位' };
     else if (confirmPassword !== newPassword) {
@@ -108,7 +154,9 @@ export function PasswordResetForm({ onBusyChange, onSuccess }: PasswordResetForm
     setResetting(true);
     setIssue(null);
     setFeedback(null);
-    const result = await resetPassword(normalizedEmail, code, newPassword);
+    const result = method === 'phone'
+      ? await resetPassword(mainlandPhoneToE164(phone), code, newPassword)
+      : await resetPasswordWithEmail(normalizedEmail, code, newPassword);
     if (operationId !== operation.current) return;
     setResetting(false);
     if (!result.ok) {
@@ -126,8 +174,33 @@ export function PasswordResetForm({ onBusyChange, onSuccess }: PasswordResetForm
 
   return (
     <form className={s.fields} id="password-reset-form" noValidate aria-busy={busy} onSubmit={submitReset}>
+      {smsAuthAvailable && emailAuthAvailable ? (
+        <div className={s.loginMethods} role="group" aria-label="密码找回方式">
+          <button type="button" className={s.methodSwitch} disabled={busy}
+            aria-pressed={method === 'phone'} onClick={() => switchMethod('phone')}>
+            手机验证（优先）
+          </button>
+          <button type="button" className={s.methodSwitch} disabled={busy}
+            aria-pressed={method === 'email'} onClick={() => switchMethod('email')}>
+            已验证邮箱
+          </button>
+        </div>
+      ) : null}
       <fieldset className={s.fieldset} disabled={busy}>
-        <EmailCodeField
+        {method === 'phone' ? <PhoneCodeField
+          phone={phone}
+          code={code}
+          issueField={issue?.field}
+          sending={sending}
+          cooldown={cooldown}
+          idPrefix={ID_PREFIX}
+          feedbackId={FEEDBACK_ID}
+          phoneLabel="已绑定手机号"
+          autoFocusPhone
+          onPhoneChange={changePhone}
+          onCodeChange={(value) => { setCode(value); clearIssue('code'); }}
+          onSend={() => void sendCode()}
+        /> : <EmailCodeField
           email={email}
           code={code}
           issueField={issue?.field}
@@ -135,12 +208,12 @@ export function PasswordResetForm({ onBusyChange, onSuccess }: PasswordResetForm
           cooldown={cooldown}
           idPrefix={ID_PREFIX}
           feedbackId={FEEDBACK_ID}
-          emailLabel="注册邮箱"
+          emailLabel="已验证邮箱"
           autoFocusEmail
           onEmailChange={changeEmail}
           onCodeChange={(value) => { setCode(value); clearIssue('code'); }}
           onSend={() => void sendCode()}
-        />
+        />}
         <label className={fs.field} htmlFor={`${ID_PREFIX}-new-password`}>
           <span className={fs.label}>新密码</span>
           <input

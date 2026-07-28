@@ -3,8 +3,9 @@ import { Navigate, Route, Routes, useLocation, useNavigationType } from 'react-r
 import { AppShell } from './components/shell/AppShell';
 import { RequireAuth } from './components/shell/RequireAuth';
 import { useAuthStore } from './store/authStore';
-import { initStateSync } from './store/sync';
-import { AUTH_EXPIRED_EVENT, EMAIL_BINDING_REQUIRED_EVENT } from './lib/api';
+import {
+  AUTH_EXPIRED_EVENT, EMAIL_BINDING_REQUIRED_EVENT, PHONE_BINDING_REQUIRED_EVENT,
+} from './lib/api';
 import { subscribeAuthChanges } from './lib/authChannel';
 
 const LandingPage = lazy(() => import('./pages/landing'));
@@ -28,12 +29,29 @@ function ScrollToTop() {
 }
 
 export default function App() {
+  const { pathname, search } = useLocation();
   const initAuth = useAuthStore((s) => s.init);
   const refreshSession = useAuthStore((s) => s.refreshSession);
+  const authStatus = useAuthStore((s) => s.status);
+  const phoneBindingRequired = useAuthStore((s) => s.phoneBindingRequired);
+  const businessPath = pathname !== '/' && pathname !== '/login';
+  const resolvingBusinessAccess = authStatus === 'unknown' && businessPath;
+  const forcePhoneBinding = authStatus === 'authed' && phoneBindingRequired && businessPath;
+
   useEffect(() => {
-    initStateSync(); // 先装同步订阅,再探会话:authed 一落地就拉服务器档
     void initAuth();
   }, [initAuth]);
+
+  useEffect(() => {
+    if (pathname === '/') return;
+    let active = true;
+    void import('./store/sync').then(({ initStateSync }) => {
+      if (active) initStateSync();
+    });
+    return () => {
+      active = false;
+    };
+  }, [pathname]);
 
   useEffect(() => {
     const revalidateNow = () => void refreshSession(true);
@@ -43,12 +61,14 @@ export default function App() {
     };
     window.addEventListener(AUTH_EXPIRED_EVENT, revalidateNow);
     window.addEventListener(EMAIL_BINDING_REQUIRED_EVENT, revalidateNow);
+    window.addEventListener(PHONE_BINDING_REQUIRED_EVENT, revalidateNow);
     window.addEventListener('focus', revalidateOnReturn);
     document.addEventListener('visibilitychange', onVisibility);
     const unsubscribe = subscribeAuthChanges(revalidateNow);
     return () => {
       window.removeEventListener(AUTH_EXPIRED_EVENT, revalidateNow);
       window.removeEventListener(EMAIL_BINDING_REQUIRED_EVENT, revalidateNow);
+      window.removeEventListener(PHONE_BINDING_REQUIRED_EVENT, revalidateNow);
       window.removeEventListener('focus', revalidateOnReturn);
       document.removeEventListener('visibilitychange', onVisibility);
       unsubscribe();
@@ -58,7 +78,14 @@ export default function App() {
   return (
     <AppShell>
       <ScrollToTop />
-      <Suspense fallback={<div className="route-loader" role="status">小白翻书中…</div>}>
+      {resolvingBusinessAccess ? (
+        <div className="route-loader" role="status" aria-live="polite">正在确认账号安全状态…</div>
+      ) : forcePhoneBinding ? (
+        <Navigate
+          to={`/login?next=${encodeURIComponent(`${pathname}${search}`)}`}
+          replace
+        />
+      ) : <Suspense fallback={<div className="route-loader" role="status">小白翻书中…</div>}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/study" element={<HomePage />} />
@@ -72,7 +99,7 @@ export default function App() {
           <Route path="/teacher" element={<TeacherPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </Suspense>
+      </Suspense>}
     </AppShell>
   );
 }

@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import net from 'node:net';
 import { promisify } from 'node:util';
 import { normalizeEmail } from './email-auth.mjs';
+import { maskPhone, normalizeMainlandPhone } from './tencent-sms.mjs';
 import {
   PASSWORD_SCHEME_CURRENT,
   PASSWORD_SCHEME_LEGACY,
@@ -12,6 +13,7 @@ import {
 } from './credential-format.mjs';
 
 export { canonicalName };
+export { maskPhone, normalizeMainlandPhone };
 
 const scryptAsync = promisify(crypto.scrypt);
 const SCRYPT_PARAMETERS = Object.freeze({
@@ -41,14 +43,24 @@ function validateUser(user, source, index) {
   if (!user || typeof user !== 'object' || Array.isArray(user)) throw new Error(`${label}: bad-user`);
   requireStoredName(user, label);
   requireCredentials(user, label);
+  let validated = user;
   if (user.email === undefined) {
     if (user.emailVerifiedAt !== undefined) throw new Error(`${label}: verification-without-email`);
-    return user;
+  } else {
+    const email = normalizeEmail(user.email);
+    if (!email) throw new Error(`${label}: bad-email`);
+    if (!validTimestamp(user.emailVerifiedAt)) throw new Error(`${label}: bad-email-verification`);
+    validated = { ...validated, email };
   }
-  const email = normalizeEmail(user.email);
-  if (!email) throw new Error(`${label}: bad-email`);
-  if (!validTimestamp(user.emailVerifiedAt)) throw new Error(`${label}: bad-email-verification`);
-  return { ...user, email };
+  if (user.phone === undefined) {
+    if (user.phoneVerifiedAt !== undefined) throw new Error(`${label}: verification-without-phone`);
+  } else {
+    const phone = normalizeMainlandPhone(user.phone);
+    if (!phone || phone !== user.phone) throw new Error(`${label}: bad-phone`);
+    if (!validTimestamp(user.phoneVerifiedAt)) throw new Error(`${label}: bad-phone-verification`);
+    validated = { ...validated, phone };
+  }
+  return validated;
 }
 
 function validateList(value, source) {
@@ -82,38 +94,86 @@ function validateBindings(value, users) {
   });
 }
 
+function validatePhoneBindings(value, users) {
+  if (!Array.isArray(value)) throw new Error('phone-bindings.json: expected-array');
+  const configured = new Map(users.map((user) => [canonicalName(user.name), user]));
+  const seen = new Set();
+  return value.map((binding, index) => {
+    const label = `phone-bindings.json[${index}]`;
+    if (!binding || typeof binding !== 'object' || Array.isArray(binding)) {
+      throw new Error(`${label}: bad-binding`);
+    }
+    const keys = Object.keys(binding).sort();
+    if (keys.join(',') !== 'name,phone,phoneVerifiedAt') throw new Error(`${label}: bad-shape`);
+    const normalizedName = typeof binding.name === 'string' ? binding.name.trim().normalize('NFC') : '';
+    const name = canonicalName(binding.name);
+    if (!name || binding.name !== normalizedName) throw new Error(`${label}: bad-name`);
+    if (seen.has(name)) throw new Error(`${label}: duplicate-name`);
+    seen.add(name);
+    const target = configured.get(name);
+    if (!target) throw new Error(`${label}: unknown-config-user`);
+    if (binding.name !== target.name) throw new Error(`${label}: noncanonical-name`);
+    const phone = normalizeMainlandPhone(binding.phone);
+    if (!phone || phone !== binding.phone) throw new Error(`${label}: bad-phone`);
+    if (!validTimestamp(binding.phoneVerifiedAt)) throw new Error(`${label}: bad-phone-verification`);
+    return { name: target.name, phone, phoneVerifiedAt: binding.phoneVerifiedAt };
+  });
+}
+
 function ensureUniqueUsers(users, registrations) {
   const names = new Map();
   const emails = new Map();
+  const phones = new Map();
   for (const [source, list] of [['config.users', users], ['registered-users.json', registrations]]) {
     for (const [index, user] of list.entries()) {
       const location = `${source}[${index}]`;
       const name = canonicalName(user.name);
       if (names.has(name)) throw new Error(`${location}: duplicate-name-with-${names.get(name)}`);
       names.set(name, location);
-      if (!user.email) continue;
-      const email = normalizeEmail(user.email);
-      if (emails.has(email)) throw new Error(`${location}: duplicate-email-with-${emails.get(email)}`);
-      emails.set(email, location);
+      if (user.email) {
+        const email = normalizeEmail(user.email);
+        if (emails.has(email)) throw new Error(`${location}: duplicate-email-with-${emails.get(email)}`);
+        emails.set(email, location);
+      }
+      if (user.phone) {
+        const phone = normalizeMainlandPhone(user.phone);
+        if (phones.has(phone)) {
+          throw new Error(`${location}: duplicate-phone-with-${phones.get(phone)}`);
+        }
+        phones.set(phone, location);
+      }
     }
   }
 }
 
-export function validateUserSets(configured, registered, emailBindings = []) {
+export function validateUserSets(configured, registered, emailBindings = [], phoneBindingInput = []) {
   const configuredUsers = validateList(configured, 'config.users');
   const registrations = validateList(registered, 'registered-users.json');
   const bindings = validateBindings(emailBindings, configuredUsers);
   const byName = new Map(bindings.map((binding) => [canonicalName(binding.name), binding]));
-  const users = configuredUsers.map((user) => {
+  const emailUsers = configuredUsers.map((user) => {
     const binding = byName.get(canonicalName(user.name));
     return binding ? { ...user, email: binding.email, emailVerifiedAt: binding.emailVerifiedAt } : user;
   });
+  const phoneBindings = validatePhoneBindings(phoneBindingInput, emailUsers);
+  const phonesByName = new Map(
+    phoneBindings.map((binding) => [canonicalName(binding.name), binding]),
+  );
+  const users = emailUsers.map((user) => {
+    const binding = phonesByName.get(canonicalName(user.name));
+    return binding
+      ? { ...user, phone: binding.phone, phoneVerifiedAt: binding.phoneVerifiedAt }
+      : user;
+  });
   ensureUniqueUsers(users, registrations);
-  return { users, registrations, bindings };
+  return { users, registrations, bindings, phoneBindings };
 }
 
-function updateVerifiedEmail(configured, registered, emailBindings, nameValue, emailValue, verifiedAt, mode) {
-  const current = validateUserSets(configured, registered, emailBindings);
+function updateVerifiedEmail(
+  configured, registered, emailBindings, nameValue, emailValue, verifiedAt, mode,
+  phoneBindings = [],
+) {
+  const current = validateUserSets(configured, registered, emailBindings, phoneBindings);
   const name = canonicalName(nameValue);
   const email = normalizeEmail(emailValue);
   if (!name) throw new Error('bad-name');
@@ -136,23 +196,93 @@ function updateVerifiedEmail(configured, registered, emailBindings, nameValue, e
     const bindings = bindingIndex < 0
       ? [...current.bindings, replacement]
       : current.bindings.map((item, index) => index === bindingIndex ? replacement : item);
-    return { ...validateUserSets(configured, current.registrations, bindings), source: 'bindings' };
+    return {
+      ...validateUserSets(configured, current.registrations, bindings, current.phoneBindings),
+      source: 'bindings',
+    };
   }
   const registrations = current.registrations.map((user, index) => index === registeredIndex
     ? { ...user, email, emailVerifiedAt: verifiedAt }
     : user);
-  return { ...validateUserSets(configured, registrations, current.bindings), source: 'registrations' };
+  return {
+    ...validateUserSets(configured, registrations, current.bindings, current.phoneBindings),
+    source: 'registrations',
+  };
 }
 
-export function bindVerifiedEmail(configured, registered, emailBindings, nameValue, emailValue, verifiedAt) {
+export function bindVerifiedEmail(
+  configured, registered, emailBindings, nameValue, emailValue, verifiedAt, phoneBindings = [],
+) {
   return updateVerifiedEmail(
-    configured, registered, emailBindings, nameValue, emailValue, verifiedAt, 'bind',
+    configured, registered, emailBindings, nameValue, emailValue, verifiedAt, 'bind', phoneBindings,
   );
 }
 
-export function changeVerifiedEmail(configured, registered, emailBindings, nameValue, emailValue, verifiedAt) {
+export function changeVerifiedEmail(
+  configured, registered, emailBindings, nameValue, emailValue, verifiedAt, phoneBindings = [],
+) {
   return updateVerifiedEmail(
-    configured, registered, emailBindings, nameValue, emailValue, verifiedAt, 'change',
+    configured, registered, emailBindings, nameValue, emailValue, verifiedAt, 'change', phoneBindings,
+  );
+}
+
+function updateVerifiedPhone(
+  configured, registered, phoneBindings, nameValue, phoneValue, verifiedAt, mode,
+  emailBindings = [],
+) {
+  const current = validateUserSets(configured, registered, emailBindings, phoneBindings);
+  const name = canonicalName(nameValue);
+  const phone = normalizeMainlandPhone(phoneValue);
+  if (!name) throw new Error('bad-name');
+  if (!phone) throw new Error('bad-phone');
+  if (!validTimestamp(verifiedAt)) throw new Error('bad-phone-verification');
+  const configIndex = current.users.findIndex((user) => canonicalName(user.name) === name);
+  const registeredIndex = current.registrations.findIndex((user) => canonicalName(user.name) === name);
+  const target = configIndex >= 0 ? current.users[configIndex] : current.registrations[registeredIndex];
+  if (!target) throw new Error('user-not-found');
+  if (mode === 'bind' && target.phone) throw new Error('phone-already-bound');
+  if (mode === 'change' && !target.phone) throw new Error('phone-not-bound');
+  if (mode === 'change' && normalizeMainlandPhone(target.phone) === phone) {
+    throw new Error('phone-unchanged');
+  }
+  const owner = [...current.users, ...current.registrations]
+    .find((user) => normalizeMainlandPhone(user.phone) === phone);
+  if (owner) throw new Error('phone-taken');
+
+  if (configIndex >= 0) {
+    const replacement = { name: target.name, phone, phoneVerifiedAt: verifiedAt };
+    const bindingIndex = current.phoneBindings
+      .findIndex((item) => canonicalName(item.name) === name);
+    const bindings = bindingIndex < 0
+      ? [...current.phoneBindings, replacement]
+      : current.phoneBindings.map((item, index) => index === bindingIndex ? replacement : item);
+    return {
+      ...validateUserSets(configured, current.registrations, current.bindings, bindings),
+      source: 'bindings',
+    };
+  }
+  const registrations = current.registrations.map((user, index) => index === registeredIndex
+    ? { ...user, phone, phoneVerifiedAt: verifiedAt }
+    : user);
+  return {
+    ...validateUserSets(configured, registrations, current.bindings, current.phoneBindings),
+    source: 'registrations',
+  };
+}
+
+export function bindVerifiedPhone(
+  configured, registered, phoneBindings, nameValue, phoneValue, verifiedAt, emailBindings = [],
+) {
+  return updateVerifiedPhone(
+    configured, registered, phoneBindings, nameValue, phoneValue, verifiedAt, 'bind', emailBindings,
+  );
+}
+
+export function changeVerifiedPhone(
+  configured, registered, phoneBindings, nameValue, phoneValue, verifiedAt, emailBindings = [],
+) {
+  return updateVerifiedPhone(
+    configured, registered, phoneBindings, nameValue, phoneValue, verifiedAt, 'change', emailBindings,
   );
 }
 
@@ -167,8 +297,15 @@ export function userHasVerifiedEmail(user) {
   return Boolean(normalizeEmail(user?.email) && validTimestamp(user?.emailVerifiedAt));
 }
 
+export function userHasVerifiedPhone(user) {
+  return Boolean(
+    normalizeMainlandPhone(user?.phone) && validTimestamp(user?.phoneVerifiedAt),
+  );
+}
+
 export function protectedAccessError(user) {
-  return userHasVerifiedEmail(user) ? null : 'email-verification-required';
+  if (!userHasVerifiedEmail(user)) return 'email-verification-required';
+  return userHasVerifiedPhone(user) ? null : 'phone-verification-required';
 }
 
 export function revokeUserSessions(sessions, nameValue) {

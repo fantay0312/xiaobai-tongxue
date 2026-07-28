@@ -57,10 +57,14 @@ test('legacy configured and registered accounts receive restricted sessions', as
     const signedIn = await login(base, name, password, name, { legacyUsername: true });
     assert.equal(signedIn.payload.emailBindingRequired, true);
     assert.equal(signedIn.payload.emailMasked, null);
+    assert.equal(signedIn.payload.phoneBindingRequired, true);
+    assert.equal(signedIn.payload.phoneMasked, null);
     const { cookie } = signedIn;
     const me = await fetch(`${base}/api/me`, { headers: { Cookie: cookie } });
     assert.equal(me.status, 200);
-    assert.equal((await me.json()).emailBindingRequired, true);
+    const mePayload = await me.json();
+    assert.equal(mePayload.emailBindingRequired, true);
+    assert.equal(mePayload.phoneBindingRequired, true);
     const headers = { Cookie: cookie, 'X-Xiaobai-User': encodeURIComponent(name) };
     for (const [pathname, method] of [
       ['/api/chat', 'POST'],
