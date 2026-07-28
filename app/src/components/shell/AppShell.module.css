@@ -135,6 +135,14 @@
   transform: translateY(1px);
 }
 
+/* 夜自习:品牌章本身是靛蓝实心,直接压在黑板底上会糊成一团,
+   故在深色壳内给章垫一方奶白纸底圆角(与页签图标同一处理),读得出才算落了印 */
+.board .seal {
+  padding: 0.11rem;
+  border-radius: 28%;
+  background: var(--chalk);
+}
+
 .board .brandName {
   color: var(--chalk);
 }

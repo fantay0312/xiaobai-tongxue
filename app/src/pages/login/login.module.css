@@ -112,7 +112,7 @@
   color: var(--ink-soft);
 }
 
-/* 骑缝印:问学印绝对定位压过 plate/form 接缝竖线,落印般轻旋入位——本页唯一破格 */
+/* 骑缝印:品牌章绝对定位压过 plate/form 接缝竖线,落印般轻旋入位——本页唯一破格 */
 .straddleSeal {
   position: absolute;
   right: 0;
@@ -121,7 +121,8 @@
   width: 3.35rem;
   height: 3.35rem;
   transform: translate(50%, 0) rotate(-8deg);
-  filter: drop-shadow(0 4px 10px var(--cinnabar-wash));
+  /* 章已换成小白同学(靛蓝),投影随之从朱砂改走墨调,否则蓝章配红影发脏 */
+  filter: drop-shadow(0 4px 10px color-mix(in oklch, var(--ink) 18%, transparent));
   animation: sealDrop var(--t-slow) var(--ease-out) 200ms backwards;
 }
 
