@@ -1,10 +1,10 @@
-/* 私章:书斋名帖上的落款方印 —— 印泥红走 --seal-red 别名(印章豁免,勿写警示 --cinnabar) */
+/* 私章：印泥红只用于学习身份落款。 */
 .mark {
   display: grid;
-  place-items: center;
   width: 4rem;
   height: 4rem;
   flex: none;
+  place-items: center;
   border: 0;
   border-radius: var(--radius-s);
   background: var(--seal-red);
@@ -14,7 +14,6 @@
   font-weight: 700;
   line-height: 1;
   transform: rotate(-3deg);
-  /* 白文印面:细白纸内圈钤在印底里,像全站其它私章 */
   box-shadow:
     inset 0 0 0 3px var(--seal-red),
     inset 0 0 0 4px color-mix(in oklab, var(--paper) 32%, transparent),
@@ -22,8 +21,8 @@
 }
 
 .mark[data-compact='true'] {
-  width: 1.9rem;
-  height: 1.9rem;
+  width: 2rem;
+  height: 2rem;
   font-size: var(--fs-small);
   box-shadow:
     inset 0 0 0 2px var(--seal-red),
@@ -31,26 +30,27 @@
 }
 
 .dialog {
-  width: min(34rem, calc(100vw - 2 * var(--gap)));
-  max-height: min(42rem, calc(100dvh - 2 * var(--gap)));
+  width: min(84rem, calc(100vw - 2rem));
+  height: min(72rem, calc(100dvh - 2rem));
+  max-height: calc(100dvh - 2rem);
   margin: auto;
   padding: 0;
+  overflow: hidden;
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius);
   background: var(--paper);
   box-shadow: var(--shadow-lift);
   color: var(--ink);
-  overflow: hidden;
 }
 
 .dialog[open] {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 17rem minmax(0, 1fr);
   animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 
 .dialog::backdrop {
-  background: color-mix(in oklab, var(--ink) 40%, transparent);
+  background: color-mix(in oklab, var(--ink) 42%, transparent);
   animation: backdrop-in var(--t-med) var(--ease-out) backwards;
 }
 
@@ -59,48 +59,58 @@
   to { opacity: 1; }
 }
 
-.head {
+.rail {
+  position: relative;
   display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  padding: var(--gap-tight);
+  overflow: hidden;
+  border-right: 1px solid var(--paper-edge);
+  background:
+    radial-gradient(15rem 12rem at -12% 12%, var(--lilac-wash), transparent 68%),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 calc(1.45rem - 1px),
+      color-mix(in oklab, var(--paper-edge) 22%, transparent) calc(1.45rem - 1px) 1.45rem
+    ),
+    var(--paper-shade);
+}
+
+.railTop {
+  display: flex;
+  min-height: 2.75rem;
   align-items: center;
   justify-content: space-between;
-  padding: var(--gap-tight) var(--gap-tight) var(--gap-tight) var(--gap);
-  border-bottom: 1px solid var(--paper-edge);
+  gap: var(--gap-tight);
 }
 
-.eyebrow {
-  margin-bottom: 0.2rem;
-  color: var(--azure);
+.railBrand {
+  color: var(--ink-faint);
   font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
-  text-transform: uppercase;
   letter-spacing: var(--track-label);
-}
-
-.title {
-  font-family: var(--font-serif);
-  font-size: var(--fs-sub);
-  font-weight: 600;
-  letter-spacing: 0.03em;
 }
 
 .closeBtn {
   position: relative;
   display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
   place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
   padding: 0;
   border: 0;
   border-radius: var(--radius-s);
   background: transparent;
-  color: var(--ink-faint);
+  color: var(--ink-soft);
   transition: color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
 }
 
 .closeBtn::after {
-  content: '';
   position: absolute;
-  inset: -0.25rem;
+  content: '';
+  inset: -0.2rem;
 }
 
 .closeBtn:hover {
@@ -108,66 +118,245 @@
   color: var(--ink);
 }
 
+.railIdentity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gap-tight);
+  margin: var(--gap-tight) var(--gap-hair) var(--gap);
+  padding: 0 var(--gap-hair) var(--gap);
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.railIdentity div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.railIdentity strong,
+.railIdentity span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.railIdentity strong {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+
+.railIdentity span {
+  color: var(--ink-faint);
+  font-size: var(--fs-tiny);
+}
+
+.sideNav {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.navItem {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gap-tight);
+  width: 100%;
+  min-height: 2.9rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  text-align: left;
+  transition:
+    color var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out);
+}
+
+.navItem:hover {
+  background: color-mix(in oklab, var(--paper) 72%, transparent);
+  color: var(--ink);
+}
+
+.navItem[data-active='true'] {
+  border-color: var(--paper-edge);
+  background: var(--paper);
+  color: var(--azure-deep);
+  box-shadow: var(--shadow-paper);
+}
+
+.navItem[data-active='true']::before {
+  position: absolute;
+  width: 2px;
+  border-radius: var(--radius-tag);
+  background: var(--azure);
+  content: '';
+  inset-block: 0.65rem;
+  left: -1px;
+}
+
+.railFoot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+  margin-top: auto;
+  padding-top: var(--gap-tight);
+  border-top: 1px solid var(--paper-edge);
+}
+
+.logoutIssue {
+  margin: 0;
+  color: var(--cinnabar);
+  font-size: var(--fs-tiny);
+  line-height: 1.45;
+}
+
+.logoutBtn {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--gap-tight);
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--ink-faint);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  text-align: left;
+  transition:
+    color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out);
+}
+
+.logoutBtn:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--cinnabar) 36%, var(--paper-edge));
+  background: var(--cinnabar-wash);
+  color: var(--cinnabar);
+}
+
+.logoutBtn:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.main {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  background:
+    radial-gradient(22rem 14rem at 100% 0%, var(--reed-wash), transparent 72%),
+    var(--paper);
+}
+
+.contentHead {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding: var(--gap) clamp(var(--gap), 4vw, var(--gap-loose));
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.eyebrow {
+  margin-bottom: 0.28rem;
+  color: var(--azure);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: var(--track-label);
+}
+
+.title {
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: var(--fs-title);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.description {
+  margin-top: 0.35rem;
+  color: var(--ink-faint);
+  font-size: var(--fs-small);
+  line-height: 1.55;
+}
+
+.sectionIndex {
+  color: color-mix(in oklab, var(--azure) 36%, var(--paper-edge));
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-title);
+  letter-spacing: 0.08em;
+}
+
 .scroll {
   min-height: 0;
+  padding: clamp(var(--gap), 4vw, var(--gap-loose));
   overflow-y: auto;
   scrollbar-width: thin;
 }
 
-/* 书斋名帖:丁香/芦苇双色水迹 + 极淡竖乌丝栏,3px 装裱衬边;整帖可点,翻开成长册 */
 .identity {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  padding: clamp(var(--gap), 4vw, var(--gap-loose)) clamp(var(--gap), 5vw, var(--gap-loose));
-  border-bottom: 1px solid var(--paper-edge);
-  color: var(--ink);
-  text-decoration: none;
+  display: block;
+  padding: clamp(var(--gap), 3.5vw, var(--gap-loose));
+  overflow: hidden;
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
   background:
-    radial-gradient(20rem 13rem at 8% -18%, var(--lilac-wash), transparent 58%),
-    radial-gradient(22rem 15rem at 100% 128%, var(--reed-wash), transparent 60%),
-    repeating-linear-gradient(90deg, transparent 0 calc(1.6rem - 1px), color-mix(in oklab, var(--paper-edge) 24%, transparent) calc(1.6rem - 1px) 1.6rem),
+    radial-gradient(18rem 11rem at 0% 0%, var(--lilac-wash), transparent 68%),
+    radial-gradient(20rem 12rem at 100% 112%, var(--reed-wash), transparent 66%),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 calc(1.6rem - 1px),
+      color-mix(in oklab, var(--paper-edge) 20%, transparent) calc(1.6rem - 1px) 1.6rem
+    ),
     var(--paper-blush);
   box-shadow:
     inset 0 0 0 3px var(--paper-blush),
-    inset 0 0 0 4px color-mix(in oklab, var(--paper-edge) 78%, transparent);
-  transition: box-shadow var(--t-med) var(--ease-out);
+    inset 0 0 0 4px color-mix(in oklab, var(--paper-edge) 72%, transparent);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color var(--t-med) var(--ease-out), box-shadow var(--t-med) var(--ease-out);
 }
 
-/* 悬停:装裱衬边由淡紫收紧成丁香,像把名帖端起来看 */
 .identity:hover {
+  border-color: color-mix(in oklab, var(--lilac) 48%, var(--paper-edge));
   box-shadow:
     inset 0 0 0 3px var(--paper-blush),
-    inset 0 0 0 4px color-mix(in oklab, var(--lilac) 52%, var(--paper-edge)),
+    inset 0 0 0 4px color-mix(in oklab, var(--lilac) 44%, var(--paper-edge)),
     var(--shadow-paper);
 }
 
-/* 帖文:左侧一道文武界栏(粗左细右),框住抬头与身份签 */
-.plate {
-  position: relative;
+.identityHead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gap);
+}
+
+.identityHead > div {
   min-width: 0;
-  padding-left: var(--gap);
 }
 
-.plate::before {
-  content: '';
-  position: absolute;
-  top: 0.15rem;
-  bottom: 0.15rem;
-  left: 0;
-  width: 4px;
-  background:
-    linear-gradient(color-mix(in oklab, var(--lilac) 58%, var(--paper-edge)), color-mix(in oklab, var(--lilac) 58%, var(--paper-edge))) left / 2px 100% no-repeat,
-    linear-gradient(color-mix(in oklab, var(--lilac) 30%, var(--paper-edge)), color-mix(in oklab, var(--lilac) 30%, var(--paper-edge))) right / 1px 100% no-repeat;
-}
-
-/* 帖眉:打字机铅字小签,像名帖抬头 */
 .accountKind {
-  margin-bottom: 0.28rem;
+  margin-bottom: 0.18rem;
   color: var(--ink-faint);
   font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
-  text-transform: uppercase;
   letter-spacing: var(--track-label);
 }
 
@@ -182,156 +371,225 @@
   white-space: nowrap;
 }
 
-/* 学习身份三签:师道称号朱文小印 + 修行阶 + 学识等级,数值全从引擎派生 */
+.identityArrow {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: var(--radius-tag);
+  background: color-mix(in oklab, var(--paper) 72%, transparent);
+  color: var(--ink-faint);
+  transition: color var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
+}
+
+.identity:hover .identityArrow {
+  color: var(--azure-deep);
+  transform: translateX(3px);
+}
+
 .creds {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--gap-hair);
-  margin-top: 0.5rem;
+  margin-top: var(--gap);
+  padding-top: var(--gap-tight);
+  border-top: 1px solid color-mix(in oklab, var(--paper-edge) 74%, transparent);
 }
 
-/* 师道称号:朱文小签(印章语境走 --seal-red,非警示) */
-.rankChip {
-  padding: 0.16rem 0.5rem;
-  border: 1px solid color-mix(in oklab, var(--seal-red) 55%, transparent);
+.rankChip,
+.credChip {
+  padding: 0.2rem 0.52rem;
   border-radius: var(--radius-tag);
-  background: var(--seal-red-wash);
-  color: color-mix(in oklch, var(--seal-red) 70%, var(--ink) 30%); /* wash 底上加深到 ≥AA */
-  font-family: var(--font-display);
   font-size: var(--fs-tiny);
-  font-weight: 700;
-  letter-spacing: 0.14em;
   white-space: nowrap;
 }
 
-/* 修行阶 / 学识:退到中性铅字小签,不与朱印抢重音 */
+.rankChip {
+  border: 1px solid color-mix(in oklab, var(--seal-red) 50%, transparent);
+  background: var(--seal-red-wash);
+  color: color-mix(in oklch, var(--seal-red) 70%, var(--ink) 30%);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
 .credChip {
-  padding: 0.18rem 0.5rem;
   border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-tag);
-  background: color-mix(in oklab, var(--paper) 55%, transparent);
+  background: color-mix(in oklab, var(--paper) 58%, transparent);
   color: var(--ink-soft);
   font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  text-transform: uppercase;
   letter-spacing: var(--track-label);
-  white-space: nowrap;
 }
 
-.emailLine {
-  display: flex;
+.credentialGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gap-tight);
+  margin-top: var(--gap);
+}
+
+.credentialGrid p {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--gap-hair);
   min-width: 0;
-  margin-top: var(--gap-tight);
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--fs-tiny);
 }
 
-.emailText {
+.credentialGrid p > span {
   overflow: hidden;
-  color: var(--ink-soft);
-  font-size: var(--fs-small);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* 落款行:右下角「授课凭帖」+ 升格到落款位的方印(本弹层的破格瞬间) */
-.colophon {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--gap-tight);
-  margin-top: var(--gap);
-  padding-top: var(--gap-tight);
-}
-
-.colophonText {
-  color: var(--ink-faint);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  text-transform: uppercase;
-  letter-spacing: var(--track-label);
-  white-space: nowrap;
-}
-
-/* 方印落在落款位:比抬头旧位小一档,悬停时轻按如钤印 */
-.colophon .mark {
-  width: 2.5rem;
-  height: 2.5rem;
-  font-size: var(--fs-sub);
-  transition: transform var(--t-med) var(--ease-out);
-}
-
-.identity:hover .colophon .mark {
-  transform: rotate(-3deg) scale(0.94);
-}
-
-/* 验证签:锐角小签(朱文小印制式) */
-.secureBadge,
-.pendingBadge {
+.credentialGrid small,
+.statusRow small,
+.readyBadge,
+.todoBadge {
   flex: none;
-  padding: 0.2rem 0.44rem;
+  padding: 0.19rem 0.42rem;
   border-radius: var(--radius-tag);
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
-
-.secureBadge {
-  border: 1px solid color-mix(in oklab, var(--jade) 42%, transparent);
   background: var(--jade-wash);
   color: var(--jade-ink);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
-/* 待补录是待办不是错误:丁香待办签,朱砂只留真错误 */
-.pendingBadge {
-  border: 1px solid color-mix(in oklab, var(--lilac) 45%, var(--paper-edge));
+.credentialGrid small[data-pending='true'],
+.statusRow small[data-pending='true'],
+.todoBadge {
   background: var(--lilac-wash);
   color: var(--ink-soft);
 }
 
-/* 眉批:退到最轻的一行,左侧一道界线 */
-.intro {
-  margin: var(--gap) clamp(var(--gap), 5vw, var(--gap-loose)) 0;
-  padding-left: var(--gap-tight);
-  border-left: 2px solid var(--paper-edge);
-  color: var(--ink-faint);
+.identityHint {
+  display: block;
+  margin-top: var(--gap);
+  color: var(--azure-deep);
+  font-family: var(--font-display);
   font-size: var(--fs-tiny);
-  line-height: 1.7;
+  text-align: right;
 }
 
-.section {
-  margin: var(--gap) clamp(var(--gap), 5vw, var(--gap-loose)) 0;
+.section + .section {
+  margin-top: var(--gap-loose);
 }
 
-.section:last-child { margin-bottom: var(--gap); }
+.identity + .section {
+  margin-top: var(--gap-loose);
+}
 
-/* 题头制式「双线书版式」:宋体小题 + 2px 墨色短线叠在通栏细线上 */
-.sectionTitle {
-  position: relative;
+.sectionLead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gap);
   margin-bottom: var(--gap-tight);
-  padding-bottom: 0.5rem;
+  padding-bottom: var(--gap-tight);
   border-bottom: 1px solid var(--line-strong);
+}
+
+.sectionLead h3 {
   color: var(--ink);
   font-family: var(--font-serif);
   font-size: var(--fs-body);
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
 }
 
-.sectionTitle::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  width: 2.25rem;
-  height: 2px;
-  background: var(--ink);
+.sectionLead p {
+  margin-top: 0.22rem;
+  color: var(--ink-faint);
+  font-size: var(--fs-tiny);
+  line-height: 1.55;
+}
+
+.readyBadge,
+.todoBadge {
+  margin-top: 0.1rem;
+}
+
+.entries {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--paper-edge);
+}
+
+.entry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gap-tight);
+  width: 100%;
+  min-height: 4rem;
+  padding: var(--gap-tight) var(--gap-hair);
+  border: 0;
+  border-bottom: 1px solid var(--paper-edge);
+  background: transparent;
+  color: var(--ink-soft);
+  text-align: left;
+  text-decoration: none;
+  transition: color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+}
+
+.entry:hover {
+  background: var(--paper-blush);
+  color: var(--azure-deep);
+}
+
+.entryTile,
+.statusTile,
+.preferenceIcon {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  background: var(--paper-warm);
+  color: var(--azure-deep);
+}
+
+.entryCopy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.entry strong,
+.preferenceEntry strong {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+
+.entry small,
+.preferenceEntry small {
+  color: var(--ink-faint);
+  font-size: var(--fs-tiny);
+}
+
+.entryChevron {
+  flex: none;
+  color: var(--ink-faint);
+  transition: transform var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+}
+
+.entry:hover .entryChevron,
+.preferenceEntry:hover .entryChevron {
+  color: var(--azure-deep);
+  transform: translateX(3px);
 }
 
 .statusList {
-  border-block: 1px solid var(--paper-edge);
+  border-top: 1px solid var(--paper-edge);
 }
 
 .statusRow {
@@ -339,21 +597,22 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--gap-tight);
-  min-height: 3.5rem;
-  padding-block: var(--gap-tight);
-  padding-inline: var(--gap-hair);
+  min-height: 4.35rem;
+  padding: var(--gap-tight) var(--gap-hair);
+  border-bottom: 1px solid var(--paper-edge);
   transition: background var(--t-fast) var(--ease-out);
 }
 
-.statusRow:hover { background: var(--lilac-wash); }
+.statusRow:hover {
+  background: var(--lilac-wash);
+}
 
-.statusRow + .statusRow { border-top: 1px solid var(--paper-edge); }
+.statusTile[data-secure='true'] {
+  background: var(--jade-wash);
+  color: var(--jade-ink);
+}
 
-/* 已加密态走芦青,邮箱凭证走主动作丁香 */
-.statusIconOk { color: var(--jade-ink); }
-.statusIcon { color: var(--azure); }
-
-.statusRow div {
+.statusRow > div {
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -366,7 +625,7 @@
   font-weight: 600;
 }
 
-.statusRow span {
+.statusRow div span {
   overflow: hidden;
   color: var(--ink-soft);
   font-size: var(--fs-tiny);
@@ -374,25 +633,9 @@
   white-space: nowrap;
 }
 
-.statusRow small {
-  padding: 0.18rem 0.4rem;
-  border-radius: var(--radius-tag);
-  background: var(--jade-wash);
-  color: var(--jade-ink);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.06em;
-  white-space: nowrap;
-}
-
-/* 待验证是待办不是错误:丁香待办签,与名帖待补录签同语 */
-.statusRow small[data-pending='true'] {
-  background: var(--lilac-wash);
-  color: var(--ink-soft);
-}
-
-.emailToggle {
-  min-height: 44px;
-  padding: 0.35rem 0.55rem;
+.statusAction {
+  min-height: 2.75rem;
+  padding: 0.4rem 0.64rem;
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius-tag);
   background: var(--paper);
@@ -403,169 +646,275 @@
   transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
 
-.emailToggle:hover {
+.statusAction:hover {
   border-color: color-mix(in oklab, var(--azure) 48%, var(--paper-edge));
   background: var(--azure-wash);
 }
 
-.emailNotice {
+.notice {
   margin-top: var(--gap-tight);
   color: var(--jade-ink);
   font-size: var(--fs-tiny);
   line-height: 1.55;
 }
 
-/* 门径卡片:各自成砖,间隔留白——与上方账簿细行(statusList)刻意分家,破同构长清单 */
-.entries {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-hair);
-}
-
-.entry {
+.preferenceEntry {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--gap-tight);
+  gap: var(--gap);
   width: 100%;
-  min-height: 3.4rem;
-  padding: var(--gap-tight);
+  min-height: 5.25rem;
+  padding: var(--gap);
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius-s);
   background: var(--paper-warm);
   color: var(--ink-soft);
   text-align: left;
-  text-decoration: none;
-  transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+  transition:
+    background var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out);
 }
 
-.entry:hover {
-  border-color: color-mix(in oklab, var(--lilac) 45%, var(--paper-edge));
+.preferenceEntry:hover {
+  border-color: color-mix(in oklab, var(--lilac) 46%, var(--paper-edge));
   background: var(--paper-blush);
-  color: var(--azure-deep);
 }
 
-/* 入口图标坐在一方雾纸砖里(卡内衬砖,与卡面分色) */
-.entryTile {
-  display: grid;
-  place-items: center;
-  width: 2.2rem;
-  height: 2.2rem;
-  flex: none;
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-s);
-  background: var(--paper);
-  color: var(--azure-deep);
-  transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
-}
-
-.entry:hover .entryTile {
-  border-color: color-mix(in oklab, var(--azure) 40%, var(--paper-edge));
-  background: var(--azure-wash);
-}
-
-.entryCopy {
+.preferenceEntry > span:nth-child(2) {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: 0.14rem;
 }
 
-.entry strong {
+.preferenceNote {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: flex-start;
+  gap: var(--gap-tight);
+  margin-top: var(--gap);
+  padding: var(--gap-tight);
+  border-left: 2px solid color-mix(in oklab, var(--lilac) 52%, var(--paper-edge));
+  background: var(--lilac-wash);
+  color: var(--ink-soft);
+}
+
+.preferenceNote > svg {
+  margin-top: 0.15rem;
+  color: var(--azure-deep);
+}
+
+.preferenceNote p {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.preferenceNote strong {
   color: var(--ink);
   font-family: var(--font-display);
   font-size: var(--fs-small);
   font-weight: 600;
 }
 
-.entry small {
+.preferenceNote span {
   color: var(--ink-faint);
   font-size: var(--fs-tiny);
+  line-height: 1.55;
 }
 
-.entryChevron {
-  flex: none;
-  color: var(--ink-faint);
-  transition: transform var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
-}
-
-.entry:hover .entryChevron {
-  transform: translateX(3px);
-  color: var(--azure-deep);
-}
-
-.foot {
-  display: flex;
-  min-height: 4rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gap-tight);
-  padding: var(--gap-tight) var(--gap);
-  border-top: 1px solid var(--paper-edge);
-  background: var(--paper-shade);
-}
-
-.logoutIssue {
-  margin: 0;
-  color: var(--cinnabar);
-  font-size: var(--fs-tiny);
-  line-height: 1.45;
-}
-
-.logoutBtn {
-  display: inline-flex;
-  min-height: 2.75rem;
-  align-items: center;
-  justify-content: center;
-  gap: var(--gap-hair);
-  margin-left: auto;
-  padding: 0.5rem 0.85rem;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-s);
-  background: var(--paper);
-  color: var(--ink-soft);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
-}
-
-.logoutBtn:hover:not(:disabled) {
-  border-color: var(--cinnabar);
-  background: var(--cinnabar-wash);
-  color: var(--cinnabar);
-}
-
-.logoutBtn:disabled { cursor: wait; opacity: 0.6; }
-
-@media (max-width: 560px) {
+@media (max-width: 760px) {
   .dialog {
     width: calc(100vw - 1.5rem);
+    height: calc(100dvh - 1.5rem);
     max-height: calc(100dvh - 1.5rem);
   }
 
-  .identity { padding: var(--gap); }
-  .plate { padding-left: var(--gap-tight); }
-  .colophon .mark { width: 2.2rem; height: 2.2rem; }
-  .intro,
-  .section { margin-inline: var(--gap); }
-  .foot { align-items: stretch; flex-direction: column; }
-  .logoutBtn { width: 100%; margin-left: 0; }
+  .dialog[open] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .rail {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    flex: none;
+    gap: var(--gap-hair);
+    padding: var(--gap-hair);
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid var(--paper-edge);
+  }
+
+  .railTop {
+    grid-column: 1 / -1;
+    min-height: 2.5rem;
+  }
+
+  .railIdentity {
+    display: none;
+  }
+
+  .sideNav {
+    flex-direction: row;
+    gap: var(--gap-hair);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .sideNav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .navItem {
+    display: inline-flex;
+    width: auto;
+    min-height: 2.75rem;
+    flex: none;
+    padding-inline: 0.65rem;
+    white-space: nowrap;
+  }
+
+  .navItem[data-active='true']::before {
+    width: auto;
+    height: 2px;
+    inset-block: auto -1px;
+    inset-inline: 0.65rem;
+  }
+
+  .railFoot {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .logoutIssue {
+    position: absolute;
+    right: var(--gap-hair);
+    bottom: -2rem;
+    z-index: 2;
+    max-width: calc(100% - 2 * var(--gap-hair));
+    padding: var(--gap-hair);
+    background: var(--cinnabar-wash);
+  }
+
+  .logoutBtn {
+    width: 2.75rem;
+    padding: 0;
+    justify-content: center;
+    border-color: var(--paper-edge);
+    background: var(--paper);
+  }
+
+  .logoutBtn span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .main {
+    flex: 1;
+  }
+
+  .contentHead {
+    padding: var(--gap-tight) var(--gap);
+  }
+
+  .title {
+    font-size: var(--fs-sub);
+  }
+
+  .description {
+    margin-top: 0.22rem;
+    font-size: var(--fs-tiny);
+  }
+
+  .sectionIndex {
+    font-size: var(--fs-sub);
+  }
+
+  .scroll {
+    padding: var(--gap);
+  }
+}
+
+@media (max-width: 560px) {
+  .railBrand,
+  .sectionIndex {
+    display: none;
+  }
+
+  .navItem span {
+    font-size: var(--fs-tiny);
+  }
+
+  .identity {
+    padding: var(--gap);
+  }
+
+  .identityHead {
+    gap: var(--gap-tight);
+  }
+
+  .identityHead .mark {
+    width: 3rem;
+    height: 3rem;
+    font-size: var(--fs-sub);
+  }
+
+  .credentialGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statusRow {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .statusRow .statusAction,
+  .statusRow > small {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .statusAction {
+    min-height: 2.5rem;
+  }
+
+  .sectionLead {
+    flex-direction: column;
+    gap: var(--gap-hair);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .dialog[open],
-  .dialog::backdrop { animation: none; }
+  .dialog::backdrop {
+    animation: none;
+  }
 
+  .closeBtn,
+  .navItem,
+  .logoutBtn,
   .identity,
-  .colophon .mark,
+  .identityArrow,
   .entry,
-  .entryTile,
   .entryChevron,
   .statusRow,
-  .emailToggle,
-  .closeBtn,
-  .logoutBtn { transition: none; }
+  .statusAction,
+  .preferenceEntry {
+    transition: none;
+  }
 
-  .identity:hover .colophon .mark { transform: none; }
-  .entry:hover .entryChevron { transform: none; }
+  .identity:hover .identityArrow,
+  .entry:hover .entryChevron,
+  .preferenceEntry:hover .entryChevron {
+    transform: none;
+  }
 }

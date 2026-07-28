@@ -791,21 +791,18 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 
   logout: async () => {
     const generation = beginAuthMutation();
-    setGatewayIdentity(null);
-    set({
-      status: 'unknown', user: null, emailMasked: null, emailBindingRequired: false,
-      phoneMasked: null, phoneBindingRequired: false,
-    });
     try {
       const response = await fetchWithTimeout(`${API_BASE}/logout`, { method: 'POST' });
       if (!response.ok) {
         const failure = await apiFailure(response, `退出失败（${response.status}）`);
-        // 反代 5xx 也无法证明上游未删会话；与网络异常一样交给 /me 判定。
-        queuedRefresh = true;
+        // 反代 5xx 无法证明上游是否已删会话；保留当前界面并静默用 /me 权威收敛，
+        // 让个人中心能把失败原因呈现出来，而不是先卸载弹层。
+        if (queuedRefresh === null) queuedRefresh = false;
         return failure;
       }
       if (generation !== currentAuthEpoch()) return supersededAuthResult();
       clearCoachThreads();
+      setGatewayIdentity(null);
       set({
         status: 'anon', user: null, emailMasked: null, emailBindingRequired: false,
         phoneMasked: null, phoneBindingRequired: false,
@@ -813,8 +810,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       broadcastAuthChange();
       return { ok: true };
     } catch (error) {
-      // 请求超时/断网时无法判断服务端是否已删会话，排队 /me 做权威收敛。
-      queuedRefresh = true;
+      // 请求超时/断网时无法判断服务端是否已删会话；不先清本地身份，
+      // 由 /me 在后台判定，若会话仍在则保留弹层并展示错误。
+      if (queuedRefresh === null) queuedRefresh = false;
       return networkFailure(error);
     } finally {
       finishAuthMutation(get);

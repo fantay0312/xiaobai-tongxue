@@ -163,5 +163,7 @@ npm run build
 - systemd：`xiaobai.service`，以非特权用户 `xiaobai` 运行，代码目录只读。
 - 每次发布先完整备份当前 `/opt/xiaobai`、`/var/lib/xiaobai`、nginx 配置和环境文件，再整体替换
   runtime bundle；不能只上传 `index.mjs`。
-- 先在候选端口验证 PostgreSQL、Redis、COS、`/api/me` 与静态资源，再切换 8000 服务和 CDN CNAME。
+- 先在候选端口验证 PostgreSQL、Redis、COS、`/api/me` 与静态资源，再将候选服务切换到
+  `127.0.0.1:8000`；常规发布不变更 DNS，CDN CNAME 必须保持
+  `xiaobai.tokentosea.com.cdn.dnsv1.com`，上线后仅按需刷新 CDN 缓存。
 - 回滚必须同时恢复完整服务包、配置与兼容状态；数据库迁移采用只增不改的版本化 SQL。

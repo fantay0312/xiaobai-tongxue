@@ -2,7 +2,7 @@
   position: relative;
   isolation: isolate;
   display: grid;
-  grid-template-columns: 5.75rem minmax(0, 1fr);
+  grid-template-columns: 4.75rem minmax(0, 1fr);
   overflow: visible;
   background: var(--paper);
   border: 1px solid var(--line-strong);
@@ -68,7 +68,12 @@
   transform: rotate(-4deg);
 }
 
-.albumBody { position: relative; z-index: 1; min-width: 0; padding: var(--gap) clamp(0.8rem, 2vw, 1.5rem) var(--gap-loose); }
+.albumBody {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  padding: var(--gap) clamp(0.8rem, 2vw, 1.5rem) var(--gap-loose);
+}
 
 .albumNote {
   display: flex;
@@ -105,22 +110,137 @@
 .ceremonyNote span { font-size: var(--fs-tiny); letter-spacing: 0.16em; }
 .ceremonyNote b { font-size: var(--fs-small); }
 
+.bookNav {
+  display: grid;
+  grid-template-columns: minmax(7rem, 1fr) auto minmax(7rem, 1fr);
+  align-items: center;
+  gap: var(--gap-tight);
+  padding: var(--gap-tight) 0;
+}
+
+.pageButton {
+  position: relative;
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--gap-hair);
+  width: fit-content;
+  padding: 0.35rem 0.65rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  transition:
+    color var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.pageButton:last-child { justify-self: end; }
+.pageButton:hover:not(:disabled) { color: var(--azure); transform: translateX(-2px); }
+.pageButton:last-child:hover:not(:disabled) { transform: translateX(2px); }
+.pageButton:disabled { color: var(--dust); cursor: not-allowed; }
+.pageButton:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
+
+.spreadStatus {
+  color: var(--ink-soft);
+  font-family: var(--font-code);
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.spreadStatus small { color: var(--ink-faint); font-size: var(--fs-tiny); }
+
+.bookSpread {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  perspective: 90rem;
+  filter: drop-shadow(0 0.8rem 1.25rem color-mix(in oklab, var(--ink) 14%, transparent));
+  transform-origin: center;
+}
+
+.turnNext { animation: page-enter-next var(--t-slow) var(--ease-out) backwards; }
+.turnPrev { animation: page-enter-prev var(--t-slow) var(--ease-out) backwards; }
+
+@keyframes page-enter-next {
+  from { opacity: 0.35; transform: perspective(90rem) rotateY(-7deg) translateX(0.7rem); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes page-enter-prev {
+  from { opacity: 0.35; transform: perspective(90rem) rotateY(7deg) translateX(-0.7rem); }
+  to { opacity: 1; transform: none; }
+}
+
+.bookPage {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  background:
+    linear-gradient(90deg, color-mix(in oklab, var(--ink) 4%, transparent), transparent 8%),
+    repeating-linear-gradient(1deg, transparent 0 5px, color-mix(in oklab, var(--ink) 4%, transparent) 5px 6px),
+    var(--paper);
+}
+
+.pageLeft {
+  border-radius: var(--radius) 0 0 var(--radius);
+  box-shadow: inset -1.2rem 0 1.4rem -1.3rem color-mix(in oklab, var(--ink) 45%, transparent);
+}
+
+.pageRight {
+  border-left: 0;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  box-shadow: inset 1.2rem 0 1.4rem -1.3rem color-mix(in oklab, var(--ink) 45%, transparent);
+}
+
+.pageLeft::after,
+.pageRight::before {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  pointer-events: none;
+  background: color-mix(in oklab, var(--ink) 18%, transparent);
+}
+
+.pageLeft::after { right: 0; }
+.pageRight::before { left: 0; }
+
+.pageHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-tight);
+  min-height: 2.25rem;
+  padding: 0.45rem var(--gap-tight);
+  border-bottom: 1px solid var(--paper-edge);
+  color: var(--ink-faint);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+
 .sealWall {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border-left: 1px solid var(--paper-edge);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .seal {
   --seal-tone: var(--ink);
   position: relative;
   min-width: 0;
-  min-height: 14.75rem;
+  min-height: 11.65rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--gap-hair);
-  padding: var(--gap-tight) clamp(0.55rem, 1.4vw, 1rem) var(--gap);
+  padding: var(--gap-tight) clamp(0.45rem, 1vw, 0.8rem) var(--gap-tight);
   color: var(--seal-tone);
   background: transparent;
   border: 0;
@@ -249,23 +369,78 @@
 }
 .sealProgressText { color: var(--ink-soft); font-family: var(--font-code); font-size: var(--fs-tiny); font-variant-numeric: tabular-nums; }
 
+.folio {
+  display: block;
+  padding: var(--gap-hair) var(--gap-tight) 0.65rem;
+  color: var(--ink-faint);
+  font-family: var(--font-serif);
+  font-size: var(--fs-small);
+  font-variant-numeric: oldstyle-nums;
+  text-align: center;
+}
+
 .detailCollapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--t-med) var(--ease-out); }
 .detailCollapse > div { min-height: 0; overflow: hidden; }
 .detailOpen { grid-template-rows: 1fr; }
 
 .sealDetail {
   display: grid;
-  grid-template-columns: 5rem minmax(0, 1fr);
+  grid-template-columns: 7.25rem minmax(0, 1fr);
+  grid-template-areas:
+    'head head'
+    'art body';
   align-items: center;
   gap: var(--gap);
-  margin: var(--gap) var(--gap-tight) 0;
-  padding: var(--gap);
+  margin: var(--gap) 0 0;
+  padding: var(--gap) var(--gap-loose);
   color: var(--ink);
-  background: var(--paper-shade);
-  border-block: 1px solid var(--line-strong);
+  background:
+    radial-gradient(18rem 10rem at 0 100%, color-mix(in oklab, var(--seal-tone) 8%, transparent), transparent 74%),
+    var(--paper-shade);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
 }
 
-.sealDetail .sealArtwork { width: 5rem; color: var(--seal-tone); }
+.previewHead {
+  grid-area: head;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding-bottom: var(--gap-hair);
+  border-bottom: 1px solid var(--paper-edge);
+  color: var(--ink-faint);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+
+.previewClose {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--ink-faint);
+  transition: color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+}
+
+.previewClose:hover { color: var(--ink); background: var(--ink-wash); }
+.previewClose:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
+
+.previewArtwork {
+  grid-area: art;
+  display: grid;
+  place-items: center;
+  min-height: 7.25rem;
+  border-right: 1px solid var(--paper-edge);
+}
+
+.sealDetail .sealArtwork { width: 6.75rem; color: var(--seal-tone); }
 .detailBody { min-width: 0; }
 .sealDetailName { font-family: var(--font-display); font-size: var(--fs-sub); }
 .sealDetailName span { color: var(--ink-faint); font-size: var(--fs-tiny); font-weight: 400; letter-spacing: 0.1em; }
@@ -287,19 +462,39 @@
   .albumNote { align-items: flex-start; flex-direction: column; gap: 0.1rem; }
   .ceremonySlot { position: relative; height: 2.25rem; }
   .ceremonyNote { top: 0.25rem; right: 0; width: max-content; margin: 0; }
-  /* 16 印在此档留 4 列(4×4 整墙),不落 3 列的「5 行+1 孤印」缺角(审计 R7) */
-  .sealWall { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .seal { min-height: 13.75rem; padding-inline: clamp(0.4rem, 1vw, 1rem); }
+  .seal { min-height: 11.5rem; padding-inline: clamp(0.4rem, 1vw, 0.75rem); }
 }
 
 @media (max-width: 560px) {
   .albumBody { padding-inline: 0.55rem; }
-  .sealWall { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .seal { min-height: 13.35rem; padding-inline: 0.45rem; }
+  .bookNav { grid-template-columns: 1fr auto 1fr; }
+  .pageButton { font-size: 0; }
+  .pageButton svg { width: 1.15rem; height: 1.15rem; }
+  .bookSpread { grid-template-columns: 1fr; gap: var(--gap-tight); filter: none; }
+  .pageLeft,
+  .pageRight {
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-s);
+    box-shadow: var(--shadow-paper);
+  }
+  .pageLeft::after,
+  .pageRight::before { display: none; }
+  .seal { min-height: 11.75rem; padding-inline: 0.45rem; }
   .artworkStage { width: clamp(5.25rem, 27vw, 6.2rem); }
   .sealCriterion { min-height: 2.6em; }
   .ceremonyNote { right: 0; }
-  .sealDetail { grid-template-columns: 4rem minmax(0, 1fr); margin-inline: 0; padding: var(--gap-tight); }
-  .sealDetail .sealArtwork { width: 4rem; }
+  .sealDetail {
+    grid-template-columns: 4.75rem minmax(0, 1fr);
+    padding: var(--gap-tight);
+  }
+  .previewArtwork { min-height: 4.75rem; }
+  .sealDetail .sealArtwork { width: 4.35rem; }
   .inkedArtwork, .locked .sealArtwork { filter: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .turnNext,
+  .turnPrev { animation: none; }
+  .pageButton,
+  .previewClose { transition: none; }
 }

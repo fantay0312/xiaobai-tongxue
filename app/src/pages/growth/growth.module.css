@@ -1,7 +1,7 @@
 /* ─────────────────────────────────────────────
    成长页 —— 一本「成长册」的册页语言。
    分卷编次(卷首/卷一…):卷号小印 + 标题 + 眉注;
-   印章墙 = 旋转方章(实印按 tier 分色,虚印 dashed 降透明);
+   印章册 = 分叶装订的方章(实印按 tier 分色,虚印降透明);
    编年史 = 日期栏 + 会话日志卡(出师左沿黛绿),备课/补学作眉批小条;
    图谱星图类(mapSvg/vein 与 core、halo 两族前缀)被 KnowledgeMap.tsx 复用,选择器名不可动。
    朱砂只落在「被带偏」与破坏性操作上——语义法则,不作普通强调。
@@ -132,17 +132,6 @@
   border-radius: var(--radius);
   box-shadow: inset 0 0 0 5px var(--paper-warm), inset 0 0 0 6px var(--line-strong), var(--shadow-paper);
   text-align: center;
-}
-
-/* 卷首骑缝章:全页唯一转戳,红印泥别名,钤在立轴右上角压住装裱边(DESIGN.md 印章豁免) */
-.portraitStamp {
-  position: absolute;
-  z-index: 2;
-  top: -0.85rem;
-  right: -0.85rem;
-  color: var(--seal-red);
-  opacity: 0.9;
-  pointer-events: none;
 }
 
 /* 展签一律走打字机小签(铅字大写+宽字距),不再借楷体 */
@@ -351,7 +340,7 @@
 .graduationProof { margin-top: var(--gap-hair); color: var(--ink-faint); font-size: var(--fs-tiny); }
 
 /* 修行阶:五方阶牌踏一条墨点路 —— 走过的落墨、当下的钤青印、没到的还是虚印
-   (虚实语言与卷一印章墙同源;overflow 横滚与图谱/画廊同一逃生口) */
+   (虚实语言与卷一印章册同源;overflow 横滚与图谱/画廊同一逃生口) */
 
 .ladder {
   list-style: none;
@@ -778,7 +767,6 @@
 .mapWrap {
   min-width: 0;
   max-width: 100%;
-  margin-inline: calc(-1 * clamp(0rem, 3vw, 2.5rem));
   padding-bottom: var(--gap-hair);
   overflow-x: auto;
   overscroll-behavior-inline: contain;
@@ -786,6 +774,24 @@
   /* 横滚收纳(R4):左右边缘渐隐;#000 是 mask 通道不是配色。
      渐隐坡 1.25rem 落在 starAtlas 的 padding-inline(≥ --gap)里,不吃星图立轴的装裱边 */
   mask-image: linear-gradient(90deg, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
+}
+
+.observatory {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 21rem);
+  align-items: start;
+  gap: clamp(var(--gap), 2.8vw, var(--gap-loose));
+}
+
+.chartColumn { min-width: 0; }
+
+.mapSwipeHint {
+  display: none;
+  margin: var(--gap-hair) 0 0;
+  color: var(--ink-faint);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.04em;
 }
 
 /* 星图坐标与 KnowledgeMap.tsx 几何咬合:VIEW_W=720 / ROW_H=150(=9.375rem),
@@ -826,6 +832,90 @@
     inset 0 0 0 4px color-mix(in oklch, var(--inkstone) 55%, transparent),
     inset 0 0 0 5px var(--inkstone-line),
     var(--shadow-paper);
+  overflow: hidden;
+}
+
+.celestialGrid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.24;
+}
+
+.celestialOrbit {
+  fill: none;
+  stroke: color-mix(in oklab, var(--lilac) 42%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 2 7;
+  vector-effect: non-scaling-stroke;
+}
+
+.celestialAxis {
+  fill: none;
+  stroke: color-mix(in oklab, var(--moonsoft-on-ink) 30%, transparent);
+  stroke-width: 0.8;
+  stroke-dasharray: 1 11;
+  vector-effect: non-scaling-stroke;
+}
+
+.celestialEcliptic {
+  fill: none;
+  stroke: color-mix(in oklab, var(--azure) 38%, transparent);
+  stroke-width: 1.1;
+  stroke-dasharray: 8 12;
+  vector-effect: non-scaling-stroke;
+}
+
+.celestialLabels {
+  fill: var(--moonsoft-on-ink);
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+}
+
+.skyMasthead {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--gap);
+  margin-bottom: var(--gap-tight);
+  padding: 0.15rem 0 var(--gap-tight);
+  border-bottom: 1px solid color-mix(in oklch, var(--moonsoft-on-ink) 24%, transparent);
+  color: var(--moonsoft-on-ink);
+}
+
+.skyMasthead > p {
+  max-width: 28rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  line-height: 1.6;
+}
+
+.skyMasthead > span {
+  font-family: var(--font-code);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.skyKicker {
+  font-family: var(--font-typewriter);
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  color: var(--moonsoft-on-ink);
+}
+
+.skyAtlasTitle {
+  margin-top: 0.12rem;
+  color: var(--moon-on-ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  letter-spacing: 0.2em;
 }
 
 /* 巡天总览:贴在夜空顶檐的一行真言,quiet 芦色小字,数字走 code 字体 */
@@ -848,6 +938,12 @@
 /* 叙事桥续句:接在巡天总览后,一道中点分隔,窄屏自然折行 */
 .skyBridge { margin-left: 0.5em; color: var(--moonsoft-on-ink); }
 .skyBridge::before { content: '·'; margin: 0 0.45em 0 0; opacity: 0.7; }
+
+.skyActive {
+  display: block;
+  margin-top: 0.28rem;
+  color: var(--moon-on-ink);
+}
 
 /* 三垣共用一片夜空:只留松缓呼吸，不再画课程分隔带。 */
 .skyRealm { position: relative; }
@@ -1262,9 +1358,16 @@
   fill: var(--sky-lit);
   stroke: none;
   transform: scale(var(--star-mag, 1));
+  animation: starIgnite 720ms var(--ease-out) backwards;
 }
 
 .starMastered .glyphRing { opacity: 0.85; }
+
+@keyframes starIgnite {
+  from { opacity: 0.18; transform: scale(0.42); }
+  60% { opacity: 1; transform: scale(calc(var(--star-mag, 1) * 1.18)); }
+  to { opacity: 1; transform: scale(var(--star-mag, 1)); }
+}
 
 /* 出师星呼吸辉光:长周期(6.5s)小幅辉光起伏,夜空有生气而不喧闹;
    往复动画走 --ease-loop,reduced-motion 下停 */
@@ -1336,6 +1439,11 @@
     padding-inline: var(--gap);
   }
 
+  .skyMasthead {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .skyMasthead > p { display: none; }
   .skyHead { grid-template-columns: auto minmax(0, 1fr); }
   .skyHint { display: none; }
   .skyDone { grid-column: 2; }
@@ -1345,6 +1453,7 @@
   .dustStar { animation: none; }
   .starForgotten .starFog { animation: none; }
   .starMastered .starGlyph { animation: none; }
+  .starMastered .glyphStar { animation: none; }
   .starGlyph::after,
   .starBtn,
   .skyLines,
@@ -1433,6 +1542,68 @@
 
 /* 节点详情 + 证据链 */
 
+.evidenceDock {
+  position: sticky;
+  top: calc(var(--header-h) + var(--gap-tight));
+  max-height: calc(100dvh - var(--header-h) - var(--gap-loose));
+  overflow: auto;
+  overscroll-behavior: contain;
+  scroll-margin-top: calc(var(--header-h) + var(--gap-tight));
+  scrollbar-gutter: stable;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: var(--shadow-paper);
+}
+
+.evidenceDockOpen {
+  border-color: color-mix(in oklch, var(--azure) 48%, var(--line-strong));
+}
+
+.evidenceEmpty {
+  min-height: 25rem;
+  display: grid;
+  place-content: center;
+  justify-items: start;
+  padding: var(--gap-loose);
+  background:
+    radial-gradient(circle at 84% 12%, var(--lilac-wash), transparent 36%),
+    linear-gradient(160deg, var(--paper), var(--paper-warm));
+  color: var(--ink-soft);
+}
+
+.evidenceEmpty h3 {
+  margin: var(--gap-tight) 0 var(--gap-hair);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+}
+
+.evidenceEmpty > p:last-child {
+  max-width: 17rem;
+  font-size: var(--fs-small);
+  line-height: 1.75;
+}
+
+.evidenceOrbit {
+  width: 3rem;
+  height: 3rem;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--azure);
+  border-radius: 50%;
+  color: var(--azure);
+  background: var(--azure-wash);
+}
+
+.evidenceEyebrow {
+  margin-top: var(--gap);
+  color: var(--azure);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.16em;
+}
+
 .collapse {
   display: grid;
   grid-template-rows: 0fr;
@@ -1445,11 +1616,11 @@
 
 /* 证据链面板改浅卡:卷三落在 shade 带上,warm 底立不住(R3) */
 .nodePanel {
-  margin-top: var(--gap);
+  margin-top: 0;
   background: var(--paper);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  padding: var(--gap) var(--gap-loose);
+  border: 0;
+  border-radius: inherit;
+  padding: var(--gap);
 }
 
 .panelHead {
@@ -1458,6 +1629,149 @@
   gap: var(--gap);
   flex-wrap: wrap;
   margin-bottom: var(--gap-tight);
+}
+
+.evidenceDock .panelHead { gap: var(--gap-hair) var(--gap-tight); }
+
+.evidenceDock .starLinkChips { width: 100%; }
+
+.evidenceDock .starLinkChip {
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.evidenceDock .recallCard { padding: var(--gap-tight); }
+
+.evidenceDock .recallHead small {
+  display: block;
+  margin: var(--gap-hair) 0 0;
+}
+
+.masteryProof {
+  margin-top: var(--gap-tight);
+  padding: var(--gap-tight);
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  background:
+    radial-gradient(12rem 7rem at 100% 0%, var(--lilac-wash), transparent 72%),
+    var(--paper-warm);
+}
+
+.masteryProofHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding-bottom: var(--gap-tight);
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.masteryProofHead p {
+  color: var(--azure);
+  font-family: var(--font-typewriter);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+}
+
+.masteryProofHead h3 {
+  margin-top: 0.15rem;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+}
+
+.masteryProofHead > strong {
+  color: var(--jade-ink);
+  font-family: var(--font-code);
+  font-size: var(--fs-title);
+  font-weight: 500;
+}
+
+.masteryFactors {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+  margin-top: var(--gap-tight);
+}
+
+.masteryFactors > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.masteryFactors dt {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap-tight);
+  color: var(--ink);
+  font-size: var(--fs-tiny);
+}
+
+.masteryFactors dt b {
+  color: var(--jade-ink);
+  font-family: var(--font-code);
+}
+
+.masteryFactors dd {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gap-hair);
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: var(--fs-tiny);
+  line-height: 1.45;
+}
+
+.masteryFactors dd > span {
+  height: 0.22rem;
+  overflow: hidden;
+  background: var(--ink-wash);
+  transform: skewX(-12deg);
+}
+
+.masteryFactors dd i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--azure), var(--jade));
+  transform-origin: left center;
+  transition: width var(--t-slow) var(--ease-out);
+}
+
+.masteryFormula {
+  margin-top: var(--gap-tight);
+  padding-top: var(--gap-tight);
+  border-top: 1px dashed var(--paper-edge);
+  color: var(--ink-soft);
+  font-size: var(--fs-tiny);
+  line-height: 1.65;
+}
+
+.masteryFormula b {
+  color: var(--ink);
+  font-family: var(--font-code);
+}
+
+@media (max-width: 960px) {
+  .observatory { grid-template-columns: minmax(0, 1fr); }
+
+  .evidenceDock {
+    position: static;
+    max-height: none;
+  }
+
+  .evidenceEmpty { min-height: 12rem; }
+}
+
+@media (max-width: 720px) {
+  .mapWrap {
+    margin-inline: calc(-1 * var(--band-pad));
+    padding-inline: var(--band-pad);
+  }
+
+  .mapSwipeHint { display: block; }
 }
 
 .panelTitle { font-size: var(--fs-sub); color: var(--ink); }
@@ -1747,51 +2061,3 @@
 
 a.btnGhost { display: inline-block; text-decoration: none; }
 a.btnGhost:hover { transform: translateY(-1px); background: var(--azure-wash); }
-
-.corner {
-  display: flex;
-  justify-content: flex-end;
-  align-items: baseline;
-  gap: var(--gap-tight);
-  margin-top: var(--gap-section);
-}
-
-.cornerBtn {
-  background: none;
-  border: none;
-  /* 纵向内边距撑命中区,负 margin 抵回节奏 */
-  padding: 0.5rem 0;
-  margin-block: -0.5rem;
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
-  text-decoration: underline dotted;
-  transition: color var(--t-fast) var(--ease-out);
-}
-
-.cornerBtn:hover { color: var(--cinnabar); }
-
-.cornerConfirm { font-size: var(--fs-tiny); color: var(--cinnabar); }
-
-.cornerYes {
-  background: none;
-  border: 1px solid var(--cinnabar);
-  color: var(--cinnabar);
-  border-radius: var(--radius-s);
-  padding: 0.3rem 0.7rem;
-  font-size: var(--fs-tiny);
-  transition: background var(--t-fast) var(--ease-out);
-}
-
-.cornerYes:hover { background: var(--cinnabar-wash); }
-
-.cornerNo {
-  background: none;
-  border: 1px solid var(--paper-edge);
-  color: var(--ink-soft);
-  border-radius: var(--radius-s);
-  padding: 0.3rem 0.7rem;
-  font-size: var(--fs-tiny);
-  transition: background var(--t-fast) var(--ease-out);
-}
-
-.cornerNo:hover { background: var(--ink-wash); }

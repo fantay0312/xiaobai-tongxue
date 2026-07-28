@@ -25,6 +25,22 @@ export function initialTopicState(topic: Topic): TopicState {
 }
 
 const REVIEW_INTERVAL_DAYS = 7;
+const MASTERY_WEIGHTS = Object.freeze({ coverage: 0.45, correction: 0.35, quiz: 0.2 });
+
+export interface MasteryBreakdown {
+  coverageRatio: number;
+  coverageContribution: number;
+  correctedMisconceptions: number;
+  seenMisconceptions: number;
+  correctionRatio: number;
+  correctionContribution: number;
+  bestQuizScore: number;
+  quizContribution: number;
+  baseMastery: number;
+  daysSinceVerified: number | null;
+  retention: number;
+  finalMastery: number;
+}
 
 function addDays(iso: string, days: number): string {
   const d = new Date(iso);
@@ -89,8 +105,7 @@ export function applyEvent(state: TopicState, ev: LearnEvent): TopicState {
   return s;
 }
 
-/** 掌握度:覆盖 45% + 纠错 35% + 小白测验 20%,随时可由事件流重算 */
-export function computeMastery(state: TopicState, topic: Topic, events: LearnEvent[]): number {
+function masteryParts(state: TopicState, topic: Topic, events: LearnEvent[]) {
   const coverage = topic.checklist.length
     ? state.hitChecklist.length / topic.checklist.length : 0;
   const mcs = Object.values(state.mcStates);
@@ -101,7 +116,28 @@ export function computeMastery(state: TopicState, topic: Topic, events: LearnEve
     .filter((e) => e.topicId === state.topicId && e.type === 'xiaobai_quiz_scored')
     .map((e) => Number(e.payload.score ?? 0) / 100);
   const quizBest = quizScores.length ? Math.max(...quizScores) : 0;
-  return Math.round((coverage * 0.45 + mcScore * 0.35 + quizBest * 0.2) * 100) / 100;
+  const coverageContribution = coverage * MASTERY_WEIGHTS.coverage;
+  const correctionContribution = mcScore * MASTERY_WEIGHTS.correction;
+  const quizContribution = quizBest * MASTERY_WEIGHTS.quiz;
+  const baseMastery = Math.round(
+    (coverageContribution + correctionContribution + quizContribution) * 100,
+  ) / 100;
+  return {
+    coverage,
+    corrected,
+    seen,
+    mcScore,
+    quizBest,
+    coverageContribution,
+    correctionContribution,
+    quizContribution,
+    baseMastery,
+  };
+}
+
+/** 掌握度:覆盖 45% + 纠错 35% + 小白测验 20%,随时可由事件流重算 */
+export function computeMastery(state: TopicState, topic: Topic, events: LearnEvent[]): number {
+  return masteryParts(state, topic, events).baseMastery;
 }
 
 /** 艾宾浩斯衰减:出师后随天数衰减,复习通过则重置 */
@@ -110,6 +146,36 @@ export function decayedMastery(mastery: number, lastVerified: string | null, now
   const days = Math.max(0, (now.getTime() - new Date(lastVerified).getTime()) / 86400000);
   const retention = 0.4 + 0.6 * Math.exp(-days / 6);
   return Math.round(mastery * retention * 100) / 100;
+}
+
+/** 掌握度可解释拆分:与 computeMastery / decayedMastery 共用同一套数据和权重。 */
+export function computeMasteryBreakdown(
+  state: TopicState,
+  topic: Topic,
+  events: LearnEvent[],
+  now = new Date(),
+): MasteryBreakdown {
+  const parts = masteryParts(state, topic, events);
+  const daysSinceVerified = state.lastVerified
+    ? Math.max(0, (now.getTime() - new Date(state.lastVerified).getTime()) / 86400000)
+    : null;
+  const retention = daysSinceVerified === null || parts.baseMastery <= 0
+    ? 1
+    : 0.4 + 0.6 * Math.exp(-daysSinceVerified / 6);
+  return {
+    coverageRatio: parts.coverage,
+    coverageContribution: parts.coverageContribution,
+    correctedMisconceptions: parts.corrected,
+    seenMisconceptions: parts.seen,
+    correctionRatio: parts.mcScore,
+    correctionContribution: parts.correctionContribution,
+    bestQuizScore: Math.round(parts.quizBest * 100),
+    quizContribution: parts.quizContribution,
+    baseMastery: parts.baseMastery,
+    daysSinceVerified,
+    retention,
+    finalMastery: decayedMastery(parts.baseMastery, state.lastVerified, now),
+  };
 }
 
 /** 全量重放(证据链回放 / 应用启动重建缓存) */

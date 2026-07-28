@@ -42,7 +42,7 @@ function isSealVisible(element: HTMLElement): boolean {
     && rect.right > 0 && rect.left < window.innerWidth;
 }
 
-export function useSealCeremony(achievements: Achievement[]) {
+export function useSealCeremony(achievements: Achievement[], visibleSealIds: readonly string[] = []) {
   const [queue, setQueue] = useState<PendingSeal[]>([]);
   const [celebrating, setCelebrating] = useState<PendingSeal | null>(null);
   const previousMarksRef = useRef<Set<string> | null>(null);
@@ -50,6 +50,7 @@ export function useSealCeremony(achievements: Achievement[]) {
   const seenMarksRef = useRef<Set<string> | null>(null);
   const hasObservedEarnedRef = useRef(false);
   const startingMarkRef = useRef<string | null>(null);
+  const visibleSealKey = visibleSealIds.join('|');
   if (!seenMarksRef.current) seenMarksRef.current = readSeenSeals();
   if (seenMarksRef.current.size > 0) hasObservedEarnedRef.current = true;
 
@@ -140,7 +141,7 @@ export function useSealCeremony(achievements: Achievement[]) {
       window.removeEventListener('resize', scheduleCheck);
       if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
     };
-  }, [celebrating, queue]);
+  }, [celebrating, queue, visibleSealKey]);
 
   useEffect(() => {
     if (!celebrating) return undefined;

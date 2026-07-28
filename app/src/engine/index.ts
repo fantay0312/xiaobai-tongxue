@@ -7,7 +7,7 @@ export { leakageCheck, FALLBACK_LINE } from './leakage';
 export { isExtractionAttempt, DEFLECTION_LINE } from './guard';
 export {
   initialTopicState, applyEvent, applyEvents, replayTopicState,
-  computeMastery, decayedMastery,
+  computeMastery, computeMasteryBreakdown, decayedMastery,
 } from './memory';
 export { runXiaobaiQuiz, computeRadar, buildReport } from './mastery';
 export { llmCall } from './llm';

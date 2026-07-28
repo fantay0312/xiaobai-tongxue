@@ -1,9 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Achievement } from '../../engine/achievements';
 import { getTopic } from '../../data';
+import { Icon } from '../../components/ui/Icon';
 import s from './AchievementWall.module.css';
 import motion from './AchievementSealMotion.module.css';
 import { useSealCeremony } from './useSealCeremony';
+
+const SEALS_PER_PAGE = 4;
+const PAGES_PER_SPREAD = 2;
+const SEALS_PER_SPREAD = SEALS_PER_PAGE * PAGES_PER_SPREAD;
+const TURN_MS = 460;
 
 const TIER_NAME: Record<Achievement['tier'], string> = {
   ink: '墨印',
@@ -143,7 +149,7 @@ function fmtDateTime(iso: string): string {
   });
 }
 
-function SealDetail({ achievement }: { achievement: Achievement }) {
+function SealDetail({ achievement, onClose }: { achievement: Achievement; onClose: () => void }) {
   const earned = achievement.earnedAt !== null;
   // 印记来历:落印那一刻触发事件所属的课(仅实印显示,虚位无来历)
   const fromTopic = earned && achievement.triggerTopicId
@@ -151,7 +157,15 @@ function SealDetail({ achievement }: { achievement: Achievement }) {
     : null;
   return (
     <div className={`${s.sealDetail} ${s[`tier${achievement.tier}`]} ${earned ? s.earned : s.locked}`}>
-      <SealArtwork achievement={achievement} earned={earned} />
+      <div className={s.previewHead}>
+        <span>印面预览</span>
+        <button type="button" className={s.previewClose} onClick={onClose} aria-label="收起印章预览">
+          <Icon name="x" size={16} />
+        </button>
+      </div>
+      <div className={s.previewArtwork}>
+        <SealArtwork achievement={achievement} earned={earned} />
+      </div>
       <div className={s.detailBody}>
         <p className={s.sealDetailName}>{achievement.name}<span> · {TIER_NAME[achievement.tier]}{earned ? '' : '虚位'}</span></p>
         <p className={s.sealDetailDesc}>{achievement.desc}</p>
@@ -167,10 +181,30 @@ function SealDetail({ achievement }: { achievement: Achievement }) {
 
 export function AchievementWall({ achievements, litStars }: { achievements: Achievement[]; litStars?: number }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const [spreadIndex, setSpreadIndex] = useState(0);
+  const [turnDirection, setTurnDirection] = useState<'next' | 'prev' | null>(null);
   const detailRef = useRef<HTMLDivElement | null>(null);
   const scrollTimerRef = useRef<number | null>(null);
-  const { celebratingId, pendingIds } = useSealCeremony(achievements);
+  const turnTimerRef = useRef<number | null>(null);
+  const cancelPreviewScroll = useCallback(() => {
+    if (scrollTimerRef.current === null) return;
+    window.clearTimeout(scrollTimerRef.current);
+    scrollTimerRef.current = null;
+  }, []);
   const earnedCount = achievements.filter((item) => item.earnedAt !== null).length;
+  const pageCount = Math.max(1, Math.ceil(achievements.length / SEALS_PER_PAGE));
+  const spreadCount = Math.max(1, Math.ceil(pageCount / PAGES_PER_SPREAD));
+  const spreadStart = spreadIndex * SEALS_PER_SPREAD;
+  const spreadPages = Array.from({ length: PAGES_PER_SPREAD }, (_, pageOffset) => {
+    const pageIndex = spreadIndex * PAGES_PER_SPREAD + pageOffset;
+    const start = spreadStart + pageOffset * SEALS_PER_PAGE;
+    return {
+      pageIndex,
+      achievements: achievements.slice(start, start + SEALS_PER_PAGE),
+    };
+  });
+  const visibleSealIds = spreadPages.flatMap((page) => page.achievements.map((item) => item.id));
+  const { celebratingId, pendingIds } = useSealCeremony(achievements, visibleSealIds);
   const openAchievement = achievements.find((item) => item.id === openId) ?? null;
   const lastOpenRef = useRef<Achievement | null>(null);
   if (openAchievement) lastOpenRef.current = openAchievement;
@@ -180,14 +214,50 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
     [achievements, celebratingId],
   );
 
+  useEffect(() => {
+    if (spreadIndex < spreadCount) return;
+    setSpreadIndex(spreadCount - 1);
+  }, [spreadCount, spreadIndex]);
+
+  useEffect(() => {
+    const pendingAchievement = achievements.find((item) => pendingIds.has(item.id));
+    if (!pendingAchievement) return;
+    const pendingIndex = achievements.findIndex((item) => item.id === pendingAchievement.id);
+    const targetSpread = Math.floor(pendingIndex / SEALS_PER_SPREAD);
+    if (targetSpread === spreadIndex) return;
+    cancelPreviewScroll();
+    setOpenId(null);
+    setTurnDirection(targetSpread > spreadIndex ? 'next' : 'prev');
+    setSpreadIndex(targetSpread);
+    if (turnTimerRef.current !== null) window.clearTimeout(turnTimerRef.current);
+    turnTimerRef.current = window.setTimeout(() => {
+      setTurnDirection(null);
+      turnTimerRef.current = null;
+    }, TURN_MS);
+  }, [achievements, cancelPreviewScroll, pendingIds, spreadIndex]);
+
   useEffect(() => () => {
-    if (scrollTimerRef.current !== null) window.clearTimeout(scrollTimerRef.current);
-  }, []);
+    cancelPreviewScroll();
+    if (turnTimerRef.current !== null) window.clearTimeout(turnTimerRef.current);
+  }, [cancelPreviewScroll]);
+
+  const turnTo = (nextSpread: number) => {
+    if (nextSpread < 0 || nextSpread >= spreadCount || nextSpread === spreadIndex) return;
+    cancelPreviewScroll();
+    setOpenId(null);
+    setTurnDirection(nextSpread > spreadIndex ? 'next' : 'prev');
+    setSpreadIndex(nextSpread);
+    if (turnTimerRef.current !== null) window.clearTimeout(turnTimerRef.current);
+    turnTimerRef.current = window.setTimeout(() => {
+      setTurnDirection(null);
+      turnTimerRef.current = null;
+    }, TURN_MS);
+  };
 
   const toggleAchievement = (id: string, fromKeyboard: boolean) => {
     const nextId = openId === id ? null : id;
     setOpenId(nextId);
-    if (scrollTimerRef.current !== null) window.clearTimeout(scrollTimerRef.current);
+    cancelPreviewScroll();
     if (!nextId) return;
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const scrollImmediately = reduceMotion || fromKeyboard;
@@ -197,13 +267,34 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
     }, scrollImmediately ? 0 : 360);
   };
 
+  const closePreview = useCallback(() => {
+    const closingId = openId;
+    cancelPreviewScroll();
+    setOpenId(null);
+    if (!closingId) return;
+    window.requestAnimationFrame(() => {
+      document.getElementById(`achievement-${closingId}`)?.focus();
+    });
+  }, [cancelPreviewScroll, openId]);
+
+  useEffect(() => {
+    if (!openId) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      closePreview();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [closePreview, openId]);
+
   if (achievements.length === 0) return <p className={s.empty}>册页尚空——先去开一课，印章自会一枚枚落上来。</p>;
 
   return (
     <div className={s.album}>
       <SealTextureDefs />
       <aside className={s.albumSpine} aria-hidden="true">
-        <span className={s.spineTitle}>师者印谱</span>
+        <span className={s.spineTitle}>师者印章册</span>
         <span className={s.spineCount}><b>{earnedCount}</b><small>实印</small></span>
         <span className={s.spineSeal}>藏</span>
       </aside>
@@ -211,10 +302,10 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
         <div className={s.albumNote}>
           <p>
             {earnedCount === 0 ? '章坯已备，只等课堂把它们一枚枚唤醒。' : '每一道缺口、每一处浓淡，都对应一段真实课堂。'}
-            {/* 叙事桥:印章墙反指星图——同一套成就,一屏落印、一屏点亮 */}
+            {/* 叙事桥:印章册反指星图——同一套成就,一屏落印、一屏点亮 */}
             {typeof litStars === 'number' && litStars > 0 ? <em className={s.albumStars}>星图里已点亮 {litStars} 星。</em> : null}
           </p>
-          <span>{earnedCount}/{achievements.length} · 点击印面翻看来历</span>
+          <span>{earnedCount}/{achievements.length} · 点印预览，左右翻页</span>
         </div>
         <div className={s.ceremonySlot}>
           {celebratingAchievement ? (
@@ -223,22 +314,71 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
             </div>
           ) : null}
         </div>
+        <div className={s.bookNav}>
+          <button
+            type="button"
+            className={s.pageButton}
+            disabled={spreadIndex === 0}
+            onClick={() => turnTo(spreadIndex - 1)}
+            aria-label="翻到上一跨页"
+          >
+            <Icon name="arrow-left" size={16} /> 上一页
+          </button>
+          <span className={s.spreadStatus} aria-live="polite">
+            第 {spreadPages[0].pageIndex + 1}
+            {spreadPages[1].pageIndex < pageCount ? `—${spreadPages[1].pageIndex + 1}` : ''} 页
+            <small> / 共 {pageCount} 页</small>
+          </span>
+          <button
+            type="button"
+            className={s.pageButton}
+            disabled={spreadIndex >= spreadCount - 1}
+            onClick={() => turnTo(spreadIndex + 1)}
+            aria-label="翻到下一跨页"
+          >
+            下一页 <Icon name="arrow-right" size={16} />
+          </button>
+        </div>
+
+        <div
+          key={spreadIndex}
+          className={[
+            s.bookSpread,
+            turnDirection === 'next' ? s.turnNext : '',
+            turnDirection === 'prev' ? s.turnPrev : '',
+          ].filter(Boolean).join(' ')}
+        >
+          {spreadPages.map((page, pageOffset) => (
+            <section
+              key={page.pageIndex}
+              className={`${s.bookPage} ${pageOffset === 0 ? s.pageLeft : s.pageRight}`}
+              aria-label={`印章册第 ${page.pageIndex + 1} 页`}
+            >
+              <header className={s.pageHead}>
+                <span>{pageOffset === 0 ? '左叶' : '右叶'}</span>
+                <span>SEAL ARCHIVE · {String(page.pageIndex + 1).padStart(2, '0')}</span>
+              </header>
+              <div className={s.sealWall}>
+                {page.achievements.map((achievement) => (
+                  <SealButton
+                    key={achievement.id}
+                    achievement={achievement}
+                    celebrating={achievement.id === celebratingId}
+                    pending={pendingIds.has(achievement.id)}
+                    open={achievement.id === openId}
+                    onToggle={(fromKeyboard) => toggleAchievement(achievement.id, fromKeyboard)}
+                  />
+                ))}
+              </div>
+              <span className={s.folio} aria-hidden="true">{page.pageIndex + 1}</span>
+            </section>
+          ))}
+        </div>
+
         <div className={`${s.detailCollapse} ${openAchievement ? s.detailOpen : ''}`}>
           <div ref={detailRef} id="achievement-detail" role="region" aria-labelledby={shownAchievement ? `achievement-${shownAchievement.id}` : undefined} inert={!openAchievement}>
-            {shownAchievement ? <SealDetail achievement={shownAchievement} /> : null}
+            {shownAchievement ? <SealDetail achievement={shownAchievement} onClose={closePreview} /> : null}
           </div>
-        </div>
-        <div className={s.sealWall}>
-          {achievements.map((achievement) => (
-            <SealButton
-              key={achievement.id}
-              achievement={achievement}
-              celebrating={achievement.id === celebratingId}
-              pending={pendingIds.has(achievement.id)}
-              open={achievement.id === openId}
-              onToggle={(fromKeyboard) => toggleAchievement(achievement.id, fromKeyboard)}
-            />
-          ))}
         </div>
       </div>
     </div>

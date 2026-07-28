@@ -399,7 +399,7 @@
   color: var(--ink);
 }
 
-/* 新出炉的成就小印:横排小签,点击去成长册印章墙 */
+/* 新出炉的成就小印:横排小签,点击去成长册印章册 */
 .newSeal {
   flex: none;
   display: inline-flex;

@@ -1,7 +1,7 @@
 /**
  * 小白二维书童形象 —— Props 契约 FROZEN。
  * 以用户提供的角色设定稿派生透明八表情图集；不携带原稿文字、网格或骨骼点。
- * mood 映射独立表情，level 映射学识朱印，variant 适配纸面/黑板场景。
+ * mood 映射独立表情，variant 适配纸面/黑板场景。
  */
 import { useState, type CSSProperties } from 'react';
 import type { XiaobaiMood } from '../../types';
@@ -33,7 +33,6 @@ const MOOD_LABELS: Record<XiaobaiMood, string> = {
   idle: '安静等候', curious: '好奇追问', confused: '有些困惑', thinking: '认真思考',
   aha: '恍然大悟', happy: '开心学会', proud: '自信出师', shy: '腼腆作揖',
 };
-const LEVEL_MARKS = ['壹', '贰', '叁', '肆', '伍'] as const;
 const ASSET_URL = `${import.meta.env.BASE_URL}xiaobai-book-boy-atlas.webp`;
 
 function spriteStyle(frame: SpriteFrame): CSSProperties {
@@ -45,7 +44,6 @@ function spriteStyle(frame: SpriteFrame): CSSProperties {
 
 export function XiaobaiAvatar({
   mood,
-  level,
   speaking = false,
   size = 240,
   variant = 'paper',
@@ -54,8 +52,6 @@ export function XiaobaiAvatar({
   const normalizedMood: XiaobaiMood = Object.prototype.hasOwnProperty.call(SPRITE_FRAMES, mood)
     ? mood : 'idle';
   const frame = SPRITE_FRAMES[normalizedMood];
-  const levelMark = Number.isInteger(level) && level >= 1 && level <= LEVEL_MARKS.length
-    ? LEVEL_MARKS[level - 1] ?? LEVEL_MARKS[0] : LEVEL_MARKS[0];
   const className = [styles.avatar, styles[variant], speaking ? styles.speaking : '']
     .filter(Boolean).join(' ');
   return (
@@ -87,9 +83,6 @@ export function XiaobaiAvatar({
         <i />
         <i />
         <i />
-      </span>
-      <span className={styles.levelMark} data-xiaobai-level-mark aria-hidden="true">
-        {levelMark}
       </span>
     </div>
   );

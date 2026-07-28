@@ -1,15 +1,15 @@
 /**
  * 成长页 /growth —— 一本真正的「成长册」,按书卷编次:
- * 卷首·师徒(小白阶梯+人格+师道称号印+下一步) / 卷一·印章墙 / 卷二·教学编年史 /
+ * 卷首·师徒(小白阶梯+人格+师道称号印+下一步) / 卷一·印章册 / 卷二·教学编年史 /
  * 卷三·盲区图谱(遗忘的知识点化作「小白的来信」信笺) / 卷四·金句画廊 /
  * 卷五·小白的记忆(四层记忆匣,engine/recall 派生) / 卷尾·小白眼里的你(印象句+可复算出处)。
  * 数据全部真实派生:印章与师道称号来自 engine/achievements,下一步来自 engine/journey,
  * 编年史把 events 按 sessionId 与 reports 并轨(sessionId 为 null 的备课/补学作独立眉批);
  * 卷二/卷三/卷尾 section 带 id(chronicle/map/bond)供卷五记忆匣的锚点按钮 scrollIntoView。
  * 保留契约:setPersona / 复习 await startReview(topicId) → navigate(`/teach/${topicId}?mode=review`)
- * 且 reviewBusy 防抖原样;右下角演示重置的行内二次确认原样(答辩依赖)。
+ * 且 reviewBusy 防抖原样。
  */
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { LearnEvent, LearnEventType, Persona, SessionMode, SessionReport, XiaobaiMood } from '../../types';
 import { useAppStore } from '../../store/appStore';
@@ -21,17 +21,17 @@ import { nextStep } from '../../engine/journey';
 import { STAGE_RULES, deriveWisdom, deriveEvolution } from '../../engine/evolution';
 import { deriveXiaobaiLetter } from '../../engine/story';
 import { deriveMemoryPanorama, deriveRelationshipLines, deriveTopicRecall } from '../../engine/recall';
+import { computeMasteryBreakdown } from '../../engine/memory';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { XiaobaiLetter } from '../../components/story/XiaobaiLetter';
 import { MemoryPanorama } from '../../components/story/MemoryPanorama';
 import { Icon, type IconName } from '../../components/ui/Icon';
-import { RoundStamp } from '../../components/ui/RoundStamp';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { KnowledgeMap, type MapNode, type NodeStatus } from './KnowledgeMap';
 import { AchievementWall } from './AchievementWall';
 import s from './growth.module.css';
 
-/* 五阶称号沿用既有成长语义;头像以壹至伍学识印标记当前阶段 */
+/* 五阶称号沿用既有成长语义 */
 const LEVELS: { lv: 1 | 2 | 3 | 4 | 5; name: string; desc: string; icon: IconName }[] = [
   { lv: 1, name: '嫩芽', desc: '初入学堂', icon: 'sprout' },
   { lv: 2, name: '灯泡', desc: '偶有灵光', icon: 'lightbulb' },
@@ -206,13 +206,11 @@ export default function GrowthPage() {
   const topicStateOf = useAppStore((st) => st.topicState);
   const setPersona = useAppStore((st) => st.setPersona);
   const startReview = useAppStore((st) => st.startReview);
-  const resetAll = useAppStore((st) => st.resetAll);
 
   const [selected, setSelected] = useState<string | null>(null);
   const [statusFocus, setStatusFocus] = useState<NodeStatus | null>(null);
   const [oldPages, setOldPages] = useState(false);
   const [reviewBusy, setReviewBusy] = useState(false);
-  const [confirming, setConfirming] = useState(false);
 
   // 印章 / 师道称号 / 下一步 / 编年史:全部由事件流等真实数据纯函数派生
   const deriveInput = useMemo(
@@ -252,7 +250,7 @@ export default function GrowthPage() {
     : 0;
   const shownChronicle = oldPages ? chronicle : chronicle.slice(0, 6);
 
-  const nodes: MapNode[] = TOPICS.map((t) => {
+  const nodes: MapNode[] = useMemo(() => TOPICS.map((t) => {
     if (t.locked) return { topic: t, state: null, status: 'locked' as const };
     const st = topicStates[t.topicId] ?? topicStateOf(t.topicId);
     const touched =
@@ -266,14 +264,20 @@ export default function GrowthPage() {
           ? ('learning' as const)
           : ('unlearned' as const);
     return { topic: t, state: st, status };
-  });
+  }), [events, topicStateOf, topicStates]);
 
   const selNode = nodes.find((n) => n.topic.topicId === selected) ?? null;
-  // 同印章墙:收起时缓存内容,折叠动画不吃空
+  const evidencePanelRef = useRef<HTMLElement | null>(null);
+  const evidenceScrollTimerRef = useRef<number | null>(null);
+  // 同印章册预览:收起时缓存内容,折叠动画不吃空
   const lastNodeRef = useRef<MapNode | null>(null);
   if (selNode) lastNodeRef.current = selNode;
   const shownNode = selNode ?? lastNodeRef.current;
   const shownEvents = shownNode ? events.filter((e) => e.topicId === shownNode.topic.topicId) : [];
+  const masteryBreakdown = shownNode?.state
+    ? computeMasteryBreakdown(shownNode.state, shownNode.topic, shownEvents)
+    : null;
+  const hasQuizEvidence = shownEvents.some((event) => event.type === 'xiaobai_quiz_scored');
   const forgottenNodes = nodes.filter((n) => n.status === 'forgotten');
 
   // 逐星记忆:选中星时派生「小白记得」——命中要点/金句/已纠正心魔/留存,空则不渲染
@@ -315,13 +319,35 @@ export default function GrowthPage() {
     }
   };
 
+  useEffect(() => () => {
+    if (evidenceScrollTimerRef.current !== null) {
+      window.clearTimeout(evidenceScrollTimerRef.current);
+    }
+  }, []);
+
+  const selectStar = (topicId: string) => {
+    const nextId = selected === topicId ? null : topicId;
+    setSelected(nextId);
+    if (evidenceScrollTimerRef.current !== null) {
+      window.clearTimeout(evidenceScrollTimerRef.current);
+      evidenceScrollTimerRef.current = null;
+    }
+    if (!nextId || !window.matchMedia('(max-width: 960px)').matches) return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    evidenceScrollTimerRef.current = window.setTimeout(() => {
+      evidenceScrollTimerRef.current = null;
+      evidencePanelRef.current?.scrollIntoView({
+        behavior: reduceMotion ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    }, reduceMotion ? 0 : 320);
+  };
+
   return (
     <div className={s.page}>
       {/* ── 卷首·师徒:弟子画像立轴 + 修行阶牌 + 性情之笺 + 师道/下一步双卡 ── */}
       <header className={`${s.hero} ${s.rise}`} style={rise(0)}>
         <figure className={s.portrait}>
-          {/* 卷首骑缝章:全页唯一转戳,钤在弟子画像立轴一角,像档案封皮上的学籍朱印 */}
-          <RoundStamp text="学籍档案 · 教然后知困 · " size={72} dur={50} className={s.portraitStamp} />
           <p className={s.portraitMark} aria-hidden="true">弟 子 画 像</p>
           <div className={s.portraitStage}>
             <XiaobaiAvatar mood={mood} level={global.learningLevel} variant="paper" size={200} />
@@ -392,7 +418,7 @@ export default function GrowthPage() {
             </section>
           )}
 
-          {/* 修行阶:走过的阶落墨,当下的阶钤青印,没到的阶还是虚印(与卷一印章墙同语) */}
+          {/* 修行阶:走过的阶落墨,当下的阶钤青印,没到的阶还是虚印(与卷一印章册同语) */}
           <ol className={s.ladder} aria-label="小白的成长阶梯">
             {LEVELS.map((l) => {
               // 本阶规则:STAGE_RULES 是按 stage 排列的数组,按 stage 字段查(勿用下标,避免错位)
@@ -495,11 +521,11 @@ export default function GrowthPage() {
         </div>
       </header>
 
-      {/* ── 卷一·印章墙:成就全量陈列,实印/虚印,点一枚看来历 ──
+      {/* ── 卷一·印章册:成就分叶装订,实印/虚印,点一枚预览来历 ──
           分区带节奏(R2):卷一 warm / 卷二 paper / 卷三 shade / 卷四 warm / 卷五 paper / 卷尾 shade */}
       <section className={`${s.section} ${s.band} ${s.bandWarm} ${s.rise}`} style={rise(1)}>
         <h2 className={s.h2}>
-          <span className={s.volNo}>卷一</span>印章墙
+          <span className={s.volNo}>卷一</span>印章册
           <small>{earnedCount}/{achievements.length} 枚实印 · 课堂有迹，落印有据</small>
         </h2>
         <AchievementWall achievements={achievements} litStars={statusCounts.mastered} />
@@ -583,76 +609,82 @@ export default function GrowthPage() {
               : '点一颗星,展开它的掌握度证据链'}
           </small>
         </h2>
-        <div className={s.mapWrap}>
-          <KnowledgeMap
-            nodes={nodes}
-            selectedId={selected}
-            statusFocus={statusFocus}
-            bridge={{ toFull: starsToFull, seals: earnedCount }}
-            onSelect={(tid) => setSelected(selected === tid ? null : tid)}
-          />
-        </div>
-        {/* 图例升为「巡天筛选器」:点一态,余星连线视觉下沉(不卸载,量测/Tab 序稳);
-            再点或点「全览」复位。计数实时派生自 nodes。 */}
-        <div className={s.filterRow} role="group" aria-label="巡天筛选:按状态聚焦星宿">
-          <button
-            type="button"
-            className={s.filterChip}
-            aria-pressed={statusFocus === null}
-            onClick={() => setStatusFocus(null)}
-          >
-            全览 <b className={s.filterCount}>{nodes.length}</b>
-          </button>
-          {STATUS_FILTERS.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              className={s.filterChip}
-              aria-pressed={statusFocus === f.key}
-              onClick={() => setStatusFocus((cur) => (cur === f.key ? null : f.key))}
-            >
-              <span className={`${s.swatch} ${STATUS_SWATCH[f.key]}`} aria-hidden="true" />
-              {f.label} <b className={s.filterCount}>{statusCounts[f.key]}</b>
-            </button>
-          ))}
-        </div>
-
-        {/* 遗忘不再是干瘪一行:每个雾里的知识点是一封「小白的来信」(doc §8),
-            素材由 deriveXiaobaiLetter 从真实命中要点与金句派生;回信即原 goReview 契约 */}
-        {forgottenNodes.length > 0 && (
-          <div className={s.letterFlow}>
-            {forgottenNodes.map((n) => n.state && (
-              <XiaobaiLetter
-                key={n.topic.topicId}
-                topicTitle={n.topic.title}
-                data={deriveXiaobaiLetter({ topic: n.topic, state: n.state, events })}
-                busy={reviewBusy}
-                onReply={() => goReview(n.topic.topicId)}
+        <div className={s.observatory}>
+          <div className={s.chartColumn}>
+            <div className={s.mapWrap}>
+              <KnowledgeMap
+                nodes={nodes}
+                selectedId={selected}
+                statusFocus={statusFocus}
+                bridge={{ toFull: starsToFull, seals: earnedCount }}
+                onSelect={selectStar}
               />
-            ))}
+            </div>
+            <p className={s.mapSwipeHint}>左右滑动巡览整幅星图，点星即可观测证据</p>
+            {/* 图例升为「巡天筛选器」:点一态,余星连线视觉下沉(不卸载,量测/Tab 序稳);
+                再点或点「全览」复位。计数实时派生自 nodes。 */}
+            <div className={s.filterRow} role="group" aria-label="巡天筛选:按状态聚焦星宿">
+              <button
+                type="button"
+                className={s.filterChip}
+                aria-pressed={statusFocus === null}
+                onClick={() => setStatusFocus(null)}
+              >
+                全览 <b className={s.filterCount}>{nodes.length}</b>
+              </button>
+              {STATUS_FILTERS.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  className={s.filterChip}
+                  aria-pressed={statusFocus === f.key}
+                  onClick={() => setStatusFocus((cur) => (cur === f.key ? null : f.key))}
+                >
+                  <span className={`${s.swatch} ${STATUS_SWATCH[f.key]}`} aria-hidden="true" />
+                  {f.label} <b className={s.filterCount}>{statusCounts[f.key]}</b>
+                </button>
+              ))}
+            </div>
           </div>
-        )}
 
-        <div className={`${s.collapse} ${selNode ? s.open : ''}`}>
-          <div inert={!selNode}>
-            {shownNode && shownNode.state && (
-              <div className={s.nodePanel}>
-                <div className={s.panelHead}>
-                  <h3 className={s.panelTitle}>{shownNode.topic.title}</h3>
-                  <span className={
-                    shownNode.status === 'mastered' ? `${s.chip} ${s.chipJade}`
-                      : shownNode.status === 'forgotten' ? `${s.chip} ${s.chipAmber}`
-                        : `${s.chip} ${s.chipAzure}`
-                  }>
-                    {shownNode.status === 'mastered' ? '已出师'
-                      : shownNode.status === 'forgotten' ? '小白说它忘了'
-                        : shownNode.state.knowledgeState}
-                  </span>
-                  <span className={s.chip}>掌握度 {Math.round(shownNode.state.mastery * 100)}</span>
-                  <span className={s.chip}>
-                    要点 {shownNode.state.hitChecklist.length}/{shownNode.topic.checklist.length}
-                  </span>
-                </div>
+          <aside
+            id="knowledge-evidence"
+            ref={evidencePanelRef}
+            className={`${s.evidenceDock} ${selNode ? s.evidenceDockOpen : ''}`}
+            aria-label="掌握度证据链"
+            aria-live="polite"
+          >
+            {!selNode ? (
+              <div className={s.evidenceEmpty}>
+                <span className={s.evidenceOrbit} aria-hidden="true">
+                  <Icon name="sparkles" size={28} />
+                </span>
+                <p className={s.evidenceEyebrow}>OBSERVATION LOG</p>
+                <h3>点一颗星，展开证据链</h3>
+                <p>每一束光都由课堂事件点亮。选中星宿后，这里会列出要点、纠错、小测与复习记录。</p>
+              </div>
+            ) : null}
+
+            <div className={`${s.collapse} ${selNode ? s.open : ''}`}>
+              <div inert={!selNode}>
+                {shownNode && shownNode.state && (
+                  <div className={s.nodePanel}>
+                    <div className={s.panelHead}>
+                      <h3 className={s.panelTitle}>{shownNode.topic.title}</h3>
+                      <span className={
+                        shownNode.status === 'mastered' ? `${s.chip} ${s.chipJade}`
+                          : shownNode.status === 'forgotten' ? `${s.chip} ${s.chipAmber}`
+                            : `${s.chip} ${s.chipAzure}`
+                      }>
+                        {shownNode.status === 'mastered' ? '已出师'
+                          : shownNode.status === 'forgotten' ? '小白说它忘了'
+                            : shownNode.state.knowledgeState}
+                      </span>
+                      <span className={s.chip}>掌握度 {Math.round(shownNode.state.mastery * 100)}</span>
+                      <span className={s.chip}>
+                        要点 {shownNode.state.hitChecklist.length}/{shownNode.topic.checklist.length}
+                      </span>
+                    </div>
                 {/* 星链行:这颗星在星图里牵着的邻星,点一枚即跳选(证据链随之切换);
                     未开放的邻星按星图纪律禁用,不做空跳 */}
                 {linkNeighbors.length > 0 && (
@@ -691,6 +723,65 @@ export default function GrowthPage() {
                     小白说它忘了 <Icon name="arrow-right" size={15} /> 帮它复习
                   </button>
                 )}
+                {masteryBreakdown ? (
+                  <section className={s.masteryProof} aria-label="掌握度计算依据">
+                    <header className={s.masteryProofHead}>
+                      <div>
+                        <p>MASTERY EVIDENCE</p>
+                        <h3>这束星光如何点亮</h3>
+                      </div>
+                      <strong>{Math.round(masteryBreakdown.finalMastery * 100)}%</strong>
+                    </header>
+                    <dl className={s.masteryFactors}>
+                      <div>
+                        <dt>
+                          <span>要点覆盖 · 权重 45%</span>
+                          <b>+{Math.round(masteryBreakdown.coverageContribution * 100)}</b>
+                        </dt>
+                        <dd>
+                          <span aria-hidden="true">
+                            <i style={{ width: `${masteryBreakdown.coverageRatio * 100}%` }} />
+                          </span>
+                          已讲清 {shownNode.state.hitChecklist.length}/{shownNode.topic.checklist.length} 个要点
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>
+                          <span>误区纠正 · 权重 35%</span>
+                          <b>+{Math.round(masteryBreakdown.correctionContribution * 100)}</b>
+                        </dt>
+                        <dd>
+                          <span aria-hidden="true">
+                            <i style={{ width: `${masteryBreakdown.correctionRatio * 100}%` }} />
+                          </span>
+                          {masteryBreakdown.seenMisconceptions > 0
+                            ? `已纠正 ${masteryBreakdown.correctedMisconceptions}/${masteryBreakdown.seenMisconceptions} 个出现过的误区`
+                            : '课堂里还没有出现可判定的误区'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>
+                          <span>随堂小测 · 权重 20%</span>
+                          <b>+{Math.round(masteryBreakdown.quizContribution * 100)}</b>
+                        </dt>
+                        <dd>
+                          <span aria-hidden="true">
+                            <i style={{ width: `${masteryBreakdown.bestQuizScore}%` }} />
+                          </span>
+                          {hasQuizEvidence ? `最佳成绩 ${masteryBreakdown.bestQuizScore} 分` : '尚无随堂小测记录'}
+                        </dd>
+                      </div>
+                    </dl>
+                    <p className={s.masteryFormula}>
+                      基础掌握度 <b>{Math.round(masteryBreakdown.baseMastery * 100)}%</b>
+                      {masteryBreakdown.daysSinceVerified !== null ? (
+                        <> · 距上次验证 <b>{Math.floor(masteryBreakdown.daysSinceVerified)}</b> 天 · 留存系数 <b>{Math.round(masteryBreakdown.retention * 100)}%</b></>
+                      ) : (
+                        <> · 尚未进入记忆衰减期</>
+                      )}
+                    </p>
+                  </section>
+                ) : null}
                 {/* 逐星记忆:evidence 日志之上先渲染「小白记得」——册页语域,称呼「先生/它」;
                     每块空则不渲染,recall 为 null 整段隐去(deriveTopicRecall 防御式消费) */}
                 {recall && (
@@ -766,6 +857,24 @@ export default function GrowthPage() {
             )}
           </div>
         </div>
+          </aside>
+        </div>
+
+        {/* 遗忘不再是干瘪一行:每个雾里的知识点是一封「小白的来信」(doc §8),
+            素材由 deriveXiaobaiLetter 从真实命中要点与金句派生;回信即原 goReview 契约 */}
+        {forgottenNodes.length > 0 && (
+          <div className={s.letterFlow}>
+            {forgottenNodes.map((n) => n.state && (
+              <XiaobaiLetter
+                key={n.topic.topicId}
+                topicTitle={n.topic.title}
+                data={deriveXiaobaiLetter({ topic: n.topic, state: n.state, events })}
+                busy={reviewBusy}
+                onReply={() => goReview(n.topic.topicId)}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* ── 卷四·金句画廊:goldenAnalogies 横向卡流,引号大字 + 出处小注 ── */}
@@ -820,28 +929,6 @@ export default function GrowthPage() {
         )}
       </section>
 
-      {/* 角落:演示重置(行内二次确认,不用弹窗) */}
-      <div className={s.corner}>
-        {confirming ? (
-          <>
-            <span className={s.cornerConfirm}>确认清空全部演示数据?撤销不了哦。</span>
-            <button
-              type="button"
-              className={s.cornerYes}
-              onClick={() => { resetAll(); setConfirming(false); setSelected(null); }}
-            >
-              确认重置
-            </button>
-            <button type="button" className={s.cornerNo} onClick={() => setConfirming(false)}>
-              算了
-            </button>
-          </>
-        ) : (
-          <button type="button" className={s.cornerBtn} onClick={() => setConfirming(true)}>
-            演示重置
-          </button>
-        )}
-      </div>
     </div>
   );
 }

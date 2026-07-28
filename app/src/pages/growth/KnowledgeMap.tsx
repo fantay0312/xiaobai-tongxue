@@ -293,6 +293,31 @@ function AmbientDust({ realmIndex, rows, points }: { realmIndex: number; rows: n
   );
 }
 
+function CelestialGrid() {
+  return (
+    <svg
+      className={s.celestialGrid}
+      viewBox="0 0 720 1280"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <ellipse className={s.celestialOrbit} cx="360" cy="590" rx="296" ry="520" />
+      <ellipse className={s.celestialOrbit} cx="360" cy="590" rx="214" ry="420" />
+      <ellipse className={s.celestialOrbit} cx="360" cy="590" rx="128" ry="310" />
+      <path className={s.celestialAxis} d="M360 30V1240M28 590H692" />
+      <path className={s.celestialEcliptic} d="M38 784C168 455 518 389 682 248" />
+      <path className={s.celestialEcliptic} d="M34 388C226 655 482 774 686 924" />
+      <g className={s.celestialLabels}>
+        <text x="360" y="52" textAnchor="middle">北辰</text>
+        <text x="360" y="1230" textAnchor="middle">南极</text>
+        <text x="52" y="578">东陆</text>
+        <text x="668" y="578" textAnchor="end">西陆</text>
+      </g>
+    </svg>
+  );
+}
+
 export function KnowledgeMap({
   nodes, selectedId, onSelect, statusFocus = null, bridge = null,
 }: {
@@ -329,6 +354,7 @@ export function KnowledgeMap({
   const totalStars = nodes.length;
   const litStars = nodes.filter((node) => node.status === 'mastered').length;
   const fogStars = nodes.filter((node) => node.status === 'forgotten').length;
+  const selectedNode = nodes.find((node) => node.topic.topicId === selectedId) ?? null;
 
   useLayoutEffect(() => {
     const chart = chartRef.current;
@@ -385,12 +411,26 @@ export function KnowledgeMap({
         role="group"
         aria-label="盲区星图:按课程分垣,一讲一星"
       >
+        <CelestialGrid />
+        <header className={s.skyMasthead}>
+          <div>
+            <p className={s.skyKicker}>CELESTIAL LEARNING ATLAS</p>
+            <h3 className={s.skyAtlasTitle}>学问天图</h3>
+          </div>
+          <p>古法三垣定星官，现代星链记课堂；一讲一星，掌握则明。</p>
+          <span>观测纪元 · {new Date().getFullYear()}</span>
+        </header>
         <p className={s.skySurvey}>
           满天 <b>{totalStars}</b> 星 · 已点亮 <b>{litStars}</b> · 雾中 <b>{fogStars}</b>
           {bridge ? (
             <span className={s.skyBridge}>
               {bridge.toFull > 0 ? <>距《全谱》还差 <b>{bridge.toFull}</b> 星</> : <>《全谱》已成</>}
               {' · '}已落印 <b>{bridge.seals}</b> 枚
+            </span>
+          ) : null}
+          {selectedNode ? (
+            <span className={s.skyActive}>
+              正在观测 · <b>{selectedNode.topic.title}</b>
             </span>
           ) : null}
         </p>
@@ -536,6 +576,9 @@ export function KnowledgeMap({
                           disabled={locked}
                           aria-label={nodeLabel(node)}
                           aria-pressed={locked ? undefined : selected}
+                          aria-controls={locked ? undefined : 'knowledge-evidence'}
+                          aria-expanded={locked ? undefined : selected}
+                          data-star-status={node.status}
                           onClick={() => onSelect(node.topic.topicId)}
                           onMouseEnter={() => setHoveredId(node.topic.topicId)}
                           onMouseLeave={() => setHoveredId((current) => (

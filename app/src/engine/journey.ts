@@ -125,7 +125,7 @@ export function nextStep(input: JourneyInput): JourneyStep {
     };
   }
 
-  // 6. 全部开放主题出师:去印章墙受贺
+  // 6. 全部开放主题出师:去印章册受贺
   const allMastered = open.length > 0
     && open.every((t) => topicStates[t.topicId]?.knowledgeState === '出师');
   if (allMastered) {
@@ -133,7 +133,7 @@ export function nextStep(input: JourneyInput): JourneyStep {
       key: 'all-mastered', title: '满谱',
       line: '满架的书都讲透了——小白逢人便说,这些全是老师教的。',
       to: '/growth',
-      cta: '去看印章墙',
+      cta: '去翻印章册',
     };
   }
 
