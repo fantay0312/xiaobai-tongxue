@@ -1,3 +1,10 @@
+# verify (2026-07-29 小白/小砚自然动作)
+- 功能 ✓ 小白保留既有 mood/level/speaking/size/variant/ARIA 契约，在独立 breath/gesture wrapper 上新增随机微动作和不等节拍说话点头；小砚保留 forwardRef、按钮属性与六帧图集，新增五状态动作、随机休息/思考、hover 与 `:focus-visible` 招呼；助教回复运行态实测 `working → explaining → listening`，未再卡态。
+- 动效边界 ✓ 所有动画仅使用 transform/opacity，未覆盖图集裁切 transform；后台页与减少动画模式下 JS 计时器停止、CSS 动画停用；桌面与 390×844 手机无横向溢出，控制台无 error/warn。
+- 门禁 ✓ 最终合并提交 `3e12359` 的 clean archive 重新执行 lint（仅 `fsImpl.ts:542` 两条既有 warning）、TypeScript/Vite build（2010 modules）并通过；此前 simulate 1561、sync 41、landing data、server 113/113 与 server check 全过；质量审查 9.5/10、测试审查 PASSED。`npm audit --omit=dev` 报 React Router unstable RSC 专属高危通告，本项目为 Vite SPA 且未使用 RSC API，按官方适用条件判定不影响本次发布，留待独立依赖升级轮处理。
+- 发布 ✓ PR `#5` squash 合并；release `20260729T101553Z-3e12359` 的 tar SHA-256 为 `0946e47f4e384d9bb8371f3bdbd2ae1f27d972764b0b3fccf153b2c831790c82`，源站 224 文件清单逐项校验通过；备份 `/var/backups/xiaobai/20260729T101553Z-3e12359`，旧版 `/opt/xiaobai/dist.prev` 可回滚，Node 服务未重启。
+- CDN/公网 ✓ 腾讯 CDN purge `630472106991165757` 为 done；公网 index 与 5 份关键 JS/CSS 和本地 clean build 逐字节一致，且命中 `pupilBreath`、`speakingNod`、`petSpeakingBreath` 等新规则；HTTPS HTTP/2 200、`/api/me` 200 + `Cache-Control: no-store`、HTTP→HTTPS 308、旧 `tradingvane.com/xiaobai/course?id=7` 去前缀 308、绕过 CDN 直连源站 403、systemd active 且 `NRestarts=0`。
+
 # verify (2026-07-05)
 - npm run build ✓ (chunk 1.28MB 警告,演示无碍)
 - npm run simulate ✓ 全部断言(两知识点:正确路径7轮出师/被带偏/卡壳R1-R4/偏题/学习力节奏)
