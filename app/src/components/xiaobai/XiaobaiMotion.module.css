@@ -1,0 +1,94 @@
+.breath,
+.gesture {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transform-origin: 50% 88%;
+}
+
+.breath {
+  animation: pupilBreath 5.8s var(--ease-loop) infinite;
+}
+
+.gesture[data-gesture='look-left'] {
+  animation: lookLeft var(--gesture-duration) var(--ease-loop);
+}
+
+.gesture[data-gesture='look-right'] {
+  animation: lookRight var(--gesture-duration) var(--ease-loop);
+}
+
+.gesture[data-gesture='settle'] {
+  animation: settleWeight var(--gesture-duration) var(--ease-loop);
+}
+
+.gesture[data-gesture='nod'] {
+  animation: thoughtfulNod var(--gesture-duration) var(--ease-loop);
+}
+
+.gesture[data-gesture='lean-in'] {
+  animation: leanIn var(--gesture-duration) var(--ease-loop);
+}
+
+.gesture.speaking {
+  animation: speakingNod 2.35s var(--ease-loop) infinite;
+}
+
+.paused {
+  animation-play-state: paused !important;
+}
+
+@keyframes pupilBreath {
+  0%, 14%, 100% { transform: scale(1); }
+  44% { transform: scaleX(1.003) scaleY(1.008); }
+  72% { transform: scaleX(1.001) scaleY(1.002); }
+}
+
+@keyframes lookLeft {
+  0%, 16%, 100% { transform: translateX(0) rotate(0deg); }
+  42%, 68% { transform: translateX(-0.32%) rotate(-0.42deg); }
+  84% { transform: translateX(-0.08%) rotate(-0.1deg); }
+}
+
+@keyframes lookRight {
+  0%, 16%, 100% { transform: translateX(0) rotate(0deg); }
+  42%, 68% { transform: translateX(0.32%) rotate(0.42deg); }
+  84% { transform: translateX(0.08%) rotate(0.1deg); }
+}
+
+@keyframes settleWeight {
+  0%, 14%, 100% { transform: translateY(0) rotate(0deg) scaleY(1); }
+  40% { transform: translateY(0.38%) rotate(-0.16deg) scaleY(0.997); }
+  70% { transform: translateY(0.1%) rotate(0.12deg) scaleY(1.001); }
+}
+
+@keyframes thoughtfulNod {
+  0%, 16%, 100% { transform: translateY(0) rotate(0deg); }
+  34% { transform: translateY(0.5%) rotate(0.18deg); }
+  52% { transform: translateY(0.08%) rotate(0deg); }
+  68% { transform: translateY(0.28%) rotate(0.1deg); }
+  82% { transform: translateY(0) rotate(0deg); }
+}
+
+@keyframes leanIn {
+  0%, 15%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  42%, 70% { transform: translateY(-0.22%) rotate(-0.38deg) scale(1.003); }
+  84% { transform: translateY(-0.05%) rotate(-0.08deg) scale(1.001); }
+}
+
+@keyframes speakingNod {
+  0%, 9%, 31%, 54%, 76%, 100% { transform: translateY(0) rotate(0deg); }
+  16% { transform: translateY(0.52%) rotate(0.16deg); }
+  23% { transform: translateY(0.14%) rotate(-0.08deg); }
+  40% { transform: translateY(0.34%) rotate(0.12deg); }
+  62% { transform: translateY(0.46%) rotate(0.14deg); }
+  68% { transform: translateY(0.1%) rotate(-0.06deg); }
+  84% { transform: translateY(0.24%) rotate(0.08deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .breath,
+  .gesture {
+    animation: none !important;
+  }
+}
