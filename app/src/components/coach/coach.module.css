@@ -181,17 +181,6 @@
   white-space: nowrap;
 }
 
-/* 打字机光标(与讲解舱同款心跳) */
-.caret {
-  display: inline-block;
-  margin-left: 1px;
-  color: var(--azure);
-  animation: coach-caret 0.9s steps(1) infinite;
-}
-@keyframes coach-caret {
-  50% { opacity: 0; }
-}
-
 /* 快捷问 */
 .chips {
   flex: 0 0 auto;
@@ -295,8 +284,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .thinkDots i,
-  .thinkText,
-  .caret { animation: none; }
+  .thinkText { animation: none; }
   .panel, .hint { animation: none; }
   .sendBtn, .chip, .closeBtn { transition: none; }
 }

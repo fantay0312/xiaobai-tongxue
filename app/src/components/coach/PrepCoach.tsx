@@ -6,6 +6,8 @@ import { appendCoachMessage, askCoach, COACH_QUICK_ASKS, getCoachThread, mockCoa
 import type { Topic } from '../../types';
 import { Icon } from '../ui/Icon';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { CoachMarkdownMessage } from './CoachMarkdown';
+import { markdownToPlainText } from './coachMarkdownText';
 import { XiaoyanPet, type XiaoyanPetState } from './XiaoyanPet';
 import paper from '../../styles/paper.module.css';
 import s from './coach.module.css';
@@ -24,44 +26,6 @@ const THINK_LINES = [
   '在琢磨怎么讲最顺口…',
   '快好了,再蘸一笔…',
 ] as const;
-/** 打字机逐字浮现(与讲解舱 TypewriterText 同款节奏,26ms/字) */
-function CoachTypewriter({ text, animate, onTick, onDone }: {
-  text: string;
-  animate: boolean;
-  onTick?: () => void;
-  onDone?: () => void;
-}) {
-  const [n, setN] = useState(animate ? 0 : text.length);
-  const cbRef = useRef({ onTick, onDone });
-  cbRef.current = { onTick, onDone };
-
-  useEffect(() => {
-    if (!animate) {
-      setN(text.length);
-      return;
-    }
-    setN(0);
-    let v = 0;
-    const id = window.setInterval(() => {
-      v += 1;
-      setN(v);
-      cbRef.current.onTick?.();
-      if (v >= text.length) {
-        window.clearInterval(id);
-        cbRef.current.onDone?.();
-      }
-    }, 26);
-    return () => window.clearInterval(id);
-  }, [text, animate]);
-
-  const typing = animate && n < text.length;
-  return (
-    <>
-      {text.slice(0, n)}
-      {typing ? <span className={s.caret} aria-hidden="true">▍</span> : null}
-    </>
-  );
-}
 
 export function PrepCoach({ topic }: { topic: Topic }) {
   const settings = useAppStore((st) => st.settings);
@@ -102,6 +66,19 @@ export function PrepCoach({ topic }: { topic: Topic }) {
     }
   };
 
+  /** Markdown 替换纯文本后高度会变化；仅替原本贴底的用户补最后一次跟滚。 */
+  const finishReply = (messageId: string) => {
+    const el = listRef.current;
+    const wasPinned = Boolean(el && el.scrollHeight - el.scrollTop - el.clientHeight < 48);
+    revealedIds.add(messageId);
+    refreshRevealed((version) => version + 1);
+    if (!wasPinned) return;
+    window.requestAnimationFrame(() => {
+      const current = listRef.current;
+      if (current) current.scrollTop = current.scrollHeight;
+    });
+  };
+
   /** 当前应放映打字机的回复:最新一条、未放映过的小砚消息 */
   const lastMsg = messages[messages.length - 1];
   const animatingId =
@@ -124,7 +101,9 @@ export function PrepCoach({ topic }: { topic: Topic }) {
   }, [open, animatingId]);
 
   /** 读屏专用通道:回复到达时一次性播报全文(动画区已对读屏隐藏,免得逐字排队轰炸) */
-  const lastCoachText = [...messages].reverse().find((m) => m.role === 'coach')?.text ?? '';
+  const lastCoachText = markdownToPlainText(
+    [...messages].reverse().find((m) => m.role === 'coach')?.text ?? '',
+  );
 
   /* 换知识点:载入对应缓存 */
   useEffect(() => {
@@ -224,11 +203,11 @@ export function PrepCoach({ topic }: { topic: Topic }) {
             {messages.map((m) => (
               <div key={m.id} className={`${s.msg} ${m.role === 'teacher' ? s.msgTeacher : s.msgCoach}`}>
                 {m.role === 'coach' ? (
-                  <CoachTypewriter
+                  <CoachMarkdownMessage
                     text={m.text}
                     animate={m.id === animatingId}
                     onTick={followTick}
-                    onDone={() => { revealedIds.add(m.id); refreshRevealed((version) => version + 1); }}
+                    onDone={() => finishReply(m.id)}
                   />
                 ) : (
                   m.text
