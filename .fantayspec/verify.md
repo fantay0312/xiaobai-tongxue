@@ -1,3 +1,11 @@
+# verify (2026-07-29 备课助教 Markdown)
+- 功能 ✓ 小砚回复支持标题、段落、强调、删除线、行内/围栏代码、列表、引用、分隔线、表格与链接；逐字阶段不解析半截语法，完成后原子切换语义 DOM，减少动画直接显示完整 Markdown。教师消息保持纯文本，完成态仅在用户原本贴底时补一次跟滚。
+- 安全/无障碍 ✓ 无 `dangerouslySetInnerHTML`；仅 `http/https` 生成外链并带 `_blank + noopener noreferrer`，`javascript:` 不生成链接，图片语法不发起远程请求，原始 `<img onerror>` 只显示文字。读屏 live region 会清理标题、列表、引用、表格分隔线、链接和强调标记；代码/表格横滚区均可键盘聚焦。
+- 门禁 ✓ PR `#6` squash 合并为 `5495a80`；合并提交 clean archive 的 lint（仅 `fsImpl.ts:542` 两条既有 warning）、TypeScript、Vite build（2013 modules）、sync 41、landing data 全绿；此前同一改动 simulate 1561 项通过。桌面 1280×720、手机 390×844、减少动画和恶意 Markdown 夹具浏览器回归通过，页面/对话框无横向溢出，超长代码 `808>278` 仅内部滚动，console 0 error/warn。
+- 供应链 ✓ `npm audit --omit=dev` 仍仅报 React Router RSC Mode 的 `GHSA-qwww-vcr4-c8h2`；本项目为 Vite HashRouter SPA，未启用 React Server Components/Server Actions，适用条件不命中，沿用既有依赖升级待办。
+- 发布 ✓ release `20260729T104429Z-5495a80`，tar SHA-256 `dc682f5369988900fcb515b3854e33ea756f2256bdb4bde0d12677c2707e0229`；源站 224 文件清单逐项校验通过，备份 `/var/backups/xiaobai/20260729T104429Z-5495a80`，旧版 `/opt/xiaobai/dist.prev` 可回滚。仅切换前端目录，Node 服务未重启，网关/config/env/数据未改。
+- CDN/公网 ✓ 按腾讯云 CDN `PurgePathCache`/`DescribePurgeTasks` 官方参数顺序调用并串行轮询，任务 `630475004114423900` 返回 done；公网 index、`prep-D8MLhhWY.js`、`prep-C-QFbBTL.css` 与 clean build 逐字节一致并命中 Markdown 安全/横滚规则。HTTPS HTTP/2 200、`/api/me` 200 + `Cache-Control: no-store`、HTTP→HTTPS 308、旧 `tradingvane.com/xiaobai/course?id=7` 去前缀 308、绕过 CDN 直连源站 403、systemd active 且 `NRestarts=0`。
+
 # verify (2026-07-29 小白/小砚自然动作)
 - 功能 ✓ 小白保留既有 mood/level/speaking/size/variant/ARIA 契约，在独立 breath/gesture wrapper 上新增随机微动作和不等节拍说话点头；小砚保留 forwardRef、按钮属性与六帧图集，新增五状态动作、随机休息/思考、hover 与 `:focus-visible` 招呼；助教回复运行态实测 `working → explaining → listening`，未再卡态。
 - 动效边界 ✓ 所有动画仅使用 transform/opacity，未覆盖图集裁切 transform；后台页与减少动画模式下 JS 计时器停止、CSS 动画停用；桌面与 390×844 手机无横向溢出，控制台无 error/warn。
