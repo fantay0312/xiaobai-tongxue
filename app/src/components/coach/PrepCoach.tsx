@@ -24,7 +24,6 @@ const THINK_LINES = [
   '在琢磨怎么讲最顺口…',
   '快好了,再蘸一笔…',
 ] as const;
-
 /** 打字机逐字浮现(与讲解舱 TypewriterText 同款节奏,26ms/字) */
 function CoachTypewriter({ text, animate, onTick, onDone }: {
   text: string;
@@ -71,6 +70,7 @@ export function PrepCoach({ topic }: { topic: Topic }) {
   const [busyTid, setBusyTid] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState<CoachMessage[]>(() => getCoachThread(topic.topicId));
+  const [, refreshRevealed] = useState(0);
   const [hintOn, setHintOn] = useState(() => {
     try { return localStorage.getItem(HINT_KEY) !== '1'; } catch { return true; }
   });
@@ -80,7 +80,6 @@ export function PrepCoach({ topic }: { topic: Topic }) {
   /* 长 await 续体必须校验知识点未切换(同 submitTeaching 的 sessionId 纪律) */
   const topicIdRef = useRef(topic.topicId);
   const reducedMotion = useReducedMotion();
-
   const busy = busyTid === topic.topicId;
   const inputLocked = busyTid !== null;
   const [thinkIdx, setThinkIdx] = useState(0);
@@ -229,7 +228,7 @@ export function PrepCoach({ topic }: { topic: Topic }) {
                     text={m.text}
                     animate={m.id === animatingId}
                     onTick={followTick}
-                    onDone={() => revealedIds.add(m.id)}
+                    onDone={() => { revealedIds.add(m.id); refreshRevealed((version) => version + 1); }}
                   />
                 ) : (
                   m.text

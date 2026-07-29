@@ -53,10 +53,6 @@
   font-weight: 700;
 }
 
-.speaking .motion {
-  animation: speaking-nod 1.4s var(--ease-loop) infinite;
-}
-
 .confusedThought {
   position: absolute;
   top: 8cqi;
@@ -220,11 +216,6 @@
   box-shadow: inset 0 0 0 0.35rem color-mix(in oklab, var(--board) 35%, transparent);
 }
 
-@keyframes speaking-nod {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-1.5%); }
-}
-
 @keyframes thoughtAppear {
   from { opacity: 0; transform: translateY(3cqi); }
   to { opacity: 1; transform: translateY(0); }
@@ -249,7 +240,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .avatar,
-  .speaking .motion,
   .confusedThought,
   .thoughtMark,
   .ahaBloom,
