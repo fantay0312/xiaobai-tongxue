@@ -1,3 +1,10 @@
+# verify (2026-07-30 学问星海小星精修)
+- 视觉/功能 ✓ 突出知识星由 29px 空心轮廓改为 13px 实心四芒星，选中/焦点最大 13.78px；普通节点为 3px 实心光点、锁定节点 2px。桌面继续保留 6 突出 + 28 装饰星，手机 4 + 14；装饰星实测 3.17–7.95px、最高透明度 0.177。点击热区仍为 44×44px，Token 星选择、2 个语义邻星、证据面板、方向键焦点与状态筛选均正常。
+- 设计/浏览器 ✓ 原始四芒星参考与 625×656 星海区域经等比归一后放进同一张 1262×640 对照图；两轮修复把 18px 空心菱形继续收敛为 13px 实心光点。线上 1440×1000 与 390×844 均无根级横向溢出；30 星手机课程最小中心距 52.65px，浏览器 console 无 error/warning。`design-qa.md` 最终为 passed。
+- 代码/秘密 ✓ PR `#9` squash 合并为 `03a4add`；最终 lint 仅 `fsImpl.ts:542` 两条既有 warning，TypeScript/Vite clean build 转换 2074 modules。clean dist 226 文件，真实本地 API key 精确值、通用 secret pattern 与 AppleDouble 均为 0；GitGuardian 成功。
+- 发布/回滚 ✓ release `20260730T151517Z-03a4add-star-polish`，tar SHA-256 `6010102de65e77dc986fa107a497cb65db0e30a3dae2c417edbe363dc6764e07`，源站 226/226 清单与完整备份清单均复验。备份 `/var/backups/xiaobai/20260730T151517Z-03a4add-star-polish`（root:root 700，约 102M），回滚副本 `/opt/xiaobai/dist.prev-20260730T151517Z-03a4add-star-polish`。仅原子切换前端，服务未重启、配置/环境/数据未改。
+- CDN/公网 ✓ 腾讯 CDN purge `630647494077853763` 为 done；公网 index、growth JS 与 growth CSS 和 clean build 逐字节一致。HTTPS `/` 与 `/admin/` 200，`/api/me`、`/api/commerce/catalog` 200 + no-store，HTTP→HTTPS 与旧入口 308，无 CDN 回源头直连源站 403；systemd active、`NRestarts=0`、Nginx 通过、journal warning 0。
+
 # verify (2026-07-30 科举科名与学问星海)
 - 功能 ✓ 五阶科名统一为童生/秀才/举人/贡士/进士，副题分别为初入问学/初通一艺/旁涉群书/问难穷理/学成登科；原 XP、门槛、事件和持久化键不变，五阶之后继续显示「第 N 阶」。卷三改为一片 42 星连续星海，课程巡览、星图/名录、状态筛选、证据链与跨课语义关系均可用；装饰星是独立视觉层，不占知识节点与读屏语义。
 - 设计/浏览器 ✓ 线上桌面实测 42 知识星、6 突出星、28 装饰星；390×844 手机默认单课 6/4/14，操作系统 30 星以 5 列排布，最小中心距 52.65px、44px 点击目标、根级横向溢出 0。Token 星选择后出现 2 个语义邻星与 2 条星链，证据链同步展开；方向键焦点正确移动且全场仅 1 个 roving `tabIndex=0`；浏览器日志为空。设计对照与桌面/手机截图记录在 `output/design-qa/`，`design-qa.md` 结论为 passed。
