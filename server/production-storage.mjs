@@ -17,7 +17,10 @@ function storedUser(row, contacts) {
     salt: row.passwordSalt,
     hash: row.passwordHash,
     passwordScheme: row.passwordScheme,
+    sessionVersion: Number.isSafeInteger(row.sessionVersion) ? row.sessionVersion : 1,
+    disabledAt: row.disabledAt ? asIso(row.disabledAt) : null,
     createdAt: asIso(row.createdAt),
+    updatedAt: asIso(row.updatedAt ?? row.createdAt),
   };
   for (const contact of contacts) {
     if (contact.kind === 'email') {

@@ -1,9 +1,11 @@
 # 小白同学生产网关
 
-Node.js 20+ 网关，负责静态站点、会话、腾讯验证码、邮箱/手机验证码、LLM/视觉/语音代理，以及
-PostgreSQL、Redis、COS 和 Resend 入站邮件。
+Node.js 20+ 网关，负责主站与独立管理后台静态入口、两套身份会话、腾讯验证码、邮箱/手机验证码、
+商业套餐/权益/积分/CDK、LLM/视觉/语音代理，以及 PostgreSQL、Redis、COS 和 Resend 入站邮件。
 
 生产入口：<https://xiaobai.tokentosea.com/>
+
+管理后台：<https://xiaobai.tokentosea.com/admin/>
 
 ## 生产拓扑
 
@@ -12,8 +14,8 @@ PostgreSQL、Redis、COS 和 Resend 入站邮件。
   → 腾讯云 CDN（TLS 1.2/1.3、HTTP/2、OCSP、HSTS、HTTP→HTTPS 308）
   → nginx HTTPS 源站（校验 CDN 专用回源头，透传真实客户端 IP）
   → Node 网关 127.0.0.1:8000
-      ├─ PostgreSQL：用户、加密联系方式、学习状态、文件元数据、来信
-      ├─ Redis RESP2：短信 OTP、尝试次数与分布式限流（仅 xiaobai:*）
+      ├─ PostgreSQL：用户、独立管理员/RBAC、套餐权益、积分账本、CDK、学习状态、来信
+      ├─ Redis RESP2：短信 OTP、后台/商业入口限流及分布式配额（仅 xiaobai:*）
       ├─ 私有 COS：成绩单与来信附件（xiaobai/*，SSE-COS）
       ├─ 腾讯云 SMS：手机验证码
       └─ Resend：发信及 email.received Webhook
@@ -51,6 +53,18 @@ PostgreSQL、Redis、COS 和 Resend 入站邮件。
 }
 ```
 
+管理账号与主站用户完全分离：
+
+- 后台 API 固定为 `/api/admin/v1`，使用独立管理员表、scrypt 密码、会话和
+  `__Host-xiaobai_admin_sid` Cookie；没有管理员自助注册。
+- `ADMIN_OWNER_EMAIL` 对应唯一 Owner。Owner 首次启动创建为待激活账号，并通过 Resend 收到
+  一次性激活链接；后续管理账号也只能由 Owner 创建和预配角色。
+- Cookie 是 HMAC 签名的 Owner/成员类别 envelope。随机、篡改或过期 Cookie 在查询会话表前失败；
+  匿名、成员与 Owner 的本机并发和 Redis 配额相互隔离。
+- 后台写操作要求精确 HTTPS Origin、会话 CSRF 和规范化变更原因。高风险业务写入前先持久化
+  `attempt` 审计，成功或失败后再追加结果。
+- 生产建议设置 `ADMIN_SESSION_TTL_HOURS=4`。首版尚未提供 TOTP/WebAuthn 或敏感操作 step-up。
+
 ## 数据存储
 
 - `users`：稳定 UUID、用户名、scrypt 密码凭据和会话版本。
@@ -59,6 +73,10 @@ PostgreSQL、Redis、COS 和 Resend 入站邮件。
 - `user_files`：COS 键、内容类型、大小和 SHA-256；COS 桶保持私有。
 - `inbound_emails`：经 Resend Webhook 签名验证后保存的来信正文和元数据。
 - `auth_audit_events`：预留的鉴权审计表。
+- `admin_*`：独立管理账号、会话、邀请、角色权限和不可变审计事件。
+- `subscription_*`、`entitlement_*`、`commerce_features`：版本化套餐、订阅快照、权益和固定功能门禁。
+- `point_*`：幂等双分录积分账本、余额投影和积分批次。
+- `cdk_*`：版本化 HMAC 代码、冻结奖励、原子兑换，以及短期认证加密的幂等创建导出。
 
 生产启动会幂等导入 `/var/lib/xiaobai` 中的旧用户 JSON 和学习状态；数据库已有记录时不会用旧文件
 覆盖。旧目录继续保留，供发布回滚和迁移核验使用。
@@ -123,6 +141,16 @@ SMS_TEMPLATE_ID=...
 SMS_SECRET_ID=...
 SMS_SECRET_KEY=...
 SMS_REGION=ap-guangzhou
+
+ADMIN_OWNER_EMAIL=owner@example.com
+ADMIN_PUBLIC_ORIGIN=https://xiaobai.tokentosea.com
+COMMERCE_PUBLIC_ORIGIN=https://xiaobai.tokentosea.com
+ADMIN_TOKEN_HMAC_KEY=<32-byte base64>
+ADMIN_SESSION_TTL_HOURS=4
+ADMIN_INVITE_TTL_HOURS=24
+ADMIN_BOOTSTRAP_RETRY_SECONDS=300
+CDK_HMAC_KEY_VERSION=1
+CDK_HMAC_KEY=<32-byte base64>
 ```
 
 PostgreSQL 与 Redis 的明文连接只允许 RFC1918 私网地址，并且必须显式开启对应的
@@ -147,23 +175,39 @@ node index.mjs
 cd app
 npm ci
 npm run lint
+npm run test:commerce
 npm run simulate
 npm run test:sync
 npm run test:landing-data
 npm run build
 ```
 
-发布前必须扫描 `dist/` 和服务器包，确认不存在 API key、数据库密码、短信密钥或本地 `.env`。
+独立后台构建：
+
+```bash
+cd admin
+npm ci
+npm run test
+npm run lint
+npm run build
+```
+
+主站生产构建在代码层强制使用服务端代理，即使本地开发保留 `VITE_LLM_API_KEY` 也不会把它编译进
+浏览器产物。发布前仍必须用已知秘密的精确值扫描 `dist/` 和服务器包，并确认其中不存在 API key、
+数据库密码、短信密钥、本地 `.env` 或生产 `config.json`。
 
 ## 生产部署约束
 
-- 服务目录：`/opt/xiaobai/{dist,server}`。
+- 服务目录：`/opt/xiaobai/{dist,admin/dist,server}`。
 - 配置：`/opt/xiaobai/server/config.json`（`root:xiaobai`、`0640`）。
 - 兼容状态与回滚备份：`/var/lib/xiaobai`。
 - systemd：`xiaobai.service`，以非特权用户 `xiaobai` 运行，代码目录只读。
 - 每次发布先完整备份当前 `/opt/xiaobai`、`/var/lib/xiaobai`、nginx 配置和环境文件，再整体替换
   runtime bundle；不能只上传 `index.mjs`。
-- 先在候选端口验证 PostgreSQL、Redis、COS、`/api/me` 与静态资源，再将候选服务切换到
+- 先在 PostgreSQL 18 临时实例恢复生产备份并演练全部迁移，再在候选端口验证 PostgreSQL、
+  Redis、COS、`/api/me`、`/api/commerce/catalog`、后台 401 边界与两套静态资源，最后将候选服务切换到
   `127.0.0.1:8000`；常规发布不变更 DNS，CDN CNAME 必须保持
   `xiaobai.tokentosea.com.cdn.dnsv1.com`，上线后仅按需刷新 CDN 缓存。
 - 回滚必须同时恢复完整服务包、配置与兼容状态；数据库迁移采用只增不改的版本化 SQL。
+- 当前后台与主站同源，身份域独立但浏览器安全 origin 尚未隔离；下一阶段应配置独立后台 DNS/TLS
+  并将 `ADMIN_PUBLIC_ORIGIN` 切换到该 origin。

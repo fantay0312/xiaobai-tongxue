@@ -70,7 +70,7 @@ export function createUserRepository(queryable, { uuid = stableUuid } = {}) {
 
     async list() {
       const result = await queryable.query(
-        'SELECT * FROM users WHERE disabled_at IS NULL ORDER BY created_at, username_normalized',
+        'SELECT * FROM users ORDER BY created_at, username_normalized',
       );
       return result.rows.map(mapRow);
     },

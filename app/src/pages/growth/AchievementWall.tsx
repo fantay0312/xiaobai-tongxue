@@ -303,7 +303,7 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
           <p>
             {earnedCount === 0 ? '章坯已备，只等课堂把它们一枚枚唤醒。' : '每一道缺口、每一处浓淡，都对应一段真实课堂。'}
             {/* 叙事桥:印章册反指星图——同一套成就,一屏落印、一屏点亮 */}
-            {typeof litStars === 'number' && litStars > 0 ? <em className={s.albumStars}>星图里已点亮 {litStars} 星。</em> : null}
+            {typeof litStars === 'number' && litStars > 0 ? <em className={s.albumStars}>星海里已点亮 {litStars} 星。</em> : null}
           </p>
           <span>{earnedCount}/{achievements.length} · 点印预览，左右翻页</span>
         </div>

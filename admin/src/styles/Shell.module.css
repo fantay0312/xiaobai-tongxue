@@ -1,0 +1,272 @@
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 244px minmax(0, 1fr);
+}
+
+.skip {
+  position: fixed;
+  z-index: 100;
+  top: 8px;
+  left: 8px;
+  padding: 10px 14px;
+  border-radius: 4px;
+  background: var(--mustard);
+  color: var(--ink);
+  font-weight: 700;
+  transform: translateY(-140%);
+}
+
+.skip:focus {
+  transform: translateY(0);
+}
+
+.sidebar {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 14px 16px;
+  border-right: 1px solid var(--inkstone);
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 3%) 25%, transparent 25%) 0 0 / 8px 8px,
+    var(--inkstone-deep);
+  color: var(--paper);
+}
+
+.brand {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 0 7px 18px;
+  border-bottom: 1px solid rgb(244 241 234 / 20%);
+  text-decoration: none;
+}
+
+.brandSeal {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--terra);
+  color: #e38a6f;
+  font-family: var(--font-note);
+  font-size: 20px;
+  transform: rotate(-2deg);
+}
+
+.brandName {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.brandMeta {
+  display: block;
+  margin-top: 3px;
+  color: #bdb8ac;
+  font-family: var(--font-type);
+  font-size: 9px;
+  letter-spacing: 0.13em;
+}
+
+.nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 0;
+}
+
+.navLabel {
+  margin: 12px 10px 7px;
+  color: #a9a397;
+  font-family: var(--font-type);
+  font-size: 9px;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.navLink {
+  min-height: 43px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 11px;
+  border-left: 3px solid transparent;
+  border-radius: 0 4px 4px 0;
+  color: #d6d1c5;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.navLink:hover {
+  background: rgb(244 241 234 / 7%);
+  color: var(--paper);
+}
+
+.navLinkActive {
+  border-left-color: var(--terra);
+  background: rgb(198 93 59 / 17%);
+  color: #fff8ea;
+}
+
+.identity {
+  padding: 12px 9px 0;
+  border-top: 1px solid rgb(244 241 234 / 20%);
+}
+
+.identityRole {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #e38a6f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.identityEmail {
+  display: block;
+  margin: 5px 0 9px;
+  color: #bdb8ac;
+  font-family: var(--font-type);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logout {
+  width: 100%;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border: 1px solid rgb(244 241 234 / 18%);
+  border-radius: 4px;
+  background: transparent;
+  color: #d6d1c5;
+}
+
+.logout:hover {
+  border-color: rgb(244 241 234 / 38%);
+  background: rgb(244 241 234 / 6%);
+}
+
+.workspace {
+  min-width: 0;
+}
+
+.topbar {
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 28px;
+  border-bottom: 1px solid var(--line-strong);
+  background: rgb(244 241 234 / 92%);
+}
+
+.crumb {
+  color: var(--ink-soft);
+  font-family: var(--font-type);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.sessionTag {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--olive);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sessionTag::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--olive);
+  content: "";
+}
+
+.mobileMenu {
+  display: none;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--paper-bright);
+}
+
+.main {
+  padding: 26px clamp(18px, 3vw, 42px) 60px;
+}
+
+.scrim {
+  display: none;
+}
+
+.bootstrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+@media (max-width: 960px) {
+  .shell {
+    display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    width: min(294px, 86vw);
+    transform: translateX(-102%);
+    transition: transform 220ms ease;
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+  }
+
+  .scrim {
+    position: fixed;
+    z-index: 15;
+    inset: 0;
+    display: block;
+    border: 0;
+    background: rgb(31 31 31 / 45%);
+  }
+
+  .topbar {
+    height: 58px;
+    padding-inline: 14px;
+  }
+
+  .mobileMenu {
+    display: grid;
+  }
+
+  .crumb {
+    margin-right: auto;
+  }
+
+  .main {
+    padding: 20px 14px 50px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sessionTag {
+    display: none;
+  }
+}

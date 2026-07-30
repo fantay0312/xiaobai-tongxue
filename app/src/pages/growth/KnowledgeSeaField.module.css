@@ -1,0 +1,299 @@
+.field {
+  --sky-deep: #101823;
+  --sky-ink: #172331;
+  --sky-moon: #f6ead0;
+  --sky-muted: #b9b5a9;
+  --sky-blue: #8eb8d2;
+  --sky-jade: #aebc91;
+  --sky-amber: #d7aa68;
+  position: relative;
+  min-height: clamp(34rem, 49vw, 41rem);
+  overflow: hidden;
+  border-top: 1px solid color-mix(in oklch, var(--sky-moon) 15%, transparent);
+  border-bottom: 1px solid color-mix(in oklch, var(--sky-moon) 12%, transparent);
+  background-color: var(--sky-ink);
+  background-image: url('../../assets/knowledge-star-sea.webp');
+  background-position: center;
+  background-size: cover;
+}
+.field::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: color-mix(in oklch, var(--sky-deep) 16%, transparent);
+}
+.decorStar {
+  position: absolute;
+  z-index: 2;
+  height: auto;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: decorBreath 6s var(--ease-loop) infinite alternate;
+}
+@keyframes decorBreath {
+  from {
+    filter: drop-shadow(0 0 2px transparent);
+  }
+  to {
+    filter: drop-shadow(0 0 5px color-mix(in oklch, var(--sky-moon) 42%, transparent));
+  }
+}
+.courseMarker {
+  position: absolute;
+  z-index: 4;
+  transform: translate(-50%, -50%);
+  color: color-mix(in oklch, var(--sky-moon) 68%, transparent);
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.13em;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 1px 8px var(--sky-deep);
+}
+.linkLayer,
+.nodeList {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+}
+.linkLayer {
+  pointer-events: none;
+}
+
+.link,
+.linkGlow {
+  fill: none;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.link {
+  stroke: color-mix(in oklch, var(--sky-blue) 72%, var(--sky-moon));
+  stroke-width: 1.35;
+  stroke-dasharray: 4 9;
+}
+
+.linkGlow {
+  stroke: color-mix(in oklch, var(--sky-blue) 30%, transparent);
+  stroke-width: 7;
+}
+
+.nodeList {
+  z-index: 5;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+.nodeSlot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+
+.node {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--sky-muted);
+  cursor: pointer;
+  transition: opacity var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
+}
+
+.node:focus-visible {
+  outline: 2px solid var(--sky-moon);
+  outline-offset: 4px;
+}
+
+.node:hover:not(:disabled) {
+  transform: scale(1.06);
+}
+
+.node:disabled {
+  cursor: not-allowed;
+}
+
+.node[data-dimmed='true'] {
+  opacity: 0.16;
+}
+
+.node[data-dimmed='true']:hover,
+.node[data-dimmed='true']:focus-visible,
+.node[data-dimmed='true'][data-selected='true'] {
+  opacity: 1;
+}
+
+.core {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 7px;
+  height: 7px;
+  border: 1px solid color-mix(in oklch, currentColor 72%, transparent);
+  border-radius: 50%;
+  background: var(--sky-deep);
+  box-shadow: 0 0 5px color-mix(in oklch, currentColor 24%, transparent);
+}
+
+.core img {
+  position: absolute;
+  width: 29px;
+  height: 29px;
+  opacity: 0;
+  transform: scale(0.4);
+  filter: drop-shadow(0 0 5px currentColor);
+  transition: opacity var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
+}
+
+.node[data-featured='true'] .core img,
+.node:hover .core img,
+.node:focus-visible .core img,
+.node[data-selected='true'] .core img {
+  opacity: 0.94;
+  transform: scale(1);
+}
+
+.node[data-featured='true'] .core,
+.node[data-selected='true'] .core {
+  border-color: transparent;
+  background: transparent;
+}
+
+.node[data-status='mastered'] {
+  color: var(--sky-jade);
+}
+
+.node[data-status='learning'] {
+  color: var(--sky-blue);
+}
+
+.node[data-status='forgotten'] {
+  color: var(--sky-amber);
+}
+
+.node[data-status='unlearned'] .core {
+  background: transparent;
+}
+
+.node[data-status='locked'] .core {
+  width: 4px;
+  height: 4px;
+  opacity: 0.42;
+}
+
+.node[data-status='mastered'] .core::after,
+.node[data-status='forgotten'] .core::after {
+  content: '';
+  position: absolute;
+  width: 25px;
+  height: 25px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.42;
+}
+
+.node[data-status='forgotten'] .core::after {
+  border-style: dashed;
+}
+
+.fog {
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: color-mix(in oklch, var(--sky-amber) 12%, transparent);
+  opacity: 0;
+}
+
+.node[data-status='forgotten'] .fog {
+  opacity: 1;
+}
+
+.nodeCopy {
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  z-index: 3;
+  width: 9.5rem;
+  transform: translateX(-50%) translateY(4px);
+  opacity: 0;
+  pointer-events: none;
+  text-align: center;
+  text-shadow: 0 1px 7px var(--sky-deep), 0 1px 12px var(--sky-deep);
+  transition: opacity var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
+}
+
+.nodeCopy b,
+.nodeCopy small {
+  display: block;
+}
+
+.nodeCopy b {
+  color: var(--sky-moon);
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  line-height: 1.35;
+}
+
+.nodeCopy small {
+  margin-top: 0.08rem;
+  color: currentColor;
+  font-size: 0.62rem;
+}
+
+.node[data-featured='true'] .nodeCopy,
+.node:hover .nodeCopy,
+.node:focus-visible .nodeCopy,
+.node[data-selected='true'] .nodeCopy {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.node[data-linked='true'] .core {
+  box-shadow: 0 0 12px var(--sky-blue);
+}
+
+.node[data-selected='true'] {
+  transform: scale(1.12);
+}
+
+@media (max-width: 720px) {
+  .field {
+    min-height: 33rem;
+  }
+
+  .courseMarker {
+    font-size: 0.62rem;
+  }
+
+  .nodeCopy {
+    width: 7rem;
+  }
+
+  .nodeCopy b {
+    font-size: 0.68rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .decorStar {
+    animation: none;
+  }
+
+  .node,
+  .core img,
+  .nodeCopy {
+    transition: none;
+  }
+}

@@ -19,7 +19,9 @@ import {
 } from '../src/engine';
 // 成长双轨引擎按路径直连:evolution/honors 是 Node 安全纯函数,刻意不进 engine/index barrel
 // (barrel 牵入浏览器专用模块),此处绕过惯例单独 import,与页面消费方式一致
-import { XP_RULES, deriveWisdom, deriveEvolution, STAGE_RULES } from '../src/engine/evolution';
+import {
+  STAGE_META, STAGE_RULES, XP_RULES, deriveEvolution, deriveWisdom, getStageMeta,
+} from '../src/engine/evolution';
 import { deriveSessionHonors } from '../src/engine/honors';
 import type {
   ChatMessage, DemoLine, LearnEvent, LearnEventType, LlmSettings, Topic, TopicState,
@@ -591,7 +593,7 @@ function runGrowthDualTrack(): void {
   check('被带偏(misconception_adopted)计 0 学识',
     deriveWisdom([gev('misconception_adopted', t1)]).xp === 0);
 
-  // (b) 等级阶梯:t(n)=15/40/75/120…
+  // (b) 学识阶梯:t(n)=15/40/75/120…;level 数值不设顶,不与五阶科名混用
   const ladder: { xp: number; level: number; stream: LearnEvent[] }[] = [
     { xp: 0, level: 1, stream: [] },
     { xp: 15, level: 2, stream: [gev('review_passed', t1), gev('checklist_hit', t1), gev('stuck_rescued', t1)] },
@@ -602,13 +604,36 @@ function runGrowthDualTrack(): void {
   ];
   for (const { xp, level, stream } of ladder) {
     const w = deriveWisdom(stream);
-    check(`学识 ${xp} 点 → 第 ${level} 级`, w.xp === xp && w.level === level, `实得 xp=${w.xp} level=${w.level}`);
-    check(`第 ${level} 级 intoLevel/forNext 自洽`,
+    check(`学识 ${xp} 点 → 第 ${level} 阶`, w.xp === xp && w.level === level, `实得 xp=${w.xp} level=${w.level}`);
+    check(`第 ${level} 阶 intoLevel/forNext 自洽`,
       w.intoLevel >= 0 && w.intoLevel < w.forNext && w.forNext > 0 && w.xp === cumBase(w.level) + w.intoLevel,
       `intoLevel=${w.intoLevel} forNext=${w.forNext}`);
   }
+  const wisdomBeyondRanks = deriveWisdom(
+    Array.from({ length: 7 }, () => gev('topic_mastered', t1)),
+  );
+  check('学识 level 保持无上限:175 点 → 数值 6,不硬映射五阶科名',
+    wisdomBeyondRanks.xp === 175
+    && wisdomBeyondRanks.level === 6
+    && wisdomBeyondRanks.level > STAGE_META.length,
+    `xp=${wisdomBeyondRanks.xp} level=${wisdomBeyondRanks.level}`);
 
-  // (c) 进化门槛
+  // (c) 科名元数据与进化门槛
+  check('科名元数据按 stage 1-5 集中锚定',
+    STAGE_META.map(({ stage, name, description }) => `${stage}:${name}·${description}`).join('|')
+      === '1:童生·初入问学|2:秀才·初通一艺|3:举人·旁涉群书|4:贡士·问难穷理|5:进士·学成登科');
+  check('科名映射边界:stage 1=童生、stage 5=进士',
+    getStageMeta(1).name === '童生' && getStageMeta(5).name === '进士');
+  const rejectsStage = (stage: number): boolean => {
+    try {
+      getStageMeta(stage);
+      return false;
+    } catch (error) {
+      return error instanceof RangeError;
+    }
+  };
+  check('科名映射拒绝 stage 0/6 越界', rejectsStage(0) && rejectsStage(6));
+
   const evo = (ids: string[]) => deriveEvolution(ids.map((id) => gev('topic_mastered', id)), TOPICS);
   check('STAGE_RULES 五阶锚定(2:1门/3:2门·2课/4:4门·2课/5:6门·3课)',
     STAGE_RULES.length === 5
@@ -662,7 +687,7 @@ function runGrowthDualTrack(): void {
     `xpGained=${honors?.xpGained} ${honors?.xpLevelBefore}→${honors?.xpLevelAfter}`);
 }
 
-/** 学识第 n 级累计门槛(镜像 evolution.cumThreshold,仅供本节 intoLevel 自洽校验) */
+/** 学识第 n 阶累计门槛(镜像 evolution.cumThreshold,仅供本节 intoLevel 自洽校验) */
 function cumBase(n: number): number {
   return 15 * (n - 1) + 5 * (n - 1) * (n - 2);
 }

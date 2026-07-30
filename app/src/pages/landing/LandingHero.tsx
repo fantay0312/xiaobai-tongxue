@@ -1,11 +1,14 @@
 import type { MouseEventHandler } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { Icon } from '../../components/ui/Icon';
 import { Seal } from '../../components/shell/Seal';
+import { getStageMeta } from '../../engine/evolution';
 import anchor from '../../styles/anchor.module.css';
 import paper from '../../styles/paper.module.css';
 import styles from './LandingHero.module.css';
+
+const DEMO_STAGE = getStageMeta(2);
 
 interface LandingHeroProps {
   onFlowClick: MouseEventHandler<HTMLAnchorElement>;
@@ -73,7 +76,9 @@ export function LandingHero({ onFlowClick }: LandingHeroProps) {
         <div className={styles.pupil}>
           <XiaobaiAvatar variant="paper" mood="curious" level={2} size={106} />
           <div>
-            <p className={styles.pupilName}>小白 · 开窍期</p>
+            <p className={styles.pupilName}>
+              小白 · {DEMO_STAGE.name} · {DEMO_STAGE.description}
+            </p>
             <p className={styles.pupilRole}>等你来教</p>
           </div>
         </div>

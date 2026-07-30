@@ -19,10 +19,19 @@ server/registered-users.json.*.tmp
 server/email-bindings.json
 server/email-bindings.json.tmp
 server/email-bindings.json.*.tmp
+server/phone-bindings.json
+server/phone-bindings.json.tmp
+server/phone-bindings.json.*.tmp
 server/password-overrides.json
 server/password-overrides.json.tmp
 server/password-overrides.json.*.tmp
 server/userdata/
+server/transcripts/
+
+# 管理后台密钥只通过服务端环境变量注入
+admin/.env
+admin/.env.*
+!admin/.env.example
 
 # 含账号凭据/本地打包产物,禁止入库
 doc/账号.md

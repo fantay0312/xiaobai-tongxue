@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Icon } from '../../components/ui/Icon';
 import { Seal } from '../../components/shell/Seal';
 import styles from './FinalCallout.module.css';

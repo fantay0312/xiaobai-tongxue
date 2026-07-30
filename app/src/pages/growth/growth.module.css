@@ -339,7 +339,7 @@
 .graduationQuote { margin-top: 0.16rem; font-family: var(--font-display); font-size: var(--fs-sub); color: var(--ink); }
 .graduationProof { margin-top: var(--gap-hair); color: var(--ink-faint); font-size: var(--fs-tiny); }
 
-/* 修行阶:五方阶牌踏一条墨点路 —— 走过的落墨、当下的钤青印、没到的还是虚印
+/* 科名阶:五方阶牌踏一条墨点路 —— 走过的落墨、当下的钤青印、没到的还是虚印
    (虚实语言与卷一印章册同源;overflow 横滚与图谱/画廊同一逃生口) */
 
 .ladder {
@@ -384,9 +384,22 @@
   border-top: 2px dotted var(--dust);
 }
 
-.rungIcon { color: var(--ink-faint); }
-
-.rungName { font-family: var(--font-display); font-size: var(--fs-body); font-weight: 700; color: var(--ink-soft); }
+.rungSign {
+  align-self: flex-start;
+  min-width: 3.65rem;
+  padding: 0.12rem 0.35rem 0.16rem;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  color: var(--ink-soft);
+  background: var(--paper-warm);
+  font-family: var(--font-serif);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.16em;
+  text-align: center;
+  text-indent: 0.16em;
+}
 
 .rungDesc { font-size: var(--fs-tiny); color: var(--ink-faint); }
 
@@ -404,10 +417,8 @@
   background: linear-gradient(var(--ink-wash), var(--ink-wash)) var(--paper);
 }
 
-.rungPast .rungName { color: var(--ink); }
-
 /* 落墨的牌上小字随之加深:ink-faint 压 wash 底只剩 ~3.1:1 */
-.rungPast .rungIcon,
+.rungPast .rungSign,
 .rungPast .rungDesc,
 .rungPast .rungReq { color: var(--ink-soft); }
 
@@ -420,8 +431,7 @@
   transform: rotate(-1.2deg);
 }
 
-.rungNow .rungIcon { color: var(--azure-deep); }
-.rungNow .rungName { color: var(--azure-deep); }
+.rungNow .rungSign { color: var(--azure-deep); }
 .rungNow .rungDesc { color: var(--azure-deep); }
 .rungNow .rungReq { color: var(--azure-deep); }
 
@@ -762,18 +772,13 @@
   .logItem, .marginItem { grid-template-columns: 3.2rem minmax(0, 1fr); }
 }
 
-/* ── 卷三·盲区星图(选择器名与 KnowledgeMap.tsx 咬合) ── */
+/* ── 卷三·学问星海：连续画布本身响应式，不再依赖横向巡览。 ── */
 
 .mapWrap {
   min-width: 0;
   max-width: 100%;
   padding-bottom: var(--gap-hair);
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-  scrollbar-gutter: stable;
-  /* 横滚收纳(R4):左右边缘渐隐;#000 是 mask 通道不是配色。
-     渐隐坡 1.25rem 落在 starAtlas 的 padding-inline(≥ --gap)里,不吃星图立轴的装裱边 */
-  mask-image: linear-gradient(90deg, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
+  overflow: visible;
 }
 
 .observatory {
@@ -1766,12 +1771,7 @@
 }
 
 @media (max-width: 720px) {
-  .mapWrap {
-    margin-inline: calc(-1 * var(--band-pad));
-    padding-inline: var(--band-pad);
-  }
-
-  .mapSwipeHint { display: block; }
+  .mapSwipeHint { display: none; }
 }
 
 .panelTitle { font-size: var(--fs-sub); color: var(--ink); }

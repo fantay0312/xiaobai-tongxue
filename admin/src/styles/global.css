@@ -1,0 +1,131 @@
+:root {
+  color-scheme: light;
+  --paper: #f4f1ea;
+  --paper-warm: #eee8dc;
+  --paper-bright: #faf8f2;
+  --paper-blush: #f3e8df;
+  --line: #d1d1c9;
+  --line-strong: #aaa89e;
+  --ink: #1f1f1f;
+  --ink-soft: #565550;
+  --ink-faint: #6b6963;
+  --inkstone: #37352f;
+  --inkstone-deep: #292824;
+  --terra: #c65d3b;
+  --terra-ink: #9e4526;
+  --terra-deep: #85391f;
+  --terra-wash: rgb(198 93 59 / 12%);
+  --olive: #5c6136;
+  --olive-wash: rgb(92 97 54 / 12%);
+  --mustard: #ffc233;
+  --danger: #9d352c;
+  --danger-wash: rgb(157 53 44 / 11%);
+  --warning: #886121;
+  --warning-wash: rgb(136 97 33 / 12%);
+  --font-serif: "Cormorant Garamond", "Songti SC", STSong, serif;
+  --font-note: "LXGW WenKai Screen", "Kaiti SC", STKaiti, serif;
+  --font-type: "Courier Prime", "Courier New", monospace;
+  --font-body: "DM Sans", -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  --shadow: 0 1px 2px rgb(31 31 31 / 7%), 0 10px 28px rgb(31 31 31 / 8%);
+  --radius: 8px;
+  --focus: 0 0 0 3px rgb(198 93 59 / 24%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: var(--paper);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  color: var(--ink);
+  background:
+    linear-gradient(rgb(31 31 31 / 2%) 1px, transparent 1px),
+    var(--paper);
+  background-size: 100% 32px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+select,
+textarea {
+  color: inherit;
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+a {
+  color: inherit;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+::selection {
+  color: var(--ink);
+  background: rgb(255 194 51 / 45%);
+}
+
+:focus-visible {
+  outline: 2px solid var(--terra-ink);
+  outline-offset: 3px;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

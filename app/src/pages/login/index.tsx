@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Seal } from '../../components/shell/Seal';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import type { XiaobaiMood } from '../../types';

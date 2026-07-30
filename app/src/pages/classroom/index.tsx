@@ -14,7 +14,7 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useAppStore } from '../../store/appStore';
 import { getDemoScript, getTopic } from '../../data';
 import { Md } from '../../components/Md';
@@ -34,6 +34,7 @@ import {
   type PreparedImageAttachment,
 } from '../../lib/imageAttachment';
 import { visionErrorHint } from '../../lib/vision';
+import { getStageMeta } from '../../engine/evolution';
 import s from './classroom.module.css';
 
 // 讲课进行中「不给学生看牌」:导演动作(误区注入/开窍复述/救援层级)一律不在现场显示——
@@ -51,8 +52,6 @@ const MOOD_ZH: Record<XiaobaiMood, string> = {
   shy: '不好意思',
 };
 
-const LEVEL_NAME = ['嫩芽期', '开窍期', '求索期', '问难期', '出师期'] as const;
-
 /** 讲解舱引路(称呼纪律:课堂台词一律「老师」);只讲怎么用教室,不泄任何导演机关。
     末步跟着收尾按钮走 mode:teach/reteach 是「送小白赴考」,review 是「完成温故」 */
 function buildTeachTour(mode: SessionMode): TourStep[] {
@@ -60,7 +59,7 @@ function buildTeachTour(mode: SessionMode): TourStep[] {
     {
       target: '[data-tour="stage"]',
       title: '讲台边的小白',
-      text: '我就坐在这儿听课。桌牌上写着我的期数和心情——老师讲得清不清楚,看我的脸色就知道。',
+      text: '我就坐在这儿听课。桌牌上写着我的科名和心情——老师讲得清不清楚,看我的脸色就知道。',
     },
     {
       target: '[data-tour="board"]',
@@ -616,6 +615,7 @@ export default function ClassroomPage() {
   const latestTeacher = [...live.messages].reverse().find((message) => message.role === 'teacher');
   const isLookingAtImage = live.busy && (pendingImage !== null || latestTeacher?.image !== undefined);
   const displayedMood = live.busy ? 'thinking' : tapMood ?? live.mood;
+  const stageMeta = getStageMeta(g.learningLevel);
 
   return (
     <div className={s.room}>
@@ -674,7 +674,7 @@ export default function ClassroomPage() {
           </div>
           <div className={s.plate}>
             <div className={s.plateName}>小白</div>
-            <div className={s.plateRow}>{LEVEL_NAME[g.learningLevel - 1]} · {g.persona}</div>
+            <div className={s.plateRow}>{stageMeta.name} · {stageMeta.description} · {g.persona}</div>
             <div className={s.plateRow}>在学:{topic.title}</div>
             <div className={s.plateRow}>
               心情:{MOOD_ZH[live.busy ? 'thinking' : live.mood]} · 已讲 {live.traces.length} 轮

@@ -6,7 +6,7 @@
  * 点击章节:locked 不可点;备课完成或有进度 → /teach/:topicId,否则 → /prep/:topicId。
  */
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { TOPICS } from '../../data';
 import { COURSE_COVERS } from '../../data/courseCovers';
 import { useAppStore } from '../../store/appStore';

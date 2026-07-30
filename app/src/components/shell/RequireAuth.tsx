@@ -3,7 +3,7 @@
  * standalone 仅用于明确的本地演示；生产认证不可用时保持关闭并允许重试。
  */
 import type { ReactNode } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router';
 import { useAuthStore } from '../../store/authStore';
 
 export function RequireAuth({ children }: { children: ReactNode }) {

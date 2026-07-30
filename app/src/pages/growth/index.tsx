@@ -1,7 +1,7 @@
 /**
  * 成长页 /growth —— 一本真正的「成长册」,按书卷编次:
- * 卷首·师徒(小白阶梯+人格+师道称号印+下一步) / 卷一·印章册 / 卷二·教学编年史 /
- * 卷三·盲区图谱(遗忘的知识点化作「小白的来信」信笺) / 卷四·金句画廊 /
+ * 卷首·师徒(小白科名阶梯+人格+师道称号印+下一步) / 卷一·印章册 / 卷二·教学编年史 /
+ * 卷三·学问星海(遗忘的知识点化作「小白的来信」信笺) / 卷四·金句画廊 /
  * 卷五·小白的记忆(四层记忆匣,engine/recall 派生) / 卷尾·小白眼里的你(印象句+可复算出处)。
  * 数据全部真实派生:印章与师道称号来自 engine/achievements,下一步来自 engine/journey,
  * 编年史把 events 按 sessionId 与 reports 并轨(sessionId 为 null 的备课/补学作独立眉批);
@@ -10,7 +10,7 @@
  * 且 reviewBusy 防抖原样。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import type { LearnEvent, LearnEventType, Persona, SessionMode, SessionReport, XiaobaiMood } from '../../types';
 import { useAppStore } from '../../store/appStore';
 import { getTopic, TOPICS } from '../../data';
@@ -18,27 +18,20 @@ import { STAR_LINKS } from '../../data/starLinks';
 import { deriveAchievements, deriveTeacherRank } from '../../engine/achievements';
 import { nextStep } from '../../engine/journey';
 // 双轨成长引擎:同 achievements/journey 惯例按路径直接 import,不进 engine barrel
-import { STAGE_RULES, deriveWisdom, deriveEvolution } from '../../engine/evolution';
+import {
+  STAGE_META, STAGE_RULES, deriveWisdom, deriveEvolution, getStageMeta,
+} from '../../engine/evolution';
 import { deriveXiaobaiLetter } from '../../engine/story';
 import { deriveMemoryPanorama, deriveRelationshipLines, deriveTopicRecall } from '../../engine/recall';
 import { computeMasteryBreakdown } from '../../engine/memory';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { XiaobaiLetter } from '../../components/story/XiaobaiLetter';
 import { MemoryPanorama } from '../../components/story/MemoryPanorama';
-import { Icon, type IconName } from '../../components/ui/Icon';
+import { Icon } from '../../components/ui/Icon';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { KnowledgeMap, type MapNode, type NodeStatus } from './KnowledgeMap';
 import { AchievementWall } from './AchievementWall';
 import s from './growth.module.css';
-
-/* 五阶称号沿用既有成长语义 */
-const LEVELS: { lv: 1 | 2 | 3 | 4 | 5; name: string; desc: string; icon: IconName }[] = [
-  { lv: 1, name: '嫩芽', desc: '初入学堂', icon: 'sprout' },
-  { lv: 2, name: '灯泡', desc: '偶有灵光', icon: 'lightbulb' },
-  { lv: 3, name: '眼镜', desc: '追问成性', icon: 'glasses' },
-  { lv: 4, name: '问号', desc: '刨根问底', icon: 'circle-help' },
-  { lv: 5, name: '学士帽', desc: '可以出师', icon: 'graduation' },
-] as const;
 
 const DREAM_GOAL = 5;
 
@@ -224,7 +217,7 @@ export default function GrowthPage() {
     [events, reports, topicStates],
   );
   const chronicle = useMemo(() => buildChronicle(events, reports), [events, reports]);
-  // 双轨成长(纯派生,不新增事件):学识经验轨(升级)+ 五阶进化轨(升期),均从 events 重算
+  // 双轨成长(纯派生,不新增事件):学识经验轨(进阶)+ 五阶科名轨(进化),均从 events 重算
   const wisdom = useMemo(() => deriveWisdom(events), [events]);
   const evolution = useMemo(() => deriveEvolution(events, TOPICS), [events]);
   const next = evolution.next;
@@ -238,7 +231,7 @@ export default function GrowthPage() {
     [events, reports, global],
   );
 
-  // 学识条:intoLevel 已入本级的点数 / forNext 升下一级门槛(deriveWisdom 收口,恒 >0)
+  // 学识条:intoLevel 已入本阶的点数 / forNext 进阶门槛(deriveWisdom 收口,恒 >0)
   const wisdomLeft = Math.max(0, wisdom.forNext - wisdom.intoLevel);
   const wisdomPct = wisdom.forNext > 0 ? Math.min(100, (wisdom.intoLevel / wisdom.forNext) * 100) : 100;
 
@@ -307,6 +300,7 @@ export default function GrowthPage() {
 
   const mood: XiaobaiMood =
     global.learningLevel >= 5 ? 'proud' : global.topicsMastered > 0 ? 'happy' : PERSONA_MOOD[global.persona];
+  const currentStage = getStageMeta(global.learningLevel);
 
   const goReview = async (topicId: string) => {
     if (reviewBusy) return;
@@ -345,7 +339,7 @@ export default function GrowthPage() {
 
   return (
     <div className={s.page}>
-      {/* ── 卷首·师徒:弟子画像立轴 + 修行阶牌 + 性情之笺 + 师道/下一步双卡 ── */}
+      {/* ── 卷首·师徒:弟子画像立轴 + 科名阶牌 + 性情之笺 + 师道/下一步双卡 ── */}
       <header className={`${s.hero} ${s.rise}`} style={rise(0)}>
         <figure className={s.portrait}>
           <p className={s.portraitMark} aria-hidden="true">弟 子 画 像</p>
@@ -367,15 +361,15 @@ export default function GrowthPage() {
           <p className={s.volMark}>卷首 · 师徒</p>
           <h1 className={s.heroTitle}>小白的成长册</h1>
           <p className={s.heroSub}>
-            它现在走到 <span className={s.levelNow}>「{LEVELS[global.learningLevel - 1].name} · {LEVELS[global.learningLevel - 1].desc}」</span>
+            它现在走到 <span className={s.levelNow}>「{currentStage.name} · {currentStage.description}」</span>
             ——你教得越明白,它追问得越刁钻。
           </p>
 
-          {/* 学识经验条:升级轨的连续反馈——攒学识、涨等级,与升期(进化)各走一轨 */}
+          {/* 学识经验条:升级轨的连续反馈——攒学识、进阶,与科名(进化)各走一轨 */}
           <div className={s.wisdom}>
             <div className={s.wisdomHead}>
-              <span className={s.wisdomLabel}>学识 · 第 {wisdom.level} 级</span>
-              <span className={s.wisdomGap}>距下一级还差 <b className={s.num}>{wisdomLeft}</b> 点</span>
+              <span className={s.wisdomLabel}>学识 · 第 {wisdom.level} 阶</span>
+              <span className={s.wisdomGap}>距进阶还差 <b className={s.num}>{wisdomLeft}</b> 点</span>
             </div>
             <div
               className={s.wisdomTrack}
@@ -383,7 +377,7 @@ export default function GrowthPage() {
               aria-valuenow={wisdom.intoLevel}
               aria-valuemin={0}
               aria-valuemax={wisdom.forNext}
-              aria-label={`小白学识第 ${wisdom.level} 级,距下一级还差 ${wisdomLeft} 点`}
+              aria-label={`小白学识第 ${wisdom.level} 阶,距进阶还差 ${wisdomLeft} 点`}
             >
               <span className={s.wisdomFill} style={{ width: `${wisdomPct}%` }} />
             </div>
@@ -418,32 +412,34 @@ export default function GrowthPage() {
             </section>
           )}
 
-          {/* 修行阶:走过的阶落墨,当下的阶钤青印,没到的阶还是虚印(与卷一印章册同语) */}
-          <ol className={s.ladder} aria-label="小白的成长阶梯">
-            {LEVELS.map((l) => {
+          {/* 科名阶:走过的阶落墨,当下的阶钤青印,没到的阶还是虚印(与卷一印章册同语) */}
+          <ol
+            className={s.ladder}
+            aria-label={`小白的科名成长阶梯,当前${currentStage.name}·${currentStage.description}`}
+          >
+            {STAGE_META.map((stageMeta) => {
               // 本阶规则:STAGE_RULES 是按 stage 排列的数组,按 stage 字段查(勿用下标,避免错位)
-              const stageRule = STAGE_RULES.find((r) => r.stage === l.lv);
+              const stageRule = STAGE_RULES.find((r) => r.stage === stageMeta.stage);
               return (
               <li
-                key={l.lv}
-                aria-current={l.lv === global.learningLevel ? 'step' : undefined}
+                key={stageMeta.stage}
+                aria-current={stageMeta.stage === global.learningLevel ? 'step' : undefined}
                 className={
-                  l.lv === global.learningLevel
+                  stageMeta.stage === global.learningLevel
                     ? `${s.rung} ${s.rungNow}`
-                    : l.lv < global.learningLevel
+                    : stageMeta.stage < global.learningLevel
                       ? `${s.rung} ${s.rungPast}`
                       : s.rung
                 }
               >
-                <span className={s.rungIcon} aria-hidden="true"><Icon name={l.icon} size={17} /></span>
-                <span className={s.rungName}>{l.name}</span>
-                <span className={s.rungDesc}>{l.desc}</span>
+                <span className={s.rungSign}>{stageMeta.name}</span>
+                <span className={s.rungDesc}>{stageMeta.description}</span>
                 {/* 条件铭文:够到这一阶的门槛,数字一律从 STAGE_RULES 派生(不手写复制);
                     当下要奔的那一阶改显实时进度(x/y);广度门槛未起(≤1 门)时不赘述涉猎;
                     两个分句各自 nowrap,窄牌换行只许发生在「·」处,不许孤字成行 */}
-                {l.lv === 1 ? (
+                {stageMeta.stage === 1 ? (
                   <span className={s.rungReq}>无需门槛</span>
-                ) : next && next.stage === l.lv ? (
+                ) : next && next.stage === stageMeta.stage ? (
                   <span className={s.rungReq}>
                     <span className={s.reqClause}>出师 <b className={s.num}>{next.haveMasteries}</b>/<b className={s.num}>{next.needMasteries}</b></span>
                     {next.needCourses >= 2 && (
@@ -599,14 +595,14 @@ export default function GrowthPage() {
         )}
       </section>
 
-      {/* ── 卷三·盲区图谱:星图 + 证据链 + 遗忘复习入口(交互契约原样保留) ── */}
+      {/* ── 卷三·学问星海:单一星海 + 证据链 + 遗忘复习入口 ── */}
       <section id="map" className={`${s.section} ${s.band} ${s.bandShade} ${s.rise}`} style={rise(3)}>
         <h2 className={s.h2}>
-          <span className={s.volNo}>卷三</span>盲区图谱
+          <span className={s.volNo}>卷三</span>学问星海
           <small>
             {forgottenNodes.length > 0
               ? '小白来信了——雾气漫上来的地方'
-              : '点一颗星,展开它的掌握度证据链'}
+              : '一片星海,照见每一讲的掌握证据'}
           </small>
         </h2>
         <div className={s.observatory}>
@@ -620,7 +616,6 @@ export default function GrowthPage() {
                 onSelect={selectStar}
               />
             </div>
-            <p className={s.mapSwipeHint}>左右滑动巡览整幅星图，点星即可观测证据</p>
             {/* 图例升为「巡天筛选器」:点一态,余星连线视觉下沉(不卸载,量测/Tab 序稳);
                 再点或点「全览」复位。计数实时派生自 nodes。 */}
             <div className={s.filterRow} role="group" aria-label="巡天筛选:按状态聚焦星宿">
@@ -685,7 +680,7 @@ export default function GrowthPage() {
                         要点 {shownNode.state.hitChecklist.length}/{shownNode.topic.checklist.length}
                       </span>
                     </div>
-                {/* 星链行:这颗星在星图里牵着的邻星,点一枚即跳选(证据链随之切换);
+                {/* 星链行:这颗星在星海里牵着的邻星,点一枚即跳选(证据链随之切换);
                     未开放的邻星按星图纪律禁用,不做空跳 */}
                 {linkNeighbors.length > 0 && (
                   <div className={s.starLinkRow}>

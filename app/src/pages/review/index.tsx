@@ -6,7 +6,7 @@
  * (session_ended 重放会把悬置误区退回待注入,快照会抹掉本场遭遇记录)。
  */
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router';
 import type { LearnEventType, RadarScores, SessionMode } from '../../types';
 import { useAppStore } from '../../store/appStore';
 import { getTopic, TOPICS } from '../../data';

@@ -1,7 +1,7 @@
 /**
  * 小白成长双轨引擎 —— 从事件流纯派生的「升级 + 进化」。
- * 升级(连续):课堂里小白"真听懂了"的事件按权重累进学识经验(XP)→ 学识等级(第 N 级)。
- * 进化(里程碑):出师深度 + 跨课程广度 → 五阶形象(嫩芽→灯泡→眼镜→问号→学士帽)。
+ * 升级(连续):课堂里小白"真听懂了"的事件按权重累进学识经验(XP)→ 学识阶次(第 N 阶)。
+ * 进化(里程碑):出师深度 + 跨课程广度 → 五阶科名(童生→秀才→举人→贡士→进士)。
  * 两轨都不新增事件类型;prep/remedy 是先生自修、小白不在场,一律不计(与师道履历分口径刻意区分)。
  * 未知 topicId 的出师事件(旧档):计深度(masteries),不计广度(coursesTouched)。
  * 铁律:纯函数、Node 安全(不碰 window/localStorage/import.meta),
@@ -36,9 +36,9 @@ export const XP_RULES: Partial<Record<LearnEventType, number>> = {
 
 export interface XiaobaiWisdom {
   xp: number;         // 学识经验总点
-  level: number;      // 学识等级(第 N 级),不设硬顶
+  level: number;      // 学识阶次(第 N 阶),不设硬顶
   intoLevel: number;  // 当前级内已积累点数
-  forNext: number;    // 当前级升下一级所需总点数(intoLevel/forNext = 细进度条)
+  forNext: number;    // 当前阶进阶所需总点数(intoLevel/forNext = 细进度条)
 }
 
 /**
@@ -70,13 +70,40 @@ export function deriveWisdom(events: LearnEvent[]): XiaobaiWisdom {
 // ───────────────────────── 进化:出师深度 + 跨课程广度 ─────────────────────────
 
 /**
- * 修行阶跃迁规则(出师=topic_mastered 事件数,同 topicsMastered 口径不去重;课程=出师过的讲所属 course 去重):
- * 1 嫩芽期 初始 / 2 开窍期 出师≥1 / 3 求索期 出师≥2 且 课程≥2 /
- * 4 问难期 出师≥4 且 课程≥2 / 5 出师期 出师≥6 且 课程≥3。
+ * 科名五阶只负责展示,stage / learningLevel 数值契约仍固定为 1-5。
+ * 学识 level 是另一条无上限数值轨,不得拿本表硬映射为功名。
+ */
+export type EvolutionStage = XiaobaiGlobal['learningLevel'];
+
+export interface EvolutionStageMeta {
+  stage: EvolutionStage;
+  name: string;
+  description: string;
+}
+
+export const STAGE_META = [
+  { stage: 1, name: '童生', description: '初入问学' },
+  { stage: 2, name: '秀才', description: '初通一艺' },
+  { stage: 3, name: '举人', description: '旁涉群书' },
+  { stage: 4, name: '贡士', description: '问难穷理' },
+  { stage: 5, name: '进士', description: '学成登科' },
+] as const satisfies readonly EvolutionStageMeta[];
+
+/** 集中科名查表:拒绝越界,避免界面悄悄把无上限 wisdom.level 当成五阶科名。 */
+export function getStageMeta(stage: number): EvolutionStageMeta {
+  const meta = STAGE_META.find((candidate) => candidate.stage === stage);
+  if (!meta) throw new RangeError(`Invalid evolution stage: ${stage}`);
+  return meta;
+}
+
+/**
+ * 科名跃迁规则(出师=topic_mastered 事件数,同 topicsMastered 口径不去重;课程=出师过的讲所属 course 去重):
+ * 1 童生 初始 / 2 秀才 出师≥1 / 3 举人 出师≥2 且 课程≥2 /
+ * 4 贡士 出师≥4 且 课程≥2 / 5 进士 出师≥6 且 课程≥3。
  * 广度刻意轻量(不过量):每阶最多要求"多涉猎一门课、该课出师 1 讲即可"。
  * growth 页据此渲染条件铭文,不得手写复制数字。
  */
-export const STAGE_RULES: { stage: 1 | 2 | 3 | 4 | 5; masteries: number; courses: number }[] = [
+export const STAGE_RULES: { stage: EvolutionStage; masteries: number; courses: number }[] = [
   { stage: 1, masteries: 0, courses: 0 },
   { stage: 2, masteries: 1, courses: 1 },
   { stage: 3, masteries: 2, courses: 2 },

@@ -1,0 +1,290 @@
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 3px solid var(--ink);
+  border-bottom: 1px solid var(--line-strong);
+  margin-bottom: 22px;
+  background: rgb(250 248 242 / 78%);
+}
+
+.stat {
+  min-height: 128px;
+  padding: 18px;
+  border-right: 1px solid var(--line);
+}
+
+.stat:last-child {
+  border-right: 0;
+}
+
+.statLabel {
+  color: var(--ink-soft);
+  font-family: var(--font-type);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.statValue {
+  display: block;
+  margin: 9px 0 3px;
+  font-family: var(--font-serif);
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.statNote {
+  color: var(--ink-faint);
+  font-size: 12px;
+}
+
+.deltaPositive {
+  color: var(--olive);
+}
+
+.deltaNegative {
+  color: var(--danger);
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.75fr);
+  gap: 22px;
+}
+
+.alertList,
+.plainList {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  background: var(--line);
+  list-style: none;
+}
+
+.alertItem,
+.plainItem {
+  padding: 13px 14px;
+  background: var(--paper-bright);
+}
+
+.alertItem {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.alertItem strong,
+.alertItem span {
+  display: block;
+}
+
+.alertItem span {
+  margin-top: 3px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.rowButton {
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--terra-ink);
+  font-weight: 700;
+  text-align: left;
+}
+
+.identityCell {
+  min-width: 200px;
+}
+
+.identityCell strong,
+.identityCell span {
+  display: block;
+}
+
+.identityCell span {
+  color: var(--ink-faint);
+  font-family: var(--font-type);
+  font-size: 11px;
+}
+
+.code {
+  display: inline-block;
+  padding: 2px 5px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--paper-warm);
+  font-family: var(--font-type);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.drawerSection {
+  padding-top: 14px;
+  border-top: 2px solid var(--ink);
+}
+
+.drawerSection h3 {
+  margin-bottom: 12px;
+  font-family: var(--font-serif);
+  font-size: 21px;
+}
+
+.definition {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.definition dt {
+  color: var(--ink-faint);
+}
+
+.definition dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.actionStrip {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.priceList {
+  display: grid;
+  gap: 8px;
+}
+
+.priceRow {
+  display: grid;
+  grid-template-columns: 1fr 0.8fr 1fr 0.8fr 0.9fr auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.codes {
+  max-height: 320px;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  padding: 1px;
+  border: 1px solid var(--ink);
+  background: var(--line);
+}
+
+.codes code {
+  padding: 9px;
+  background: var(--paper-bright);
+  font-family: var(--font-type);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.matrix {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.matrix th,
+.matrix td {
+  padding: 9px;
+  border: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.matrix th {
+  background: var(--paper-warm);
+  font-family: var(--font-type);
+  font-size: 11px;
+}
+
+.matrix input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--terra-ink);
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--ink);
+  margin-bottom: 18px;
+}
+
+.tab {
+  min-height: 43px;
+  padding: 0 15px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.tabActive {
+  border-bottom-color: var(--terra-ink);
+  color: var(--ink);
+}
+
+@media (max-width: 960px) {
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stat:nth-child(2) {
+    border-right: 0;
+  }
+
+  .stat:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .split {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .stats {
+    display: block;
+  }
+
+  .stat {
+    min-height: 98px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .stat:last-child {
+    border-bottom: 0;
+  }
+
+  .priceRow {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .codes {
+    grid-template-columns: 1fr;
+  }
+
+  .definition {
+    grid-template-columns: 1fr;
+  }
+
+  .definition dd {
+    margin-bottom: 6px;
+  }
+}

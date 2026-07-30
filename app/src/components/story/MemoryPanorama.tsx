@@ -5,7 +5,7 @@
  * 锚点两态:/growth#id 是本页卷目——HashRouter 下 href 锚点会污染路由,
  * 改为按钮 scrollIntoView(减动效偏好下不平滑);其余(/teach、/study)是跨页路由,走 Link。
  */
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import type { MemoryLayer } from '../../engine/recall';
 import { Icon } from '../ui/Icon';
 import s from './memory.module.css';

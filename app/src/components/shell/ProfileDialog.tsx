@@ -1,17 +1,18 @@
 /** 个人中心：桌面双栏设置页，保留 native dialog 的焦点、Escape 与滚动纪律。 */
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
 import { TOPICS } from '../../data';
 // 学习身份三引擎：同 growth 页按路径直连纯派生，不进 engine barrel
 import { deriveTeacherRank } from '../../engine/achievements';
-import { deriveWisdom, deriveEvolution } from '../../engine/evolution';
+import { deriveWisdom, deriveEvolution, getStageMeta } from '../../engine/evolution';
 import { Icon } from '../ui/Icon';
 import { ProfileEmailChange } from './ProfileEmailChange';
 import { ProfilePhoneChange } from './ProfilePhoneChange';
 import { ProfilePasswordChange } from './ProfilePasswordChange';
 import { TranscriptUpload } from './TranscriptUpload';
+import { ProfileCommerce } from './ProfileCommerce';
 import styles from './ProfileDialog.module.css';
 
 interface ProfileDialogProps {
@@ -28,6 +29,14 @@ const PROFILE_SECTIONS = [
     kicker: '书斋名帖',
     title: '个人中心',
     description: '查看学习身份、账号状态与常用入口。',
+  },
+  {
+    id: 'commerce',
+    label: '订阅与用量',
+    icon: 'ticket',
+    kicker: '用量账簿',
+    title: '订阅与用量',
+    description: '查看套餐、有效权益、用量积分并兑换 CDK。',
   },
   {
     id: 'security',
@@ -61,15 +70,6 @@ function profileInitial(name: string | null): string {
   return Array.from(name?.trim() || '师')[0] ?? '师';
 }
 
-/* 修行阶名（evolution 五阶，口径同 engine/evolution 文档） */
-const STAGE_NAMES: Record<1 | 2 | 3 | 4 | 5, string> = {
-  1: '嫩芽期',
-  2: '开窍期',
-  3: '求索期',
-  4: '问难期',
-  5: '出师期',
-};
-
 export function ProfileMark({ name, compact = false }: { name: string | null; compact?: boolean }) {
   return (
     <span className={styles.mark} data-compact={compact || undefined} aria-hidden="true">
@@ -95,7 +95,7 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
   );
   const wisdom = useMemo(() => deriveWisdom(events), [events]);
   const evolution = useMemo(() => deriveEvolution(events, TOPICS), [events]);
-  const stageName = STAGE_NAMES[evolution.stage];
+  const stageMeta = getStageMeta(evolution.stage);
   const [activeSection, setActiveSection] = useState<ProfileSection>('overview');
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [logoutIssue, setLogoutIssue] = useState<string | null>(null);
@@ -263,7 +263,7 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
           <ProfileMark name={user} compact />
           <div>
             <strong>{accountName}</strong>
-            <span>{rank.title} · {stageName}</span>
+            <span>{rank.title} · {stageMeta.name}</span>
           </div>
         </div>
 
@@ -311,7 +311,7 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
                 className={styles.identity}
                 to="/growth"
                 onClick={onClose}
-                aria-label={`${accountName} · 师道${rank.title} · 修行${stageName} · 学识第 ${wisdom.level} 级 · ${phoneSummary} · ${emailSummary}，点按翻开成长册`}
+                aria-label={`${accountName} · 师道${rank.title} · 小白科名${stageMeta.name}·${stageMeta.description} · 学识第 ${wisdom.level} 阶 · ${phoneSummary} · ${emailSummary}，点按翻开成长册`}
               >
                 <div className={styles.identityHead}>
                   <ProfileMark name={user} />
@@ -325,8 +325,8 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
                 </div>
                 <div className={styles.creds}>
                   <span className={styles.rankChip}>{rank.title}</span>
-                  <span className={styles.credChip}>修行 · {stageName}</span>
-                  <span className={styles.credChip}>学识第 {wisdom.level} 级</span>
+                  <span className={styles.credChip}>科名 · {stageMeta.name} · {stageMeta.description}</span>
+                  <span className={styles.credChip}>学识第 {wisdom.level} 阶</span>
                 </div>
                 <div className={styles.credentialGrid}>
                   <p>
@@ -492,6 +492,8 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
               ) : null}
             </>
           ) : null}
+
+          {activeSection === 'commerce' ? <ProfileCommerce /> : null}
 
           {activeSection === 'records' ? (
             <section className={styles.section} aria-labelledby="transcript-title">
