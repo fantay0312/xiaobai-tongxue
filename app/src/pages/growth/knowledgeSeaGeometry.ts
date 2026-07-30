@@ -165,7 +165,7 @@ export function curvedPath(from: SeaPoint, to: SeaPoint, index: number): string 
 export const DECORATIVE_STARS: DecorativeStar[] = Array.from({ length: 28 }, (_, index) => ({
   x: 28 + hash01(`decor-x-${index}`, 23) * (SEA_WIDTH - 56),
   y: 104 + hash01(`decor-y-${index}`, 29) * (SEA_HEIGHT - 136),
-  size: 8 + hash01(`decor-s-${index}`, 31) * 11,
-  opacity: 0.1 + hash01(`decor-o-${index}`, 37) * 0.22,
+  size: 3 + hash01(`decor-s-${index}`, 31) * 5,
+  opacity: 0.07 + hash01(`decor-o-${index}`, 37) * 0.11,
   delay: hash01(`decor-d-${index}`, 41) * 6,
 }));

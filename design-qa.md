@@ -78,4 +78,37 @@
 - P1: none
 - P2: none
 
+## 2026-07-30 · 星形缩小与精修
+
+- Source visual truth: `/var/folders/hz/rw0f86hj6p790vsr1vjp4pyw0000gn/T/codex-clipboard-bbcd5177-382c-46c4-9342-16a8bb152904.png`
+- Implementation, desktop all-sea: `/Users/fantasy/Documents/作业/竞赛 /学伴智仓/output/design-qa/star-polish-desktop-v2.png`
+- Implementation, desktop selected state: `/Users/fantasy/Documents/作业/竞赛 /学伴智仓/output/design-qa/star-polish-selected-v2.png`
+- Implementation, mobile: `/Users/fantasy/Documents/作业/竞赛 /学伴智仓/output/design-qa/star-polish-mobile-v2.png`
+- Same-input focused comparison: `/Users/fantasy/Documents/作业/竞赛 /学伴智仓/output/design-qa/star-polish-comparison-v2.jpg`
+- Source pixels: 625 × 640. Implementation pixels/CSS viewport: 1440 × 1000 desktop and 390 × 844 mobile at density 1.
+- Normalization: the source is a star-language reference rather than a full product screen. Its 625 × 640 motif and the implementation’s 625 × 656 star-sea field crop were aspect-fit/padded to 625 × 640 and placed in one 1262 × 640 comparison image. Layout fidelity was judged separately from star-shape fidelity to avoid false precision.
+- Verified states: desktop all-sea, selected Token star with two semantic links and evidence panel, mobile six-topic course, mobile 30-topic course, keyboard focus, and reduced information-star density.
+
+### Required fidelity surfaces
+
+- Fonts and typography: unchanged from the passed old-school academy implementation. Smaller stars leave more air around the existing course and topic labels; no new wrapping, clipping, or weight drift was introduced.
+- Spacing and layout rhythm: the 44 × 44 px interaction target remains unchanged while the visible featured star is now 13 × 13 px and the active star is 13.78 × 13.78 px. The ordinary knowledge point is a borderless 3 px light core. The dense 30-topic mobile course retains a 52.65 px minimum center distance and no document overflow.
+- Colors and visual tokens: stars retain the moon-paper `#f6ead0` core and status-colored short glow. Semantic links are thinner and quieter; selected/focused state stays distinguishable without scaling the full control.
+- Image quality and asset fidelity: the former 29 px hollow sparkle was replaced with the exact Iconify `ph:star-four-fill` asset. Featured stars now read as small, sharp light points like the reference; desktop decoration remains 28 stars and mobile 14, with a measured 3.17–7.95 px range and maximum opacity 0.177.
+- Copy and content: no product copy, mastery value, course name, knowledge-node count, or evidence semantics changed.
+
+### Comparison history
+
+- Pass 1 finding: the production 29 px hollow four-point outline and 7 px ring core read like large form markers rather than stars.
+- Pass 1 fix: reduced the outline to 18 px, the core to 5 px, softened links and glow, and reduced decoration to 5–12 px.
+- Pass 2 finding: the smaller outline still read as a hollow diamond and remained more prominent than the reference’s pin-light stars.
+- Pass 2 fix: replaced it with the library-sourced solid four-point asset, reduced featured stars to 13 px, active scale to 1.06, ordinary nodes to 3 px solid points, locked nodes to 2 px, and decoration to 3–8 px at 0.07–0.18 opacity with a 10-second breath.
+- Post-fix evidence: the same-input comparison shows solid, compact light points with a short halo instead of large hollow diamonds. Desktop measures 6 featured + 28 decorative stars; mobile measures 4 + 14. Selected evidence, two semantic links, keyboard focus, and all click targets remain functional. Browser logs contain no error or warning.
+
+### Remaining severity
+
+- P0: none
+- P1: none
+- P2: none
+
 final result: passed
