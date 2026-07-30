@@ -1,3 +1,11 @@
+# verify (2026-07-30 科举科名与学问星海)
+- 功能 ✓ 五阶科名统一为童生/秀才/举人/贡士/进士，副题分别为初入问学/初通一艺/旁涉群书/问难穷理/学成登科；原 XP、门槛、事件和持久化键不变，五阶之后继续显示「第 N 阶」。卷三改为一片 42 星连续星海，课程巡览、星图/名录、状态筛选、证据链与跨课语义关系均可用；装饰星是独立视觉层，不占知识节点与读屏语义。
+- 设计/浏览器 ✓ 线上桌面实测 42 知识星、6 突出星、28 装饰星；390×844 手机默认单课 6/4/14，操作系统 30 星以 5 列排布，最小中心距 52.65px、44px 点击目标、根级横向溢出 0。Token 星选择后出现 2 个语义邻星与 2 条星链，证据链同步展开；方向键焦点正确移动且全场仅 1 个 roving `tabIndex=0`；浏览器日志为空。设计对照与桌面/手机截图记录在 `output/design-qa/`，`design-qa.md` 结论为 passed。
+- 代码门禁 ✓ PR `#7` squash 合并为 `c93169e`；App lint（仅 `fsImpl.ts:542` 两条既有 warning）、commerce contract、landing data、sync 41、simulate 1565、TypeScript/Vite clean build 全部通过；Server check + 195/195 tests，Admin domain/lint/build，`git diff --check` 均通过。
+- 秘密/发布树 ✓ 合并提交 clean build 共 226 文件，真实本地 API key 精确值与通用 secret pattern 均为 0；GitGuardian 成功。发布 tar SHA-256 为 `b6944e329bb8605fc6f6f4dfce6bfc09f4f0a1c8250fde58a9f948f46767a4da`，不含 AppleDouble，226/226 清单本地与源站均校验通过。
+- 发布/回滚 ✓ release `20260730T092256Z-c93169e-star-sea` 已切换到 `/opt/xiaobai/dist`；完整备份 `/var/backups/xiaobai/20260730T092256Z-c93169e-star-sea`（700），回滚副本 `/opt/xiaobai/dist.prev-20260730T092256Z-c93169e-star-sea`。候选预检与自动回滚闸门先后拦下远端缺少 `rg`、校验器路径错误两次，无用户流量进入失败候选；修正校验后最终切换成功。仅发布前端，未重启服务、未迁移数据。
+- CDN/公网 ✓ 腾讯 CDN purge `630612165304266818` 为 done；公网 index 与 growth JS/CSS、银河 WebP、科名模块均和 clean build 逐字节一致。HTTPS HTTP/2 `/`、`/admin/`、`/api/me`、`/api/commerce/catalog` 为 200，API no-store，HTTP→HTTPS 和旧入口均 308，绕过 CDN 直连源站 403；systemd active、只监听 `127.0.0.1:8000`、`NRestarts=0`，Nginx 语法与上线后 journal warning 检查通过。
+
 # verify (2026-07-30 商业化独立管理后台)
 - 功能 ✓ 管理身份域与主站用户完全分离，无自助注册；Owner 可邀请成员、预配/变更角色和 18 项权限。订阅套餐/版本/权益、功能门禁、用户订阅、封禁、积分双分录、CDK 三类奖励、审计以及主站商业入口均已上线。Owner 为 pending，最新邀请 `sent=true/valid=true/revoked=false/consumed=false`。
 - 代码门禁 ✓ Server check + 195/195 tests + audit 0；Admin domain/lint/TypeScript/Vite build + audit 0；App lint（仅 `fsImpl.ts:542` 两条既有 warning）、commerce contract、sync 41、landing contract、simulate 1561、TypeScript/Vite build + audit 0；`git diff --check` 通过，安全复核 P0/P1=0。
