@@ -1,6 +1,14 @@
 import { createContactProtectorFromEnv } from '../contact-crypto.mjs';
+import { createAdminAuthRepository } from './admin-auth.mjs';
+import { createAdminRbacRepository } from './admin-rbac.mjs';
+import { createCatalogRepository } from './catalog.mjs';
+import { createCdkRepository } from './cdk.mjs';
 import { createAuthAuditRepository, createInboundEmailRepository } from './messaging.mjs';
 import { createLearningStateRepository, createUserFileRepository } from './content.mjs';
+import { createFeatureRepository } from './features.mjs';
+import { createPointRepository } from './points.mjs';
+import { createSubscriptionRepository } from './subscriptions.mjs';
+import { createUserAccessRepository } from './user-access.mjs';
 import { createContactRepository, createUserRepository } from './users.mjs';
 import {
   createPostgresPoolFromEnv,
@@ -16,6 +24,14 @@ function dataLayer(queryable, options) {
     userFiles: createUserFileRepository(queryable, options),
     inboundEmails: createInboundEmailRepository(queryable, options),
     authAuditEvents: createAuthAuditRepository(queryable, options),
+    adminAuth: createAdminAuthRepository(queryable, options),
+    adminRbac: createAdminRbacRepository(queryable, options),
+    catalog: createCatalogRepository(queryable, options),
+    cdk: createCdkRepository(queryable, options),
+    features: createFeatureRepository(queryable, options),
+    points: createPointRepository(queryable, options),
+    subscriptions: createSubscriptionRepository(queryable, options),
+    userAccess: createUserAccessRepository(queryable, options),
   });
 }
 

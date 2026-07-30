@@ -18,6 +18,7 @@ import { getTopic } from '../data';
 // 三者皆 Node 安全,且都不经 engine/index barrel —— simulate 加载 barrel 时不会拖入 recall。
 import { demonName } from './story';
 import { computeMastery, decayedMastery } from './memory';
+import { getStageMeta } from './evolution';
 import { STAR_LINKS } from '../data/starLinks';
 
 // ───────────────────────── 通用小工具 ─────────────────────────
@@ -29,7 +30,6 @@ function chronological(events: LearnEvent[]): LearnEvent[] {
 
 /* 中文数字日期:story.ts 的同款帮手是私有函数未导出,此处按契约自备一份极小实现 */
 const CN_DIGITS = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
-const LEARNING_STAGES = ['嫩芽期', '开窍期', '求索期', '问难期', '出师期'] as const;
 
 function cnNum(n: number): string {
   if (n <= 0 || n > 31) return String(n);
@@ -451,11 +451,12 @@ export function deriveMemoryPanorama(input: {
   const relLines = deriveRelationshipLines({
     events: input.events, reports: input.reports, global: input.global,
   }).slice(0, 3).map((r) => r.line);
+  const stageMeta = getStageMeta(input.global.learningLevel);
   const bond: MemoryLayer = {
     key: 'bond', no: '肆', name: '师徒之谊', caption: '这一层,永不清空',
     stats: [
       { label: '人格', value: input.global.persona },
-      { label: '当前阶段', value: LEARNING_STAGES[input.global.learningLevel - 1] },
+      { label: '当前科名', value: `${stageMeta.name} · ${stageMeta.description}` },
       { label: '金句', value: `${goldenN} 句` },
       ...(input.global.bestRecord ? [{ label: '最佳战绩', value: input.global.bestRecord }] : []),
     ],

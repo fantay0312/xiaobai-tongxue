@@ -1,3 +1,13 @@
+# verify (2026-07-30 商业化独立管理后台)
+- 功能 ✓ 管理身份域与主站用户完全分离，无自助注册；Owner 可邀请成员、预配/变更角色和 18 项权限。订阅套餐/版本/权益、功能门禁、用户订阅、封禁、积分双分录、CDK 三类奖励、审计以及主站商业入口均已上线。Owner 为 pending，最新邀请 `sent=true/valid=true/revoked=false/consumed=false`。
+- 代码门禁 ✓ Server check + 195/195 tests + audit 0；Admin domain/lint/TypeScript/Vite build + audit 0；App lint（仅 `fsImpl.ts:542` 两条既有 warning）、commerce contract、sync 41、landing contract、simulate 1561、TypeScript/Vite build + audit 0；`git diff --check` 通过，安全复核 P0/P1=0。
+- 秘密门禁 ✓ 发布前发现本地开发 `VITE_LLM_API_KEY` 曾进入旧的未发布 `app/dist`，立即销毁已上传候选包；生产当前资源精确匹配为 0。代码已限制生产构建永远走服务端代理，保留 `.env.local` 重建后精确值匹配仍为 0；最终发布树同时扫描常见 API key、Owner 邮箱、数据库 URL、`.env` 和生产 `config.json`，均为 0。
+- 数据/备份 ✓ 发布前完整备份 `/opt/xiaobai`、`/var/lib/xiaobai`、环境、Nginx、systemd 与 PostgreSQL 18 custom dump，位置 `/var/backups/xiaobai/20260729T184903Z-admin-commercial`，清单复验通过。一次性 PostgreSQL 18 容器分别恢复生产 dump 和创建空库，两条路径均成功执行 `001_initial.sql`、`002_commercial_admin.sql`、`003_cdk_campaign_idempotency.sql`，容器随后销毁。
+- 发布 ✓ release `20260729T184903Z-admin-commercial`，禁用 macOS 扩展属性后的 tar SHA-256 `8787d35db993570484ca454b95af3f7b09f3d2400409071412bbc94112067456`，457 项 SHA-256 清单在线逐项通过。首次切换的 AppleDouble 元数据被 `ExecStartPre` 语法检查拒绝并自动恢复旧版；清洁重打后再次经过候选 8001 验证并成功切换，回滚副本为 `/opt/xiaobai/rollback-20260729T184903Z-admin-commercial-attempt2`。
+- 公网/浏览器 ✓ HTTPS HTTP/2 的 `/`、`/admin/`、`/api/me`、`/api/commerce/catalog` 分别 200，后台匿名 `/api/admin/v1/auth/me` 401；API `Cache-Control: no-store`，后台 CSP 为 self-only 且禁止 frame，HTTP→HTTPS 308，直连源站无 CDN 回源头为 403。17 个关键 HTML/JS/CSS 与本地构建逐字节一致。后台登录/激活和主站在 1440×900、390×844 均无根级横向溢出，console 0 error/warn。
+- CDN/运行态 ✓ 三个不同伪造 `X-Xiaobai-Client-IP` 的公网登录探针只使一个非伪造、非回环/未知 Redis IP 桶增加 3，证明 CDN 覆盖用户同名头。生产服务 active、仅监听 `127.0.0.1:8000`、`NRestarts=0`，Nginx 配置通过，上线后 journal warning 为 0。
+- 已知边界 △ 本次没有支付网关、TOTP/WebAuthn/step-up、后台独立 HTTPS origin 或审计自动分区归档；同源主站 XSS/第三方脚本仍可能触及既有后台会话，需按设计文档的后续路线补齐。
+
 # verify (2026-07-29 备课助教 Markdown)
 - 功能 ✓ 小砚回复支持标题、段落、强调、删除线、行内/围栏代码、列表、引用、分隔线、表格与链接；逐字阶段不解析半截语法，完成后原子切换语义 DOM，减少动画直接显示完整 Markdown。教师消息保持纯文本，完成态仅在用户原本贴底时补一次跟滚。
 - 安全/无障碍 ✓ 无 `dangerouslySetInnerHTML`；仅 `http/https` 生成外链并带 `_blank + noopener noreferrer`，`javascript:` 不生成链接，图片语法不发起远程请求，原始 `<img onerror>` 只显示文字。读屏 live region 会清理标题、列表、引用、表格分隔线、链接和强调标记；代码/表格横滚区均可键盘聚焦。

@@ -5,7 +5,7 @@
  * ③ 输出:回讲解舱重讲验证(completeRemedy → /teach/:topicId?mode=reteach)
  */
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import type { Misconception } from '../../types';
 import { useAppStore } from '../../store/appStore';
 import { Md } from '../../components/Md';

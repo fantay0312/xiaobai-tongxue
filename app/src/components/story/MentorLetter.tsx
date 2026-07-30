@@ -10,7 +10,7 @@ import {
   useCallback, useEffect, useMemo, useRef, useState,
   type KeyboardEvent, type MouseEvent,
 } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { useAppStore } from '../../store/appStore';
 import { TOPICS } from '../../data';
 import { nextStep } from '../../engine/journey';

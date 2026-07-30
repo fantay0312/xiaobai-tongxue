@@ -65,6 +65,14 @@ import { createTencentSmsSender } from './tencent-sms.mjs';
 import { createProductionStorage } from './production-storage.mjs';
 import { commitThenRefresh } from './committed-mutation.mjs';
 import { classifyInboundWebhookError } from './inbound-webhook-response.mjs';
+import { createCommercialAccessController } from './commercial-access.mjs';
+import { readAdminConfig } from './admin/config.mjs';
+import { createAdminInvitationSender } from './admin/email.mjs';
+import { createAdminRouter } from './admin/router.mjs';
+import { createAdminService } from './admin/service.mjs';
+import { createCommerceRouter } from './commerce/router.mjs';
+import { createCommerceService } from './commerce/service.mjs';
+import { createStaticHandler } from './static-hosting.mjs';
 
 // 腾讯云主机无 IPv6 出网,而 openrouter.ai 等上游把 AAAA 排在解析结果前面;
 // Node fetch(undici)不做 Happy Eyeballs,按序拿 IPv6 直连会 ENETUNREACH 秒败
@@ -91,6 +99,7 @@ if (!existsSync(CONFIG_PATH)) {
 const cfg = JSON.parse(readFileSync(CONFIG_PATH, 'utf8'));
 const PORT = cfg.port ?? 8787;
 const DIST = path.resolve(HERE, cfg.distDir ?? '../dist');
+const ADMIN_DIST = path.resolve(HERE, cfg.adminDistDir ?? '../admin/dist');
 const UPSTREAM = String(cfg.upstreamBaseUrl ?? 'https://api.deepseek.com').replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
 /** 分角色模型:课堂三角色(小白/评估/报告)走 flash 走量,备课助教走 pro 求质。
  *  旧别名 deepseek-chat/deepseek-reasoner 2026-07-24 弃用,默认值已迁移 v4 正式名。 */
@@ -205,6 +214,51 @@ if (SMS_SDK_APP_ID && SMS_SIGN_NAME && SMS_TEMPLATE_ID && SMS_SECRET_ID && SMS_S
 const passwordService = createPasswordService();
 const authGate = createAuthGate({ maxConcurrent: 8, maxPerMinute: 120 });
 const captchaService = createTencentCaptcha();
+let adminConfig = null;
+try {
+  adminConfig = readAdminConfig(process.env);
+} catch (error) {
+  console.error(
+    '[fatal] 管理后台配置无效:',
+    safeDiagnosticMessage(error instanceof Error ? error.message : 'admin-config-invalid'),
+  );
+  process.exit(2);
+}
+if (adminConfig && !productionStorage) {
+  console.error('[fatal] ADMIN_OWNER_EMAIL 已配置，但管理后台要求 PostgreSQL/Redis 生产存储');
+  process.exit(2);
+}
+const commerceService = productionStorage
+  ? createCommerceService({
+    postgres: productionStorage.postgres,
+    cdkKeys: adminConfig?.cdkKeys ?? new Map(),
+    currentCdkVersion: adminConfig?.currentCdkVersion ?? 1,
+    cdkExportRootKey: adminConfig?.tokenKey,
+  })
+  : null;
+let adminService = null;
+if (adminConfig) {
+  try {
+    adminService = createAdminService({
+      postgres: productionStorage.postgres,
+      config: adminConfig,
+      passwordService,
+      sendInvitation: createAdminInvitationSender({
+        apiKey: RESEND_API_KEY,
+        from: RESEND_FROM,
+      }),
+      rateLimit: (input) => productionStorage.redisOtp.rateLimit(input),
+      clientIp: (req) => clientIp(req),
+      authGate,
+    });
+  } catch (error) {
+    console.error(
+      '[fatal] 管理后台初始化失败:',
+      safeDiagnosticMessage(error instanceof Error ? error.message : 'admin-init-failed'),
+    );
+    process.exit(2);
+  }
+}
 if (!API_KEY) console.warn('[warn] config.apiKey 为空,/api/chat 将全部 502');
 if (!INVITE_CODE) console.warn('[warn] config.inviteCode 未配置,/api/register 关闭');
 if (!emailAuth) console.warn('[warn] Resend 密钥或发件人未配置,邮箱登录与注册关闭');
@@ -278,6 +332,21 @@ if (productionStorage) {
     );
     process.exit(2);
   }
+}
+
+if (adminService) {
+  const bootstrapAdmin = async () => {
+    try {
+      await adminService.ensureBootstrap();
+    } catch (error) {
+      console.error(
+        '[admin-bootstrap] Owner 邀请尚未送达，将安全重试:',
+        safeDiagnosticMessage(error instanceof Error ? error.message : 'admin-bootstrap-failed'),
+      );
+    }
+  };
+  await bootstrapAdmin();
+  setInterval(() => { void bootstrapAdmin(); }, adminConfig.bootstrapRetryMs).unref();
 }
 
 /** 原子写:先落临时文件再 rename,进程中途被杀不会留半截 JSON */
@@ -562,6 +631,7 @@ const transcriptHits = new Map(); // name -> { count, resetAt }
 setInterval(() => {
   const now = Date.now();
   for (const [t, s] of sessions) if (s.expires < now) sessions.delete(t);
+  userAccessController.pruneExpired(now);
   for (const [k, v] of loginFails) if (v.resetAt < now) loginFails.delete(k);
   for (const [k, v] of authHits) if (v.resetAt < now) authHits.delete(k);
   for (const [k, v] of regHits) if (v.resetAt < now) regHits.delete(k);
@@ -708,32 +778,31 @@ function getCookie(req, name) {
   return null;
 }
 
-function currentUser(req) {
-  const token = getCookie(req, COOKIE);
-  if (!token) return null;
-  const s = sessions.get(token);
-  if (!s || s.expires < Date.now()) { if (token) sessions.delete(token); return null; }
-  return { token, name: s.name };
-}
-
 function clientIdentityMatches(req, user) {
   return encodedIdentityMatches(req.headers['x-xiaobai-user'], user.name);
 }
 
-/** 新增的账号资源接口共用同一鉴权顺序,避免错误形状泄露账号或邮箱状态。 */
-function protectedUser(req, res) {
-  const user = currentUser(req);
-  if (!user) {
-    send(res, 401, { error: 'login-required' });
-    return null;
-  }
-  if (!clientIdentityMatches(req, user)) {
-    send(res, 401, { error: 'identity-mismatch' });
-    return null;
-  }
-  if (rejectRestrictedAccount(res, user)) return null;
-  return user;
-}
+const userAccessController = createCommercialAccessController({
+  cookieName: COOKIE,
+  sessions,
+  getCookie,
+  findUser,
+  commerceService,
+  rateLimit: productionStorage
+    ? (input) => productionStorage.redisOtp.rateLimit(input)
+    : null,
+  clientIp,
+  identityMatches: clientIdentityMatches,
+  rejectLegacyRestriction: rejectRestrictedAccount,
+  send,
+});
+const {
+  currentUser,
+  commercialAccess,
+  sendAccessDecision,
+  preflightUser,
+  protectedUser,
+} = userAccessController;
 
 /** 会话数量上限:单账号与全局各设天花板,超出逐出最旧(Map 迭代序=插入序);防刷登录撑爆内存 */
 const MAX_SESSIONS_PER_USER = 20;
@@ -817,8 +886,8 @@ function readRaw(req, limit, timeoutMs = 0) {
   });
 }
 
-async function readJson(req, limit = BODY_LIMIT) {
-  const buf = await readRaw(req, limit);
+async function readJson(req, limit = BODY_LIMIT, timeoutMs = 0) {
+  const buf = await readRaw(req, limit, timeoutMs);
   try { return JSON.parse(buf.toString('utf8') || '{}'); }
   catch { throw new Error('bad-json'); }
 }
@@ -835,9 +904,26 @@ function declaredMediaTypeMatches(req, detectedType) {
   return raw.split(';', 1)[0].trim().toLowerCase() === detectedType;
 }
 
-function sendMediaBodyError(res, error) {
+function drainRejectedMediaBody(req) {
+  const cleanup = () => {
+    clearTimeout(timer);
+    req.off('end', cleanup);
+    req.off('close', cleanup);
+  };
+  const timer = setTimeout(() => {
+    cleanup();
+    if (!req.complete) req.destroy();
+  }, MEDIA_BODY_TIMEOUT);
+  timer.unref();
+  req.once('end', cleanup);
+  req.once('close', cleanup);
+  req.resume();
+}
+
+function sendMediaBodyError(req, res, error) {
   if (error?.message === 'body-too-large') {
-    return send(res, 413, { error: 'body-too-large' }, { Connection: 'close' });
+    drainRejectedMediaBody(req);
+    return send(res, 413, { error: 'body-too-large' });
   }
   if (error?.message === 'body-timeout') {
     return send(res, 408, { error: 'body-timeout' }, { Connection: 'close' });
@@ -937,15 +1023,32 @@ async function handleAuthRequest(req, res, handler) {
 
 // ───────────────────────── API 处理 ─────────────────────────
 /** 铸会话并连 Set-Cookie 一起应答(密码登录、邮箱登录与注册共用) */
-function issueSession(req, res, name, status = 200) {
+async function issueSession(req, res, name, status = 200) {
+  const user = findUser(name);
+  if (!user || user.disabledAt) {
+    send(res, 403, { error: 'account-restricted', reason: 'account-suspended' });
+    return false;
+  }
+  const access = await commercialAccess(user, 'login');
+  if (!access.allowed) {
+    sendAccessDecision(res, access);
+    return false;
+  }
   pruneSessions(name);
   const token = crypto.randomBytes(32).toString('hex');
-  sessions.set(token, { name, expires: Date.now() + SESSION_TTL });
+  const sessionVersion = Number.isSafeInteger(user.sessionVersion) ? user.sessionVersion : 1;
+  sessions.set(token, {
+    name,
+    userId: user.id ?? null,
+    sessionVersion,
+    expires: Date.now() + SESSION_TTL,
+  });
   // 生产默认永远 Secure;只有显式本地测试开关才允许明文 Cookie
   const secure = !ALLOW_INSECURE_AUTH || requestUsesTrustedHttps(req) ? '; Secure' : '';
   send(res, status, authPayload(name), {
     'Set-Cookie': `${COOKIE}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${Math.floor(SESSION_TTL / 1000)}${secure}`,
   });
+  return true;
 }
 
 function sendCaptchaError(res, result) {
@@ -1070,7 +1173,7 @@ async function handleLogin(req, res) {
   fails.count = Math.max(0, fails.count - 1);
   // 成功登录不能清空整个 IP 的失败历史：否则知道任一有效账号密码的人可在猜测间
   // 穿插一次成功登录，循环重置 10 次/15 分钟门禁。窗口只按到期清理。
-  issueSession(req, res, current.name);
+  await issueSession(req, res, current.name);
 }
 
 /** 绑定/换绑邮箱是持久账号操作，不能只凭可能被盗的长会话完成。 */
@@ -1107,6 +1210,11 @@ async function requireCurrentPassword(req, res, user, value) {
   if (!sameAccount(current, user) || !verifiedRevision
     || credentialRevision(current) !== verifiedRevision) {
     send(res, 401, { error: 'login-required' });
+    return null;
+  }
+  const decision = await commercialAccess(current, 'all');
+  if (!decision.allowed) {
+    sendAccessDecision(res, decision);
     return null;
   }
   return current;
@@ -1185,7 +1293,7 @@ async function handlePhoneLogin(req, res) {
   if (!user || normalizeMainlandPhone(user.phone) !== result.phone) {
     return send(res, 401, { error: 'invalid-credentials' });
   }
-  issueSession(req, res, user.name);
+  await issueSession(req, res, user.name);
 }
 
 async function handleEmailCode(req, res) {
@@ -1243,7 +1351,7 @@ async function handleEmailLogin(req, res) {
   if (!user || normalizeEmail(user.email) !== result.email) {
     return send(res, 401, { error: 'invalid-credentials' });
   }
-  issueSession(req, res, user.name);
+  await issueSession(req, res, user.name);
 }
 
 async function handlePasswordCode(req, res) {
@@ -1308,7 +1416,7 @@ async function handlePasswordReset(req, res) {
       return send(res, 500, { error: 'persist-failed' });
     }
     revokeUserSessions(sessions, currentOwner.name);
-    issueSession(req, res, currentOwner.name);
+    await issueSession(req, res, currentOwner.name);
   });
 }
 
@@ -1349,17 +1457,15 @@ async function handlePhonePasswordReset(req, res) {
       return send(res, 500, { error: 'persist-failed' });
     }
     revokeUserSessions(sessions, currentOwner.name);
-    issueSession(req, res, currentOwner.name);
+    await issueSession(req, res, currentOwner.name);
   });
 }
 
 async function handleAccountEmailCode(req, res) {
   if (!emailAuth) return send(res, 503, { error: 'email-auth-unavailable' });
   const session = currentUser(req);
-  if (!session) return send(res, 401, { error: 'login-required' });
-  if (!clientIdentityMatches(req, session)) return send(res, 401, { error: 'identity-mismatch' });
-  let user = findUser(session.name);
-  if (!user) return send(res, 401, { error: 'login-required' });
+  let user = await protectedUser(req, res, 'all', { allowUnverified: true });
+  if (!user) { req.resume(); return; }
   if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
   let body;
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
@@ -1404,10 +1510,8 @@ async function handleAccountEmailCode(req, res) {
 async function handleAccountEmail(req, res) {
   if (!emailAuth) return send(res, 503, { error: 'email-auth-unavailable' });
   const session = currentUser(req);
-  if (!session) return send(res, 401, { error: 'login-required' });
-  if (!clientIdentityMatches(req, session)) return send(res, 401, { error: 'identity-mismatch' });
-  let user = findUser(session.name);
-  if (!user) return send(res, 401, { error: 'login-required' });
+  let user = await protectedUser(req, res, 'all', { allowUnverified: true });
+  if (!user) { req.resume(); return; }
   if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
   let body;
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
@@ -1437,18 +1541,14 @@ async function handleAccountEmail(req, res) {
   }
   // 只有持久化成功才升级会话；撤销同账号全部旧 restricted SID，再签发一个新 SID。
   revokeUserSessions(sessions, user.name);
-  issueSession(req, res, user.name);
+  await issueSession(req, res, user.name);
 }
 
 async function handleAccountPhoneCode(req, res) {
   if (!phoneAuth) return send(res, 503, { error: 'sms-auth-unavailable' });
   const session = currentUser(req);
-  if (!session) return send(res, 401, { error: 'login-required' });
-  if (!clientIdentityMatches(req, session)) {
-    return send(res, 401, { error: 'identity-mismatch' });
-  }
-  let user = findUser(session.name);
-  if (!user) return send(res, 401, { error: 'login-required' });
+  let user = await protectedUser(req, res, 'all', { allowUnverified: true });
+  if (!user) { req.resume(); return; }
   if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
   let body;
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
@@ -1484,12 +1584,8 @@ async function handleAccountPhoneCode(req, res) {
 async function handleAccountPhone(req, res) {
   if (!phoneAuth) return send(res, 503, { error: 'sms-auth-unavailable' });
   const session = currentUser(req);
-  if (!session) return send(res, 401, { error: 'login-required' });
-  if (!clientIdentityMatches(req, session)) {
-    return send(res, 401, { error: 'identity-mismatch' });
-  }
-  let user = findUser(session.name);
-  if (!user) return send(res, 401, { error: 'login-required' });
+  let user = await protectedUser(req, res, 'all', { allowUnverified: true });
+  if (!user) { req.resume(); return; }
   if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
   let body;
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
@@ -1515,15 +1611,13 @@ async function handleAccountPhone(req, res) {
     return send(res, 500, { error: 'persist-failed' });
   }
   revokeUserSessions(sessions, user.name);
-  issueSession(req, res, user.name);
+  await issueSession(req, res, user.name);
 }
 
 async function handleAccountPassword(req, res) {
   const session = currentUser(req);
-  if (!session) return send(res, 401, { error: 'login-required' });
-  if (!clientIdentityMatches(req, session)) return send(res, 401, { error: 'identity-mismatch' });
-  const user = findUser(session.name);
-  if (!user) return send(res, 401, { error: 'login-required' });
+  const user = await protectedUser(req, res, 'all', { allowUnverified: true });
+  if (!user) { req.resume(); return; }
   if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
   let body;
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
@@ -1555,7 +1649,7 @@ async function handleAccountPassword(req, res) {
       return send(res, 500, { error: 'persist-failed' });
     }
     revokeUserSessions(sessions, current.name);
-    issueSession(req, res, current.name);
+    await issueSession(req, res, current.name);
   });
 }
 
@@ -1581,6 +1675,32 @@ async function refreshUsersFromDatabase() {
   regUsers = validated.registrations;
   emailBindings = [];
   phoneBindings = [];
+}
+
+async function onUserAccessChanged(userId) {
+  const previous = [...USERS, ...regUsers].find((user) => user.id === userId) ?? null;
+  try {
+    await refreshUsersFromDatabase();
+  } catch (error) {
+    console.error(
+      '[fatal] 用户权限变更已提交但内存重载失败，立即退出以恢复权威状态:',
+      safeDiagnosticMessage(error instanceof Error ? error.message : 'reload-failed'),
+    );
+    process.exit(1);
+    return;
+  }
+  const current = [...USERS, ...regUsers].find((user) => user.id === userId) ?? null;
+  if (!current) throw new Error('user-not-found-after-refresh');
+  const previousVersion = Number.isSafeInteger(previous?.sessionVersion)
+    ? previous.sessionVersion : 1;
+  const currentVersion = Number.isSafeInteger(current.sessionVersion)
+    ? current.sessionVersion : 1;
+  if (previousVersion === currentVersion) return;
+  if (current.disabledAt) {
+    userAccessController.suspendUserSessions(current.name, sameAccount);
+  } else {
+    userAccessController.clearSuspendedSessions(current.name, sameAccount);
+  }
 }
 
 async function commitProductionMutation(scope, commit) {
@@ -1776,12 +1896,12 @@ async function handleRegister(req, res) {
   if (regUsers.length >= MAX_REG_USERS) return send(res, 503, { error: 'registry-full' });
   if (!await persistRegisteredUser(user)) return send(res, 500, { error: 'persist-failed' });
   console.log(`[register] 新用户: ${name} (${ip}), 总注册数 ${regUsers.length}`);
-  issueSession(req, res, name, 200);
+  await issueSession(req, res, name, 200);
 }
 
 function handleLogout(req, res) {
   const u = currentUser(req);
-  if (u) sessions.delete(u.token);
+  if (u) userAccessController.deleteSession(u.token);
   const secure = !ALLOW_INSECURE_AUTH || requestUsesTrustedHttps(req) ? '; Secure' : '';
   send(res, 200, { ok: true }, { 'Set-Cookie': `${COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secure}` });
 }
@@ -1811,10 +1931,8 @@ const ROLE_MAX_TOKENS = { xiaobai: 400, evaluator: 700, report: 900, coach: 700 
 const UPSTREAM_TIMEOUT = 45_000;
 
 async function handleChat(req, res) {
-  const u = currentUser(req);
-  if (!u) return send(res, 401, { error: 'login-required' });
-  if (!clientIdentityMatches(req, u)) return send(res, 401, { error: 'identity-mismatch' });
-  if (rejectRestrictedAccount(res, u)) return;
+  const u = await protectedUser(req, res, 'chat');
+  if (!u) return;
 
   // 限流按账号名而非会话 token:重复登录铸新会话无法刷新额度
   const rate = chatHits.get(u.name) ?? { count: 0, resetAt: Date.now() + 60_000 };
@@ -1898,7 +2016,7 @@ const VISION_MAX_INFLIGHT = 4;
 let visionInflight = 0;
 
 async function handleVision(req, res) {
-  const user = protectedUser(req, res);
+  const user = await protectedUser(req, res, 'vision');
   if (!user) { req.resume(); return; }
   if (!VISION_KEY) {
     req.resume();
@@ -1925,12 +2043,12 @@ async function handleVision(req, res) {
 
 async function handleVisionInner(req, res) {
   if (declaredBodyTooLarge(req, MEDIA_LIMIT)) {
-    req.resume();
-    return send(res, 413, { error: 'body-too-large' }, { Connection: 'close' });
+    drainRejectedMediaBody(req);
+    return send(res, 413, { error: 'body-too-large' });
   }
   let buf;
   try { buf = await readRaw(req, MEDIA_LIMIT, MEDIA_BODY_TIMEOUT); } catch (e) {
-    return sendMediaBodyError(res, e);
+    return sendMediaBodyError(req, res, e);
   }
   if (buf.length === 0) return send(res, 400, { error: 'empty-file' });
   const media = detectMediaType(buf, false);
@@ -2000,10 +2118,8 @@ const ASR_MAX_INFLIGHT = 6;
 let asrInflight = 0;
 
 async function handleAsr(req, res) {
-  const u = currentUser(req);
-  if (!u) return send(res, 401, { error: 'login-required' });
-  if (!clientIdentityMatches(req, u)) return send(res, 401, { error: 'identity-mismatch' });
-  if (rejectRestrictedAccount(res, u)) return;
+  const u = await protectedUser(req, res, 'asr');
+  if (!u) { req.resume(); return; }
   if (!ASR_KEY) return send(res, 503, { error: 'asr-disabled' });
   const limited = rateCheck(u.name, ASR_MAX_PER_MIN, ASR_MAX_PER_DAY, asrHits, asrDaily);
   if (limited) return send(res, 429, { error: limited });
@@ -2054,10 +2170,8 @@ async function handleAsrInner(req, res) {
 /** 按账号学习存档:GET 取回 / PUT 覆盖(整包 LWW,客户端去抖推送)。
  *  只当不透明 JSON 桶存取,不解释内容 —— 但形状上限死:顶层必须是对象,尺寸 ≤ STATE_LIMIT */
 async function handleStateGet(req, res) {
-  const u = currentUser(req);
-  if (!u) return send(res, 401, { error: 'login-required' });
-  if (!clientIdentityMatches(req, u)) return send(res, 401, { error: 'identity-mismatch' });
-  if (rejectRestrictedAccount(res, u)) return;
+  const u = await protectedUser(req, res, 'state');
+  if (!u) return;
   const limited = rateCheck(u.name, STATE_MAX_PER_MIN, null, stateHits, null);
   if (limited) return send(res, 429, { error: limited });
   if (productionStorage) {
@@ -2086,10 +2200,8 @@ async function handleStateGet(req, res) {
 }
 
 async function handleStatePut(req, res) {
-  const u = currentUser(req);
-  if (!u) return send(res, 401, { error: 'login-required' });
-  if (!clientIdentityMatches(req, u)) return send(res, 401, { error: 'identity-mismatch' });
-  if (rejectRestrictedAccount(res, u)) return;
+  const u = await protectedUser(req, res, 'state');
+  if (!u) { req.resume(); return; }
   const limited = rateCheck(u.name, STATE_MAX_PER_MIN, null, stateHits, null);
   if (limited) return send(res, 429, { error: limited });
   let body;
@@ -2187,8 +2299,8 @@ function acquireTranscriptUpload(nameValue) {
   };
 }
 
-function transcriptUser(req, res) {
-  const user = protectedUser(req, res);
+async function transcriptUser(req, res) {
+  const user = await protectedUser(req, res, 'transcript');
   if (!user) return null;
   const limited = rateCheck(
     user.name, TRANSCRIPT_MAX_PER_MIN, null, transcriptHits, null,
@@ -2313,7 +2425,7 @@ if (productionStorage) {
 }
 
 async function handleTranscriptGet(req, res) {
-  const user = transcriptUser(req, res);
+  const user = await transcriptUser(req, res);
   if (!user) return;
   try {
     const record = await withTranscriptMutation(
@@ -2332,7 +2444,7 @@ async function handleTranscriptGet(req, res) {
 }
 
 async function handleTranscriptPut(req, res) {
-  const user = transcriptUser(req, res);
+  const user = await transcriptUser(req, res);
   if (!user) { req.resume(); return; }
   const permit = acquireTranscriptUpload(user.name);
   if (!permit.ok) {
@@ -2341,12 +2453,12 @@ async function handleTranscriptPut(req, res) {
   }
   try {
     if (declaredBodyTooLarge(req, MEDIA_LIMIT)) {
-      req.resume();
-      return send(res, 413, { error: 'body-too-large' }, { Connection: 'close' });
+      drainRejectedMediaBody(req);
+      return send(res, 413, { error: 'body-too-large' });
     }
     let body;
     try { body = await readRaw(req, MEDIA_LIMIT, MEDIA_BODY_TIMEOUT); } catch (e) {
-      return sendMediaBodyError(res, e);
+      return sendMediaBodyError(req, res, e);
     }
     if (body.length === 0) return send(res, 400, { error: 'empty-file' });
     const media = detectMediaType(body, true);
@@ -2375,7 +2487,7 @@ async function handleTranscriptPut(req, res) {
 }
 
 async function handleTranscriptFile(req, res) {
-  const user = transcriptUser(req, res);
+  const user = await transcriptUser(req, res);
   if (!user) return;
   try {
     const record = await withTranscriptMutation(
@@ -2403,7 +2515,7 @@ async function handleTranscriptFile(req, res) {
 }
 
 async function handleTranscriptDelete(req, res) {
-  const user = transcriptUser(req, res);
+  const user = await transcriptUser(req, res);
   if (!user) return;
   try {
     await withTranscriptMutation(
@@ -2425,46 +2537,40 @@ async function handleTranscriptDelete(req, res) {
   }
 }
 
-// ───────────────────────── 静态资源(SPA) ─────────────────────────
-const MIME = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json',
-  '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon',
-  '.woff2': 'font/woff2', '.woff': 'font/woff', '.map': 'application/json',
-};
-
-function serveStatic(req, res, urlPath) {
-  let rel;
-  try {
-    rel = decodeURIComponent(urlPath);
-  } catch {
-    return send(res, 400, 'bad-path');
-  }
-  if (rel.endsWith('/')) rel += 'index.html';
-  const file = path.normalize(path.join(DIST, rel));
-  // 必须带分隔符比较:裸 startsWith(DIST) 会放行 /opt/xiaobai/distX 这类同前缀兄弟目录
-  if (file !== DIST && !file.startsWith(DIST + path.sep)) return send(res, 403, 'forbidden');
-  let target = file;
-  if (!existsSync(target) || !statSync(target).isFile()) {
-    target = path.join(DIST, 'index.html'); // SPA 回退
-  }
-  const ext = path.extname(target).toLowerCase();
-  const immutable = /\/assets\//.test(target);
-  try {
-    const data = readFileSync(target);
-    res.writeHead(200, {
-      'Content-Type': MIME[ext] ?? 'application/octet-stream',
-      'Cache-Control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache',
-      'X-Content-Type-Options': 'nosniff',
-      'X-Frame-Options': 'DENY',
-    });
-    res.end(data);
-  } catch {
-    send(res, 500, 'read-error');
-  }
-}
-
 // ───────────────────────── 路由 ─────────────────────────
+const adminRouter = adminService && commerceService
+  ? createAdminRouter({
+    service: adminService,
+    postgres: productionStorage.postgres,
+    commerce: commerceService,
+    readJson: (req, limit) => readJson(req, limit, 5_000),
+    send,
+    getCookie,
+    hasJsonContentType,
+    onUserAccessChanged,
+    allowInsecure: ALLOW_INSECURE_AUTH,
+  })
+  : null;
+const commerceRouter = commerceService
+  ? createCommerceRouter({
+    commerce: commerceService,
+    readJson,
+    send,
+    hasJsonContentType,
+    preflightUser,
+    resolveUser: protectedUser,
+    allowedOrigin: adminConfig?.commerceOrigin ?? null,
+    rateLimit: (input) => productionStorage.redisOtp.rateLimit(input),
+    clientIp,
+  })
+  : null;
+const staticHandler = createStaticHandler({
+  mainDist: DIST,
+  adminDist: ADMIN_DIST,
+  prefix: PREFIX,
+  send,
+});
+
 const server = http.createServer((req, res) => {
   let { pathname } = new URL(req.url, 'http://localhost');
   // 路径前缀部署:/xiaobai/... 与根路径 ... 等价(nginx 反代不改写,前缀由这里剥)
@@ -2472,6 +2578,14 @@ const server = http.createServer((req, res) => {
     pathname = pathname.slice(PREFIX.length) || '/';
   }
   if (pathname.startsWith('/api/')) {
+    if (pathname === '/api/admin/v1' || pathname.startsWith('/api/admin/v1/')) {
+      if (!adminRouter) return send(res, 503, { error: 'admin-unavailable' });
+      return void adminRouter.handle(req, res, pathname);
+    }
+    if (pathname === '/api/commerce' || pathname.startsWith('/api/commerce/')) {
+      if (!commerceRouter) return send(res, 503, { error: 'commerce-unavailable' });
+      return void commerceRouter.handle(req, res, pathname);
+    }
     if (pathname === '/api/webhooks/resend' && req.method === 'POST') {
       return void handleResendWebhook(req, res);
     }
@@ -2506,7 +2620,7 @@ const server = http.createServer((req, res) => {
     return send(res, 404, { error: 'not-found' });
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'method-not-allowed');
-  serveStatic(req, res, pathname === '/' ? '/index.html' : pathname);
+  staticHandler(req, res, pathname);
 });
 
 server.listen(PORT, '127.0.0.1', () => {

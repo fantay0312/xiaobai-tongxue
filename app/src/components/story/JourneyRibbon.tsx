@@ -5,7 +5,7 @@
  * 页面不算账:称号/成就/下一步全部来自纯函数派生,与成长册同一套口径。
  */
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { useAppStore } from '../../store/appStore';
 import { TOPICS } from '../../data';
 import { deriveAchievements, deriveTeacherRank } from '../../engine/achievements';
@@ -42,7 +42,7 @@ export function JourneyRibbon() {
       step: nextStep({ events, reports, topicStates, topics: TOPICS }),
       latest: earned[0] ?? null,
       nextSeal: ghost,
-      // 小白学识等级(升级轨),并入下方师道行尾作一小段纯文本
+      // 小白学识阶次(无上限升级轨),并入下方师道行尾作一小段纯文本
       wisdomLevel: deriveWisdom(events).level,
     };
   }, [events, reports, global, topicStates]);
@@ -59,7 +59,7 @@ export function JourneyRibbon() {
           {dreamLeft > 0
             ? `，再教会 ${dreamLeft} 门，小白就能试着讲给小小白听`
             : '，小白已经准备好把先生的讲法传下去了'}
-          {` · 小白学识第 ${wisdomLevel} 级`}
+          {` · 小白学识第 ${wisdomLevel} 阶`}
         </span>
       </div>
 

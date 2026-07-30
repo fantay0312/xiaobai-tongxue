@@ -10,7 +10,7 @@
  * 右下角常驻备课助教「小砚」(PrepCoach)——只在备课页出现,课堂(/teach)是防作弊红线。
  */
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router';
 import { useAppStore } from '../../store/appStore';
 import { getTopic, TOPICS } from '../../data';
 // 记忆回执:engine/recall 纯派生(不进 barrel),按路径直连

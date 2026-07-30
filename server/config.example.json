@@ -1,6 +1,7 @@
 {
   "port": 8000,
   "distDir": "../dist",
+  "adminDistDir": "../admin/dist",
   "pathPrefix": "",
   "upstreamBaseUrl": "https://api.deepseek.com",
   "upstreamModel": "deepseek-v4-flash",

@@ -38,8 +38,10 @@ export const DEFAULT_GLOBAL: XiaobaiGlobal = {
   bestRecord: null,
 };
 
-// 构建期注入的 LLM 凭据(.env.local,不入库):有 key → 默认直连 API,否则纯本地演示模式
-const ENV_KEY = (import.meta.env.VITE_LLM_API_KEY as string | undefined)?.trim() ?? '';
+// 直连凭据只允许本地开发使用；生产构建始终走服务端代理，避免密钥进入浏览器产物。
+const ENV_KEY = import.meta.env.DEV
+  ? (import.meta.env.VITE_LLM_API_KEY as string | undefined)?.trim() ?? ''
+  : '';
 const ENV_LLM_DEFAULT: LlmSettings | null = ENV_KEY
   ? {
       mode: 'api',

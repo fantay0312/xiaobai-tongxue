@@ -1,8 +1,11 @@
 import type { CSSProperties, JSX } from 'react';
 import { Icon } from '../../components/ui/Icon';
+import { getStageMeta } from '../../engine/evolution';
 import type { LearningStage } from './landingData';
 import { DEMO } from './landingData';
 import s from './LearningWorkspace.module.css';
+
+const DEMO_STAGE = getStageMeta(2);
 
 function PrepEvidence() {
   return (
@@ -32,7 +35,10 @@ function TeachEvidence() {
       <section className={s.evidenceCard}>
         <h3>讲解舱</h3>
         <dl className={s.factList}>
-          <div><dt>小白</dt><dd>好奇型 · 开窍期</dd></div>
+          <div>
+            <dt>小白</dt>
+            <dd>好奇型 · {DEMO_STAGE.name} · {DEMO_STAGE.description}</dd>
+          </div>
           <div><dt>心情</dt><dd>有些困惑</dd></div>
           <div><dt>轮次</dt><dd>已讲 3 轮</dd></div>
         </dl>

@@ -6,7 +6,7 @@
  * 泄漏率实测卡读 src/data/leakageReport.json(import.meta.glob,缺文件优雅降级)——本就是真实测得数据。
  * 语言纪律:盲区永远说「小白还没懂」,不说「你错了」;朱砂只落在盲区/被带偏。
  */
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import type {
   BlindSpot, KnowledgeState, McState, SessionMode, SessionReport, TopicState,
 } from '../../types';

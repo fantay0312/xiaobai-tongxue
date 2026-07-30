@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router';
 import { getTopic } from '../../data';
 import { Icon } from '../../components/ui/Icon';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
