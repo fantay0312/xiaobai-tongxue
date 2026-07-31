@@ -290,6 +290,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     const generation = currentAuthEpoch();
     const sequence = ++authReadSequence;
     const initialStatus = get().status;
+    // Soft refreshes never flash an authenticated view to unknown. Only a prior
+    // anonymous state survives a total network failure; explicit 401/403 still fail closed.
     const keepResolvedWhilePending = preserveResolvedState && initialStatus !== 'unknown';
     const preserveAnonymousNetworkFailure = keepResolvedWhilePending && initialStatus === 'anon';
     const isCurrent = () => generation === currentAuthEpoch() && sequence === authReadSequence;

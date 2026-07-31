@@ -33,13 +33,25 @@ async function expectTimeout(task: Promise<unknown>): Promise<ApiError> {
   }
 }
 
-async function expectCancelled(task: Promise<unknown>): Promise<void> {
+async function expectCancelled(task: Promise<unknown>): Promise<ApiError> {
   try {
     await task
     assert.fail('request should be cancelled')
   } catch (error) {
     assert.ok(error instanceof ApiError)
     assert.equal(error.code, 'REQUEST_ABORTED')
+    return error
+  }
+}
+
+async function expectFailure(task: Promise<unknown>, code: string): Promise<ApiError> {
+  try {
+    await task
+    assert.fail(`request should fail with ${code}`)
+  } catch (error) {
+    assert.ok(error instanceof ApiError)
+    assert.equal(error.code, code)
+    return error
   }
 }
 
@@ -55,7 +67,32 @@ try {
   const caller = new AbortController()
   const cancelledRequest = request('/auth/me', { signal: caller.signal })
   caller.abort()
-  await expectCancelled(cancelledRequest)
+  const cancelled = await expectCancelled(cancelledRequest)
+  assert.doesNotMatch(cancelled.message, /操作结果尚未确认/)
+
+  const unsafeCaller = new AbortController()
+  const unsafeCancelledRequest = request('/users/user-1/status', {
+    method: 'POST',
+    signal: unsafeCaller.signal,
+  })
+  unsafeCaller.abort()
+  const unsafeCancelled = await expectCancelled(unsafeCancelledRequest)
+  assert.match(unsafeCancelled.message, /操作结果尚未确认/)
+
+  globalThis.fetch = async () => {
+    throw new Error('network unavailable')
+  }
+  const unsafeNetworkFailure = await expectFailure(request('/users/user-1/status', {
+    method: 'POST',
+  }), 'NETWORK_ERROR')
+  assert.match(unsafeNetworkFailure.message, /操作结果尚未确认/)
+
+  globalThis.fetch = async () => new Response('invalid JSON', {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
+  const invalidResponse = await expectFailure(request('/auth/me'), 'INVALID_RESPONSE')
+  assert.match(invalidResponse.message, /无法解析/)
 
   globalThis.fetch = async (_input, init) => {
     const signal = init?.signal

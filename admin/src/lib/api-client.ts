@@ -33,6 +33,11 @@ function timeoutMessage(unsafe: boolean): string {
   return '管理服务响应超时，请稍后重试。'
 }
 
+function transportFailureMessage(message: string, unsafe: boolean): string {
+  if (!unsafe) return message
+  return `${message}操作结果尚未确认，请刷新核对后再决定是否重试。`
+}
+
 interface RequestDeadline {
   signal: AbortSignal
   didTimeout: () => boolean
@@ -82,17 +87,29 @@ async function fetchJsonWithDeadline(
         payload = await response.json()
       } catch (error) {
         if (deadline.signal.aborted) throw error
+        if (response.ok) {
+          throw new ApiError('管理服务返回了无法解析的响应。', response.status, 'INVALID_RESPONSE')
+        }
       }
     }
     return { response, payload }
-  } catch {
+  } catch (error) {
+    if (error instanceof ApiError) throw error
     if (deadline.didTimeout()) {
       throw new ApiError(timeoutMessage(unsafe), 0, 'REQUEST_TIMEOUT')
     }
     if (deadline.callerAborted()) {
-      throw new ApiError('管理服务请求已取消。', 0, 'REQUEST_ABORTED')
+      throw new ApiError(
+        transportFailureMessage('管理服务请求已取消。', unsafe),
+        0,
+        'REQUEST_ABORTED',
+      )
     }
-    throw new ApiError('无法连接管理服务，请检查网络或稍后重试。', 0, 'NETWORK_ERROR')
+    throw new ApiError(
+      transportFailureMessage('无法连接管理服务，请检查网络或稍后重试。', unsafe),
+      0,
+      'NETWORK_ERROR',
+    )
   } finally {
     deadline.dispose()
   }
