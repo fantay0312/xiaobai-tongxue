@@ -2,7 +2,7 @@
    成长页 —— 一本「成长册」的册页语言。
    分卷编次(卷首/卷一…):卷号小印 + 标题 + 眉注;
    印章册 = 分叶装订的方章(实印按 tier 分色,虚印降透明);
-   编年史 = 日期栏 + 会话日志卡(出师左沿黛绿),备课/补学作眉批小条;
+   编年史 = 日期栏 + 贯通书脊 + 课堂记录,备课/补学作眉批小条;
    图谱星图类(mapSvg/vein 与 core、halo 两族前缀)被 KnowledgeMap.tsx 复用,选择器名不可动。
    朱砂只落在「被带偏」与破坏性操作上——语义法则,不作普通强调。
    ───────────────────────────────────────────── */
@@ -103,125 +103,307 @@
 /* 数字纪律:所有数值/时间落 code 字体 */
 .num { font-family: var(--font-code); font-weight: 500; font-size: 0.95em; }
 
-/* ── 卷首:弟子画像立轴 + 修行阶牌 + 性情之笺 + 师道/下一步双卡 ── */
+/* ── 卷首:左档案 / 中央成长编年轴 / 右侧性情批注 ── */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 .hero {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  column-gap: clamp(var(--gap-loose), 5vw, 4.5rem);
-  align-items: start;
+  grid-template-columns: minmax(12.5rem, 0.64fr) minmax(27rem, 1.48fr) minmax(12.25rem, 0.64fr);
+  gap: clamp(var(--gap), 3vw, var(--gap-loose));
+  align-items: stretch;
   margin-bottom: var(--gap-section);
 }
 
-/* 双栏收拢统一走 960px 档(tokens.css 断点约定) */
-@media (max-width: 960px) {
-  .hero { grid-template-columns: 1fr; row-gap: var(--gap-loose); }
+.profileColumn,
+.chronicleColumn,
+.notesColumn { min-width: 0; }
 
-  .portrait { margin-inline: auto; }
+.profileColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
-/* 弟子画像:册页里裱起来的一幅小像 —— 双框衬纸,题签在上,展签在下;
-   立轴加宽到 ~300-320px 与右列平衡(加浓轮:卷首孤挂左上、右半空);描边升强边线档(R3) */
+.profileHeading { margin-bottom: var(--gap); }
+
+.heroTitle {
+  color: var(--ink);
+  font-size: var(--fs-hero);
+  line-height: 0.94;
+  letter-spacing: 0.035em;
+}
+
+.heroTitle span { display: block; }
+
+.heroTitle span + span {
+  margin-top: 0.16em;
+  padding-left: 0.72em;
+  color: var(--azure-deep);
+}
+
+.heroSub {
+  max-width: 15rem;
+  margin-top: var(--gap-tight);
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  line-height: 1.75;
+}
+
+/* 档案照是卷首唯一的完整纸物;阶牌微斜出框,作为本页破网格的一刻。 */
 .portrait {
   position: relative;
-  width: clamp(17rem, 22vw, 20rem);
-  margin: 0;
+  width: 100%;
+  max-width: 14.5rem;
+  margin: 0 0 var(--gap);
   padding: var(--gap-tight) var(--gap-tight) var(--gap);
+  overflow: visible;
   background: var(--paper-warm);
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  box-shadow: inset 0 0 0 5px var(--paper-warm), inset 0 0 0 6px var(--line-strong), var(--shadow-paper);
+  border-radius: var(--radius-s);
+  box-shadow: inset 0 0 0 4px var(--paper-warm), inset 0 0 0 5px var(--paper-edge), var(--shadow-paper);
   text-align: center;
-}
-
-/* 展签一律走打字机小签(铅字大写+宽字距),不再借楷体 */
-.portraitMark {
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.3em;
-  text-indent: 0.3em;
-  padding-bottom: var(--gap-hair);
-  border-bottom: 1px solid var(--paper-edge);
-  margin: 0 var(--gap-hair);
 }
 
 .portraitStage {
   display: flex;
+  min-height: 11.5rem;
+  align-items: flex-end;
   justify-content: center;
-  padding: var(--gap-tight) 0 0;
+  overflow: hidden;
+  border-bottom: 1px solid var(--paper-edge);
 }
+
+.portraitStage > * { max-width: 100%; }
 
 .portraitCaption {
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: space-between;
   gap: var(--gap-tight);
-  margin-top: var(--gap-hair);
-}
-
-.portraitNameRow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--gap-tight);
+  margin-top: var(--gap-tight);
+  padding-inline: var(--gap-hair);
 }
 
 .portraitName {
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-  font-weight: 700;
   color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
   letter-spacing: 0.08em;
 }
 
-/* 私章走 --seal-red 印泥别名(DESIGN.md 印章豁免) */
 .portraitSeal {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
+  display: grid;
+  width: 1.65rem;
+  height: 1.65rem;
+  flex: none;
+  place-items: center;
   border: 1.5px solid var(--seal-red);
   border-radius: var(--radius-s);
   color: var(--seal-red);
   font-family: var(--font-display);
   font-size: var(--fs-small);
   font-weight: 700;
-  transform: rotate(-4deg);
+  transform: rotate(-5deg);
 }
 
-/* 展签:随性情皮肤联动的小铭牌,走打字机小签 */
-.portraitNote {
-  display: inline-block;
-  padding: 0.1rem 0.7rem;
+.profileStageTicket {
+  position: absolute;
+  right: -0.5rem;
+  bottom: -0.7rem;
+  display: flex;
+  min-width: 6.25rem;
+  flex-direction: column;
+  padding: 0.32rem 0.75rem 0.38rem;
+  border: 1px solid var(--azure);
+  border-radius: var(--radius-tag);
+  background: var(--paper);
+  color: var(--azure-deep);
+  transform: rotate(2.2deg);
+  box-shadow: var(--shadow-paper);
+}
+
+.profileStageTicket strong {
+  font-family: var(--font-serif);
+  font-size: var(--fs-sub);
+  line-height: 1;
+  letter-spacing: 0.16em;
+}
+
+.profileStageTicket small {
+  margin-top: 0.16rem;
   font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
-  color: var(--ink-soft);
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  background: var(--paper);
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-tag);
+  letter-spacing: 0.08em;
 }
 
-.heroBody { min-width: 0; }
+.profileFacts {
+  width: 100%;
+  max-width: 14.5rem;
+  margin: 0 0 var(--gap-loose);
+  border-top: 1px solid var(--line-strong);
+}
 
-.heroTitle { font-size: var(--fs-hero); color: var(--ink); letter-spacing: 0.04em; }
+.profileFacts > div {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  gap: var(--gap-tight);
+  padding: 0.38rem 0;
+  border-bottom: 1px dotted var(--paper-edge);
+}
 
-.heroSub {
+.profileFacts dt {
+  color: var(--ink-faint);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: var(--track-label);
+}
+
+.profileFacts dd {
+  margin: 0;
+  color: var(--ink);
   font-family: var(--font-display);
-  color: var(--ink-soft);
-  margin-top: var(--gap-hair);
-  margin-bottom: var(--gap-loose);
+  font-size: var(--fs-small);
 }
 
-.levelNow { color: var(--azure); }
+/* 师道收为档案页角的小记,不再与主线竞争一张深色大卡。 */
+.rankCard {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  gap: var(--gap-tight);
+  margin-top: auto;
+  padding-top: var(--gap);
+  border-top: 1px solid var(--line-strong);
+}
 
-/* 学识经验条:升级轨的连续反馈——账簿刻度条,细边框方槽 + 赭陶填充,标签走打字机小签;
-   宽度可过渡,不做位置过渡(法典既定制式:进度条宽度是 transform/opacity 之外的例外) */
-.wisdom { margin: calc(-1 * var(--gap-tight)) 0 var(--gap-loose); }
+.rankSeal {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  writing-mode: vertical-rl;
+  border: 1.5px solid var(--seal-red);
+  border-radius: var(--radius-s);
+  color: var(--seal-red);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  line-height: 1;
+  transform: rotate(-3deg);
+}
+
+.rankBody { min-width: 0; }
+
+.rankLabel,
+.rankScore,
+.rankNext { font-size: var(--fs-tiny); }
+
+.rankLabel {
+  color: var(--ink-faint);
+  font-family: var(--font-typewriter);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.rankTitle {
+  margin-top: 0.1rem;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.rankScore { margin-top: var(--gap-hair); color: var(--ink-soft); line-height: 1.65; }
+.rankNext { margin-top: 0.18rem; color: var(--ink-faint); line-height: 1.65; }
+
+/* 编年轴:左边的一条墨线从当前章节通往五个科名。 */
+.chronicleColumn {
+  padding-inline: clamp(var(--gap), 2.5vw, var(--gap-loose));
+  border-inline: 1px solid var(--paper-edge);
+}
+
+.chronicleTrack {
+  position: relative;
+  isolation: isolate;
+}
+
+.chronicleTrack::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 0.5rem;
+  bottom: 1.65rem;
+  left: 0.84rem;
+  border-left: 1px solid var(--line-strong);
+}
+
+.currentChapter {
+  position: relative;
+  padding: var(--gap-tight) 0 var(--gap-loose) 2.75rem;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.currentMarker {
+  position: absolute;
+  top: 0.55rem;
+  left: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 0.38rem solid var(--paper);
+  border-radius: 50%;
+  background: var(--azure);
+  box-shadow: 0 0 0 1px var(--azure);
+}
+
+.currentTicket {
+  display: inline-block;
+  padding: 0.12rem 0.45rem 0.16rem;
+  border-radius: var(--radius-tag);
+  background: var(--azure);
+  color: var(--paper);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+  transform: rotate(-1.5deg);
+}
+
+.currentHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--gap-hair) var(--gap-tight);
+  margin-top: var(--gap-hair);
+}
+
+.currentHeading h2 {
+  color: var(--ink);
+  font-size: clamp(2.1rem, 5vw, 3.35rem);
+  line-height: 1;
+  letter-spacing: 0.08em;
+}
+
+.currentHeading p {
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+}
+
+.wisdom { margin-top: var(--gap-loose); }
 
 .wisdomHead {
   display: flex;
@@ -231,264 +413,233 @@
   margin-bottom: var(--gap-hair);
 }
 
-.wisdomLabel {
+.wisdomLabel,
+.wisdomGap {
   font-family: var(--font-typewriter);
-  font-size: var(--fs-small);
+  font-size: var(--fs-tiny);
+}
+
+.wisdomLabel {
   color: var(--azure);
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
 
-.wisdomGap { font-family: var(--font-typewriter); font-size: var(--fs-tiny); color: var(--ink-faint); }
+.wisdomGap { color: var(--ink-faint); }
 
-/* 学识条=账簿刻度条:细边框圈住的方槽,填充压其内(不再走胶囊圆头);数字走 code 字体 */
 .wisdomTrack {
-  height: 8px;
+  height: 7px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-tag);
   background: var(--paper);
-  border: 1px solid var(--line-strong);
-  overflow: hidden;
 }
 
 .wisdomFill {
   display: block;
   height: 100%;
-  border-radius: 0;
-  background: linear-gradient(90deg, var(--azure), var(--azure-deep));
+  background: var(--azure);
   transition: width var(--t-slow) var(--ease-out);
 }
 
+/* 愿望是写在轴边的眉批,只留一道引线,不再包成横向 banner。 */
 .dreamThread {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--gap);
-  margin: 0 0 var(--gap-loose);
-  padding: var(--gap) var(--gap-loose);
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius);
-  background:
-    linear-gradient(110deg, var(--amber-wash), transparent 46%),
-    var(--paper-warm);
+  margin: var(--gap-loose) 0 0;
+  padding-left: var(--gap);
+  border-left: 2px solid var(--mustard);
 }
 
-.dreamIcon {
-  display: grid;
-  place-items: center;
-  width: 2.6rem;
-  height: 2.6rem;
-  border-radius: 50%;
-  color: var(--amber-ink);
-  background: var(--paper);
-  border: 1px solid var(--amber);
+.dreamLabel,
+.dreamProgress {
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
 }
 
-.dreamLabel { font-family: var(--font-typewriter); text-transform: uppercase; color: var(--amber-ink); font-size: var(--fs-tiny); letter-spacing: 0.16em; }
-.dreamText { margin-top: 0.1rem; font-family: var(--font-display); color: var(--ink); }
-.dreamProgress { color: var(--ink-faint); font-size: var(--fs-tiny); white-space: nowrap; }
+.dreamLabel {
+  color: var(--gold-ink);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.dreamText {
+  max-width: 29rem;
+  margin-top: var(--gap-hair);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  line-height: 1.75;
+}
+
+.dreamProgress {
+  margin-top: var(--gap-hair);
+  color: var(--ink-faint);
+}
 
 .graduationScene {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: var(--gap-loose);
-  margin: calc(-1 * var(--gap-tight)) 0 var(--gap-loose);
-  padding: var(--gap) var(--gap-loose);
-  border: 1px solid var(--jade);
-  border-radius: var(--radius);
-  background:
-    linear-gradient(120deg, var(--jade-wash), transparent 64%),
-    var(--paper);
-  box-shadow: var(--shadow-paper);
-}
-
-.graduationCast {
-  display: grid;
-  grid-template-columns: repeat(3, 1.55rem);
-  align-items: end;
-  justify-items: center;
-  gap: var(--gap-hair);
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  gap: var(--gap);
+  align-items: start;
+  margin-top: var(--gap);
+  padding: var(--gap) 0 0;
+  border-top: 1px dotted var(--jade);
 }
 
 .graduationLectern {
-  grid-column: 1 / -1;
   display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
   place-items: center;
-  width: 3.2rem;
-  height: 3.2rem;
-  color: var(--jade-ink);
   border: 1px solid var(--jade);
   border-radius: 50%;
-  background: var(--paper-warm);
+  color: var(--jade-ink);
 }
 
-.littleStudent {
-  display: grid;
-  place-items: center;
-  width: 1.45rem;
-  height: 1.45rem;
-  border: 1px solid var(--paper-edge);
-  border-radius: 50%;
-  color: var(--ink-soft);
-  background: var(--paper-warm);
-  font-family: var(--font-display);
+.graduationLabel {
+  color: var(--jade-ink);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
 }
 
-.graduationLabel { font-family: var(--font-typewriter); text-transform: uppercase; color: var(--jade-ink); font-size: var(--fs-tiny); letter-spacing: 0.16em; }
-.graduationQuote { margin-top: 0.16rem; font-family: var(--font-display); font-size: var(--fs-sub); color: var(--ink); }
+.graduationQuote {
+  margin-top: 0.16rem;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+}
+
 .graduationProof { margin-top: var(--gap-hair); color: var(--ink-faint); font-size: var(--fs-tiny); }
 
-/* 科名阶:五方阶牌踏一条墨点路 —— 走过的落墨、当下的钤青印、没到的还是虚印
-   (虚实语言与卷一印章册同源;overflow 横滚与图谱/画廊同一逃生口) */
-
 .ladder {
-  list-style: none;
-  margin: 0 0 var(--gap-loose);
-  padding: var(--gap-hair);
   position: relative;
   display: flex;
-  gap: var(--gap-tight);
-  overflow-x: auto;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0;
 }
 
-/* 中窄档五方牌开始横滚:左右边缘渐隐收纳滚动(R4;#000 是 mask 通道不是配色) */
-@media (max-width: 720px) {
-  .ladder {
-    margin-inline: calc(-1 * var(--gap));
-    padding-inline: var(--gap);
-    mask-image: linear-gradient(90deg, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
-  }
-}
+.currentRung { position: relative; }
 
 .rung {
   position: relative;
-  flex: 1 1 0;
-  min-width: 6.4rem;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--gap-hair) var(--gap-tight);
-  background: var(--paper);
-  border: 1.5px dashed var(--dust);
-  border-radius: var(--radius-s);
+  display: grid;
+  min-height: 4.75rem;
+  grid-template-columns: 2.75rem minmax(4.6rem, 0.72fr) minmax(5.8rem, 0.9fr) minmax(8.2rem, 1.3fr) auto;
+  gap: var(--gap-tight);
+  align-items: center;
+  padding: var(--gap-tight) 0;
+  border-bottom: 1px dotted var(--paper-edge);
 }
 
-/* 墨点路:逐牌接力的小连线,跟得上 ladder 的横向滚动(容器级横线只到 padding box 就断了) */
-.rung:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 100%;
-  width: var(--gap-tight);
-  border-top: 2px dotted var(--dust);
+.rungMarker {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  margin-left: 0.35rem;
+  border: 0.27rem solid var(--paper);
+  border-radius: 50%;
+  background: var(--dust);
+  box-shadow: 0 0 0 1px var(--line-strong);
 }
 
 .rungSign {
-  align-self: flex-start;
-  min-width: 3.65rem;
-  padding: 0.12rem 0.35rem 0.16rem;
-  border: 1px solid currentColor;
-  border-radius: 2px;
   color: var(--ink-soft);
-  background: var(--paper-warm);
   font-family: var(--font-serif);
-  font-size: var(--fs-body);
+  font-size: var(--fs-sub);
   font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: 0.16em;
-  text-align: center;
-  text-indent: 0.16em;
+  letter-spacing: 0.13em;
 }
 
-.rungDesc { font-size: var(--fs-tiny); color: var(--ink-faint); }
+.rungDesc,
+.rungReq,
+.rungState { font-size: var(--fs-tiny); }
 
-/* 条件铭文:够到这一阶要出师几讲、涉猎几门(数字从 STAGE_RULES 派生,不手写);
-   当前目标阶那行改显实时进度(x/y),配色随牌面(past/now)一并加深 */
-.rungReq { font-size: var(--fs-tiny); color: var(--ink-faint); letter-spacing: 0.02em; }
-
-/* 分句整体不拆行:换行只许落在分句间的「·」上,免得「门/槛」孤字坠行 */
+.rungDesc { color: var(--ink-soft); }
+.rungReq { color: var(--ink-faint); line-height: 1.6; }
+.rungState { color: var(--ink-faint); font-family: var(--font-typewriter); white-space: nowrap; }
 .reqClause { white-space: nowrap; }
 
-/* 实牌底必须不透明:wash 叠在纸色上,否则身后的墨点路会从牌面透出来 */
-.rungPast {
-  border-style: solid;
-  border-color: var(--ink-soft);
-  background: linear-gradient(var(--ink-wash), var(--ink-wash)) var(--paper);
+.rungPast .rungMarker {
+  background: var(--ink-soft);
+  box-shadow: 0 0 0 1px var(--ink-soft);
 }
 
-/* 落墨的牌上小字随之加深:ink-faint 压 wash 底只剩 ~3.1:1 */
 .rungPast .rungSign,
 .rungPast .rungDesc,
-.rungPast .rungReq { color: var(--ink-soft); }
+.rungPast .rungReq,
+.rungPast .rungState { color: var(--ink-soft); }
 
-.rungNow {
-  border-style: solid;
-  border-width: 2px;
-  border-color: var(--azure);
-  background: linear-gradient(var(--azure-wash), var(--azure-wash)) var(--paper);
-  box-shadow: var(--shadow-paper);
-  transform: rotate(-1.2deg);
-}
-
-.rungNow .rungSign { color: var(--azure-deep); }
-.rungNow .rungDesc { color: var(--azure-deep); }
-.rungNow .rungReq { color: var(--azure-deep); }
-
-/* 化形指引:深度够了、只差换门课时的一句眉批(称呼纪律用「先生」);
-   静默小注不是警示——不落朱砂,只用青虚线左沿轻轻提一句 */
 .morphHint {
-  margin: calc(-1 * var(--gap-tight)) 0 var(--gap-loose);
+  margin: var(--gap) 0 0 2.75rem;
   padding-left: var(--gap);
   border-left: 2px dotted var(--azure);
+  color: var(--ink-soft);
   font-family: var(--font-display);
   font-size: var(--fs-small);
-  color: var(--ink-soft);
   line-height: 1.7;
 }
 
-.morphCourse { font-style: normal; color: var(--azure); }
+.morphCourse { color: var(--azure); font-style: normal; }
 
-/* 性情之笺 */
+/* 右侧批注只留一列可选文本,去掉第三组平均卡片。 */
+.notesColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-loose);
+}
 
-.personaBlock { margin-bottom: var(--gap-loose); }
+.personaBlock { min-width: 0; }
 
 .blockLabel {
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-small);
-  color: var(--azure);
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
   margin-bottom: var(--gap-tight);
+  padding-bottom: var(--gap-tight);
+  border-bottom: 1px solid var(--line-strong);
 }
 
-.blockLabel small {
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
+.blockLabel h2 {
+  color: var(--azure-deep);
+  font-size: var(--fs-sub);
   letter-spacing: 0.06em;
-  margin-left: var(--gap-hair);
 }
 
-.personaRow { display: flex; flex-wrap: wrap; gap: var(--gap-tight); }
+.blockLabel p {
+  margin-top: 0.18rem;
+  color: var(--ink-faint);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.06em;
+}
+
+.personaRow {
+  display: flex;
+  flex-direction: column;
+}
 
 .personaCard {
-  flex: 1 1 13rem;
-  max-width: 17rem;
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 4.4rem;
+  padding: var(--gap-tight) 0.1rem var(--gap-tight) var(--gap-tight);
+  border: 0;
+  border-left: 2px solid transparent;
+  border-bottom: 1px dotted var(--paper-edge);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
   text-align: left;
-  background: var(--paper);
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-s);
-  padding: var(--gap-tight) var(--gap);
-  transition: transform var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out);
+  transition: transform var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out);
 }
 
 .personaCard:hover {
-  transform: translateY(-2px);
-  border-color: var(--azure);
-  box-shadow: var(--shadow-paper);
+  border-left-color: var(--azure);
+  transform: translateX(3px);
 }
-
-.personaActive { border-color: var(--azure); background: var(--azure-wash); }
 
 .personaTop {
   display: flex;
@@ -497,228 +648,447 @@
   gap: var(--gap-hair);
 }
 
-.personaName { font-family: var(--font-display); font-size: var(--fs-sub); font-weight: 700; color: var(--ink); }
+.personaName {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 700;
+}
 
+.personaActive { border-left-color: var(--azure); }
 .personaActive .personaName { color: var(--azure-deep); }
 
-/* 「现用」小印:选中那张笺上钤的一方小青印 */
 .personaStamp {
   flex: none;
+  padding: 0 0.3rem;
+  border: 1px solid var(--azure-deep);
+  border-radius: var(--radius-tag);
+  color: var(--azure-deep);
   font-family: var(--font-display);
   font-size: var(--fs-tiny);
-  color: var(--azure-deep);
-  border: 1.5px solid var(--azure-deep);
-  border-radius: var(--radius-s);
-  padding: 0 0.35rem;
-  letter-spacing: 0.14em;
-  text-indent: 0.14em;
+  letter-spacing: 0.1em;
   transform: rotate(3deg);
 }
 
-/* 笺上的话是它的口头禅,走楷体 */
 .personaLine {
+  display: block;
+  margin-top: var(--gap-hair);
+  color: var(--ink-soft);
   font-family: var(--font-display);
   font-size: var(--fs-small);
-  color: var(--ink-soft);
-  line-height: 1.8;
-  margin-top: var(--gap-hair);
+  line-height: 1.7;
 }
-
-/* 师道等级印章卡 + 下一步 CTA:同族双卡(同底同框同衬),一张记功、一张指路 */
-
-.mentorRow {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr));
-  gap: var(--gap);
-}
-
-.rankCard,
-.journeyCard {
-  border-radius: var(--radius);
-  padding: var(--gap);
-}
-
-.journeyCard {
-  background: var(--paper-warm);
-  border: 1px solid var(--line-strong);
-  box-shadow: inset 0 0 0 4px var(--paper-warm), inset 0 0 0 5px var(--line-strong);
-}
-
-/* 砚墨锚点(R1):师道称号砚墨卡 + 卷三星图立轴,本页深色就此两处(法典上限"一两处")——
-   靛墨 --inkstone 系专用,文字走 --moon-on-ink 双档;不是暗色模式 */
-.rankCard {
-  display: flex;
-  align-items: center;
-  gap: var(--gap);
-  background: linear-gradient(160deg, var(--inkstone), var(--inkstone-deep));
-  border: 1px solid var(--inkstone-line);
-  box-shadow: inset 0 0 0 4px var(--inkstone), inset 0 0 0 5px var(--inkstone-line), var(--shadow-paper);
-}
-
-/* 师道方章:竖排双字,免得字距把「道」挤出章框(vertical-rl,不加字距);
-   印泥红章钤在纸签上压住砚墨卡角——印章语境走 --seal-red 别名(DESIGN.md 印章豁免) */
-.rankSeal {
-  flex: none;
-  width: 3.2rem;
-  height: 3.2rem;
-  display: grid;
-  place-items: center;
-  writing-mode: vertical-rl;
-  border: 2px solid var(--seal-red);
-  border-radius: var(--radius-s);
-  color: var(--seal-red);
-  background: var(--paper);
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  font-weight: 700;
-  line-height: 1;
-  transform: rotate(-3deg);
-}
-
-.rankBody { min-width: 0; flex: 1; }
-
-.rankLabel {
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  color: var(--moonsoft-on-ink);
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-}
-
-.rankTitle {
-  font-family: var(--font-display);
-  font-size: var(--fs-title);
-  font-weight: 700;
-  color: var(--moon-on-ink);
-  line-height: 1.3;
-}
-
-.rankScore { font-size: var(--fs-small); color: var(--moonsoft-on-ink); margin-top: 2px; }
-
-.rankScore .num { color: var(--moon-on-ink); }
-
-.rankBar {
-  height: 5px;
-  border-radius: 999px;
-  background: var(--ink-wash);
-  margin-top: var(--gap-hair);
-  overflow: hidden;
-}
-
-.rankBar span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--azure), var(--azure-deep));
-  transition: width var(--t-slow) var(--ease-out);
-}
-
-.rankNext { font-size: var(--fs-tiny); color: var(--moonsoft-on-ink); margin-top: var(--gap-hair); }
 
 .journeyCard {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--gap-hair);
+  margin-top: auto;
+  padding-top: var(--gap);
+  border-top: 1px solid var(--line-strong);
 }
 
 .journeyLabel {
+  color: var(--azure-deep);
   font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
-  color: var(--azure-deep);
   text-transform: uppercase;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.14em;
 }
 
-.journeyLine { font-family: var(--font-display); color: var(--ink); line-height: 1.7; }
+.journeyLine {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  line-height: 1.7;
+}
 
-/* 下一步是卷首唯一的实心按钮:整页只指一条路 */
 .btnSolid {
   display: inline-flex;
+  min-height: 44px;
   align-items: center;
   gap: var(--gap-hair);
-  margin-top: auto;
-  padding: 0.4rem 1.1rem;
+  margin-top: var(--gap-hair);
+  padding: 0.45rem 1rem;
+  border: 1px solid var(--azure);
+  border-radius: var(--radius-s);
   background: var(--azure);
   color: var(--paper);
   font-family: var(--font-display);
   font-size: var(--fs-small);
   font-weight: 700;
-  letter-spacing: 0.1em;
-  border-radius: var(--radius-s);
-  transition: background var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
+  letter-spacing: 0.08em;
+  transition: transform var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out);
+}
+
+.btnSolid:hover { transform: translateY(-1px); opacity: 0.88; }
+.btnSolid:focus-visible { outline: 2px solid var(--azure); outline-offset: 3px; }
+
+/* 平板:档案+编年轴两列,侧注换到下方整行。 */
+@media (max-width: 960px) {
+  .hero {
+    grid-template-columns: minmax(12.5rem, 0.58fr) minmax(0, 1.42fr);
+    row-gap: var(--gap-loose);
+  }
+
+  .chronicleColumn { border-right: 0; }
+
+  .notesColumn {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(13rem, 0.7fr);
+    align-items: end;
+    padding-top: var(--gap);
+    border-top: 1px solid var(--paper-edge);
+  }
+
+  .personaRow {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .personaCard { padding-right: var(--gap-tight); }
+  .journeyCard { margin-top: 0; }
+}
+
+/* 窄平板/放大模式:一列自然下卷,成长轨不做横向滚动。 */
+@media (max-width: 720px) {
+  .hero { grid-template-columns: minmax(0, 1fr); }
+
+  .profileColumn {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.72fr);
+    gap: var(--gap) var(--gap-loose);
+    align-items: start;
+  }
+
+  .profileHeading { margin-bottom: 0; }
+  .portrait { grid-column: 2; grid-row: 1 / span 2; margin: 0; }
+  .profileFacts { grid-column: 1; margin: 0; }
+  .rankCard { grid-column: 1 / -1; margin-top: var(--gap); }
+
+  .chronicleColumn {
+    padding: var(--gap-loose) 0 0;
+    border: 0;
+    border-top: 1px solid var(--line-strong);
+  }
+
+  .notesColumn {
+    display: flex;
+    padding-top: var(--gap-loose);
+  }
+
+  .personaRow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .personaCard { min-height: 6rem; }
 }
 
 @media (max-width: 560px) {
-  .dreamThread { grid-template-columns: auto minmax(0, 1fr); padding: var(--gap); }
-  .dreamProgress { grid-column: 2; white-space: normal; }
-  .graduationScene { grid-template-columns: 1fr; padding: var(--gap); }
-  .graduationCast { justify-content: start; }
+  .page { padding-inline: var(--gap); }
+
+  .h2 small {
+    display: block;
+    margin: 0.4rem 0 0;
+    line-height: 1.55;
+  }
+
+  /* 手机端收成一条学籍档案:先看题头与小像,随即进入当前章节。 */
+  .profileColumn {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 8rem;
+    gap: var(--gap) var(--gap-tight);
+  }
+
+  .profileHeading { margin-bottom: 0; }
+
+  .portrait {
+    grid-column: 2;
+    grid-row: 1;
+    width: 100%;
+    margin: 0;
+    padding: var(--gap-hair) var(--gap-hair) var(--gap-tight);
+  }
+
+  .portraitStage { min-height: 6.5rem; }
+  .portraitStage > * {
+    width: 6.5rem !important;
+    height: 6.5rem !important;
+    max-width: none;
+  }
+  .portraitCaption { margin-top: var(--gap-hair); padding-inline: 0; }
+  .portraitName { font-size: var(--fs-tiny); }
+  .portraitSeal { display: none; }
+
+  .profileStageTicket {
+    right: -0.2rem;
+    bottom: -0.65rem;
+    min-width: 5.25rem;
+    padding-inline: 0.55rem;
+  }
+
+  .profileStageTicket strong { font-size: var(--fs-body); }
+
+  .profileFacts {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-width: none;
+    margin: 0;
+  }
+
+  .profileFacts > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.12rem;
+    padding: var(--gap-hair) var(--gap-tight);
+    border-right: 1px dotted var(--paper-edge);
+    border-bottom: 0;
+  }
+
+  .profileFacts > div:first-child { padding-left: 0; }
+  .profileFacts > div:last-child { border-right: 0; }
+
+  .rankCard {
+    grid-column: 1 / -1;
+    margin-top: var(--gap-hair);
+  }
+
+  .currentChapter { padding-left: 2.35rem; }
+  .chronicleTrack::before { left: 0.7rem; }
+  .currentMarker { width: 1.5rem; height: 1.5rem; }
+  .currentHeading { display: block; }
+  .currentHeading p { margin-top: var(--gap-hair); }
+
+  .wisdomHead { align-items: flex-start; }
+  .wisdomGap { max-width: 8rem; text-align: right; }
+
+  .rung {
+    min-height: 5.25rem;
+    grid-template-columns: 2.35rem minmax(4.5rem, 0.72fr) minmax(0, 1fr);
+    gap: var(--gap-hair) var(--gap-tight);
+  }
+
+  .rungMarker { grid-column: 1; grid-row: 1 / span 2; margin-left: 0.2rem; }
+  .rungSign { grid-column: 2; grid-row: 1; }
+  .rungState { grid-column: 3; grid-row: 1; justify-self: end; }
+  .rungDesc { grid-column: 2; grid-row: 2; }
+  .rungReq { grid-column: 3; grid-row: 2; justify-self: end; text-align: right; }
+
+  .morphHint { margin-left: 2.35rem; }
+
+  .personaRow { grid-template-columns: minmax(0, 1fr); }
+  .personaCard { min-height: 4.4rem; }
+  .journeyCard { margin-top: 0; }
 }
 
-.btnSolid:hover { background: var(--azure-deep); transform: translateY(-1px); }
+@media (forced-colors: active) {
+  .currentMarker,
+  .rungMarker,
+  .wisdomFill { background: Highlight; }
 
-.btnSolid:focus-visible { outline: 2px solid var(--azure); outline-offset: 3px; }
+  .currentRung,
+  .personaActive { border-color: Highlight; }
+
+  .profileStageTicket,
+  .personaStamp { border-color: Highlight; color: Highlight; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wisdomFill,
+  .personaCard,
+  .btnSolid { transition: none; }
+
+  .personaCard:hover,
+  .btnSolid:hover { transform: none; }
+}
 
 /* ── 卷二·教学编年史 ── */
 
 .ledgerMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap);
-  font-size: var(--fs-small);
-  color: var(--ink-faint);
-  margin-bottom: var(--gap);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0 0 var(--gap-loose);
+  border-block: 1px solid var(--line-strong);
 }
 
-.ledgerMeta b { font-family: var(--font-code); font-weight: 500; color: var(--ink); }
+.ledgerMeta > div {
+  min-width: 0;
+  padding: 0.75rem var(--gap);
+  border-right: 1px solid var(--paper-edge);
+}
+
+.ledgerMeta > div:first-child { padding-left: 0; }
+.ledgerMeta > div:last-child { border-right: 0; }
+
+.ledgerMeta dt {
+  color: var(--ink-faint);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+
+.ledgerMeta dd {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3em;
+  margin: 0.18rem 0 0;
+  color: var(--ink-soft);
+  font-size: var(--fs-small);
+}
+
+.ledgerMeta b {
+  color: var(--ink);
+  font-family: var(--font-code);
+  font-size: var(--fs-sub);
+  font-weight: 500;
+}
+
+.chronicleEmpty {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.32fr) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(var(--gap), 4vw, var(--gap-loose));
+  min-height: 9rem;
+  padding: var(--gap) 0 var(--gap-loose);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.chronicleEmpty > span {
+  color: var(--azure);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: var(--track-label);
+}
+
+.chronicleEmpty p {
+  max-width: 42rem;
+  color: var(--ink-soft);
+  font-size: var(--fs-small);
+  line-height: 1.9;
+}
+
+.chronicleEmpty strong {
+  display: block;
+  margin-bottom: var(--gap-tight);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  font-weight: 500;
+}
 
 .logList {
+  --chronicle-rail: 6rem;
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--gap-tight);
+  border-top: 1px solid var(--line-strong);
 }
 
-.logItem {
+.logItem,
+.marginItem {
+  position: relative;
   display: grid;
-  grid-template-columns: 4.2rem minmax(0, 1fr);
-  gap: var(--gap-tight);
-  background: var(--paper-warm);
-  /* 描边升强边线档:日志卡要"框得住"(R3) */
-  border: 1px solid var(--line-strong);
-  border-left: 3px solid var(--line-strong);
-  border-radius: var(--radius-s);
-  padding: var(--gap-tight) var(--gap);
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  column-gap: 3rem;
+  padding: clamp(1.15rem, 2.2vw, 1.65rem) 0;
+  border-bottom: 1px solid var(--paper-edge);
 }
 
-.logMastered { border-left-color: var(--jade); }
+.logItem::after,
+.marginItem::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--chronicle-rail);
+  width: 1px;
+  background: var(--line-strong);
+}
+
+.logItem::before,
+.marginItem::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  top: 1.7rem;
+  left: calc(var(--chronicle-rail) - 0.19rem);
+  width: 0.38rem;
+  height: 0.38rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--paper);
+}
+
+.logMastered::before {
+  border-color: var(--jade);
+  background: var(--jade);
+}
 
 .logDate {
+  position: relative;
+  z-index: 2;
   font-family: var(--font-code);
   font-size: var(--fs-tiny);
   color: var(--ink-faint);
-  padding-top: 0.2rem;
+  padding-top: 0.25rem;
+  text-align: right;
 }
+
+.logRecord { min-width: 0; }
 
 .logHead {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--gap-hair) var(--gap-tight);
+  align-items: center;
+  gap: 0.35rem var(--gap);
 }
 
-.logTopic { font-family: var(--font-display); font-size: var(--fs-sub); color: var(--ink); }
+.logTopic {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+  line-height: 1.4;
+}
 
-.logLine { font-size: var(--fs-small); color: var(--ink-soft); margin-top: var(--gap-hair); }
+.logFacts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.55rem;
+}
+
+.logFacts .chip {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-family: var(--font-typewriter);
+  letter-spacing: 0.03em;
+}
+
+.logFacts .chip + .chip::before {
+  content: '·';
+  margin-right: 0.55rem;
+  color: var(--ink-faint);
+}
+
+.logLine {
+  max-width: 48rem;
+  margin-top: 0.55rem;
+  color: var(--ink-soft);
+  font-size: var(--fs-small);
+  line-height: 1.8;
+}
 
 .logLink {
   display: inline-flex;
   align-items: center;
   gap: var(--gap-hair);
-  margin-top: var(--gap-hair);
+  min-height: 2.75rem;
+  margin-top: 0.25rem;
   font-family: var(--font-display);
   font-size: var(--fs-small);
   color: var(--azure);
@@ -726,17 +1096,22 @@
 
 .logLink:hover { color: var(--azure-deep); }
 
-/* 眉批小条:无会话归属的备课/补学,轻一档,点线左沿示"页边小注" */
+/* 无会话归属的备课/补学作页边眉批,与正文共用一根实线书脊。 */
 .marginItem {
-  display: grid;
-  grid-template-columns: 4.2rem minmax(0, 1fr);
-  gap: var(--gap-tight);
-  margin-left: var(--gap);
-  padding: 0.15rem var(--gap);
-  border-left: 2px dotted var(--dust);
+  padding-block: 0.75rem;
   font-size: var(--fs-small);
   color: var(--ink-faint);
 }
+
+.marginItem::before {
+  top: 1.15rem;
+  width: 0.3rem;
+  height: 0.3rem;
+  left: calc(var(--chronicle-rail) - 0.15rem);
+  border-color: var(--dust);
+}
+
+.marginRecord { min-width: 0; }
 
 .marginTag {
   display: inline-block;
@@ -745,31 +1120,55 @@
   color: var(--ink-soft);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-tag);
-  padding: 0 0.4rem;
-  margin-right: var(--gap-hair);
+  border-bottom: 1px solid var(--line-strong);
+  padding: 0 0 0.12rem;
+  margin-right: var(--gap-tight);
 }
 
 .marginText { color: var(--ink-soft); }
 
 .pageTurn {
   width: 100%;
-  margin-top: var(--gap);
+  min-height: 2.75rem;
+  margin-top: var(--gap-tight);
   background: none;
-  border: 1px dashed var(--paper-edge);
-  border-radius: var(--radius-s);
+  border: 0;
+  border-bottom: 1px solid var(--line-strong);
+  border-radius: 0;
   color: var(--ink-soft);
-  padding: 0.3rem 0.9rem;
+  padding: 0.45rem 0.9rem;
   font-family: var(--font-display);
   font-size: var(--fs-small);
-  transition: border-color var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+  cursor: pointer;
 }
 
-.pageTurn:hover { border-color: var(--azure); color: var(--azure); }
+.pageTurn:hover { color: var(--azure); }
+
+@media (max-width: 720px) {
+  .logList { --chronicle-rail: 0.55rem; }
+
+  .logItem,
+  .marginItem {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.3rem;
+    padding-left: 2rem;
+  }
+
+  .logItem::before { top: 1.5rem; }
+  .marginItem::before { top: 1.05rem; }
+  .logDate { padding-top: 0; text-align: left; }
+}
 
 @media (max-width: 560px) {
-  .logItem, .marginItem { grid-template-columns: 3.2rem minmax(0, 1fr); }
+  .ledgerMeta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ledgerMeta > div:nth-child(2) { border-right: 0; }
+  .ledgerMeta > div:last-child {
+    grid-column: 1 / -1;
+    padding-left: 0;
+    border-top: 1px solid var(--paper-edge);
+  }
+
+  .chronicleEmpty { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ── 卷三·学问星海：连续画布本身响应式，不再依赖横向巡览。 ── */
@@ -1595,7 +1994,7 @@
   height: 3rem;
   display: grid;
   place-items: center;
-  border: 1px dashed var(--azure);
+  border: 0.75px solid color-mix(in oklch, var(--azure) 72%, transparent);
   border-radius: 50%;
   color: var(--azure);
   background: var(--azure-wash);
@@ -1952,54 +2351,133 @@
 
 .timelineText { font-size: var(--fs-small); color: var(--ink); }
 
-/* ── 卷四·金句画廊:横向卡流,引号大字压角 ── */
+/* ── 卷四·金句画廊:不对称引文档案墙,不横滚、不堆卡。 ── */
 
-.galleryFlow {
-  display: flex;
-  gap: var(--gap);
-  overflow-x: auto;
-  /* 横滚收纳(R4):渐隐坡放进负外边距让出的檐廊,首末卡不吃淡;#000 是 mask 通道 */
-  margin-inline: calc(-1 * var(--gap));
-  padding: var(--gap-hair) var(--gap) var(--gap);
-  scroll-snap-type: x proximity;
-  mask-image: linear-gradient(90deg, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
+.galleryEmpty {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.32fr) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(var(--gap), 4vw, var(--gap-loose));
+  min-height: 10rem;
+  padding: clamp(1.5rem, 4vw, 2.75rem) 0;
+  border-block: 1px solid var(--line-strong);
 }
 
-/* 裱好的金句是浅卡,落在 warm 带上浮出来(R3) */
-.galleryCard {
-  position: relative;
-  margin: 0;
-  flex: 0 0 auto;
-  width: min(22rem, 78vw);
-  scroll-snap-align: start;
-  background: var(--paper);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  padding: var(--gap-loose) var(--gap-loose) var(--gap-tight);
-  box-shadow: var(--shadow-paper);
-}
-
-.galleryMark {
-  position: absolute;
-  top: 0.15rem;
-  left: 0.4rem;
-  font-family: var(--font-display);
-  font-size: 2.6rem;
-  line-height: 1;
+.galleryEmptyIndex,
+.galleryIndex {
   color: var(--azure);
-  opacity: 0.18;
-  pointer-events: none;
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
 }
 
-.galleryText {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-  color: var(--ink);
+.galleryEmpty p {
+  max-width: 42rem;
+  color: var(--ink-soft);
+  font-size: var(--fs-small);
   line-height: 1.9;
 }
 
-.galleryFrom { margin-top: var(--gap-tight); font-size: var(--fs-tiny); color: var(--ink-faint); }
+.galleryEmpty strong {
+  display: block;
+  margin-bottom: var(--gap-tight);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(var(--fs-sub), 2.4vw, var(--fs-title));
+  font-weight: 500;
+}
+
+.galleryList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: clamp(var(--gap-loose), 6vw, 5rem);
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line-strong);
+  list-style: none;
+}
+
+.galleryItem {
+  min-width: 0;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.galleryItem:first-child { grid-column: 1 / -1; }
+
+.galleryFigure {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  column-gap: clamp(var(--gap), 3vw, var(--gap-loose));
+  margin: 0;
+  padding: clamp(1.5rem, 4vw, 3rem) 0;
+}
+
+.galleryItem:first-child .galleryFigure {
+  grid-template-columns: minmax(7rem, 0.24fr) minmax(0, 1fr);
+}
+
+.galleryText {
+  grid-column: 2;
+  max-width: 48rem;
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 2.1vw, 1.75rem);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.galleryItem:first-child .galleryText {
+  font-size: clamp(1.45rem, 2.8vw, 2.25rem);
+}
+
+.galleryText p { margin: 0; }
+
+.galleryFrom {
+  grid-column: 2;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--gap-hair) var(--gap);
+  margin-top: var(--gap);
+  padding-top: var(--gap-tight);
+  border-top: 1px solid var(--paper-edge);
+  color: var(--ink-soft);
+  font-size: var(--fs-tiny);
+}
+
+.galleryFrom cite {
+  color: var(--azure);
+  font-family: var(--font-display);
+  font-style: normal;
+}
+
+.galleryFrom time { font-family: var(--font-code); }
+
+@media (max-width: 720px) {
+  .galleryList { grid-template-columns: minmax(0, 1fr); }
+  .galleryItem:first-child { grid-column: auto; }
+
+  .galleryFigure,
+  .galleryItem:first-child .galleryFigure {
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .galleryEmpty { grid-template-columns: minmax(0, 1fr); }
+
+  .galleryFigure,
+  .galleryItem:first-child .galleryFigure {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .galleryText,
+  .galleryFrom { grid-column: 1; }
+  .galleryText { margin-top: var(--gap-tight); }
+}
 
 /* ── 卷尾·小白眼里的你:印象句(楷体)+ 出处小注(code 字体,右侧,窄屏折行到下) ── */
 

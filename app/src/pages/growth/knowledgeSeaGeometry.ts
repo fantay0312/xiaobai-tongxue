@@ -156,7 +156,7 @@ export function curvedPath(from: SeaPoint, to: SeaPoint, index: number): string 
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const length = Math.max(1, Math.hypot(dx, dy));
-  const bow = Math.min(42, Math.max(18, length * 0.09)) * (index % 2 === 0 ? 1 : -1);
+  const bow = Math.min(28, Math.max(10, length * 0.055)) * (index % 2 === 0 ? 1 : -1);
   const controlX = (from.x + to.x) / 2 - (dy / length) * bow;
   const controlY = (from.y + to.y) / 2 + (dx / length) * bow;
   return `M ${from.x.toFixed(1)} ${from.y.toFixed(1)} Q ${controlX.toFixed(1)} ${controlY.toFixed(1)} ${to.x.toFixed(1)} ${to.y.toFixed(1)}`;

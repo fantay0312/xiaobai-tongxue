@@ -111,4 +111,81 @@
 - P1: none
 - P2: none
 
+## 2026-07-31 · 成长编年轴卷首重构
+
+- Source visual truth: `/Users/fantasy/.codex/generated_images/019fb7c6-29ee-7821-b61c-4032aba963ec/exec-e3b6cd58-e80a-4a07-8b55-11229b559325.png`
+- Implementation, source-sized desktop: `/tmp/xiaobai-growth-reference-size.png`
+- Implementation, 1440 desktop: `/tmp/xiaobai-growth-1440.png`
+- Implementation, 390 mobile: `/tmp/xiaobai-growth-390.png`
+- Same-input comparison: `/tmp/xiaobai-growth-comparison.jpg`
+- Source pixels: 1487 × 1058. Source-sized implementation viewport/pixels: 1487 × 1058 at density 1.
+- Verified viewports: 1487 × 1058, 1440 × 1024, 960 × 1000, 720 × 1000, 560 × 1000, and 390 × 1000. The 720 px and 390 px checks also cover the effective reflow widths reached at 200% and 400% desktop zoom.
+- Verified states: default 童生 / 好奇型, 性情切换到严谨型, live-region announcement, then restoration to 好奇型.
+
+### Required fidelity surfaces
+
+- Structure: the former full-width title, dream banner, five equal stage cards, three persona cards, and two mentor cards are replaced by the selected asymmetric dossier / chronicle / marginalia composition.
+- Hierarchy: the center column owns the current chapter, unbounded learning-XP track, wish, and the five-stage chronology. The current chapter is the single expanded `aria-current="step"` item rather than a duplicated stage card.
+- Rhythm: the portrait is the only complete paper object; the wish is an unboxed margin note; future stages are ruled ledger rows; persona choices are flat marginal notes. This removes the previous repeated rounded-card cadence.
+- Brand fidelity: all colors, typography, radii, paper treatment, and the existing `XiaobaiAvatar` asset come from the project design system. No generated character asset, new hex color, emoji, fake icon, or decorative UI gradient was added.
+- Mobile: the portrait and title compact into a short identity strip before the current chapter. The five-stage chronology remains a vertical list with no page-level horizontal overflow at 390 px.
+
+### Interaction and accessibility checks
+
+- Source order exposes the `h1` before the decorative portrait; the portrait and repeated dossier facts are hidden from assistive technology.
+- The learning progressbar exposes min, max, now, label, and value text. The five fixed degree names remain separate from the unbounded “第 N 阶” XP language.
+- Persona controls use real buttons, `aria-pressed`, persistence through the existing store action, and a concise polite live-region update. Switching and restoring the default state passed in the in-app browser.
+- Every persona button and the primary next-step link measures at least 44 px high at all tested breakpoints.
+- 390 px has `scrollWidth === clientWidth`; stage rows reflow vertically and no horizontal stage scroller remains.
+- Reduced-motion retains the global timer/animation safeguards and removes the new width/transform transitions. Forced-colors gives current nodes and selected persona states explicit system-color edges.
+- Browser console check after responsive and interaction passes returned no warnings or errors.
+
+### Fix history
+
+- Pass 1: replaced the two-column card collection with the selected three-column chronology and flat marginal notes.
+- Pass 2: collapsed the mobile portrait into a compact identity strip and fixed the avatar sprite frame leaking a second expression when its inline square size was constrained.
+- Pass 3: merged the duplicated current-stage row into the five-item ordered chronology, aligning the implementation with the selected reference and preserving one semantic current step.
+
+### Remaining severity
+
+- P0: none
+- P1: none
+- P2: none
+
+## 2026-07-31 · 编年史、金句画廊与星链精修
+
+- Current-before, chronicle desktop/mobile: `/tmp/growth-audit-chronicle.png`, `/tmp/growth-audit-chronicle-mobile.png`
+- Implementation, chronicle desktop/mobile: `/tmp/growth-after-chronicle-v2.png`, `/tmp/growth-after-chronicle-mobile-v2.png`
+- Current-before, gallery desktop/mobile: `/tmp/growth-audit-gallery.png`, `/tmp/growth-audit-gallery-mobile.png`
+- Implementation, gallery desktop/mobile: `/tmp/growth-after-gallery.png`, `/tmp/growth-after-gallery-mobile-v2.png`
+- Same-state gallery comparison: `/tmp/growth-gallery-mobile-before-after.png`
+- Current-before / implementation, selected star links: `/tmp/growth-audit-star-links.png`, `/tmp/growth-after-star-links.png`
+- Same-state star-link comparison: `/tmp/growth-star-links-before-after.png`
+- Verified viewports: 1280 × 720, 611 × 731, and 390 × 844.
+- Verified states: zero-entry and one-entry chronicle, zero-entry gallery, selected 「Token 与分词」 with semantic links and evidence dock.
+
+### Visual checks
+
+- Chronicle entries no longer read as repeated admin cards. Dates and classroom records now share a continuous solid ledger spine, ruled separators, flat metadata, and an editorial empty-state folio.
+- Chronicle metadata reflows from three columns to a two-plus-full-width arrangement at 390 px. The empty state and the one-entry state have no page-level horizontal overflow.
+- Gallery no longer uses the masked horizontal card carousel. Its real-data structure is an ordered, two-column editorial archive with a full-width lead quote; the current empty state is a composed `COLLECTION 00` museum note rather than a loose sentence.
+- At 390 px, section subtitles move to their own line. The former orphan final character in the gallery subtitle is gone, and `scrollWidth === innerWidth`.
+- The selected-star comparison uses the same 1280 × 720 state. The former `1px` dashed foreground plus `4px` glow reads as a broken rope; the final `0.75px` continuous foreground plus `2.25px` low-opacity glow reads as a quiet cartographic relation.
+- Star-link curvature is reduced from 9% / 18–42 px to 5.5% / 10–28 px. The long downward relation remains visible without dominating the Milky Way asset.
+
+### Interaction and accessibility checks
+
+- `#chronicle`, six-entry default paging, `aria-expanded`, `aria-controls="chronicle-log"`, report links, and the real event/report derivation remain unchanged.
+- Chronicle now exposes summary values as a `dl`, dates as `time[dateTime]`, and each classroom record as an `article` with an `h3` topic heading. Report links and the old-page control retain at least 44 px height.
+- Gallery keeps `global.goldenAnalogies` as its only data source and adds `ol` / `figure` / `blockquote` / `cite` / `time` semantics without changing id, text, topic fallback, time, or order.
+- Selecting 「Token 与分词」 still sets `aria-pressed="true"`, opens the evidence dock, and renders at most three semantic links. SVG remains `aria-hidden`, link paths remain non-interactive, and star buttons remain 44 × 44 px.
+- The in-app browser log contains no warnings or errors after reload, star selection, responsive checks, and hot updates.
+- The current browser archive contains no saved golden analogy, so populated-gallery visual coverage is enforced by the semantic/static contract and responsive CSS rather than a screenshot with fabricated persisted data.
+
+### Remaining severity
+
+- P0: none
+- P1: none
+- P2: none
+
 final result: passed
