@@ -37,7 +37,7 @@ interface AuthState {
   smsAuthAvailable: boolean;
   registrationAvailable: boolean;
   inviteRequired: boolean;
-  init: () => Promise<void>;
+  init: (preserveResolvedState?: boolean) => Promise<void>;
   refreshSession: (failClosed?: boolean) => Promise<void>;
   requestEmailCode: (email: string, purpose: EmailCodePurpose, invite?: string) => Promise<AuthResult>;
   requestEmailBindingCode: (email: string, currentPassword: string) => Promise<AuthResult>;
@@ -61,6 +61,7 @@ interface AuthState {
 
 let authMutationsInFlight = 0;
 let queuedRefresh: boolean | null = null;
+let authReadSequence = 0;
 
 function beginAuthMutation(): number {
   authMutationsInFlight += 1;
@@ -285,10 +286,18 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   registrationAvailable: false,
   inviteRequired: false,
 
-  init: async () => {
+  init: async (preserveResolvedState = false) => {
     const generation = currentAuthEpoch();
-    if (get().status !== 'authed') set({ status: 'unknown' });
+    const sequence = ++authReadSequence;
+    const initialStatus = get().status;
+    // Soft refreshes never flash an authenticated view to unknown. Only a prior
+    // anonymous state survives a total network failure; explicit 401/403 still fail closed.
+    const keepResolvedWhilePending = preserveResolvedState && initialStatus !== 'unknown';
+    const preserveAnonymousNetworkFailure = keepResolvedWhilePending && initialStatus === 'anon';
+    const isCurrent = () => generation === currentAuthEpoch() && sequence === authReadSequence;
+    if (!keepResolvedWhilePending && initialStatus !== 'authed') set({ status: 'unknown' });
     let receivedHttpResponse = false;
+    let authenticationRejected = false;
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const controller = new AbortController();
       const timer = window.setTimeout(() => controller.abort(), 4000);
@@ -297,7 +306,17 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         receivedHttpResponse = true;
         if (response.ok) {
           const data = await readPayload(response);
-          if (generation !== currentAuthEpoch()) return;
+          const user = data.user;
+          const validUser = user === null || (
+            user !== undefined && typeof user === 'object' && userName(data, '').length > 0
+          );
+          const validBindingState = typeof data.emailBindingRequired === 'boolean'
+            && typeof data.phoneBindingRequired === 'boolean';
+          if (typeof data.authRequired !== 'boolean'
+            || (data.authRequired && (!validUser || !validBindingState))) {
+            throw new Error('invalid-me-response');
+          }
+          if (!isCurrent()) return;
           const captchaAvailable = data.captchaAvailable === true;
           const capabilities = {
             emailAuthAvailable: captchaAvailable && data.emailAuthAvailable === true,
@@ -331,16 +350,20 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           }
           return;
         }
+        authenticationRejected = response.status === 401 || response.status === 403;
       } catch {
         // 网络错误与超时统一重试；生产环境最终保持关闭态。
       } finally {
         window.clearTimeout(timer);
       }
-      if (generation !== currentAuthEpoch()) return;
+      if (!isCurrent()) return;
+      if (authenticationRejected) break;
       await new Promise((resolve) => window.setTimeout(resolve, 700 * (attempt + 1)));
     }
-    if (generation !== currentAuthEpoch()) return;
-    const status: AuthStatus = import.meta.env.DEV && !receivedHttpResponse ? 'standalone' : 'unavailable';
+    if (!isCurrent()) return;
+    if (preserveAnonymousNetworkFailure && !receivedHttpResponse) return;
+    const development = (import.meta as { env?: { DEV?: boolean } }).env?.DEV === true;
+    const status: AuthStatus = development && !receivedHttpResponse ? 'standalone' : 'unavailable';
     setGatewayIdentity(null);
     set({
       status, user: null, emailMasked: null, emailBindingRequired: false,
@@ -362,9 +385,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       set({
         status: 'unknown', user: null, emailMasked: null, emailBindingRequired: false,
         phoneMasked: null, phoneBindingRequired: false,
+        emailAuthAvailable: false, smsAuthAvailable: false,
+        registrationAvailable: false, inviteRequired: false,
       });
     }
-    await get().init();
+    await get().init(!failClosed);
   },
 
   requestEmailCode: async (email, purpose, invite) => {

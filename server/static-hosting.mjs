@@ -29,19 +29,26 @@ const ADMIN_CSP = [
   "connect-src 'self'",
 ].join('; ');
 
+const CAPTCHA_PRIMARY_ORIGINS = [
+  'https://turing.captcha.qcloud.com',
+  'https://turing.captcha.gtimg.com',
+].join(' ');
+const CAPTCHA_SCRIPT_ORIGINS = `${CAPTCHA_PRIMARY_ORIGINS} https://cloudcache.tencentcs.com`;
+
 const MAIN_CSP = [
   "default-src 'self'",
   "base-uri 'none'",
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  "script-src 'self' https://turing.captcha.qcloud.com 'unsafe-eval'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.captcha.qcloud.com",
+  `script-src 'self' ${CAPTCHA_SCRIPT_ORIGINS} 'unsafe-eval'`,
+  `style-src 'self' 'unsafe-inline' ${CAPTCHA_PRIMARY_ORIGINS}`,
+  `img-src 'self' data: blob: ${CAPTCHA_PRIMARY_ORIGINS}`,
   "font-src 'self' data:",
+  // 浏览器直连模式允许用户配置任意 OpenAI 兼容 HTTPS LLM / ASR 端点。
   "connect-src 'self' https:",
-  "frame-src https://*.captcha.qcloud.com",
-  "media-src 'self' blob:",
+  "frame-src https://turing.captcha.qcloud.com",
+  `media-src 'self' blob: ${CAPTCHA_PRIMARY_ORIGINS}`,
   "worker-src 'self' blob:",
 ].join('; ');
 

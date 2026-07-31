@@ -230,7 +230,7 @@ test('valid login proofs cover password and email login while risky proofs sign 
     identifier: USERS[1].name,
     password: 'PasswordLogin!1',
     captcha: riskyCaptcha,
-  });
+  }, { 'X-Real-IP': '203.0.113.77' });
   assert.equal(riskyLogin.response.status, 403);
   assert.deepEqual(riskyLogin.payload, { error: 'captcha-failed' });
   assert.equal(sessionCookie(riskyLogin.response), null);
@@ -255,4 +255,8 @@ test('valid login proofs cover password and email login while risky proofs sign 
     String(request.body.CaptchaAppId) === CAPTCHA_TEST_ENV.TENCENT_CAPTCHA_LOGIN_APP_ID
     && request.body.AppSecretKey === CAPTCHA_TEST_ENV.TENCENT_CAPTCHA_LOGIN_SECRET
   )));
+  assert.equal(
+    requests.find((request) => request.body.Ticket === 'test-risk-ticket')?.body.UserIp,
+    '203.0.113.77',
+  );
 });
