@@ -1,0 +1,3 @@
+bb5b6edbd26c7d9bdd4bf88d03727c377bda5a2d2559875f424a8d1ba0a00d47  desktop.png
+b1d999801417e859c0db7b177ae21ef5fdaa2b44e8f5fa7d1de48501db9dfaaa  mobile.png
+14cecf54d25d063404c6eaaaa24f9b2e9b9d3f4bb7123dcd423c57f5f623b952  reference-comparison.jpg

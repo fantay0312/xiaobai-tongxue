@@ -5,6 +5,7 @@ import { can, ownerCan } from '../src/lib/permissions'
 import { mutationKeyForDraft } from '../src/lib/idempotency'
 import { invitationFrom } from '../src/lib/team-normalizers'
 import { adminApi } from '../src/lib/api'
+import { AUDIT_TARGET_OPTIONS } from '../src/lib/audit-targets'
 import {
   cdkCreationKeyForDraft,
   clearPendingCdkCreation,
@@ -30,6 +31,13 @@ assert.equal(can(session, 'users.read'), true)
 assert.equal(can(session, 'users.ban'), true)
 assert.equal(can(session, 'points.adjust'), false)
 assert.equal(ownerCan(session, 'users.read'), false)
+assert.deepEqual(
+  AUDIT_TARGET_OPTIONS.map((option) => option.value),
+  [
+    'user', 'user-restriction', 'subscription-plan', 'entitlement', 'feature',
+    'subscription', 'cdk-campaign', 'admin-account', 'admin-invitation', 'admin-role',
+  ],
+)
 
 assert.equal(majorToMinor('19.90'), '1990')
 assert.equal(majorToMinor('0.05'), '5')
