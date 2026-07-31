@@ -31,6 +31,7 @@ import { Icon } from '../../components/ui/Icon';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { KnowledgeMap, type MapNode, type NodeStatus } from './KnowledgeMap';
 import { AchievementWall } from './AchievementWall';
+import paper from '../../styles/paper.module.css';
 import s from './growth.module.css';
 
 const DREAM_GOAL = 5;
@@ -339,182 +340,206 @@ export default function GrowthPage() {
 
   return (
     <div className={s.page}>
-      {/* ── 卷首·师徒:弟子画像立轴 + 科名阶牌 + 性情之笺 + 师道/下一步双卡 ── */}
-      <header className={`${s.hero} ${s.rise}`} style={rise(0)}>
-        <figure className={s.portrait}>
-          <p className={s.portraitMark} aria-hidden="true">弟 子 画 像</p>
-          <div className={s.portraitStage}>
-            <XiaobaiAvatar mood={mood} level={global.learningLevel} variant="paper" size={200} />
+      {/* ── 卷首·师徒:左档案 / 中央成长编年轴 / 右侧性情批注 ── */}
+      <header
+        className={`${s.hero} ${s.rise}`}
+        style={rise(0)}
+        aria-labelledby="growth-title"
+      >
+        <section className={s.profileColumn} aria-labelledby="growth-title">
+          <div className={s.profileHeading}>
+            <p className={s.volMark}>卷首 · 师徒</p>
+            <h1 id="growth-title" className={s.heroTitle}>
+              <span>小白的</span>
+              <span>成长册</span>
+            </h1>
+            <p className={s.heroSub}>你教得越明白，它追问得越刁钻。</p>
           </div>
-          {/* figcaption 须是 figure 的末位元素子节点(HTML 内容模型),展签一并收进题名里 */}
-          <figcaption className={s.portraitCaption}>
-            <span className={s.portraitNameRow}>
+
+          {/* 中央编年轴已经完整播报身份；画像与展签只承担视觉叙事，避免读屏重复。 */}
+          <figure className={`${s.portrait} ${paper.texture}`} aria-hidden="true">
+            <div className={s.portraitStage}>
+              <XiaobaiAvatar mood={mood} level={global.learningLevel} variant="paper" size={210} />
+            </div>
+            <figcaption className={s.portraitCaption}>
               <span className={s.portraitName}>弟子 · 小白</span>
-              <span className={s.portraitSeal} aria-hidden="true">白</span>
+              <span className={s.portraitSeal}>白</span>
+            </figcaption>
+            <span className={s.profileStageTicket}>
+              <strong>{currentStage.name}</strong>
+              <small>{currentStage.description}</small>
             </span>
-            {/* 画像展签随性情皮肤联动 */}
-            <span className={s.portraitNote}>性情 · {global.persona}</span>
-          </figcaption>
-        </figure>
+          </figure>
 
-        <div className={s.heroBody}>
-          <p className={s.volMark}>卷首 · 师徒</p>
-          <h1 className={s.heroTitle}>小白的成长册</h1>
-          <p className={s.heroSub}>
-            它现在走到 <span className={s.levelNow}>「{currentStage.name} · {currentStage.description}」</span>
-            ——你教得越明白,它追问得越刁钻。
-          </p>
+          <dl className={s.profileFacts} aria-hidden="true">
+            <div><dt>姓名</dt><dd>小白</dd></div>
+            <div><dt>科名</dt><dd>{currentStage.name}</dd></div>
+            <div><dt>性情</dt><dd>{global.persona}</dd></div>
+          </dl>
 
-          {/* 学识经验条:升级轨的连续反馈——攒学识、进阶,与科名(进化)各走一轨 */}
-          <div className={s.wisdom}>
-            <div className={s.wisdomHead}>
-              <span className={s.wisdomLabel}>学识 · 第 {wisdom.level} 阶</span>
-              <span className={s.wisdomGap}>距进阶还差 <b className={s.num}>{wisdomLeft}</b> 点</span>
+          <section className={s.rankCard} aria-label={`先生当前称号：${rank.title}`}>
+            <span className={s.rankSeal} aria-hidden="true">师道</span>
+            <div className={s.rankBody}>
+              <p className={s.rankLabel}>先生的称号 · 由真实课堂留下</p>
+              <p className={s.rankTitle}>{rank.title}</p>
+              <p className={s.rankScore}>出师 <b className={s.num}>{global.topicsMastered}</b> 门 · 实印 <b className={s.num}>{earnedCount}</b> 枚 · 履历 <b className={s.num}>{rank.score}</b> 分</p>
+              <p className={s.rankNext}>
+                {rank.nextTitle && rank.nextAt !== null
+                  ? <>距「{rank.nextTitle}」还差 <b className={s.num}>{rank.nextAt - rank.score}</b> 分。</>
+                  : '已至宗师，桃李成蹊。'}
+              </p>
             </div>
-            <div
-              className={s.wisdomTrack}
-              role="progressbar"
-              aria-valuenow={wisdom.intoLevel}
-              aria-valuemin={0}
-              aria-valuemax={wisdom.forNext}
-              aria-label={`小白学识第 ${wisdom.level} 阶,距进阶还差 ${wisdomLeft} 点`}
+          </section>
+        </section>
+
+        <section className={s.chronicleColumn} aria-label="小白的五阶成长进度">
+          <div className={s.chronicleTrack}>
+            <ol
+              className={s.ladder}
+              aria-label={`小白的科名成长阶梯，当前${currentStage.name}·${currentStage.description}`}
             >
-              <span className={s.wisdomFill} style={{ width: `${wisdomPct}%` }} />
-            </div>
+              {STAGE_META.map((stageMeta) => {
+                const stageRule = STAGE_RULES.find((rule) => rule.stage === stageMeta.stage);
+                const isCurrent = stageMeta.stage === global.learningLevel;
+                const isPast = stageMeta.stage < global.learningLevel;
+                const stateLabel = isPast ? '已完成' : isCurrent ? '当前阶段' : '未达到';
+                return (
+                  <li
+                    key={stageMeta.stage}
+                    aria-current={isCurrent ? 'step' : undefined}
+                    className={
+                      isCurrent
+                        ? s.currentRung
+                        : isPast
+                          ? `${s.rung} ${s.rungPast}`
+                          : s.rung
+                    }
+                  >
+                    {isCurrent ? (
+                      <section className={s.currentChapter} aria-label={`当前科名：${currentStage.name}，${currentStage.description}`}>
+                        <span className={s.currentMarker} aria-hidden="true" />
+                        <p className={s.currentTicket}>当前阶段</p>
+                        <div className={s.currentHeading}>
+                          <h2>{currentStage.name}</h2>
+                          <p>{currentStage.description}</p>
+                        </div>
+
+                        {/* 学识经验与科名是两条独立成长轨；无上限学识只称“第 N 阶”。 */}
+                        <div className={s.wisdom}>
+                          <div className={s.wisdomHead}>
+                            <span className={s.wisdomLabel}>学识 · 第 {wisdom.level} 阶</span>
+                            <span className={s.wisdomGap}>距进阶还差 <b className={s.num}>{wisdomLeft}</b> 点</span>
+                          </div>
+                          <div
+                            className={s.wisdomTrack}
+                            role="progressbar"
+                            aria-valuenow={wisdom.intoLevel}
+                            aria-valuemin={0}
+                            aria-valuemax={wisdom.forNext}
+                            aria-label={`小白学识第 ${wisdom.level} 阶`}
+                            aria-valuetext={`已积 ${wisdom.intoLevel} 点，距第 ${wisdom.level + 1} 阶还差 ${wisdomLeft} 点`}
+                          >
+                            <span className={s.wisdomFill} style={{ width: `${wisdomPct}%` }} />
+                          </div>
+                        </div>
+
+                        <blockquote className={s.dreamThread}>
+                          <p className={s.dreamLabel}>小白一直记着的愿望</p>
+                          <p className={s.dreamText}>“我想有一天，也能像先生一样，把道理讲给别人听。”</p>
+                          <footer className={s.dreamProgress}>
+                            {global.topicsMastered >= DREAM_GOAL
+                              ? '第一程已圆满'
+                              : `离第一次试讲还差 ${DREAM_GOAL - global.topicsMastered} 门`}
+                          </footer>
+                        </blockquote>
+
+                        {global.topicsMastered >= DREAM_GOAL && (
+                          <section className={s.graduationScene} aria-label="小白的第一次试讲，已由五门出师记录解锁">
+                            <span className={s.graduationLectern} aria-hidden="true"><Icon name="presentation" size={22} /></span>
+                            <div>
+                              <p className={s.graduationLabel}>终章已启 · 小白的第一次试讲</p>
+                              <blockquote className={s.graduationQuote}>“先生，这回换我来讲给小小白听。”</blockquote>
+                              <p className={s.graduationProof}>由已教到出师的 {global.topicsMastered} 门学问真实解锁</p>
+                            </div>
+                          </section>
+                        )}
+                      </section>
+                    ) : (
+                      <>
+                        <span className={s.rungMarker} aria-hidden="true" />
+                        <span className={s.srOnly}>{stateLabel}</span>
+                        <span className={s.rungSign}>{stageMeta.name}</span>
+                        <span className={s.rungDesc}>{stageMeta.description}</span>
+                        {stageMeta.stage === 1 ? (
+                          <span className={s.rungReq}>无需门槛</span>
+                        ) : next && next.stage === stageMeta.stage ? (
+                          <span className={s.rungReq}>
+                            <span className={s.reqClause}>出师 <b className={s.num}>{next.haveMasteries}</b>/<b className={s.num}>{next.needMasteries}</b></span>
+                            {next.needCourses >= 2 && (
+                              <> · <span className={s.reqClause}>课程 <b className={s.num}>{next.haveCourses}</b>/<b className={s.num}>{next.needCourses}</b></span></>
+                            )}
+                          </span>
+                        ) : (
+                          <span className={s.rungReq}>
+                            <span className={s.reqClause}>出师 <b className={s.num}>{stageRule?.masteries ?? 0}</b> 讲</span>
+                            {(stageRule?.courses ?? 0) >= 2 && (
+                              <> · <span className={s.reqClause}>涉猎 <b className={s.num}>{stageRule?.courses}</b> 门</span></>
+                            )}
+                          </span>
+                        )}
+                        <span className={s.rungState} aria-hidden="true">{stateLabel}</span>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
           </div>
 
-          <div className={s.dreamThread}>
-            <span className={s.dreamIcon} aria-hidden="true"><Icon name="sparkles" size={20} /></span>
-            <div>
-              <p className={s.dreamLabel}>小白一直记着的愿望</p>
-              <p className={s.dreamText}>“我想有一天，也能像先生一样，把道理讲给别人听。”</p>
-            </div>
-            <span className={s.dreamProgress}>
-              {global.topicsMastered >= DREAM_GOAL
-                ? '第一程已圆满'
-                : `离第一次试讲还差 ${DREAM_GOAL - global.topicsMastered} 门`}
-            </span>
-          </div>
-
-          {global.topicsMastered >= DREAM_GOAL && (
-            <section className={s.graduationScene} aria-label="小白的第一次试讲，已由五门出师记录解锁">
-              <div className={s.graduationCast} aria-hidden="true">
-                <span className={s.graduationLectern}><Icon name="presentation" size={25} /></span>
-                <span className={s.littleStudent}>白</span>
-                <span className={s.littleStudent}>白</span>
-                <span className={s.littleStudent}>白</span>
-              </div>
-              <div>
-                <p className={s.graduationLabel}>终章已启 · 小白的第一次试讲</p>
-                <blockquote className={s.graduationQuote}>“先生，这回换我来讲给小小白听。”</blockquote>
-                <p className={s.graduationProof}>由已教到出师的 {global.topicsMastered} 门学问真实解锁</p>
-              </div>
-            </section>
-          )}
-
-          {/* 科名阶:走过的阶落墨,当下的阶钤青印,没到的阶还是虚印(与卷一印章册同语) */}
-          <ol
-            className={s.ladder}
-            aria-label={`小白的科名成长阶梯,当前${currentStage.name}·${currentStage.description}`}
-          >
-            {STAGE_META.map((stageMeta) => {
-              // 本阶规则:STAGE_RULES 是按 stage 排列的数组,按 stage 字段查(勿用下标,避免错位)
-              const stageRule = STAGE_RULES.find((r) => r.stage === stageMeta.stage);
-              return (
-              <li
-                key={stageMeta.stage}
-                aria-current={stageMeta.stage === global.learningLevel ? 'step' : undefined}
-                className={
-                  stageMeta.stage === global.learningLevel
-                    ? `${s.rung} ${s.rungNow}`
-                    : stageMeta.stage < global.learningLevel
-                      ? `${s.rung} ${s.rungPast}`
-                      : s.rung
-                }
-              >
-                <span className={s.rungSign}>{stageMeta.name}</span>
-                <span className={s.rungDesc}>{stageMeta.description}</span>
-                {/* 条件铭文:够到这一阶的门槛,数字一律从 STAGE_RULES 派生(不手写复制);
-                    当下要奔的那一阶改显实时进度(x/y);广度门槛未起(≤1 门)时不赘述涉猎;
-                    两个分句各自 nowrap,窄牌换行只许发生在「·」处,不许孤字成行 */}
-                {stageMeta.stage === 1 ? (
-                  <span className={s.rungReq}>无需门槛</span>
-                ) : next && next.stage === stageMeta.stage ? (
-                  <span className={s.rungReq}>
-                    <span className={s.reqClause}>出师 <b className={s.num}>{next.haveMasteries}</b>/<b className={s.num}>{next.needMasteries}</b></span>
-                    {next.needCourses >= 2 && (
-                      <> · <span className={s.reqClause}>课程 <b className={s.num}>{next.haveCourses}</b>/<b className={s.num}>{next.needCourses}</b></span></>
-                    )}
-                  </span>
-                ) : (
-                  <span className={s.rungReq}>
-                    <span className={s.reqClause}>出师 <b className={s.num}>{stageRule?.masteries ?? 0}</b> 讲</span>
-                    {(stageRule?.courses ?? 0) >= 2 && (
-                      <> · <span className={s.reqClause}>涉猎 <b className={s.num}>{stageRule?.courses}</b> 门</span></>
-                    )}
-                  </span>
-                )}
-              </li>
-              );
-            })}
-          </ol>
-
-          {/* 化形指引:深度够了、只差换门课时的一句静默眉批(册页物称呼纪律用「先生」;不落朱砂) */}
           {next?.breadthBlocked && next.suggestedCourses[0] && (
             <p className={s.morphHint}>
               小白想去别的书架看看——先生哪天换一门<em className={s.morphCourse}>《{next.suggestedCourses[0]}》</em>讲给他听?
             </p>
           )}
+        </section>
 
-          {/* 性情之笺:三张可点的纸笺,现用那张钤「现用」小印 */}
+        <aside className={s.notesColumn} aria-label="成长侧注">
           <div className={s.personaBlock}>
-            <p className={s.blockLabel}>性情之笺 <small>点一张,换一种问法</small></p>
-            <div className={s.personaRow} role="group" aria-label="小白的性情皮肤">
-              {PERSONAS.map((p) => {
-                const active = global.persona === p.name;
+            <div className={s.blockLabel}>
+              <h2 id="persona-title">性情之笺</h2>
+              <p>点一张，换一种问法</p>
+            </div>
+            <div className={s.personaRow} role="group" aria-labelledby="persona-title">
+              {PERSONAS.map((persona) => {
+                const active = global.persona === persona.name;
                 return (
                   <button
-                    key={p.name}
+                    key={persona.name}
                     type="button"
                     aria-pressed={active}
                     className={active ? `${s.personaCard} ${s.personaActive}` : s.personaCard}
-                    onClick={() => setPersona(p.name)}
+                    onClick={() => setPersona(persona.name)}
                   >
                     <span className={s.personaTop}>
-                      <span className={s.personaName}>{p.name}</span>
+                      <span className={s.personaName}>{persona.name}</span>
                       {active && <span className={s.personaStamp} aria-hidden="true">现用</span>}
                     </span>
-                    <p className={s.personaLine}>{p.line}</p>
+                    <span className={s.personaLine}>{persona.line}</span>
                   </button>
                 );
               })}
             </div>
+            <p className={s.srOnly} aria-live="polite">当前性情：{global.persona}</p>
           </div>
 
-          {/* 徒弟的阶梯之外,还有师父的路:师道等级印章卡 + 下一步 CTA */}
-          <div className={s.mentorRow}>
-            <div className={s.rankCard}>
-              <span className={s.rankSeal} aria-hidden="true">师道</span>
-              <div className={s.rankBody}>
-                <p className={s.rankLabel}>先生的称号 · 由真实课堂留下</p>
-                <p className={s.rankTitle}>{rank.title}</p>
-                <p className={s.rankScore}>已教到出师 <b className={s.num}>{global.topicsMastered}</b> 门 · 实印 <b className={s.num}>{earnedCount}</b> 枚 · 履历 <b className={s.num}>{rank.score}</b> 分</p>
-                <p className={s.rankNext}>
-                  {rank.nextTitle && rank.nextAt !== null
-                    ? <>距「{rank.nextTitle}」还差 <b className={s.num}>{rank.nextAt - rank.score}</b> 分——备课、讲明要点、纠正误区、出师,都在攒。</>
-                    : '已至宗师——师道至此,桃李成蹊。'}
-                </p>
-              </div>
-            </div>
-            {step && (
-              <div className={s.journeyCard}>
-                <p className={s.journeyLabel}>下一步 · {step.title}</p>
-                <p className={s.journeyLine}>{step.line}</p>
-                <Link to={step.to} className={s.btnSolid}>{step.cta}<Icon name="arrow-right" size={16} /></Link>
-              </div>
-            )}
-          </div>
-        </div>
+          {step && (
+            <section className={s.journeyCard} aria-label={`下一步：${step.title}`}>
+              <p className={s.journeyLabel}>下一步 · {step.title}</p>
+              <p className={s.journeyLine}>{step.line}</p>
+              <Link to={step.to} className={s.btnSolid}>{step.cta}<Icon name="arrow-right" size={16} /></Link>
+            </section>
+          )}
+        </aside>
       </header>
 
       {/* ── 卷一·印章册:成就分叶装订,实印/虚印,点一枚预览来历 ──
@@ -528,27 +553,47 @@ export default function GrowthPage() {
       </section>
 
       {/* ── 卷二·教学编年史:events×reports 并轨的会话日志,倒序,默认最近 6 条 ── */}
-      <section id="chronicle" className={`${s.section} ${s.rise}`} style={rise(2)}>
-        <h2 className={s.h2}>
+      <section
+        id="chronicle"
+        className={`${s.section} ${s.rise}`}
+        style={rise(2)}
+        aria-labelledby="chronicle-title"
+      >
+        <h2 className={s.h2} id="chronicle-title">
           <span className={s.volNo}>卷二</span>教学编年史
           <small>每一课都记在案,自新往旧翻</small>
         </h2>
-        <div className={s.ledgerMeta}>
-          <span>已出师 <b>{global.topicsMastered}</b> 门</span>
-          <span>最快纪录 <b>{global.bestRecord ?? '——'}</b></span>
-          <span>金句 <b>{global.goldenAnalogies.length}</b> 句</span>
-        </div>
+        <dl className={s.ledgerMeta} aria-label="编年史摘要">
+          <div>
+            <dt>已出师</dt>
+            <dd><b>{global.topicsMastered}</b><span>门</span></dd>
+          </div>
+          <div>
+            <dt>最快纪录</dt>
+            <dd><b>{global.bestRecord ?? '——'}</b></dd>
+          </div>
+          <div>
+            <dt>金句入藏</dt>
+            <dd><b>{global.goldenAnalogies.length}</b><span>句</span></dd>
+          </div>
+        </dl>
         {chronicle.length === 0 ? (
-          <p className={s.muted}>编年史还没有第一笔——去书斋门厅开一课,这里会替你记下每一天。</p>
+          <div className={s.chronicleEmpty}>
+            <span aria-hidden="true">LEDGER 00</span>
+            <p>
+              <strong>第一课,还没落笔。</strong>
+              去书斋门厅开一课,这本册子会替你记下每次讲明白的时刻。
+            </p>
+          </div>
         ) : (
           <>
-            <ol className={s.logList} id="chronicle-log">
+            <ol className={s.logList} id="chronicle-log" role="list">
               {shownChronicle.map((en) => {
                 if (en.kind === 'margin') {
                   return (
                     <li key={en.id} className={s.marginItem}>
-                      <span className={s.logDate}>{fmtDay(en.t)}</span>
-                      <div>
+                      <time className={s.logDate} dateTime={en.t}>{fmtDay(en.t)}</time>
+                      <div className={s.marginRecord}>
                         <span className={s.marginTag}>{en.type === 'prep_completed' ? '备课' : '补学'}</span>
                         <span className={s.marginText}>「{getTopic(en.topicId)?.title ?? en.topicId}」· {en.evidence}</span>
                       </div>
@@ -558,23 +603,25 @@ export default function GrowthPage() {
                 const title = getTopic(en.topicId)?.title ?? en.topicId;
                 return (
                   <li key={en.sessionId} className={en.mastered ? `${s.logItem} ${s.logMastered}` : s.logItem}>
-                    <span className={s.logDate}>{fmtDay(en.t)}</span>
-                    <div>
-                      <div className={s.logHead}>
-                        <span className={s.logTopic}>{title}</span>
-                        <span className={s.chip}>{MODE_LABEL[en.mode]}</span>
-                        {en.turns !== null && <span className={s.chip}><b className={s.num}>{en.turns}</b> 轮</span>}
-                        {en.corrected > 0 && <span className={`${s.chip} ${s.chipJade}`}>纠正 ×{en.corrected}</span>}
-                        {en.adopted > 0 && <span className={`${s.chip} ${s.chipCinnabar}`}>被带偏 ×{en.adopted}</span>}
-                        {en.golden > 0 && <span className={`${s.chip} ${s.chipGold}`}>金句 ×{en.golden}</span>}
-                        {en.quizScore !== null && <span className={s.chip}>小测 <b className={s.num}>{en.quizScore}</b> 分</span>}
-                        {en.mastered && <span className={`${s.chip} ${s.chipJade}`}>出师</span>}
-                      </div>
+                    <time className={s.logDate} dateTime={en.t}>{fmtDay(en.t)}</time>
+                    <article className={s.logRecord}>
+                      <header className={s.logHead}>
+                        <h3 className={s.logTopic}>{title}</h3>
+                        <div className={s.logFacts} aria-label="课堂纪录">
+                          <span className={s.chip}>{MODE_LABEL[en.mode]}</span>
+                          {en.turns !== null && <span className={s.chip}><b className={s.num}>{en.turns}</b> 轮</span>}
+                          {en.corrected > 0 && <span className={`${s.chip} ${s.chipJade}`}>纠正 ×{en.corrected}</span>}
+                          {en.adopted > 0 && <span className={`${s.chip} ${s.chipCinnabar}`}>被带偏 ×{en.adopted}</span>}
+                          {en.golden > 0 && <span className={`${s.chip} ${s.chipGold}`}>金句 ×{en.golden}</span>}
+                          {en.quizScore !== null && <span className={s.chip}>小测 <b className={s.num}>{en.quizScore}</b> 分</span>}
+                          {en.mastered && <span className={`${s.chip} ${s.chipJade}`}>出师</span>}
+                        </div>
+                      </header>
                       <p className={s.logLine}>{narrate(en, title)}</p>
                       {en.hasReport && (
                         <Link to={`/review/${en.sessionId}`} className={s.logLink}>查看复盘 <Icon name="arrow-right" size={15} /></Link>
                       )}
-                    </div>
+                    </article>
                   </li>
                 );
               })}
@@ -872,26 +919,44 @@ export default function GrowthPage() {
         )}
       </section>
 
-      {/* ── 卷四·金句画廊:goldenAnalogies 横向卡流,引号大字 + 出处小注 ── */}
-      <section className={`${s.section} ${s.band} ${s.bandWarm} ${s.rise}`} style={rise(4)}>
-        <h2 className={s.h2}>
+      {/* ── 卷四·金句画廊:goldenAnalogies 不对称引文档案墙 + 来源时间签 ── */}
+      <section
+        className={`${s.section} ${s.band} ${s.bandWarm} ${s.rise}`}
+        style={rise(4)}
+        aria-labelledby="gallery-title"
+      >
+        <h2 className={s.h2} id="gallery-title">
           <span className={s.volNo}>卷四</span>金句画廊
           <small>你打过的好比方,小白替你裱起来了</small>
         </h2>
         {global.goldenAnalogies.length === 0 ? (
-          <p className={s.muted}>画廊还空着——讲课时打一个好比方,小白会把它裱进来。</p>
-        ) : (
-          <div className={s.galleryFlow}>
-            {global.goldenAnalogies.map((g) => (
-              <figure key={g.id} className={s.galleryCard}>
-                <span className={s.galleryMark} aria-hidden="true">「</span>
-                <blockquote className={s.galleryText}>{g.text}</blockquote>
-                <figcaption className={s.galleryFrom}>
-                  出自「{getTopic(g.topicId)?.title ?? g.topicId}」 · {fmtDateTime(g.t)}
-                </figcaption>
-              </figure>
-            ))}
+          <div className={s.galleryEmpty}>
+            <span className={s.galleryEmptyIndex} aria-hidden="true">COLLECTION 00</span>
+            <p>
+              <strong>第一句,还在课堂里等你。</strong>
+              讲课时打一个好比方,小白听懂后会把它收进这本画册。
+            </p>
           </div>
+        ) : (
+          <ol className={s.galleryList} role="list">
+            {global.goldenAnalogies.map((g, index) => {
+              const topicTitle = getTopic(g.topicId)?.title ?? g.topicId;
+              return (
+                <li key={g.id} className={s.galleryItem}>
+                  <figure className={s.galleryFigure}>
+                    <span className={s.galleryIndex} aria-hidden="true">
+                      馆藏 {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <blockquote className={s.galleryText}><p>{g.text}</p></blockquote>
+                    <figcaption className={s.galleryFrom}>
+                      <cite>《{topicTitle}》</cite>
+                      <time dateTime={g.t}>{fmtDateTime(g.t)}</time>
+                    </figcaption>
+                  </figure>
+                </li>
+              );
+            })}
+          </ol>
         )}
       </section>
 

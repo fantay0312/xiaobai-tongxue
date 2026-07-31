@@ -69,17 +69,19 @@
   fill: none;
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
+  shape-rendering: geometricPrecision;
 }
 
 .link {
-  stroke: color-mix(in oklch, var(--sky-blue) 62%, var(--sky-moon));
-  stroke-width: 1;
-  stroke-dasharray: 3 10;
+  stroke: color-mix(in oklch, var(--sky-blue) 54%, var(--sky-moon));
+  stroke-width: 0.75;
+  stroke-dasharray: none;
+  opacity: 0.72;
 }
 
 .linkGlow {
-  stroke: color-mix(in oklch, var(--sky-blue) 22%, transparent);
-  stroke-width: 4;
+  stroke: color-mix(in oklch, var(--sky-blue) 10%, transparent);
+  stroke-width: 2.25;
 }
 
 .nodeList {
