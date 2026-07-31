@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test:commerce": "tsx scripts/commerce-contract.test.ts",
+    "test:auth": "tsx scripts/auth-state.test.ts",
     "test:landing-data": "tsx scripts/landing-data.test.ts",
     "test:sync": "tsx scripts/pending-sync.test.ts",
     "preview": "vite preview",

@@ -20,6 +20,14 @@ function response() {
   };
 }
 
+function directiveSources(csp, name) {
+  const directive = csp.split(';')
+    .map((value) => value.trim())
+    .find((value) => value === name || value.startsWith(`${name} `));
+  assert.ok(directive, `missing ${name} directive`);
+  return directive.split(/\s+/).slice(1);
+}
+
 test('main and admin SPAs have isolated fallbacks and cache policies', async (context) => {
   const temporary = await mkdtemp(path.join(tmpdir(), 'xiaobai-static-'));
   context.after(() => rm(temporary, { recursive: true, force: true }));
@@ -75,10 +83,33 @@ test('main and admin SPAs have isolated fallbacks and cache policies', async (co
   const main = response();
   handle({ method: 'GET' }, main, '/');
   assert.equal(main.status, 200);
-  assert.match(
-    main.headers['Content-Security-Policy'],
-    /https:\/\/turing\.captcha\.qcloud\.com/,
-  );
+  const mainCsp = main.headers['Content-Security-Policy'];
+  assert.deepEqual(directiveSources(mainCsp, 'script-src'), [
+    "'self'",
+    'https://turing.captcha.qcloud.com',
+    'https://turing.captcha.gtimg.com',
+    'https://cloudcache.tencentcs.com',
+    "'unsafe-eval'",
+  ]);
+  assert.deepEqual(directiveSources(mainCsp, 'style-src'), [
+    "'self'", "'unsafe-inline'",
+    'https://turing.captcha.qcloud.com',
+    'https://turing.captcha.gtimg.com',
+  ]);
+  assert.deepEqual(directiveSources(mainCsp, 'img-src'), [
+    "'self'", 'data:', 'blob:',
+    'https://turing.captcha.qcloud.com',
+    'https://turing.captcha.gtimg.com',
+  ]);
+  assert.deepEqual(directiveSources(mainCsp, 'frame-src'), [
+    'https://turing.captcha.qcloud.com',
+  ]);
+  assert.deepEqual(directiveSources(mainCsp, 'media-src'), [
+    "'self'", 'blob:',
+    'https://turing.captcha.qcloud.com',
+    'https://turing.captcha.gtimg.com',
+  ]);
+  assert.deepEqual(directiveSources(mainCsp, 'connect-src'), ["'self'", 'https:']);
   assert.match(main.headers['Permissions-Policy'], /microphone=\(self\)/);
   assert.equal(main.body.toString(), '<main>Main SPA</main>');
 });
