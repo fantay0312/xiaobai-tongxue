@@ -85,8 +85,8 @@ export function createAdminAuditRepository(queryable, { uuid = stableUuid } = {}
       const actor = optionalText(actorInput, 'audit-actor-filter', 254) ?? '';
       const from = fromInput ? validDate(fromInput, 'audit-from') : null;
       const selectedTo = toInput ? validDate(toInput, 'audit-to') : null;
-      if (from && selectedTo && from > selectedTo) throw new Error('invalid-audit-date-range');
       const to = selectedTo ? exclusiveUpperBound(toInput, selectedTo) : null;
+      if (from && to && from >= to) throw new Error('invalid-audit-date-range');
       const values = [action, targetType, actor, from, to, paging.pageSize, paging.offset];
       const where = `
         WHERE ($1 = '' OR e.action = $1)
