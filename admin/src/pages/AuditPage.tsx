@@ -1,6 +1,8 @@
 import { useCallback, useState, type FormEvent } from 'react'
 import { Filter } from 'lucide-react'
 import { adminApi } from '../lib/api'
+import { auditDateRangeForQuery } from '../lib/audit-date-range'
+import { AUDIT_TARGET_OPTIONS } from '../lib/audit-targets'
 import { formatDate } from '../lib/format'
 import { useResource } from '../lib/useResource'
 import { Button, Feedback, PageHeader, Pagination, Section, TableWrap, uiStyles } from '../components/ui'
@@ -21,10 +23,15 @@ export default function AuditPage() {
   const [draft, setDraft] = useState<Filters>(emptyFilters)
   const [filters, setFilters] = useState<Filters>(emptyFilters)
   const [page, setPage] = useState(1)
-  const loadAudit = useCallback(
-    () => adminApi.audit({ ...filters, page, pageSize: 30 }),
-    [filters, page],
-  )
+  const loadAudit = useCallback(() => {
+    const { from, to, ...textFilters } = filters
+    return adminApi.audit({
+      ...textFilters,
+      ...auditDateRangeForQuery(from, to),
+      page,
+      pageSize: 30,
+    })
+  }, [filters, page])
   const resource = useResource(loadAudit, [loadAudit])
 
   function applyFilters(event: FormEvent<HTMLFormElement>) {
@@ -53,12 +60,9 @@ export default function AuditPage() {
           <label className="srOnly" htmlFor="auditTarget">对象类型</label>
           <select className={formStyles.select} id="auditTarget" value={draft.targetType} onChange={(event) => updateFilter('targetType', event.target.value)}>
             <option value="">全部对象</option>
-            <option value="user">用户</option>
-            <option value="plan">套餐</option>
-            <option value="points">积分</option>
-            <option value="cdk">CDK</option>
-            <option value="operator">管理席位</option>
-            <option value="role">角色</option>
+            {AUDIT_TARGET_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
           </select>
           <Button type="submit" icon={<Filter size={16} />}>应用筛选</Button>
           <label className="srOnly" htmlFor="auditFrom">开始日期</label>

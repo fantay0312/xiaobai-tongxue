@@ -31,7 +31,7 @@
 }
 
 .gesture.speaking {
-  animation: speakingNod 2.35s var(--ease-loop) infinite;
+  animation: speaking-nod 2.35s var(--ease-loop) infinite;
 }
 
 .paused {
@@ -76,7 +76,7 @@
   84% { transform: translateY(-0.05%) rotate(-0.08deg) scale(1.001); }
 }
 
-@keyframes speakingNod {
+@keyframes speaking-nod {
   0%, 9%, 31%, 54%, 76%, 100% { transform: translateY(0) rotate(0deg); }
   16% { transform: translateY(0.52%) rotate(0.16deg); }
   23% { transform: translateY(0.14%) rotate(-0.08deg); }

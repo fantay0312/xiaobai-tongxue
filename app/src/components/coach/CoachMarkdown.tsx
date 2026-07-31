@@ -6,6 +6,11 @@ import {
   type ReactNode,
 } from 'react';
 import s from './CoachMarkdown.module.css';
+import {
+  isMarkdownTableBodyRow,
+  isMarkdownTableStart,
+  splitMarkdownTableRow,
+} from './markdownTable';
 
 type MarkdownBlock =
   | { kind: 'code'; code: string; language: string }
@@ -70,14 +75,9 @@ function inline(text: string, keyBase: string): ReactNode[] {
   });
 }
 
-function splitTableRow(line: string): string[] {
-  return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim());
-}
-
 function isTableStart(lines: string[], index: number): boolean {
-  if (index + 1 >= lines.length || !lines[index].includes('|')) return false;
-  const divider = splitTableRow(lines[index + 1]);
-  return divider.length > 0 && divider.every((cell) => /^:?-{3,}:?$/.test(cell));
+  return index + 1 < lines.length
+    && isMarkdownTableStart(lines[index], lines[index + 1]);
 }
 
 function readCode(lines: string[], start: number): [MarkdownBlock, number] {
@@ -122,11 +122,11 @@ function readQuote(lines: string[], start: number): [MarkdownBlock, number] {
 }
 
 function readTable(lines: string[], start: number): [MarkdownBlock, number] {
-  const headers = splitTableRow(lines[start]);
+  const headers = splitMarkdownTableRow(lines[start]);
   const rows: string[][] = [];
   let index = start + 2;
-  while (index < lines.length && lines[index].trim() && lines[index].includes('|')) {
-    rows.push(splitTableRow(lines[index]));
+  while (index < lines.length && isMarkdownTableBodyRow(lines[index])) {
+    rows.push(splitMarkdownTableRow(lines[index]));
     index += 1;
   }
   return [{ kind: 'table', headers, rows }, index];

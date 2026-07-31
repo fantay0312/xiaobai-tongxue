@@ -38,12 +38,11 @@
 
 ## 2026-07-30 · 科举科名与单一学问星海
 
-- Source, former multi-realm chart: `/var/folders/hz/rw0f86hj6p790vsr1vjp4pyw0000gn/T/codex-clipboard-cd234c85-a6df-4e3d-9194-e1dec26021ff.png`
-- Source, preferred four-point star language: `/var/folders/hz/rw0f86hj6p790vsr1vjp4pyw0000gn/T/codex-clipboard-bbcd5177-382c-46c4-9342-16a8bb152904.png`
-- Source, preferred continuous star-sea density: `/var/folders/hz/rw0f86hj6p790vsr1vjp4pyw0000gn/T/codex-clipboard-af989042-988f-4645-8e1c-1222e8bdd3ed.png`
-- Implementation, desktop: `/Users/fantasy/Documents/作业/竞赛 /学伴智仓/output/design-qa/star-sea-desktop.png`
-- Implementation, mobile: `/Users/fantasy/Documents/作业/竞赛 /学伴智仓/output/design-qa/star-sea-mobile.png`
-- Same-input reference comparison: `/Users/fantasy/Documents/作业/竞赛 /学伴智仓/output/design-qa/reference-comparison.jpg`
+- Source references (former chart, four-point star language, and density target) are embedded in the tracked same-input comparison below.
+- Implementation, desktop: [`desktop.png`](doc/qa-evidence/2026-07-30-star-sea/desktop.png)
+- Implementation, mobile: [`mobile.png`](doc/qa-evidence/2026-07-30-star-sea/mobile.png)
+- Same-input reference comparison: [`reference-comparison.jpg`](doc/qa-evidence/2026-07-30-star-sea/reference-comparison.jpg)
+- Evidence hashes and release provenance: [`README.md`](doc/qa-evidence/2026-07-30-star-sea/README.md)
 - Verified viewports: 1440 × 1000 and 390 × 844
 - Verified states: desktop all-sea, desktop selected knowledge star, mobile six-topic course, mobile 30-topic course, chart/list switch, and course switch
 

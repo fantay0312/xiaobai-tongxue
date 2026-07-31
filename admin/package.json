@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "lint": "oxlint src scripts vite.config.ts",
-    "test": "tsx scripts/domain.test.ts && tsx scripts/request-timeout.test.ts",
+    "test": "tsx scripts/domain.test.ts && tsx scripts/audit-date-range.test.ts && tsx scripts/request-timeout.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {

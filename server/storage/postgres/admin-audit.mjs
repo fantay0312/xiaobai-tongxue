@@ -18,6 +18,12 @@ function pagination(page, pageSize) {
   };
 }
 
+function exclusiveUpperBound(value, parsed) {
+  const increment = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? 86_400_000 : 1;
+  return new Date(parsed.getTime() + increment);
+}
+
 export function createAdminAuditRepository(queryable, { uuid = stableUuid } = {}) {
   return Object.freeze({
     async overview() {
@@ -78,8 +84,9 @@ export function createAdminAuditRepository(queryable, { uuid = stableUuid } = {}
       const targetType = optionalText(targetTypeInput, 'audit-target-filter', 80) ?? '';
       const actor = optionalText(actorInput, 'audit-actor-filter', 254) ?? '';
       const from = fromInput ? validDate(fromInput, 'audit-from') : null;
-      const to = toInput ? validDate(toInput, 'audit-to') : null;
-      if (from && to && from > to) throw new Error('invalid-audit-date-range');
+      const selectedTo = toInput ? validDate(toInput, 'audit-to') : null;
+      const to = selectedTo ? exclusiveUpperBound(toInput, selectedTo) : null;
+      if (from && to && from >= to) throw new Error('invalid-audit-date-range');
       const values = [action, targetType, actor, from, to, paging.pageSize, paging.offset];
       const where = `
         WHERE ($1 = '' OR e.action = $1)
@@ -90,7 +97,7 @@ export function createAdminAuditRepository(queryable, { uuid = stableUuid } = {}
             OR COALESCE(e.actor_account_id::TEXT, '') = $3
           )
           AND ($4::TIMESTAMPTZ IS NULL OR e.occurred_at >= $4)
-          AND ($5::TIMESTAMPTZ IS NULL OR e.occurred_at <= $5)
+          AND ($5::TIMESTAMPTZ IS NULL OR e.occurred_at < $5)
       `;
       const [rows, count] = await Promise.all([
         queryable.query(`
