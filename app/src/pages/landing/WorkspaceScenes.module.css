@@ -153,7 +153,7 @@
 .classroomDock .sendAction { color: var(--board-deep); background: var(--chalk-amber); }
 .classroomDock > a:focus-visible { outline: 2px solid var(--chalk); outline-offset: 2px; }
 .caret { display: inline-block; width: 0.38em; height: 0.9em; margin-left: 0.12em; background: currentcolor; animation: caretBlink 780ms step-end infinite; vertical-align: -0.06em; }
-.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; margin: -1px; padding: 0; border: 0; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; margin: -1px; padding: 0; border: 0; clip-path: inset(50%); white-space: nowrap; }
 .modeBanner { margin: 0.75rem 0 0; padding: 0.55rem 0.7rem; color: var(--chalk-amber); border: 1px solid var(--board-line); font: 0.69rem/1.4 var(--font-body); }
 .reteachBoard {
   display: grid;

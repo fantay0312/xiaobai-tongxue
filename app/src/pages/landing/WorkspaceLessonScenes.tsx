@@ -134,7 +134,7 @@ function ClassroomDock({ onInteract }: { onInteract: () => void }) {
       <span><Icon name="image" size={14} />图片</span>
       <span><Icon name="camera" size={14} />拍照</span>
       <span><Icon name="mic" size={14} />语音</span>
-      <Link className={s.sendAction} to="/study" onFocus={onInteract}>
+      <Link className={s.sendAction} to="/study" onClick={onInteract} onFocus={onInteract}>
         <Icon name="send" size={14} />进书斋实讲
       </Link>
     </div>

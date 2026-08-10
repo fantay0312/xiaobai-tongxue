@@ -137,7 +137,6 @@ function usePlaybackActions(
   const selectStage = useCallback((index: number) => {
     const bounded = Math.max(0, Math.min(LEARNING_STAGES.length - 1, index));
     if (bounded === activeIndex) {
-      timerEpoch.current += 1;
       setStaticView(true);
       setIntent('paused');
       return;
