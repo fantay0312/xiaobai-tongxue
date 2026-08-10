@@ -12,6 +12,7 @@ import { LEARNING_STAGES } from './landingData';
 
 type PlaybackIntent = 'playing' | 'paused' | 'finished';
 export type DemoMotionMode = 'playing' | 'paused' | 'static';
+const PLAYBACK_VISIBILITY_THRESHOLD = 0.18;
 
 function readReducedMotion(): boolean {
   return typeof window !== 'undefined'
@@ -49,9 +50,9 @@ function useInViewport(ref: RefObject<HTMLElement | null>): boolean {
     }
     const observer = new IntersectionObserver(
       ([entry]) => setVisible(Boolean(
-        entry?.isIntersecting && entry.intersectionRatio >= 0.35,
+        entry?.isIntersecting && entry.intersectionRatio >= PLAYBACK_VISIBILITY_THRESHOLD,
       )),
-      { threshold: 0.35 },
+      { threshold: PLAYBACK_VISIBILITY_THRESHOLD },
     );
     observer.observe(node);
     return () => observer.disconnect();
@@ -136,6 +137,7 @@ function usePlaybackActions(
   const selectStage = useCallback((index: number) => {
     const bounded = Math.max(0, Math.min(LEARNING_STAGES.length - 1, index));
     if (bounded === activeIndex) {
+      setStaticView(true);
       setIntent('paused');
       return;
     }

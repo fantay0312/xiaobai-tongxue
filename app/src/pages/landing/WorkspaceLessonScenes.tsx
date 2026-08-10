@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { Icon } from '../../components/ui/Icon';
@@ -54,6 +54,7 @@ export function PrepScene({
                 key={option}
                 type="button"
                 onClick={() => { onInteract(); setPicked(index); }}
+                onFocus={onInteract}
               >
                 <span>{String.fromCharCode(65 + index)}</span>{option}
               </button>
@@ -77,14 +78,65 @@ export function PrepScene({
   );
 }
 
-function ClassroomDock() {
+function BranchNotice() {
   return (
-    <div className={s.classroomDock} aria-label="讲解舱输入区示意">
-      <p>把这一点讲给小白听……</p>
+    <aside className={s.branchNotice} aria-label="本次讲解回放说明">
+      <span>先说明</span>
+      <p>{DEMO.branchNotice}</p>
+    </aside>
+  );
+}
+
+function TokenPrimer() {
+  return (
+    <figure className={s.tokenPrimer}>
+      <figcaption>粉笔旁注 · 示意切法</figcaption>
+      <div>
+        {DEMO.tokenExamples.map((example) => (
+          <p key={example.label}>
+            <span>{example.label}</span>
+            <code>{example.source}</code>
+            <strong>{example.pieces.map((piece) => `[${piece}]`).join(' ')}</strong>
+          </p>
+        ))}
+      </div>
+      <small>字数并不能直接推出块数；实际切法由模型词表决定。</small>
+    </figure>
+  );
+}
+
+function ClassroomLine({
+  actor,
+  className,
+  children,
+  note,
+}: {
+  actor: string;
+  className: string;
+  children: ReactNode;
+  note?: string;
+}) {
+  return (
+    <article className={`${s.classroomLine} ${className}`}>
+      <span>{actor}</span>
+      <div className={s.lineBody}>
+        {children}
+        {note ? <small>{note}</small> : null}
+      </div>
+    </article>
+  );
+}
+
+function ClassroomDock({ onInteract }: { onInteract: () => void }) {
+  return (
+    <div className={s.classroomDock} aria-label="实际讲解舱支持的输入方式示意">
+      <div className={s.dockPrompt}><small>功能示意</small><p>把这一点讲给小白听……</p></div>
       <span><Icon name="image" size={14} />图片</span>
       <span><Icon name="camera" size={14} />拍照</span>
       <span><Icon name="mic" size={14} />语音</span>
-      <span className={s.sendAction}><Icon name="send" size={14} />讲给小白</span>
+      <Link className={s.sendAction} to="/study" onClick={onInteract} onFocus={onInteract}>
+        <Icon name="send" size={14} />进书斋实讲
+      </Link>
     </div>
   );
 }
@@ -92,18 +144,21 @@ function ClassroomDock() {
 export function TeachScene({
   motionMode,
   reducedMotion,
+  onInteract,
 }: {
   motionMode: DemoMotionMode;
   reducedMotion: boolean;
+  onInteract: () => void;
 }) {
   const playing = motionMode === 'playing';
   return (
     <section className={`${s.scene} ${s.boardScene}`} data-motion={motionMode}>
       <SceneHeading
-        eyebrow="讲解舱 · 带偏分支"
+        eyebrow="讲解舱 · 误区回放"
         title={`你正在讲：${DEMO.title}`}
-        note="回放 3 轮"
+        note="回放第 2–3 轮"
       />
+      <BranchNotice />
       <div className={s.classroom}>
         <aside className={s.pupilStage}>
           <XiaobaiAvatar
@@ -113,17 +168,16 @@ export function TeachScene({
             variant="board"
             speaking={playing}
           />
-          <strong>小白</strong>
-          <small>好奇型 · 有些困惑</small>
+          <div className={s.pupilIdentity}><strong>小白</strong><small>好奇型 · 有些困惑</small></div>
+          <div className={s.branchStatus}><span>本轮观察</span><strong>误区未纠正</strong><small>会带入下一步“赴考”</small></div>
         </aside>
         <div className={s.boardStream}>
-          <article className={s.teacherLine}>
-            <span>你 · 2</span>
+          <ClassroomLine actor="你 · 第 2 轮" className={s.teacherLine}>
             <p>{DEMO.teachLine}</p>
-          </article>
-          <article className={`${s.pupilLine} ${s.misconceptionLine}`}>
-            <span>小白 · 2</span>
-            <p aria-label="小白提出常见误区">
+            <TokenPrimer />
+          </ClassroomLine>
+          <ClassroomLine actor="小白 · 追问" className={s.misconceptionLine}>
+            <p>
               <DemoTypewriter
                 text={DEMO.misconceptionLine}
                 motionMode={motionMode}
@@ -131,14 +185,20 @@ export function TeachScene({
                 startDelay={700}
               />
             </p>
-          </article>
-          <article className={s.teacherLine}>
-            <span>你 · 3</span>
+          </ClassroomLine>
+          <ClassroomLine
+            actor="你 · 课堂失误"
+            className={s.missedCorrectionLine}
+            note={DEMO.missedCorrection}
+          >
             <p>{DEMO.adoptedTeacherLine}</p>
-          </article>
-          <article className={`${s.pupilLine} ${s.branchOutcomeLine}`}>
-            <span>小白 · 3</span>
-            <p aria-label="小白被带偏后的回答">
+          </ClassroomLine>
+          <ClassroomLine
+            actor="小白 · 错误理解"
+            className={s.branchOutcomeLine}
+            note="误区已写入本轮记录，会在独立赴考时暴露。"
+          >
+            <p>
               <DemoTypewriter
                 text={DEMO.adoptedStudentLine}
                 motionMode={motionMode}
@@ -146,10 +206,10 @@ export function TeachScene({
                 startDelay={2900}
               />
             </p>
-          </article>
+          </ClassroomLine>
         </div>
       </div>
-      <ClassroomDock />
+      <ClassroomDock onInteract={onInteract} />
     </section>
   );
 }

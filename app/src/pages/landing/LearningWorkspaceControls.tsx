@@ -1,4 +1,4 @@
-import { useRef, type CSSProperties, type KeyboardEvent } from 'react';
+import { useEffect, useRef, type CSSProperties, type KeyboardEvent } from 'react';
 import { Icon } from '../../components/ui/Icon';
 import { LEARNING_STAGES, type LearningStage } from './landingData';
 import s from './LearningWorkspace.module.css';
@@ -64,8 +64,21 @@ interface StageTabsProps {
   onPause: () => void;
 }
 
+function revealActiveTab(tabs: Array<HTMLButtonElement | null>, index: number) {
+  const tab = tabs[index];
+  const scroller = tab?.parentElement;
+  if (!tab || !scroller) return;
+  const hiddenLeft = tab.offsetLeft < scroller.scrollLeft;
+  const hiddenRight = tab.offsetLeft + tab.offsetWidth > scroller.scrollLeft + scroller.clientWidth;
+  if (!hiddenLeft && !hiddenRight) return;
+  const left = tab.offsetLeft - (scroller.clientWidth - tab.offsetWidth) / 2;
+  const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+  scroller.scrollTo({ left: Math.max(0, left), behavior });
+}
+
 export function StageTabs(props: StageTabsProps) {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
+  useEffect(() => revealActiveTab(refs.current, props.activeIndex), [props.activeIndex]);
   const handleKey = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     const next = stageIndexForKey(event.key, index);
     if (next === null) return;

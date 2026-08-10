@@ -4,7 +4,6 @@ import s from './LearningWorkspace.module.css';
 
 interface WorkspaceCourseRailProps {
   activeIndex: number;
-  onStageSelect: (index: number) => void;
 }
 
 function CourseOutline({ activeIndex }: { activeIndex: number }) {
@@ -27,28 +26,16 @@ function CourseOutline({ activeIndex }: { activeIndex: number }) {
   );
 }
 
-function StageProgress({ activeIndex, onStageSelect }: WorkspaceCourseRailProps) {
+function StageArtifact({ activeIndex }: WorkspaceCourseRailProps) {
+  const stage = LEARNING_STAGES[activeIndex] ?? LEARNING_STAGES[0];
   return (
     <section className={s.railSection}>
-      <h3>这堂课走到哪儿</h3>
-      <ol className={s.progressList}>
-        {LEARNING_STAGES.map((stage, index) => (
-          <li key={stage.id}>
-            <button
-              className={index === activeIndex ? s.progressActive : ''}
-              type="button"
-              aria-current={index === activeIndex ? 'step' : undefined}
-              onClick={() => onStageSelect(index)}
-            >
-              <span className={s.progressDot}>{stage.step}</span>
-              <span>
-                {stage.title}
-                <small>{index < activeIndex ? '已看' : index === activeIndex ? '当前' : '未到'}</small>
-              </span>
-            </button>
-          </li>
-        ))}
-      </ol>
+      <h3>本轮会留下什么</h3>
+      <div className={s.artifactTicket}>
+        <span>{stage.step} · {stage.title}</span>
+        <strong>{stage.artifact}</strong>
+        <small>完成后，与这堂课的其他证据一起留存。</small>
+      </div>
     </section>
   );
 }
@@ -62,7 +49,7 @@ export function WorkspaceCourseRail(props: WorkspaceCourseRailProps) {
         <small>{DEMO.title}</small>
       </div>
       <CourseOutline activeIndex={props.activeIndex} />
-      <StageProgress {...props} />
+      <StageArtifact activeIndex={props.activeIndex} />
     </aside>
   );
 }

@@ -1,11 +1,8 @@
 import type { CSSProperties, JSX } from 'react';
 import { Icon } from '../../components/ui/Icon';
-import { getStageMeta } from '../../engine/evolution';
 import type { LearningStage } from './landingData';
 import { DEMO } from './landingData';
 import s from './LearningWorkspace.module.css';
-
-const DEMO_STAGE = getStageMeta(2);
 
 function PrepEvidence() {
   return (
@@ -37,15 +34,16 @@ function TeachEvidence() {
         <dl className={s.factList}>
           <div>
             <dt>小白</dt>
-            <dd>好奇型 · {DEMO_STAGE.name} · {DEMO_STAGE.description}</dd>
+            <dd>好奇型 · {DEMO.pupilStage.name} · {DEMO.pupilStage.description}</dd>
           </div>
           <div><dt>心情</dt><dd>有些困惑</dd></div>
-          <div><dt>轮次</dt><dd>已讲 3 轮</dd></div>
+          <div><dt>回放</dt><dd>第 2–3 轮 · 共 3 轮</dd></div>
         </dl>
       </section>
-      <section className={s.evidenceCard}>
-        <h3>你可以这样讲</h3>
-        <p>文字、图片、拍照和语音都能放进同一轮讲解。</p>
+      <section className={`${s.evidenceCard} ${s.blindCard}`}>
+        <h3>这一幕在看什么</h3>
+        <strong>误区试探 → 错误认同 → 理解带偏</strong>
+        <p>它不是推荐讲法，而是展示一次讲岔如何被记录，并在后续步骤中纠正。</p>
       </section>
     </>
   );

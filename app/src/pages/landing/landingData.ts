@@ -29,7 +29,7 @@ export const LEARNING_STAGES: readonly LearningStage[] = [
     id: 'teach',
     step: '02',
     title: '讲解',
-    summary: '你开口讲，小白会复述、追问，也会说出常见误区。',
+    summary: '你开口讲，小白会追问；若顺着误区讲错，结果也会被记下。',
     artifact: '讲解轮次 · 误区记录',
     dwellMs: 6800,
   },
@@ -72,6 +72,7 @@ export const DEMO = {
   title: 'Token 与分词',
   topicId: 'tokenization',
   misconceptionId: 'tokenization_M1',
+  pupilStage: { name: '秀才', description: '初通一艺' },
   outline: [
     '模型读的不是字',
     '积木块清单哪里来',
@@ -93,12 +94,20 @@ export const DEMO = {
   prepResult: '第二波自检：先看“词表从哪里来”和“常见词为什么切得更整”。',
   taskCard:
     '等会儿小白会问：“一句话有多少个字，是不是就有多少个 Token？”先想好拿什么例子讲清楚。',
+  branchNotice:
+    '这一幕故意保留一次“顺着误区讲错”的回放。错误不会被当成结论：它会进入赴考、批注与补学，直到再讲纠正。',
   teachLine:
     '训练开始之前，先拿海量的语料做统计，把经常一起出现的字符一步步合并成更大的块，最后得到一张固定的词表——就像搭积木之前，先开好一份积木块清单，往后切哪句话，都照这份清单来。',
+  tokenExamples: [
+    { label: '常见搭配', source: '今天天气不错', pieces: ['今天', '天气', '不错'] },
+    { label: '低频组合', source: '魑魅魍魉', pieces: ['魑', '魅', '魍', '魉'] },
+  ],
   misconceptionLine:
     '咦？老师，那我数一数字数就行了吧——一句话有多少个字，就切成多少块，一个字对应一个编号，对吗？',
   adoptedTeacherLine:
     '呃……对，好像就是这样。一个字对应一块，数字数就行。',
+  missedCorrection:
+    '这里本该立即纠正：字数和 Token 数不是一一对应，切成几块由词表决定。',
   adoptedStudentLine:
     '原来如此。那以后我按字数判断 Token 数就行了。',
   correctedTeacherLine:

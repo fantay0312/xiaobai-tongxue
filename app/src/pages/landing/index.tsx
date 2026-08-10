@@ -58,12 +58,12 @@ export default function LandingPage() {
         <header className={`${styles.sectionHead} ${styles.reveal}`} data-reveal>
           <p className={styles.kicker}>《Token 与分词》演示课</p>
           <h2 id="full-flow-title" className={styles.sectionTitle}>
-            点击六个步骤，
+            看一次讲岔，
             <br />
-            <em>看完一堂课</em>
+            <em>怎样被追回来</em>
           </h2>
           <p className={styles.sectionNote}>
-            下方演示会从备课自动切到再讲。你也可以暂停，点开任一步仔细看。
+            这是一次完整的失败分支：老师顺着误区讲错，小白带着错误赴考，再由批注、补学和重讲把它纠正。可暂停或点开任一步细看。
           </p>
         </header>
         <div className={`${styles.workspaceReveal} ${styles.reveal}`} data-reveal>

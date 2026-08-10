@@ -41,10 +41,13 @@ export function DemoTypewriter({
 
   return (
     <>
-      {chars.slice(0, visible).join('')}
-      {motionMode === 'playing' && !reducedMotion && visible < chars.length ? (
-        <span className={s.caret} aria-hidden="true" />
-      ) : null}
+      <span aria-hidden="true">
+        {chars.slice(0, visible).join('')}
+        {motionMode === 'playing' && !reducedMotion && visible < chars.length ? (
+          <span className={s.caret} />
+        ) : null}
+      </span>
+      <span className={s.srOnly}>{text}</span>
     </>
   );
 }
