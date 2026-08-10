@@ -18,7 +18,6 @@ export function LearningWorkspace() {
       ref={workspaceRef}
       aria-label="备课到再讲的产品回放"
       data-motion={playback.motionMode}
-      onFocusCapture={playback.pausePlayback}
     >
       <PlaybackHeader
         stage={activeStage}
@@ -41,7 +40,7 @@ export function LearningWorkspace() {
         role="tabpanel"
         aria-labelledby={`learning-stage-${activeStage.id}`}
       >
-        <WorkspaceCourseRail activeIndex={playback.activeIndex} onStageSelect={chooseStage} />
+        <WorkspaceCourseRail activeIndex={playback.activeIndex} />
         <div className={s.sceneFrame} key={activeStage.id}>
           <WorkspaceScene
             stageId={activeStage.id}

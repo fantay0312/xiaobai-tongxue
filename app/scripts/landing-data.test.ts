@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import leakageReport from '../src/data/leakageReport.json';
 import { TOPICS } from '../src/data';
 import { examWhisper } from '../src/pages/exam/examStory';
+import { getStageMeta } from '../src/engine/evolution';
 import {
   tokenizationDemo,
   tokenizationSelfTest,
@@ -57,6 +58,10 @@ assert.ok(prepQuestion, 'Token 演示必须保留 st2 摸底题');
 assert.equal(DEMO.course, tokenizationTopic.course);
 assert.equal(DEMO.title, tokenizationTopic.title);
 assert.equal(DEMO.topicId, tokenizationTopic.topicId);
+assert.deepEqual(DEMO.pupilStage, {
+  name: getStageMeta(2).name,
+  description: getStageMeta(2).description,
+}, '宣传页小白科名快照已漂移');
 assert.ok(
   semanticText(teachingDemo.text).endsWith(semanticText(DEMO.teachLine)),
   '讲解摘录必须来自 Token 演示第二段',
@@ -83,6 +88,16 @@ assert.equal(
 assert.ok(DEMO.teachLine.length > 20 && DEMO.teachLine.length <= 130, '讲解实录裁剪长度异常');
 assert.match(DEMO.adoptedTeacherLine, /一个字对应一块/, '带偏分支必须包含老师认同误区');
 assert.match(DEMO.adoptedStudentLine, /按字数判断/, '带偏分支必须包含小白学错的结果');
+assert.match(DEMO.branchNotice, /故意.*讲错.*纠正/, '讲解回放必须同屏说明失败分支会被纠正');
+assert.match(DEMO.missedCorrection, /不是一一对应.*词表/, '课堂失误必须附正确纠正提示');
+const remedyBody = misconception.remedy.microLesson.body;
+for (const example of DEMO.tokenExamples) {
+  const exampleSnapshot = `"${example.source}" → ${example.pieces.map((piece) => `[${piece}]`).join('')}`;
+  assert.ok(
+    semanticText(remedyBody).includes(semanticText(exampleSnapshot)),
+    `讲解示意切法必须来自课程补学材料：${example.source}`,
+  );
+}
 
 const metricById = new Map(LANDING_METRICS.map((metric) => [metric.id, metric]));
 const courseCount = new Set(TOPICS.map((topic) => topic.course)).size;

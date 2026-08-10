@@ -28,18 +28,19 @@
   letter-spacing: 0.11em;
 }
 .demoHeader strong { font: 700 0.78rem/1.2 var(--font-body); }
-.playbackControls { display: flex; gap: 0.35rem; }
+.playbackControls { display: flex; flex: 0 0 auto; gap: 0.35rem; }
 .playbackControls button {
   display: inline-flex;
-  min-height: 2rem;
+  min-height: 2.75rem;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.35rem 0.65rem;
+  padding: 0.55rem 0.75rem;
   color: var(--ink);
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius-s);
   background: transparent;
-  font: 650 0.68rem/1 var(--font-body);
+  font: 650 0.74rem/1 var(--font-body);
+  white-space: nowrap;
   cursor: pointer;
 }
 .playbackControls button:hover { background: var(--paper-warm); }
@@ -56,7 +57,7 @@
 .stageTab {
   position: relative;
   display: flex;
-  flex: 1 0 9.25rem;
+  flex: 1 0 9.5rem;
   min-height: 5rem;
   align-items: flex-start;
   gap: 0.55rem;
@@ -89,8 +90,7 @@
 .stageTabPlaying::after { animation-play-state: running; }
 .stageTabFinished::after { animation: none; transform: scaleX(1); }
 
-.stageNumber,
-.progressDot {
+.stageNumber {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
@@ -101,14 +101,14 @@
 }
 .stageNumber { width: 1.35rem; height: 1.35rem; font-size: 0.72rem; }
 .stageTabActive .stageNumber { color: var(--paper); background: var(--terra-ink); }
-.stageTab strong { display: block; font: 700 0.94rem/1.2 var(--font-display); }
+.stageTab strong { display: block; font: 700 1rem/1.2 var(--font-display); }
 .stageTab small {
   display: -webkit-box;
   overflow: hidden;
   max-width: 7.25rem;
   margin-top: 0.35rem;
   color: var(--ink-faint);
-  font: 0.68rem/1.35 var(--font-body);
+  font: 0.72rem/1.4 var(--font-body);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
@@ -116,7 +116,7 @@
 .workspaceBody {
   display: grid;
   min-height: 39rem;
-  grid-template-columns: 14.25rem minmax(25rem, 1fr) 17rem;
+  grid-template-columns: 12.25rem minmax(27rem, 1fr) 14rem;
 }
 .sceneFrame {
   min-width: 0;
@@ -165,7 +165,6 @@
   font: 700 0.76rem/1.2 var(--font-display);
 }
 .outline,
-.progressList,
 .simpleList,
 .remedySteps { margin: 0; padding: 0; list-style: none; }
 .outline li {
@@ -184,40 +183,22 @@
 .outline .outlineDone { color: var(--ink); background: var(--paper-warm); }
 .outline .outlineDone svg { color: var(--jade); }
 
-.progressList { padding: 0.3rem; }
-.progressList button {
-  display: grid;
-  width: 100%;
-  min-height: 2.25rem;
-  grid-template-columns: 1.25rem 1fr;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.3rem 0.4rem;
-  color: var(--ink-faint);
-  border: 0;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-}
-.progressList button:hover,
-.progressActive { color: var(--terra-ink) !important; background: var(--paper-blush) !important; }
-.progressList button:focus-visible { outline: 2px solid var(--terra-ink); outline-offset: 1px; }
-.progressDot { width: 1.15rem; height: 1.15rem; font-size: 0.62rem; }
-.progressActive .progressDot { color: var(--paper); background: var(--terra-ink); }
-.progressList button > span:last-child { font-size: 0.7rem; }
-.progressList small { float: right; color: var(--ink-faint); font-size: 0.6rem; }
+.artifactTicket { display: grid; gap: 0.45rem; padding: 0.75rem 0.7rem; }
+.artifactTicket span { color: var(--terra-ink); font: 0.62rem/1 var(--font-typewriter); letter-spacing: 0.08em; }
+.artifactTicket strong { font: 700 0.78rem/1.4 var(--font-display); }
+.artifactTicket small { color: var(--ink-soft); font: 0.7rem/1.55 var(--font-body); }
 
 .evidenceCard { border: 1px solid var(--paper-edge); background: var(--paper); }
 .evidenceCard > p,
 .evidenceCard > strong { margin: 0; padding: 0.65rem 0.7rem; }
-.evidenceCard > p { color: var(--ink-soft); font: 0.69rem/1.55 var(--font-body); }
+.evidenceCard > p { color: var(--ink-soft); font: 0.75rem/1.6 var(--font-body); }
 .largeResult { color: var(--terra-ink) !important; font: 700 2rem/1 var(--font-serif) !important; }
 .largeResult small { color: var(--ink-faint); font: 0.72rem/1 var(--font-body); }
 .simpleList { display: grid; gap: 0.5rem; padding: 0.7rem; }
 .simpleList li { display: flex; align-items: center; gap: 0.45rem; font-size: 0.69rem; }
 .simpleList svg { color: var(--terra-ink); }
 .factList { margin: 0; padding: 0.65rem 0.7rem; }
-.factList div { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.68rem; }
+.factList div { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.73rem; }
 .factList div + div { margin-top: 0.45rem; }
 .factList dt { color: var(--ink-faint); }
 .factList dd { margin: 0; color: var(--ink); text-align: right; }
@@ -253,27 +234,27 @@
 @keyframes scoreFill { from { transform: scaleX(0); } }
 
 @media (max-width: 1100px) {
-  .workspaceBody { grid-template-columns: 13rem minmax(23rem, 1fr) 15rem; }
-}
-
-@media (max-width: 960px) {
-  .workspaceBody { grid-template-columns: 13rem minmax(0, 1fr); }
+  .workspaceBody { grid-template-columns: 11.5rem minmax(0, 1fr); }
   .evidenceRail {
     grid-column: 1 / -1;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     border-top: 1px solid var(--paper-edge);
     border-left: 0;
   }
+}
+
+@media (max-width: 960px) {
   .stageTab { flex-basis: 8.5rem; }
 }
 
 @media (max-width: 720px) {
-  .workspaceBody { display: block; }
-  .courseRail { border-right: 0; border-bottom: 1px solid var(--paper-edge); }
+  .workspaceBody { display: flex; flex-direction: column; }
+  .sceneFrame { order: 1; }
+  .courseRail { order: 2; border-top: 1px solid var(--paper-edge); border-right: 0; border-bottom: 1px solid var(--paper-edge); }
+  .evidenceRail { order: 3; }
   .courseRail { display: grid; grid-template-columns: 0.8fr 1.2fr; gap: 0.6rem; }
   .railSection { margin: 0; }
   .railSection:last-child { grid-column: 1 / -1; }
-  .progressList { display: grid; grid-template-columns: repeat(3, 1fr); }
   .evidenceRail { grid-template-columns: 1fr 1fr; }
 }
 
@@ -289,7 +270,6 @@
   .railSection,
   .evidenceCard,
   .evidenceNote { margin-bottom: 0.55rem; }
-  .progressList { grid-template-columns: 1fr 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

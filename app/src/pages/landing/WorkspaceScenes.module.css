@@ -80,35 +80,61 @@
 .boardScene .sceneHeading { border-bottom-color: var(--board-line); }
 .boardScene .sceneHeading span { color: var(--chalk-amber); }
 .boardScene .sceneHeading > p { color: var(--chalk-soft); }
+.branchNotice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid color-mix(in oklab, var(--chalk-amber) 52%, var(--board-line));
+  background: var(--board-deep);
+  animation: global(rise) var(--t-med) var(--ease-out) 60ms backwards;
+}
+.branchNotice span { color: var(--chalk-amber); font: 0.68rem/1 var(--font-typewriter); letter-spacing: 0.1em; }
+.branchNotice p { margin: 0; color: var(--chalk); font: 0.78rem/1.6 var(--font-body); }
 .classroom {
   display: grid;
-  min-height: 25.5rem;
-  grid-template-columns: 8.5rem minmax(0, 1fr);
-  gap: 1rem;
-  margin-top: 1rem;
+  min-height: 25rem;
+  grid-template-columns: 9.25rem minmax(0, 1fr);
+  gap: 1.1rem;
+  margin-top: 0.75rem;
   animation: global(rise) var(--t-med) var(--ease-out) 80ms backwards;
 }
-.pupilStage { display: flex; align-items: center; flex-direction: column; justify-content: center; border-right: 1px solid var(--board-line); }
-.pupilStage strong { margin-top: 0.6rem; font: 700 0.85rem/1.2 var(--font-display); }
-.pupilStage small { margin-top: 0.25rem; color: var(--chalk-soft); font-size: 0.62rem; }
-.boardStream { display: grid; align-content: start; gap: 0.75rem; padding: 0.5rem 0; }
-.teacherLine,
-.pupilLine { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); gap: 0.6rem; align-items: start; }
-.teacherLine span,
-.pupilLine span { padding-top: 0.45rem; color: var(--chalk-soft); font-size: 0.63rem; }
-.teacherLine p,
-.pupilLine p {
+.pupilStage { display: flex; align-items: center; flex-direction: column; justify-content: flex-start; padding-top: 1rem; border-right: 1px solid var(--board-line); }
+.pupilIdentity { display: grid; justify-items: center; }
+.pupilIdentity strong { margin-top: 0.55rem; font: 700 0.92rem/1.2 var(--font-display); }
+.pupilIdentity small { margin-top: 0.25rem; color: var(--chalk-soft); font-size: 0.7rem; text-align: center; }
+.branchStatus { display: grid; width: calc(100% - 1rem); gap: 0.3rem; margin-top: 1rem; padding: 0.65rem 0.25rem 0; border-top: 1px solid var(--board-line); }
+.branchStatus span { color: var(--chalk-soft); font: 0.6rem/1 var(--font-typewriter); letter-spacing: 0.08em; }
+.branchStatus strong { color: color-mix(in oklab, var(--cinnabar) 35%, var(--chalk)); font: 700 0.74rem/1.35 var(--font-body); }
+.branchStatus small { color: var(--chalk-soft); font: 0.66rem/1.45 var(--font-body); }
+.boardStream { display: grid; align-content: start; gap: 0.65rem; padding: 0.25rem 0 0.75rem; }
+.classroomLine { display: grid; grid-template-columns: 5.4rem minmax(0, 1fr); gap: 0.7rem; align-items: start; }
+.classroomLine > span { padding-top: 0.55rem; color: var(--chalk-soft); font: 0.66rem/1.35 var(--font-typewriter); }
+.lineBody > p {
   margin: 0;
   padding: 0.72rem 0.82rem;
   border: 1px solid var(--board-line);
-  font: 0.76rem/1.65 var(--font-display);
+  font: var(--fs-body)/1.7 var(--font-display);
 }
-.teacherLine p { background: color-mix(in oklab, var(--board-deep) 78%, transparent); }
-.pupilLine p { color: var(--chalk-jade); border-style: dashed; }
-.misconceptionLine p { color: var(--chalk-amber); }
-.branchOutcomeLine p {
+.lineBody > small { display: block; margin-top: 0.32rem; padding-left: 0.8rem; color: var(--chalk-soft); font: 0.7rem/1.5 var(--font-body); }
+.teacherLine .lineBody > p { background: var(--board-deep); }
+.tokenPrimer { margin: 0.4rem 0 0; padding: 0.6rem 0.7rem; border: 1px dashed var(--board-line); }
+.tokenPrimer figcaption { color: var(--chalk-soft); font: 0.62rem/1 var(--font-typewriter); letter-spacing: 0.08em; }
+.tokenPrimer > div { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-top: 0.5rem; }
+.tokenPrimer p { display: grid; gap: 0.25rem; margin: 0; padding: 0.45rem 0.5rem; background: var(--board-deep); }
+.tokenPrimer p span { color: var(--chalk-soft); font: 0.6rem/1 var(--font-body); }
+.tokenPrimer code { color: var(--chalk-soft); font: 0.7rem/1.2 var(--font-display); }
+.tokenPrimer strong { color: var(--chalk-jade); font: 700 0.72rem/1.35 var(--font-code); }
+.tokenPrimer > small { display: block; margin-top: 0.45rem; color: var(--chalk-soft); font: 0.65rem/1.45 var(--font-body); }
+.misconceptionLine .lineBody > p { color: var(--chalk-amber); border-style: dashed; }
+.missedCorrectionLine .lineBody > p { color: color-mix(in oklab, var(--cinnabar) 30%, var(--chalk)); border-color: color-mix(in oklab, var(--cinnabar) 62%, var(--board-line)); background: color-mix(in oklab, var(--board-deep) 88%, var(--cinnabar)); }
+.missedCorrectionLine .lineBody > small { color: color-mix(in oklab, var(--cinnabar) 26%, var(--chalk)); }
+.branchOutcomeLine .lineBody > p {
   color: var(--chalk-amber);
   border-color: color-mix(in oklab, var(--chalk-amber) 55%, var(--board-line));
+  border-style: dashed;
 }
 .classroomDock {
   display: grid;
@@ -119,10 +145,15 @@
   border: 1px solid var(--board-line);
   background: var(--board-deep);
 }
-.classroomDock p { margin: 0; color: var(--chalk-soft); font-size: 0.68rem; }
-.classroomDock span { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.45rem; color: var(--chalk-soft); font-size: 0.62rem; }
+.dockPrompt { display: grid; gap: 0.18rem; }
+.dockPrompt small { color: var(--chalk-soft); font: 0.58rem/1 var(--font-typewriter); letter-spacing: 0.08em; }
+.dockPrompt p { margin: 0; color: var(--chalk); font-size: 0.72rem; }
+.classroomDock > span,
+.classroomDock > a { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.55rem; color: var(--chalk-soft); font-size: 0.67rem; text-decoration: none; }
 .classroomDock .sendAction { color: var(--board-deep); background: var(--chalk-amber); }
+.classroomDock > a:focus-visible { outline: 2px solid var(--chalk); outline-offset: 2px; }
 .caret { display: inline-block; width: 0.38em; height: 0.9em; margin-left: 0.12em; background: currentcolor; animation: caretBlink 780ms step-end infinite; vertical-align: -0.06em; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; margin: -1px; padding: 0; border: 0; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 .modeBanner { margin: 0.75rem 0 0; padding: 0.55rem 0.7rem; color: var(--chalk-amber); border: 1px solid var(--board-line); font: 0.69rem/1.4 var(--font-body); }
 .reteachBoard {
   display: grid;
@@ -212,7 +243,7 @@
 
 @media (max-width: 960px) {
   .scene { min-height: 37rem; }
-  .classroom { grid-template-columns: 7.25rem minmax(0, 1fr); }
+  .classroom { grid-template-columns: 8.25rem minmax(0, 1fr); }
   .pupilStage :global([data-mood]) { width: 96px !important; height: 96px !important; }
 }
 
@@ -221,11 +252,14 @@
   .prepGrid,
   .reviewGrid,
   .remedyGrid { grid-template-columns: 1fr; }
+  .branchNotice { grid-template-columns: 1fr; gap: 0.35rem; }
   .classroom { grid-template-columns: 1fr; }
   .pupilStage { flex-direction: row; justify-content: flex-start; gap: 0.6rem; padding-bottom: 0.7rem; border-right: 0; border-bottom: 1px solid var(--board-line); }
+  .pupilIdentity { justify-items: start; }
+  .branchStatus { width: auto; max-width: 13rem; margin: 0 0 0 auto; padding: 0 0 0 0.8rem; border-top: 0; border-left: 1px solid var(--board-line); }
   .pupilStage :global([data-mood]) { width: 68px !important; height: 68px !important; }
   .classroomDock { grid-template-columns: 1fr 1fr 1fr 1fr; }
-  .classroomDock p { grid-column: 1 / -1; }
+  .dockPrompt { grid-column: 1 / -1; }
   .examDesk { grid-template-columns: 1fr; }
   .examPupil { grid-template-columns: auto 1fr; justify-content: start; align-items: center; }
   .outputStep { grid-template-columns: 1fr; }
@@ -235,8 +269,11 @@
   .scene { padding: 0.9rem; }
   .sceneHeading { align-items: flex-start; flex-direction: column; gap: 0.35rem; }
   .sceneHeading > p { white-space: normal; }
-  .teacherLine,
-  .pupilLine { grid-template-columns: 2rem minmax(0, 1fr); }
+  .pupilStage { flex-wrap: wrap; padding-top: 0.35rem; }
+  .branchStatus { width: 100%; max-width: none; margin: 0.35rem 0 0; padding: 0.6rem 0 0; border-top: 1px solid var(--board-line); border-left: 0; }
+  .classroomLine { grid-template-columns: 1fr; gap: 0.25rem; }
+  .classroomLine > span { padding-top: 0; }
+  .tokenPrimer > div { grid-template-columns: 1fr; }
   .classroomDock { grid-template-columns: 1fr 1fr; }
   .examBeats { grid-template-columns: 1fr 1fr; }
   .reteachBoard { grid-template-columns: 1fr; }

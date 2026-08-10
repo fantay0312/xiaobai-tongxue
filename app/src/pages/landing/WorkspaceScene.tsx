@@ -28,7 +28,13 @@ export function WorkspaceScene({
     return <PrepScene motionMode={motionMode} onInteract={onInteract} />;
   }
   if (stageId === 'teach') {
-    return <TeachScene motionMode={motionMode} reducedMotion={reducedMotion} />;
+    return (
+      <TeachScene
+        motionMode={motionMode}
+        reducedMotion={reducedMotion}
+        onInteract={onInteract}
+      />
+    );
   }
   if (stageId === 'exam') {
     return <ExamScene motionMode={motionMode} reducedMotion={reducedMotion} />;

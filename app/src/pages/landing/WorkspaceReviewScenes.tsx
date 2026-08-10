@@ -135,6 +135,7 @@ export function RemedyScene({
                 key={option}
                 type="button"
                 onClick={() => { onInteract(); setPicked(index); }}
+                onFocus={onInteract}
               >
                 {option}
               </button>
