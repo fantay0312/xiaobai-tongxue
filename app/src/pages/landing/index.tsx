@@ -1,5 +1,6 @@
-import { useEffect, useRef, type MouseEvent, type RefObject } from 'react';
+import { useLayoutEffect, useRef, type MouseEvent, type RefObject } from 'react';
 import { useDocTitle } from '../../hooks/useDocTitle';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { CourseArchive } from './CourseArchive';
 import { EvidenceArchive } from './EvidenceArchive';
 import { FinalCallout } from './FinalCallout';
@@ -7,13 +8,21 @@ import { LandingHero } from './LandingHero';
 import { LearningWorkspace } from './LearningWorkspace';
 import styles from './landing.module.css';
 
-function useScrollReveal(pageRef: RefObject<HTMLDivElement | null>) {
-  useEffect(() => {
+function useScrollReveal(
+  pageRef: RefObject<HTMLDivElement | null>,
+  reducedMotion: boolean,
+) {
+  useLayoutEffect(() => {
     const root = pageRef.current;
     if (!root) return;
-    const elements = Array.from(root.querySelectorAll<HTMLElement>('[data-reveal]'));
-    if (!('IntersectionObserver' in window)) {
-      elements.forEach((element) => element.classList.add(styles.shown));
+    const elements = Array.from(
+      root.querySelectorAll<HTMLElement>('[data-landing-reveal]'),
+    );
+    const showWithoutMotion = () => {
+      elements.forEach((element) => delete element.dataset.revealState);
+    };
+    if (reducedMotion || !('IntersectionObserver' in window)) {
+      showWithoutMotion();
       return;
     }
 
@@ -21,25 +30,35 @@ function useScrollReveal(pageRef: RefObject<HTMLDivElement | null>) {
       (entries) => {
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
-          entry.target.classList.add(styles.shown);
+          (entry.target as HTMLElement).dataset.revealState = 'shown';
           observer.unobserve(entry.target);
         }
       },
-      { threshold: 0.12, rootMargin: '0px 0px -6% 0px' },
+      { threshold: 0.01, rootMargin: '0px 0px -10% 0px' },
     );
-    elements.forEach((element) => observer.observe(element));
+
+    const revealLine = window.innerHeight * 0.9;
+    elements.forEach((element) => {
+      const bounds = element.getBoundingClientRect();
+      if (bounds.bottom <= 0 || bounds.top <= revealLine) {
+        element.dataset.revealState = 'shown';
+        return;
+      }
+      element.dataset.revealState = 'pending';
+      observer.observe(element);
+    });
     return () => observer.disconnect();
-  }, [pageRef]);
+  }, [pageRef, reducedMotion]);
 }
 
 export default function LandingPage() {
   useDocTitle();
   const pageRef = useRef<HTMLDivElement>(null);
-  useScrollReveal(pageRef);
+  const reducedMotion = useReducedMotion();
+  useScrollReveal(pageRef, reducedMotion);
 
   const scrollToFlow = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     document.getElementById('full-flow')?.scrollIntoView({
       behavior: reducedMotion ? 'auto' : 'smooth',
       block: 'start',
@@ -55,31 +74,38 @@ export default function LandingPage() {
         id="full-flow"
         aria-labelledby="full-flow-title"
       >
-        <header className={`${styles.sectionHead} ${styles.reveal}`} data-reveal>
-          <p className={styles.kicker}>《Token 与分词》演示课</p>
-          <h2 id="full-flow-title" className={styles.sectionTitle}>
+        <header className={styles.sectionHead}>
+          <p className={styles.kicker} data-landing-reveal data-reveal-order="0">
+            《Token 与分词》演示课
+          </p>
+          <h2
+            id="full-flow-title"
+            className={styles.sectionTitle}
+            data-landing-reveal
+            data-reveal-order="1"
+          >
             看一次讲岔，
             <br />
             <em>怎样被追回来</em>
           </h2>
-          <p className={styles.sectionNote}>
+          <p className={styles.sectionNote} data-landing-reveal data-reveal-order="2">
             这是一次完整的失败分支：老师顺着误区讲错，小白带着错误赴考，再由批注、补学和重讲把它纠正。可暂停或点开任一步细看。
           </p>
         </header>
-        <div className={`${styles.workspaceReveal} ${styles.reveal}`} data-reveal>
+        <div className={styles.workspaceReveal} data-landing-reveal data-reveal-order="0">
           <LearningWorkspace />
         </div>
       </section>
 
-      <div className={`${styles.archiveReveal} ${styles.reveal}`} data-reveal>
+      <div className={styles.archiveReveal}>
         <EvidenceArchive />
       </div>
 
-      <div className={`${styles.archiveReveal} ${styles.reveal}`} data-reveal>
+      <div className={styles.archiveReveal}>
         <CourseArchive />
       </div>
 
-      <div className={`${styles.archiveReveal} ${styles.reveal}`} data-reveal>
+      <div className={styles.archiveReveal}>
         <FinalCallout />
       </div>
     </div>

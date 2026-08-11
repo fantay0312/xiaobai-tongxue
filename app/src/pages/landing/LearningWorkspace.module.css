@@ -124,7 +124,12 @@
   animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 
-.workspace[data-motion='paused'] .sceneFrame,
+.workspace[data-motion='paused'] .sceneFrame {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
 .workspace[data-motion='paused'] .radarFill {
   animation-play-state: paused;
 }

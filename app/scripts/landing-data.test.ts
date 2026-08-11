@@ -190,7 +190,7 @@ assert.equal(
   '带偏分支必须保留受保护的测验快照',
 );
 const remedyBody = misconception.remedy.microLesson.body;
-for (const example of DEMO.tokenExamples) {
+for (const example of [...DEMO.tokenExamples, ...DEMO.transferExamples]) {
   const exampleSnapshot = `"${example.source}" → ${example.pieces.map((piece) => `[${piece}]`).join('')}`;
   assert.ok(
     semanticText(remedyBody).includes(semanticText(exampleSnapshot)),

@@ -1,10 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
-import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { Icon } from '../../components/ui/Icon';
 import { DEMO } from './landingData';
-import { getTeachJourneySnapshot, type TeachDemoOutcome } from './landingTeachDemo';
-import { DemoTypewriter } from './DemoTypewriter';
 import type { DemoMotionMode } from './useLearningDemo';
 import s from './WorkspaceScenes.module.css';
 
@@ -74,68 +70,6 @@ export function PrepScene({
             <li><Icon name="book-open" size={15} />错题相关讲义默认展开</li>
           </ul>
         </aside>
-      </div>
-    </section>
-  );
-}
-
-export function ReteachScene({
-  motionMode,
-  reducedMotion,
-  teachOutcome,
-}: {
-  motionMode: DemoMotionMode;
-  reducedMotion: boolean;
-  teachOutcome: TeachDemoOutcome;
-}) {
-  const playing = motionMode === 'playing';
-  const journey = getTeachJourneySnapshot(teachOutcome);
-  const passed = journey.branch === 'passed';
-  const open = journey.branch === 'open';
-  const teacherLine = passed
-    ? '换个新例子：英文生僻新词没有现成整块，也会被拆小；所以不能按单词数推 Token 数。'
-    : open
-      ? '这一步还没完成：回到讲解舱，用常见搭配和生僻新词补一个对比例子。'
-      : DEMO.correctedTeacherLine;
-  const pupilLine = passed
-    ? '我能迁移了：中文生僻词和英文新词都一样，要先看词表里有没有现成整块。'
-    : open
-      ? '我还在等这个对比例子。补齐以后，我再用新词试着自己判断。'
-      : '这回我明白了：字数和 Token 数不能直接画等号，得先看词表怎么切。';
-  return (
-    <section className={`${s.scene} ${s.boardScene}`} data-motion={motionMode}>
-      <SceneHeading
-        eyebrow={passed ? '迁移复述' : open ? '待补完' : '重讲验证'}
-        title={journey.reteach.title}
-        note={passed ? '模式：巩固' : open ? '模式：等待补充' : '模式：再讲'}
-      />
-      <p className={s.modeBanner}>{journey.reteach.banner}</p>
-      <div className={s.reteachBoard}>
-        <XiaobaiAvatar
-          mood={open ? 'curious' : 'aha'}
-          level={1}
-          size={104}
-          variant="board"
-          speaking={playing}
-        />
-        <div>
-          <span>{passed ? '你做了一次迁移复述' : open ? '还缺一个对比例子' : '你重新讲了一遍'}</span>
-          <blockquote>{teacherLine}</blockquote>
-          <p>
-            <DemoTypewriter
-              text={pupilLine}
-              motionMode={motionMode}
-              reducedMotion={reducedMotion}
-              startDelay={700}
-            />
-          </p>
-        </div>
-      </div>
-      <div className={s.reteachFoot}>
-        <strong className={open ? s.reteachPending : undefined}>
-          <Icon name={open ? 'circle-help' : 'circle-check'} size={17} />{journey.reteach.result}
-        </strong>
-        <Link to="/study">去课程书架实际开讲 <Icon name="arrow-right" size={15} /></Link>
       </div>
     </section>
   );

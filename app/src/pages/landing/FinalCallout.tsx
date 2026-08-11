@@ -12,7 +12,12 @@ const PROMISES = [
 
 export function FinalCallout() {
   return (
-    <section className={styles.wrap} aria-labelledby="final-callout-title">
+    <section
+      className={styles.wrap}
+      aria-labelledby="final-callout-title"
+      data-landing-reveal
+      data-reveal-order="0"
+    >
       <div className={styles.copy}>
         <p className={styles.kicker}>从一个知识点开始</p>
         <h2 id="final-callout-title" className={styles.title}>

@@ -46,7 +46,7 @@ export function CourseArchive() {
   return (
     <section className={s.section} aria-labelledby="course-archive-title">
       <div className={s.shelfPane}>
-        <header className={s.heading}>
+        <header className={s.heading} data-landing-reveal data-reveal-order="0">
           <div>
             <p className={s.kicker}>课程书架</p>
             <h2 id="course-archive-title">3 门课程，38 个知识点已经开放</h2>
@@ -57,7 +57,12 @@ export function CourseArchive() {
           </Link>
         </header>
 
-        <div className={s.shelf} aria-label="课程书架">
+        <div
+          className={s.shelf}
+          aria-label="课程书架"
+          data-landing-reveal
+          data-reveal-order="1"
+        >
           <div className={s.volumes}>
             {COURSE_SUMMARIES.map((course, index) => (
               <Link
@@ -89,7 +94,7 @@ export function CourseArchive() {
           <span className={s.woodRail} aria-hidden="true" />
         </div>
 
-        <div className={s.catalog}>
+        <div className={s.catalog} data-landing-reveal data-reveal-order="2">
           {COURSE_SUMMARIES.map((course) => (
             <article className={s.catalogRow} key={course.id}>
               <div>
@@ -104,7 +109,12 @@ export function CourseArchive() {
         </div>
       </div>
 
-      <aside className={s.timelinePane} aria-labelledby="growth-timeline-title">
+      <aside
+        className={s.timelinePane}
+        aria-labelledby="growth-timeline-title"
+        data-landing-reveal
+        data-reveal-order="1"
+      >
         <header className={s.timelineHead}>
           <p className={s.kicker}>成长册</p>
           <h3 id="growth-timeline-title">讲完一课，后来都记在哪儿</h3>
