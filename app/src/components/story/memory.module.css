@@ -1,227 +1,226 @@
-/* ─────────────────────────────────────────────
-   卷五·小白的记忆 —— 一摞记忆匣(四层记忆全景的渲染壳)。
-   四只纸匣自上而下叠着:上层窄、下层宽,各偏一丝微旋(±0.4deg 静态 transform,
-   非动画,减动效偏好天然无碍),暗合"越往下存得越久";
-   层号小印与成长页卷号小印同一语言(细边小方,楷体微旋);
-   统计值走 code 字体(数字纪律,汉字自然回退正文字体);
-   入场由成长页 section 级 .rise 承担,本文件不新增动画。
-   ───────────────────────────────────────────── */
+/* 连续记忆登记册的四层账页：单一书脊、层间界线、无逐卡阴影。 */
 
-.stack {
+.layers,
+.layerItem {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.layerItem + .layerItem { border-top: 1px solid var(--line-strong); }
+
+.layer {
+  --layer-accent: var(--azure);
+  --layer-surface: var(--paper);
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  min-width: 0;
+  background: var(--layer-surface);
+}
+
+.layerWorking { --layer-accent: var(--azure); --layer-surface: var(--paper); }
+.layerEpisodic { --layer-accent: var(--wood-deep); --layer-surface: var(--paper-blush); }
+.layerSemantic { --layer-accent: var(--jade-ink); --layer-surface: var(--paper-warm); }
+.layerBond { --layer-accent: var(--inkstone); --layer-surface: var(--paper-shade); }
+
+.layerRail {
+  position: relative;
   display: flex;
+  min-width: 0;
   flex-direction: column;
-  gap: var(--gap-tight);
+  align-items: center;
+  gap: var(--gap-hair);
+  padding: 1.1rem 0.45rem;
+  background: var(--paper-shade);
+  border-right: 1px solid var(--line-strong);
+  color: var(--layer-accent);
 }
 
-.box {
-  background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius);
-  box-shadow: inset 0 0 0 4px var(--paper-warm), inset 0 0 0 5px var(--paper-edge), var(--shadow-paper);
-  padding: var(--gap) clamp(var(--gap), 3vw, var(--gap-loose));
+.layerRail::after {
+  content: '';
+  width: 1.25rem;
+  height: 1px;
+  margin-top: var(--gap-hair);
+  background: currentColor;
 }
 
-/* 摞匣错位:margin 收放定宽窄,旋角是匣子的身份,不交给 hover 动 */
-.box:nth-child(1) { margin-inline: clamp(0.75rem, 4vw, 3rem); transform: rotate(-0.4deg); }
-.box:nth-child(2) { margin-inline: clamp(0.5rem, 2.7vw, 2rem); transform: rotate(0.3deg); }
-.box:nth-child(3) { margin-inline: clamp(0.25rem, 1.4vw, 1rem); transform: rotate(-0.25deg); }
-.box:nth-child(4) { transform: rotate(0.4deg); }
+.layerNo {
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1;
+}
 
-.head {
+.layerCode,
+.layerKeep {
+  font-family: var(--font-typewriter);
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.layerCode { writing-mode: vertical-rl; }
+.layerKeep { display: none; color: var(--ink-faint); }
+
+.layerBody {
+  min-width: 0;
+  padding: clamp(1rem, 3cqi, 1.25rem);
+}
+
+.layerHead {
+  display: block;
+  margin-bottom: var(--gap-tight);
+}
+
+.layerTitleGroup { min-width: 0; }
+
+.layerState {
   display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--gap-hair) var(--gap-tight);
-}
-
-/* 层号小印:壹贰叁肆 */
-.no {
-  flex: none;
-  align-self: center;
-  display: inline-grid;
-  place-items: center;
-  width: 1.6rem;
-  height: 1.6rem;
-  border: 1.5px solid var(--azure);
-  border-radius: var(--radius-s);
-  color: var(--azure);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  font-weight: 700;
-  transform: rotate(-3deg);
-}
-
-.name {
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-  font-weight: 700;
-  color: var(--ink);
-}
-
-/* 存续规则眉注:一句话交代这一层怎么活、怎么散 */
-.caption {
-  font-family: var(--font-display);
+  align-items: center;
+  gap: var(--gap-hair);
+  margin-bottom: 0.2rem;
+  color: var(--layer-accent);
+  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
-  color: var(--ink-faint);
+  letter-spacing: 0.12em;
+}
+
+.layerState i {
+  width: 0.38rem;
+  height: 0.38rem;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.layerName {
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: clamp(1.45rem, 4cqi, 2rem);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+}
+
+.caption {
+  margin-top: 0.3rem;
+  color: var(--ink-soft);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
   letter-spacing: 0.1em;
 }
 
-.statRow {
-  list-style: none;
-  margin: var(--gap-tight) 0 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap-hair) var(--gap-tight);
+.anchorLink {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: var(--gap-hair);
+  margin-top: var(--gap-hair);
+  padding: 0.5rem 0;
+  background: none;
+  border: 0;
+  color: var(--azure);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.anchorLink:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 3px;
+}
+
+.layerContent {
+  display: grid;
+  gap: var(--gap-tight) clamp(var(--gap), 4cqi, var(--gap-loose));
+  min-width: 0;
+}
+
+.statLedger {
+  min-width: 0;
+  margin: 0;
+  border-top: 1px solid var(--line-strong);
 }
 
 .stat {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  background: var(--paper);
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-s);
-  padding: 0.08rem 0.55rem;
+  display: grid;
+  grid-template-columns: minmax(4.8rem, auto) minmax(0, 1fr);
+  gap: var(--gap-tight);
+  padding: 0.45rem 0;
+  border-bottom: 1px dotted var(--paper-edge);
 }
 
-/* 账簿键名:打字机档小签,与右侧 code 字体统计值一墨一栏 */
-.statLabel {
-  font-family: var(--font-typewriter);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: var(--fs-tiny);
+.stat dt {
   color: var(--ink-faint);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.08em;
 }
 
-/* 数字纪律:统计值整体落 code 字体(等宽数字,汉字回退无碍) */
-.statValue {
-  font-family: var(--font-code);
-  font-size: var(--fs-small);
-  font-weight: 500;
+.stat dd {
+  min-width: 0;
+  margin: 0;
   color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .lines {
-  list-style: none;
-  margin: var(--gap-tight) 0 0;
-  padding: 0;
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: var(--gap-hair);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-/* 匣中的话是小白的口吻,走楷体 */
 .lines li {
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
+  position: relative;
+  max-width: 58ch;
+  padding-left: var(--gap);
   color: var(--ink-soft);
-  line-height: 1.9;
-  padding-left: var(--gap-tight);
-  border-left: 2px solid var(--azure-wash);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  line-height: 1.85;
+  overflow-wrap: anywhere;
 }
 
-/* ── 遗忘曲线显形:出师课保持度迷你条 ── */
-.retList {
-  list-style: none;
-  margin: var(--gap-tight) 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-tight);
-}
-.retItem { display: flex; flex-direction: column; gap: 0.28rem; }
-.retHead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--gap-hair) var(--gap-tight);
-}
-.retTitle {
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  color: var(--ink);
-}
-.retNote {
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
-  letter-spacing: 0.04em;
-}
-/* 槽:纸阴底 + 细边;条本身不做 width 过渡(只 transform/opacity 纪律,且为一次性派生渲染) */
-.retTrack {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--paper-shade);
-  border: 1px solid var(--paper-edge);
-  overflow: hidden;
-}
-.retFill {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  /* 芦苇绿 = 尚清晰 */
-  background: var(--jade);
-}
-/* 藤黄 = 已衰减(语义唯一暖色) */
-.retFillFog { background: var(--amber); }
-
-/* ── 跨课记忆线:小白自己连起来的 ── */
-.crossBlock {
-  margin-top: var(--gap-tight);
-  padding-top: var(--gap-tight);
-  border-top: 1px dashed var(--paper-edge);
-}
-.crossHead {
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.16em;
-  color: var(--jade-ink);
-}
-.crossList {
-  list-style: none;
-  margin: var(--gap-hair) 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-hair);
-}
-/* 连线句走楷体,左沿芦苇晕色标记「生长/连接」语义 */
-.crossList li {
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  color: var(--ink-soft);
-  line-height: 1.9;
-  padding-left: var(--gap-tight);
-  border-left: 2px solid var(--jade-wash);
+.lines li::before {
+  content: '—';
+  position: absolute;
+  left: 0;
+  color: var(--layer-accent);
 }
 
-/* 匣底去处:按钮(本页卷目滚动)与 Link(跨页路由)同衣;焦点环走全站基线,不压 */
-.anchorLink {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--gap-hair);
-  margin-top: var(--gap-tight);
-  background: none;
-  border: none;
-  /* 纵向内边距撑命中区,负 margin 抵回排版节奏 */
-  padding: 0.5rem 0;
-  margin-bottom: -0.5rem;
-  cursor: pointer;
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  color: var(--azure);
-  transition: color var(--t-fast) var(--ease-out);
+.contentEmpty .lines li { max-width: 64ch; color: var(--ink); }
+
+@container memory-panorama (min-width: 40rem) {
+  .layer { grid-template-columns: minmax(7rem, 8.5rem) minmax(0, 1fr); }
+  .layerRail { align-items: flex-start; padding: 1.25rem var(--gap); }
+  .layerRail::after { width: 2rem; }
+  .layerCode { writing-mode: horizontal-tb; }
+  .layerKeep { display: block; margin-top: auto; }
+  .layerHead { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--gap); align-items: start; }
+  .anchorLink { margin-top: 0; }
+  .layerContent { grid-template-columns: minmax(12rem, 0.62fr) minmax(0, 1.38fr); }
+  .contentEmpty { grid-template-columns: minmax(0, 1fr); }
 }
 
-.anchorLink:hover { color: var(--azure-deep); }
+@media (hover: hover) {
+  .anchorLink:hover { color: var(--azure-deep); transform: translateX(3px); }
+}
 
-/* 摞底一行注脚:答辩点题 */
-.footNote {
-  margin-top: var(--gap);
-  text-align: center;
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  color: var(--ink-faint);
-  letter-spacing: 0.08em;
+@media (prefers-reduced-motion: reduce) {
+  .anchorLink { transition: none; }
+  .anchorLink:hover { transform: none; }
+}
+
+@media (forced-colors: active) {
+  .layerState i { background: CanvasText; }
 }

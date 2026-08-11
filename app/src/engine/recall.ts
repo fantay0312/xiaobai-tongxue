@@ -169,6 +169,7 @@ export interface MemoryLayer {
   no: string;                                  // 壹/贰/叁/肆
   name: string;
   caption: string;                             // 这一层的存续规则,一句话
+  empty: boolean;                              // 本层是否尚无实质记忆,供档案页呈示诚实空态
   stats: { label: string; value: string }[];
   lines: string[];
   anchor: { label: string; to: string } | null;
@@ -344,6 +345,7 @@ export function deriveMemoryPanorama(input: {
       : [];
     working = {
       key: 'working', no: '壹', name: '当堂记忆', caption: '只存当堂问答,下课即散',
+      empty: false,
       stats: [
         { label: '在上', value: `「${titleOf(live.topicId)}」` },
         { label: '进行到', value: `第 ${Math.max(1, turnNo)} 轮` },
@@ -360,6 +362,7 @@ export function deriveMemoryPanorama(input: {
   } else {
     working = {
       key: 'working', no: '壹', name: '当堂记忆', caption: '只存当堂问答,下课即散',
+      empty: true,
       stats: [],
       lines: ['此刻不在课上——下课后,这一层会清空,要紧的都往下面三层里存。'],
       anchor: { label: '去开讲', to: '/study' },
@@ -370,10 +373,13 @@ export function deriveMemoryPanorama(input: {
   const episodes = collectEpisodes(events, input.reports, topicOf);
   const episodic: MemoryLayer = {
     key: 'episodic', no: '贰', name: '课堂情景', caption: '一堂课,存一页情景',
-    stats: [
-      { label: '共', value: `${episodes.length} 堂课` },
-      ...(episodes.length ? [{ label: '最近一堂', value: shortOutcome(episodes[0]) }] : []),
-    ],
+    empty: episodes.length === 0,
+    stats: episodes.length
+      ? [
+          { label: '共', value: `${episodes.length} 堂课` },
+          { label: '最近一堂', value: shortOutcome(episodes[0]) },
+        ]
+      : [],
     lines: episodes.length
       ? episodes.slice(0, 3).map((ep) => episodeLine(ep, titleOf(ep.topicId)))
       : ['还没上过课——每上完一堂,这里就多一页课堂情景。'],
@@ -415,12 +421,25 @@ export function deriveMemoryPanorama(input: {
       fogged: daysToFog != null && daysToFog <= 0,
     });
   }
+  // 折叠前先排紧要次序：已起雾、临近复习、低保持度优先，告警不藏在「其余」里。
+  retentions.sort((a, b) => {
+    if (a.fogged !== b.fogged) return a.fogged ? -1 : 1;
+    const aDue = a.daysToFog ?? Number.POSITIVE_INFINITY;
+    const bDue = b.daysToFog ?? Number.POSITIVE_INFINITY;
+    if (aDue !== bDue) return aDue - bDue;
+    if (a.retention !== b.retention) return a.retention - b.retention;
+    return a.title.localeCompare(b.title, 'zh-CN');
+  });
 
   // 跨课记忆线:STAR_LINKS 中两端都实质学过的关联(小白自己连起来的),命中数入 stats
   const crossLinks = deriveCrossLinkLines(events, titleOf);
+  const semanticEmpty = hitTotal === 0
+    && correctedN === 0
+    && masteredN === 0
+    && crossLinks.length === 0;
 
   const semanticLines: string[] = [];
-  if (hitTotal === 0 && correctedN === 0) {
+  if (semanticEmpty) {
     semanticLines.push('这一层还空着——先生讲明白的要点,会一条条沉在这里。');
   } else {
     semanticLines.push('沉在这里的学问不会一直清晰:多日不温,掌握度会慢慢衰减,雾气会重新聚拢。');
@@ -430,10 +449,11 @@ export function deriveMemoryPanorama(input: {
   }
   const semantic: MemoryLayer = {
     key: 'semantic', no: '叁', name: '学问沉淀', caption: '沉得住,也会起雾',
+    empty: semanticEmpty,
     stats: [
-      { label: '记住要点', value: `${hitTotal} 个` },
-      { label: '心魔纠正', value: `${correctedN} 处` },
-      { label: '出师', value: `${masteredN} 门` },
+      ...(hitTotal ? [{ label: '记住要点', value: `${hitTotal} 个` }] : []),
+      ...(correctedN ? [{ label: '心魔纠正', value: `${correctedN} 处` }] : []),
+      ...(masteredN ? [{ label: '出师', value: `${masteredN} 门` }] : []),
       ...(crossLinks.length ? [{ label: '跨课线', value: `${crossLinks.length} 条` }] : []),
     ],
     lines: semanticLines,
@@ -452,17 +472,21 @@ export function deriveMemoryPanorama(input: {
     events: input.events, reports: input.reports, global: input.global,
   }).slice(0, 3).map((r) => r.line);
   const stageMeta = getStageMeta(input.global.learningLevel);
+  const bondEmpty = relLines.length === 0 && goldenN === 0;
   const bond: MemoryLayer = {
     key: 'bond', no: '肆', name: '师徒之谊', caption: '这一层,永不清空',
+    empty: bondEmpty,
     stats: [
       { label: '人格', value: input.global.persona },
       { label: '当前科名', value: `${stageMeta.name} · ${stageMeta.description}` },
-      { label: '金句', value: `${goldenN} 句` },
+      ...(goldenN ? [{ label: '金句', value: `${goldenN} 句` }] : []),
       ...(input.global.bestRecord ? [{ label: '最佳战绩', value: input.global.bestRecord }] : []),
     ],
     lines: relLines.length
       ? relLines
-      : ['刚认识不久——相处久了,小白会把先生的样子一条条记在这里。'],
+      : goldenN > 0
+        ? [`小白的小本子里,已经替先生珍藏了 ${goldenN} 句难忘的比方。`]
+        : ['刚认识不久——相处久了,小白会把先生的样子一条条记在这里。'],
     anchor: { label: '看小白眼里的你', to: '/growth#bond' },
   };
 
