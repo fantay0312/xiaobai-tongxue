@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { LEARNING_STAGES } from './landingData';
 import { PlaybackHeader, StageTabs } from './LearningWorkspaceControls';
 import { useLearningDemo } from './useLearningDemo';
@@ -18,6 +18,12 @@ export function LearningWorkspace() {
     INITIAL_TEACH_DEMO_SESSION,
   );
   const activeStage = LEARNING_STAGES[playback.activeIndex] ?? LEARNING_STAGES[0];
+  const sceneKey = `${activeStage.id}-${playback.replayEpoch}`;
+  const [settledSceneKey, setSettledSceneKey] = useState<string | null>(null);
+  const entranceSettled = playback.intent !== 'playing' || settledSceneKey === sceneKey;
+  useLayoutEffect(() => {
+    if (playback.intent !== 'playing') setSettledSceneKey(sceneKey);
+  }, [playback.intent, sceneKey]);
   const resetTeachSession = () => setTeachSession(INITIAL_TEACH_DEMO_SESSION);
   const chooseStage = (index: number) => {
     if (index === 0) resetTeachSession();
@@ -60,7 +66,11 @@ export function LearningWorkspace() {
         aria-labelledby={`learning-stage-${activeStage.id}`}
       >
         <WorkspaceCourseRail activeIndex={playback.activeIndex} />
-        <div className={s.sceneFrame} key={`${activeStage.id}-${playback.replayEpoch}`}>
+        <div
+          className={s.sceneFrame}
+          data-entrance-settled={entranceSettled}
+          key={sceneKey}
+        >
           <WorkspaceScene
             stageId={activeStage.id}
             motionMode={playback.motionMode}

@@ -237,11 +237,11 @@
 .receipt a:hover { transform: translateY(-2px); background: var(--azure-deep); }
 .receipt a:focus-visible { outline: 2px solid var(--azure); outline-offset: 3px; }
 
-.scene[data-motion='paused'] .heading,
-.scene[data-motion='paused'] .topline,
-.scene[data-motion='paused'] .path,
-.scene[data-motion='paused'] .board,
-.scene[data-motion='paused'] .receipt,
+[data-entrance-settled='true'] .heading,
+[data-entrance-settled='true'] .topline,
+[data-entrance-settled='true'] .path,
+[data-entrance-settled='true'] .board,
+[data-entrance-settled='true'] .receipt,
 .scene[data-motion='static'] .heading,
 .scene[data-motion='static'] .topline,
 .scene[data-motion='static'] .path,

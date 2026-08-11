@@ -215,14 +215,14 @@
   animation-play-state: paused !important;
 }
 
-.scene[data-motion='paused'] .sceneHeading,
-.scene[data-motion='paused'] .prepGrid,
-.scene[data-motion='paused'] .reviewGrid,
-.scene[data-motion='paused'] .remedyGrid,
-.scene[data-motion='paused'] .branchNotice,
-.scene[data-motion='paused'] .classroom,
-.scene[data-motion='paused'] .eventTape,
-.scene[data-motion='paused'] .outputStep {
+[data-entrance-settled='true'] .sceneHeading,
+[data-entrance-settled='true'] .prepGrid,
+[data-entrance-settled='true'] .reviewGrid,
+[data-entrance-settled='true'] .remedyGrid,
+[data-entrance-settled='true'] .branchNotice,
+[data-entrance-settled='true'] .classroom,
+[data-entrance-settled='true'] .eventTape,
+[data-entrance-settled='true'] .outputStep {
   animation: none !important;
   opacity: 1;
   transform: none;
