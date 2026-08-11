@@ -171,6 +171,7 @@
 .reteachFoot strong,
 .reteachFoot a { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.68rem; }
 .reteachFoot strong { color: var(--chalk-jade); }
+.reteachFoot .reteachPending { color: var(--chalk-amber); }
 .reteachFoot a { color: var(--chalk-amber); text-decoration: none; }
 
 .examScene { background: var(--paper-warm); }
@@ -185,6 +186,8 @@
 .examPaper h4 { margin: 0.65rem 0; font: 700 0.92rem/1.55 var(--font-display); }
 .examPaper blockquote { min-height: 4.5rem; margin: 0; padding: 0.75rem; color: var(--ink-soft); border-left: 2px solid var(--terra); background: var(--paper-blush); font: 0.76rem/1.65 var(--font-display); }
 .examVerdict { display: flex; align-items: center; gap: 0.45rem; margin: 0.75rem 0 0; color: var(--cinnabar); font-size: 0.67rem; opacity: 0; animation: verdictReveal var(--t-med) var(--ease-out) 3.5s forwards; }
+.examVerdictPassed { color: var(--jade-ink); }
+.examVerdictOpen { color: var(--terra-ink); }
 
 .reviewScene { background: var(--paper); }
 .reviewGrid { grid-template-columns: 0.62fr 1.38fr; }
@@ -200,6 +203,12 @@
 .blindReport h4 { margin: 0.6rem 0; color: var(--cinnabar); font: 700 0.86rem/1.4 var(--font-display); }
 .blindReport p { margin: 0; color: var(--ink-soft); font: 0.72rem/1.55 var(--font-display); }
 .blindReport strong { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.7rem; color: var(--cinnabar); font-size: 0.66rem; }
+.resolvedReport { border-color: color-mix(in oklab, var(--jade) 42%, var(--paper-edge)); background: color-mix(in oklab, var(--paper) 88%, var(--jade)); }
+.resolvedReport h4,
+.resolvedReport strong { color: var(--jade-ink); }
+.openReport { border-color: color-mix(in oklab, var(--mustard) 52%, var(--paper-edge)); background: var(--mustard-wash); }
+.openReport h4,
+.openReport strong { color: var(--terra-ink); }
 .eventTape { display: grid; gap: 0; margin: 0.9rem 0 0; padding: 0; border: 1px solid var(--paper-edge); list-style: none; animation: global(rise) var(--t-med) var(--ease-out) 160ms backwards; }
 .eventTape li { display: grid; grid-template-columns: 4rem 1fr; gap: 0.7rem; padding: 0.65rem 0.75rem; font-size: 0.68rem; }
 .eventTape li + li { border-top: 1px solid var(--paper-edge); }
@@ -227,6 +236,12 @@
 .scene[data-motion='paused'] *::before,
 .scene[data-motion='paused'] *::after {
   animation-play-state: paused !important;
+}
+
+.scene[data-motion='paused'][data-interactive='true'] *,
+.scene[data-motion='paused'][data-interactive='true'] *::before,
+.scene[data-motion='paused'][data-interactive='true'] *::after {
+  animation-play-state: running !important;
 }
 
 .scene[data-motion='static'] *,
@@ -271,6 +286,11 @@
   .sceneHeading > p { white-space: normal; }
   .pupilStage { flex-wrap: wrap; padding-top: 0.35rem; }
   .branchStatus { width: 100%; max-width: none; margin: 0.35rem 0 0; padding: 0.6rem 0 0; border-top: 1px solid var(--board-line); border-left: 0; }
+  .branchNotice span,
+  .branchStatus span { font-size: 0.75rem; }
+  .branchStatus strong { font-size: 0.84rem; }
+  .branchStatus small,
+  .pupilIdentity small { font-size: 0.75rem; }
   .classroomLine { grid-template-columns: 1fr; gap: 0.25rem; }
   .classroomLine > span { padding-top: 0; }
   .tokenPrimer > div { grid-template-columns: 1fr; }

@@ -2,6 +2,10 @@ import type { CSSProperties, JSX } from 'react';
 import { Icon } from '../../components/ui/Icon';
 import type { LearningStage } from './landingData';
 import { DEMO } from './landingData';
+import {
+  getTeachJourneySnapshot,
+  type TeachDemoSessionSummary,
+} from './landingTeachDemo';
 import s from './LearningWorkspace.module.css';
 
 function PrepEvidence() {
@@ -26,7 +30,11 @@ function PrepEvidence() {
   );
 }
 
-function TeachEvidence() {
+function TeachEvidence({ session }: { session: TeachDemoSessionSummary }) {
+  const journey = getTeachJourneySnapshot(session.outcome);
+  const outcomeLabel = journey.branch === 'passed'
+    ? '误区已纠正'
+    : journey.branch === 'failed' ? '误区被带偏' : '等待讲清';
   return (
     <>
       <section className={s.evidenceCard}>
@@ -36,20 +44,24 @@ function TeachEvidence() {
             <dt>小白</dt>
             <dd>好奇型 · {DEMO.pupilStage.name} · {DEMO.pupilStage.description}</dd>
           </div>
-          <div><dt>心情</dt><dd>有些困惑</dd></div>
-          <div><dt>回放</dt><dd>第 2–3 轮 · 共 3 轮</dd></div>
+          <div><dt>方式</dt><dd>本地三分支 · 仿真实节奏回应</dd></div>
+          <div><dt>轮次</dt><dd>第 {session.turn} 轮 · {outcomeLabel}</dd></div>
+          <div><dt>留档</dt><dd>本页不写入个人学习记录</dd></div>
         </dl>
       </section>
       <section className={`${s.evidenceCard} ${s.blindCard}`}>
-        <h3>这一幕在看什么</h3>
-        <strong>误区试探 → 错误认同 → 理解带偏</strong>
-        <p>它不是推荐讲法，而是展示一次讲岔如何被记录，并在后续步骤中纠正。</p>
+        <h3>{session.teacherLine ? '本轮讲解证据' : '你可以直接试讲'}</h3>
+        <strong>{session.teacherLine || '输入 → 小白琢磨 → 分支回应'}</strong>
+        <p>{session.teacherLine
+          ? journey.review.findingEvidence
+          : '自动示范会先走错误分支；也可以接管输入，当场把误区纠正。'}</p>
       </section>
     </>
   );
 }
 
-function ExamEvidence() {
+function ExamEvidence({ session }: { session: TeachDemoSessionSummary }) {
+  const journey = getTeachJourneySnapshot(session.outcome);
   return (
     <>
       <section className={s.evidenceCard}>
@@ -57,21 +69,42 @@ function ExamEvidence() {
         <p>先生只能观战，不能追加提示。</p>
       </section>
       <section className={s.evidenceCard}>
-        <h3>本场结果</h3>
-        <p className={s.largeResult}>{DEMO.examScore} <small>分</small></p>
-        <p>1 题答稳，4 题留下墨痕。</p>
+        <h3>{journey.review.resultLabel}</h3>
+        <p className={s.largeResult}>
+          {journey.review.resultValue}
+          {journey.review.resultUnit ? <small> {journey.review.resultUnit}</small> : null}
+        </p>
+        <p>{journey.review.resultSummary}</p>
       </section>
     </>
   );
 }
 
-function ReviewEvidence() {
+function ReviewEvidence({ session }: { session: TeachDemoSessionSummary }) {
+  const journey = getTeachJourneySnapshot(session.outcome);
+  const passed = journey.branch === 'passed';
+  if (journey.branch === 'open') {
+    return (
+      <>
+        <section className={s.evidenceCard}>
+          <h3>本轮未形成讲解画像</h3>
+          <p>小白还在等一个能说清词表切法的对比例子。</p>
+        </section>
+        <section className={s.evidenceCard}>
+          <h3>{journey.review.findingLabel}</h3>
+          <strong>{journey.review.findingTitle}</strong>
+          <p>{journey.review.findingEvidence}</p>
+        </section>
+      </>
+    );
+  }
+  const radar = passed ? DEMO.correctedReviewRadar : DEMO.reviewRadar;
   return (
     <>
       <section className={s.evidenceCard}>
         <h3>五维讲解画像</h3>
         <div className={s.radarBars}>
-          {DEMO.reviewRadar.map(([label, value]) => (
+          {radar.map(([label, value]) => (
             <div key={label}>
               <span>{label}<b>{value}</b></span>
               <i aria-hidden="true">
@@ -84,16 +117,25 @@ function ReviewEvidence() {
           ))}
         </div>
       </section>
-      <section className={`${s.evidenceCard} ${s.blindCard}`}>
-        <h3>小白还没懂</h3>
-        <strong>{DEMO.blindSpot}</strong>
-        <p>{DEMO.blindSpotEvidence}</p>
+      <section className={`${s.evidenceCard} ${passed ? s.passedCard : s.blindCard}`}>
+        <h3>{journey.review.findingLabel}</h3>
+        <strong>{journey.review.findingTitle}</strong>
+        <p>{journey.review.findingEvidence}</p>
       </section>
     </>
   );
 }
 
-function RemedyEvidence() {
+function RemedyEvidence({ session }: { session: TeachDemoSessionSummary }) {
+  const journey = getTeachJourneySnapshot(session.outcome);
+  if (journey.branch === 'passed') {
+    return (
+      <section className={`${s.evidenceCard} ${s.passedCard}`}>
+        <h3>已跳过强制补学</h3>
+        <p><Icon name="circle-check" size={16} />这个误区已在赴考中答稳，当前为可选巩固。</p>
+      </section>
+    );
+  }
   return (
     <section className={s.evidenceCard}>
       <h3>补学微路径</h3>
@@ -106,12 +148,14 @@ function RemedyEvidence() {
   );
 }
 
-function ReteachEvidence() {
+function ReteachEvidence({ session }: { session: TeachDemoSessionSummary }) {
+  const journey = getTeachJourneySnapshot(session.outcome);
+  const open = journey.branch === 'open';
   return (
     <>
-      <section className={`${s.evidenceCard} ${s.passedCard}`}>
-        <h3>重讲结果</h3>
-        <p><Icon name="circle-check" size={16} />{DEMO.reteachResult}</p>
+      <section className={`${s.evidenceCard} ${open ? '' : s.passedCard}`}>
+        <h3>{journey.branch === 'passed' ? '迁移复述' : open ? '待补完' : '重讲结果'}</h3>
+        <p><Icon name={open ? 'circle-help' : 'circle-check'} size={16} />{journey.reteach.result}</p>
       </section>
       <section className={s.evidenceCard}>
         <h3>长期记录</h3>
@@ -121,22 +165,33 @@ function ReteachEvidence() {
   );
 }
 
-const RAIL_CONTENT: Record<LearningStage['id'], () => JSX.Element> = {
-  prep: PrepEvidence,
-  teach: TeachEvidence,
-  exam: ExamEvidence,
-  review: ReviewEvidence,
-  remedy: RemedyEvidence,
-  reteach: ReteachEvidence,
-};
+function RailContent({
+  stageId,
+  teachSession,
+}: {
+  stageId: LearningStage['id'];
+  teachSession: TeachDemoSessionSummary;
+}): JSX.Element {
+  if (stageId === 'prep') return <PrepEvidence />;
+  if (stageId === 'teach') return <TeachEvidence session={teachSession} />;
+  if (stageId === 'exam') return <ExamEvidence session={teachSession} />;
+  if (stageId === 'review') return <ReviewEvidence session={teachSession} />;
+  if (stageId === 'remedy') return <RemedyEvidence session={teachSession} />;
+  return <ReteachEvidence session={teachSession} />;
+}
 
-export function WorkspaceEvidenceRail({ stageId }: { stageId: LearningStage['id'] }) {
-  const Content = RAIL_CONTENT[stageId];
+export function WorkspaceEvidenceRail({
+  stageId,
+  teachSession,
+}: {
+  stageId: LearningStage['id'];
+  teachSession: TeachDemoSessionSummary;
+}) {
   return (
     <aside className={s.evidenceRail} aria-label="当前步骤的信息">
-      <Content />
+      <RailContent stageId={stageId} teachSession={teachSession} />
       <blockquote className={s.evidenceNote}>
-        基于 Token 课程数据和引擎结果重构的流程演示。
+        基于 Token 真实课程分支制作；完整书斋会继续记录事件、考试与复盘证据。
       </blockquote>
     </aside>
   );

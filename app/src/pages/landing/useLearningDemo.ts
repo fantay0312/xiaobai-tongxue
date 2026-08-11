@@ -64,6 +64,7 @@ interface PlaybackState {
   activeIndex: number;
   effectivePlaying: boolean;
   remaining: MutableRefObject<number>;
+  replayEpoch: number;
   timerEpoch: MutableRefObject<number>;
   setActiveIndex: Dispatch<SetStateAction<number>>;
   setIntent: Dispatch<SetStateAction<PlaybackIntent>>;
@@ -88,6 +89,7 @@ function useStageTimer(state: PlaybackState) {
     activeIndex,
     effectivePlaying,
     remaining,
+    replayEpoch,
     timerEpoch,
     setActiveIndex,
     setIntent,
@@ -99,6 +101,7 @@ function useStageTimer(state: PlaybackState) {
     const expectedEpoch = timerEpoch.current;
     let completed = false;
     const timer = window.setTimeout(() => {
+      if (expectedEpoch !== timerEpoch.current) return;
       completed = true;
       if (activeIndex >= LEARNING_STAGES.length - 1) {
         setIntent('finished');
@@ -117,6 +120,7 @@ function useStageTimer(state: PlaybackState) {
     activeIndex,
     effectivePlaying,
     remaining,
+    replayEpoch,
     timerEpoch,
     setActiveIndex,
     setIntent,
@@ -133,20 +137,17 @@ function usePlaybackActions(
   setActiveIndex: Dispatch<SetStateAction<number>>,
   setIntent: Dispatch<SetStateAction<PlaybackIntent>>,
   setStaticView: Dispatch<SetStateAction<boolean>>,
+  setReplayEpoch: Dispatch<SetStateAction<number>>,
 ) {
   const selectStage = useCallback((index: number) => {
     const bounded = Math.max(0, Math.min(LEARNING_STAGES.length - 1, index));
-    if (bounded === activeIndex) {
-      setStaticView(true);
-      setIntent('paused');
-      return;
-    }
     timerEpoch.current += 1;
     remaining.current = LEARNING_STAGES[bounded]?.dwellMs ?? 5600;
-    setStaticView(true);
+    setStaticView(false);
     setActiveIndex(bounded);
-    setIntent('paused');
-  }, [activeIndex, remaining, setActiveIndex, setIntent, setStaticView, timerEpoch]);
+    setReplayEpoch((epoch) => epoch + 1);
+    setIntent(reducedMotion ? 'paused' : 'playing');
+  }, [reducedMotion, remaining, setActiveIndex, setIntent, setReplayEpoch, setStaticView, timerEpoch]);
   const pausePlayback = useCallback(() => {
     setIntent('paused');
   }, [setIntent]);
@@ -157,6 +158,7 @@ function usePlaybackActions(
       remaining.current = LEARNING_STAGES[0]?.dwellMs ?? 5600;
       setStaticView(false);
       setActiveIndex(0);
+      setReplayEpoch((epoch) => epoch + 1);
       setIntent('playing');
       return;
     }
@@ -172,6 +174,7 @@ function usePlaybackActions(
     remaining,
     setActiveIndex,
     setIntent,
+    setReplayEpoch,
     setStaticView,
     timerEpoch,
   ]);
@@ -189,6 +192,7 @@ export function useLearningDemo(workspaceRef: RefObject<HTMLElement | null>) {
   const [intent, setIntent] = useState<PlaybackIntent>(() =>
     readReducedMotion() ? 'paused' : 'playing');
   const [staticView, setStaticView] = useState(false);
+  const [replayEpoch, setReplayEpoch] = useState(0);
   const remaining = useRef(LEARNING_STAGES[0]?.dwellMs ?? 5600);
   const timerEpoch = useRef(0);
   useEffect(() => {
@@ -199,6 +203,7 @@ export function useLearningDemo(workspaceRef: RefObject<HTMLElement | null>) {
     activeIndex,
     effectivePlaying,
     remaining,
+    replayEpoch,
     timerEpoch,
     setActiveIndex,
     setIntent,
@@ -213,6 +218,7 @@ export function useLearningDemo(workspaceRef: RefObject<HTMLElement | null>) {
     setActiveIndex,
     setIntent,
     setStaticView,
+    setReplayEpoch,
   );
   const motionMode: DemoMotionMode = reducedMotion || intent === 'finished' || staticView
     ? 'static'
@@ -223,6 +229,7 @@ export function useLearningDemo(workspaceRef: RefObject<HTMLElement | null>) {
     finished: intent === 'finished',
     intent,
     motionMode,
+    replayEpoch,
     reducedMotion,
     ...actions,
   };

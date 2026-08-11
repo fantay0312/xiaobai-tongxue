@@ -1,8 +1,9 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { Icon } from '../../components/ui/Icon';
 import { DEMO } from './landingData';
+import { getTeachJourneySnapshot, type TeachDemoOutcome } from './landingTeachDemo';
 import { DemoTypewriter } from './DemoTypewriter';
 import type { DemoMotionMode } from './useLearningDemo';
 import s from './WorkspaceScenes.module.css';
@@ -78,168 +79,51 @@ export function PrepScene({
   );
 }
 
-function BranchNotice() {
-  return (
-    <aside className={s.branchNotice} aria-label="本次讲解回放说明">
-      <span>先说明</span>
-      <p>{DEMO.branchNotice}</p>
-    </aside>
-  );
-}
-
-function TokenPrimer() {
-  return (
-    <figure className={s.tokenPrimer}>
-      <figcaption>粉笔旁注 · 示意切法</figcaption>
-      <div>
-        {DEMO.tokenExamples.map((example) => (
-          <p key={example.label}>
-            <span>{example.label}</span>
-            <code>{example.source}</code>
-            <strong>{example.pieces.map((piece) => `[${piece}]`).join(' ')}</strong>
-          </p>
-        ))}
-      </div>
-      <small>字数并不能直接推出块数；实际切法由模型词表决定。</small>
-    </figure>
-  );
-}
-
-function ClassroomLine({
-  actor,
-  className,
-  children,
-  note,
-}: {
-  actor: string;
-  className: string;
-  children: ReactNode;
-  note?: string;
-}) {
-  return (
-    <article className={`${s.classroomLine} ${className}`}>
-      <span>{actor}</span>
-      <div className={s.lineBody}>
-        {children}
-        {note ? <small>{note}</small> : null}
-      </div>
-    </article>
-  );
-}
-
-function ClassroomDock({ onInteract }: { onInteract: () => void }) {
-  return (
-    <div className={s.classroomDock} aria-label="实际讲解舱支持的输入方式示意">
-      <div className={s.dockPrompt}><small>功能示意</small><p>把这一点讲给小白听……</p></div>
-      <span><Icon name="image" size={14} />图片</span>
-      <span><Icon name="camera" size={14} />拍照</span>
-      <span><Icon name="mic" size={14} />语音</span>
-      <Link className={s.sendAction} to="/study" onClick={onInteract} onFocus={onInteract}>
-        <Icon name="send" size={14} />进书斋实讲
-      </Link>
-    </div>
-  );
-}
-
-export function TeachScene({
-  motionMode,
-  reducedMotion,
-  onInteract,
-}: {
-  motionMode: DemoMotionMode;
-  reducedMotion: boolean;
-  onInteract: () => void;
-}) {
-  const playing = motionMode === 'playing';
-  return (
-    <section className={`${s.scene} ${s.boardScene}`} data-motion={motionMode}>
-      <SceneHeading
-        eyebrow="讲解舱 · 误区回放"
-        title={`你正在讲：${DEMO.title}`}
-        note="回放第 2–3 轮"
-      />
-      <BranchNotice />
-      <div className={s.classroom}>
-        <aside className={s.pupilStage}>
-          <XiaobaiAvatar
-            mood="confused"
-            level={1}
-            size={118}
-            variant="board"
-            speaking={playing}
-          />
-          <div className={s.pupilIdentity}><strong>小白</strong><small>好奇型 · 有些困惑</small></div>
-          <div className={s.branchStatus}><span>本轮观察</span><strong>误区未纠正</strong><small>会带入下一步“赴考”</small></div>
-        </aside>
-        <div className={s.boardStream}>
-          <ClassroomLine actor="你 · 第 2 轮" className={s.teacherLine}>
-            <p>{DEMO.teachLine}</p>
-            <TokenPrimer />
-          </ClassroomLine>
-          <ClassroomLine actor="小白 · 追问" className={s.misconceptionLine}>
-            <p>
-              <DemoTypewriter
-                text={DEMO.misconceptionLine}
-                motionMode={motionMode}
-                reducedMotion={reducedMotion}
-                startDelay={700}
-              />
-            </p>
-          </ClassroomLine>
-          <ClassroomLine
-            actor="你 · 课堂失误"
-            className={s.missedCorrectionLine}
-            note={DEMO.missedCorrection}
-          >
-            <p>{DEMO.adoptedTeacherLine}</p>
-          </ClassroomLine>
-          <ClassroomLine
-            actor="小白 · 错误理解"
-            className={s.branchOutcomeLine}
-            note="误区已写入本轮记录，会在独立赴考时暴露。"
-          >
-            <p>
-              <DemoTypewriter
-                text={DEMO.adoptedStudentLine}
-                motionMode={motionMode}
-                reducedMotion={reducedMotion}
-                startDelay={2900}
-              />
-            </p>
-          </ClassroomLine>
-        </div>
-      </div>
-      <ClassroomDock onInteract={onInteract} />
-    </section>
-  );
-}
-
 export function ReteachScene({
   motionMode,
   reducedMotion,
+  teachOutcome,
 }: {
   motionMode: DemoMotionMode;
   reducedMotion: boolean;
+  teachOutcome: TeachDemoOutcome;
 }) {
   const playing = motionMode === 'playing';
+  const journey = getTeachJourneySnapshot(teachOutcome);
+  const passed = journey.branch === 'passed';
+  const open = journey.branch === 'open';
+  const teacherLine = passed
+    ? '换个新例子：英文生僻新词没有现成整块，也会被拆小；所以不能按单词数推 Token 数。'
+    : open
+      ? '这一步还没完成：回到讲解舱，用常见搭配和生僻新词补一个对比例子。'
+      : DEMO.correctedTeacherLine;
+  const pupilLine = passed
+    ? '我能迁移了：中文生僻词和英文新词都一样，要先看词表里有没有现成整块。'
+    : open
+      ? '我还在等这个对比例子。补齐以后，我再用新词试着自己判断。'
+      : '这回我明白了：字数和 Token 数不能直接画等号，得先看词表怎么切。';
   return (
     <section className={`${s.scene} ${s.boardScene}`} data-motion={motionMode}>
-      <SceneHeading eyebrow="重讲验证" title="回到刚才讲岔的地方" note="模式：再讲" />
-      <p className={s.modeBanner}>上次被带偏的地方，这次要把它讲明白。</p>
+      <SceneHeading
+        eyebrow={passed ? '迁移复述' : open ? '待补完' : '重讲验证'}
+        title={journey.reteach.title}
+        note={passed ? '模式：巩固' : open ? '模式：等待补充' : '模式：再讲'}
+      />
+      <p className={s.modeBanner}>{journey.reteach.banner}</p>
       <div className={s.reteachBoard}>
         <XiaobaiAvatar
-          mood="aha"
+          mood={open ? 'curious' : 'aha'}
           level={1}
           size={104}
           variant="board"
           speaking={playing}
         />
         <div>
-          <span>你重新讲了一遍</span>
-          <blockquote>{DEMO.correctedTeacherLine}</blockquote>
+          <span>{passed ? '你做了一次迁移复述' : open ? '还缺一个对比例子' : '你重新讲了一遍'}</span>
+          <blockquote>{teacherLine}</blockquote>
           <p>
             <DemoTypewriter
-              text="这回我明白了：字数和 Token 数不能直接画等号，得先看词表怎么切。"
+              text={pupilLine}
               motionMode={motionMode}
               reducedMotion={reducedMotion}
               startDelay={700}
@@ -248,7 +132,9 @@ export function ReteachScene({
         </div>
       </div>
       <div className={s.reteachFoot}>
-        <strong><Icon name="circle-check" size={17} />误区已纠正</strong>
+        <strong className={open ? s.reteachPending : undefined}>
+          <Icon name={open ? 'circle-help' : 'circle-check'} size={17} />{journey.reteach.result}
+        </strong>
         <Link to="/study">去课程书架实际开讲 <Icon name="arrow-right" size={15} /></Link>
       </div>
     </section>
