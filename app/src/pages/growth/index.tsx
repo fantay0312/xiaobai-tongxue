@@ -960,11 +960,16 @@ export default function GrowthPage() {
         )}
       </section>
 
-      {/* ── 卷五·小白的记忆:四层记忆匣(recall.ts 派生,答辩 money-shot) ── */}
-      <section id="memory" className={`${s.section} ${s.rise}`} style={rise(5)}>
-        <h2 className={s.h2}>
+      {/* ── 卷五·小白的记忆:四层记忆存续登记册(recall.ts 派生,答辩 money-shot) ── */}
+      <section
+        id="memory"
+        className={`${s.section} ${s.rise}`}
+        style={rise(5)}
+        aria-labelledby="memory-title"
+      >
+        <h2 className={s.h2} id="memory-title">
           <span className={s.volNo}>卷五</span>小白的记忆
-          <small>四层,和你一样:当堂的、情景的、学问的、师徒的</small>
+          <small>从一堂课的余温，到师徒间的长久记得</small>
         </h2>
         <MemoryPanorama layers={panorama} />
       </section>

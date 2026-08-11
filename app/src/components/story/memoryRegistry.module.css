@@ -1,0 +1,113 @@
+/* 登记册封面、深度标尺与册尾：整组唯一纸影和唯一深色锚点。 */
+
+.panorama {
+  position: relative;
+  container: memory-panorama / inline-size;
+  isolation: isolate;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  box-shadow: var(--shadow-paper);
+}
+
+.panorama > * { position: relative; z-index: 1; }
+.panorama::before { z-index: 2; }
+
+.registryHead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--gap-tight) var(--gap);
+  align-items: end;
+  padding: clamp(1.15rem, 3cqi, 1.5rem);
+  background: var(--inkstone);
+  border-bottom: 1px solid var(--inkstone-line);
+  color: var(--moon-on-ink);
+}
+
+.registryCopy { min-width: 0; }
+.eyebrow { color: var(--moonsoft-on-ink); }
+
+.registryLead {
+  margin-top: var(--gap-hair);
+  font-family: var(--font-serif);
+  font-size: clamp(1.75rem, 5cqi, 2.65rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.registryCount {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  color: var(--moonsoft-on-ink);
+}
+
+.registryCount strong {
+  color: var(--moon-on-ink);
+  font-family: var(--font-serif);
+  font-size: clamp(2.5rem, 6cqi, 3.4rem);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 0.75;
+}
+
+.registryCount span {
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: var(--track-label);
+}
+
+.depthLegend {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(4rem, 1fr) auto;
+  gap: var(--gap-hair);
+  align-items: center;
+  color: var(--moonsoft-on-ink);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.12em;
+}
+
+.depthLegend i { position: relative; height: 1px; background: var(--inkstone-line); }
+
+.depthLegend i::before,
+.depthLegend i::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--moonsoft-on-ink);
+  transform: translateY(-50%);
+}
+
+.depthLegend i::before { left: 0; }
+.depthLegend i::after { right: 0; }
+
+.registryFoot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--gap-hair) var(--gap);
+  padding: var(--gap-tight) clamp(1.1rem, 4cqi, 1.75rem);
+  background: var(--paper);
+  border-top: 1px solid var(--line-strong);
+  color: var(--ink-soft);
+  font-size: var(--fs-small);
+}
+
+.registryFoot span { flex: none; }
+
+@container memory-panorama (min-width: 40rem) {
+  .registryHead { grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.5fr) auto; }
+  .depthLegend { grid-column: auto; align-self: center; }
+}
+
+@media (forced-colors: active) {
+  .depthLegend i::before,
+  .depthLegend i::after { background: CanvasText; }
+}

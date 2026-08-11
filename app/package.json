@@ -10,7 +10,7 @@
     "test:commerce": "tsx scripts/commerce-contract.test.ts",
     "test:auth": "tsx scripts/auth-state.test.ts",
     "test:coach-markdown": "tsx scripts/coach-markdown.test.ts",
-    "test:growth": "tsx scripts/growth-hero-contract.test.ts",
+    "test:growth": "tsx scripts/growth-hero-contract.test.ts && tsx scripts/memory-panorama-contract.test.ts",
     "test:landing-data": "tsx scripts/landing-data.test.ts",
     "test:landing-motion": "tsx scripts/landing-motion-contract.test.ts",
     "test:qa-evidence": "tsx scripts/qa-evidence.test.ts",

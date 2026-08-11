@@ -1,0 +1,100 @@
+/* 学问层的长记录：首屏只露三条，其余用原生 details 渐进展开。 */
+
+.supplementGrid {
+  display: grid;
+  gap: var(--gap);
+  margin-top: var(--gap);
+  padding-top: var(--gap);
+  border-top: 1px solid var(--line-strong);
+}
+
+.supplement { min-width: 0; }
+
+.supplementHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap-tight);
+  margin-bottom: var(--gap-tight);
+}
+
+.supplementHead h4 { color: var(--ink); font-family: var(--font-serif); font-size: var(--fs-sub); }
+.supplementHead span { color: var(--ink-faint); font-family: var(--font-typewriter); font-size: var(--fs-tiny); }
+
+.retList,
+.crossList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.retItem { min-width: 0; }
+
+.retHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--gap-hair) var(--gap-tight);
+  margin-bottom: 0.28rem;
+}
+
+.retTitle { color: var(--ink); font-family: var(--font-display); font-size: var(--fs-small); }
+.retNote { color: var(--ink-soft); font-size: var(--fs-tiny); }
+
+.retTrack {
+  height: 6px;
+  overflow: hidden;
+  background: var(--paper-shade);
+  border: 1px solid var(--paper-edge);
+  border-radius: 999px;
+}
+
+.retFill { display: block; height: 100%; background: var(--jade); }
+.retFillFog { background: var(--amber); }
+
+.crossList li {
+  padding-left: var(--gap-tight);
+  border-left: 1px solid var(--jade);
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  line-height: 1.75;
+}
+
+.moreDetails { margin-top: var(--gap-hair); }
+
+.moreDetails summary {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-tight);
+  color: var(--azure);
+  cursor: pointer;
+  font-size: var(--fs-small);
+  list-style: none;
+}
+
+.moreDetails summary:focus-visible { outline: 2px solid var(--azure); outline-offset: 3px; }
+.moreDetails summary::-webkit-details-marker { display: none; }
+.moreDetails summary::after { content: '＋'; font-family: var(--font-body); }
+.moreDetails[open] summary::after { content: '—'; }
+.moreDetails[open] > .retList,
+.moreDetails[open] > .crossList { margin-top: var(--gap-hair); }
+
+@container memory-panorama (min-width: 56rem) {
+  .supplementGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .supplement:only-child { grid-column: 1 / -1; }
+}
+
+@media (hover: hover) {
+  .moreDetails summary:hover { color: var(--azure-deep); }
+}
+
+@media (forced-colors: active) {
+  .retFill { background: CanvasText; }
+}
