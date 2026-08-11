@@ -8,6 +8,7 @@ function readSource(relativePath: string): string {
 
 const landingPage = readSource('../src/pages/landing/index.tsx');
 const landingStyles = readSource('../src/pages/landing/landing.module.css');
+const learningWorkspace = readSource('../src/pages/landing/LearningWorkspace.tsx');
 const workspaceStyles = readSource('../src/pages/landing/LearningWorkspace.module.css');
 const sceneStyles = readSource('../src/pages/landing/WorkspaceScenes.module.css');
 const reteachScene = readSource('../src/pages/landing/WorkspaceReteachScene.tsx');
@@ -32,14 +33,31 @@ assert.match(landingStyles, /\[data-reveal-state='shown'\]\s*\{[^}]*transition:/
 assert.match(landingStyles, /prefers-reduced-motion:\s*reduce[\s\S]*transition:\s*none/);
 
 assert.match(
+  learningWorkspace,
+  /data-entrance-settled=\{entranceSettled\}/,
+  '场景必须记住明确暂停后的最终态，继续时不能重播入场',
+);
+assert.match(learningWorkspace, /settledSceneKey === sceneKey/);
+assert.match(learningWorkspace, /useLayoutEffect\(\(\) => \{[\s\S]*playback\.intent !== 'playing'/);
+assert.doesNotMatch(
+  learningWorkspace,
+  /onAnimationEnd/,
+  '外框先结束，不能用它提前截断仍在错峰入场的子结构',
+);
+assert.match(
   workspaceStyles,
-  /workspace\[data-motion='paused'\]\s+\.sceneFrame\s*\{[^}]*animation:\s*none[^}]*opacity:\s*1[^}]*transform:\s*none/s,
-  '暂停回放必须让新场景直接落到入场动画的最终可见态',
+  /workspace\[data-motion='paused'\]\s+\.sceneFrame\s*\{[^}]*animation-play-state:\s*paused/s,
+  '离屏或页面隐藏时应保留尚未完成的入场进度',
+);
+assert.match(
+  workspaceStyles,
+  /sceneFrame\[data-entrance-settled='true'\]\s*\{[^}]*animation:\s*none[^}]*opacity:\s*1[^}]*transform:\s*none/s,
+  '明确暂停后必须永久停在最终可见态',
 );
 assert.match(
   sceneStyles,
-  /scene\[data-motion='paused'\]\s+\.sceneHeading[\s\S]*animation:\s*none\s*!important/,
-  '暂停时一次性结构内容必须立即落到最终可见状态',
+  /\[data-entrance-settled='true'\]\s+\.sceneHeading[\s\S]*animation:\s*none\s*!important/,
+  '普通场景的一次性结构内容不能在继续时重播',
 );
 assert.match(reteachScene, /session\.teacherLine/);
 assert.match(reteachScene, /DEMO\.transferExamples\s*:\s*DEMO\.tokenExamples/);
@@ -47,8 +65,8 @@ assert.match(reteachScene, /examples\.map/);
 assert.match(reteachScene, /data-reteach-branch=\{journey\.branch\}/);
 assert.match(
   reteachStyles,
-  /scene\[data-motion='paused'\][\s\S]*animation:\s*none\s*!important/,
-  '终幕在暂停时仍需完整可见',
+  /\[data-entrance-settled='true'\][\s\S]*animation:\s*none\s*!important/,
+  '终幕暂停后继续必须保持完整可见',
 );
 
 console.log('landing motion contract: all assertions passed');

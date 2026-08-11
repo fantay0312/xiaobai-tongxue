@@ -125,6 +125,10 @@
 }
 
 .workspace[data-motion='paused'] .sceneFrame {
+  animation-play-state: paused;
+}
+
+.sceneFrame[data-entrance-settled='true'] {
   animation: none;
   opacity: 1;
   transform: none;
