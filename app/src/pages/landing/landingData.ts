@@ -102,6 +102,10 @@ export const DEMO = {
     { label: '常见搭配', source: '今天天气不错', pieces: ['今天', '天气', '不错'] },
     { label: '低频组合', source: '魑魅魍魉', pieces: ['魑', '魅', '魍', '魉'] },
   ],
+  transferExamples: [
+    { label: '词表整块', source: 'the', pieces: ['the'] },
+    { label: '新词拆分', source: 'unbelievable', pieces: ['un', 'believ', 'able'] },
+  ],
   misconceptionLine:
     '咦？老师，那我数一数字数就行了吧——一句话有多少个字，就切成多少块，一个字对应一个编号，对吗？',
   adoptedTeacherLine:

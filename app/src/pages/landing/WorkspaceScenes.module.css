@@ -57,8 +57,7 @@
 .options button:hover,
 .predictionQuiz button:hover { color: var(--ink); background: var(--paper-warm); }
 .options button:focus-visible,
-.predictionQuiz button:focus-visible,
-.reteachFoot a:focus-visible { outline: 2px solid var(--terra-ink); outline-offset: 2px; }
+.predictionQuiz button:focus-visible { outline: 2px solid var(--terra-ink); outline-offset: 2px; }
 .optionCorrect { color: var(--jade-ink) !important; border-color: var(--jade) !important; background: var(--jade-wash) !important; }
 .optionWrong { color: var(--cinnabar) !important; border-color: var(--cinnabar) !important; background: var(--cinnabar-wash) !important; }
 .answerRight,
@@ -154,26 +153,6 @@
 .classroomDock > a:focus-visible { outline: 2px solid var(--chalk); outline-offset: 2px; }
 .caret { display: inline-block; width: 0.38em; height: 0.9em; margin-left: 0.12em; background: currentcolor; animation: caretBlink 780ms step-end infinite; vertical-align: -0.06em; }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; margin: -1px; padding: 0; border: 0; clip-path: inset(50%); white-space: nowrap; }
-.modeBanner { margin: 0.75rem 0 0; padding: 0.55rem 0.7rem; color: var(--chalk-amber); border: 1px solid var(--board-line); font: 0.69rem/1.4 var(--font-body); }
-.reteachBoard {
-  display: grid;
-  min-height: 23rem;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 1rem;
-  padding: 1.2rem 1rem;
-  animation: global(rise) var(--t-med) var(--ease-out) 80ms backwards;
-}
-.reteachBoard span { color: var(--chalk-soft); font-size: 0.64rem; }
-.reteachBoard blockquote { margin: 0.55rem 0; padding: 0.8rem; border-left: 2px solid var(--chalk-amber); font: 0.82rem/1.7 var(--font-display); }
-.reteachBoard p { margin: 0; color: var(--chalk-jade); font: 0.76rem/1.6 var(--font-display); }
-.reteachFoot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: 0.7rem; border-top: 1px solid var(--board-line); }
-.reteachFoot strong,
-.reteachFoot a { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.68rem; }
-.reteachFoot strong { color: var(--chalk-jade); }
-.reteachFoot .reteachPending { color: var(--chalk-amber); }
-.reteachFoot a { color: var(--chalk-amber); text-decoration: none; }
-
 .examScene { background: var(--paper-warm); }
 .examBeats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.45rem; margin: 0.8rem 0 0; padding: 0; list-style: none; }
 .examBeats li { display: flex; align-items: center; gap: 0.35rem; color: var(--ink-faint); font-size: 0.65rem; opacity: 0; animation: beatReveal var(--t-med) var(--ease-out) calc(420ms * var(--beat)) forwards; }
@@ -188,7 +167,6 @@
 .examVerdict { display: flex; align-items: center; gap: 0.45rem; margin: 0.75rem 0 0; color: var(--cinnabar); font-size: 0.67rem; opacity: 0; animation: verdictReveal var(--t-med) var(--ease-out) 3.5s forwards; }
 .examVerdictPassed { color: var(--jade-ink); }
 .examVerdictOpen { color: var(--terra-ink); }
-
 .reviewScene { background: var(--paper); }
 .reviewGrid { grid-template-columns: 0.62fr 1.38fr; }
 .scoreStub,
@@ -214,7 +192,6 @@
 .eventTape li + li { border-top: 1px solid var(--paper-edge); }
 .eventTape time { color: var(--terra-ink); font-family: var(--font-typewriter); }
 .persistenceNote { margin: 0.75rem 0 0; color: var(--ink-faint); font: 0.66rem/1.55 var(--font-display); }
-
 .remedyScene { background: var(--paper-blush); }
 .remedyGrid { grid-template-columns: 1fr 1fr; }
 .microLesson,
@@ -236,6 +213,19 @@
 .scene[data-motion='paused'] *::before,
 .scene[data-motion='paused'] *::after {
   animation-play-state: paused !important;
+}
+
+.scene[data-motion='paused'] .sceneHeading,
+.scene[data-motion='paused'] .prepGrid,
+.scene[data-motion='paused'] .reviewGrid,
+.scene[data-motion='paused'] .remedyGrid,
+.scene[data-motion='paused'] .branchNotice,
+.scene[data-motion='paused'] .classroom,
+.scene[data-motion='paused'] .eventTape,
+.scene[data-motion='paused'] .outputStep {
+  animation: none !important;
+  opacity: 1;
+  transform: none;
 }
 
 .scene[data-motion='paused'][data-interactive='true'] *,
@@ -296,15 +286,12 @@
   .tokenPrimer > div { grid-template-columns: 1fr; }
   .classroomDock { grid-template-columns: 1fr 1fr; }
   .examBeats { grid-template-columns: 1fr 1fr; }
-  .reteachBoard { grid-template-columns: 1fr; }
-  .reteachFoot { align-items: flex-start; flex-direction: column; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .sceneHeading,
   .prepGrid,
   .classroom,
-  .reteachBoard,
   .eventTape,
   .outputStep,
   .examBeats li,

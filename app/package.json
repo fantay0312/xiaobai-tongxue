@@ -12,6 +12,7 @@
     "test:coach-markdown": "tsx scripts/coach-markdown.test.ts",
     "test:growth": "tsx scripts/growth-hero-contract.test.ts",
     "test:landing-data": "tsx scripts/landing-data.test.ts",
+    "test:landing-motion": "tsx scripts/landing-motion-contract.test.ts",
     "test:qa-evidence": "tsx scripts/qa-evidence.test.ts",
     "test:sync": "tsx scripts/pending-sync.test.ts",
     "preview": "vite preview",

@@ -1,9 +1,7 @@
 import type { LearningStage } from './landingData';
 import type { DemoMotionMode } from './useLearningDemo';
-import {
-  PrepScene,
-  ReteachScene,
-} from './WorkspaceLessonScenes';
+import { PrepScene } from './WorkspaceLessonScenes';
+import { ReteachScene } from './WorkspaceReteachScene';
 import { TeachScene } from './WorkspaceTeachScene';
 import type { TeachDemoSessionSummary } from './landingTeachDemo';
 import {
@@ -67,7 +65,7 @@ export function WorkspaceScene({
     <ReteachScene
       motionMode={motionMode}
       reducedMotion={reducedMotion}
-      teachOutcome={teachSession.outcome}
+      session={teachSession}
     />
   );
 }

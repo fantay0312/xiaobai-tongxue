@@ -64,18 +64,23 @@ export function EvidenceArchive() {
   return (
     <section className={s.section} aria-labelledby="evidence-archive-title">
       <header className={s.heading}>
-        <div>
+        <div data-landing-reveal data-reveal-order="0">
           <p className={s.kicker}>课后批注</p>
           <h2 id="evidence-archive-title">教过什么，哪里讲岔，课后都能看清</h2>
         </div>
-        <p className={s.lede}>
+        <p className={s.lede} data-landing-reveal data-reveal-order="1">
           课堂结束后，关键原话摘录、误区事件、逐题判定和五维讲解画像会放在同一份批注里。
         </p>
       </header>
 
       <div className={s.bridge} aria-label="一堂课的五类课后记录">
         {EVIDENCE_STEPS.map((item, index) => (
-          <div className={s.bridgeItem} key={item.id}>
+          <div
+            className={s.bridgeItem}
+            key={item.id}
+            data-landing-reveal
+            data-reveal-order={index}
+          >
             <div className={s.bridgeEvidence}>
               <span className={s.bridgeIcon} aria-hidden="true">
                 <Icon name={EVIDENCE_ICONS[index] ?? 'file'} size={23} />
@@ -91,7 +96,7 @@ export function EvidenceArchive() {
       </div>
 
       <ol className={s.archives}>
-        <li className={s.archive}>
+        <li className={s.archive} data-landing-reveal>
           <header className={s.archiveStub}>
             <span className={s.archiveNo}>01</span>
             <h3>讲解摘录<br />与误区记录</h3>
@@ -119,7 +124,7 @@ export function EvidenceArchive() {
           </div>
         </li>
 
-        <li className={s.archive}>
+        <li className={s.archive} data-landing-reveal>
           <header className={s.archiveStub}>
             <span className={s.archiveNo}>02</span>
             <h3>逐题判定<br />与对应要点</h3>
@@ -148,7 +153,7 @@ export function EvidenceArchive() {
           </div>
         </li>
 
-        <li className={s.archive}>
+        <li className={s.archive} data-landing-reveal>
           <header className={s.archiveStub}>
             <span className={s.archiveNo}>03</span>
             <h3>五维批注<br />与补学入口</h3>
@@ -180,14 +185,19 @@ export function EvidenceArchive() {
       </ol>
 
       <aside className={s.metrics} aria-labelledby="offline-metrics-title">
-        <header className={s.metricsHeading}>
+        <header className={s.metricsHeading} data-landing-reveal data-reveal-order="0">
           <p className={s.kicker}>当前版本</p>
           <h3 id="offline-metrics-title">现在收录了什么，离线测了什么</h3>
           <p>课程数来自当前课程库；防剧透结果来自 24 条离线测试，不是用户规模。</p>
         </header>
         <dl className={s.metricList}>
-          {LANDING_METRICS.map((metric) => (
-            <div className={s.metric} key={metric.id}>
+          {LANDING_METRICS.map((metric, index) => (
+            <div
+              className={s.metric}
+              key={metric.id}
+              data-landing-reveal
+              data-reveal-order={index + 1}
+            >
               <dt>{metric.label}</dt>
               <dd>
                 <MetricValue metric={metric} />
