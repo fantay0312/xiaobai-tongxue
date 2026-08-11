@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { Icon } from '../../components/ui/Icon';
 import { DEMO } from './landingData';
+import { getTeachJourneySnapshot, type TeachDemoOutcome } from './landingTeachDemo';
 import { DemoTypewriter } from './DemoTypewriter';
 import type { DemoMotionMode } from './useLearningDemo';
 import s from './WorkspaceScenes.module.css';
@@ -29,11 +30,16 @@ function SceneHeading({
 export function ExamScene({
   motionMode,
   reducedMotion,
+  teachOutcome,
 }: {
   motionMode: DemoMotionMode;
   reducedMotion: boolean;
+  teachOutcome: TeachDemoOutcome;
 }) {
   const playing = motionMode === 'playing';
+  const journey = getTeachJourneySnapshot(teachOutcome);
+  const passed = journey.branch === 'passed';
+  const open = journey.branch === 'open';
   return (
     <section className={`${s.scene} ${s.examScene}`} data-motion={motionMode}>
       <SceneHeading eyebrow="赴考 · 第 3 题" title="小白正在独自作答" note="先生不得代答" />
@@ -47,7 +53,7 @@ export function ExamScene({
       <div className={s.examDesk}>
         <div className={s.examPupil}>
           <XiaobaiAvatar
-            mood="thinking"
+            mood={journey.exam.mood}
             level={1}
             size={112}
             variant="paper"
@@ -60,15 +66,15 @@ export function ExamScene({
           <h4>{DEMO.examQuestion}</h4>
           <blockquote>
             <DemoTypewriter
-              text={DEMO.examWhisper}
+              text={journey.exam.whisper}
               motionMode={motionMode}
               reducedMotion={reducedMotion}
               startDelay={950}
             />
           </blockquote>
-          <p className={s.examVerdict}>
-            <Icon name="circle-x" size={17} />
-            还没答稳 · 对应要点：哪些词切得整，哪些词切得碎
+          <p className={`${s.examVerdict} ${passed ? s.examVerdictPassed : open ? s.examVerdictOpen : ''}`}>
+            <Icon name={passed ? 'circle-check' : open ? 'circle-help' : 'circle-x'} size={17} />
+            {journey.exam.verdict}
           </p>
         </article>
       </div>
@@ -76,28 +82,40 @@ export function ExamScene({
   );
 }
 
-export function ReviewScene({ motionMode }: { motionMode: DemoMotionMode }) {
+export function ReviewScene({
+  motionMode,
+  teachOutcome,
+}: {
+  motionMode: DemoMotionMode;
+  teachOutcome: TeachDemoOutcome;
+}) {
+  const journey = getTeachJourneySnapshot(teachOutcome);
+  const passed = journey.branch === 'passed';
+  const open = journey.branch === 'open';
   return (
     <section className={`${s.scene} ${s.reviewScene}`} data-motion={motionMode}>
-      <SceneHeading eyebrow="灯下批注" title="小白没答稳的地方，回到这里看" note="带偏分支回放" />
+      <SceneHeading eyebrow="灯下批注" title={journey.review.title} note={journey.review.note} />
       <div className={s.reviewGrid}>
         <article className={s.scoreStub}>
-          <span>随堂测验</span>
-          <strong>{DEMO.examScore}</strong>
-          <small>分</small>
-          <p>1 题答稳 · 4 题留下墨痕</p>
+          <span>{journey.review.resultLabel}</span>
+          <strong>{journey.review.resultValue}</strong>
+          {journey.review.resultUnit ? <small>{journey.review.resultUnit}</small> : null}
+          <p>{journey.review.resultSummary}</p>
         </article>
-        <article className={s.blindReport}>
-          <span>高风险盲区</span>
-          <h4>{DEMO.blindSpot}</h4>
-          <p>{DEMO.blindSpotEvidence}</p>
-          <strong><Icon name="swords" size={16} />需要补学后重讲</strong>
+        <article className={`${s.blindReport} ${passed ? s.resolvedReport : open ? s.openReport : ''}`}>
+          <span>{journey.review.findingLabel}</span>
+          <h4>{journey.review.findingTitle}</h4>
+          <p>{journey.review.findingEvidence}</p>
+          <strong>
+            <Icon name={passed ? 'circle-check' : open ? 'circle-help' : 'swords'} size={16} />
+            {journey.review.action}
+          </strong>
         </article>
       </div>
       <ol className={s.eventTape}>
-        <li><time>讲解</time><span>积木块清单讲清了两个要点</span></li>
-        <li><time>误区</time><span>小白把“一个字一块”当成了正确答案</span></li>
-        <li><time>赴考</time><span>随堂测验 20 分，四个要点未答稳</span></li>
+        {journey.review.events.map(([label, detail]) => (
+          <li key={label}><time>{label}</time><span>{detail}</span></li>
+        ))}
       </ol>
       <p className={s.persistenceNote}>
         课后长期保留的是这类结构化事件；课堂关闭后，不把整段对话冒充永久录像。
@@ -109,16 +127,19 @@ export function ReviewScene({ motionMode }: { motionMode: DemoMotionMode }) {
 export function RemedyScene({
   motionMode,
   onInteract,
+  teachOutcome,
 }: {
   motionMode: DemoMotionMode;
   onInteract: () => void;
+  teachOutcome: TeachDemoOutcome;
 }) {
   const [picked, setPicked] = useState(1);
   const correct = picked === 1;
+  const journey = getTeachJourneySnapshot(teachOutcome);
   const options = ['一整块', DEMO.remedyAnswer, '一个字母一块', '直接丢掉'];
   return (
     <section className={`${s.scene} ${s.remedyScene}`} data-motion={motionMode}>
-      <SceneHeading eyebrow="补学微路径" title={DEMO.remedyTitle} note="三步走完，再回讲解舱" />
+      <SceneHeading eyebrow="补学微路径" title={journey.remedy.title} note={journey.remedy.note} />
       <div className={s.remedyGrid}>
         <article className={s.microLesson}>
           <span>1 · 输入</span>
@@ -146,8 +167,11 @@ export function RemedyScene({
       </div>
       <div className={s.outputStep}>
         <span>3 · 输出</span>
-        <p>三题做完了。现在回讲解舱，用自己的话把这里重讲一遍。</p>
-        <strong><Icon name="arrow-right" size={15} />下一步：再讲</strong>
+        <p>{journey.remedy.output}</p>
+        <strong>
+          <Icon name="arrow-right" size={15} />
+          {journey.branch === 'passed' ? '下一步：迁移复述' : '下一步：再讲'}
+        </strong>
       </div>
     </section>
   );

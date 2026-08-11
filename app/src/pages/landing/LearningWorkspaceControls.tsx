@@ -83,8 +83,8 @@ export function StageTabs(props: StageTabsProps) {
     const next = stageIndexForKey(event.key, index);
     if (next === null) return;
     event.preventDefault();
-    props.onChoose(next, true);
     refs.current[next]?.focus();
+    props.onChoose(next, true);
   };
   return (
     <div className={s.stageTabs} role="tablist" aria-label="一堂课的六个步骤">

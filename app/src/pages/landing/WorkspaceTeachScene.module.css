@@ -1,0 +1,227 @@
+.liveLesson {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  align-content: start;
+  gap: 0.55rem;
+}
+
+.stream {
+  display: grid;
+  max-height: 23rem;
+  min-height: 17rem;
+  align-content: start;
+  gap: 0.6rem;
+  overflow-y: auto;
+  padding: 0.25rem 0.35rem 0.35rem 0;
+  scrollbar-gutter: stable;
+}
+
+.message {
+  display: grid;
+  grid-template-columns: 5.4rem minmax(0, 1fr);
+  align-items: start;
+  gap: 0.7rem;
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
+}
+
+.message > span {
+  padding-top: 0.55rem;
+  color: var(--chalk-soft);
+  font: 0.66rem/1.35 var(--font-typewriter);
+}
+
+.message > div > p {
+  margin: 0;
+  padding: 0.72rem 0.82rem;
+  color: var(--chalk);
+  border: 1px solid var(--board-line);
+  font: var(--fs-body)/1.7 var(--font-display);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.message > div > small {
+  display: block;
+  margin-top: 0.32rem;
+  padding-left: 0.8rem;
+  color: var(--chalk-soft);
+  font: 0.7rem/1.5 var(--font-body);
+}
+
+.teacherMessage > div > p { background: var(--board-deep); }
+
+.pupilMessage > div > p {
+  color: var(--chalk-amber);
+  border-style: dashed;
+}
+
+.correctedMessage > div > p {
+  color: var(--chalk-jade);
+  border-color: color-mix(in oklab, var(--chalk-jade) 60%, var(--board-line));
+}
+
+.adoptedMessage > div > p {
+  color: color-mix(in oklab, var(--cinnabar) 28%, var(--chalk));
+  border-color: color-mix(in oklab, var(--cinnabar) 58%, var(--board-line));
+  background: color-mix(in oklab, var(--board-deep) 90%, var(--cinnabar));
+}
+
+.probeMessage > div > p { color: var(--chalk-amber); }
+
+.thinking {
+  display: flex;
+  min-height: 2.8rem;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 6.1rem;
+  padding: 0.55rem 0.8rem;
+  color: var(--chalk-soft);
+  border: 1px dashed var(--board-line);
+  font: 0.7rem/1.4 var(--font-body);
+}
+
+.thinking span { margin-right: 0.2rem; }
+
+.thinking i {
+  width: 0.28rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--chalk-amber);
+  animation: thinkingDot 900ms var(--ease-loop) infinite alternate;
+}
+
+.thinking i:nth-of-type(2) { animation-delay: 150ms; }
+.thinking i:nth-of-type(3) { animation-delay: 300ms; }
+
+.composer {
+  display: grid;
+  gap: 0.42rem;
+  padding: 0.65rem;
+  border: 1px solid var(--board-line);
+  background: var(--board-deep);
+}
+
+.composer > label {
+  color: var(--chalk-soft);
+  font: 0.75rem/1.2 var(--font-typewriter);
+  letter-spacing: var(--track-label);
+}
+
+.composer textarea {
+  width: 100%;
+  min-height: 4.5rem;
+  max-height: 8rem;
+  resize: vertical;
+  padding: 0.62rem 0.7rem;
+  color: var(--chalk);
+  border: 1px solid var(--board-line);
+  border-radius: 0;
+  outline: none;
+  background: color-mix(in oklab, var(--board) 82%, var(--board-deep));
+  font: 0.78rem/1.55 var(--font-body);
+}
+
+.composer textarea::placeholder { color: var(--chalk-soft); opacity: 0.72; }
+.composer textarea:focus-visible { border-color: var(--chalk-amber); box-shadow: 0 0 0 2px color-mix(in oklab, var(--chalk-amber) 32%, transparent); }
+.composer textarea:disabled { opacity: 0.66; cursor: wait; }
+
+.composerFoot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.composerFoot > span {
+  color: var(--chalk-soft);
+  font: 0.75rem/1 var(--font-typewriter);
+  white-space: nowrap;
+}
+
+.sampleActions { display: flex; min-width: 0; gap: 0.35rem; flex-wrap: wrap; }
+
+.sampleActions button,
+.lessonActions button,
+.lessonActions a {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.6rem;
+  color: var(--chalk-soft);
+  border: 1px solid var(--board-line);
+  background: transparent;
+  font: 0.78rem/1.25 var(--font-body);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
+}
+
+.sampleActions button:hover,
+.lessonActions button:hover,
+.lessonActions a:hover { color: var(--chalk); transform: translateY(-1px); }
+
+.sampleActions button:focus-visible,
+.lessonActions button:focus-visible,
+.lessonActions a:focus-visible,
+.sendButton:focus-visible { outline: 2px solid var(--chalk); outline-offset: 2px; }
+
+.composerFoot .sendButton {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.72rem;
+  color: var(--board-deep);
+  border: 0;
+  background: var(--chalk-amber);
+  font: 700 0.8rem/1 var(--font-body);
+  cursor: pointer;
+}
+
+.composerFoot .sendButton:disabled { opacity: 0.42; cursor: default; }
+
+.lessonActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+}
+
+@keyframes thinkingDot {
+  from { opacity: 0.32; transform: translateY(1px); }
+  to { opacity: 1; transform: translateY(-1px); }
+}
+
+@media (max-width: 960px) {
+  .stream { max-height: 21rem; }
+  .composerFoot { grid-template-columns: 1fr auto; }
+  .sampleActions { grid-column: 1 / -1; }
+}
+
+@media (max-width: 720px) {
+  .stream { max-height: 24rem; min-height: 15rem; }
+}
+
+@media (max-width: 560px) {
+  .stream { min-height: 12rem; max-height: 17rem; }
+  .message { grid-template-columns: 1fr; gap: 0.25rem; }
+  .message > span { padding-top: 0; font-size: 0.75rem; }
+  .message > div > small { font-size: 0.75rem; }
+  .composer textarea { font-size: 1rem; }
+  .thinking { margin-left: 0; }
+  .composerFoot { grid-template-columns: 1fr auto; }
+  .sampleActions { display: grid; grid-template-columns: 1fr 1fr; }
+  .lessonActions { align-items: stretch; flex-direction: column; }
+  .lessonActions button,
+  .lessonActions a { width: 100%; font-size: 0.875rem; }
+  .sampleActions button,
+  .composerFoot .sendButton { font-size: 0.875rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message,
+  .thinking i { animation: none; transform: none; }
+}

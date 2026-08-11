@@ -1,17 +1,36 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { LEARNING_STAGES } from './landingData';
 import { PlaybackHeader, StageTabs } from './LearningWorkspaceControls';
 import { useLearningDemo } from './useLearningDemo';
 import { WorkspaceCourseRail } from './WorkspaceCourseRail';
 import { WorkspaceEvidenceRail } from './WorkspaceEvidenceRail';
 import { WorkspaceScene } from './WorkspaceScene';
+import {
+  INITIAL_TEACH_DEMO_SESSION,
+  type TeachDemoSessionSummary,
+} from './landingTeachDemo';
 import s from './LearningWorkspace.module.css';
 
 export function LearningWorkspace() {
   const workspaceRef = useRef<HTMLElement>(null);
   const playback = useLearningDemo(workspaceRef);
+  const [teachSession, setTeachSession] = useState<TeachDemoSessionSummary>(
+    INITIAL_TEACH_DEMO_SESSION,
+  );
   const activeStage = LEARNING_STAGES[playback.activeIndex] ?? LEARNING_STAGES[0];
-  const chooseStage = (index: number) => playback.selectStage(index);
+  const resetTeachSession = () => setTeachSession(INITIAL_TEACH_DEMO_SESSION);
+  const chooseStage = (index: number) => {
+    if (index === 0) resetTeachSession();
+    playback.selectStage(index);
+  };
+  const viewNextStage = () => {
+    if (playback.activeIndex === LEARNING_STAGES.length - 1) resetTeachSession();
+    playback.nextStage();
+  };
+  const togglePlayback = () => {
+    if (playback.finished) resetTeachSession();
+    playback.togglePlayback();
+  };
   return (
     <section
       className={s.workspace}
@@ -24,8 +43,8 @@ export function LearningWorkspace() {
         intent={playback.intent}
         finished={playback.finished}
         reducedMotion={playback.reducedMotion}
-        onNext={playback.nextStage}
-        onToggle={playback.togglePlayback}
+        onNext={viewNextStage}
+        onToggle={togglePlayback}
       />
       <StageTabs
         activeIndex={playback.activeIndex}
@@ -41,15 +60,17 @@ export function LearningWorkspace() {
         aria-labelledby={`learning-stage-${activeStage.id}`}
       >
         <WorkspaceCourseRail activeIndex={playback.activeIndex} />
-        <div className={s.sceneFrame} key={activeStage.id}>
+        <div className={s.sceneFrame} key={`${activeStage.id}-${playback.replayEpoch}`}>
           <WorkspaceScene
             stageId={activeStage.id}
             motionMode={playback.motionMode}
             reducedMotion={playback.reducedMotion}
+            teachSession={teachSession}
             onInteract={playback.pausePlayback}
+            onTeachSessionChange={setTeachSession}
           />
         </div>
-        <WorkspaceEvidenceRail stageId={activeStage.id} />
+        <WorkspaceEvidenceRail stageId={activeStage.id} teachSession={teachSession} />
       </div>
     </section>
   );
