@@ -26,15 +26,19 @@ export function PersonaPicker({ value, onChange }: PersonaPickerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const requestedFocusRef = useRef<number | null>(null);
   const baseId = useId();
   const menuId = `${baseId}-persona-menu`;
+  const menuLabelId = `${baseId}-persona-label`;
   const selectedIndex = PERSONAS.findIndex((option) => option.name === value);
   const selected = PERSONAS[selectedIndex] ?? PERSONAS[0];
 
   useEffect(() => {
     if (!open) return;
     const focusFrame = window.requestAnimationFrame(() => {
-      optionRefs.current[Math.max(0, selectedIndex)]?.focus();
+      const requestedIndex = requestedFocusRef.current;
+      requestedFocusRef.current = null;
+      optionRefs.current[requestedIndex ?? Math.max(0, selectedIndex)]?.focus();
     });
     return () => window.cancelAnimationFrame(focusFrame);
   }, [open, selectedIndex]);
@@ -66,6 +70,9 @@ export function PersonaPicker({ value, onChange }: PersonaPickerProps) {
   const handleTriggerKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
+    requestedFocusRef.current = event.key === 'ArrowDown' || event.key === 'Home'
+      ? 0
+      : PERSONAS.length - 1;
     setOpen(true);
   };
 
@@ -112,7 +119,10 @@ export function PersonaPicker({ value, onChange }: PersonaPickerProps) {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={menuId}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          requestedFocusRef.current = null;
+          setOpen((current) => !current);
+        }}
         onKeyDown={handleTriggerKeyDown}
       >
         <span className={styles.triggerCopy}>
@@ -124,31 +134,33 @@ export function PersonaPicker({ value, onChange }: PersonaPickerProps) {
       </button>
 
       {open && (
-        <div id={menuId} className={styles.menu} role="listbox" aria-label="选择小白的性情">
-          <p className={styles.menuLabel}>换一种追问的性情</p>
-          {PERSONAS.map((option, index) => {
-            const active = option.name === value;
-            return (
-              <button
-                key={option.name}
-                ref={(node) => { optionRefs.current[index] = node; }}
-                id={`${baseId}-persona-${index}`}
-                type="button"
-                role="option"
-                aria-selected={active}
-                tabIndex={-1}
-                className={active ? `${styles.option} ${styles.optionSelected}` : styles.option}
-                onClick={() => selectPersona(option.name)}
-                onKeyDown={(event) => handleOptionKeyDown(event, index)}
-              >
-                <span className={styles.optionHead}>
-                  <strong>{option.name}</strong>
-                  {active && <span className={styles.currentMark} aria-hidden="true">现用</span>}
-                </span>
-                <span className={styles.optionLine}>{option.line}</span>
-              </button>
-            );
-          })}
+        <div className={styles.menu}>
+          <p id={menuLabelId} className={styles.menuLabel}>换一种追问的性情</p>
+          <div id={menuId} className={styles.menuList} role="listbox" aria-labelledby={menuLabelId}>
+            {PERSONAS.map((option, index) => {
+              const active = option.name === value;
+              return (
+                <button
+                  key={option.name}
+                  ref={(node) => { optionRefs.current[index] = node; }}
+                  id={`${baseId}-persona-${index}`}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  tabIndex={-1}
+                  className={active ? `${styles.option} ${styles.optionSelected}` : styles.option}
+                  onClick={() => selectPersona(option.name)}
+                  onKeyDown={(event) => handleOptionKeyDown(event, index)}
+                >
+                  <span className={styles.optionHead}>
+                    <strong>{option.name}</strong>
+                    {active && <span className={styles.currentMark} aria-hidden="true">现用</span>}
+                  </span>
+                  <span className={styles.optionLine}>{option.line}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
       <span className={styles.liveStatus} aria-live="polite">当前性情：{value}</span>

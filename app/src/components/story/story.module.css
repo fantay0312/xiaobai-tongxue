@@ -105,10 +105,10 @@
 }
 
 .overlayClosing {
-  animation: scrimOut 240ms var(--ease-out) forwards;
+  animation: scrim-out 240ms var(--ease-out) forwards;
 }
 
-@keyframes scrimOut {
+@keyframes scrim-out {
   to { opacity: 0; }
 }
 

@@ -1980,11 +1980,13 @@
   --amber-wash: color-mix(in oklch, var(--star-sky-amber) 13%, transparent);
   --dust: color-mix(in oklch, var(--star-sky-muted) 58%, transparent);
   --shadow-paper: 0 14px 38px color-mix(in oklch, var(--star-sky-deep) 72%, transparent);
+
   position: absolute;
   top: clamp(8.75rem, 12vw, 10.75rem);
   right: clamp(0.75rem, 2vw, 1.25rem);
   z-index: 15;
   width: min(22rem, calc(100% - 2rem));
+  max-height: min(31rem, calc(100vh - var(--header-h) - 2rem));
   max-height: min(31rem, calc(100dvh - var(--header-h) - 2rem));
   overflow: auto;
   overscroll-behavior: contain;
@@ -2078,6 +2080,7 @@
 
 .evidenceClose {
   position: sticky;
+  top: 0;
   right: 0;
   display: grid;
   width: 2.75rem;

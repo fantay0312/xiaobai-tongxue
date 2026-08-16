@@ -52,6 +52,7 @@ assert.match(letterStyles, /@keyframes letter-sink/, '关帖必须有对应的�
 assert.match(shell, /const NAV_GROUPS:[\s\S]*?study[\s\S]*?growth[\s\S]*?teacher/, '三个主导航必须提供分区快跳');
 assert.match(shell, /aria-expanded=\{expanded\}/, '分区导航必须暴露 disclosure 状态');
 assert.match(shell, /event\.key !== 'Escape'/, '分区导航必须支持 Escape 关闭');
+assert.match(shell, /focus\(\{ preventScroll: true \}\)/, '章节菜单关闭后必须把键盘焦点还给触发按钮');
 assert.match(app, /new MutationObserver/, '跨路由锚点必须等待懒加载内容挂载');
 assert.match(app, /setTimeout\(\(\) => observer\.disconnect\(\), 10000\)/, '冷启动锚点等待期不得短于 10 秒');
 assert.match(app, /function decodeAnchorId[\s\S]*?try[\s\S]*?decodeURIComponent[\s\S]*?catch/, '畸形外部锚点不得让应用崩溃');
@@ -69,6 +70,7 @@ assert.doesNotMatch(achievement, /印面预览/, '印章册不得保留独立印
 assert.doesNotMatch(achievement, /scrollIntoView/, '印章条件卡不得把页面卷到底部');
 assert.match(achievement, /achievement-detail-\$\{id\}/, '每枚印章必须指向唯一条件卡');
 assert.match(achievement, /onPointerEnter[\s\S]*?onFocus[\s\S]*?onClick/, '印章条件卡必须支持悬停、焦点与点击');
+assert.match(achievementStyles, /\.detailTemporary\s*\{\s*pointer-events:\s*auto/, '悬停条件卡必须允许指针移入阅读');
 assert.match(achievement, /role="progressbar"/, '未解锁条件必须暴露语义进度');
 assert.match(achievementStyles, /\.detailPopover[\s\S]*?position:\s*absolute/, '印章条件卡必须贴近印章浮起');
 

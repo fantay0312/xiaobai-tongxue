@@ -20,6 +20,7 @@ const SEALS_PER_SPREAD = SEALS_PER_PAGE * PAGES_PER_SPREAD;
 const TURN_MS = 460;
 const DETAIL_GAP = 10;
 const DETAIL_VIEWPORT_MARGIN = 10;
+const TEMPORARY_CLOSE_MS = 140;
 
 const TIER_NAME: Record<Achievement['tier'], string> = {
   ink: '墨印',
@@ -139,7 +140,7 @@ interface SealButtonProps {
   active: boolean;
   buttonRef: (node: HTMLButtonElement | null) => void;
   onTemporaryOpen: (anchor: HTMLButtonElement, source: 'pointer' | 'focus') => void;
-  onTemporaryClose: (anchor: HTMLButtonElement) => void;
+  onTemporaryClose: (anchor: HTMLButtonElement, delayed?: boolean) => void;
   onPin: (anchor: HTMLButtonElement) => void;
 }
 
@@ -172,7 +173,7 @@ function SealButton({
         if (event.pointerType !== 'touch') onTemporaryOpen(event.currentTarget, 'pointer');
       }}
       onPointerLeave={(event) => {
-        if (event.pointerType !== 'touch') onTemporaryClose(event.currentTarget);
+        if (event.pointerType !== 'touch') onTemporaryClose(event.currentTarget, true);
       }}
       onFocus={(event) => onTemporaryOpen(event.currentTarget, 'focus')}
       onBlur={(event) => onTemporaryClose(event.currentTarget)}
@@ -291,6 +292,7 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
   const suppressFocusPreviewRef = useRef<string | null>(null);
   const focusFrameRef = useRef<number | null>(null);
   const turnTimerRef = useRef<number | null>(null);
+  const temporaryCloseTimerRef = useRef<number | null>(null);
   const earnedCount = achievements.filter((item) => item.earnedAt !== null).length;
   const pageCount = Math.max(1, Math.ceil(achievements.length / SEALS_PER_PAGE));
   const spreadCount = Math.max(1, Math.ceil(pageCount / PAGES_PER_SPREAD));
@@ -319,10 +321,17 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
     sealRefs.current.delete(id);
   }, []);
 
+  const cancelTemporaryClose = useCallback(() => {
+    if (temporaryCloseTimerRef.current === null) return;
+    window.clearTimeout(temporaryCloseTimerRef.current);
+    temporaryCloseTimerRef.current = null;
+  }, []);
+
   const dismissDetail = useCallback(() => {
+    cancelTemporaryClose();
     setActiveDetail(null);
     setDetailPosition(null);
-  }, []);
+  }, [cancelTemporaryClose]);
 
   const closeDetail = useCallback((restoreFocus = true) => {
     const closingId = activeDetail?.id ?? null;
@@ -345,30 +354,47 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
     anchor: HTMLButtonElement,
     source: 'pointer' | 'focus',
   ) => {
+    cancelTemporaryClose();
     sealRefs.current.set(id, anchor);
     if (source === 'focus' && suppressFocusPreviewRef.current === id) {
       suppressFocusPreviewRef.current = null;
       return;
     }
     setActiveDetail((current) => current?.mode === 'pinned' ? current : { id, mode: 'temporary' });
-  }, []);
+  }, [cancelTemporaryClose]);
 
-  const hideTemporaryDetail = useCallback((id: string, anchor: HTMLButtonElement) => {
-    setActiveDetail((current) => {
-      if (!current || current.mode === 'pinned' || current.id !== id) return current;
-      const anchorStillActive = document.activeElement === anchor || anchor.matches(':hover');
-      return anchorStillActive ? current : null;
-    });
-  }, []);
+  const hideTemporaryDetail = useCallback((
+    id: string,
+    anchor: HTMLButtonElement,
+    delayed = false,
+  ) => {
+    cancelTemporaryClose();
+    const finish = () => {
+      temporaryCloseTimerRef.current = null;
+      const anchorStillActive = document.activeElement === anchor
+        || anchor.matches(':hover')
+        || detailRef.current?.matches(':hover') === true;
+      setActiveDetail((current) => {
+        if (!current || current.mode === 'pinned' || current.id !== id) return current;
+        return anchorStillActive ? current : null;
+      });
+    };
+    if (!delayed) {
+      finish();
+      return;
+    }
+    temporaryCloseTimerRef.current = window.setTimeout(finish, TEMPORARY_CLOSE_MS);
+  }, [cancelTemporaryClose]);
 
   const pinDetail = useCallback((id: string, anchor: HTMLButtonElement) => {
+    cancelTemporaryClose();
     sealRefs.current.set(id, anchor);
     if (activeDetail?.id === id && activeDetail.mode === 'pinned') {
       closeDetail();
       return;
     }
     setActiveDetail({ id, mode: 'pinned' });
-  }, [activeDetail, closeDetail]);
+  }, [activeDetail, cancelTemporaryClose, closeDetail]);
 
   const measureDetail = useCallback(() => {
     const id = activeDetail?.id;
@@ -487,6 +513,7 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
   useEffect(() => () => {
     if (focusFrameRef.current !== null) window.cancelAnimationFrame(focusFrameRef.current);
     if (turnTimerRef.current !== null) window.clearTimeout(turnTimerRef.current);
+    if (temporaryCloseTimerRef.current !== null) window.clearTimeout(temporaryCloseTimerRef.current);
   }, []);
 
   const turnTo = (nextSpread: number) => {
@@ -505,6 +532,10 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
     if (!activeDetail) return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
+      if (activeDetail.mode === 'temporary') {
+        dismissDetail();
+        return;
+      }
       event.preventDefault();
       closeDetail();
     };
@@ -522,7 +553,7 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('pointerdown', onPointerDown);
     };
-  }, [activeDetail, closeDetail]);
+  }, [activeDetail, closeDetail, dismissDetail]);
 
   if (achievements.length === 0) return <p className={s.empty}>册页尚空——先去开一课，印章自会一枚枚落上来。</p>;
 
@@ -631,6 +662,14 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
               activeDetail?.mode === 'pinned' ? s.detailPinned : s.detailTemporary,
             ].filter(Boolean).join(' ')}
             style={detailStyle}
+            onPointerEnter={() => {
+              if (activeDetail?.mode === 'temporary') cancelTemporaryClose();
+            }}
+            onPointerLeave={(event) => {
+              if (event.pointerType === 'touch' || activeDetail?.mode !== 'temporary') return;
+              const anchor = sealRefs.current.get(activeAchievement.id);
+              if (anchor) hideTemporaryDetail(activeAchievement.id, anchor, true);
+            }}
           >
             <SealDetail
               achievement={activeAchievement}

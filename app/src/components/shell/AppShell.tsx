@@ -122,16 +122,24 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [openMenu]);
 
   const onSectionLinkClick = useCallback((to: string) => {
+    const menuKey = openMenu;
     setOpenMenu(null);
     const [targetPath, fragment] = to.split('#');
-    if (targetPath !== pathname || !fragment) return;
+    const restoreTriggerFocus = () => {
+      if (menuKey) document.getElementById(`nav-${menuKey}`)?.focus({ preventScroll: true });
+    };
+    if (targetPath !== pathname || !fragment) {
+      window.requestAnimationFrame(restoreTriggerFocus);
+      return;
+    }
     window.requestAnimationFrame(() => {
       document.getElementById(decodeURIComponent(fragment))?.scrollIntoView({
         behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
         block: 'start',
       });
+      restoreTriggerFocus();
     });
-  }, [pathname]);
+  }, [openMenu, pathname]);
 
   const shellVariantClass = boardMode
     ? `${styles.shell} ${styles.board}`

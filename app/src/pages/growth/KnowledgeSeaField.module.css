@@ -120,7 +120,7 @@
   height: 30px;
   border: 1px solid color-mix(in oklch, var(--sky-moon) 46%, transparent);
   border-radius: 50%;
-  box-shadow: 0 0 14px color-mix(in oklch, currentColor 20%, transparent);
+  box-shadow: 0 0 14px color-mix(in oklch, currentcolor 20%, transparent);
   opacity: 0;
   transform: scale(0.72);
   transition: opacity var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
@@ -286,7 +286,7 @@
   transform: scale(1.28);
   filter:
     drop-shadow(0 0 2px color-mix(in oklch, var(--sky-moon) 92%, transparent))
-    drop-shadow(0 0 9px color-mix(in oklch, currentColor 68%, transparent));
+    drop-shadow(0 0 9px color-mix(in oklch, currentcolor 68%, transparent));
 }
 
 .node[data-selected='true'] .nodeCopy {
