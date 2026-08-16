@@ -189,7 +189,7 @@ export default function TeacherPage() {
 
   return (
     <div className={s.page}>
-      <header className={`${s.head} ${s.rise}`} style={rise(0)}>
+      <header id="teacher-overview" className={`${s.head} ${s.rise}`} style={rise(0)}>
         <div>
           <p className={s.headKicker}>教务卷宗 · 弟子一名,逐课立档</p>
           <h1 className={s.title}>教务看板 · {[...new Set(TOPICS.map((t) => t.course))].join(' / ')}</h1>
@@ -231,7 +231,7 @@ export default function TeacherPage() {
       <div className={s.grid}>
         <div className={s.mainCol}>
           {/* ② 「讲不清」盲区榜 */}
-          <section className={`${s.section} ${s.rise}`} style={rise(2)}>
+          <section id="blind-spots" className={`${s.section} ${s.rise}`} style={rise(2)}>
             <h2 className={s.h2}><span className={s.secNo}>壹</span>「讲不清」盲区榜<small>全部复盘档案里小白还没懂的地方,按次计频</small></h2>
             {blindRows.length === 0 ? (
               <p className={s.emptyNote}>尚无盲区记录——开讲之后,这里会记下小白没听懂的地方。</p>
@@ -291,7 +291,7 @@ export default function TeacherPage() {
           </section>
 
           {/* ③ 知识点学情表 */}
-          <section className={`${s.section} ${s.rise}`} style={rise(3)}>
+          <section id="topic-progress" className={`${s.section} ${s.rise}`} style={rise(3)}>
             <h2 className={s.h2}><span className={s.secNo}>贰</span>知识点学情<small>每一行都由该主题的事件流重放得出</small></h2>
             <div className={s.tableWrap}>
               <table className={s.table}>
@@ -355,7 +355,7 @@ export default function TeacherPage() {
           </section>
 
           {/* ④ 心魔台账 —— 事后揭示面,可以点心魔名、引 belief 与注入台词 */}
-          <section className={`${s.section} ${s.rise}`} style={rise(4)}>
+          <section id="misconceptions" className={`${s.section} ${s.rise}`} style={rise(4)}>
             <h2 className={s.h2}><span className={s.secNo}>叁</span>心魔台账<small>每一条误区都是系统故意让小白说的,考的是你的纠错力</small></h2>
             {mcRows.length === 0 ? (
               <p className={s.emptyNote}>台账还空着——要点讲到位后,小白才会开始拿错误说法试探你。</p>
@@ -387,7 +387,7 @@ export default function TeacherPage() {
 
         <aside className={s.sideCol}>
           {/* ⑤ 近期会话 */}
-          <section className={`${s.section} ${s.rise}`} style={rise(2)}>
+          <section id="recent-sessions" className={`${s.section} ${s.rise}`} style={rise(2)}>
             <h2 className={s.h2}><span className={s.secNo}>肆</span>近期会话</h2>
             {recentReports.length === 0 ? (
               <p className={s.emptyNote}>还没有会话档案——第一课下课后,这里会替你收好每一份复盘。</p>

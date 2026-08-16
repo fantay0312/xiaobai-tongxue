@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import type { Achievement } from '../../engine/achievements';
 import { getTopic } from '../../data';
 import { Icon } from '../../components/ui/Icon';
@@ -10,12 +18,39 @@ const SEALS_PER_PAGE = 4;
 const PAGES_PER_SPREAD = 2;
 const SEALS_PER_SPREAD = SEALS_PER_PAGE * PAGES_PER_SPREAD;
 const TURN_MS = 460;
+const DETAIL_GAP = 10;
+const DETAIL_VIEWPORT_MARGIN = 10;
+const TEMPORARY_CLOSE_MS = 140;
 
 const TIER_NAME: Record<Achievement['tier'], string> = {
   ink: '墨印',
   cinnabar: '朱印',
   gold: '金印',
 };
+
+type DetailMode = 'temporary' | 'pinned';
+type DetailPlacement = 'above' | 'below';
+
+interface ActiveDetail {
+  id: string;
+  mode: DetailMode;
+}
+
+interface DetailPosition {
+  top: number;
+  left: number;
+  pointerX: number;
+  placement: DetailPlacement;
+}
+
+type DetailStyle = CSSProperties & { '--detail-pointer-x'?: string };
+
+const sealButtonId = (id: string): string => `achievement-seal-${id}`;
+const sealDetailId = (id: string): string => `achievement-detail-${id}`;
+const sealDetailTitleId = (id: string): string => `achievement-detail-title-${id}`;
+
+const clamp = (value: number, min: number, max: number): number =>
+  Math.min(Math.max(value, min), Math.max(min, max));
 
 function SealTextureDefs() {
   return (
@@ -102,11 +137,23 @@ interface SealButtonProps {
   achievement: Achievement;
   celebrating: boolean;
   pending: boolean;
-  open: boolean;
-  onToggle: (fromKeyboard: boolean) => void;
+  active: boolean;
+  buttonRef: (node: HTMLButtonElement | null) => void;
+  onTemporaryOpen: (anchor: HTMLButtonElement, source: 'pointer' | 'focus') => void;
+  onTemporaryClose: (anchor: HTMLButtonElement, delayed?: boolean) => void;
+  onPin: (anchor: HTMLButtonElement) => void;
 }
 
-function SealButton({ achievement, celebrating, pending, open, onToggle }: SealButtonProps) {
+function SealButton({
+  achievement,
+  celebrating,
+  pending,
+  active,
+  buttonRef,
+  onTemporaryOpen,
+  onTemporaryClose,
+  onPin,
+}: SealButtonProps) {
   const earned = achievement.earnedAt !== null;
   const progress = achievement.progress.target > 0
     ? Math.min(100, (achievement.progress.now / achievement.progress.target) * 100)
@@ -114,13 +161,23 @@ function SealButton({ achievement, celebrating, pending, open, onToggle }: SealB
 
   return (
     <button
-      id={`achievement-${achievement.id}`}
+      ref={buttonRef}
+      id={sealButtonId(achievement.id)}
       type="button"
-      aria-expanded={open}
-      aria-controls="achievement-detail"
-      aria-label={earned ? `${achievement.name}，已钤印` : `${achievement.name}，进度 ${achievement.progress.now}/${achievement.progress.target}`}
-      className={`${s.seal} ${s[`tier${achievement.tier}`]} ${earned ? s.earned : s.locked} ${open ? s.sealOpen : ''} ${pending ? motion.pending : ''} ${celebrating ? motion.celebrating : ''}`}
-      onClick={(event) => onToggle(event.detail === 0)}
+      data-achievement-seal={achievement.id}
+      aria-expanded={active}
+      aria-controls={sealDetailId(achievement.id)}
+      aria-label={`${earned ? `${achievement.name}，已钤印` : `${achievement.name}，进度 ${achievement.progress.now}/${achievement.progress.target}`}，按回车固定条件卡`}
+      className={`${s.seal} ${s[`tier${achievement.tier}`]} ${earned ? s.earned : s.locked} ${active ? s.sealOpen : ''} ${pending ? motion.pending : ''} ${celebrating ? motion.celebrating : ''}`}
+      onPointerEnter={(event) => {
+        if (event.pointerType !== 'touch') onTemporaryOpen(event.currentTarget, 'pointer');
+      }}
+      onPointerLeave={(event) => {
+        if (event.pointerType !== 'touch') onTemporaryClose(event.currentTarget, true);
+      }}
+      onFocus={(event) => onTemporaryOpen(event.currentTarget, 'focus')}
+      onBlur={(event) => onTemporaryClose(event.currentTarget)}
+      onClick={(event) => onPin(event.currentTarget)}
     >
       <span className={s.sealWash} aria-hidden="true" />
       <span className={s.sealMeta}>
@@ -149,48 +206,93 @@ function fmtDateTime(iso: string): string {
   });
 }
 
-function SealDetail({ achievement, onClose }: { achievement: Achievement; onClose: () => void }) {
+function SealDetail({
+  achievement,
+  pinned,
+  onClose,
+}: {
+  achievement: Achievement;
+  pinned: boolean;
+  onClose: () => void;
+}) {
   const earned = achievement.earnedAt !== null;
+  const target = Math.max(1, achievement.progress.target);
+  const remaining = Math.max(0, target - achievement.progress.now);
+  const progress = Math.min(100, Math.max(0, (achievement.progress.now / target) * 100));
   // 印记来历:落印那一刻触发事件所属的课(仅实印显示,虚位无来历)
   const fromTopic = earned && achievement.triggerTopicId
     ? getTopic(achievement.triggerTopicId)?.title ?? null
     : null;
+
   return (
-    <div className={`${s.sealDetail} ${s[`tier${achievement.tier}`]} ${earned ? s.earned : s.locked}`}>
-      <div className={s.previewHead}>
-        <span>印面预览</span>
-        <button type="button" className={s.previewClose} onClick={onClose} aria-label="收起印章预览">
-          <Icon name="x" size={16} />
-        </button>
-      </div>
-      <div className={s.previewArtwork}>
-        <SealArtwork achievement={achievement} earned={earned} />
-      </div>
+    <aside
+      id={sealDetailId(achievement.id)}
+      className={`${s.sealDetail} ${s[`tier${achievement.tier}`]} ${earned ? s.earned : s.locked}`}
+      role="region"
+      aria-labelledby={sealDetailTitleId(achievement.id)}
+    >
+      <header className={s.detailHead}>
+        <span>印章档案</span>
+        <span className={s.detailState}>{TIER_NAME[achievement.tier]} · {earned ? '已入谱' : '待落印'}</span>
+        {pinned ? (
+          <button type="button" className={s.detailClose} onClick={onClose} aria-label={`收起${achievement.name}条件卡`}>
+            <Icon name="x" size={16} />
+          </button>
+        ) : <span className={s.temporaryHint} aria-hidden="true">移开即收起</span>}
+      </header>
       <div className={s.detailBody}>
-        <p className={s.sealDetailName}>{achievement.name}<span> · {TIER_NAME[achievement.tier]}{earned ? '' : '虚位'}</span></p>
-        <p className={s.sealDetailDesc}>{achievement.desc}</p>
-        <p className={s.sealDetailEvidence}>
-          {earned ? (achievement.evidence ?? '印已钤下。') : <>尚差 <b>{Math.max(0, achievement.progress.target - achievement.progress.now)}</b> 步，印位暂留。</>}
-          {achievement.earnedAt ? <span> · {fmtDateTime(achievement.earnedAt)} 钤印</span> : null}
-        </p>
-        {fromTopic ? <p className={s.sealDetailFrom}>出自〈{fromTopic}〉</p> : null}
+        <h3 id={sealDetailTitleId(achievement.id)} className={s.sealDetailName}>{achievement.name}</h3>
+        <p className={s.sealDetailDesc}><span>达成条件</span>{achievement.desc}</p>
+        <dl className={s.detailLedger}>
+          <div>
+            <dt>进度</dt>
+            <dd>
+              <span className={s.detailProgressCopy}>
+                <b>{achievement.progress.now}</b> / {target}
+                <small>{earned ? '已达成' : `尚差 ${remaining}`}</small>
+              </span>
+              <span
+                className={s.detailProgressBar}
+                role="progressbar"
+                aria-label={`${achievement.name}达成进度`}
+                aria-valuemin={0}
+                aria-valuemax={target}
+                aria-valuenow={Math.min(target, achievement.progress.now)}
+                aria-valuetext={earned ? '已达成' : `尚差 ${remaining}`}
+              >
+                <span style={{ transform: `scaleX(${progress / 100})` }} />
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt>证据</dt>
+            <dd>{earned ? (achievement.evidence ?? '已达成，触发证据待补录。') : '尚未落印；达成时将记录触发证据。'}</dd>
+          </div>
+          <div>
+            <dt>来源</dt>
+            <dd>
+              {fromTopic ? `课堂〈${fromTopic}〉` : earned ? '全局学习履历' : '尚未落印'}
+              {achievement.earnedAt ? <time dateTime={achievement.earnedAt}> · {fmtDateTime(achievement.earnedAt)}</time> : null}
+            </dd>
+          </div>
+        </dl>
       </div>
-    </div>
+    </aside>
   );
 }
 
 export function AchievementWall({ achievements, litStars }: { achievements: Achievement[]; litStars?: number }) {
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [activeDetail, setActiveDetail] = useState<ActiveDetail | null>(null);
+  const [detailPosition, setDetailPosition] = useState<DetailPosition | null>(null);
   const [spreadIndex, setSpreadIndex] = useState(0);
   const [turnDirection, setTurnDirection] = useState<'next' | 'prev' | null>(null);
+  const albumBodyRef = useRef<HTMLDivElement | null>(null);
   const detailRef = useRef<HTMLDivElement | null>(null);
-  const scrollTimerRef = useRef<number | null>(null);
+  const sealRefs = useRef(new Map<string, HTMLButtonElement>());
+  const suppressFocusPreviewRef = useRef<string | null>(null);
+  const focusFrameRef = useRef<number | null>(null);
   const turnTimerRef = useRef<number | null>(null);
-  const cancelPreviewScroll = useCallback(() => {
-    if (scrollTimerRef.current === null) return;
-    window.clearTimeout(scrollTimerRef.current);
-    scrollTimerRef.current = null;
-  }, []);
+  const temporaryCloseTimerRef = useRef<number | null>(null);
   const earnedCount = achievements.filter((item) => item.earnedAt !== null).length;
   const pageCount = Math.max(1, Math.ceil(achievements.length / SEALS_PER_PAGE));
   const spreadCount = Math.max(1, Math.ceil(pageCount / PAGES_PER_SPREAD));
@@ -205,14 +307,147 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
   });
   const visibleSealIds = spreadPages.flatMap((page) => page.achievements.map((item) => item.id));
   const { celebratingId, pendingIds } = useSealCeremony(achievements, visibleSealIds);
-  const openAchievement = achievements.find((item) => item.id === openId) ?? null;
-  const lastOpenRef = useRef<Achievement | null>(null);
-  if (openAchievement) lastOpenRef.current = openAchievement;
-  const shownAchievement = openAchievement ?? lastOpenRef.current;
+  const activeAchievement = achievements.find((item) => item.id === activeDetail?.id) ?? null;
   const celebratingAchievement = useMemo(
     () => achievements.find((item) => item.id === celebratingId) ?? null,
     [achievements, celebratingId],
   );
+
+  const registerSeal = useCallback((id: string, node: HTMLButtonElement | null) => {
+    if (node) {
+      sealRefs.current.set(id, node);
+      return;
+    }
+    sealRefs.current.delete(id);
+  }, []);
+
+  const cancelTemporaryClose = useCallback(() => {
+    if (temporaryCloseTimerRef.current === null) return;
+    window.clearTimeout(temporaryCloseTimerRef.current);
+    temporaryCloseTimerRef.current = null;
+  }, []);
+
+  const dismissDetail = useCallback(() => {
+    cancelTemporaryClose();
+    setActiveDetail(null);
+    setDetailPosition(null);
+  }, [cancelTemporaryClose]);
+
+  const closeDetail = useCallback((restoreFocus = true) => {
+    const closingId = activeDetail?.id ?? null;
+    dismissDetail();
+    if (!closingId || !restoreFocus) return;
+    if (focusFrameRef.current !== null) window.cancelAnimationFrame(focusFrameRef.current);
+    focusFrameRef.current = window.requestAnimationFrame(() => {
+      const anchor = sealRefs.current.get(closingId);
+      if (anchor?.isConnected) {
+        suppressFocusPreviewRef.current = closingId;
+        anchor.focus({ preventScroll: true });
+        suppressFocusPreviewRef.current = null;
+      }
+      focusFrameRef.current = null;
+    });
+  }, [activeDetail?.id, dismissDetail]);
+
+  const showTemporaryDetail = useCallback((
+    id: string,
+    anchor: HTMLButtonElement,
+    source: 'pointer' | 'focus',
+  ) => {
+    cancelTemporaryClose();
+    sealRefs.current.set(id, anchor);
+    if (source === 'focus' && suppressFocusPreviewRef.current === id) {
+      suppressFocusPreviewRef.current = null;
+      return;
+    }
+    setActiveDetail((current) => current?.mode === 'pinned' ? current : { id, mode: 'temporary' });
+  }, [cancelTemporaryClose]);
+
+  const hideTemporaryDetail = useCallback((
+    id: string,
+    anchor: HTMLButtonElement,
+    delayed = false,
+  ) => {
+    cancelTemporaryClose();
+    const finish = () => {
+      temporaryCloseTimerRef.current = null;
+      const anchorStillActive = document.activeElement === anchor
+        || anchor.matches(':hover')
+        || detailRef.current?.matches(':hover') === true;
+      setActiveDetail((current) => {
+        if (!current || current.mode === 'pinned' || current.id !== id) return current;
+        return anchorStillActive ? current : null;
+      });
+    };
+    if (!delayed) {
+      finish();
+      return;
+    }
+    temporaryCloseTimerRef.current = window.setTimeout(finish, TEMPORARY_CLOSE_MS);
+  }, [cancelTemporaryClose]);
+
+  const pinDetail = useCallback((id: string, anchor: HTMLButtonElement) => {
+    cancelTemporaryClose();
+    sealRefs.current.set(id, anchor);
+    if (activeDetail?.id === id && activeDetail.mode === 'pinned') {
+      closeDetail();
+      return;
+    }
+    setActiveDetail({ id, mode: 'pinned' });
+  }, [activeDetail, cancelTemporaryClose, closeDetail]);
+
+  const measureDetail = useCallback(() => {
+    const id = activeDetail?.id;
+    const body = albumBodyRef.current;
+    const detail = detailRef.current;
+    const anchor = id ? sealRefs.current.get(id) : null;
+    if (!body || !detail || !anchor) return;
+
+    const bodyRect = body.getBoundingClientRect();
+    const anchorRect = anchor.getBoundingClientRect();
+    const detailRect = detail.getBoundingClientRect();
+    const compact = window.matchMedia('(max-width: 560px)').matches;
+    const inset = compact ? 6 : 10;
+    const spaceBelow = window.innerHeight - anchorRect.bottom - DETAIL_GAP - DETAIL_VIEWPORT_MARGIN;
+    const spaceAbove = anchorRect.top - DETAIL_GAP - DETAIL_VIEWPORT_MARGIN;
+    const placement: DetailPlacement = spaceBelow >= detailRect.height || spaceBelow >= spaceAbove
+      ? 'below'
+      : 'above';
+    const idealTop = placement === 'below'
+      ? anchorRect.bottom + DETAIL_GAP
+      : anchorRect.top - detailRect.height - DETAIL_GAP;
+    const topInViewport = clamp(
+      idealTop,
+      DETAIL_VIEWPORT_MARGIN,
+      window.innerHeight - detailRect.height - DETAIL_VIEWPORT_MARGIN,
+    );
+    const idealLeft = anchorRect.left + anchorRect.width / 2 - detailRect.width / 2;
+    const leftInViewport = clamp(
+      idealLeft,
+      bodyRect.left + inset,
+      bodyRect.right - detailRect.width - inset,
+    );
+    const nextPosition: DetailPosition = {
+      top: Math.round(topInViewport - bodyRect.top),
+      left: Math.round(leftInViewport - bodyRect.left),
+      pointerX: Math.round(clamp(
+        anchorRect.left + anchorRect.width / 2 - leftInViewport,
+        18,
+        detailRect.width - 18,
+      )),
+      placement,
+    };
+
+    setDetailPosition((current) => (
+      current
+      && current.top === nextPosition.top
+      && current.left === nextPosition.left
+      && current.pointerX === nextPosition.pointerX
+      && current.placement === nextPosition.placement
+        ? current
+        : nextPosition
+    ));
+  }, [activeDetail?.id]);
 
   useEffect(() => {
     if (spreadIndex < spreadCount) return;
@@ -220,13 +455,52 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
   }, [spreadCount, spreadIndex]);
 
   useEffect(() => {
+    if (!activeDetail || activeAchievement) return;
+    dismissDetail();
+  }, [activeAchievement, activeDetail, dismissDetail]);
+
+  useLayoutEffect(() => {
+    if (!activeAchievement) {
+      setDetailPosition(null);
+      return;
+    }
+    measureDetail();
+  }, [activeAchievement, activeDetail?.mode, measureDetail]);
+
+  useEffect(() => {
+    if (!activeAchievement) return undefined;
+    let positionFrame: number | null = null;
+    const scheduleMeasure = () => {
+      if (positionFrame !== null) window.cancelAnimationFrame(positionFrame);
+      positionFrame = window.requestAnimationFrame(() => {
+        measureDetail();
+        positionFrame = null;
+      });
+    };
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(scheduleMeasure);
+    if (observer) {
+      if (albumBodyRef.current) observer.observe(albumBodyRef.current);
+      if (detailRef.current) observer.observe(detailRef.current);
+      const anchor = sealRefs.current.get(activeAchievement.id);
+      if (anchor) observer.observe(anchor);
+    }
+    window.addEventListener('resize', scheduleMeasure);
+    window.addEventListener('scroll', scheduleMeasure, true);
+    return () => {
+      if (positionFrame !== null) window.cancelAnimationFrame(positionFrame);
+      observer?.disconnect();
+      window.removeEventListener('resize', scheduleMeasure);
+      window.removeEventListener('scroll', scheduleMeasure, true);
+    };
+  }, [activeAchievement, measureDetail]);
+
+  useEffect(() => {
     const pendingAchievement = achievements.find((item) => pendingIds.has(item.id));
     if (!pendingAchievement) return;
     const pendingIndex = achievements.findIndex((item) => item.id === pendingAchievement.id);
     const targetSpread = Math.floor(pendingIndex / SEALS_PER_SPREAD);
     if (targetSpread === spreadIndex) return;
-    cancelPreviewScroll();
-    setOpenId(null);
+    dismissDetail();
     setTurnDirection(targetSpread > spreadIndex ? 'next' : 'prev');
     setSpreadIndex(targetSpread);
     if (turnTimerRef.current !== null) window.clearTimeout(turnTimerRef.current);
@@ -234,17 +508,17 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
       setTurnDirection(null);
       turnTimerRef.current = null;
     }, TURN_MS);
-  }, [achievements, cancelPreviewScroll, pendingIds, spreadIndex]);
+  }, [achievements, dismissDetail, pendingIds, spreadIndex]);
 
   useEffect(() => () => {
-    cancelPreviewScroll();
+    if (focusFrameRef.current !== null) window.cancelAnimationFrame(focusFrameRef.current);
     if (turnTimerRef.current !== null) window.clearTimeout(turnTimerRef.current);
-  }, [cancelPreviewScroll]);
+    if (temporaryCloseTimerRef.current !== null) window.clearTimeout(temporaryCloseTimerRef.current);
+  }, []);
 
   const turnTo = (nextSpread: number) => {
     if (nextSpread < 0 || nextSpread >= spreadCount || nextSpread === spreadIndex) return;
-    cancelPreviewScroll();
-    setOpenId(null);
+    dismissDetail();
     setTurnDirection(nextSpread > spreadIndex ? 'next' : 'prev');
     setSpreadIndex(nextSpread);
     if (turnTimerRef.current !== null) window.clearTimeout(turnTimerRef.current);
@@ -254,41 +528,40 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
     }, TURN_MS);
   };
 
-  const toggleAchievement = (id: string, fromKeyboard: boolean) => {
-    const nextId = openId === id ? null : id;
-    setOpenId(nextId);
-    cancelPreviewScroll();
-    if (!nextId) return;
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const scrollImmediately = reduceMotion || fromKeyboard;
-    scrollTimerRef.current = window.setTimeout(() => {
-      detailRef.current?.scrollIntoView({ behavior: scrollImmediately ? 'auto' : 'smooth', block: 'nearest' });
-      scrollTimerRef.current = null;
-    }, scrollImmediately ? 0 : 360);
-  };
-
-  const closePreview = useCallback(() => {
-    const closingId = openId;
-    cancelPreviewScroll();
-    setOpenId(null);
-    if (!closingId) return;
-    window.requestAnimationFrame(() => {
-      document.getElementById(`achievement-${closingId}`)?.focus();
-    });
-  }, [cancelPreviewScroll, openId]);
-
   useEffect(() => {
-    if (!openId) return undefined;
+    if (!activeDetail) return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
+      if (activeDetail.mode === 'temporary') {
+        dismissDetail();
+        return;
+      }
       event.preventDefault();
-      closePreview();
+      closeDetail();
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (activeDetail.mode !== 'pinned') return;
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      const anchor = sealRefs.current.get(activeDetail.id);
+      if (detailRef.current?.contains(target) || anchor?.contains(target)) return;
+      closeDetail(false);
     };
     document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [closePreview, openId]);
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [activeDetail, closeDetail, dismissDetail]);
 
   if (achievements.length === 0) return <p className={s.empty}>册页尚空——先去开一课，印章自会一枚枚落上来。</p>;
+
+  const detailStyle: DetailStyle = detailPosition ? {
+    top: detailPosition.top,
+    left: detailPosition.left,
+    '--detail-pointer-x': `${detailPosition.pointerX}px`,
+  } : {};
 
   return (
     <div className={s.album}>
@@ -298,14 +571,14 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
         <span className={s.spineCount}><b>{earnedCount}</b><small>实印</small></span>
         <span className={s.spineSeal}>藏</span>
       </aside>
-      <div className={s.albumBody}>
+      <div ref={albumBodyRef} className={s.albumBody}>
         <div className={s.albumNote}>
           <p>
             {earnedCount === 0 ? '章坯已备，只等课堂把它们一枚枚唤醒。' : '每一道缺口、每一处浓淡，都对应一段真实课堂。'}
             {/* 叙事桥:印章册反指星图——同一套成就,一屏落印、一屏点亮 */}
             {typeof litStars === 'number' && litStars > 0 ? <em className={s.albumStars}>星海里已点亮 {litStars} 星。</em> : null}
           </p>
-          <span>{earnedCount}/{achievements.length} · 点印预览，左右翻页</span>
+          <span>{earnedCount}/{achievements.length} · 悬停查看，点印固定</span>
         </div>
         <div className={s.ceremonySlot}>
           {celebratingAchievement ? (
@@ -365,8 +638,11 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
                     achievement={achievement}
                     celebrating={achievement.id === celebratingId}
                     pending={pendingIds.has(achievement.id)}
-                    open={achievement.id === openId}
-                    onToggle={(fromKeyboard) => toggleAchievement(achievement.id, fromKeyboard)}
+                    active={achievement.id === activeDetail?.id}
+                    buttonRef={(node) => registerSeal(achievement.id, node)}
+                    onTemporaryOpen={(anchor, source) => showTemporaryDetail(achievement.id, anchor, source)}
+                    onTemporaryClose={(anchor) => hideTemporaryDetail(achievement.id, anchor)}
+                    onPin={(anchor) => pinDetail(achievement.id, anchor)}
                   />
                 ))}
               </div>
@@ -375,11 +651,33 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
           ))}
         </div>
 
-        <div className={`${s.detailCollapse} ${openAchievement ? s.detailOpen : ''}`}>
-          <div ref={detailRef} id="achievement-detail" role="region" aria-labelledby={shownAchievement ? `achievement-${shownAchievement.id}` : undefined} inert={!openAchievement}>
-            {shownAchievement ? <SealDetail achievement={shownAchievement} onClose={closePreview} /> : null}
+        {activeAchievement ? (
+          <div
+            key={activeAchievement.id}
+            ref={detailRef}
+            className={[
+              s.detailPopover,
+              detailPosition ? s.detailPositioned : '',
+              detailPosition?.placement === 'above' ? s.detailAbove : s.detailBelow,
+              activeDetail?.mode === 'pinned' ? s.detailPinned : s.detailTemporary,
+            ].filter(Boolean).join(' ')}
+            style={detailStyle}
+            onPointerEnter={() => {
+              if (activeDetail?.mode === 'temporary') cancelTemporaryClose();
+            }}
+            onPointerLeave={(event) => {
+              if (event.pointerType === 'touch' || activeDetail?.mode !== 'temporary') return;
+              const anchor = sealRefs.current.get(activeAchievement.id);
+              if (anchor) hideTemporaryDetail(activeAchievement.id, anchor, true);
+            }}
+          >
+            <SealDetail
+              achievement={activeAchievement}
+              pinned={activeDetail?.mode === 'pinned'}
+              onClose={() => closeDetail()}
+            />
           </div>
-        </div>
+        ) : null}
       </div>
     </div>
   );

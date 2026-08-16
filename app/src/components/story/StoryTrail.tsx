@@ -3,6 +3,7 @@
  * 只落一枚朱文小印 + 当前回目;卷名与旁白均已删(用户定案),不铺整卷回目。
  * 路径不命中任何篇章时整条不渲染;讲解舱路由走 .board 黑板变体。
  */
+import { useEffect, useState } from 'react';
 import styles from './storyTrail.module.css';
 
 interface StoryStage {
@@ -23,6 +24,14 @@ const STAGES: StoryStage[] = [
 
 export function StoryTrail({ pathname, board = false }: { pathname: string; board?: boolean }) {
   const active = STAGES.findIndex((stage) => stage.test.test(pathname));
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (active < 0) return undefined;
+    const timer = window.setTimeout(() => setCollapsed(true), 5000);
+    return () => window.clearTimeout(timer);
+  }, [active]);
+
   if (active < 0) return null;
 
   const current = STAGES[active];
@@ -31,12 +40,16 @@ export function StoryTrail({ pathname, board = false }: { pathname: string; boar
     <section
       className={`${styles.wrap} ${board ? styles.board : ''}`}
       aria-label={`师徒一课，当前篇章：${current.chapter}，${current.label}`}
+      aria-hidden={collapsed || undefined}
+      data-collapsed={collapsed || undefined}
     >
-      <div className={styles.inner}>
-        <p className={styles.current}>
-          <span className={styles.chapter} aria-hidden="true">{current.chapter}</span>
-          <strong className={styles.label}>{current.label}</strong>
-        </p>
+      <div className={styles.clip}>
+        <div className={styles.inner}>
+          <p className={styles.current}>
+            <span className={styles.chapter} aria-hidden="true">{current.chapter}</span>
+            <strong className={styles.label}>{current.label}</strong>
+          </p>
+        </div>
       </div>
     </section>
   );

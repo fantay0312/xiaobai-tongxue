@@ -104,6 +104,14 @@
   }
 }
 
+.overlayClosing {
+  animation: scrim-out 240ms var(--ease-out) forwards;
+}
+
+@keyframes scrim-out {
+  to { opacity: 0; }
+}
+
 /* 信帖本体:一张待检的邀请票——票根存根(帖名戳)+ 撕票线 + 手写正文;
    margin auto 让长信在小视口可整封滚动 */
 .letterCard {
@@ -121,28 +129,39 @@
     inset 0 0 0 5px var(--paper-warm),
     inset 0 0 0 6px var(--paper-edge),
     var(--shadow-lift);
-  animation: unfold var(--t-slow) var(--ease-out) backwards;
+  transform-origin: 50% 100%;
+  animation: letter-rise var(--t-slow) var(--ease-out) backwards;
 }
 
-/* 信笺展开:自帖名一端向下揭开,末段轻轻落定(backwards 而非 both,不压交互态) */
-@keyframes unfold {
+/* 信笺像从案头底沿被唤起:只动 transform/opacity,落点稳而不弹跳。 */
+@keyframes letter-rise {
   from {
-    clip-path: inset(0 0 86% 0 round var(--radius));
-    transform: translateY(-12px) rotate(-1deg);
-  }
-  60% {
-    clip-path: inset(0 0 0 0 round var(--radius));
+    opacity: 0;
+    transform: translate3d(0, 5rem, 0) scale(0.94);
   }
   to {
-    clip-path: inset(0 0 0 0 round var(--radius));
+    opacity: 1;
     transform: none;
+  }
+}
+
+.letterCardClosing {
+  animation: letter-sink 240ms var(--ease-out) forwards;
+}
+
+@keyframes letter-sink {
+  to {
+    opacity: 0;
+    transform: translate3d(0, 3.5rem, 0) scale(0.96);
   }
 }
 
 /* 减动效:整封信直接现形,不展开、不叠加全局 0.01ms 空转 */
 @media (prefers-reduced-motion: reduce) {
   .overlay,
-  .letterCard {
+  .letterCard,
+  .overlayClosing,
+  .letterCardClosing {
     animation: none;
   }
 }

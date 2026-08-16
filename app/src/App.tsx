@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigationType } from 'react-router';
 import { AppShell } from './components/shell/AppShell';
 import { RequireAuth } from './components/shell/RequireAuth';
+import { useReducedMotion } from './hooks/useReducedMotion';
 import { useAuthStore } from './store/authStore';
 import {
   AUTH_EXPIRED_EVENT, EMAIL_BINDING_REQUIRED_EVENT, PHONE_BINDING_REQUIRED_EVENT,
@@ -18,13 +19,56 @@ const GrowthPage = lazy(() => import('./pages/growth'));
 const TeacherPage = lazy(() => import('./pages/teacher'));
 const LoginPage = lazy(() => import('./pages/login'));
 
-/** HashRouter 不自带滚动恢复:前进式导航滚回顶部;浏览器后退/前进(POP)交还给原生滚动恢复 */
-function ScrollToTop() {
-  const { pathname } = useLocation();
+function decodeAnchorId(hash: string): string | null {
+  try {
+    return decodeURIComponent(hash.slice(1)) || null;
+  } catch {
+    return null;
+  }
+}
+
+/** HashRouter 不自带锚点/滚动恢复:锚点等懒加载内容挂载后落位,普通前进导航回顶部。 */
+function RouteScrollManager() {
+  const { pathname, hash } = useLocation();
   const navType = useNavigationType();
+  const reducedMotion = useReducedMotion();
+
   useEffect(() => {
-    if (navType !== 'POP') window.scrollTo(0, 0);
-  }, [pathname, navType]);
+    if (!hash) {
+      if (navType !== 'POP') window.scrollTo({ top: 0, behavior: 'auto' });
+      return undefined;
+    }
+
+    const targetId = decodeAnchorId(hash);
+    if (!targetId) return undefined;
+    let finished = false;
+    const scrollToTarget = () => {
+      const target = document.getElementById(targetId);
+      if (!target) return false;
+      finished = true;
+      target.scrollIntoView({
+        behavior: reducedMotion ? 'auto' : 'smooth',
+        block: 'start',
+      });
+      return true;
+    };
+
+    const frame = window.requestAnimationFrame(() => {
+      if (scrollToTarget()) observer.disconnect();
+    });
+    const observer = new MutationObserver(() => {
+      if (scrollToTarget()) observer.disconnect();
+    });
+    const root = document.getElementById('root');
+    if (root) observer.observe(root, { childList: true, subtree: true });
+    const timeout = window.setTimeout(() => observer.disconnect(), 10000);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timeout);
+      if (!finished) observer.disconnect();
+    };
+  }, [hash, navType, pathname, reducedMotion]);
   return null;
 }
 
@@ -77,7 +121,7 @@ export default function App() {
 
   return (
     <AppShell>
-      <ScrollToTop />
+      <RouteScrollManager />
       {resolvingBusinessAccess ? (
         <div className="route-loader" role="status" aria-live="polite">正在确认账号安全状态…</div>
       ) : forcePhoneBinding ? (

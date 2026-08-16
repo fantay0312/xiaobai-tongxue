@@ -32,6 +32,7 @@
   border-bottom: 1px solid var(--line-strong);
   padding-bottom: var(--gap);
   margin-bottom: var(--gap);
+  scroll-margin-top: calc(var(--header-h) + var(--gap-tight));
 }
 
 /* 卷宗题头墨骨:通栏 hairline 上压一段 2px 墨色短线(登记簿的界栏起手 tick) */
@@ -227,7 +228,11 @@
 .mainCol, .sideCol { min-width: 0; }
 
 /* 报表节奏:节间距收到 2rem 定值——数据密度优先,疏朗留给列缝 */
-.section { margin-bottom: calc(var(--gap) + var(--gap-tight)); min-width: 0; }
+.section {
+  min-width: 0;
+  margin-bottom: calc(var(--gap) + var(--gap-tight));
+  scroll-margin-top: calc(var(--header-h) + var(--gap-tight));
+}
 
 /* 分节题:双线书版式(R2)——通栏 hairline 收底,再压一段 2px 墨色短线作骨,编号小印领头 */
 .h2 {

@@ -3,10 +3,10 @@
   border-radius: var(--radius);
 }
 .chart {
-  --sky-deep: #101823;
-  --sky-moon: #f6ead0;
-  --sky-muted: #b9b5a9;
-  --sky-blue: #8eb8d2;
+  --sky-deep: var(--star-sky-deep);
+  --sky-moon: var(--star-sky-moon);
+  --sky-muted: var(--star-sky-muted);
+  --sky-blue: var(--star-sky-blue);
   position: relative;
   isolation: isolate;
   padding: clamp(1rem, 2.2vw, 1.65rem);

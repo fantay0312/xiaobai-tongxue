@@ -34,14 +34,13 @@ export function nextStep(input: JourneyInput): JourneyStep {
   const { events, reports, topicStates, topics } = input;
   const open = topics.filter((t) => !t.locked);
 
-  // 1. 白纸一张:先去备第一门课
+  // 1. 白纸一张:先去书架选课,不替用户默认一门课
   if (events.length === 0) {
-    const first = open[0];
     return {
       key: 'first-prep', title: '开馆',
       line: '小白搬好了小板凳,眼巴巴等着你的第一堂课。',
-      to: first ? `/prep/${first.topicId}` : '/study',
-      cta: '去备第一课',
+      to: '/study#shelf',
+      cta: '去书架选课',
     };
   }
 

@@ -1,6 +1,6 @@
 /**
  * 成长页 /growth —— 一本真正的「成长册」,按书卷编次:
- * 卷首·师徒(小白科名阶梯+人格+师道称号印+下一步) / 卷一·印章册 / 卷二·教学编年史 /
+ * 卷首·师徒(左档案性情选择+小白科名阶梯+右侧师道称号印与下一步) / 卷一·印章册 / 卷二·教学编年史 /
  * 卷三·学问星海(遗忘的知识点化作「小白的来信」信笺) / 卷四·金句画廊 /
  * 卷五·小白的记忆(四层记忆匣,engine/recall 派生) / 卷尾·小白眼里的你(印象句+可复算出处)。
  * 数据全部真实派生:印章与师道称号来自 engine/achievements,下一步来自 engine/journey,
@@ -31,16 +31,11 @@ import { Icon } from '../../components/ui/Icon';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { KnowledgeMap, type MapNode, type NodeStatus } from './KnowledgeMap';
 import { AchievementWall } from './AchievementWall';
+import { PersonaPicker } from './PersonaPicker';
 import paper from '../../styles/paper.module.css';
 import s from './growth.module.css';
 
 const DREAM_GOAL = 5;
-
-const PERSONAS: { name: Persona; line: string }[] = [
-  { name: '好奇型', line: '「哇,为什么会这样?然后呢然后呢?」' },
-  { name: '严谨型', line: '「等等,这个说法有依据吗?边界在哪儿?」' },
-  { name: '杠精型', line: '「我不信。你要是对的,这段代码怎么解释?」' },
-];
 
 const PERSONA_MOOD: Record<Persona, XiaobaiMood> = {
   好奇型: 'curious',
@@ -338,10 +333,21 @@ export default function GrowthPage() {
     }, reduceMotion ? 0 : 320);
   };
 
+  const closeEvidence = () => {
+    const closingId = selected;
+    setSelected(null);
+    if (!closingId) return;
+    window.requestAnimationFrame(() => {
+      document.querySelector<HTMLButtonElement>(`[data-star-id="${closingId}"] button`)
+        ?.focus({ preventScroll: true });
+    });
+  };
+
   return (
     <div className={s.page}>
-      {/* ── 卷首·师徒:左档案 / 中央成长编年轴 / 右侧性情批注 ── */}
+      {/* ── 卷首·师徒:左档案与性情选择 / 中央成长编年轴 / 右侧师道批注 ── */}
       <header
+        id="growth-overview"
         className={`${s.hero} ${s.rise}`}
         style={rise(0)}
         aria-labelledby="growth-title"
@@ -371,25 +377,14 @@ export default function GrowthPage() {
             </span>
           </figure>
 
-          <dl className={s.profileFacts} aria-hidden="true">
+          <dl className={s.profileFacts} aria-label="小白档案">
             <div><dt>姓名</dt><dd>小白</dd></div>
             <div><dt>科名</dt><dd>{currentStage.name}</dd></div>
-            <div><dt>性情</dt><dd>{global.persona}</dd></div>
-          </dl>
-
-          <section className={s.rankCard} aria-label={`先生当前称号：${rank.title}`}>
-            <span className={s.rankSeal} aria-hidden="true">师道</span>
-            <div className={s.rankBody}>
-              <p className={s.rankLabel}>先生的称号 · 由真实课堂留下</p>
-              <p className={s.rankTitle}>{rank.title}</p>
-              <p className={s.rankScore}>出师 <b className={s.num}>{global.topicsMastered}</b> 门 · 实印 <b className={s.num}>{earnedCount}</b> 枚 · 履历 <b className={s.num}>{rank.score}</b> 分</p>
-              <p className={s.rankNext}>
-                {rank.nextTitle && rank.nextAt !== null
-                  ? <>距「{rank.nextTitle}」还差 <b className={s.num}>{rank.nextAt - rank.score}</b> 分。</>
-                  : '已至宗师，桃李成蹊。'}
-              </p>
+            <div className={s.personaFact}>
+              <dt className={s.srOnly}>性情</dt>
+              <dd><PersonaPicker value={global.persona} onChange={setPersona} /></dd>
             </div>
-          </section>
+          </dl>
         </section>
 
         <section className={s.chronicleColumn} aria-label="小白的五阶成长进度">
@@ -504,33 +499,19 @@ export default function GrowthPage() {
         </section>
 
         <aside className={s.notesColumn} aria-label="成长侧注">
-          <div className={s.personaBlock}>
-            <div className={s.blockLabel}>
-              <h2 id="persona-title">性情之笺</h2>
-              <p>点一张，换一种问法</p>
+          <section className={`${s.rankCard} ${s.sidebarRankCard}`} aria-label={`先生当前称号：${rank.title}`}>
+            <span className={s.rankSeal} aria-hidden="true">师道</span>
+            <div className={s.rankBody}>
+              <p className={s.rankLabel}>先生的称号 · 由真实课堂留下</p>
+              <p className={s.rankTitle}>{rank.title}</p>
+              <p className={s.rankScore}>出师 <b className={s.num}>{global.topicsMastered}</b> 门 · 实印 <b className={s.num}>{earnedCount}</b> 枚 · 履历 <b className={s.num}>{rank.score}</b> 分</p>
+              <p className={s.rankNext}>
+                {rank.nextTitle && rank.nextAt !== null
+                  ? <>距「{rank.nextTitle}」还差 <b className={s.num}>{rank.nextAt - rank.score}</b> 分。</>
+                  : '已至宗师，桃李成蹊。'}
+              </p>
             </div>
-            <div className={s.personaRow} role="group" aria-labelledby="persona-title">
-              {PERSONAS.map((persona) => {
-                const active = global.persona === persona.name;
-                return (
-                  <button
-                    key={persona.name}
-                    type="button"
-                    aria-pressed={active}
-                    className={active ? `${s.personaCard} ${s.personaActive}` : s.personaCard}
-                    onClick={() => setPersona(persona.name)}
-                  >
-                    <span className={s.personaTop}>
-                      <span className={s.personaName}>{persona.name}</span>
-                      {active && <span className={s.personaStamp} aria-hidden="true">现用</span>}
-                    </span>
-                    <span className={s.personaLine}>{persona.line}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <p className={s.srOnly} aria-live="polite">当前性情：{global.persona}</p>
-          </div>
+          </section>
 
           {step && (
             <section className={s.journeyCard} aria-label={`下一步：${step.title}`}>
@@ -695,6 +676,9 @@ export default function GrowthPage() {
             className={`${s.evidenceDock} ${selNode ? s.evidenceDockOpen : ''}`}
             aria-label="掌握度证据链"
             aria-live="polite"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape' && selNode) closeEvidence();
+            }}
           >
             {!selNode ? (
               <div className={s.evidenceEmpty}>
@@ -726,6 +710,14 @@ export default function GrowthPage() {
                       <span className={s.chip}>
                         要点 {shownNode.state.hitChecklist.length}/{shownNode.topic.checklist.length}
                       </span>
+                      <button
+                        type="button"
+                        className={s.evidenceClose}
+                        aria-label={`收起${shownNode.topic.title}的证据链`}
+                        onClick={closeEvidence}
+                      >
+                        <Icon name="x" size={15} />
+                      </button>
                     </div>
                 {/* 星链行:这颗星在星海里牵着的邻星,点一枚即跳选(证据链随之切换);
                     未开放的邻星按星图纪律禁用,不做空跳 */}

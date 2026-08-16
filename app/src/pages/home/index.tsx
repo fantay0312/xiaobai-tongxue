@@ -3,7 +3,7 @@
  * 大字楷体主张 + 《学记》竖排引文(全站精神锚点)+ 故事层 + 学习闭环横带 + 知识点书架。
  * 故事层二选一:零履历给「拜师帖」(书信体世界观),有履历给「旅程带」(称号印 + 当下一步)。
  */
-import { type MouseEvent } from 'react';
+import { type CSSProperties, type MouseEvent } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { MentorLetter } from '../../components/story/MentorLetter';
@@ -57,6 +57,38 @@ const LOOP_STEPS: { num: string; name: string; desc: string }[] = [
   { num: '陆', name: '再讲', desc: '重讲验证,纠正误区' },
 ];
 
+const MOTTO_LINES = ['教然后知困，', '知困然后能自强'] as const;
+
+/** 精神锚点逐字落墨；视觉层拆字，读屏仍一次读完整句。 */
+function AnimatedMotto() {
+  let charIndex = 0;
+  return (
+    <>
+      <span aria-hidden="true">
+        {MOTTO_LINES.map((line, lineIndex) => (
+          <span key={line}>
+            {Array.from(line).map((char) => {
+              const index = charIndex;
+              charIndex += 1;
+              return (
+                <span
+                  key={`${lineIndex}-${index}`}
+                  className={styles.mottoChar}
+                  style={{ '--char-index': index } as CSSProperties}
+                >
+                  {char}
+                </span>
+              );
+            })}
+            {lineIndex < MOTTO_LINES.length - 1 ? <br /> : null}
+          </span>
+        ))}
+      </span>
+      <span className={styles.srOnly}>{MOTTO_LINES.join('')}</span>
+    </>
+  );
+}
+
 export default function HomePage() {
   useDocTitle('书斋门厅');
   const level = useAppStore((s) => s.global.learningLevel);
@@ -70,7 +102,7 @@ export default function HomePage() {
   return (
     <div className={styles.page}>
       {/* ── 首屏:主张 + 小白 + 竖排引文 ── */}
-      <section className={styles.hero}>
+      <section id="study-overview" className={styles.hero}>
         <div className={styles.heroMain}>
           <p className={`${styles.kicker} ${styles.enter}`}>费曼学习法 · 反转式学习智能体</p>
           <h1 className={`${styles.claim} ${styles.enter}`} style={{ animationDelay: '70ms' }}>
@@ -95,20 +127,16 @@ export default function HomePage() {
           className={`${anchor.heroAvatar} ${styles.lampNest} ${styles.enter}`}
           style={{ animationDelay: '160ms' }}
         >
-          <XiaobaiAvatar variant="paper" mood="curious" level={level} size={192} />
-          <p className={anchor.avatarCaption}>你的 AI 学生 · 小白</p>
           <blockquote className={styles.dreamQuote}>
             <span>小白的愿望</span>
             “我想有一天，也能像先生一样，把道理讲给别人听。”
           </blockquote>
+          <XiaobaiAvatar variant="paper" mood="curious" level={level} size={192} />
+          <p className={anchor.avatarCaption}>你的 AI 学生 · 小白</p>
         </div>
 
         <blockquote className={`${anchor.quote} ${styles.enter}`} style={{ animationDelay: '120ms' }}>
-          <p className={anchor.quoteText}>
-            教然后知困,
-            <br />
-            知困然后能自强
-          </p>
+          <p className={anchor.quoteText}><AnimatedMotto /></p>
           <cite className={anchor.quoteFrom}>《礼记 · 学记》</cite>
         </blockquote>
       </section>
@@ -118,6 +146,7 @@ export default function HomePage() {
 
       {/* ── 一课的走法:墨线路线图(题头 + 一线穿七节点,不裹卡) ── */}
       <section
+        id="lesson-loop"
         className={`${styles.loop} ${styles.enter}`}
         style={{ animationDelay: '260ms' }}
         aria-label="学习闭环:备课、讲解、赴考、批注、补学、再讲"
