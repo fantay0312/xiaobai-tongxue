@@ -6,8 +6,8 @@
  * / (宣传页)下头部退为透明静置变体,随海报滚走;品牌落款回宣传页,「书斋」导航到 /study。
  * 宣传页头部不放应用内导航/登入/设置——对外只留品牌与「进入书斋」一个入口。
  */
-import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
-import { NavLink, useLocation } from 'react-router';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Link, NavLink, useLocation } from 'react-router';
 import { Seal } from './Seal';
 import { StoryTrail } from '../story/StoryTrail';
 import { Icon } from '../ui/Icon';
@@ -21,10 +21,43 @@ const SettingsDialog = lazy(() =>
   import('./SettingsDialog').then((module) => ({ default: module.SettingsDialog })),
 );
 
-const NAV_LINKS: { to: string; label: string; end: boolean }[] = [
-  { to: '/study', label: '书斋', end: true },
-  { to: '/growth', label: '成长册', end: false },
-  { to: '/teacher', label: '教师看板', end: false },
+interface NavGroup {
+  key: string;
+  path: string;
+  label: string;
+  end: boolean;
+  sections: { to: string; label: string }[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    key: 'study', path: '/study', label: '书斋', end: true,
+    sections: [
+      { to: '/study#study-overview', label: '书斋门厅' },
+      { to: '/study#lesson-loop', label: '一课的走法' },
+      { to: '/study#shelf', label: '选课书架' },
+    ],
+  },
+  {
+    key: 'growth', path: '/growth', label: '成长册', end: false,
+    sections: [
+      { to: '/growth#growth-overview', label: '册页卷首' },
+      { to: '/growth#chronicle', label: '成长编年史' },
+      { to: '/growth#map', label: '知识星海' },
+      { to: '/growth#memory', label: '记忆匣' },
+      { to: '/growth#bond', label: '师徒羁绊' },
+    ],
+  },
+  {
+    key: 'teacher', path: '/teacher', label: '教师看板', end: false,
+    sections: [
+      { to: '/teacher#teacher-overview', label: '档案总览' },
+      { to: '/teacher#blind-spots', label: '讲不清盲区' },
+      { to: '/teacher#topic-progress', label: '知识点学情' },
+      { to: '/teacher#misconceptions', label: '心魔台账' },
+      { to: '/teacher#recent-sessions', label: '近期会话' },
+    ],
+  },
 ];
 
 function profileInitial(name: string | null): string {
@@ -42,12 +75,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   const authMode = pathname === '/login';
   const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const navRef = useRef<HTMLElement>(null);
   const closeProfile = useCallback(() => setProfileOpen(false), []);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
   const authStatus = useAuthStore((s) => s.status);
   const authUser = useAuthStore((s) => s.user);
 
   const openSettings = useCallback(() => {
+    setOpenMenu(null);
     setProfileOpen(false);
     setSettingsOpen(true);
   }, []);
@@ -62,6 +98,40 @@ export function AppShell({ children }: { children: ReactNode }) {
       setProfileOpen(false);
     }
   }, [authStatus]);
+
+  useEffect(() => setOpenMenu(null), [pathname]);
+
+  useEffect(() => {
+    if (!openMenu) return undefined;
+
+    const closeOutside = (event: PointerEvent) => {
+      if (!navRef.current?.contains(event.target as Node)) setOpenMenu(null);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      const menuKey = openMenu;
+      setOpenMenu(null);
+      window.requestAnimationFrame(() => document.getElementById(`nav-${menuKey}`)?.focus());
+    };
+    window.addEventListener('pointerdown', closeOutside);
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      window.removeEventListener('pointerdown', closeOutside);
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [openMenu]);
+
+  const onSectionLinkClick = useCallback((to: string) => {
+    setOpenMenu(null);
+    const [targetPath, fragment] = to.split('#');
+    if (targetPath !== pathname || !fragment) return;
+    window.requestAnimationFrame(() => {
+      document.getElementById(decodeURIComponent(fragment))?.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    });
+  }, [pathname]);
 
   const shellVariantClass = boardMode
     ? `${styles.shell} ${styles.board}`
@@ -87,20 +157,47 @@ export function AppShell({ children }: { children: ReactNode }) {
               <NavLink to="/study" className={styles.loginBtn}>进入书斋</NavLink>
             </nav>
           ) : (
-          <nav className={styles.nav} aria-label="主导航">
-            {NAV_LINKS.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                end={link.end}
-                className={({ isActive }) =>
-                  isActive ? `${styles.link} ${styles.linkActive}` : styles.link
-                }
-                data-tour={link.to === '/growth' ? 'nav-growth' : undefined}
-              >
-                {link.label}
-              </NavLink>
-            ))}
+          <nav ref={navRef} className={styles.nav} aria-label="主导航">
+            {NAV_GROUPS.map((group) => {
+              const expanded = openMenu === group.key;
+              const active = group.end ? pathname === group.path : pathname.startsWith(group.path);
+              return (
+                <div key={group.key} className={styles.navGroup}>
+                  <button
+                    id={`nav-${group.key}`}
+                    type="button"
+                    className={`${styles.link} ${styles.menuButton} ${active ? styles.linkActive : ''}`}
+                    aria-expanded={expanded}
+                    aria-controls={`nav-${group.key}-sections`}
+                    onClick={() => setOpenMenu(expanded ? null : group.key)}
+                    data-tour={group.key === 'growth' ? 'nav-growth' : undefined}
+                  >
+                    {group.label}
+                    <Icon name="chevron-down" size={13} className={styles.menuChevron} />
+                  </button>
+                  <div
+                    id={`nav-${group.key}-sections`}
+                    className={styles.sectionMenu}
+                    data-open={expanded || undefined}
+                    aria-label={`${group.label}章节快跳`}
+                    aria-hidden={!expanded}
+                  >
+                    {group.sections.map((section) => (
+                      <Link
+                        key={section.to}
+                        to={section.to}
+                        className={styles.sectionMenuLink}
+                        tabIndex={expanded ? 0 : -1}
+                        onClick={() => onSectionLinkClick(section.to)}
+                      >
+                        {section.label}
+                        <Icon name="chevron-right" size={13} />
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
 
             <span className={styles.navRule} aria-hidden="true" />
 
@@ -117,7 +214,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 aria-expanded={profileOpen}
                 aria-controls="profile-dialog"
                 aria-label={`打开 ${authUser ?? ''} 的个人中心`}
-                onClick={() => setProfileOpen(true)}
+                onClick={() => {
+                  setOpenMenu(null);
+                  setProfileOpen(true);
+                }}
                 title={`打开 ${authUser ?? ''} 的个人中心`}
               >
                 <span className={styles.profileMark} aria-hidden="true">
@@ -142,7 +242,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      {!landingMode && <StoryTrail pathname={pathname} board={boardMode} />}
+      {!landingMode && <StoryTrail key={pathname} pathname={pathname} board={boardMode} />}
 
       <main className={styles.main}>{children}</main>
 

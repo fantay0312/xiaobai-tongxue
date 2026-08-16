@@ -38,7 +38,7 @@ export function KnowledgeSeaList({
             {realm.nodes.map((node) => {
               const locked = node.status === 'locked';
               return (
-                <li key={node.topic.topicId}>
+                <li key={node.topic.topicId} data-star-id={node.topic.topicId}>
                   <button
                     type="button"
                     disabled={locked}

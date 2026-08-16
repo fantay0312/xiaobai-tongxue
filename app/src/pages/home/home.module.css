@@ -16,9 +16,42 @@
   animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.mottoChar {
+  display: inline-block;
+  animation: motto-ink 440ms var(--ease-out) backwards;
+  animation-delay: calc(420ms + var(--char-index) * 78ms);
+}
+
+@keyframes motto-ink {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.28em, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .enter {
     animation-delay: 0ms !important;
+  }
+
+  .mottoChar {
+    animation: none;
   }
 }
 
@@ -31,6 +64,11 @@
   gap: clamp(var(--gap), 5vw, var(--gap-section));
   align-items: center;
   padding: var(--gap-section) 0 var(--gap-loose);
+}
+
+.hero,
+.loop {
+  scroll-margin-top: calc(var(--header-h) + var(--gap-tight));
 }
 
 .hero::before {
@@ -121,7 +159,7 @@
 .dreamQuote {
   position: relative;
   width: min(18rem, 76vw);
-  margin: var(--gap-tight) 0 0;
+  margin: 0 0 var(--gap-tight);
   padding: var(--gap-tight) var(--gap);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius) var(--radius) var(--radius) 2px;
@@ -137,13 +175,14 @@
 .dreamQuote::before {
   content: '';
   position: absolute;
-  left: -1px;
-  bottom: -0.45rem;
+  left: 50%;
+  bottom: -0.42rem;
   width: 0.8rem;
   height: 0.8rem;
-  border-left: 1px solid var(--line-strong);
+  border-right: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
   background: var(--paper-warm);
-  transform: skewY(-42deg);
+  transform: translateX(-50%) rotate(45deg);
 }
 
 .dreamQuote span {
@@ -165,7 +204,7 @@
 .lampNest::before {
   content: '';
   position: absolute;
-  top: -1.75rem;
+  top: 4.5rem;
   left: 50%;
   width: 17rem;
   height: 17rem;

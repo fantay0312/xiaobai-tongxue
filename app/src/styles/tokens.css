@@ -53,6 +53,7 @@
      墨线戳(圆框虚线 OFFICIAL 制式)直接用 --ink 系;警示只许写 --cinnabar */
   --seal-red: oklch(0.477 0.146 32.4);
   --seal-red-wash: oklch(0.477 0.146 32.4 / 0.10);
+  --ink-on-seal: oklch(0.985 0.006 87.5);       /* 印面上的亮粉白,避免头像首字发灰 */
 
   /* 掌握:橄榄绿 / 衰减:赭金(唯一衰减暖色) / 未学:暖灰
      -ink 档给小字号文字用(色块/描边仍用原档) */
@@ -98,6 +99,15 @@
   --chalk-soft: oklch(0.794 0.017 95.3);
   --chalk-amber: oklch(0.886 0.136 88.0);      /* 芥末粉笔 · #FFD466 */
   --chalk-jade: oklch(0.801 0.050 124.1);      /* 灰橄榄粉笔(mood glad/aha) */
+
+  /* 知识星海:深空与证据浮卡共用的七色,避免各组件自藏 hex 漂色 */
+  --star-sky-deep: oklch(0.205 0.025 250);
+  --star-sky-ink: oklch(0.252 0.026 248);
+  --star-sky-moon: oklch(0.943 0.035 86);
+  --star-sky-muted: oklch(0.767 0.016 86);
+  --star-sky-blue: oklch(0.752 0.061 237);
+  --star-sky-jade: oklch(0.774 0.055 119);
+  --star-sky-amber: oklch(0.754 0.091 75);
 
   /* 字体 —— 四声部:
      serif(西文加拉蒙+中文宋体)=题头/大字与斜体点睛;

@@ -9,10 +9,14 @@ type JsxNode = ts.JsxElement | ts.JsxSelfClosingElement;
 const sourcePath = fileURLToPath(new URL('../src/pages/growth/index.tsx', import.meta.url));
 const source = readFileSync(sourcePath, 'utf8');
 const growthStylePath = fileURLToPath(new URL('../src/pages/growth/growth.module.css', import.meta.url));
+const personaPickerPath = fileURLToPath(new URL('../src/pages/growth/PersonaPicker.tsx', import.meta.url));
+const personaStylePath = fileURLToPath(new URL('../src/pages/growth/PersonaPicker.module.css', import.meta.url));
 const seaStylePath = fileURLToPath(new URL('../src/pages/growth/KnowledgeSeaField.module.css', import.meta.url));
 const seaFieldPath = fileURLToPath(new URL('../src/pages/growth/KnowledgeSeaField.tsx', import.meta.url));
 const seaGeometryPath = fileURLToPath(new URL('../src/pages/growth/knowledgeSeaGeometry.ts', import.meta.url));
 const growthStyle = readFileSync(growthStylePath, 'utf8');
+const personaPickerSource = readFileSync(personaPickerPath, 'utf8');
+const personaStyle = readFileSync(personaStylePath, 'utf8');
 const seaStyle = readFileSync(seaStylePath, 'utf8');
 const seaFieldSource = readFileSync(seaFieldPath, 'utf8');
 const seaGeometrySource = readFileSync(seaGeometryPath, 'utf8');
@@ -133,13 +137,33 @@ assert.match(
   'aria-current 必须使用 step 语义',
 );
 
-const personaButton = allJsx.find(
-  (node) =>
-    tagOf(node) === 'button'
-    && attributeOf(node, 'aria-pressed') !== undefined
-    && /setPersona\s*\(/.test(attributeOf(node, 'onClick')?.getText(sourceFile) ?? ''),
+assert.match(
+  source,
+  /<PersonaPicker\s+value=\{global\.persona\}\s+onChange=\{setPersona\}/,
+  '左侧档案的性情行必须复用 setPersona 持久化交互',
 );
-assert.ok(personaButton, '性情按钮必须同时保留 aria-pressed 状态与 setPersona 交互');
+assert.match(personaPickerSource, /aria-haspopup="listbox"/, '性情触发器必须声明 listbox 弹出语义');
+assert.match(personaPickerSource, /aria-expanded=\{open\}/, '性情触发器必须暴露展开状态');
+assert.match(personaPickerSource, /role="option"[\s\S]*?aria-selected=\{active\}/, '性情选项必须暴露选中状态');
+assert.match(personaPickerSource, /event\.key === 'Escape'/, '性情选择器必须支持 Escape 关闭');
+assert.match(personaPickerSource, /event\.key === 'Enter'/, '性情选择器必须支持回车选中');
+assert.match(personaPickerSource, /document\.addEventListener\('pointerdown'/, '性情选择器必须支持点外关闭');
+assert.match(personaPickerSource, /'ArrowDown'[\s\S]*?'ArrowUp'/, '性情选择器必须支持方向键巡选');
+assert.ok(
+  numericProperty(classRule(personaStyle, 'trigger'), 'min-height') >= 2.75,
+  '性情触发器热区必须至少 44px',
+);
+assert.match(personaStyle, /@media\s*\(min-width:\s*961px\)[\s\S]*?left:\s*calc\(100%/, '桌面性情菜单必须向右展开');
+assert.match(personaStyle, /max-width:\s*calc\(100vw\s*-\s*2rem\)/, '性情菜单必须限制在移动端视口内');
+
+const profileRankCard = profileNodes.find(
+  (node) => /rankCard/.test(attributeOf(node, 'className')?.getText(sourceFile) ?? ''),
+);
+const sideRankCard = jsxNodesWithin(semanticColumns[2]).find(
+  (node) => /rankCard/.test(attributeOf(node, 'className')?.getText(sourceFile) ?? ''),
+);
+assert.equal(profileRankCard, undefined, '师道称号不应继续占据左侧档案栏');
+assert.ok(sideRankCard, '师道称号必须移入右侧成长侧注');
 
 assert.deepEqual(STAGE_META.map(({ stage }) => stage), [1, 2, 3, 4, 5], '科名必须保持五阶');
 assert.equal(new Set(STAGE_META.map(({ name }) => name)).size, 5, '五阶科名名称必须唯一');

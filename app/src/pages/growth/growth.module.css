@@ -103,7 +103,7 @@
 /* 数字纪律:所有数值/时间落 code 字体 */
 .num { font-family: var(--font-code); font-weight: 500; font-size: 0.95em; }
 
-/* ── 卷首:左档案 / 中央成长编年轴 / 右侧性情批注 ── */
+/* ── 卷首:左档案与性情选择 / 中央成长编年轴 / 右侧师道批注 ── */
 
 .srOnly {
   position: absolute;
@@ -123,6 +123,7 @@
   gap: clamp(var(--gap), 3vw, var(--gap-loose));
   align-items: stretch;
   margin-bottom: var(--gap-section);
+  scroll-margin-top: calc(var(--header-h) + var(--gap-tight));
 }
 
 .profileColumn,
@@ -273,12 +274,18 @@
 
 .profileFacts dd {
   margin: 0;
+  min-width: 0;
   color: var(--ink);
   font-family: var(--font-display);
   font-size: var(--fs-small);
 }
 
-/* 师道收为档案页角的小记,不再与主线竞争一张深色大卡。 */
+.profileFacts > .personaFact {
+  display: block;
+  padding-block: var(--gap-tight);
+}
+
+/* 师道回到右侧批注位,不再与左侧性情操作争位。 */
 .rankCard {
   display: grid;
   width: 100%;
@@ -329,6 +336,12 @@
 
 .rankScore { margin-top: var(--gap-hair); color: var(--ink-soft); line-height: 1.65; }
 .rankNext { margin-top: 0.18rem; color: var(--ink-faint); line-height: 1.65; }
+
+.rankCard.sidebarRankCard {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
 
 /* 编年轴:左边的一条墨线从当前章节通往五个科名。 */
 .chronicleColumn {
@@ -586,7 +599,7 @@
 
 .morphCourse { color: var(--azure); font-style: normal; }
 
-/* 右侧批注只留一列可选文本,去掉第三组平均卡片。 */
+/* 右侧批注承接先生师道与唯一下一步。 */
 .notesColumn {
   display: flex;
   flex-direction: column;
@@ -1174,6 +1187,7 @@
 /* ── 卷三·学问星海：连续画布本身响应式，不再依赖横向巡览。 ── */
 
 .mapWrap {
+  position: relative;
   min-width: 0;
   max-width: 100%;
   padding-bottom: var(--gap-hair);
@@ -1181,10 +1195,8 @@
 }
 
 .observatory {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(18rem, 21rem);
-  align-items: start;
-  gap: clamp(var(--gap), 2.8vw, var(--gap-loose));
+  position: relative;
+  display: block;
 }
 
 .chartColumn { min-width: 0; }
@@ -1947,25 +1959,52 @@
 /* 节点详情 + 证据链 */
 
 .evidenceDock {
-  position: sticky;
-  top: calc(var(--header-h) + var(--gap-tight));
-  max-height: calc(100dvh - var(--header-h) - var(--gap-loose));
+  --paper: var(--star-sky-deep);
+  --paper-warm: var(--star-sky-ink);
+  --paper-blush: color-mix(in oklch, var(--star-sky-ink) 86%, var(--star-sky-deep));
+  --paper-shade: color-mix(in oklch, var(--star-sky-ink) 76%, var(--star-sky-deep));
+  --paper-edge: color-mix(in oklch, var(--star-sky-moon) 18%, transparent);
+  --line-strong: color-mix(in oklch, var(--star-sky-moon) 30%, transparent);
+  --ink: var(--star-sky-moon);
+  --ink-soft: color-mix(in oklch, var(--star-sky-muted) 82%, var(--star-sky-moon));
+  --ink-faint: var(--star-sky-muted);
+  --ink-wash: color-mix(in oklch, var(--star-sky-moon) 8%, transparent);
+  --azure: var(--star-sky-blue);
+  --azure-deep: color-mix(in oklch, var(--star-sky-blue) 76%, var(--star-sky-deep));
+  --azure-wash: color-mix(in oklch, var(--star-sky-blue) 14%, transparent);
+  --jade: var(--star-sky-jade);
+  --jade-ink: color-mix(in oklch, var(--star-sky-jade) 84%, var(--star-sky-moon));
+  --jade-wash: color-mix(in oklch, var(--star-sky-jade) 13%, transparent);
+  --amber: var(--star-sky-amber);
+  --amber-ink: color-mix(in oklch, var(--star-sky-amber) 84%, var(--star-sky-moon));
+  --amber-wash: color-mix(in oklch, var(--star-sky-amber) 13%, transparent);
+  --dust: color-mix(in oklch, var(--star-sky-muted) 58%, transparent);
+  --shadow-paper: 0 14px 38px color-mix(in oklch, var(--star-sky-deep) 72%, transparent);
+  position: absolute;
+  top: clamp(8.75rem, 12vw, 10.75rem);
+  right: clamp(0.75rem, 2vw, 1.25rem);
+  z-index: 15;
+  width: min(22rem, calc(100% - 2rem));
+  max-height: min(31rem, calc(100dvh - var(--header-h) - 2rem));
   overflow: auto;
   overscroll-behavior: contain;
   scroll-margin-top: calc(var(--header-h) + var(--gap-tight));
   scrollbar-gutter: stable;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
-  background: var(--paper);
+  background: color-mix(in oklch, var(--paper) 93%, transparent);
+  backdrop-filter: blur(12px) saturate(104%);
   box-shadow: var(--shadow-paper);
+  pointer-events: none;
 }
 
 .evidenceDockOpen {
   border-color: color-mix(in oklch, var(--azure) 48%, var(--line-strong));
+  pointer-events: auto;
 }
 
 .evidenceEmpty {
-  min-height: 25rem;
+  min-height: 12.5rem;
   display: grid;
   place-content: center;
   justify-items: start;
@@ -2036,6 +2075,28 @@
 }
 
 .evidenceDock .panelHead { gap: var(--gap-hair) var(--gap-tight); }
+
+.evidenceClose {
+  position: sticky;
+  right: 0;
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+  place-items: center;
+  margin-left: auto;
+  padding: 0;
+  border: 1px solid var(--paper-edge);
+  border-radius: 50%;
+  background: var(--ink-wash);
+  color: var(--ink-soft);
+  transition: color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+}
+
+.evidenceClose:hover {
+  background: var(--azure-wash);
+  color: var(--ink);
+}
 
 .evidenceDock .starLinkChips { width: 100%; }
 
@@ -2159,11 +2220,11 @@
 }
 
 @media (max-width: 960px) {
-  .observatory { grid-template-columns: minmax(0, 1fr); }
-
   .evidenceDock {
     position: static;
+    width: auto;
     max-height: none;
+    margin-top: var(--gap);
   }
 
   .evidenceEmpty { min-height: 12rem; }
@@ -2171,6 +2232,10 @@
 
 @media (max-width: 720px) {
   .mapSwipeHint { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .evidenceClose { transition: none; }
 }
 
 .panelTitle { font-size: var(--fs-sub); color: var(--ink); }

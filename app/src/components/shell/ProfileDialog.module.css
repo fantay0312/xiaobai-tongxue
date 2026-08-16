@@ -8,7 +8,8 @@
   border: 0;
   border-radius: var(--radius-s);
   background: var(--seal-red);
-  color: var(--paper);
+  color: var(--ink-on-seal);
+  -webkit-text-fill-color: var(--ink-on-seal);
   font-family: var(--font-display);
   font-size: var(--fs-title);
   font-weight: 700;

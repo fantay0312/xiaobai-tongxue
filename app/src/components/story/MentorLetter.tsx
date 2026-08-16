@@ -14,6 +14,7 @@ import { Link } from 'react-router';
 import { useAppStore } from '../../store/appStore';
 import { TOPICS } from '../../data';
 import { nextStep } from '../../engine/journey';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { Icon } from '../ui/Icon';
 import { LETTER_CLOSED_EVENT, LETTER_OPEN_EVENT } from '../tour/tourState';
 import s from './story.module.css';
@@ -24,6 +25,7 @@ let autoOpenedThisLoad = false;
 
 /** 弹层内可聚焦元素(Tab 循环用;弹层里只有链接和按钮) */
 const FOCUSABLE = 'a[href], button:not([disabled])';
+const LETTER_EXIT_MS = 240;
 
 export function MentorLetter() {
   const events = useAppStore((st) => st.events);
@@ -34,17 +36,25 @@ export function MentorLetter() {
     () => nextStep({ events, reports, topicStates, topics: TOPICS }),
     [events, reports, topicStates],
   );
+  const reducedMotion = useReducedMotion();
 
   const [open, setOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
   const stripBtnRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const exitTimerRef = useRef<number | null>(null);
 
   /** 开合必须同步广播给「小白引路」(不能走 [open] effect):
       页面忙时两个定时器可能挤进同一批宏任务;同步派发才能及时清掉引路计时器,
       避免拜师帖与引路提示同时弹出。 */
-  const setOpenAndBroadcast = useCallback((next: boolean) => {
-    setOpen(next);
-    window.dispatchEvent(new CustomEvent(next ? LETTER_OPEN_EVENT : LETTER_CLOSED_EVENT));
+  const openLetter = useCallback(() => {
+    if (exitTimerRef.current !== null) {
+      window.clearTimeout(exitTimerRef.current);
+      exitTimerRef.current = null;
+    }
+    setClosing(false);
+    setOpen(true);
+    window.dispatchEvent(new CustomEvent(LETTER_OPEN_EVENT));
   }, []);
 
   /* 自动展帖:等 hero 先画完(~450ms)再弹。
@@ -56,13 +66,17 @@ export function MentorLetter() {
     let fired = false;
     const id = window.setTimeout(() => {
       fired = true;
-      setOpenAndBroadcast(true);
+      openLetter();
     }, 450);
     return () => {
       window.clearTimeout(id);
       if (!fired) autoOpenedThisLoad = false;
     };
-  }, [setOpenAndBroadcast]);
+  }, [openLetter]);
+
+  useEffect(() => () => {
+    if (exitTimerRef.current !== null) window.clearTimeout(exitTimerRef.current);
+  }, []);
 
   /* 弹层期间锁背后页面滚动;补上滚动条宽度,经典滚动条系统(Windows)不横跳。
      依赖 [open] 的清理函数同时覆盖「关帖」与「组件卸载」两条退出路径 */
@@ -87,14 +101,34 @@ export function MentorLetter() {
 
   /* 打开即把焦点收进信里(容器 tabIndex=-1),键盘/读屏用户不落在弹层背后 */
   useEffect(() => {
-    if (open) dialogRef.current?.focus();
-  }, [open]);
+    if (open && !closing) dialogRef.current?.focus({ preventScroll: true });
+  }, [closing, open]);
 
   /** 关帖并把焦点还给案头的「展帖重读」(dialog 焦点归还契约) */
   const close = useCallback(() => {
-    setOpenAndBroadcast(false);
-    stripBtnRef.current?.focus();
-  }, [setOpenAndBroadcast]);
+    if (!open || closing) return;
+
+    const finish = () => {
+      exitTimerRef.current = null;
+      setOpen(false);
+      setClosing(false);
+      window.dispatchEvent(new CustomEvent(LETTER_CLOSED_EVENT));
+      if (stripBtnRef.current?.isConnected) stripBtnRef.current.focus();
+    };
+
+    if (reducedMotion) {
+      finish();
+      return;
+    }
+
+    setClosing(true);
+    exitTimerRef.current = window.setTimeout(finish, LETTER_EXIT_MS);
+  }, [closing, open, reducedMotion]);
+
+  const leaveForJourney = useCallback(() => {
+    window.dispatchEvent(new CustomEvent(LETTER_CLOSED_EVENT));
+    setOpen(false);
+  }, []);
 
   /** 点淡墨罩关帖:只认罩本身,信纸内的点击不算 */
   const onBackdrop = (e: MouseEvent<HTMLDivElement>) => {
@@ -137,17 +171,21 @@ export function MentorLetter() {
           type="button"
           className={s.stripBtn}
           aria-haspopup="dialog"
-          onClick={() => setOpenAndBroadcast(true)}
+          onClick={openLetter}
         >
           展帖重读
         </button>
       </section>
 
       {open && (
-        <div className={s.overlay} onClick={onBackdrop} onKeyDown={onKeyDown}>
+        <div
+          className={`${s.overlay} ${closing ? s.overlayClosing : ''}`}
+          onClick={onBackdrop}
+          onKeyDown={onKeyDown}
+        >
           <div
             ref={dialogRef}
-            className={`${s.letterCard} ${paper.texture}`}
+            className={`${s.letterCard} ${closing ? s.letterCardClosing : ''} ${paper.texture}`}
             role="dialog"
             aria-modal="true"
             aria-label="小白的拜师帖"
@@ -188,7 +226,7 @@ export function MentorLetter() {
               </div>
 
               <div className={s.letterActions}>
-                <Link className={s.letterCta} to={step.to} onClick={() => setOpenAndBroadcast(false)}>
+                <Link className={s.letterCta} to={step.to} onClick={leaveForJourney}>
                   {step.cta}
                 </Link>
                 <button type="button" className={s.dismissBtn} onClick={close}>

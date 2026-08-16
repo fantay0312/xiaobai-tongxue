@@ -164,45 +164,18 @@
   .profileName { display: none; }
 }
 
-/* 极窄屏:只留印章做标记(商业站惯例),导航收紧 */
-@media (max-width: 520px) {
-  .brandName {
-    display: none;
-  }
-
-  .nav {
-    gap: 0.85rem;
-  }
-
-  .link {
-    font-size: var(--fs-small);
-    letter-spacing: 0.05em;
-  }
-
-  .navRule {
-    display: none;
-  }
-
-  .loginBtn {
-    padding: 0.28rem 0.8rem;
-    letter-spacing: 0.1em;
-  }
-
-  /* 认证页小屏只留品牌章与设置，避免完整站内导航挤压成竖排。 */
-  .auth .link,
-  .auth .navRule,
-  .auth .loginBtn,
-  .auth .profileTrigger {
-    display: none;
-  }
-}
-
 /* ── 导航链接:打字机铅字小签,当前路由缀一枚赭陶圆点(参考稿侧栏「My Wallet」点)── */
 
 .nav {
   display: flex;
   align-items: center;
   gap: clamp(1rem, 2.4vw, 1.9rem);
+}
+
+.navGroup {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .link {
@@ -260,6 +233,79 @@
   transform: translateY(-50%) scale(1);
 }
 
+.menuButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  min-height: 2.5rem;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.menuChevron {
+  flex: none;
+  color: currentcolor;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.menuButton[aria-expanded='true'] .menuChevron {
+  transform: rotate(180deg);
+}
+
+.sectionMenu {
+  position: absolute;
+  top: calc(100% + 0.52rem);
+  left: 50%;
+  z-index: 60;
+  display: grid;
+  width: max-content;
+  min-width: 11.5rem;
+  gap: 0.12rem;
+  padding: 0.38rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  background: color-mix(in oklch, var(--paper) 96%, transparent);
+  box-shadow: var(--shadow-lift);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(-50%, -0.35rem, 0);
+  visibility: hidden;
+  transition:
+    opacity var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out),
+    visibility 0s linear var(--t-fast);
+}
+
+.sectionMenu[data-open='true'] {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate3d(-50%, 0, 0);
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.sectionMenuLink {
+  display: flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding: 0.5rem 0.62rem;
+  border-radius: var(--radius-tag);
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  white-space: nowrap;
+  transition: background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+}
+
+.sectionMenuLink:hover,
+.sectionMenuLink:focus-visible {
+  background: var(--terra-wash);
+  color: var(--azure-deep);
+}
+
 .board .link {
   color: var(--chalk-soft);
 }
@@ -267,6 +313,36 @@
 .board .link:hover,
 .board .linkActive {
   color: var(--chalk);
+}
+
+@media (max-width: 560px) {
+  .sectionMenu {
+    position: fixed;
+    top: calc(var(--header-h) + 0.15rem);
+    right: var(--gap-tight);
+    left: var(--gap-tight);
+    width: auto;
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    transform: translate3d(0, -0.35rem, 0);
+  }
+
+  .sectionMenu[data-open='true'] {
+    transform: none;
+  }
+
+  .sectionMenuLink {
+    min-width: 0;
+    white-space: normal;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menuChevron,
+  .sectionMenu,
+  .sectionMenuLink {
+    transition: none;
+  }
 }
 
 /* ── 界栏:导航与账号/设置之间的细分隔 ── */
@@ -359,7 +435,8 @@
   flex: none;
   border-radius: var(--radius-s);
   background: var(--seal-red);
-  color: var(--paper);
+  color: var(--ink-on-seal);
+  -webkit-text-fill-color: var(--ink-on-seal);
   font-family: var(--font-display);
   font-size: var(--fs-small);
   font-weight: 700;
@@ -446,4 +523,85 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+}
+
+/* 先于基础规则书写会被层叠覆盖，故把手机收紧规则统一放在文件末尾。 */
+@media (max-width: 520px) {
+  .brandName {
+    display: none;
+  }
+
+  .nav {
+    gap: 0.28rem;
+  }
+
+  .link {
+    padding-left: 0.55rem;
+    font-size: var(--fs-small);
+    letter-spacing: 0.05em;
+  }
+
+  .navRule {
+    display: none;
+  }
+
+  .loginBtn {
+    padding: 0.28rem 0.8rem;
+    letter-spacing: 0.1em;
+  }
+
+  /* 认证页小屏只留品牌章与设置，避免完整站内导航挤压成竖排。 */
+  .auth .link,
+  .auth .navRule,
+  .auth .loginBtn,
+  .auth .profileTrigger {
+    display: none;
+  }
+}
+
+/* 更窄的手机把横向额度全部留给章节入口与账号动作。 */
+@media (max-width: 480px) {
+  .headerInner {
+    padding-inline: var(--gap-hair);
+  }
+
+  .headerInner::after {
+    left: var(--gap-hair);
+    right: var(--gap-hair);
+  }
+
+  .brand {
+    display: none;
+  }
+
+  .nav {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.12rem;
+  }
+
+  .link {
+    padding-inline: 0.42rem 0.08rem;
+    font-size: var(--fs-tiny);
+    letter-spacing: 0.03em;
+  }
+
+  .menuButton {
+    gap: 0.08rem;
+  }
+
+  .menuChevron {
+    width: 0.65rem;
+    height: 0.65rem;
+  }
+
+  .loginBtn {
+    padding-inline: 0.58rem;
+    letter-spacing: 0.06em;
+  }
+
+  .profileTrigger {
+    gap: 0.16rem;
+    padding-right: 0.12rem;
+  }
 }
