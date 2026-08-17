@@ -27,25 +27,14 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  width: min(46rem, 100%);
-  height: min(34rem, 100%);
+  width: min(58rem, 100%);
+  height: min(42rem, 100%);
   background: var(--paper);
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lift);
   overflow: hidden;
-  animation: cardIn var(--t-med) var(--ease-out) backwards;
-}
-
-@keyframes cardIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 
 /* 退场余像:TSX 在 open 落下后多留 190ms 播本组动画再卸载;
@@ -88,8 +77,23 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--gap-tight) var(--gap-tight) var(--gap-tight) var(--gap);
+  gap: var(--gap);
+  padding: 0.85rem var(--gap-tight) 0.85rem var(--gap);
   border-bottom: 1px solid var(--paper-edge);
+}
+
+.headCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+}
+
+.eyebrow {
+  color: var(--azure-deep);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
 }
 
 .title {
@@ -98,6 +102,20 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--ink);
+}
+
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
+}
+
+.saveState {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-hair);
+  color: var(--jade-ink);
+  font-size: var(--fs-tiny);
 }
 
 .closeBtn {
@@ -139,30 +157,51 @@
 
 /* 左目录:淡瓷青衬底,像册页的目录页 */
 .rail {
-  flex: 0 0 10.5rem;
+  flex: 0 0 13.5rem;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: var(--gap-tight);
-  background: var(--paper-warm);
+  gap: var(--gap-hair);
+  padding: var(--gap);
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 calc(1.45rem - 1px),
+      color-mix(in oklab, var(--paper-edge) 22%, transparent) calc(1.45rem - 1px) 1.45rem
+    ),
+    var(--paper-shade);
   border-right: 1px solid var(--paper-edge);
   overflow-y: auto;
 }
 
-.railBtn {
-  position: relative;
+.railHead {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  padding: 0.5rem 0.65rem 0.5rem 0.85rem; /* 左留一枚圆点位 */
-  border: none;
+  justify-content: space-between;
+  gap: var(--gap-tight);
+  margin-bottom: var(--gap-hair);
+  padding: 0 var(--gap-hair) var(--gap-tight);
+  border-bottom: 1px solid var(--paper-edge);
+  color: var(--ink-faint);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
+}
+
+.railHead small { letter-spacing: 0.05em; }
+
+.railBtn {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gap-tight);
+  min-height: 3.8rem;
+  padding: 0.55rem 0.65rem 0.55rem 0.9rem; /* 左留一枚圆点位 */
+  border: 1px solid transparent;
   border-radius: var(--radius-s);
   background: transparent;
   color: var(--ink-soft);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-small);
-  text-transform: uppercase;
-  letter-spacing: var(--track-label);
   text-align: left;
   transition:
     background var(--t-fast) var(--ease-out),
@@ -175,9 +214,11 @@
 }
 
 .railBtn[aria-selected='true'] {
-  background: var(--azure-wash);
+  border-color: var(--paper-edge);
+  background: var(--paper);
   color: var(--azure-deep);
   font-weight: 600;
+  box-shadow: var(--shadow-paper);
 }
 
 /* 目录"当前章"标记:选中项左缘一枚赭陶圆点(6px 图形档) */
@@ -198,6 +239,40 @@
   opacity: 0.85;
 }
 
+.railCopy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.08rem;
+}
+
+.railCopy strong {
+  color: currentColor;
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+
+.railCopy small {
+  overflow: hidden;
+  color: var(--ink-faint);
+  font-size: var(--fs-tiny);
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.railFoot {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-hair);
+  margin-top: auto;
+  padding: var(--gap-tight) var(--gap-hair) 0;
+  border-top: 1px solid var(--paper-edge);
+  color: var(--ink-faint);
+  font-size: var(--fs-tiny);
+}
+
 /* 右详情:换章独立滚动 */
 .pane {
   flex: 1;
@@ -205,8 +280,8 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--gap-tight);
-  padding: var(--gap);
+  gap: var(--gap);
+  padding: clamp(var(--gap), 3vw, 2.25rem);
   overflow-y: auto;
   scrollbar-width: thin;
 }
@@ -215,11 +290,22 @@
   display: flex;
   flex-direction: column;
   gap: var(--gap-hair);
+  width: 100%;
+  padding-bottom: var(--gap-tight);
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.paneEyebrow {
+  color: var(--azure-deep);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: var(--track-label);
 }
 
 .paneTitle {
   font-family: var(--font-serif);
-  font-size: var(--fs-sub);
+  font-size: var(--fs-title);
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--ink);
@@ -237,7 +323,7 @@
   align-self: stretch;
   display: flex;
   flex-direction: column;
-  gap: var(--gap-hair);
+  gap: 0.5rem;
 }
 
 .modeBtn {
@@ -247,7 +333,8 @@
   row-gap: 2px;
   align-items: center;
   text-align: left;
-  padding: 0.7rem 0.8rem;
+  min-height: 4.2rem;
+  padding: 0.65rem 0.8rem;
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius-s);
   background: var(--paper);
@@ -310,7 +397,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--gap-tight);
+  gap: 0.8rem;
 }
 
 .split {
@@ -335,7 +422,8 @@
 
 .input {
   width: 100%;
-  padding: 0.5rem 0.7rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius-s);
   background: var(--paper);
@@ -359,6 +447,32 @@
 .input::placeholder {
   color: var(--ink-faint);
 }
+
+.secretInput {
+  position: relative;
+  display: block;
+}
+
+.secretInput .input { padding-right: 2.9rem; }
+
+.revealButton {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--ink-faint);
+  transform: translateY(-50%);
+  transition: color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+}
+
+.revealButton:hover { background: var(--ink-wash); color: var(--ink); }
 
 /* ── 动作钮与连接测试 ── */
 
@@ -576,7 +690,7 @@
 
 /* ── 窄屏:目录横排在顶,窗体撑满 ── */
 
-@media (max-width: 560px) {
+@media (max-width: 720px) {
   .overlay {
     padding: var(--gap-tight);
   }
@@ -601,8 +715,14 @@
   }
 
   .railBtn {
+    display: inline-grid;
+    min-height: 2.75rem;
     white-space: nowrap;
   }
+
+  .railCopy small,
+  .railHead,
+  .railFoot { display: none; }
 
   /* 横排目录的"当前章"墨签换到底缘 */
   .railBtn[aria-selected='true']::before {
@@ -614,4 +734,11 @@
     height: 2px;
     transform: none;
   }
+
+  .pane { padding: var(--gap); }
+}
+
+@media (max-width: 560px) {
+  .saveState { display: none; }
+  .paneTitle { font-size: var(--fs-sub); }
 }

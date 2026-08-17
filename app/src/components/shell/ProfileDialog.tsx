@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Link } from 'react-router';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
+import { profileAccountKey, useProfileStore } from '../../store/profileStore';
 import { TOPICS } from '../../data';
 // 学习身份三引擎：同 growth 页按路径直连纯派生，不进 engine barrel
 import { deriveTeacherRank } from '../../engine/achievements';
@@ -13,6 +14,8 @@ import { ProfilePhoneChange } from './ProfilePhoneChange';
 import { ProfilePasswordChange } from './ProfilePasswordChange';
 import { TranscriptUpload } from './TranscriptUpload';
 import { ProfileCommerce } from './ProfileCommerce';
+import { ProfileAvatar } from './ProfileAvatar';
+import { ProfileAvatarEditor } from './ProfileAvatarEditor';
 import styles from './ProfileDialog.module.css';
 
 interface ProfileDialogProps {
@@ -24,11 +27,11 @@ interface ProfileDialogProps {
 const PROFILE_SECTIONS = [
   {
     id: 'overview',
-    label: '概览',
+    label: '个人资料',
     icon: 'school',
     kicker: '书斋名帖',
     title: '个人中心',
-    description: '查看学习身份、账号状态与常用入口。',
+    description: '管理头像，查看学习身份、账号状态与常用入口。',
   },
   {
     id: 'commerce',
@@ -66,20 +69,9 @@ const PROFILE_SECTIONS = [
 
 type ProfileSection = (typeof PROFILE_SECTIONS)[number]['id'];
 
-function profileInitial(name: string | null): string {
-  return Array.from(name?.trim() || '师')[0] ?? '师';
-}
-
-export function ProfileMark({ name, compact = false }: { name: string | null; compact?: boolean }) {
-  return (
-    <span className={styles.mark} data-compact={compact || undefined} aria-hidden="true">
-      {profileInitial(name)}
-    </span>
-  );
-}
-
 export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogProps) {
   const user = useAuthStore((state) => state.user);
+  const avatar = useProfileStore((state) => state.avatars[profileAccountKey(user)] ?? null);
   const emailMasked = useAuthStore((state) => state.emailMasked);
   const emailBindingRequired = useAuthStore((state) => state.emailBindingRequired);
   const phoneMasked = useAuthStore((state) => state.phoneMasked);
@@ -260,7 +252,7 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
         </div>
 
         <div className={styles.railIdentity}>
-          <ProfileMark name={user} compact />
+          <ProfileAvatar name={user} src={avatar} size="rail" />
           <div>
             <strong>{accountName}</strong>
             <span>{rank.title} · {stageMeta.name}</span>
@@ -307,21 +299,23 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
         <div ref={scrollRef} className={styles.scroll}>
           {activeSection === 'overview' ? (
             <>
-              <Link
+              <article
                 className={styles.identity}
-                to="/growth"
-                onClick={onClose}
-                aria-label={`${accountName} · 师道${rank.title} · 小白科名${stageMeta.name}·${stageMeta.description} · 学识第 ${wisdom.level} 阶 · ${phoneSummary} · ${emailSummary}，点按翻开成长册`}
+                aria-label={`${accountName} · 师道${rank.title} · 小白科名${stageMeta.name}·${stageMeta.description} · 学识第 ${wisdom.level} 阶`}
               >
                 <div className={styles.identityHead}>
-                  <ProfileMark name={user} />
-                  <div>
-                    <p className={styles.accountKind}>授课账号 · 学习身份</p>
+                  <ProfileAvatarEditor account={accountName}>
+                    <p className={styles.accountKind}>授课账号 · 个人名帖</p>
                     <p className={styles.userName}>{accountName}</p>
-                  </div>
-                  <span className={styles.identityArrow} aria-hidden="true">
+                  </ProfileAvatarEditor>
+                  <Link
+                    className={styles.identityArrow}
+                    to="/growth"
+                    onClick={onClose}
+                    aria-label="翻开成长册"
+                  >
                     <Icon name="chevron-right" size={18} />
-                  </span>
+                  </Link>
                 </div>
                 <div className={styles.creds}>
                   <span className={styles.rankChip}>{rank.title}</span>
@@ -344,8 +338,10 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
                     </small>
                   </p>
                 </div>
-                <span className={styles.identityHint}>翻开成长册，查看完整学习轨迹</span>
-              </Link>
+                <Link className={styles.identityHint} to="/growth" onClick={onClose}>
+                  翻开成长册，查看完整学习轨迹 <Icon name="arrow-right" size={14} />
+                </Link>
+              </article>
 
               <section className={styles.section} aria-labelledby="quick-entry-title">
                 <div className={styles.sectionLead}>

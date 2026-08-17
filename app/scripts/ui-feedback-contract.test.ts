@@ -16,8 +16,8 @@ const trailStyles = read('../src/components/story/storyTrail.module.css');
 const letter = read('../src/components/story/MentorLetter.tsx');
 const letterStyles = read('../src/components/story/story.module.css');
 const tokens = read('../src/styles/tokens.css');
-const profileStyles = read('../src/components/shell/ProfileDialog.module.css');
-const shellStyles = read('../src/components/shell/AppShell.module.css');
+const profile = read('../src/components/shell/ProfileDialog.tsx');
+const avatarStyles = read('../src/components/shell/ProfileAvatar.module.css');
 const teacher = read('../src/pages/teacher/index.tsx');
 const growth = read('../src/pages/growth/index.tsx');
 const growthStyles = read('../src/pages/growth/growth.module.css');
@@ -63,8 +63,9 @@ for (const id of ['teacher-overview', 'blind-spots', 'topic-progress', 'misconce
 }
 
 assert.match(tokens, /--ink-on-seal:/, '印面首字必须使用专用高亮令牌');
-assert.match(profileStyles, /\.mark[\s\S]*?color:\s*var\(--ink-on-seal\)/, '个人中心头像首字不得发灰');
-assert.match(shellStyles, /\.profileMark[\s\S]*?color:\s*var\(--ink-on-seal\)/, '顶栏头像首字不得发灰');
+assert.match(avatarStyles, /\.avatar[\s\S]*?color:\s*var\(--ink-on-seal\)/, '共享头像首字不得发灰');
+assert.match(shell, /<ProfileAvatar[\s\S]*?size="nav"/, '顶栏必须使用共享头像组件');
+assert.match(profile, /<ProfileAvatar[\s\S]*?size="rail"/, '个人中心侧栏必须使用共享头像组件');
 
 assert.doesNotMatch(achievement, /印面预览/, '印章册不得保留独立印面预览区');
 assert.doesNotMatch(achievement, /scrollIntoView/, '印章条件卡不得把页面卷到底部');
