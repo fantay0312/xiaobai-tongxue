@@ -5,7 +5,7 @@
  * 滚动锁与拜师帖(MentorLetter)逐行同款:doc+body 双锁 + 「别人持锁就不抢」守卫,改一处必对照另一处。
  */
 import {
-  useEffect, useRef, useState,
+  useEffect, useId, useRef, useState,
   type ComponentProps, type CSSProperties, type KeyboardEvent, type MouseEvent,
 } from 'react';
 import { useAppStore } from '../../store/appStore';
@@ -22,11 +22,11 @@ type TestState =
 
 type TabId = 'engine' | 'voice' | 'temper' | 'tour';
 
-const TABS: { id: TabId; label: string; icon: IconName }[] = [
-  { id: 'engine', label: '台词引擎', icon: 'pen' },
-  { id: 'voice', label: '语音输入', icon: 'mic' },
-  { id: 'temper', label: '台词性情', icon: 'sprout' },
-  { id: 'tour', label: '新手引路', icon: 'route' },
+const TABS: { id: TabId; label: string; note: string; icon: IconName }[] = [
+  { id: 'engine', label: '台词引擎', note: '模型与线路', icon: 'pen' },
+  { id: 'voice', label: '语音输入', note: '口述转文字', icon: 'mic' },
+  { id: 'temper', label: '台词性情', note: '沉稳或活泼', icon: 'sprout' },
+  { id: 'tour', label: '新手引路', note: '重走学习路线', icon: 'route' },
 ];
 
 const ENGINE_MODES = [
@@ -74,7 +74,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   const [active, setActive] = useState<TabId>('engine');
   /* 退场余像:open 落下后窗多留 EXIT_MS 播退场动画,再真正卸载 */
   const [render, setRender] = useState(open);
-  /* 窄屏目录横排时把 tablist 朝向如实报给读屏(断点须与 module.css 的 560 咬合) */
+  /* 窄屏目录横排时把 tablist 朝向如实报给读屏(断点须与 module.css 的 720 咬合) */
   const [narrow, setNarrow] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const backdropArmed = useRef(false);
@@ -146,7 +146,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
 
   useEffect(() => {
     if (!open) return;
-    const mq = window.matchMedia('(max-width: 560px)');
+    const mq = window.matchMedia('(max-width: 720px)');
     const sync = () => setNarrow(mq.matches);
     sync();
     mq.addEventListener('change', sync);
@@ -207,6 +207,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   if (!render) return null;
 
   const band = temperBand(settings.temperature);
+  const activeIndex = TABS.findIndex((tab) => tab.id === active) + 1;
 
   return (
     <div
@@ -225,10 +226,16 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         tabIndex={-1}
       >
         <header className={styles.head}>
-          <h2 id="settings-title" className={styles.title}>设置</h2>
-          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="关闭设置">
-            <Icon name="x" size={18} />
-          </button>
+          <div className={styles.headCopy}>
+            <p className={styles.eyebrow}>书斋偏好</p>
+            <h2 id="settings-title" className={styles.title}>设置</h2>
+          </div>
+          <div className={styles.headActions}>
+            <span className={styles.saveState}><Icon name="circle-check" size={14} />自动保存至本机</span>
+            <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="关闭设置">
+              <Icon name="x" size={18} />
+            </button>
+          </div>
         </header>
 
         <div className={styles.body}>
@@ -239,6 +246,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             aria-orientation={narrow ? 'horizontal' : 'vertical'}
             onKeyDown={onTabsKey}
           >
+            <div className={styles.railHead} aria-hidden="true">
+              <span>设置目录</span><small>04 项</small>
+            </div>
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -252,9 +262,10 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 onClick={() => setActive(t.id)}
               >
                 <Icon name={t.icon} size={15} className={styles.railIcon} />
-                {t.label}
+                <span className={styles.railCopy}><strong>{t.label}</strong><small>{t.note}</small></span>
               </button>
             ))}
+            <p className={styles.railFoot} aria-hidden="true"><Icon name="check" size={13} />调整后即时生效</p>
           </nav>
 
           <div
@@ -266,8 +277,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             {active === 'engine' && (
               <>
                 <div className={styles.paneHead}>
+                  <p className={styles.paneEyebrow}>偏好 {String(activeIndex).padStart(2, '0')}</p>
                   <h3 className={styles.paneTitle}>台词引擎</h3>
-                  <p className={styles.paneDesc}>小白的台词由哪路引擎生成;线路失败会自动降级演示模式,课不中断。</p>
+                  <p className={styles.paneDesc}>选择小白台词的生成线路；线路失败时会降级为演示模式，课程不中断。</p>
                 </div>
 
                 <ModeGroup
@@ -296,9 +308,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                       spellCheck={false}
                       onChange={(e) => { setSettings({ baseUrl: e.target.value }); setTest({ status: 'idle' }); }}
                     />
-                    <Field
+                    <SecretField
                       label="API Key"
-                      type="password"
                       value={settings.apiKey}
                       placeholder="sk-…"
                       autoComplete="off"
@@ -326,6 +337,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             {active === 'voice' && (
               <>
                 <div className={styles.paneHead}>
+                  <p className={styles.paneEyebrow}>偏好 {String(activeIndex).padStart(2, '0')}</p>
                   <h3 className={styles.paneTitle}>语音输入</h3>
                   <p className={styles.paneDesc}>讲课页输入框旁的麦克风,把课堂口述转成文字。</p>
                 </div>
@@ -349,9 +361,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                         spellCheck={false}
                         onChange={(e) => setAsrSettings({ baseUrl: e.target.value })}
                       />
-                      <Field
+                      <SecretField
                         label="API Key"
-                        type="password"
                         value={asr.apiKey}
                         placeholder="sk-…"
                         autoComplete="off"
@@ -377,6 +388,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             {active === 'temper' && (
               <>
                 <div className={styles.paneHead}>
+                  <p className={styles.paneEyebrow}>偏好 {String(activeIndex).padStart(2, '0')}</p>
                   <h3 className={styles.paneTitle}>台词性情</h3>
                   <p className={styles.paneDesc}>只影响小白说话的活泼程度;讲解评估恒用 temperature 0,保证判定一致。</p>
                 </div>
@@ -408,6 +420,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             {active === 'tour' && (
               <>
                 <div className={styles.paneHead}>
+                  <p className={styles.paneEyebrow}>偏好 {String(activeIndex).padStart(2, '0')}</p>
                   <h3 className={styles.paneTitle}>新手引路</h3>
                   <p className={styles.paneDesc}>
                     小白带你把门厅、备课桌、讲解舱各认一遍路;每处只自动引一次。重新引路只清引路痕迹,不动学习记录。
@@ -488,6 +501,29 @@ function Field({ label, ...input }: { label: string } & ComponentProps<'input'>)
       <span className={styles.fieldLabel}>{label}</span>
       <input className={styles.input} {...input} />
     </label>
+  );
+}
+
+function SecretField({ label, ...input }: { label: string } & Omit<ComponentProps<'input'>, 'type'>) {
+  const [revealed, setRevealed] = useState(false);
+  const generatedId = useId();
+  const inputId = input.id ?? generatedId;
+  return (
+    <div className={styles.field}>
+      <label className={styles.fieldLabel} htmlFor={inputId}>{label}</label>
+      <span className={styles.secretInput}>
+        <input className={styles.input} id={inputId} type={revealed ? 'text' : 'password'} {...input} />
+        <button
+          type="button"
+          className={styles.revealButton}
+          onClick={() => setRevealed((current) => !current)}
+          aria-label={revealed ? '隐藏 API Key' : '显示 API Key'}
+          aria-pressed={revealed}
+        >
+          <Icon name={revealed ? 'eye-off' : 'eye'} size={16} />
+        </button>
+      </span>
+    </div>
   );
 }
 

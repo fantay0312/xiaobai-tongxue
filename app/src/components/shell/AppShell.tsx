@@ -12,6 +12,8 @@ import { Seal } from './Seal';
 import { StoryTrail } from '../story/StoryTrail';
 import { Icon } from '../ui/Icon';
 import { useAuthStore } from '../../store/authStore';
+import { profileAccountKey, useProfileStore } from '../../store/profileStore';
+import { ProfileAvatar } from './ProfileAvatar';
 import styles from './AppShell.module.css';
 
 const ProfileDialog = lazy(() =>
@@ -60,10 +62,6 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-function profileInitial(name: string | null): string {
-  return Array.from(name?.trim() || '师')[0] ?? '师';
-}
-
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   // 讲解舱已改「亮书斋 + 木框黑板物件」,全暗外壳退役(board 变体样式保留备用)
@@ -81,6 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
   const authStatus = useAuthStore((s) => s.status);
   const authUser = useAuthStore((s) => s.user);
+  const avatar = useProfileStore((s) => s.avatars[profileAccountKey(authUser)] ?? null);
 
   const openSettings = useCallback(() => {
     setOpenMenu(null);
@@ -228,9 +227,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 }}
                 title={`打开 ${authUser ?? ''} 的个人中心`}
               >
-                <span className={styles.profileMark} aria-hidden="true">
-                  {profileInitial(authUser)}
-                </span>
+                <ProfileAvatar name={authUser} src={avatar} size="nav" />
                 <span className={styles.profileName}>{authUser}</span>
                 <Icon name="chevron-down" size={14} className={styles.profileChevron} />
               </button>
