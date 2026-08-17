@@ -607,7 +607,11 @@
 }
 
 .statusAction {
+  display: inline-flex;
   min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-hair);
   padding: 0.4rem 0.64rem;
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius-tag);
@@ -623,6 +627,12 @@
   border-color: color-mix(in oklab, var(--azure) 48%, var(--paper-edge));
   background: var(--azure-wash);
 }
+
+.statusAction svg {
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+.statusAction:hover svg { transform: translateX(2px); }
 
 .notice {
   margin-top: var(--gap-tight);
@@ -878,6 +888,8 @@
   .preferenceEntry {
     transition: none;
   }
+
+  .statusAction:hover svg { transform: none; }
 
   .identity:hover .identityArrow,
   .entry:hover .entryChevron,

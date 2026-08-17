@@ -68,6 +68,29 @@ const PROFILE_SECTIONS = [
 ] as const;
 
 type ProfileSection = (typeof PROFILE_SECTIONS)[number]['id'];
+type SecurityFlow = 'phone' | 'email' | 'password';
+
+const SECURITY_FLOW_META: Record<SecurityFlow, {
+  kicker: string;
+  title: string;
+  description: string;
+}> = {
+  phone: {
+    kicker: '安全核验',
+    title: '更换手机号',
+    description: '先验证当前身份，再设置并验证新的手机号。',
+  },
+  email: {
+    kicker: '安全核验',
+    title: '更换邮箱',
+    description: '先验证当前身份，再设置并验证新的邮箱。',
+  },
+  password: {
+    kicker: '安全核验',
+    title: '修改登录密码',
+    description: '先验证当前身份，再设置新的登录密码。',
+  },
+};
 
 export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogProps) {
   const user = useAuthStore((state) => state.user);
@@ -91,12 +114,8 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
   const [activeSection, setActiveSection] = useState<ProfileSection>('overview');
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [logoutIssue, setLogoutIssue] = useState<string | null>(null);
-  const [emailEditorOpen, setEmailEditorOpen] = useState(false);
-  const [emailNotice, setEmailNotice] = useState<string | null>(null);
-  const [phoneEditorOpen, setPhoneEditorOpen] = useState(false);
-  const [phoneNotice, setPhoneNotice] = useState<string | null>(null);
-  const [passwordEditorOpen, setPasswordEditorOpen] = useState(false);
-  const [passwordNotice, setPasswordNotice] = useState<string | null>(null);
+  const [securityFlow, setSecurityFlow] = useState<SecurityFlow | null>(null);
+  const [securityNotice, setSecurityNotice] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const emailToggleRef = useRef<HTMLButtonElement>(null);
@@ -105,8 +124,11 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
   const backdropArmed = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const activeMeta = PROFILE_SECTIONS.find((section) => section.id === activeSection)
+  const baseMeta = PROFILE_SECTIONS.find((section) => section.id === activeSection)
     ?? PROFILE_SECTIONS[0];
+  const activeMeta = activeSection === 'security' && securityFlow
+    ? { ...baseMeta, ...SECURITY_FLOW_META[securityFlow] }
+    : baseMeta;
 
   useEffect(() => {
     if (!open) return;
@@ -140,18 +162,14 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
   useEffect(() => {
     if (open) return;
     setActiveSection('overview');
-    setEmailEditorOpen(false);
-    setEmailNotice(null);
-    setPhoneEditorOpen(false);
-    setPhoneNotice(null);
-    setPasswordEditorOpen(false);
-    setPasswordNotice(null);
+    setSecurityFlow(null);
+    setSecurityNotice(null);
     setLogoutIssue(null);
   }, [open]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
-  }, [activeSection]);
+  }, [activeSection, securityFlow]);
 
   const outsideDialog = (event: MouseEvent<HTMLDialogElement>): boolean => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -181,46 +199,28 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
     setLogoutIssue(result.message ?? '退出失败，请稍后重试');
   };
 
-  const closeEmailEditor = () => {
-    setEmailEditorOpen(false);
-    window.requestAnimationFrame(() => emailToggleRef.current?.focus());
+  const flowTrigger = (flow: SecurityFlow) => {
+    if (flow === 'phone') return phoneToggleRef.current;
+    if (flow === 'email') return emailToggleRef.current;
+    return passwordToggleRef.current;
   };
 
-  const closePhoneEditor = () => {
-    setPhoneEditorOpen(false);
-    window.requestAnimationFrame(() => phoneToggleRef.current?.focus());
+  const closeSecurityFlow = () => {
+    const returningFlow = securityFlow;
+    setSecurityFlow(null);
+    if (returningFlow) {
+      window.requestAnimationFrame(() => flowTrigger(returningFlow)?.focus());
+    }
   };
 
-  const closePasswordEditor = () => {
-    setPasswordEditorOpen(false);
-    window.requestAnimationFrame(() => passwordToggleRef.current?.focus());
+  const openSecurityFlow = (flow: SecurityFlow) => {
+    setSecurityNotice(null);
+    setSecurityFlow(flow);
   };
 
-  const openPhoneEditor = () => {
-    setPhoneNotice(null);
-    setEmailNotice(null);
-    setPasswordNotice(null);
-    setEmailEditorOpen(false);
-    setPasswordEditorOpen(false);
-    setPhoneEditorOpen((current) => !current);
-  };
-
-  const openEmailEditor = () => {
-    setEmailNotice(null);
-    setPhoneNotice(null);
-    setPasswordNotice(null);
-    setPhoneEditorOpen(false);
-    setPasswordEditorOpen(false);
-    setEmailEditorOpen((current) => !current);
-  };
-
-  const openPasswordEditor = () => {
-    setPasswordNotice(null);
-    setEmailNotice(null);
-    setPhoneNotice(null);
-    setPhoneEditorOpen(false);
-    setEmailEditorOpen(false);
-    setPasswordEditorOpen((current) => !current);
+  const selectSection = (section: ProfileSection) => {
+    setActiveSection(section);
+    setSecurityFlow(null);
   };
 
   if (!open) return null;
@@ -239,7 +239,11 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
       aria-modal="true"
       aria-labelledby="profile-title"
       aria-describedby="profile-description"
-      onCancel={(event) => { event.preventDefault(); onClose(); }}
+      onCancel={(event) => {
+        event.preventDefault();
+        if (securityFlow) closeSecurityFlow();
+        else onClose();
+      }}
       onMouseDown={handleBackdropDown}
       onClick={handleBackdropClick}
     >
@@ -267,7 +271,7 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
               className={styles.navItem}
               data-active={activeSection === section.id || undefined}
               aria-current={activeSection === section.id ? 'page' : undefined}
-              onClick={() => setActiveSection(section.id)}
+              onClick={() => selectSection(section.id)}
             >
               <Icon name={section.icon} size={18} />
               <span>{section.label}</span>
@@ -366,7 +370,7 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
             </>
           ) : null}
 
-          {activeSection === 'security' ? (
+          {activeSection === 'security' && !securityFlow ? (
             <>
               <section className={styles.section} aria-labelledby="security-title">
                 <div className={styles.sectionLead}>
@@ -387,11 +391,10 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
                         ref={phoneToggleRef}
                         className={styles.statusAction}
                         type="button"
-                        aria-expanded={phoneEditorOpen}
-                        aria-controls="profile-phone-change"
-                        onClick={openPhoneEditor}
+                        onClick={() => openSecurityFlow('phone')}
                       >
-                        {phoneEditorOpen ? '收起' : '更换手机号'}
+                        <span>更换手机号</span>
+                        <Icon name="chevron-right" size={15} />
                       </button>
                     )}
                   </div>
@@ -403,11 +406,10 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
                         ref={emailToggleRef}
                         className={styles.statusAction}
                         type="button"
-                        aria-expanded={emailEditorOpen}
-                        aria-controls="profile-email-change"
-                        onClick={openEmailEditor}
+                        onClick={() => openSecurityFlow('email')}
                       >
-                        {emailEditorOpen ? '收起' : '更换邮箱'}
+                        <span>更换邮箱</span>
+                        <Icon name="chevron-right" size={15} />
                       </button>
                     )}
                   </div>
@@ -420,44 +422,14 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
                       ref={passwordToggleRef}
                       className={styles.statusAction}
                       type="button"
-                      aria-expanded={passwordEditorOpen}
-                      aria-controls="profile-password-change"
-                      onClick={openPasswordEditor}
+                      onClick={() => openSecurityFlow('password')}
                     >
-                      {passwordEditorOpen ? '收起' : '修改密码'}
+                      <span>修改密码</span>
+                      <Icon name="chevron-right" size={15} />
                     </button>
                   </div>
                 </div>
-                {phoneNotice ? <p className={styles.notice} role="status">{phoneNotice}</p> : null}
-                {emailNotice ? <p className={styles.notice} role="status">{emailNotice}</p> : null}
-                {passwordNotice ? <p className={styles.notice} role="status">{passwordNotice}</p> : null}
-                {!phoneBindingRequired && phoneEditorOpen ? (
-                  <ProfilePhoneChange
-                    onCancel={closePhoneEditor}
-                    onSuccess={() => {
-                      setPhoneNotice('验证手机号已更换，新的验证码登录与找回凭证现已生效。');
-                      closePhoneEditor();
-                    }}
-                  />
-                ) : null}
-                {!emailBindingRequired && emailEditorOpen ? (
-                  <ProfileEmailChange
-                    onCancel={closeEmailEditor}
-                    onSuccess={() => {
-                      setEmailNotice('验证邮箱已更换，新的登录凭证现已生效。');
-                      closeEmailEditor();
-                    }}
-                  />
-                ) : null}
-                {passwordEditorOpen ? (
-                  <ProfilePasswordChange
-                    onCancel={closePasswordEditor}
-                    onSuccess={() => {
-                      setPasswordNotice('登录密码已更新，其他设备上的旧会话已失效。');
-                      closePasswordEditor();
-                    }}
-                  />
-                ) : null}
+                {securityNotice ? <p className={styles.notice} role="status">{securityNotice}</p> : null}
               </section>
 
               {emailBindingRequired || phoneBindingRequired ? (
@@ -487,6 +459,39 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
                 </section>
               ) : null}
             </>
+          ) : null}
+
+          {activeSection === 'security' && securityFlow === 'phone' ? (
+            <ProfilePhoneChange
+              currentCredential={phoneSummary}
+              onCancel={closeSecurityFlow}
+              onSuccess={() => {
+                setSecurityNotice('验证手机号已更换，新的验证码登录与找回凭证现已生效。');
+                closeSecurityFlow();
+              }}
+            />
+          ) : null}
+
+          {activeSection === 'security' && securityFlow === 'email' ? (
+            <ProfileEmailChange
+              currentCredential={emailSummary}
+              onCancel={closeSecurityFlow}
+              onSuccess={() => {
+                setSecurityNotice('验证邮箱已更换，新的登录凭证现已生效。');
+                closeSecurityFlow();
+              }}
+            />
+          ) : null}
+
+          {activeSection === 'security' && securityFlow === 'password' ? (
+            <ProfilePasswordChange
+              currentCredential={`账号 · ${accountName}`}
+              onCancel={closeSecurityFlow}
+              onSuccess={() => {
+                setSecurityNotice('登录密码已更新，其他设备上的旧会话已失效。');
+                closeSecurityFlow();
+              }}
+            />
           ) : null}
 
           {activeSection === 'commerce' ? <ProfileCommerce /> : null}

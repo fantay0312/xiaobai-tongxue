@@ -18,6 +18,11 @@ const letter = read('../src/components/story/MentorLetter.tsx');
 const letterStyles = read('../src/components/story/story.module.css');
 const tokens = read('../src/styles/tokens.css');
 const profile = read('../src/components/shell/ProfileDialog.tsx');
+const credentialFlow = read('../src/components/shell/ProfileCredentialFlow.tsx');
+const emailChange = read('../src/components/shell/ProfileEmailChange.tsx');
+const phoneChange = read('../src/components/shell/ProfilePhoneChange.tsx');
+const passwordChange = read('../src/components/shell/ProfilePasswordChange.tsx');
+const authStore = read('../src/store/authStore.ts');
 const avatarHelper = read('../src/lib/profileAvatar.ts');
 const avatarStyles = read('../src/components/shell/ProfileAvatar.module.css');
 const teacher = read('../src/pages/teacher/index.tsx');
@@ -68,6 +73,26 @@ assert.match(tokens, /--ink-on-seal:/, '印面首字必须使用专用高亮令�
 assert.match(avatarStyles, /\.avatar[\s\S]*?color:\s*var\(--ink-on-seal\)/, '共享头像首字不得发灰');
 assert.match(shell, /<ProfileAvatar[\s\S]*?size="nav"/, '顶栏必须使用共享头像组件');
 assert.match(profile, /<ProfileAvatar[\s\S]*?size="rail"/, '个人中心侧栏必须使用共享头像组件');
+assert.match(profile, /securityFlow === 'phone'[\s\S]*?<ProfilePhoneChange/, '更换手机号必须进入独立安全流程');
+assert.match(profile, /securityFlow === 'email'[\s\S]*?<ProfileEmailChange/, '更换邮箱必须进入独立安全流程');
+assert.match(profile, /securityFlow === 'password'[\s\S]*?<ProfilePasswordChange/, '修改密码必须进入独立安全流程');
+assert.doesNotMatch(profile, /EditorOpen|aria-expanded=\{(?:phone|email|password)EditorOpen\}/, '安全凭证不得继续在列表底部展开');
+assert.match(credentialFlow, /step:\s*1\s*\|\s*2/, '安全流程必须只有身份验证与设置新凭证两步');
+assert.match(credentialFlow, /设置新手机号[\s\S]*?设置新邮箱[\s\S]*?设置新密码/, '第二步必须按凭证类型显示新值设置界面');
+assert.match(credentialFlow, /第一步<\/small><strong>验证当前身份/, '第一步必须明确为身份验证');
+assert.match(credentialFlow, /verifyAccountPassword\(currentPassword, action\)/, '第一步必须调用服务端密码验证');
+for (const [source, label] of [
+  [emailChange, '邮箱'],
+  [phoneChange, '手机号'],
+  [passwordChange, '密码'],
+] as const) {
+  assert.match(source, /if \(!verificationToken\)[\s\S]*?<ProfileIdentityVerification/, `${label}流程必须先渲染身份验证页`);
+  assert.ok(
+    source.indexOf('if (!verificationToken)') < source.indexOf('step={2}'),
+    `${label}的新凭证界面不得先于身份验证通过出现`,
+  );
+}
+assert.match(authStore, /\/account\/verify-password[\s\S]*?verificationToken/, '前端必须通过短时验证授权衔接第二步');
 assert.equal(profileAvatarMimeForFile({ name: 'portrait.JPG', type: '' }), 'image/jpeg', '缺失 MIME 时必须按白名单扩展名识别 JPG');
 assert.equal(profileAvatarMimeForFile({ name: 'portrait.jpg', type: 'image/jpg' }), 'image/jpeg', '必须兼容 image/jpg 别名');
 assert.equal(profileAvatarMimeForFile({ name: 'portrait.jpg', type: 'application/octet-stream' }), null, '非空的未知 MIME 不得按扩展名放行');

@@ -32,8 +32,10 @@ Node.js 20+ 网关，负责主站与独立管理后台静态入口、两套身�
   `POST /api/auth/password-reset/phone`。
 - 邮箱重置密码仍作为次级兜底：
   `POST /api/auth/password-code` → `POST /api/auth/password-reset`。
-- 绑定/换绑手机：`POST /api/account/phone-code` → `POST /api/account/phone`，
-  两步都要求当前密码，发码还要求腾讯图形验证码。
+- 更换手机号、邮箱或登录密码：先调用 `POST /api/account/verify-password` 验证当前密码，
+  取得只绑定当前会话、账号、操作类型和凭据版本的 10 分钟一次性授权，再进入新凭据设置步骤；
+  手机号/邮箱换绑仍需验证码，发码还要求腾讯图形验证码。
+- 首次绑定与旧客户端保留当前密码提交路径；新个人中心只使用上述两步授权，不把授权写入 URL 或浏览器存储。
 - 未绑定手机号的历史用户可以取得受限会话，但所有业务 API 都返回
   `403 phone-verification-required`，直至完成短信验证绑定。
 - 注册仍是邀请制并要求已验证邮箱；新注册用户登录后同样必须绑定手机号。
