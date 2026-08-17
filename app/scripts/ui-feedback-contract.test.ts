@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { TOPICS } from '../src/data';
 import { nextStep } from '../src/engine/journey';
+import { profileAvatarMimeForFile } from '../src/lib/profileAvatar';
 
 const read = (relativePath: string): string =>
   readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8');
@@ -17,6 +18,7 @@ const letter = read('../src/components/story/MentorLetter.tsx');
 const letterStyles = read('../src/components/story/story.module.css');
 const tokens = read('../src/styles/tokens.css');
 const profile = read('../src/components/shell/ProfileDialog.tsx');
+const avatarHelper = read('../src/lib/profileAvatar.ts');
 const avatarStyles = read('../src/components/shell/ProfileAvatar.module.css');
 const teacher = read('../src/pages/teacher/index.tsx');
 const growth = read('../src/pages/growth/index.tsx');
@@ -66,6 +68,10 @@ assert.match(tokens, /--ink-on-seal:/, '印面首字必须使用专用高亮令�
 assert.match(avatarStyles, /\.avatar[\s\S]*?color:\s*var\(--ink-on-seal\)/, '共享头像首字不得发灰');
 assert.match(shell, /<ProfileAvatar[\s\S]*?size="nav"/, '顶栏必须使用共享头像组件');
 assert.match(profile, /<ProfileAvatar[\s\S]*?size="rail"/, '个人中心侧栏必须使用共享头像组件');
+assert.equal(profileAvatarMimeForFile({ name: 'portrait.JPG', type: '' }), 'image/jpeg', '缺失 MIME 时必须按白名单扩展名识别 JPG');
+assert.equal(profileAvatarMimeForFile({ name: 'portrait.jpg', type: 'image/jpg' }), 'image/jpeg', '必须兼容 image/jpg 别名');
+assert.equal(profileAvatarMimeForFile({ name: 'portrait.jpg', type: 'application/octet-stream' }), null, '非空的未知 MIME 不得按扩展名放行');
+assert.match(avatarHelper, /startsWith\('data:image\/webp'\)/, '头像生成必须拒绝 Canvas 的非 WebP 回退');
 
 assert.doesNotMatch(achievement, /印面预览/, '印章册不得保留独立印面预览区');
 assert.doesNotMatch(achievement, /scrollIntoView/, '印章条件卡不得把页面卷到底部');

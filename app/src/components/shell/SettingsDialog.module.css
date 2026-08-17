@@ -247,7 +247,7 @@
 }
 
 .railCopy strong {
-  color: currentColor;
+  color: currentcolor;
   font-family: var(--font-display);
   font-size: var(--fs-small);
   font-weight: 600;

@@ -1,4 +1,10 @@
 const ACCEPTED_AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const AVATAR_EXTENSION_TYPES: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+};
 const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
 const MAX_SOURCE_PIXELS = 40_000_000;
 const AVATAR_EDGE = 384;
@@ -10,6 +16,16 @@ export class ProfileAvatarError extends Error {
     super(message);
     this.name = 'ProfileAvatarError';
   }
+}
+
+/** 浏览器偶尔不给本地文件 MIME；仅在 MIME 为空时按白名单扩展名补齐。 */
+export function profileAvatarMimeForFile(file: Pick<File, 'name' | 'type'>): string | null {
+  const declared = file.type.trim().toLowerCase();
+  if (declared === 'image/jpg') return 'image/jpeg';
+  if (ACCEPTED_AVATAR_TYPES.has(declared)) return declared;
+  if (declared) return null;
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+  return AVATAR_EXTENSION_TYPES[extension] ?? null;
 }
 
 function loadImage(file: File): Promise<HTMLImageElement> {
@@ -31,7 +47,7 @@ function loadImage(file: File): Promise<HTMLImageElement> {
 
 /** 头像只接收位图，经 Canvas 居中裁成 WebP 后才落本机存储。 */
 export async function prepareProfileAvatar(file: File): Promise<string> {
-  if (!ACCEPTED_AVATAR_TYPES.has(file.type)) {
+  if (!profileAvatarMimeForFile(file)) {
     throw new ProfileAvatarError('请选择 JPG、PNG 或 WebP 图片');
   }
   if (file.size > MAX_SOURCE_BYTES) {
@@ -57,6 +73,6 @@ export async function prepareProfileAvatar(file: File): Promise<string> {
   const sourceY = (image.naturalHeight - crop) / 2;
   context.drawImage(image, sourceX, sourceY, crop, crop, 0, 0, AVATAR_EDGE, AVATAR_EDGE);
   const dataUrl = canvas.toDataURL('image/webp', 0.84);
-  if (!dataUrl.startsWith('data:image/')) throw new ProfileAvatarError('头像生成失败，请换一张图片');
+  if (!dataUrl.startsWith('data:image/webp')) throw new ProfileAvatarError('当前浏览器无法生成 WebP 头像');
   return dataUrl;
 }
