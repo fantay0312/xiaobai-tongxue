@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { EmailCodeField } from '../../pages/login/EmailCodeField';
-import fieldStyles from '../../pages/login/EmailCodeField.module.css';
 import { CODE_RE, EMAIL_RE, useCooldown, type Issue } from '../../hooks/useAuthForm';
 import { useAuthStore } from '../../store/authStore';
-import styles from './ProfileEmailChange.module.css';
+import {
+  ProfileCredentialFlow,
+  ProfileIdentityVerification,
+} from './ProfileCredentialFlow';
+import styles from './ProfileCredentialFlow.module.css';
 
 interface ProfileEmailChangeProps {
+  currentCredential: string;
   onCancel: () => void;
   onSuccess: () => void;
 }
@@ -13,12 +17,14 @@ interface ProfileEmailChangeProps {
 const ID_PREFIX = 'profile-email-change';
 const FEEDBACK_ID = `${ID_PREFIX}-feedback`;
 
-export function ProfileEmailChange({ onCancel, onSuccess }: ProfileEmailChangeProps) {
+export function ProfileEmailChange({
+  currentCredential, onCancel, onSuccess,
+}: ProfileEmailChangeProps) {
   const requestEmailChangeCode = useAuthStore((state) => state.requestEmailChangeCode);
   const changeEmail = useAuthStore((state) => state.changeEmail);
+  const [verificationToken, setVerificationToken] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
-  const [currentPassword, setCurrentPassword] = useState('');
   const [issue, setIssue] = useState<Issue | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -31,8 +37,7 @@ export function ProfileEmailChange({ onCancel, onSuccess }: ProfileEmailChangePr
 
   useEffect(() => {
     if (!issue || issue.field === 'form') return;
-    const target = issue.field === 'currentPassword' ? `${ID_PREFIX}-current-password`
-      : issue.field === 'email' ? `${ID_PREFIX}-email` : `${ID_PREFIX}-code`;
+    const target = issue.field === 'email' ? `${ID_PREFIX}-email` : `${ID_PREFIX}-code`;
     document.getElementById(target)?.focus();
   }, [issue]);
 
@@ -52,19 +57,12 @@ export function ProfileEmailChange({ onCancel, onSuccess }: ProfileEmailChangePr
       setIssue({ field: 'email', message: '请输入有效的新邮箱地址' });
       return;
     }
-    if (!currentPassword) {
-      setIssue({ field: 'currentPassword', message: '请输入当前密码以确认身份' });
-      return;
-    }
-    if (currentPassword.length > 128) {
-      setIssue({ field: 'currentPassword', message: '当前密码不能超过 128 位' });
-      return;
-    }
+    if (!verificationToken) return;
     const operationId = ++operation.current;
     setSending(true);
     setIssue(null);
     setFeedback(null);
-    const result = await requestEmailChangeCode(normalizedEmail, currentPassword);
+    const result = await requestEmailChangeCode(normalizedEmail, verificationToken);
     if (operationId !== operation.current) return;
     setSending(false);
     if (!result.ok) {
@@ -88,15 +86,12 @@ export function ProfileEmailChange({ onCancel, onSuccess }: ProfileEmailChangePr
       setIssue({ field: 'code', message: '请输入邮件中的 6 位验证码' });
       return;
     }
-    if (!currentPassword) {
-      setIssue({ field: 'currentPassword', message: '请输入当前密码以确认身份' });
-      return;
-    }
+    if (!verificationToken) return;
     const operationId = ++operation.current;
     setChanging(true);
     setIssue(null);
     setFeedback(null);
-    const result = await changeEmail(normalizedEmail, code, currentPassword);
+    const result = await changeEmail(normalizedEmail, code, verificationToken);
     if (operationId !== operation.current) return;
     setChanging(false);
     if (!result.ok) {
@@ -107,37 +102,28 @@ export function ProfileEmailChange({ onCancel, onSuccess }: ProfileEmailChangePr
     onSuccess();
   };
 
+  if (!verificationToken) {
+    return (
+      <ProfileCredentialFlow action="change-email" step={1} onBack={onCancel}>
+        <ProfileIdentityVerification
+          action="change-email"
+          currentCredential={currentCredential}
+          onVerified={setVerificationToken}
+        />
+      </ProfileCredentialFlow>
+    );
+  }
+
   return (
-    <section className={styles.editor} id={ID_PREFIX} aria-labelledby={`${ID_PREFIX}-title`}>
-      <header className={styles.head}>
-        <div>
-          <h4 className={styles.title} id={`${ID_PREFIX}-title`}>更换验证邮箱</h4>
-          <p className={styles.copy}>先用当前密码确认身份；验证成功后，新邮箱将用于登录与账号验证。</p>
-        </div>
-      </header>
+    <ProfileCredentialFlow action="change-email" step={2} onBack={onCancel}>
+      <div className={styles.stage} id={ID_PREFIX}>
+        <header className={styles.stageHead}>
+          <p className={styles.typeLabel}>NEW CREDENTIAL</p>
+          <h3>设置新的验证邮箱</h3>
+          <p>验证码通过后，新邮箱会立即接替当前邮箱，用于登录与账号找回。</p>
+        </header>
       <form className={styles.form} noValidate aria-busy={busy} onSubmit={submitChange}>
         <fieldset className={styles.fieldset} disabled={busy}>
-          <label className={fieldStyles.field} htmlFor={`${ID_PREFIX}-current-password`}>
-            <span className={fieldStyles.label}>当前密码</span>
-            <input
-              id={`${ID_PREFIX}-current-password`}
-              className={fieldStyles.input}
-              type="password"
-              value={currentPassword}
-              autoFocus
-              autoComplete="current-password"
-              maxLength={128}
-              required
-              aria-invalid={issue?.field === 'currentPassword' || undefined}
-              aria-describedby={issue?.field === 'currentPassword' ? FEEDBACK_ID : `${ID_PREFIX}-password-hint`}
-              onChange={(event) => {
-                setCurrentPassword(event.target.value);
-                setIssue((current) => current?.field === 'currentPassword' || current?.field === 'form'
-                  ? null : current);
-              }}
-            />
-            <span className={fieldStyles.hint} id={`${ID_PREFIX}-password-hint`}>发码与换绑前都需要再次确认</span>
-          </label>
           <EmailCodeField
             email={email}
             code={code}
@@ -158,12 +144,20 @@ export function ProfileEmailChange({ onCancel, onSuccess }: ProfileEmailChangePr
         {issue ? <p className={styles.error} id={FEEDBACK_ID} role="alert">{issue.message}</p>
           : feedback ? <p className={styles.success} role="status">{feedback}</p> : null}
         <div className={styles.actions}>
-          <button className={styles.cancel} type="button" disabled={busy} onClick={onCancel}>取消</button>
-          <button className={styles.confirm} type="submit" disabled={busy}>
-            {changing ? '正在核验…' : '确认换绑'}
+          <button
+            className={styles.secondary}
+            type="button"
+            disabled={busy}
+            onClick={() => { setVerificationToken(null); setIssue(null); setFeedback(null); }}
+          >
+            重新验证
+          </button>
+          <button className={styles.primary} type="submit" disabled={busy}>
+            {changing ? '正在更换…' : '确认更换邮箱'}
           </button>
         </div>
       </form>
-    </section>
+      </div>
+    </ProfileCredentialFlow>
   );
 }

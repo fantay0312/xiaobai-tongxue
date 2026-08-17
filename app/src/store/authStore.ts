@@ -10,12 +10,15 @@ export type AuthField = 'email' | 'phone' | 'code' | 'username' | 'password' | '
   | 'newPassword' | 'confirmPassword' | 'invite' | 'form';
 export type EmailCodePurpose = 'login' | 'register';
 export type SmsCodePurpose = 'login' | 'reset-password';
+export type AccountVerificationAction = 'change-phone' | 'change-email' | 'change-password';
 
 export interface AuthResult {
   ok: boolean;
   message?: string;
   field?: AuthField;
   retryAfter?: number;
+  verificationToken?: string;
+  expiresIn?: number;
 }
 
 export interface RegistrationInput {
@@ -42,17 +45,23 @@ interface AuthState {
   requestEmailCode: (email: string, purpose: EmailCodePurpose, invite?: string) => Promise<AuthResult>;
   requestEmailBindingCode: (email: string, currentPassword: string) => Promise<AuthResult>;
   bindEmail: (email: string, code: string, currentPassword: string) => Promise<AuthResult>;
-  requestEmailChangeCode: (email: string, currentPassword: string) => Promise<AuthResult>;
-  changeEmail: (email: string, code: string, currentPassword: string) => Promise<AuthResult>;
+  verifyAccountPassword: (
+    currentPassword: string,
+    action: AccountVerificationAction,
+  ) => Promise<AuthResult>;
+  requestEmailChangeCode: (email: string, verificationToken: string) => Promise<AuthResult>;
+  changeEmail: (email: string, code: string, verificationToken: string) => Promise<AuthResult>;
   requestSmsCode: (phone: string, purpose: SmsCodePurpose) => Promise<AuthResult>;
   loginWithPhoneCode: (phone: string, code: string) => Promise<AuthResult>;
   requestPhoneBindingCode: (phone: string, currentPassword: string) => Promise<AuthResult>;
   bindPhone: (phone: string, code: string, currentPassword: string) => Promise<AuthResult>;
+  requestPhoneChangeCode: (phone: string, verificationToken: string) => Promise<AuthResult>;
+  changePhone: (phone: string, code: string, verificationToken: string) => Promise<AuthResult>;
   requestPasswordResetCode: (phone: string) => Promise<AuthResult>;
   resetPassword: (phone: string, code: string, newPassword: string) => Promise<AuthResult>;
   requestEmailPasswordResetCode: (email: string) => Promise<AuthResult>;
   resetPasswordWithEmail: (email: string, code: string, newPassword: string) => Promise<AuthResult>;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<AuthResult>;
+  changePassword: (verificationToken: string, newPassword: string) => Promise<AuthResult>;
   login: (identifier: string, password: string) => Promise<AuthResult>;
   loginWithEmailCode: (email: string, code: string) => Promise<AuthResult>;
   register: (input: RegistrationInput) => Promise<AuthResult>;
@@ -93,6 +102,9 @@ const API_ERRORS: Record<string, ErrorInfo> = {
   'weak-password': { message: '密码至少需要 8 位', field: 'password' },
   'password-too-long': { message: '密码不能超过 128 位', field: 'password' },
   'invalid-credentials': { message: '当前密码不正确，请重新输入', field: 'currentPassword' },
+  'account-verification-required': { message: '身份验证已过期，请返回上一步重新验证', field: 'form' },
+  'bad-verification-action': { message: '无法确认本次安全操作，请返回重试', field: 'form' },
+  'verification-grant-failed': { message: '暂时无法完成身份验证，请稍后再试', field: 'form' },
   'password-unchanged': { message: '新密码不能与当前密码相同', field: 'newPassword' },
   'invalid-invite': { message: '邀请码不正确，请核对后再试', field: 'invite' },
   'invite-required': { message: '请输入管理员发放的邀请码', field: 'invite' },
@@ -455,12 +467,32 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }
   },
 
-  requestEmailChangeCode: async (email, currentPassword) => {
+  verifyAccountPassword: async (currentPassword, action) => {
+    try {
+      const response = await gatewayFetchWithTimeout(`${API_BASE}/account/verify-password`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, action }),
+      }, true);
+      if (!response.ok) return await apiFailure(response, `身份验证失败（${response.status}）`);
+      const payload = await readPayload(response);
+      const verificationToken = payload.verificationToken;
+      const expiresIn = Number(payload.expiresIn);
+      if (typeof verificationToken !== 'string' || verificationToken.length < 32
+        || verificationToken.length > 256 || !Number.isFinite(expiresIn) || expiresIn <= 0) {
+        return { ok: false, message: '身份验证结果无效，请重新验证', field: 'form' };
+      }
+      return { ok: true, verificationToken, expiresIn: Math.ceil(expiresIn) };
+    } catch (error) {
+      return networkFailure(error);
+    }
+  },
+
+  requestEmailChangeCode: async (email, verificationToken) => {
     try {
       const captcha = await requestCaptchaProof('email');
       const response = await gatewayFetchWithTimeout(`${API_BASE}/account/email-code`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, currentPassword, captcha }),
+        body: JSON.stringify({ email, verificationToken, captcha }),
       }, true);
       if (!response.ok) return await emailChangeFailure(response, `验证码发送失败（${response.status}）`);
       const payload = await readPayload(response);
@@ -470,12 +502,12 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }
   },
 
-  changeEmail: async (email, code, currentPassword) => {
+  changeEmail: async (email, code, verificationToken) => {
     const generation = beginAuthMutation();
     try {
       const response = await gatewayFetchWithTimeout(`${API_BASE}/account/email`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code, currentPassword }),
+        body: JSON.stringify({ email, code, verificationToken }),
       }, true);
       if (!response.ok) {
         if (response.status >= 500 && queuedRefresh === null) queuedRefresh = false;
@@ -653,6 +685,59 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }
   },
 
+  requestPhoneChangeCode: async (phone, verificationToken) => {
+    try {
+      const captcha = await requestCaptchaProof('sms');
+      const response = await gatewayFetchWithTimeout(`${API_BASE}/account/phone-code`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, verificationToken, captcha }),
+      }, true);
+      if (!response.ok) return await apiFailure(response, `短信验证码发送失败（${response.status}）`);
+      const payload = await readPayload(response);
+      return { ok: true, retryAfter: retrySeconds(response, payload, 60) };
+    } catch (error) {
+      return captchaFailure(error) ?? networkFailure(error);
+    }
+  },
+
+  changePhone: async (phone, code, verificationToken) => {
+    const generation = beginAuthMutation();
+    try {
+      const response = await gatewayFetchWithTimeout(`${API_BASE}/account/phone`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, code, verificationToken }),
+      }, true);
+      if (!response.ok) {
+        if (response.status >= 500 && queuedRefresh === null) queuedRefresh = false;
+        return await apiFailure(response, `手机号更换失败（${response.status}）`);
+      }
+      const payload = await readPayload(response);
+      if (generation !== currentAuthEpoch()) return supersededAuthResult();
+      const user = userName(payload, get().user ?? '');
+      const nextPhoneMasked = maskedPhone(payload);
+      if (!user || !nextPhoneMasked || payload.phoneBindingRequired !== false) {
+        if (queuedRefresh === null) queuedRefresh = false;
+        return { ok: false, message: '手机号状态未能确认，请重新打开个人中心查看', field: 'form' };
+      }
+      setGatewayIdentity(user);
+      set({
+        status: 'authed', user,
+        emailMasked: maskedEmail(payload) ?? get().emailMasked,
+        emailBindingRequired: payload.emailBindingRequired === undefined
+          ? get().emailBindingRequired : needsEmailBinding(payload),
+        phoneMasked: nextPhoneMasked,
+        phoneBindingRequired: false,
+      });
+      broadcastAuthChange();
+      return { ok: true };
+    } catch (error) {
+      if (queuedRefresh === null) queuedRefresh = false;
+      return networkFailure(error);
+    } finally {
+      finishAuthMutation(get);
+    }
+  },
+
   requestPasswordResetCode: async (phone) => get().requestSmsCode(phone, 'reset-password'),
 
   resetPassword: async (phone, code, newPassword) => {
@@ -685,12 +770,12 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }
   },
 
-  changePassword: async (currentPassword, newPassword) => {
+  changePassword: async (verificationToken, newPassword) => {
     const generation = beginAuthMutation();
     try {
       const response = await gatewayFetchWithTimeout(`${API_BASE}/account/password`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify({ verificationToken, newPassword }),
       }, true);
       if (!response.ok) {
         if (response.status >= 500 && queuedRefresh === null) queuedRefresh = false;

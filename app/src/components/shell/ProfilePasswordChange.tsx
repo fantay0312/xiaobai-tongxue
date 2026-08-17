@@ -2,9 +2,14 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import fieldStyles from '../../pages/login/EmailCodeField.module.css';
 import { mapPasswordIssueField, type Issue } from '../../hooks/useAuthForm';
 import { useAuthStore, type AuthField } from '../../store/authStore';
-import styles from './ProfileEmailChange.module.css';
+import {
+  ProfileCredentialFlow,
+  ProfileIdentityVerification,
+} from './ProfileCredentialFlow';
+import styles from './ProfileCredentialFlow.module.css';
 
 interface ProfilePasswordChangeProps {
+  currentCredential: string;
   onCancel: () => void;
   onSuccess: () => void;
 }
@@ -12,9 +17,11 @@ interface ProfilePasswordChangeProps {
 const ID_PREFIX = 'profile-password-change';
 const FEEDBACK_ID = `${ID_PREFIX}-feedback`;
 
-export function ProfilePasswordChange({ onCancel, onSuccess }: ProfilePasswordChangeProps) {
+export function ProfilePasswordChange({
+  currentCredential, onCancel, onSuccess,
+}: ProfilePasswordChangeProps) {
   const changePassword = useAuthStore((state) => state.changePassword);
-  const [currentPassword, setCurrentPassword] = useState('');
+  const [verificationToken, setVerificationToken] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [issue, setIssue] = useState<Issue | null>(null);
@@ -26,7 +33,6 @@ export function ProfilePasswordChange({ onCancel, onSuccess }: ProfilePasswordCh
   useEffect(() => {
     if (!issue || issue.field === 'form') return;
     const fieldId: Partial<Record<AuthField, string>> = {
-      currentPassword: `${ID_PREFIX}-current-password`,
       newPassword: `${ID_PREFIX}-new-password`,
       confirmPassword: `${ID_PREFIX}-confirm-password`,
     };
@@ -41,15 +47,10 @@ export function ProfilePasswordChange({ onCancel, onSuccess }: ProfilePasswordCh
     event.preventDefault();
     if (changing) return;
     let localIssue: Issue | null = null;
-    if (!currentPassword) localIssue = { field: 'currentPassword', message: '请输入当前密码' };
-    else if (currentPassword.length > 128) {
-      localIssue = { field: 'currentPassword', message: '当前密码不能超过 128 位' };
-    } else if (newPassword.length < 8) {
+    if (newPassword.length < 8) {
       localIssue = { field: 'newPassword', message: '新密码至少需要 8 位' };
     } else if (newPassword.length > 128) {
       localIssue = { field: 'newPassword', message: '新密码不能超过 128 位' };
-    } else if (newPassword === currentPassword) {
-      localIssue = { field: 'newPassword', message: '新密码不能与当前密码相同' };
     } else if (confirmPassword !== newPassword) {
       localIssue = { field: 'confirmPassword', message: '两次输入的新密码不一致' };
     }
@@ -57,11 +58,12 @@ export function ProfilePasswordChange({ onCancel, onSuccess }: ProfilePasswordCh
       setIssue(localIssue);
       return;
     }
+    if (!verificationToken) return;
 
     const operationId = ++operation.current;
     setChanging(true);
     setIssue(null);
-    const result = await changePassword(currentPassword, newPassword);
+    const result = await changePassword(verificationToken, newPassword);
     if (operationId !== operation.current) return;
     setChanging(false);
     if (!result.ok) {
@@ -71,38 +73,33 @@ export function ProfilePasswordChange({ onCancel, onSuccess }: ProfilePasswordCh
       });
       return;
     }
-    setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
     onSuccess();
   };
 
+  if (!verificationToken) {
+    return (
+      <ProfileCredentialFlow action="change-password" step={1} onBack={onCancel}>
+        <ProfileIdentityVerification
+          action="change-password"
+          currentCredential={currentCredential}
+          onVerified={setVerificationToken}
+        />
+      </ProfileCredentialFlow>
+    );
+  }
+
   return (
-    <section className={styles.editor} id={ID_PREFIX} aria-labelledby={`${ID_PREFIX}-title`}>
-      <header className={styles.head}>
-        <div>
-          <h4 className={styles.title} id={`${ID_PREFIX}-title`}>修改登录密码</h4>
-          <p className={styles.copy}>修改成功后，其他设备上的旧会话将失效，请使用新密码登录。</p>
-        </div>
-      </header>
+    <ProfileCredentialFlow action="change-password" step={2} onBack={onCancel}>
+      <div className={styles.stage} id={ID_PREFIX}>
+        <header className={styles.stageHead}>
+          <p className={styles.typeLabel}>NEW CREDENTIAL</p>
+          <h3>设置新的登录密码</h3>
+          <p>修改成功后，其他设备上的旧会话将失效，请使用新密码重新登录。</p>
+        </header>
       <form className={styles.form} noValidate aria-busy={changing} onSubmit={submitChange}>
         <fieldset className={styles.fieldset} disabled={changing}>
-          <label className={fieldStyles.field} htmlFor={`${ID_PREFIX}-current-password`}>
-            <span className={fieldStyles.label}>当前密码</span>
-            <input
-              id={`${ID_PREFIX}-current-password`}
-              className={fieldStyles.input}
-              type="password"
-              value={currentPassword}
-              autoFocus
-              autoComplete="current-password"
-              maxLength={128}
-              required
-              aria-invalid={issue?.field === 'currentPassword' || undefined}
-              aria-describedby={issue?.field === 'currentPassword' ? FEEDBACK_ID : undefined}
-              onChange={(event) => { setCurrentPassword(event.target.value); clearIssue('currentPassword'); }}
-            />
-          </label>
           <label className={fieldStyles.field} htmlFor={`${ID_PREFIX}-new-password`}>
             <span className={fieldStyles.label}>新密码</span>
             <input
@@ -118,7 +115,7 @@ export function ProfilePasswordChange({ onCancel, onSuccess }: ProfilePasswordCh
               aria-describedby={issue?.field === 'newPassword' ? FEEDBACK_ID : `${ID_PREFIX}-password-hint`}
               onChange={(event) => { setNewPassword(event.target.value); clearIssue('newPassword'); }}
             />
-            <span className={fieldStyles.hint} id={`${ID_PREFIX}-password-hint`}>至少 8 位，且不要与当前密码相同</span>
+            <span className={fieldStyles.hint} id={`${ID_PREFIX}-password-hint`}>至少 8 位，且不能与当前密码相同</span>
           </label>
           <label className={fieldStyles.field} htmlFor={`${ID_PREFIX}-confirm-password`}>
             <span className={fieldStyles.label}>再次输入新密码</span>
@@ -138,12 +135,20 @@ export function ProfilePasswordChange({ onCancel, onSuccess }: ProfilePasswordCh
         </fieldset>
         {issue ? <p className={styles.error} id={FEEDBACK_ID} role="alert">{issue.message}</p> : null}
         <div className={styles.actions}>
-          <button className={styles.cancel} type="button" disabled={changing} onClick={onCancel}>取消</button>
-          <button className={styles.confirm} type="submit" disabled={changing}>
+          <button
+            className={styles.secondary}
+            type="button"
+            disabled={changing}
+            onClick={() => { setVerificationToken(null); setIssue(null); }}
+          >
+            重新验证
+          </button>
+          <button className={styles.primary} type="submit" disabled={changing}>
             {changing ? '正在更改…' : '确认修改'}
           </button>
         </div>
       </form>
-    </section>
+      </div>
+    </ProfileCredentialFlow>
   );
 }

@@ -4,6 +4,7 @@
  *  - /api/login /api/logout /api/me:账号或已验证邮箱+密码会话(scrypt 哈希,HttpOnly Cookie)
  *  - /api/auth/email-code /api/login/email:邮箱验证码发送与登录(Resend 密钥仅服务器持有)
  *  - /api/account/email-code /api/account/email:首次绑定或换绑并验证邮箱
+ *  - /api/account/verify-password:敏感账号操作前签发短时、会话绑定的验证授权
  *  - /api/register:凭邀请码+已验证邮箱注册;注册用户落盘 registered-users.json,
  *    与 config.json 的预置账号并存
  *  - /api/chat:登录后才可用的 LLM 代理 —— DeepSeek 密钥只存在服务器 config.json,永不下发
@@ -73,6 +74,10 @@ import { createAdminService } from './admin/service.mjs';
 import { createCommerceRouter } from './commerce/router.mjs';
 import { createCommerceService } from './commerce/service.mjs';
 import { createStaticHandler } from './static-hosting.mjs';
+import {
+  createAccountVerificationGrants,
+  isAccountVerificationAction,
+} from './account-verification.mjs';
 
 // 腾讯云主机无 IPv6 出网,而 openrouter.ai 等上游把 AAAA 排在解析结果前面;
 // Node fetch(undici)不做 Happy Eyeballs,按序拿 IPv6 直连会 ENETUNREACH 秒败
@@ -615,6 +620,7 @@ if (USERS.length === 0 && regUsers.length === 0 && !registrationAvailable()) {
 
 // ───────────────────────── 会话与限流(内存态,重启即清) ─────────────────────────
 const sessions = new Map(); // token -> { name, expires }
+const accountVerificationGrants = createAccountVerificationGrants();
 const credentialMutationTails = new Map(); // canonical name -> FIFO release promise
 const transcriptMutationTails = new Map(); // canonical name -> FIFO release promise
 const loginFails = new Map(); // ip -> { count, resetAt }
@@ -631,6 +637,7 @@ const transcriptHits = new Map(); // name -> { count, resetAt }
 setInterval(() => {
   const now = Date.now();
   for (const [t, s] of sessions) if (s.expires < now) sessions.delete(t);
+  accountVerificationGrants.cleanup(now);
   userAccessController.pruneExpired(now);
   for (const [k, v] of loginFails) if (v.resetAt < now) loginFails.delete(k);
   for (const [k, v] of authHits) if (v.resetAt < now) authHits.delete(k);
@@ -1220,6 +1227,67 @@ async function requireCurrentPassword(req, res, user, value) {
   return current;
 }
 
+function usesAccountVerificationToken(body) {
+  return Boolean(body && Object.hasOwn(body, 'verificationToken'));
+}
+
+function accountVerificationAuthorized(req, user, body, action, consume = false) {
+  const session = currentUser(req);
+  const name = canonicalName(user?.name);
+  const revision = credentialRevision(user);
+  if (!session || !sameAccount(session, user) || !clientIdentityMatches(req, session)
+    || !name || !revision) return false;
+  return accountVerificationGrants.authorize({
+    token: body?.verificationToken,
+    sessionToken: session.token,
+    name,
+    action,
+    revision,
+    consume,
+  });
+}
+
+async function requireAccountStepUp(req, res, user, body, action) {
+  if (!usesAccountVerificationToken(body)) {
+    return requireCurrentPassword(req, res, user, body?.currentPassword);
+  }
+  if (!accountVerificationAuthorized(req, user, body, action)) {
+    send(res, 403, { error: 'account-verification-required' });
+    return null;
+  }
+  return user;
+}
+
+async function handleAccountVerifyPassword(req, res) {
+  const initialSession = currentUser(req);
+  let user = await protectedUser(req, res, 'all', { allowUnverified: true });
+  if (!user) { req.resume(); return; }
+  if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
+  let body;
+  try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
+  if (!isAccountVerificationAction(body?.action)) {
+    return send(res, 400, { error: 'bad-verification-action' });
+  }
+  user = await requireCurrentPassword(req, res, user, body?.currentPassword);
+  if (!user) return;
+  const session = currentUser(req);
+  if (!initialSession || !session || session.token !== initialSession.token) {
+    return send(res, 401, { error: 'login-required' });
+  }
+  const issued = accountVerificationGrants.issue({
+    sessionToken: session.token,
+    name: canonicalName(user.name),
+    action: body.action,
+    revision: credentialRevision(user),
+  });
+  if (!issued) return send(res, 500, { error: 'verification-grant-failed' });
+  send(res, 200, {
+    ok: true,
+    verificationToken: issued.token,
+    expiresIn: issued.expiresIn,
+  }, { 'Cache-Control': 'no-store' });
+}
+
 function sendEmailAuthError(res, result, invalidStatus = 400) {
   const retry = result.retryAfter ? { 'Retry-After': String(result.retryAfter) } : {};
   if (result.error === 'too-many-attempts' || result.error === 'send-too-frequent' || result.error === 'auth-busy') {
@@ -1470,7 +1538,7 @@ async function handleAccountEmailCode(req, res) {
   let body;
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
   if (!await verifyCaptcha(req, res, 'email', body)) return;
-  user = await requireCurrentPassword(req, res, user, body?.currentPassword);
+  user = await requireAccountStepUp(req, res, user, body, 'change-email');
   if (!user) return;
   const email = normalizeEmail(body?.email);
   if (!email) return send(res, 400, { error: 'bad-email' });
@@ -1515,7 +1583,7 @@ async function handleAccountEmail(req, res) {
   if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
   let body;
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
-  user = await requireCurrentPassword(req, res, user, body?.currentPassword);
+  user = await requireAccountStepUp(req, res, user, body, 'change-email');
   if (!user) return;
   const email = normalizeEmail(body?.email);
   if (!email) return send(res, 400, { error: 'bad-email' });
@@ -1530,6 +1598,10 @@ async function handleAccountEmail(req, res) {
     ip: clientIp(req),
   });
   if (!verified.ok) return sendEmailAuthError(res, verified);
+  if (usesAccountVerificationToken(body)
+    && !accountVerificationAuthorized(req, user, body, 'change-email', true)) {
+    return send(res, 403, { error: 'account-verification-required' });
+  }
   const persisted = await persistVerifiedEmail(user.name, verified.email, purpose);
   if (!persisted.ok) {
     if (['email-taken', 'email-already-bound', 'email-unchanged', 'email-not-bound']
@@ -1553,7 +1625,7 @@ async function handleAccountPhoneCode(req, res) {
   let body;
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
   if (!await verifyCaptcha(req, res, 'sms', body)) return;
-  user = await requireCurrentPassword(req, res, user, body?.currentPassword);
+  user = await requireAccountStepUp(req, res, user, body, 'change-phone');
   if (!user) return;
   const phone = normalizeMainlandPhone(body?.phone);
   if (!phone) return send(res, 400, { error: 'bad-phone' });
@@ -1589,7 +1661,7 @@ async function handleAccountPhone(req, res) {
   if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
   let body;
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
-  user = await requireCurrentPassword(req, res, user, body?.currentPassword);
+  user = await requireAccountStepUp(req, res, user, body, 'change-phone');
   if (!user) return;
   const phone = normalizeMainlandPhone(body?.phone);
   if (!phone) return send(res, 400, { error: 'bad-phone' });
@@ -1602,6 +1674,10 @@ async function handleAccountPhone(req, res) {
     ip: clientIp(req),
   });
   if (!verified.ok) return sendPhoneAuthError(res, verified);
+  if (usesAccountVerificationToken(body)
+    && !accountVerificationAuthorized(req, user, body, 'change-phone', true)) {
+    return send(res, 403, { error: 'account-verification-required' });
+  }
   const persisted = await persistVerifiedPhone(user.name, verified.phone, purpose);
   if (!persisted.ok) {
     if (['phone-taken', 'phone-already-bound', 'phone-unchanged', 'phone-not-bound']
@@ -1631,11 +1707,18 @@ async function handleAccountPassword(req, res) {
     }
     let lockedUser = findUser(lockedSession.name);
     if (!lockedUser) return send(res, 401, { error: 'login-required' });
-    lockedUser = await requireCurrentPassword(req, res, lockedUser, body?.currentPassword);
+    lockedUser = await requireAccountStepUp(req, res, lockedUser, body, 'change-password');
     if (!lockedUser) return;
     const password = validateNewPassword(res, body?.newPassword);
     if (!password) return;
-    if (password === body.currentPassword) return send(res, 409, { error: 'password-unchanged' });
+    const passwordUnchanged = usesAccountVerificationToken(body)
+      ? await passwordService.verify(lockedUser, password)
+      : password === body.currentPassword;
+    if (passwordUnchanged) return send(res, 409, { error: 'password-unchanged' });
+    if (usesAccountVerificationToken(body)
+      && !accountVerificationAuthorized(req, lockedUser, body, 'change-password', true)) {
+      return send(res, 403, { error: 'account-verification-required' });
+    }
     const revision = credentialRevision(lockedUser);
     const credentials = await passwordService.hash(password);
     // 邮箱变更不走密码锁，但会撤销旧 SID；落盘前再做一次 SID + 凭据 CAS。
@@ -2600,6 +2683,7 @@ const server = http.createServer((req, res) => {
     if (pathname === '/api/auth/password-code' && req.method === 'POST') return void handleAuthRequest(req, res, handlePasswordCode);
     if (pathname === '/api/auth/password-reset' && req.method === 'POST') return void handleAuthRequest(req, res, handlePasswordReset);
     if (pathname === '/api/auth/password-reset/phone' && req.method === 'POST') return void handleAuthRequest(req, res, handlePhonePasswordReset);
+    if (pathname === '/api/account/verify-password' && req.method === 'POST') return void handleAuthRequest(req, res, handleAccountVerifyPassword);
     if (pathname === '/api/account/email-code' && req.method === 'POST') return void handleAuthRequest(req, res, handleAccountEmailCode);
     if (pathname === '/api/account/email' && req.method === 'POST') return void handleAuthRequest(req, res, handleAccountEmail);
     if (pathname === '/api/account/phone-code' && req.method === 'POST') return void handleAuthRequest(req, res, handleAccountPhoneCode);
