@@ -245,3 +245,22 @@
   .ahaBloom,
   .ahaMarks i { animation: none; }
 }
+
+:global(html[data-theme='anime']) .avatar {
+  border-radius: 28px;
+}
+
+:global(html[data-theme='anime']) .avatar[data-motion='active'] .motion {
+  animation: animeFloat 6.4s var(--ease-loop) infinite;
+}
+
+@keyframes animeFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(html[data-theme='anime']) .avatar[data-motion='active'] .motion {
+    animation: none;
+  }
+}

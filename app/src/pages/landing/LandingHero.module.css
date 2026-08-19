@@ -287,3 +287,79 @@
     transform: none;
   }
 }
+
+/* 动漫主题:Hero 做成角色操作数字世界的现代构图 */
+:global(html[data-theme='anime']) .hero::before {
+  content: '';
+  position: absolute;
+  inset: 6% 2% auto auto;
+  width: min(28rem, 48vw);
+  height: min(28rem, 48vw);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 40% 40%, color-mix(in oklch, var(--terra-wash) 80%, transparent), transparent 68%),
+    radial-gradient(circle at 70% 70%, color-mix(in oklch, var(--mustard-wash) 70%, transparent), transparent 62%);
+  filter: blur(8px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+:global(html[data-theme='anime']) .hero::after {
+  background: transparent;
+}
+
+:global(html[data-theme='anime']) .title em {
+  font-style: normal;
+  color: var(--terra-ink);
+}
+
+:global(html[data-theme='anime']) .primary {
+  border-radius: 999px;
+  background: linear-gradient(180deg, color-mix(in oklch, var(--terra) 82%, white), var(--azure));
+  box-shadow: 0 10px 22px color-mix(in oklch, var(--terra) 24%, transparent);
+}
+
+:global(html[data-theme='anime']) .primary:active {
+  transform: scale(0.98);
+}
+
+:global(html[data-theme='anime']) .secondary {
+  min-height: 2.9rem;
+  padding: 0.5rem 1.05rem;
+  border: 1px solid var(--paper-edge);
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--paper) 70%, transparent);
+  color: var(--ink-soft);
+}
+
+:global(html[data-theme='anime']) .proofLine {
+  font-family: var(--font-body);
+  letter-spacing: 0.02em;
+}
+
+:global(html[data-theme='anime']) .ticket {
+  transform: none;
+  border-radius: var(--radius-l);
+  border-color: color-mix(in oklch, var(--paper-edge) 72%, var(--terra));
+  background:
+    linear-gradient(165deg, color-mix(in oklch, var(--paper) 42%, var(--mustard)), var(--paper) 78%);
+}
+
+:global(html[data-theme='anime']) .ticket:hover {
+  transform: translateY(-4px);
+}
+
+:global(html[data-theme='anime']) .ticketMeta dt {
+  font-family: var(--font-body);
+}
+
+:global(html[data-theme='anime']) .pupil {
+  border-block: 1px solid var(--paper-edge);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(html[data-theme='anime']) .ticket:hover,
+  :global(html[data-theme='anime']) .primary:active {
+    transform: none;
+  }
+}

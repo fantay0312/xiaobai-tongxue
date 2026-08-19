@@ -1,0 +1,50 @@
+.cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.12rem;
+}
+
+.btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-faint);
+  transition:
+    color var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: -0.35rem;
+}
+
+.btn:hover {
+  color: var(--ink);
+  background: var(--terra-wash);
+  transform: translateY(-1px);
+}
+
+.btn[aria-pressed='true'] {
+  color: var(--terra-ink);
+  background: var(--terra-wash);
+}
+
+.btn:active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn:hover,
+  .btn:active {
+    transform: none;
+  }
+}

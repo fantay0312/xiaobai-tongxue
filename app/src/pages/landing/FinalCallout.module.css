@@ -141,3 +141,24 @@
     transform: none;
   }
 }
+
+:global(html[data-theme='anime']) .kicker {
+  font-family: var(--font-body);
+}
+
+:global(html[data-theme='anime']) .action {
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  background: linear-gradient(180deg, color-mix(in oklch, var(--terra) 82%, white), var(--azure));
+  box-shadow: 0 10px 22px color-mix(in oklch, var(--ink) 18%, transparent);
+}
+
+:global(html[data-theme='anime']) .action:active {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(html[data-theme='anime']) .action:active {
+    transform: none;
+  }
+}

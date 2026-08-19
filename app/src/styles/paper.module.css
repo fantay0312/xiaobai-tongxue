@@ -108,3 +108,43 @@
   border-radius: 0 0 999px 999px;
   box-shadow: inset 0 -2px 6px var(--ink-wash);
 }
+
+/* 动漫主题:票据工艺退为柔和现代卡片,不撕票、不斜贴 */
+:global(html[data-theme='anime']) .texture::before {
+  opacity: 0.08;
+}
+
+:global(html[data-theme='anime']) .typeLabel,
+:global(html[data-theme='anime']) .verticalRail,
+:global(html[data-theme='anime']) .perfNote,
+:global(html[data-theme='anime']) .stampInner {
+  font-family: var(--font-body);
+  text-transform: none;
+  letter-spacing: 0.04em;
+}
+
+:global(html[data-theme='anime']) .tiltL,
+:global(html[data-theme='anime']) .tiltR {
+  transform: none;
+}
+
+:global(html[data-theme='anime']) .tiltL:hover,
+:global(html[data-theme='anime']) .tiltR:hover {
+  transform: translateY(-4px);
+}
+
+:global(html[data-theme='anime']) .notch {
+  display: none;
+}
+
+:global(html[data-theme='anime']) .stamp {
+  transform: none;
+  border-color: color-mix(in oklch, var(--terra) 28%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(html[data-theme='anime']) .tiltL:hover,
+  :global(html[data-theme='anime']) .tiltR:hover {
+    transform: none;
+  }
+}

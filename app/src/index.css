@@ -1,4 +1,5 @@
 @import './styles/tokens.css';
+@import './styles/theme-anime.css';
 
 *, *::before, *::after { box-sizing: border-box; }
 

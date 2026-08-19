@@ -1,7 +1,24 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="paper">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem('xiaobai-ui-theme-v1');
+          if (!raw) return;
+          var parsed = JSON.parse(raw);
+          var theme = parsed && parsed.state && parsed.state.theme;
+          var tone = parsed && parsed.state && parsed.state.tone;
+          if (theme === 'anime' || theme === 'paper') {
+            document.documentElement.dataset.theme = theme;
+          }
+          if (theme === 'anime' && (tone === 'day' || tone === 'night')) {
+            document.documentElement.dataset.tone = tone;
+          }
+        } catch (e) {}
+      })();
+    </script>
     <link rel="icon" type="image/png" sizes="32x32" href="%BASE_URL%favicon-32.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="%BASE_URL%favicon-192.png" />
     <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
