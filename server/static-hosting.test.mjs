@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -112,6 +113,60 @@ test('main and admin SPAs have isolated fallbacks and cache policies', async (co
   assert.deepEqual(directiveSources(mainCsp, 'connect-src'), ["'self'", 'https:']);
   assert.match(main.headers['Permissions-Policy'], /microphone=\(self\)/);
   assert.equal(main.body.toString(), '<main>Main SPA</main>');
+});
+
+test('themed index boots inline without opening script-src, and audio keeps its media type', async (context) => {
+  const temporary = await mkdtemp(path.join(tmpdir(), 'xiaobai-static-theme-'));
+  context.after(() => rm(temporary, { recursive: true, force: true }));
+  const mainDist = path.join(temporary, 'main');
+  const adminDist = path.join(temporary, 'admin');
+  await Promise.all([
+    mkdir(path.join(mainDist, 'sounds'), { recursive: true }),
+    mkdir(adminDist, { recursive: true }),
+  ]);
+  /* 与 app/index.html 同形:首屏绘制前恢复 <html data-theme>,不能靠外链脚本。 */
+  const boot = "\n  document.documentElement.dataset.theme = 'anime';\n";
+  await Promise.all([
+    writeFile(
+      path.join(mainDist, 'index.html'),
+      `<!doctype html><html data-theme="paper"><head><script>${boot}</script>`
+      + '<script type="module" crossorigin src="/assets/index.js"></script>'
+      + '</head><body></body></html>',
+    ),
+    writeFile(path.join(mainDist, 'sounds', 'bgm.mp3'), 'ID3-not-really'),
+    writeFile(path.join(adminDist, 'index.html'), '<main>Admin SPA</main>'),
+  ]);
+  const handle = createStaticHandler({
+    mainDist,
+    adminDist,
+    send: (res, status, body) => {
+      res.writeHead(status, {});
+      res.end(body);
+    },
+  });
+
+  const index = response();
+  handle({ method: 'GET' }, index, '/');
+  const scriptSrc = directiveSources(index.headers['Content-Security-Policy'], 'script-src');
+  const expected = `'sha256-${createHash('sha256').update(boot, 'utf8').digest('base64')}'`;
+  assert.ok(scriptSrc.includes(expected), '内联启动脚本必须按内容哈希放行');
+  assert.ok(!scriptSrc.includes("'unsafe-inline'"), "script-src 永不开 'unsafe-inline'");
+  /* 外链 <script src> 由 'self' 覆盖,不该多算一个哈希。 */
+  assert.equal(scriptSrc.filter((source) => source.startsWith("'sha256-")).length, 1);
+
+  const audio = response();
+  handle({ method: 'GET' }, audio, '/sounds/bgm.mp3');
+  assert.equal(audio.status, 200);
+  assert.equal(audio.headers['Content-Type'], 'audio/mpeg');
+  assert.equal(audio.headers['X-Content-Type-Options'], 'nosniff');
+
+  /* 后台产物没有内联脚本时,其 script-src 必须仍是最紧的 'self'。 */
+  const admin = response();
+  handle({ method: 'GET' }, admin, '/admin/');
+  assert.deepEqual(
+    directiveSources(admin.headers['Content-Security-Policy'], 'script-src'),
+    ["'self'"],
+  );
 });
 
 test('decoded traversal cannot leave either distribution root', async (context) => {
