@@ -55,8 +55,8 @@ export function AtmosphereToggles() {
           className={styles.btn}
           onClick={() => setTone(night ? 'day' : 'night')}
           aria-pressed={night}
-          aria-label={night ? '切换到白天' : '切换到黑夜'}
-          title={night ? '白天' : '黑夜'}
+          aria-label={night ? '切换到日景板' : '切换到夜景板'}
+          title={night ? '日景板' : '夜景板'}
         >
           <Icon name={night ? 'sun' : 'moon'} size={16} />
         </button>

@@ -1,100 +1,130 @@
 /* ─────────────────────────────────────────────────────────
-   日系动漫主题(可选外观)
-   Japanese Anime + Modern SaaS:低饱和蓝紫 / 奶白 / 淡粉。
+   日系动漫主题「セル画」(可选外观)
+   —— 不是"动漫风的 SaaS",是把界面当成小白被画在上面的那张赛璐珞片。
+
+   赛璐珞动画的视觉语法(与 AI Slop 恰好相反):
+     平涂硬边,不做柔光渐变 · 暖褐线稿收形,不用蓝灰描边
+     暖光冷影(暖底 × 冷藍主体),不做同调低饱和
+     平色面分区,不做高斯模糊色团
+
+   全部色值取自 public/xiaobai-book-boy-atlas.webp 的实际画稿,不凭感觉造色:
+     衣色 #486888 → oklch(0.506 0.063 249)  = 主动作藍
+     描线 #483828 → oklch(0.354 0.035  66)  = 线稿墨(暖褐,非蓝黑)
+     纸底 #f8e8d8 → oklch(0.939 0.028  67)  = 美術ボード底
+     衣影 #283858 → oklch(0.343 0.060 263)  = 冷调阴影
+     暖高光 #f8e8c8 / 唇点 #482828 → 高光面与朱色点睛
+
    只覆盖令牌与全站底,不改路由、业务、讲解舱黑板叙事。
-   --board/--chalk 系故意不改:夜自习场景保持独立。
+   --board/--chalk 系故意不改:夜自习是场景叙事,不随外观走。
    ───────────────────────────────────────────────────────── */
 
 html[data-theme='anime'] {
   color-scheme: light;
 
-  /* Primary:柔和靛青。小字走 -ink,色块可用原档 */
-  --terra: oklch(0.628 0.086 277.4);
-  --terra-ink: oklch(0.452 0.092 277.8);
-  --terra-deep: oklch(0.398 0.086 278.2);
-  --terra-wash: oklch(0.628 0.086 277.4 / 0.16);
-  --mustard: oklch(0.905 0.038 328.6);
-  --mustard-wash: oklch(0.905 0.038 328.6 / 0.28);
+  /* ── 主动作:藍(あい)—— 小白衣色提纯到 UI 可用档 ──
+     生藍 3.8:1 只许 ≥24px 大字/图形/色块底;小字一律走 --terra-ink(6.4:1) */
+  --terra: oklch(0.588 0.104 250.5);
+  --terra-ink: oklch(0.462 0.098 252.4);
+  --terra-deep: oklch(0.382 0.086 255.6);
+  --terra-wash: oklch(0.588 0.104 250.5 / 0.14);
 
+  /* 高光面:暖高光纸(#f8e8c8)。墨字压其上 10.5:1,一页至多一张 */
+  --mustard: oklch(0.912 0.084 87.0);
+  --mustard-wash: oklch(0.912 0.084 87.0 / 0.34);
+
+  /* 历史锚名 → 本主题别名(不动任何组件契约) */
   --lilac: var(--terra);
   --lilac-ink: var(--terra-ink);
   --lilac-deep: var(--terra-deep);
   --lilac-wash: var(--terra-wash);
-  --reed: oklch(0.786 0.046 304.2);
-  --reed-ink: oklch(0.468 0.058 292.4);
-  --reed-deep: oklch(0.402 0.052 292.1);
-  --reed-wash: oklch(0.786 0.046 304.2 / 0.22);
 
-  /* 底:暖白 + 极浅蓝 / 极浅粉分区 */
-  --paper: oklch(0.985 0.007 247.8);
-  --paper-warm: oklch(0.968 0.016 247.2);
-  --paper-blush: oklch(0.972 0.014 343.6);
-  --paper-edge: oklch(0.902 0.014 268.4);
-  --paper-shade: oklch(0.946 0.012 256.8);
-  --line-strong: oklch(0.824 0.018 272.6);
+  /* 浅葱(あさぎ):次级冷色,与主藍拉开 40° 色相,不撞车 */
+  --reed: oklch(0.700 0.062 208.4);
+  --reed-ink: oklch(0.470 0.062 213.2);
+  --reed-deep: oklch(0.404 0.054 214.6);
+  --reed-wash: oklch(0.700 0.062 208.4 / 0.20);
 
-  /* 字:深蓝灰 */
-  --ink: oklch(0.318 0.032 272.6);
-  --ink-soft: oklch(0.468 0.026 271.8);
-  --ink-faint: oklch(0.552 0.022 270.4);
-  --ink-wash: oklch(0.318 0.032 272.6 / 0.07);
+  /* ── 美術ボード:暖奶油底,分区靠暖度而非彩度 ── */
+  --paper: oklch(0.968 0.019 74.0);
+  --paper-warm: oklch(0.948 0.032 82.4);
+  --paper-blush: oklch(0.945 0.026 42.6);
+  --paper-edge: oklch(0.862 0.014 74.2);
+  --paper-shade: oklch(0.925 0.020 78.0);
+  /* 线稿档:比票据风更实,承担"收形"的活 */
+  --line-strong: oklch(0.702 0.024 68.6);
+
+  /* ── 线稿墨:暖褐近黑(小白的描线色),不是蓝灰 ── */
+  --ink: oklch(0.312 0.034 66.2);
+  --ink-soft: oklch(0.455 0.020 68.4);
+  --ink-faint: oklch(0.525 0.016 70.0);
+  --ink-wash: oklch(0.312 0.034 66.2 / 0.07);
 
   --azure: var(--terra-ink);
   --azure-deep: var(--terra-deep);
   --azure-wash: var(--terra-wash);
 
-  --cinnabar: oklch(0.524 0.132 18.6);
-  --cinnabar-wash: oklch(0.524 0.132 18.6 / 0.10);
-  --seal-red: oklch(0.548 0.118 8.4);
-  --seal-red-wash: oklch(0.548 0.118 8.4 / 0.10);
-  --ink-on-seal: oklch(0.988 0.006 247.8);
+  /* 点睛:朱(しゅ)。只给误区/盲区/警示,与主藍在色相上正对,一点就醒 */
+  --cinnabar: oklch(0.498 0.165 27.5);
+  --cinnabar-wash: oklch(0.498 0.165 27.5 / 0.11);
+  --seal-red: oklch(0.512 0.158 24.0);
+  --seal-red-wash: oklch(0.512 0.158 24.0 / 0.11);
+  --ink-on-seal: oklch(0.982 0.014 74.0);
 
-  --jade: oklch(0.572 0.074 176.4);
-  --jade-ink: oklch(0.448 0.068 176.8);
-  --jade-wash: oklch(0.572 0.074 176.4 / 0.16);
-  --amber: oklch(0.742 0.092 62.4);
-  --amber-ink: oklch(0.512 0.078 58.6);
-  --amber-wash: oklch(0.742 0.092 62.4 / 0.16);
-  --dust: oklch(0.782 0.016 268.2);
+  /* 三态:掌握=若竹 / 衰减=山吹 / 未学=暖灰 */
+  --jade: oklch(0.518 0.088 155.4);
+  --jade-ink: oklch(0.452 0.078 156.8);
+  --jade-wash: oklch(0.518 0.088 155.4 / 0.16);
+  --amber: oklch(0.735 0.128 78.2);
+  --amber-ink: oklch(0.528 0.096 74.6);
+  --amber-wash: oklch(0.735 0.128 78.2 / 0.18);
+  --dust: oklch(0.760 0.012 72.0);
 
-  --wood: oklch(0.586 0.036 278.4);
-  --wood-deep: oklch(0.428 0.028 278.8);
-  --wood-sheen: oklch(0.728 0.028 276.2);
+  --wood: oklch(0.600 0.062 72.4);
+  --wood-deep: oklch(0.446 0.044 70.8);
+  --wood-sheen: oklch(0.722 0.048 80.2);
 
-  --gold: oklch(0.812 0.092 84.6);
-  --gold-ink: oklch(0.528 0.086 78.4);
+  --gold: oklch(0.868 0.116 84.0);
+  --gold-ink: oklch(0.545 0.098 76.4);
 
-  --inkstone: oklch(0.338 0.036 276.8);
-  --inkstone-deep: oklch(0.278 0.032 277.4);
-  --inkstone-line: oklch(0.458 0.032 276.2);
-  --moon-on-ink: oklch(0.985 0.007 247.8);
-  --moonsoft-on-ink: oklch(0.828 0.018 268.6);
+  /* 深色锚点:赛璐珞的冷调暗部(暖光→冷影)。
+     色相 256 与讲解舱黑板 125-135 拉开,两套叙事不相扰 */
+  --inkstone: oklch(0.318 0.038 256.2);
+  --inkstone-deep: oklch(0.262 0.032 257.4);
+  --inkstone-line: oklch(0.448 0.034 255.0);
+  --moon-on-ink: oklch(0.968 0.019 74.0);
+  --moonsoft-on-ink: oklch(0.822 0.020 76.0);
 
-  --font-serif: var(--font-body);
-  --font-typewriter: var(--font-body);
-  --track-label: 0.04em;
+  /* ── 四声部字体:全部保留,只换 CJK 的手 ──
+     题头 CJK 从宋体换成霞鹜文楷 = 手写标题的漫画感;
+     西文仍是加拉蒙,与票据风共用一套西文骨架 */
+  --font-serif: 'Cormorant Garamond', 'LXGW WenKai Screen', 'Kaiti SC', 'STKaiti', 'KaiTi', serif;
+  --font-typewriter: 'Courier Prime', 'LXGW WenKai Screen', 'Courier New', 'Kaiti SC', monospace;
+  --track-label: 0.13em;
 
-  --radius-s: 12px;
-  --radius: 20px;
-  --radius-l: 24px;
-  --radius-tag: 999px;
+  /* 圆角:利落档。胶囊(999px)是模板脸,本主题只在真正的 chip 上收圆 */
+  --radius-s: 5px;
+  --radius: 11px;
+  --radius-l: 18px;
+  --radius-tag: 3px;
 
-  --header-h: 4.55rem;
+  --header-h: 3.9rem;
 
+  /* 投影:硬边落影(セル影),不是弥散光晕。
+     第一层是实边,第二层只留极浅的接触影 */
   --shadow-paper:
-    0 1px 2px oklch(0.318 0.032 272.6 / 0.04),
-    0 10px 28px oklch(0.318 0.032 272.6 / 0.06);
+    0 1.5px 0 color-mix(in oklch, var(--ink) 14%, transparent),
+    0 4px 12px oklch(0.312 0.034 66.2 / 0.055);
   --shadow-lift:
-    0 8px 18px oklch(0.318 0.032 272.6 / 0.07),
-    0 28px 56px oklch(0.318 0.032 272.6 / 0.10);
+    0 2.5px 0 color-mix(in oklch, var(--ink) 20%, transparent),
+    0 14px 30px oklch(0.312 0.034 66.2 / 0.10);
+
 }
 
+/* 美術ボード:一整块平涂的画板底,不铺网点、不叠天光。
+   底越干净,藍与朱越立得住 —— 赛璐珞的力量来自平涂,不来自堆料。 */
 html[data-theme='anime'] body {
   background-color: var(--paper);
-  background-image:
-    radial-gradient(42rem 28rem at 8% -10%, oklch(0.93 0.028 278 / 0.55), transparent 72%),
-    radial-gradient(36rem 24rem at 96% 2%, oklch(0.94 0.024 340 / 0.42), transparent 70%),
-    radial-gradient(40rem 22rem at 48% 108%, oklch(0.94 0.022 230 / 0.32), transparent 72%);
+  background-image: none;
 }
 
 html[data-theme='anime'] body::after {
@@ -102,89 +132,108 @@ html[data-theme='anime'] body::after {
 }
 
 html[data-theme='anime'] ::selection {
-  background: var(--terra-wash);
-  color: var(--terra-ink);
+  background: color-mix(in oklch, var(--terra) 26%, transparent);
+  color: var(--terra-deep);
 }
 
-/* 黑夜:暮色蓝灰,不是纯黑赛博。--board/--chalk 仍不改。 */
+/* 焦点圈也走藍,和主动作同源 */
+html[data-theme='anime'] :focus-visible {
+  outline-color: var(--terra-ink);
+}
+
+/* ─────────────────────────────────────────────────────────
+   黑夜「夜(よる)」—— 不是暗色模式,是同一张画的夜景板。
+   暖光冷影反转:底是藍夜,纸字回暖,朱色变成灯火。
+   ───────────────────────────────────────────────────────── */
 html[data-theme='anime'][data-tone='night'] {
   color-scheme: dark;
 
-  --terra: oklch(0.72 0.074 277.2);
-  --terra-ink: oklch(0.78 0.068 277.6);
-  --terra-deep: oklch(0.66 0.07 278);
-  --terra-wash: oklch(0.72 0.074 277.2 / 0.18);
-  --mustard: oklch(0.34 0.036 312.4);
-  --mustard-wash: oklch(0.34 0.036 312.4 / 0.4);
+  /* 月光藍:夜里主动作要浮得起来,提亮压彩 */
+  --terra: oklch(0.742 0.082 248.6);
+  --terra-ink: oklch(0.808 0.070 246.8);
+  --terra-deep: oklch(0.664 0.078 250.4);
+  --terra-wash: oklch(0.742 0.082 248.6 / 0.20);
+
+  /* 夜里的高光面 = 灯下的暖木板,不是荧光块 */
+  --mustard: oklch(0.402 0.048 72.4);
+  --mustard-wash: oklch(0.402 0.048 72.4 / 0.44);
 
   --lilac: var(--terra);
   --lilac-ink: var(--terra-ink);
   --lilac-deep: var(--terra-deep);
   --lilac-wash: var(--terra-wash);
-  --reed: oklch(0.58 0.04 304);
-  --reed-ink: oklch(0.78 0.04 292);
-  --reed-deep: oklch(0.48 0.036 292);
-  --reed-wash: oklch(0.58 0.04 304 / 0.22);
 
-  --paper: oklch(0.248 0.028 272.4);
-  --paper-warm: oklch(0.286 0.032 274.8);
-  --paper-blush: oklch(0.274 0.03 304.2);
-  --paper-edge: oklch(0.372 0.028 272.8);
-  --paper-shade: oklch(0.214 0.026 273.6);
-  --line-strong: oklch(0.44 0.03 273.2);
+  --reed: oklch(0.618 0.056 208.0);
+  --reed-ink: oklch(0.780 0.052 206.4);
+  --reed-deep: oklch(0.512 0.048 210.2);
+  --reed-wash: oklch(0.618 0.056 208.0 / 0.22);
 
-  --ink: oklch(0.932 0.016 250.6);
-  --ink-soft: oklch(0.78 0.022 260.4);
-  --ink-faint: oklch(0.68 0.02 262);
-  --ink-wash: oklch(0.932 0.016 250.6 / 0.08);
+  /* 夜景板:藍夜(取自衣影 #283858 压深),不是纯黑赛博 */
+  --paper: oklch(0.268 0.032 257.0);
+  --paper-warm: oklch(0.306 0.034 254.2);
+  --paper-blush: oklch(0.302 0.030 32.4);
+  --paper-edge: oklch(0.392 0.030 256.4);
+  --paper-shade: oklch(0.232 0.028 258.2);
+  --line-strong: oklch(0.470 0.034 255.6);
 
-  --azure: oklch(0.76 0.07 277.4);
-  --azure-deep: oklch(0.7 0.068 277.8);
-  --azure-wash: oklch(0.76 0.07 277.4 / 0.16);
+  /* 夜里的"墨"是灯下的暖纸色,保住暖光冷影的关系 */
+  --ink: oklch(0.938 0.018 78.0);
+  --ink-soft: oklch(0.796 0.020 76.4);
+  --ink-faint: oklch(0.690 0.018 74.8);
+  --ink-wash: oklch(0.938 0.018 78.0 / 0.08);
 
-  --cinnabar: oklch(0.68 0.12 18.6);
-  --cinnabar-wash: oklch(0.68 0.12 18.6 / 0.14);
-  --seal-red: oklch(0.66 0.11 8.4);
-  --seal-red-wash: oklch(0.66 0.11 8.4 / 0.14);
+  --azure: var(--terra-ink);
+  --azure-deep: var(--terra-deep);
+  --azure-wash: var(--terra-wash);
 
-  --jade: oklch(0.72 0.07 176);
-  --jade-ink: oklch(0.8 0.06 176);
-  --jade-wash: oklch(0.72 0.07 176 / 0.16);
-  --amber: oklch(0.78 0.08 62);
-  --amber-ink: oklch(0.84 0.07 62);
-  --amber-wash: oklch(0.78 0.08 62 / 0.16);
-  --dust: oklch(0.52 0.02 268);
+  /* 夜里的朱 = 灯火,提亮才看得见 */
+  --cinnabar: oklch(0.688 0.152 28.6);
+  --cinnabar-wash: oklch(0.688 0.152 28.6 / 0.16);
+  --seal-red: oklch(0.700 0.146 25.2);
+  --seal-red-wash: oklch(0.700 0.146 25.2 / 0.16);
+  --ink-on-seal: oklch(0.968 0.016 78.0);
 
-  --wood: oklch(0.42 0.03 278);
-  --wood-deep: oklch(0.32 0.026 278);
-  --wood-sheen: oklch(0.5 0.028 276);
+  --jade: oklch(0.712 0.086 156.0);
+  --jade-ink: oklch(0.796 0.072 156.6);
+  --jade-wash: oklch(0.712 0.086 156.0 / 0.18);
+  --amber: oklch(0.782 0.104 78.0);
+  --amber-ink: oklch(0.856 0.082 79.4);
+  --amber-wash: oklch(0.782 0.104 78.0 / 0.18);
+  --dust: oklch(0.520 0.020 258.0);
 
-  --gold: oklch(0.8 0.08 84);
-  --gold-ink: oklch(0.86 0.07 84);
+  --wood: oklch(0.462 0.044 68.0);
+  --wood-deep: oklch(0.344 0.034 66.4);
+  --wood-sheen: oklch(0.562 0.040 74.2);
 
-  --inkstone: oklch(0.18 0.026 276);
-  --inkstone-deep: oklch(0.15 0.024 277);
-  --inkstone-line: oklch(0.34 0.028 276);
-  --moon-on-ink: oklch(0.93 0.016 250);
-  --moonsoft-on-ink: oklch(0.74 0.02 268);
+  --gold: oklch(0.828 0.098 84.0);
+  --gold-ink: oklch(0.884 0.078 82.0);
 
+  --inkstone: oklch(0.196 0.026 258.0);
+  --inkstone-deep: oklch(0.164 0.022 259.0);
+  --inkstone-line: oklch(0.348 0.030 256.0);
+  --moon-on-ink: oklch(0.938 0.018 78.0);
+  --moonsoft-on-ink: oklch(0.760 0.020 76.0);
+
+  /* 夜里落影靠压深,硬边关系不变 */
   --shadow-paper:
-    0 1px 2px oklch(0.1 0.02 272 / 0.28),
-    0 12px 32px oklch(0.1 0.02 272 / 0.32);
+    0 1.5px 0 oklch(0.120 0.022 258 / 0.55),
+    0 4px 14px oklch(0.120 0.022 258 / 0.34);
   --shadow-lift:
-    0 10px 22px oklch(0.08 0.02 272 / 0.34),
-    0 32px 60px oklch(0.08 0.02 272 / 0.4);
+    0 2.5px 0 oklch(0.120 0.022 258 / 0.62),
+    0 16px 34px oklch(0.120 0.022 258 / 0.42);
+
 }
 
 html[data-theme='anime'][data-tone='night'] body {
-  background-color: oklch(0.18 0.03 272.8);
-  background-image:
-    radial-gradient(42rem 28rem at 10% -8%, oklch(0.32 0.05 278 / 0.45), transparent 72%),
-    radial-gradient(36rem 24rem at 94% 4%, oklch(0.28 0.04 304 / 0.38), transparent 70%),
-    radial-gradient(40rem 22rem at 50% 110%, oklch(0.22 0.03 250 / 0.4), transparent 72%);
+  background-color: var(--paper);
+  background-image: none;
+}
+
+html[data-theme='anime'][data-tone='night'] body::after {
+  opacity: 0.024;
 }
 
 html[data-theme='anime'][data-tone='night'] ::selection {
-  background: var(--terra-wash);
+  background: color-mix(in oklch, var(--terra) 30%, transparent);
   color: var(--ink);
 }

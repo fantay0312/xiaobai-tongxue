@@ -50,13 +50,13 @@ const THEME_OPTIONS: {
   },
   {
     id: 'anime',
-    name: '日系动漫',
-    desc: '暖白底、柔和蓝紫与淡粉点睛。现代互联网产品的克制动漫感，不改课程与交互。',
+    name: '日系动漫 · 赛璐珞',
+    desc: '取色自小白的立绘：奶油画板、藍衣冷影、朱色点睛。平涂硬边、網点上灰，不改课程与交互。',
     swatches: [
-      'oklch(0.985 0.007 247.8)',
-      'oklch(0.452 0.092 277.8)',
-      'oklch(0.905 0.038 328.6)',
-      'oklch(0.318 0.032 272.6)',
+      'oklch(0.968 0.019 74)',
+      'oklch(0.462 0.098 252.4)',
+      'oklch(0.925 0.062 86)',
+      'oklch(0.498 0.165 27.5)',
     ],
   },
 ];
@@ -346,7 +346,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                   })}
                 </div>
                 {theme === 'anime' && (
-                  <div className={styles.toneGroup} role="radiogroup" aria-label="白天或黑夜">
+                  <div className={styles.toneGroup} role="radiogroup" aria-label="日景板或夜景板">
                     {UI_TONES.map((option) => (
                       <button
                         key={option}
@@ -357,7 +357,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                         onClick={() => setTone(option)}
                       >
                         <Icon name={option === 'day' ? 'sun' : 'moon'} size={15} />
-                        {option === 'day' ? '白天' : '黑夜'}
+                        {option === 'day' ? '日景板' : '夜景板'}
                       </button>
                     ))}
                   </div>
@@ -377,7 +377,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 </button>
 
                 <p className={styles.hint}>
-                  {UI_THEMES.length} 套主题可随时来回切换；动漫主题可再切白天/黑夜。讲解舱黑板场景保持夜自习。
+                  {UI_THEMES.length} 套主题可随时来回切换；动漫主题可再切日景板/夜景板。讲解舱黑板场景保持夜自习。
                 </p>
               </>
             )}

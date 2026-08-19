@@ -109,42 +109,40 @@
   box-shadow: inset 0 -2px 6px var(--ink-wash);
 }
 
-/* 动漫主题:票据工艺退为柔和现代卡片,不撕票、不斜贴 */
+/* ── 日系动漫主题:票据工艺换说法,不取消 ──
+   斜贴票卡 / 撕票线 / 挂孔 / 转戳 / 打字机小签是全站骨架,删掉就成了通用卡片站。
+   这里只把"纸的工艺"翻译成"赛璐珞的工艺":噪点纸纹 → 網点,柔投影 → 硬边落影。 */
+
+/* 纸粒保留基础态:票卡上再叠网点会脏,交给页角那一处就够 */
 :global(html[data-theme='anime']) .texture::before {
-  opacity: 0.08;
+  opacity: 0.3;
 }
 
-:global(html[data-theme='anime']) .typeLabel,
-:global(html[data-theme='anime']) .verticalRail,
-:global(html[data-theme='anime']) .perfNote,
-:global(html[data-theme='anime']) .stampInner {
-  font-family: var(--font-body);
-  text-transform: none;
-  letter-spacing: 0.04em;
-}
-
-:global(html[data-theme='anime']) .tiltL,
-:global(html[data-theme='anime']) .tiltR {
-  transform: none;
-}
-
+/* 斜贴保留 —— 这是本站的招牌构图。hover 回正,落影跟着走 */
 :global(html[data-theme='anime']) .tiltL:hover,
 :global(html[data-theme='anime']) .tiltR:hover {
-  transform: translateY(-4px);
+  filter: drop-shadow(4px 4px 0 color-mix(in oklch, var(--terra-deep) 18%, transparent));
 }
 
-:global(html[data-theme='anime']) .notch {
-  display: none;
+/* 撕票线:虚线换成等距实点,和網点同一套语法 */
+:global(html[data-theme='anime']) .perfLine {
+  border-top-style: dotted;
+  border-top-width: 2px;
+  border-top-color: color-mix(in oklch, var(--ink) 30%, transparent);
 }
 
+/* 官戳:保留旋转与双圈制式,只把印色换成藍线稿 */
 :global(html[data-theme='anime']) .stamp {
-  transform: none;
-  border-color: color-mix(in oklch, var(--terra) 28%, transparent);
+  border-color: color-mix(in oklch, var(--terra) 42%, transparent);
+}
+
+:global(html[data-theme='anime']) .stampInner {
+  border-color: color-mix(in oklch, var(--terra) 34%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
   :global(html[data-theme='anime']) .tiltL:hover,
   :global(html[data-theme='anime']) .tiltR:hover {
-    transform: none;
+    filter: none;
   }
 }

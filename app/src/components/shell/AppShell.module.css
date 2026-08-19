@@ -505,21 +505,24 @@
   min-height: 0;
 }
 
-/* ── 日系动漫主题:浮动胶囊导航 ── */
+/* ── 日系动漫主题:赛璐珞面板导航 ──
+   浮起来的不是一块玻璃,是一张贴在页面上的画稿:实底、线稿收边、硬边落影。
+   打字机小签与圆点标记是本站的骨架,本主题只换色不换制式。 */
 
 :global(html[data-theme='anime']) .header {
-  top: 0.7rem;
+  top: 0.65rem;
   background: transparent;
   border-bottom: none;
   backdrop-filter: none;
 }
 
 :global(html[data-theme='anime']) .headerInner {
-  background: color-mix(in oklch, var(--paper) 78%, transparent);
-  backdrop-filter: blur(18px) saturate(140%);
-  border: 1px solid color-mix(in oklch, var(--paper-edge) 70%, transparent);
-  border-radius: 999px;
-  box-shadow: var(--shadow-paper);
+  /* 实底:不透、不糊。页面滚过去时是"压在纸上",不是"透过玻璃看" */
+  background: var(--paper);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-l);
+  /* セル影:一道实边落影,零模糊 */
+  box-shadow: 0 3px 0 color-mix(in oklch, var(--terra-deep) 22%, transparent);
 }
 
 :global(html[data-theme='anime']) .headerInner::after {
@@ -528,56 +531,72 @@
 
 :global(html[data-theme='anime']) .landing .header {
   position: sticky;
-  top: 0.7rem;
+  top: 0.65rem;
   z-index: 40;
 }
 
-:global(html[data-theme='anime']) .brandMotto,
-:global(html[data-theme='anime']) .link,
-:global(html[data-theme='anime']) .loginBtn {
-  font-family: var(--font-body);
-  text-transform: none;
-}
-
-:global(html[data-theme='anime']) .brandMotto {
-  letter-spacing: 0.06em;
-}
-
+/* 打字机小签保留 —— 这是全站导航的制式,换掉就成了模板站 */
 :global(html[data-theme='anime']) .link {
-  letter-spacing: 0.01em;
-  opacity: 0.7;
-  padding: 0.38rem 0.82rem;
-  border-radius: 999px;
+  opacity: 0.62;
 }
 
-:global(html[data-theme='anime']) .link::after {
-  display: none;
-}
-
-:global(html[data-theme='anime']) .link:hover,
-:global(html[data-theme='anime']) .linkActive {
+:global(html[data-theme='anime']) .link:hover {
   opacity: 1;
-  background: var(--terra-wash);
   color: var(--terra-ink);
 }
 
+:global(html[data-theme='anime']) .linkActive {
+  opacity: 1;
+  color: var(--terra-ink);
+}
+
+/* 圆点标记改成方点:平涂硬边,和网点同一套语法 */
+:global(html[data-theme='anime']) .link::after {
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--terra);
+}
+
+/* 主按钮:平涂藍块 + 线稿边 + 硬边落影,按下去影子收掉 */
 :global(html[data-theme='anime']) .loginBtn {
-  letter-spacing: 0.02em;
-  font-weight: 600;
+  border-radius: var(--radius-s);
+  border-color: var(--terra-deep);
+  box-shadow: 0 2px 0 var(--terra-deep);
+}
+
+:global(html[data-theme='anime']) .loginBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 0 var(--terra-deep);
+}
+
+:global(html[data-theme='anime']) .loginBtn:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--terra-deep);
 }
 
 :global(html[data-theme='anime']) .sectionMenu {
+  border: 1.5px solid var(--line-strong);
   border-radius: var(--radius);
+  box-shadow: 0 3px 0 color-mix(in oklch, var(--terra-deep) 18%, transparent);
 }
 
 :global(html[data-theme='anime'][data-tone='night']) .headerInner {
-  background: color-mix(in oklch, var(--paper) 72%, transparent);
-  border-color: color-mix(in oklch, var(--paper-edge) 80%, transparent);
+  background: color-mix(in oklch, var(--paper) 92%, var(--paper-warm));
+  border-color: var(--paper-edge);
+  box-shadow: 0 3px 0 oklch(0.140 0.024 260 / 0.6);
 }
 
 @media (max-width: 480px) {
   :global(html[data-theme='anime']) .headerInner {
-    border-radius: 22px;
+    border-radius: var(--radius);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(html[data-theme='anime']) .loginBtn:hover,
+  :global(html[data-theme='anime']) .loginBtn:active {
+    transform: none;
   }
 }
 

@@ -289,76 +289,70 @@
 }
 
 /* 动漫主题:Hero 做成角色操作数字世界的现代构图 */
+/* ── 日系动漫主题 ──
+   基础态的模糊色团在这里直接收掉:主视觉右侧已经有斜贴票卡当视觉重心,
+   再加一枚装饰天体只会和票卡打架。留白比多一个元素强。 */
 :global(html[data-theme='anime']) .hero::before {
-  content: '';
-  position: absolute;
-  inset: 6% 2% auto auto;
-  width: min(28rem, 48vw);
-  height: min(28rem, 48vw);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 40% 40%, color-mix(in oklch, var(--terra-wash) 80%, transparent), transparent 68%),
-    radial-gradient(circle at 70% 70%, color-mix(in oklch, var(--mustard-wash) 70%, transparent), transparent 62%);
-  filter: blur(8px);
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
+/* 分区底线保留,只换成线稿色 */
 :global(html[data-theme='anime']) .hero::after {
-  background: transparent;
+  background: var(--line-strong);
 }
 
+/* 题头点睛:斜体是本站的手写签名位,动漫态改用藍色描重而非取消斜体 */
 :global(html[data-theme='anime']) .title em {
-  font-style: normal;
   color: var(--terra-ink);
 }
 
+/* 主行动:平涂藍块 + 深藍线稿边 + 硬边落影;按下去影子被压掉,像真的按进纸里 */
 :global(html[data-theme='anime']) .primary {
-  border-radius: 999px;
-  background: linear-gradient(180deg, color-mix(in oklch, var(--terra) 82%, white), var(--azure));
-  box-shadow: 0 10px 22px color-mix(in oklch, var(--terra) 24%, transparent);
+  border: 1.5px solid var(--terra-deep);
+  border-radius: var(--radius-s);
+  background: var(--terra-ink);
+  box-shadow: 0 3px 0 var(--terra-deep);
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out);
+}
+
+:global(html[data-theme='anime']) .primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 0 var(--terra-deep);
 }
 
 :global(html[data-theme='anime']) .primary:active {
-  transform: scale(0.98);
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--terra-deep);
 }
 
+/* 次行动保持"下划线"制式,只把线换成藍 */
 :global(html[data-theme='anime']) .secondary {
-  min-height: 2.9rem;
-  padding: 0.5rem 1.05rem;
-  border: 1px solid var(--paper-edge);
-  border-radius: 999px;
-  background: color-mix(in oklch, var(--paper) 70%, transparent);
-  color: var(--ink-soft);
+  border-bottom-color: color-mix(in oklch, var(--terra) 50%, transparent);
+  color: var(--terra-ink);
 }
 
-:global(html[data-theme='anime']) .proofLine {
-  font-family: var(--font-body);
-  letter-spacing: 0.02em;
-}
-
+/* 主票卡:保留斜贴(这是全站招牌构图),把柔投影换成硬边落影 */
 :global(html[data-theme='anime']) .ticket {
-  transform: none;
-  border-radius: var(--radius-l);
-  border-color: color-mix(in oklch, var(--paper-edge) 72%, var(--terra));
-  background:
-    linear-gradient(165deg, color-mix(in oklch, var(--paper) 42%, var(--mustard)), var(--paper) 78%);
+  border: 1.5px solid color-mix(in oklch, var(--ink) 34%, var(--mustard));
+  border-radius: var(--radius);
+  background: var(--mustard);
+  box-shadow: 5px 5px 0 color-mix(in oklch, var(--terra-deep) 20%, transparent);
 }
 
 :global(html[data-theme='anime']) .ticket:hover {
-  transform: translateY(-4px);
-}
-
-:global(html[data-theme='anime']) .ticketMeta dt {
-  font-family: var(--font-body);
+  transform: rotate(0.4deg) translateY(-3px);
+  box-shadow: 7px 7px 0 color-mix(in oklch, var(--terra-deep) 24%, transparent);
 }
 
 :global(html[data-theme='anime']) .pupil {
-  border-block: 1px solid var(--paper-edge);
+  border-block: 1.5px solid color-mix(in oklch, var(--ink) 22%, var(--mustard));
 }
 
 @media (prefers-reduced-motion: reduce) {
   :global(html[data-theme='anime']) .ticket:hover,
+  :global(html[data-theme='anime']) .primary:hover,
   :global(html[data-theme='anime']) .primary:active {
     transform: none;
   }

@@ -246,8 +246,10 @@
   .ahaMarks i { animation: none; }
 }
 
+/* ── 日系动漫主题:赛璐珞画框 ──
+   小白本来就是赛璐珞上的角色,这里只给她一个同语法的画框:线稿边 + 硬边落影。 */
 :global(html[data-theme='anime']) .avatar {
-  border-radius: 28px;
+  border-radius: var(--radius-l);
 }
 
 :global(html[data-theme='anime']) .avatar[data-motion='active'] .motion {

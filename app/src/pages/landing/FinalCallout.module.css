@@ -142,22 +142,30 @@
   }
 }
 
-:global(html[data-theme='anime']) .kicker {
-  font-family: var(--font-body);
+/* ── 日系动漫主题:终幕行动键 ──
+   渐变+彩色光晕换成平涂藍块 + 线稿边 + 硬边落影;按下时影子被压进纸里。 */
+:global(html[data-theme='anime']) .action {
+  border: 1.5px solid var(--terra-deep);
+  border-radius: var(--radius-s);
+  background: var(--terra-ink);
+  box-shadow: 0 3px 0 var(--terra-deep);
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out);
 }
 
-:global(html[data-theme='anime']) .action {
-  border-radius: 999px;
-  letter-spacing: 0.02em;
-  background: linear-gradient(180deg, color-mix(in oklch, var(--terra) 82%, white), var(--azure));
-  box-shadow: 0 10px 22px color-mix(in oklch, var(--ink) 18%, transparent);
+:global(html[data-theme='anime']) .action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 0 var(--terra-deep);
 }
 
 :global(html[data-theme='anime']) .action:active {
-  transform: scale(0.98);
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--terra-deep);
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :global(html[data-theme='anime']) .action:hover,
   :global(html[data-theme='anime']) .action:active {
     transform: none;
   }
