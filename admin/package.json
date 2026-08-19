@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node ../app/scripts/check-build-artifacts.mjs dist --label admin/dist",
     "lint": "oxlint src scripts vite.config.ts",
     "test": "tsx scripts/domain.test.ts && tsx scripts/audit-date-range.test.ts && tsx scripts/request-timeout.test.ts",
     "preview": "vite preview"
