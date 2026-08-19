@@ -16,6 +16,7 @@
     "test:landing-motion": "tsx scripts/landing-motion-contract.test.ts",
     "test:qa-evidence": "tsx scripts/qa-evidence.test.ts",
     "test:sync": "tsx scripts/pending-sync.test.ts",
+    "test:theme": "tsx scripts/theme-contract.test.ts",
     "preview": "vite preview",
     "simulate": "tsx scripts/simulate.ts",
     "livetest": "tsx scripts/livetest.ts"

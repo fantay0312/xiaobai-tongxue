@@ -9,6 +9,7 @@ import {
   type ComponentProps, type CSSProperties, type KeyboardEvent, type MouseEvent,
 } from 'react';
 import { useAppStore } from '../../store/appStore';
+import { UI_THEMES, UI_TONES, useThemeStore, type UiTheme } from '../../store/themeStore';
 import { llmCall } from '../../engine';
 import { Icon, type IconName } from '../ui/Icon';
 import { isTourDone, resetTours, type TourKey } from '../tour/tourState';
@@ -20,13 +21,44 @@ type TestState =
   | { status: 'ok'; detail: string }
   | { status: 'fail'; detail: string };
 
-type TabId = 'engine' | 'voice' | 'temper' | 'tour';
+type TabId = 'look' | 'engine' | 'voice' | 'temper' | 'tour';
 
 const TABS: { id: TabId; label: string; note: string; icon: IconName }[] = [
+  { id: 'look', label: '外观主题', note: '昼夜与音乐', icon: 'sparkles' },
   { id: 'engine', label: '台词引擎', note: '模型与线路', icon: 'pen' },
   { id: 'voice', label: '语音输入', note: '口述转文字', icon: 'mic' },
   { id: 'temper', label: '台词性情', note: '沉稳或活泼', icon: 'sprout' },
   { id: 'tour', label: '新手引路', note: '重走学习路线', icon: 'route' },
+];
+
+const THEME_OPTIONS: {
+  id: UiTheme;
+  name: string;
+  desc: string;
+  swatches: readonly string[];
+}[] = [
+  {
+    id: 'paper',
+    name: '老学堂 · 票据',
+    desc: '奶油纸、铅字小签与赭陶邮戳。现行默认视觉，功能与阅读气质不变。',
+    swatches: [
+      'oklch(0.959 0.010 87.5)',
+      'oklch(0.601 0.143 38.4)',
+      'oklch(0.847 0.161 83.4)',
+      'oklch(0.247 0.004 90)',
+    ],
+  },
+  {
+    id: 'anime',
+    name: '日系动漫',
+    desc: '暖白底、柔和蓝紫与淡粉点睛。现代互联网产品的克制动漫感，不改课程与交互。',
+    swatches: [
+      'oklch(0.985 0.007 247.8)',
+      'oklch(0.452 0.092 277.8)',
+      'oklch(0.905 0.038 328.6)',
+      'oklch(0.318 0.032 272.6)',
+    ],
+  },
 ];
 
 const ENGINE_MODES = [
@@ -70,8 +102,14 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   const setSettings = useAppStore((s) => s.setSettings);
   const asr = useAppStore((s) => s.asrSettings);
   const setAsrSettings = useAppStore((s) => s.setAsrSettings);
+  const theme = useThemeStore((s) => s.theme);
+  const setTheme = useThemeStore((s) => s.setTheme);
+  const tone = useThemeStore((s) => s.tone);
+  const setTone = useThemeStore((s) => s.setTone);
+  const musicOn = useThemeStore((s) => s.musicOn);
+  const setMusicOn = useThemeStore((s) => s.setMusicOn);
   const [test, setTest] = useState<TestState>({ status: 'idle' });
-  const [active, setActive] = useState<TabId>('engine');
+  const [active, setActive] = useState<TabId>(TABS[0].id);
   /* 退场余像:open 落下后窗多留 EXIT_MS 播退场动画,再真正卸载 */
   const [render, setRender] = useState(open);
   /* 窄屏目录横排时把 tablist 朝向如实报给读屏(断点须与 module.css 的 720 咬合) */
@@ -104,7 +142,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     if (!dialogRef.current) return; // 从未开过:无需退场
     const settle = () => {
       setRender(false);
-      setActive('engine');
+      setActive(TABS[0].id);
       setTest({ status: 'idle' });
     };
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -247,7 +285,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             onKeyDown={onTabsKey}
           >
             <div className={styles.railHead} aria-hidden="true">
-              <span>设置目录</span><small>04 项</small>
+              <span>设置目录</span><small>{String(TABS.length).padStart(2, '0')} 项</small>
             </div>
             {TABS.map((t) => (
               <button
@@ -274,6 +312,76 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             id={`settings-pane-${active}`}
             aria-labelledby={`settings-tab-${active}`}
           >
+            {active === 'look' && (
+              <>
+                <div className={styles.paneHead}>
+                  <p className={styles.paneEyebrow}>偏好 {String(activeIndex).padStart(2, '0')}</p>
+                  <h3 className={styles.paneTitle}>外观主题</h3>
+                  <p className={styles.paneDesc}>
+                    只换视觉语言，不改课程、路由或学习记录。选择会记在本机，下次打开仍在。
+                  </p>
+                </div>
+
+                <div className={styles.themeGroup} role="radiogroup" aria-label="外观主题">
+                  {THEME_OPTIONS.map((option) => {
+                    const selected = theme === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        className={selected ? `${styles.themeCard} ${styles.themeCardActive}` : styles.themeCard}
+                        onClick={() => setTheme(option.id)}
+                      >
+                        <span className={styles.themeSwatches} aria-hidden="true">
+                          {option.swatches.map((color) => (
+                            <i key={color} style={{ background: color }} />
+                          ))}
+                        </span>
+                        <span className={styles.themeName}>{option.name}</span>
+                        <span className={styles.themeDesc}>{option.desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {theme === 'anime' && (
+                  <div className={styles.toneGroup} role="radiogroup" aria-label="白天或黑夜">
+                    {UI_TONES.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        role="radio"
+                        aria-checked={tone === option}
+                        className={tone === option ? `${styles.toneBtn} ${styles.toneBtnActive}` : styles.toneBtn}
+                        onClick={() => setTone(option)}
+                      >
+                        <Icon name={option === 'day' ? 'sun' : 'moon'} size={15} />
+                        {option === 'day' ? '白天' : '黑夜'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  className={musicOn ? `${styles.musicBtn} ${styles.musicBtnOn}` : styles.musicBtn}
+                  onClick={() => setMusicOn(!musicOn)}
+                  aria-pressed={musicOn}
+                >
+                  <Icon name={musicOn ? 'volume' : 'volume-off'} size={16} />
+                  <span>
+                    <strong>{musicOn ? '背景音乐开' : '背景音乐关'}</strong>
+                    <small>使用 sharyap 同款循环曲，可随时关掉</small>
+                  </span>
+                </button>
+
+                <p className={styles.hint}>
+                  {UI_THEMES.length} 套主题可随时来回切换；动漫主题可再切白天/黑夜。讲解舱黑板场景保持夜自习。
+                </p>
+              </>
+            )}
+
             {active === 'engine' && (
               <>
                 <div className={styles.paneHead}>

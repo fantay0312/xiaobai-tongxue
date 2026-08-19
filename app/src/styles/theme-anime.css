@@ -1,0 +1,190 @@
+/* ─────────────────────────────────────────────────────────
+   日系动漫主题(可选外观)
+   Japanese Anime + Modern SaaS:低饱和蓝紫 / 奶白 / 淡粉。
+   只覆盖令牌与全站底,不改路由、业务、讲解舱黑板叙事。
+   --board/--chalk 系故意不改:夜自习场景保持独立。
+   ───────────────────────────────────────────────────────── */
+
+html[data-theme='anime'] {
+  color-scheme: light;
+
+  /* Primary:柔和靛青。小字走 -ink,色块可用原档 */
+  --terra: oklch(0.628 0.086 277.4);
+  --terra-ink: oklch(0.452 0.092 277.8);
+  --terra-deep: oklch(0.398 0.086 278.2);
+  --terra-wash: oklch(0.628 0.086 277.4 / 0.16);
+  --mustard: oklch(0.905 0.038 328.6);
+  --mustard-wash: oklch(0.905 0.038 328.6 / 0.28);
+
+  --lilac: var(--terra);
+  --lilac-ink: var(--terra-ink);
+  --lilac-deep: var(--terra-deep);
+  --lilac-wash: var(--terra-wash);
+  --reed: oklch(0.786 0.046 304.2);
+  --reed-ink: oklch(0.468 0.058 292.4);
+  --reed-deep: oklch(0.402 0.052 292.1);
+  --reed-wash: oklch(0.786 0.046 304.2 / 0.22);
+
+  /* 底:暖白 + 极浅蓝 / 极浅粉分区 */
+  --paper: oklch(0.985 0.007 247.8);
+  --paper-warm: oklch(0.968 0.016 247.2);
+  --paper-blush: oklch(0.972 0.014 343.6);
+  --paper-edge: oklch(0.902 0.014 268.4);
+  --paper-shade: oklch(0.946 0.012 256.8);
+  --line-strong: oklch(0.824 0.018 272.6);
+
+  /* 字:深蓝灰 */
+  --ink: oklch(0.318 0.032 272.6);
+  --ink-soft: oklch(0.468 0.026 271.8);
+  --ink-faint: oklch(0.552 0.022 270.4);
+  --ink-wash: oklch(0.318 0.032 272.6 / 0.07);
+
+  --azure: var(--terra-ink);
+  --azure-deep: var(--terra-deep);
+  --azure-wash: var(--terra-wash);
+
+  --cinnabar: oklch(0.524 0.132 18.6);
+  --cinnabar-wash: oklch(0.524 0.132 18.6 / 0.10);
+  --seal-red: oklch(0.548 0.118 8.4);
+  --seal-red-wash: oklch(0.548 0.118 8.4 / 0.10);
+  --ink-on-seal: oklch(0.988 0.006 247.8);
+
+  --jade: oklch(0.572 0.074 176.4);
+  --jade-ink: oklch(0.448 0.068 176.8);
+  --jade-wash: oklch(0.572 0.074 176.4 / 0.16);
+  --amber: oklch(0.742 0.092 62.4);
+  --amber-ink: oklch(0.512 0.078 58.6);
+  --amber-wash: oklch(0.742 0.092 62.4 / 0.16);
+  --dust: oklch(0.782 0.016 268.2);
+
+  --wood: oklch(0.586 0.036 278.4);
+  --wood-deep: oklch(0.428 0.028 278.8);
+  --wood-sheen: oklch(0.728 0.028 276.2);
+
+  --gold: oklch(0.812 0.092 84.6);
+  --gold-ink: oklch(0.528 0.086 78.4);
+
+  --inkstone: oklch(0.338 0.036 276.8);
+  --inkstone-deep: oklch(0.278 0.032 277.4);
+  --inkstone-line: oklch(0.458 0.032 276.2);
+  --moon-on-ink: oklch(0.985 0.007 247.8);
+  --moonsoft-on-ink: oklch(0.828 0.018 268.6);
+
+  --font-serif: var(--font-body);
+  --font-typewriter: var(--font-body);
+  --track-label: 0.04em;
+
+  --radius-s: 12px;
+  --radius: 20px;
+  --radius-l: 24px;
+  --radius-tag: 999px;
+
+  --header-h: 4.55rem;
+
+  --shadow-paper:
+    0 1px 2px oklch(0.318 0.032 272.6 / 0.04),
+    0 10px 28px oklch(0.318 0.032 272.6 / 0.06);
+  --shadow-lift:
+    0 8px 18px oklch(0.318 0.032 272.6 / 0.07),
+    0 28px 56px oklch(0.318 0.032 272.6 / 0.10);
+}
+
+html[data-theme='anime'] body {
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(42rem 28rem at 8% -10%, oklch(0.93 0.028 278 / 0.55), transparent 72%),
+    radial-gradient(36rem 24rem at 96% 2%, oklch(0.94 0.024 340 / 0.42), transparent 70%),
+    radial-gradient(40rem 22rem at 48% 108%, oklch(0.94 0.022 230 / 0.32), transparent 72%);
+}
+
+html[data-theme='anime'] body::after {
+  opacity: 0.018;
+}
+
+html[data-theme='anime'] ::selection {
+  background: var(--terra-wash);
+  color: var(--terra-ink);
+}
+
+/* 黑夜:暮色蓝灰,不是纯黑赛博。--board/--chalk 仍不改。 */
+html[data-theme='anime'][data-tone='night'] {
+  color-scheme: dark;
+
+  --terra: oklch(0.72 0.074 277.2);
+  --terra-ink: oklch(0.78 0.068 277.6);
+  --terra-deep: oklch(0.66 0.07 278);
+  --terra-wash: oklch(0.72 0.074 277.2 / 0.18);
+  --mustard: oklch(0.34 0.036 312.4);
+  --mustard-wash: oklch(0.34 0.036 312.4 / 0.4);
+
+  --lilac: var(--terra);
+  --lilac-ink: var(--terra-ink);
+  --lilac-deep: var(--terra-deep);
+  --lilac-wash: var(--terra-wash);
+  --reed: oklch(0.58 0.04 304);
+  --reed-ink: oklch(0.78 0.04 292);
+  --reed-deep: oklch(0.48 0.036 292);
+  --reed-wash: oklch(0.58 0.04 304 / 0.22);
+
+  --paper: oklch(0.248 0.028 272.4);
+  --paper-warm: oklch(0.286 0.032 274.8);
+  --paper-blush: oklch(0.274 0.03 304.2);
+  --paper-edge: oklch(0.372 0.028 272.8);
+  --paper-shade: oklch(0.214 0.026 273.6);
+  --line-strong: oklch(0.44 0.03 273.2);
+
+  --ink: oklch(0.932 0.016 250.6);
+  --ink-soft: oklch(0.78 0.022 260.4);
+  --ink-faint: oklch(0.68 0.02 262);
+  --ink-wash: oklch(0.932 0.016 250.6 / 0.08);
+
+  --azure: oklch(0.76 0.07 277.4);
+  --azure-deep: oklch(0.7 0.068 277.8);
+  --azure-wash: oklch(0.76 0.07 277.4 / 0.16);
+
+  --cinnabar: oklch(0.68 0.12 18.6);
+  --cinnabar-wash: oklch(0.68 0.12 18.6 / 0.14);
+  --seal-red: oklch(0.66 0.11 8.4);
+  --seal-red-wash: oklch(0.66 0.11 8.4 / 0.14);
+
+  --jade: oklch(0.72 0.07 176);
+  --jade-ink: oklch(0.8 0.06 176);
+  --jade-wash: oklch(0.72 0.07 176 / 0.16);
+  --amber: oklch(0.78 0.08 62);
+  --amber-ink: oklch(0.84 0.07 62);
+  --amber-wash: oklch(0.78 0.08 62 / 0.16);
+  --dust: oklch(0.52 0.02 268);
+
+  --wood: oklch(0.42 0.03 278);
+  --wood-deep: oklch(0.32 0.026 278);
+  --wood-sheen: oklch(0.5 0.028 276);
+
+  --gold: oklch(0.8 0.08 84);
+  --gold-ink: oklch(0.86 0.07 84);
+
+  --inkstone: oklch(0.18 0.026 276);
+  --inkstone-deep: oklch(0.15 0.024 277);
+  --inkstone-line: oklch(0.34 0.028 276);
+  --moon-on-ink: oklch(0.93 0.016 250);
+  --moonsoft-on-ink: oklch(0.74 0.02 268);
+
+  --shadow-paper:
+    0 1px 2px oklch(0.1 0.02 272 / 0.28),
+    0 12px 32px oklch(0.1 0.02 272 / 0.32);
+  --shadow-lift:
+    0 10px 22px oklch(0.08 0.02 272 / 0.34),
+    0 32px 60px oklch(0.08 0.02 272 / 0.4);
+}
+
+html[data-theme='anime'][data-tone='night'] body {
+  background-color: oklch(0.18 0.03 272.8);
+  background-image:
+    radial-gradient(42rem 28rem at 10% -8%, oklch(0.32 0.05 278 / 0.45), transparent 72%),
+    radial-gradient(36rem 24rem at 94% 4%, oklch(0.28 0.04 304 / 0.38), transparent 70%),
+    radial-gradient(40rem 22rem at 50% 110%, oklch(0.22 0.03 250 / 0.4), transparent 72%);
+}
+
+html[data-theme='anime'][data-tone='night'] ::selection {
+  background: var(--terra-wash);
+  color: var(--ink);
+}

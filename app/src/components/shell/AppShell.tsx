@@ -4,13 +4,14 @@
  * /teach 路由下切换为「夜自习」深色透明变体(粉笔白文字),
  * 页面根不铺纸色底,由讲解舱自铺黑板底。
  * / (宣传页)下头部退为透明静置变体,随海报滚走;品牌落款回宣传页,「书斋」导航到 /study。
- * 宣传页头部不放应用内导航/登入/设置——对外只留品牌与「进入书斋」一个入口。
+ * 宣传页头部不放应用内导航/登入——对外留品牌、「进入书斋」与外观设置入口。
  */
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
 import { Seal } from './Seal';
 import { StoryTrail } from '../story/StoryTrail';
 import { Icon } from '../ui/Icon';
+import { AmbiencePlayer, AtmosphereToggles } from './Atmosphere';
 import { useAuthStore } from '../../store/authStore';
 import { profileAccountKey, useProfileStore } from '../../store/profileStore';
 import { ProfileAvatar } from './ProfileAvatar';
@@ -161,6 +162,17 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           {landingMode ? (
             <nav className={styles.nav} aria-label="入口">
+              <AtmosphereToggles />
+              <button
+                type="button"
+                className={styles.gearBtn}
+                onClick={openSettings}
+                aria-haspopup="dialog"
+                aria-label="打开设置"
+                title="设置"
+              >
+                <Icon name="settings" size={16} />
+              </button>
               <NavLink to="/study" className={styles.loginBtn}>进入书斋</NavLink>
             </nav>
           ) : (
@@ -232,6 +244,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Icon name="chevron-down" size={14} className={styles.profileChevron} />
               </button>
             )}
+            <AtmosphereToggles />
             <button
               type="button"
               className={styles.gearBtn}
@@ -251,16 +264,18 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className={styles.main}>{children}</main>
 
-      {!landingMode && (
-        <Suspense fallback={null}>
+      <AmbiencePlayer />
+
+      <Suspense fallback={null}>
+        {!landingMode && (
           <ProfileDialog
             open={profileOpen && authStatus === 'authed'}
             onClose={closeProfile}
             onOpenSettings={openSettingsFromProfile}
           />
-          <SettingsDialog open={settingsOpen} onClose={closeSettings} />
-        </Suspense>
-      )}
+        )}
+        <SettingsDialog open={settingsOpen} onClose={closeSettings} />
+      </Suspense>
     </div>
   );
 }

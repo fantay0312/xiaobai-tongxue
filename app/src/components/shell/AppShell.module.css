@@ -505,6 +505,82 @@
   min-height: 0;
 }
 
+/* ── 日系动漫主题:浮动胶囊导航 ── */
+
+:global(html[data-theme='anime']) .header {
+  top: 0.7rem;
+  background: transparent;
+  border-bottom: none;
+  backdrop-filter: none;
+}
+
+:global(html[data-theme='anime']) .headerInner {
+  background: color-mix(in oklch, var(--paper) 78%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid color-mix(in oklch, var(--paper-edge) 70%, transparent);
+  border-radius: 999px;
+  box-shadow: var(--shadow-paper);
+}
+
+:global(html[data-theme='anime']) .headerInner::after {
+  display: none;
+}
+
+:global(html[data-theme='anime']) .landing .header {
+  position: sticky;
+  top: 0.7rem;
+  z-index: 40;
+}
+
+:global(html[data-theme='anime']) .brandMotto,
+:global(html[data-theme='anime']) .link,
+:global(html[data-theme='anime']) .loginBtn {
+  font-family: var(--font-body);
+  text-transform: none;
+}
+
+:global(html[data-theme='anime']) .brandMotto {
+  letter-spacing: 0.06em;
+}
+
+:global(html[data-theme='anime']) .link {
+  letter-spacing: 0.01em;
+  opacity: 0.7;
+  padding: 0.38rem 0.82rem;
+  border-radius: 999px;
+}
+
+:global(html[data-theme='anime']) .link::after {
+  display: none;
+}
+
+:global(html[data-theme='anime']) .link:hover,
+:global(html[data-theme='anime']) .linkActive {
+  opacity: 1;
+  background: var(--terra-wash);
+  color: var(--terra-ink);
+}
+
+:global(html[data-theme='anime']) .loginBtn {
+  letter-spacing: 0.02em;
+  font-weight: 600;
+}
+
+:global(html[data-theme='anime']) .sectionMenu {
+  border-radius: var(--radius);
+}
+
+:global(html[data-theme='anime'][data-tone='night']) .headerInner {
+  background: color-mix(in oklch, var(--paper) 72%, transparent);
+  border-color: color-mix(in oklch, var(--paper-edge) 80%, transparent);
+}
+
+@media (max-width: 480px) {
+  :global(html[data-theme='anime']) .headerInner {
+    border-radius: 22px;
+  }
+}
+
 /* 先于基础规则书写会被层叠覆盖，故把手机收紧规则统一放在文件末尾。 */
 @media (max-width: 520px) {
   .brandName {

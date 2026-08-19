@@ -14,6 +14,7 @@ import '@fontsource/courier-prime/700.css';
 import '@fontsource/dm-sans/400.css';
 import '@fontsource/dm-sans/500.css';
 import './index.css';
+import './store/themeStore';
 import App from './App';
 
 createRoot(document.getElementById('root')!).render(
