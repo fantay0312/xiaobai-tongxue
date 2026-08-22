@@ -3,11 +3,12 @@
  * 品牌章 Seal 与 public/ 下的页签图标是同一枚小白同学标记,改任一侧必须同步。
  * /teach 路由下切换为「夜自习」深色透明变体(粉笔白文字),
  * 页面根不铺纸色底,由讲解舱自铺黑板底。
- * / (宣传页)下头部退为透明静置变体,随海报滚走;品牌落款回宣传页,「书斋」导航到 /study。
+ * / (宣传页)下头部同样吸顶;下滚收起、上滚滑出;品牌落款回宣传页,「书斋」导航到 /study。
  * 宣传页头部不放应用内导航/登入——对外留品牌、「进入书斋」与外观设置入口。
  */
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { Seal } from './Seal';
 import { StoryTrail } from '../story/StoryTrail';
 import { Icon } from '../ui/Icon';
@@ -67,7 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   // 讲解舱已改「亮书斋 + 木框黑板物件」,全暗外壳退役(board 变体样式保留备用)
   const boardMode = false;
-  // 宣传页场景:头部退为透明静置,随海报一起滚走
+  // 宣传页场景:头部吸顶,品牌落款回首页
   const landingMode = pathname === '/';
   // 注意精确到 '/teach/':裸 startsWith('/teach') 会把 /teacher 教师看板一并锁死(2026-07-16 生产 bug)
   const appLocked = pathname.startsWith('/teach/');
@@ -75,7 +76,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [headerHidden, setHeaderHidden] = useState(false);
   const navRef = useRef<HTMLElement>(null);
+  const lastScrollY = useRef(0);
+  const reducedMotion = useReducedMotion();
   const closeProfile = useCallback(() => setProfileOpen(false), []);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
   const authStatus = useAuthStore((s) => s.status);
@@ -99,7 +103,34 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [authStatus]);
 
-  useEffect(() => setOpenMenu(null), [pathname]);
+  useEffect(() => {
+    setOpenMenu(null);
+    setHeaderHidden(false);
+    lastScrollY.current = window.scrollY;
+  }, [pathname]);
+
+  useEffect(() => {
+    if (appLocked) {
+      setHeaderHidden(false);
+      return undefined;
+    }
+
+    lastScrollY.current = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const delta = y - lastScrollY.current;
+      lastScrollY.current = y;
+      if (openMenu || profileOpen || settingsOpen || y < 16) {
+        setHeaderHidden(false);
+        return;
+      }
+      if (Math.abs(delta) < 8) return;
+      setHeaderHidden(delta > 0);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [appLocked, openMenu, profileOpen, settingsOpen]);
 
   useEffect(() => {
     if (!openMenu) return undefined;
@@ -150,7 +181,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className={shellClass}>
-      <header className={styles.header}>
+      <header
+        className={`${styles.header}${headerHidden ? ` ${styles.headerHidden}` : ''}${reducedMotion ? ` ${styles.headerInstant}` : ''}`}
+        onFocusCapture={() => setHeaderHidden(false)}
+      >
         {/* 版心内壳:内容收进 72rem 居中栏,品牌落款与每页正文左缘对齐 */}
         <div className={styles.headerInner}>
           <NavLink to="/" className={styles.brand} aria-label="回到首页">

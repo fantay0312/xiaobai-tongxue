@@ -26,13 +26,11 @@
   gap: var(--gap);
   min-width: 0;
 }
-.kicker,
 .timelineStage,
 .volumeEyebrow {
   font: var(--fs-tiny) var(--font-typewriter);
   letter-spacing: var(--track-label);
 }
-.kicker { margin-bottom: var(--gap-tight); color: var(--azure); }
 .heading h2 {
   max-width: 16em;
   font: 600 clamp(1.8rem, 3.6vw, 2.7rem) / 1.18 var(--font-serif);

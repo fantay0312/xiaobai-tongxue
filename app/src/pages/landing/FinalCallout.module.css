@@ -36,13 +36,6 @@
   gap: 0.85rem;
 }
 
-.kicker {
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-small);
-  letter-spacing: var(--track-label);
-  color: var(--moonsoft-on-ink);
-}
-
 .title {
   font-size: clamp(2rem, 4.2vw, 3.5rem);
   font-weight: 600;

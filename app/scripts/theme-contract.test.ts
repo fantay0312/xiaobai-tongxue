@@ -49,7 +49,11 @@ assert.match(settingsDialog, /setMusicOn\(!musicOn\)/);
 assert.match(appShell, /AtmosphereToggles/);
 assert.match(appShell, /AmbiencePlayer/);
 assert.match(appShell, /SettingsDialog open=\{settingsOpen\}/);
+assert.match(appShell, /headerHidden/);
+assert.match(appShell, /onFocusCapture/);
 assert.match(appShellCss, /:global\(html\[data-theme='anime'\]\) \.headerInner/);
+assert.match(appShellCss, /\.headerHidden/);
+assert.match(appShellCss, /prefers-reduced-transparency/);
 
 /* ── 讲解舱不受外观影响 ── */
 

@@ -10,12 +10,10 @@
   gap: var(--gap-loose);
   margin: 0 var(--gap-tight) var(--gap-loose);
 }
-.kicker,
 .recordLabel {
   font: var(--fs-tiny) var(--font-typewriter);
   letter-spacing: var(--track-label);
 }
-.kicker { margin-bottom: var(--gap-tight); color: var(--azure); }
 .heading h2 {
   max-width: 13em;
   font: 600 clamp(2rem, 4.6vw, 3.3rem) / 1.14 var(--font-serif);
@@ -105,8 +103,9 @@
   box-shadow: 0 15.85rem 0 var(--paper);
 }
 .archiveNo {
-  font: 2.25rem / 1 var(--font-serif);
-  color: var(--ink-soft);
+  font: var(--fs-tiny) var(--font-typewriter);
+  letter-spacing: var(--track-label);
+  color: var(--azure);
 }
 .archiveStub h3 {
   margin-top: var(--gap-tight);
