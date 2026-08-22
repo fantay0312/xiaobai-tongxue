@@ -29,10 +29,22 @@
   position: sticky;
   top: 0;
   z-index: 40;
-  /* 前台台面:奶油纸磨砂,一道暖灰界栏收底;不再叠彩色渐变 */
-  background: color-mix(in oklch, var(--paper) 90%, transparent);
-  backdrop-filter: blur(14px) saturate(104%);
-  border-bottom: 1px solid var(--paper-edge);
+  /* 前台台面:更透的奶油纸磨砂,滚动内容从底下透出;一道暖灰界栏收底 */
+  background: color-mix(in oklch, var(--paper) 42%, transparent);
+  backdrop-filter: blur(28px) saturate(140%);
+  -webkit-backdrop-filter: blur(28px) saturate(140%);
+  border-bottom: 1px solid color-mix(in oklch, var(--paper-edge) 62%, transparent);
+  transform: translateY(0);
+  transition: transform var(--t-med) var(--ease-out);
+}
+
+.headerHidden {
+  transform: translateY(-110%);
+  pointer-events: none;
+}
+
+.headerInstant {
+  transition: none;
 }
 
 /* 版心内壳:内容收进 72rem 居中栏,品牌与每页正文左缘对齐;
@@ -63,17 +75,15 @@
 }
 
 .board .header {
-  background: color-mix(in oklab, var(--board-deep) 78%, transparent);
-  border-bottom-color: var(--board-line);
+  background: color-mix(in oklab, var(--board-deep) 42%, transparent);
+  backdrop-filter: blur(28px) saturate(130%);
+  -webkit-backdrop-filter: blur(28px) saturate(130%);
+  border-bottom-color: color-mix(in oklab, var(--board-line) 70%, transparent);
 }
 
-/* 宣传页场景:头部融进海报——透明、无界栏、不吸顶,随页滚走;
-   74rem 海报版心移到内壳(与 landing .page 同版心),品牌落款才与海报栅格对齐 */
+/* 宣传页:同一块磨砂吸顶;74rem 海报版心仍在内壳,与 landing .page 对齐 */
 .landing .header {
-  position: static;
-  background: transparent;
-  backdrop-filter: none;
-  border-bottom-color: transparent;
+  position: sticky;
 }
 
 .landing .headerInner {
@@ -81,6 +91,19 @@
 }
 
 .landing .headerInner::after { display: none; }
+
+@media (prefers-reduced-transparency: reduce) {
+  .header,
+  .board .header {
+    background: var(--paper);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .board .header {
+    background: var(--board-deep);
+  }
+}
 
 /* ── 品牌落款:白文印 + 宋体字标 + 界栏 + 打字机铭 ── */
 
@@ -96,6 +119,12 @@
   width: 1.75rem;
   height: 1.75rem;
   flex: none;
+  display: block;
+  border-radius: 22%;
+  background: var(--paper);
+  box-shadow:
+    0 0 0 1.5px color-mix(in oklch, var(--ink) 26%, transparent),
+    0 0 0 3px color-mix(in oklch, var(--paper) 88%, var(--paper-edge));
   transition: transform var(--t-med) var(--ease-out);
 }
 
@@ -533,6 +562,10 @@
   position: sticky;
   top: 0.65rem;
   z-index: 40;
+}
+
+:global(html[data-theme='anime']) .headerHidden {
+  transform: translateY(calc(-100% - 1.2rem));
 }
 
 /* 打字机小签保留 —— 这是全站导航的制式,换掉就成了模板站 */

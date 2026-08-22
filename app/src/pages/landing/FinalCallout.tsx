@@ -19,7 +19,6 @@ export function FinalCallout() {
       data-reveal-order="0"
     >
       <div className={styles.copy}>
-        <p className={styles.kicker}>从一个知识点开始</p>
         <h2 id="final-callout-title" className={styles.title}>
           挑一课，开讲吧
         </h2>

@@ -65,7 +65,6 @@ export function EvidenceArchive() {
     <section className={s.section} aria-labelledby="evidence-archive-title">
       <header className={s.heading}>
         <div data-landing-reveal data-reveal-order="0">
-          <p className={s.kicker}>课后批注</p>
           <h2 id="evidence-archive-title">教过什么，哪里讲岔，课后都能看清</h2>
         </div>
         <p className={s.lede} data-landing-reveal data-reveal-order="1">
@@ -98,7 +97,7 @@ export function EvidenceArchive() {
       <ol className={s.archives}>
         <li className={s.archive} data-landing-reveal>
           <header className={s.archiveStub}>
-            <span className={s.archiveNo}>01</span>
+            <span className={s.archiveNo}>摘录卷</span>
             <h3>讲解摘录<br />与误区记录</h3>
             <span className={s.fileTag}>Token 与分词 · 课堂记录</span>
           </header>
@@ -126,7 +125,7 @@ export function EvidenceArchive() {
 
         <li className={s.archive} data-landing-reveal>
           <header className={s.archiveStub}>
-            <span className={s.archiveNo}>02</span>
+            <span className={s.archiveNo}>判定卷</span>
             <h3>逐题判定<br />与对应要点</h3>
             <span className={s.fileTag}>随堂测验 · 带偏分支 20 分</span>
           </header>
@@ -155,7 +154,7 @@ export function EvidenceArchive() {
 
         <li className={s.archive} data-landing-reveal>
           <header className={s.archiveStub}>
-            <span className={s.archiveNo}>03</span>
+            <span className={s.archiveNo}>批注卷</span>
             <h3>五维批注<br />与补学入口</h3>
             <span className={s.fileTag}>灯下批注 · 下一步该补哪里</span>
           </header>
@@ -186,7 +185,6 @@ export function EvidenceArchive() {
 
       <aside className={s.metrics} aria-labelledby="offline-metrics-title">
         <header className={s.metricsHeading} data-landing-reveal data-reveal-order="0">
-          <p className={s.kicker}>当前版本</p>
           <h3 id="offline-metrics-title">现在收录了什么，离线测了什么</h3>
           <p>课程数来自当前课程库；防剧透结果来自 24 条离线测试，不是用户规模。</p>
         </header>

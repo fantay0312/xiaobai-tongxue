@@ -48,7 +48,6 @@ export function CourseArchive() {
       <div className={s.shelfPane}>
         <header className={s.heading} data-landing-reveal data-reveal-order="0">
           <div>
-            <p className={s.kicker}>课程书架</p>
             <h2 id="course-archive-title">3 门课程，38 个知识点已经开放</h2>
           </div>
           <Link className={s.textLink} to="/study">
@@ -116,7 +115,6 @@ export function CourseArchive() {
         data-reveal-order="1"
       >
         <header className={s.timelineHead}>
-          <p className={s.kicker}>成长册</p>
           <h3 id="growth-timeline-title">讲完一课，后来都记在哪儿</h3>
         </header>
         <ol className={s.timeline}>
