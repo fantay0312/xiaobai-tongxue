@@ -205,6 +205,7 @@
   position: relative;
   display: flex;
   align-items: center;
+  gap: 0.05rem;
 }
 
 .link {
@@ -218,6 +219,7 @@
   opacity: 0.55;
   padding: var(--gap-hair) 0.1em var(--gap-hair) 0.85rem; /* 左留一枚圆点位 */
   white-space: nowrap;
+  touch-action: manipulation;
   transition: color var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out);
 }
 
@@ -263,19 +265,35 @@
 }
 
 .menuButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.18rem;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  min-width: 2.5rem;
   min-height: 2.5rem;
+  padding: 0;
   border: 0;
+  border-radius: var(--radius-s);
   background: transparent;
+  color: var(--ink-faint);
   cursor: pointer;
+  touch-action: manipulation;
+  transition: color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+}
+
+.menuButton:hover,
+.menuButton:focus-visible {
+  color: var(--azure);
+  background: var(--azure-wash);
 }
 
 .menuChevron {
   flex: none;
   color: currentcolor;
   transition: transform var(--t-fast) var(--ease-out);
+}
+
+.menuButton[aria-expanded='true'] {
+  color: var(--ink);
 }
 
 .menuButton[aria-expanded='true'] .menuChevron {
@@ -342,6 +360,17 @@
 .board .link:hover,
 .board .linkActive {
   color: var(--chalk);
+}
+
+.board .menuButton {
+  color: var(--chalk-soft);
+}
+
+.board .menuButton:hover,
+.board .menuButton:focus-visible,
+.board .menuButton[aria-expanded='true'] {
+  color: var(--chalk);
+  background: color-mix(in oklab, var(--chalk) 10%, transparent);
 }
 
 @media (max-width: 560px) {
@@ -447,6 +476,7 @@
   color: var(--ink-soft);
   font-family: var(--font-display);
   font-size: var(--fs-small);
+  touch-action: manipulation;
   transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
 
@@ -496,6 +526,7 @@
   background: transparent;
   color: var(--ink-faint);
   border-radius: var(--radius-s);
+  touch-action: manipulation;
   transition: color var(--t-fast) var(--ease-out), transform var(--t-med) var(--ease-out);
 }
 
@@ -660,6 +691,7 @@
 
   /* 认证页小屏只留品牌章与设置，避免完整站内导航挤压成竖排。 */
   .auth .link,
+  .auth .menuButton,
   .auth .navRule,
   .auth .loginBtn,
   .auth .profileTrigger {
@@ -695,7 +727,9 @@
   }
 
   .menuButton {
-    gap: 0.08rem;
+    width: 2rem;
+    min-width: 2rem;
+    min-height: 2.5rem;
   }
 
   .menuChevron {
