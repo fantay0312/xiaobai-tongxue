@@ -209,10 +209,6 @@ export async function speakXiaobai(input: {
   seed: number;
 }): Promise<SpeakResult> {
   const { card, topic, state, recentMessages, settings, seed } = input;
-  // 误区语料整句作为允许来源:其中出现的术语按"当前误区条目术语"放行(方案 §11 防线④)
-  const mcTerms = card.mcBelief ? [card.mcBelief] : [];
-  const mc = card.mcId ? topic.misconceptions.find((m) => m.mcId === card.mcId) : undefined;
-  if (mc) mcTerms.push(mc.triggerLine, mc.belief);
 
   // api 模式预告违禁词:未解锁 checklist 的术语(泄漏检测的 banned 集),先说清比事后拦截省一次重试
   const allowedNow = new Set(card.recentTeacherTerms);
@@ -223,7 +219,7 @@ export async function speakXiaobai(input: {
     topic.checklist
       .filter((item) => !state.hitChecklist.includes(item.id))
       .flatMap((item) => item.terms)
-      .filter((t) => !allowedNow.has(t) && !mcTerms.some((s) => s.includes(t))),
+      .filter((t) => !allowedNow.has(t)),
   )];
 
   for (let attempt = 0; attempt <= 2; attempt++) {
@@ -245,7 +241,6 @@ export async function speakXiaobai(input: {
       reply: text, topic,
       whitelistChecklist: state.hitChecklist,
       teacherTerms: card.recentTeacherTerms,
-      mcTerms,
     });
     if (leaks.length === 0) return { text, mood, leakageRetries: attempt, leaked: [] };
     if (attempt === 2) return { text: FALLBACK_LINE, mood: 'confused', leakageRetries: 3, leaked: leaks };

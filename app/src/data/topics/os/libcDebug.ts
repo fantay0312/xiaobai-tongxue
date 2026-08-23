@@ -164,10 +164,10 @@ export const osLibcDebugTopic: Topic = {
     {
       mcId: 'os_libc_debug_M1',
       topicId: 'os-libc-debug',
-      belief: 'printf、malloc 这些库函数就是系统调用换了个马甲,每调用一次库函数,就要进一次操作系统内核',
+      belief: 'printf、malloc 这些库函数就是底层入口换了个马甲,每调用一次库函数,就要往底层跑一趟',
       triggerLine:
-        '哦!那我懂了:printf、malloc 这些名字听着神秘,说白了就是系统调用换了个马甲吧——' +
-        '我每调用一次库函数,里头就跟着进一次操作系统内核,一一对应,童叟无欺,对吧?',
+        '哦!那我懂了:printf、malloc 这些名字听着神秘,说白了就是底层入口换了个马甲吧——' +
+        '我每调用一次库函数,里头就跟着往底层跑一趟,一一对应,童叟无欺,对吧?',
       correctionCriteria: [
         '指出库函数是跑在用户态的普通代码,不是系统调用的别名,两者不是一一对应',
         '说明 printf 的解析、格式化全部在用户态完成,典型情况下最后才调一次 write 系统调用(与 strace 对得上)',

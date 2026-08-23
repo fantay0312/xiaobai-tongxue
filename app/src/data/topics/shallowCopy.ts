@@ -118,8 +118,8 @@ export const shallowCopyTopic: Topic = {
     {
       mcId: 'shallow_copy_M1',
       topicId: 'shallow-copy',
-      belief: 'copy() 会把所有嵌套的东西都复制一份',
-      triggerLine: '咦?可是老师,那我 list.copy() 之后,改里面的子列表,原来的列表应该不会变吧?都复制过了嘛。',
+      belief: 'copy() 会把里面的东西全都复制一份',
+      triggerLine: '咦?可是老师,那我 list.copy() 之后,改里面的东西,原来的列表应该不会变吧?都复制过了嘛。',
       correctionCriteria: ['指出嵌套对象仍是引用共享', '或用内存模型/代码实验反驳'],
       correctionKeywords: [
         ['还是同一个'], ['没有被复制'], ['没复制'], ['共享'], ['跟着变'], ['引用', '同一'],
