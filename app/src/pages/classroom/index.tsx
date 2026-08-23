@@ -347,9 +347,8 @@ export default function ClassroomPage() {
 
   const topic = getTopic(topicId);
   useDocTitle(topic ? `学堂夜课 · ${topic.title}` : undefined);
-  // 演示助手是一键满分讲稿 = 内置答案键,正式部署里对学生隐藏。
-  // 只在本地开发(npm run dev)或答辩时显式带 ?demo=1 才出现,生产构建默认剥离。
-  const demoEnabled = import.meta.env.DEV || sp.get('demo') === '1';
+  // 演示助手是一键满分讲稿 = 内置答案键,仅在本地开发构建中开放。
+  const demoEnabled = import.meta.env.DEV;
   const demoLines = demoEnabled ? getDemoScript(topicId) : [];
 
   const [draft, setDraft] = useState('');
