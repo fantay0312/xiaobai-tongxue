@@ -643,56 +643,19 @@ export default function GrowthPage() {
                 bridge={{ toFull: starsToFull, seals: earnedCount }}
                 onSelect={selectStar}
               />
-            </div>
-            {/* 图例升为「巡天筛选器」:点一态,余星连线视觉下沉(不卸载,量测/Tab 序稳);
-                再点或点「全览」复位。计数实时派生自 nodes。 */}
-            <div className={s.filterRow} role="group" aria-label="巡天筛选:按状态聚焦星宿">
-              <button
-                type="button"
-                className={s.filterChip}
-                aria-pressed={statusFocus === null}
-                onClick={() => setStatusFocus(null)}
-              >
-                全览 <b className={s.filterCount}>{nodes.length}</b>
-              </button>
-              {STATUS_FILTERS.map((f) => (
-                <button
-                  key={f.key}
-                  type="button"
-                  className={s.filterChip}
-                  aria-pressed={statusFocus === f.key}
-                  onClick={() => setStatusFocus((cur) => (cur === f.key ? null : f.key))}
-                >
-                  <span className={`${s.swatch} ${STATUS_SWATCH[f.key]}`} aria-hidden="true" />
-                  {f.label} <b className={s.filterCount}>{statusCounts[f.key]}</b>
-                </button>
-              ))}
-            </div>
-          </div>
-
+              {selNode ? (
           <aside
             id="knowledge-evidence"
             ref={evidencePanelRef}
-            className={`${s.evidenceDock} ${selNode ? s.evidenceDockOpen : ''}`}
+            className={`${s.evidenceDock} ${s.evidenceDockOpen}`}
             aria-label="掌握度证据链"
             aria-live="polite"
             onKeyDown={(event) => {
-              if (event.key === 'Escape' && selNode) closeEvidence();
+              if (event.key === 'Escape') closeEvidence();
             }}
           >
-            {!selNode ? (
-              <div className={s.evidenceEmpty}>
-                <span className={s.evidenceOrbit} aria-hidden="true">
-                  <Icon name="sparkles" size={28} />
-                </span>
-                <p className={s.evidenceEyebrow}>OBSERVATION LOG</p>
-                <h3>点一颗星，展开证据链</h3>
-                <p>每一束光都由课堂事件点亮。选中星宿后，这里会列出要点、纠错、小测与复习记录。</p>
-              </div>
-            ) : null}
-
-            <div className={`${s.collapse} ${selNode ? s.open : ''}`}>
-              <div inert={!selNode}>
+            <div className={`${s.collapse} ${s.open}`}>
+              <div>
                 {shownNode && shownNode.state && (
                   <div className={s.nodePanel}>
                     <div className={s.panelHead}>
@@ -892,6 +855,33 @@ export default function GrowthPage() {
           </div>
         </div>
           </aside>
+              ) : null}
+            </div>
+            {/* 图例升为「巡天筛选器」:点一态,余星连线视觉下沉(不卸载,量测/Tab 序稳);
+                再点或点「全览」复位。计数实时派生自 nodes。 */}
+            <div className={s.filterRow} role="group" aria-label="巡天筛选:按状态聚焦星宿">
+              <button
+                type="button"
+                className={s.filterChip}
+                aria-pressed={statusFocus === null}
+                onClick={() => setStatusFocus(null)}
+              >
+                全览 <b className={s.filterCount}>{nodes.length}</b>
+              </button>
+              {STATUS_FILTERS.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  className={s.filterChip}
+                  aria-pressed={statusFocus === f.key}
+                  onClick={() => setStatusFocus((cur) => (cur === f.key ? null : f.key))}
+                >
+                  <span className={`${s.swatch} ${STATUS_SWATCH[f.key]}`} aria-hidden="true" />
+                  {f.label} <b className={s.filterCount}>{statusCounts[f.key]}</b>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* 遗忘不再是干瘪一行:每个雾里的知识点是一封「小白的来信」(doc §8),

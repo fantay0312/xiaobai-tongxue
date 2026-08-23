@@ -1903,6 +1903,7 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   cursor: pointer;
+  touch-action: manipulation;
   transition:
     border-color var(--t-fast) var(--ease-out),
     color var(--t-fast) var(--ease-out),
@@ -1982,8 +1983,8 @@
   --shadow-paper: 0 14px 38px color-mix(in oklch, var(--star-sky-deep) 72%, transparent);
 
   position: absolute;
-  top: clamp(8.75rem, 12vw, 10.75rem);
-  right: clamp(0.75rem, 2vw, 1.25rem);
+  top: clamp(0.85rem, 1.6vw, 1.25rem);
+  left: clamp(0.75rem, 2vw, 1.25rem);
   z-index: 15;
   width: min(22rem, calc(100% - 2rem));
   max-height: min(31rem, calc(100vh - var(--header-h) - 2rem));
@@ -1994,15 +1995,28 @@
   scrollbar-gutter: stable;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
-  background: color-mix(in oklch, var(--paper) 93%, transparent);
-  backdrop-filter: blur(12px) saturate(104%);
-  box-shadow: var(--shadow-paper);
+  background: var(--paper);
+  box-shadow:
+    0 1px 0 color-mix(in oklch, var(--star-sky-moon) 10%, transparent),
+    0 18px 40px color-mix(in oklch, var(--star-sky-deep) 55%, transparent);
   pointer-events: none;
+  touch-action: manipulation;
+  transform: translate3d(0, 0.4rem, 0);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--t-med) var(--ease-out),
+    transform var(--t-med) var(--ease-out),
+    visibility 0s linear var(--t-med);
 }
 
 .evidenceDockOpen {
   border-color: color-mix(in oklch, var(--azure) 48%, var(--line-strong));
   pointer-events: auto;
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition-delay: 0s;
 }
 
 .evidenceEmpty {
@@ -2224,13 +2238,28 @@
 
 @media (max-width: 960px) {
   .evidenceDock {
-    position: static;
+    top: auto;
+    right: 0.55rem;
+    bottom: 0.55rem;
+    left: 0.55rem;
     width: auto;
-    max-height: none;
-    margin-top: var(--gap);
+    max-height: min(22rem, 58%);
+    transform: translate3d(0, 0.75rem, 0);
+  }
+
+  .evidenceDockOpen {
+    transform: none;
   }
 
   .evidenceEmpty { min-height: 12rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .evidenceDock,
+  .evidenceDockOpen {
+    transition: none;
+    transform: none;
+  }
 }
 
 @media (max-width: 720px) {
