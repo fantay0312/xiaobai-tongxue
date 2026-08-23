@@ -86,6 +86,22 @@
 
 /* 首屏底温 —— 极淡暖纸渍(材质档,非发光渐变):赭陶/橄榄各压 10% 当纸上一片旧影 */
 
+/* 有履历时压矮门厅,让选课书架尽快进入首屏,精神锚点与主张仍在。 */
+.heroCompact {
+  gap: var(--gap);
+  padding: var(--gap-loose) 0 var(--gap);
+}
+
+.heroCompact .intro {
+  max-width: 22em;
+  font-size: var(--fs-body);
+  line-height: 1.7;
+}
+
+.heroCompact .cta {
+  margin-top: var(--gap-hair);
+}
+
 .heroMain {
   display: flex;
   flex-direction: column;
