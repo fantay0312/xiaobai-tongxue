@@ -26,7 +26,7 @@ const LIST_RE = /^\s*([-+*]|\d+[.)])\s+(.+)$/;
 const QUOTE_RE = /^\s*>\s?(.*)$/;
 const RULE_RE = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/;
 const INLINE_RE =
-  /(!\[[^\]\n]*]\((?:[^()\s]+|\([^)\s]*\))+\)|\[[^\]\n]+]\((?:[^()\s]+|\([^)\s]*\))+\)|`[^`\n]+`|\*\*[^*\n]+\*\*|__[^_\n]+__|~~[^~\n]+~~|\*[^*\n]+\*|_[^_\n]+_)/g;
+  /(!\[[^\]\n]*]\((?:[^()\s]|\([^)\s]*\))+\)|\[[^\]\n]+]\((?:[^()\s]|\([^)\s]*\))+\)|`[^`\n]+`|\*\*[^*\n]+\*\*|__[^_\n]+__|~~[^~\n]+~~|\*[^*\n]+\*|_[^_\n]+_)/g;
 
 function safeHttpUrl(value: string): string | null {
   try {
@@ -38,7 +38,7 @@ function safeHttpUrl(value: string): string | null {
 }
 
 function linkedText(token: string, key: string): ReactNode {
-  const match = token.match(/^!?\[([^\]]*)]\(((?:[^()\s]+|\([^)\s]*\))+)\)$/);
+  const match = token.match(/^!?\[([^\]]*)]\(((?:[^()\s]|\([^)\s]*\))+)\)$/);
   if (!match) return token;
   const [, label, rawUrl] = match;
   if (token.startsWith('!')) {
