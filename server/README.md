@@ -12,7 +12,7 @@ Node.js 20+ 网关，负责主站与独立管理后台静态入口、两套身�
 ```text
 浏览器
   → 腾讯云 CDN（TLS 1.2/1.3、HTTP/2、OCSP、HSTS、HTTP→HTTPS 308）
-  → nginx HTTPS 源站（校验 CDN 专用回源头，透传真实客户端 IP）
+  → nginx HTTPS 源站（校验 CDN 专用回源头，仅透传已验证的直接对端 IP）
   → Node 网关 127.0.0.1:8000
       ├─ PostgreSQL：用户、独立管理员/RBAC、套餐权益、积分账本、CDK、学习状态、来信
       ├─ Redis RESP2：短信 OTP、后台/商业入口限流及分布式配额（仅 xiaobai:*）
