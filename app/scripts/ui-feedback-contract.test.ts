@@ -108,8 +108,11 @@ assert.match(achievementStyles, /\.detailPopover[\s\S]*?position:\s*absolute/, '
 
 assert.match(growthStyles, /\.observatory\s*\{[\s\S]*?display:\s*block/, '星海观测台必须让星图占满全宽');
 assert.match(growthStyles, /\.evidenceDock\s*\{[\s\S]*?--paper:\s*var\(--star-sky-deep\)[\s\S]*?position:\s*absolute/, '证据链必须成为星海内的同色浮卡');
+assert.match(growthStyles, /\.evidenceDock\s*\{[\s\S]*?left:\s*clamp/, '选中后的证据浮卡必须落在星海左上');
 assert.match(growthStyles, /\.evidenceDock\s*\{[\s\S]*?pointer-events:\s*none/, '星海空态浮卡不得拦截星体点击');
 assert.match(growthStyles, /\.evidenceDockOpen\s*\{[\s\S]*?pointer-events:\s*auto/, '打开的证据浮卡必须恢复交互');
+assert.doesNotMatch(growthStyles, /\.evidenceDock\s*\{[\s\S]*?backdrop-filter:/, '星海浮卡不得使用玻璃拟态');
+assert.doesNotMatch(growth, /点一颗星，展开证据链/, '未选星不得常驻空态浮卡');
 assert.match(growth, /className=\{s\.evidenceClose\}/, '星海证据浮卡必须可直接收起');
 assert.match(seaList, /data-star-id=\{node\.topic\.topicId\}/, '名录视图必须保留关闭证据后的焦点返还锚点');
 assert.match(seaStyles, /\.node\[data-selected='true'\]::before[\s\S]*?opacity:\s*1/, '选中星宿必须有明确环形反馈');

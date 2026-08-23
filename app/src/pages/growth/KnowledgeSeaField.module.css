@@ -110,6 +110,7 @@
   background: transparent;
   color: var(--sky-muted);
   cursor: pointer;
+  touch-action: manipulation;
   transition: opacity var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
 }
 
