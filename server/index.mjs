@@ -830,6 +830,8 @@ const BODY_LIMIT = 64 * 1024;
 const STATE_LIMIT = 2 * 1024 * 1024;  // 学习存档(事件流会随使用增长,给足余量)
 const AUDIO_LIMIT = 8 * 1024 * 1024;  // 16k 单声道 WAV ≈ 32KB/s,8MB ≈ 4 分钟口述
 const MEDIA_LIMIT = 8 * 1024 * 1024;  // 图片与单份成绩单原文件统一上限
+// 认证后的请求也不可信；限制慢速 JSON 请求占用全局受保护 API 并发槽的时间。
+const JSON_BODY_TIMEOUT = 5_000;
 const DEFAULT_MEDIA_BODY_TIMEOUT = 15_000;
 let MEDIA_BODY_TIMEOUT = DEFAULT_MEDIA_BODY_TIMEOUT;
 if (cfg.testMediaBodyTimeoutMs !== undefined) {
@@ -893,7 +895,7 @@ function readRaw(req, limit, timeoutMs = 0) {
   });
 }
 
-async function readJson(req, limit = BODY_LIMIT, timeoutMs = 0) {
+async function readJson(req, limit = BODY_LIMIT, timeoutMs = JSON_BODY_TIMEOUT) {
   const buf = await readRaw(req, limit, timeoutMs);
   try { return JSON.parse(buf.toString('utf8') || '{}'); }
   catch { throw new Error('bad-json'); }
