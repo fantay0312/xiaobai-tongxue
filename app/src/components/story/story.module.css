@@ -156,6 +156,15 @@
   }
 }
 
+@keyframes letter-sheet-rise {
+  from { transform: translate3d(0, 100%, 0); }
+  to { transform: none; }
+}
+
+@keyframes letter-sheet-sink {
+  to { transform: translate3d(0, 100%, 0); }
+}
+
 /* 减动效:整封信直接现形,不展开、不叠加全局 0.01ms 空转 */
 @media (prefers-reduced-motion: reduce) {
   .overlay,
@@ -535,6 +544,27 @@
 }
 
 @media (max-width: 560px) {
+  .overlay {
+    align-items: flex-end;
+    justify-content: stretch;
+    padding: 0;
+    padding-top: var(--gap-loose);
+  }
+
+  .letterCard {
+    width: 100%;
+    max-height: min(92dvh, 52rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin: 0;
+    border-radius: var(--radius-l) var(--radius-l) 0 0;
+    animation-name: letter-sheet-rise;
+  }
+
+  .letterCardClosing {
+    animation-name: letter-sheet-sink;
+  }
+
   .letterStrip {
     flex-wrap: wrap;
   }
