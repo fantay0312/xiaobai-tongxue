@@ -102,7 +102,10 @@ export default function HomePage() {
   return (
     <div className={styles.page}>
       {/* ── 首屏:主张 + 小白 + 竖排引文 ── */}
-      <section id="study-overview" className={styles.hero}>
+      <section
+        id="study-overview"
+        className={`${styles.hero}${hasStory ? ` ${styles.heroCompact}` : ''}`}
+      >
         <div className={styles.heroMain}>
           <p className={`${styles.kicker} ${styles.enter}`}>费曼学习法 · 反转式学习智能体</p>
           <h1 className={`${styles.claim} ${styles.enter}`} style={{ animationDelay: '70ms' }}>
@@ -131,7 +134,7 @@ export default function HomePage() {
             <span>小白的愿望</span>
             “我想有一天，也能像先生一样，把道理讲给别人听。”
           </blockquote>
-          <XiaobaiAvatar variant="paper" mood="curious" level={level} size={192} />
+          <XiaobaiAvatar variant="paper" mood="curious" level={level} size={hasStory ? 148 : 192} />
           <p className={anchor.avatarCaption}>你的 AI 学生 · 小白</p>
         </div>
 
