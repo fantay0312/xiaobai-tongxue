@@ -57,6 +57,8 @@ assert.match(letterStyles, /@keyframes letter-rise[\s\S]*?translate3d\(0, 5rem, 
 assert.match(letterStyles, /@keyframes letter-sink/, '关帖必须有对应的下沉过渡');
 
 assert.match(shell, /const NAV_GROUPS:[\s\S]*?study[\s\S]*?growth[\s\S]*?teacher/, '三个主导航必须提供分区快跳');
+assert.match(shell, /<NavLink[\s\S]*?to=\{group\.path\}/, '主导航文字必须进入对应页面');
+assert.match(shell, /aria-label=\{`\$\{group\.label\}章节快跳`\}/, '章节菜单必须由独立按钮打开');
 assert.match(shell, /aria-expanded=\{expanded\}/, '分区导航必须暴露 disclosure 状态');
 assert.match(shell, /event\.key !== 'Escape'/, '分区导航必须支持 Escape 关闭');
 assert.match(shell, /focus\(\{ preventScroll: true \}\)/, '章节菜单关闭后必须把键盘焦点还给触发按钮');

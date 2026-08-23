@@ -142,7 +142,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       if (event.key !== 'Escape') return;
       const menuKey = openMenu;
       setOpenMenu(null);
-      window.requestAnimationFrame(() => document.getElementById(`nav-${menuKey}`)?.focus());
+      window.requestAnimationFrame(() => document.getElementById(`nav-${menuKey}`)?.focus({ preventScroll: true }));
     };
     window.addEventListener('pointerdown', closeOutside);
     window.addEventListener('keydown', closeOnEscape);
@@ -213,19 +213,26 @@ export function AppShell({ children }: { children: ReactNode }) {
           <nav ref={navRef} className={styles.nav} aria-label="主导航">
             {NAV_GROUPS.map((group) => {
               const expanded = openMenu === group.key;
-              const active = group.end ? pathname === group.path : pathname.startsWith(group.path);
               return (
                 <div key={group.key} className={styles.navGroup}>
+                  <NavLink
+                    to={group.path}
+                    end={group.end}
+                    className={({ isActive }) => `${styles.link}${isActive ? ` ${styles.linkActive}` : ''}`}
+                    data-tour={group.key === 'growth' ? 'nav-growth' : undefined}
+                    onClick={() => setOpenMenu(null)}
+                  >
+                    {group.label}
+                  </NavLink>
                   <button
                     id={`nav-${group.key}`}
                     type="button"
-                    className={`${styles.link} ${styles.menuButton} ${active ? styles.linkActive : ''}`}
+                    className={styles.menuButton}
                     aria-expanded={expanded}
                     aria-controls={`nav-${group.key}-sections`}
+                    aria-label={`${group.label}章节快跳`}
                     onClick={() => setOpenMenu(expanded ? null : group.key)}
-                    data-tour={group.key === 'growth' ? 'nav-growth' : undefined}
                   >
-                    {group.label}
                     <Icon name="chevron-down" size={13} className={styles.menuChevron} />
                   </button>
                   <div
