@@ -2206,22 +2206,24 @@ async function handleAsr(req, res) {
   if (!ASR_KEY) return send(res, 503, { error: 'asr-disabled' });
   const limited = rateCheck(u.name, ASR_MAX_PER_MIN, ASR_MAX_PER_DAY, asrHits, asrDaily);
   if (limited) return send(res, 429, { error: limited });
+
+  let buf;
+  try { buf = await readRaw(req, AUDIO_LIMIT, MEDIA_BODY_TIMEOUT); } catch (e) {
+    return sendMediaBodyError(req, res, e);
+  }
+  if (buf.length < 100) return send(res, 400, { error: 'empty-audio' });
+
+  // Client uploads are bounded above, but do not occupy scarce upstream-processing slots.
   if (asrInflight >= ASR_MAX_INFLIGHT) return send(res, 503, { error: 'asr-busy' });
   asrInflight += 1;
   try {
-    await handleAsrInner(req, res);
+    await handleAsrInner(buf, res);
   } finally {
     asrInflight -= 1;
   }
 }
 
-async function handleAsrInner(req, res) {
-  let buf;
-  try { buf = await readRaw(req, AUDIO_LIMIT); } catch (e) {
-    return send(res, e.message === 'body-too-large' ? 413 : 400, { error: e.message });
-  }
-  if (buf.length < 100) return send(res, 400, { error: 'empty-audio' });
-
+async function handleAsrInner(buf, res) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ASR_TIMEOUT);
   try {
