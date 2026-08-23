@@ -463,7 +463,7 @@ const ADVERSARIAL: Adversarial[] = [
 function runLeakageBenchmark(topic: Topic): void {
   console.log(`\n── 泄漏防线对抗实测(${ADVERSARIAL.length} 条,会话开局空白名单语境)──`);
   const gate = (line: string) => leakageCheck({
-    reply: line, topic, whitelistChecklist: [], teacherTerms: [], mcTerms: [],
+    reply: line, topic, whitelistChecklist: [], teacherTerms: [],
   });
 
   let naiveLeaks = 0;

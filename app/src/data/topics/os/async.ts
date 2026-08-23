@@ -155,10 +155,10 @@ export const osAsyncTopic: Topic = {
     {
       mcId: 'os_async_M1',
       topicId: 'os-async',
-      belief: '协程既然那么轻,开一百万个就是一百万个一起跑,比线程并行得多、快得多',
+      belief: '协程既然那么轻,开一百万个就是一百万个一起跑,比线程同时跑得多、快得多',
       triggerLine:
         '哦哦我好像开窍了!协程既然这么轻,那我一口气开它一百万个,不就是一百万个活儿同时开跑了嘛——' +
-        '这可比开线程并行多了、快多了,对吧?',
+        '这可比开线程同时跑得多、快得多,对吧?',
       correctionCriteria: [
         '指出协程共用同一条执行流,同一时刻其实只有一个在动,靠主动让出轮流推进',
         '说明协程省下的是创建与切换的开销,不是让多个真的同时跑',
@@ -306,9 +306,9 @@ export const osAsyncTopic: Topic = {
     {
       mcId: 'os_async_M3',
       topicId: 'os-async',
-      belief: 'async/await 里只要一 await,就是偷偷帮我新开了个线程,丢到后台去并行跑',
+      belief: 'async/await 里只要一 await,就是偷偷帮我新开了个线程,丢到后台去同时跑',
       triggerLine:
-        '那这个 await 我大概明白了:它就是遇到要等的地方,偷偷帮我新开一个线程丢到后台去跑,这样就并行起来了嘛,对吧?',
+        '那这个 await 我大概明白了:它就是遇到要等的地方,偷偷帮我新开一个线程丢到后台去跑,这样就能同时动起来了嘛,对吧?',
       correctionCriteria: [
         '指出 async/await 是语法糖,单线程事件循环里 await 不新开线程',
         '说明 await 只是把后续登记成回调挂起,先去处理队列里别的事件,完成再回来',
