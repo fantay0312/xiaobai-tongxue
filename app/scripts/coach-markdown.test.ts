@@ -4,6 +4,7 @@ import {
   isMarkdownTableStart,
   splitMarkdownTableRow,
 } from '../src/components/coach/markdownTable';
+import { markdownToPlainText } from '../src/components/coach/coachMarkdownText';
 
 assert.deepEqual(
   splitMarkdownTableRow('| expression | a \\| b |'),
@@ -49,6 +50,17 @@ assert.equal(
   isMarkdownTableBodyRow('| a \\| b | c |'),
   true,
   'outer unescaped pipes must keep a table body row active',
+);
+assert.equal(
+  markdownToPlainText('[documentation](https://example.com/a_(nested))'),
+  'documentation',
+  'links containing a parenthesized URL segment must retain their label',
+);
+const malformedLink = `[label](${'a'.repeat(10_000)}`;
+assert.equal(
+  markdownToPlainText(malformedLink),
+  malformedLink,
+  'a long link missing its closing parenthesis must remain plain text',
 );
 
 console.log('coach markdown table parsing: ok');
