@@ -122,6 +122,12 @@ globalThis.fetch = async (input, init) => {
       headers: { 'Content-Type': 'application/json' },
     });
   }
+  if (url === 'https://asr.example/v1/audio/transcriptions') {
+    return new Response(JSON.stringify({ text: '测试转写' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
   return nativeFetch(input, init);
 };
 `);
@@ -141,6 +147,8 @@ globalThis.fetch = async (input, init) => {
     testMediaBodyTimeoutMs: 800,
     upstreamBaseUrl: 'https://vision.example/main',
     apiKey: 'vision-test-key',
+    asrApiKey: 'asr-test-key',
+    asrUpstreamUrl: 'https://asr.example/v1/audio/transcriptions',
     visionUpstreamUrl: 'https://vision.example/v1',
     upstreamModelVision: 'vision-test-model',
     users: [alice, bob, carol, dave, eve, legacy],
@@ -210,6 +218,20 @@ globalThis.fetch = async (input, init) => {
   assert.equal(visionCall.authorization, 'Bearer vision-test-key');
   assert.equal(visionCall.body.model, 'vision-test-model');
   assert.match(visionCall.body.messages[1].content[1].image_url.url, /^data:image\/png;base64,/);
+
+  const slowAsrUploads = await Promise.all(Array.from({ length: 6 }, () => openSlowUpload(
+    port,
+    '/api/asr',
+    { ...aliceHeaders, 'Content-Type': 'audio/wav' },
+    Buffer.from('R'),
+  )));
+  await expectJson(await fetch(`${base}/api/asr`, {
+    method: 'POST', headers: aliceHeaders, body: Buffer.alloc(100),
+  }), 200, { text: '测试转写' });
+  assert.deepEqual(
+    (await Promise.all(slowAsrUploads.map(({ response }) => response))).sort(),
+    [408, 408, 408, 408, 408, 408],
+  );
 
   const slowVisionUploads = await Promise.all(Array.from({ length: 5 }, () => openSlowUpload(
     port,
