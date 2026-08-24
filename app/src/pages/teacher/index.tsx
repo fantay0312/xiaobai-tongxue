@@ -6,9 +6,10 @@
  * 泄漏率实测卡读 src/data/leakageReport.json(import.meta.glob,缺文件优雅降级)——本就是真实测得数据。
  * 语言纪律:盲区永远说「小白还没懂」,不说「你错了」;朱砂只落在盲区/被带偏。
  */
+import { useState } from 'react';
 import { Link } from 'react-router';
 import type {
-  BlindSpot, KnowledgeState, McState, SessionMode, SessionReport, TopicState,
+  BlindSpot, KnowledgeState, McState, SessionMode, SessionReport, Topic, TopicState,
 } from '../../types';
 import { useAppStore } from '../../store/appStore';
 import { getTopic, TOPICS } from '../../data';
@@ -93,6 +94,107 @@ const BAR_MAX = 520;
 
 /* 入场阶梯 75ms;同屏最长 delay 封顶 300ms(R6),后排区块不许白屏等场 */
 const rise = (i: number) => ({ animationDelay: `${Math.min(i * 75, 300)}ms` });
+
+type TopicRow = {
+  topic: Topic;
+  st: TopicState;
+  sessions: number;
+  lastQuiz: number | null;
+  lastActive: string | null;
+  corrected: number;
+  adopted: number;
+  pending: number;
+};
+
+/** 学情表的课程筛选是界面态,不写入学习档案。点标签只显示该课,长表关在原区域内竖滚。 */
+function TopicProgressTable({ topicRows }: { topicRows: TopicRow[] }) {
+  const courses = [...new Set(topicRows.map((row) => row.topic.course))];
+  const [selected, setSelected] = useState(courses[0] ?? '');
+  const visibleRows = topicRows.filter((row) => row.topic.course === selected);
+
+  return (
+    <>
+      <div className={s.tagBar} role="toolbar" aria-label="按课程筛选知识点学情">
+        {courses.map((course) => {
+          const on = course === selected;
+          return (
+            <button
+              key={course}
+              type="button"
+              className={`${s.courseChip} ${s.tagBtn} ${on ? s.tagOn : s.tagOff}`}
+              aria-pressed={on}
+              aria-controls="topic-progress-table"
+              onClick={() => setSelected(course)}
+            >
+              {course}
+            </button>
+          );
+        })}
+      </div>
+      <div
+        className={`${s.tableWrap} ${s.tableScroll}`}
+        tabIndex={0}
+        role="region"
+        aria-label="知识点学情表滚动区"
+      >
+        <table id="topic-progress-table" className={s.table}>
+          <thead>
+            <tr>
+              <th>课程</th>
+              <th>知识点</th>
+              <th>状态</th>
+              <th>掌握度</th>
+              <th>要点覆盖</th>
+              <th>误区</th>
+              <th>最近小测</th>
+              <th>会话</th>
+              <th>最近活动</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleRows.map((row) => (
+              <tr key={row.topic.topicId} className={row.adopted > 0 ? s.rowAdopted : undefined}>
+                <td className={s.courseCell}>
+                  <span className={s.courseChip}>{row.topic.course}</span>
+                </td>
+                <td className={s.titleCell}>{row.topic.title}</td>
+                <td>
+                  <span className={`${s.chip} ${s[KS_CHIP[row.st.knowledgeState]]}`}>
+                    {row.st.knowledgeState}
+                  </span>
+                </td>
+                <td>
+                  <span className={s.masteryCell}>
+                    <span className={s.numInline}>{Math.round(row.st.mastery * 100)}</span>
+                    <span className={s.masteryTrack}>
+                      <span
+                        className={s.masteryFill}
+                        style={{ width: `${Math.round(row.st.mastery * 100)}%` }}
+                      />
+                    </span>
+                  </span>
+                </td>
+                <td className={s.numCell}>{row.st.hitChecklist.length}/{row.topic.checklist.length}</td>
+                <td className={s.mcSummary}>
+                  纠正 <span className={s.numInline}>{row.corrected}</span>
+                  {' · '}
+                  <span className={row.adopted > 0 ? s.mcAdopted : undefined}>
+                    带偏 <span className={s.numInline}>{row.adopted}</span>
+                  </span>
+                  {' · '}
+                  待试 <span className={s.numInline}>{row.pending}</span>
+                </td>
+                <td className={s.numCell}>{row.lastQuiz ?? '—'}</td>
+                <td className={s.numCell}>{row.sessions}</td>
+                <td className={s.numCell}>{row.lastActive ? fmtWhen(row.lastActive) : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
 
 export default function TeacherPage() {
   useDocTitle('教师看板');
@@ -293,62 +395,7 @@ export default function TeacherPage() {
           {/* ③ 知识点学情表 */}
           <section id="topic-progress" className={`${s.section} ${s.rise}`} style={rise(3)}>
             <h2 className={s.h2}><span className={s.secNo}>贰</span>知识点学情<small>每一行都由该主题的事件流重放得出</small></h2>
-            <div className={s.tableWrap}>
-              <table className={s.table}>
-                <thead>
-                  <tr>
-                    <th>课程</th>
-                    <th>知识点</th>
-                    <th>状态</th>
-                    <th>掌握度</th>
-                    <th>要点覆盖</th>
-                    <th>误区</th>
-                    <th>最近小测</th>
-                    <th>会话</th>
-                    <th>最近活动</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topicRows.map((row) => (
-                    <tr key={row.topic.topicId} className={row.adopted > 0 ? s.rowAdopted : undefined}>
-                      <td className={s.courseCell}>
-                        <span className={s.courseChip}>{row.topic.course}</span>
-                      </td>
-                      <td className={s.titleCell}>{row.topic.title}</td>
-                      <td>
-                        <span className={`${s.chip} ${s[KS_CHIP[row.st.knowledgeState]]}`}>
-                          {row.st.knowledgeState}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={s.masteryCell}>
-                          <span className={s.numInline}>{Math.round(row.st.mastery * 100)}</span>
-                          <span className={s.masteryTrack}>
-                            <span
-                              className={s.masteryFill}
-                              style={{ width: `${Math.round(row.st.mastery * 100)}%` }}
-                            />
-                          </span>
-                        </span>
-                      </td>
-                      <td className={s.numCell}>{row.st.hitChecklist.length}/{row.topic.checklist.length}</td>
-                      <td className={s.mcSummary}>
-                        纠正 <span className={s.numInline}>{row.corrected}</span>
-                        {' · '}
-                        <span className={row.adopted > 0 ? s.mcAdopted : undefined}>
-                          带偏 <span className={s.numInline}>{row.adopted}</span>
-                        </span>
-                        {' · '}
-                        待试 <span className={s.numInline}>{row.pending}</span>
-                      </td>
-                      <td className={s.numCell}>{row.lastQuiz ?? '—'}</td>
-                      <td className={s.numCell}>{row.sessions}</td>
-                      <td className={s.numCell}>{row.lastActive ? fmtWhen(row.lastActive) : '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <TopicProgressTable topicRows={topicRows} />
             <p className={s.tableFoot}>
               朱砂晕染的行还留着没纠正回来的被带偏误区——先补学,再回讲台重讲验证。
             </p>
