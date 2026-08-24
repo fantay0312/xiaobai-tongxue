@@ -53,6 +53,21 @@ export function PersonaPicker({ value, onChange }: PersonaPickerProps) {
     return () => document.removeEventListener('pointerdown', dismissOutside, true);
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    if (!window.matchMedia('(min-width: 961px)').matches) return;
+    const menu = rootRef.current?.querySelector<HTMLElement>('[data-persona-menu]');
+    if (!menu) return;
+    const frame = window.requestAnimationFrame(() => {
+      menu.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'nearest',
+        inline: 'nearest',
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open]);
+
   const focusOption = (index: number) => {
     optionRefs.current[wrapIndex(index)]?.focus();
   };
@@ -100,6 +115,7 @@ export function PersonaPicker({ value, onChange }: PersonaPickerProps) {
     <div
       ref={rootRef}
       className={styles.picker}
+      data-open={open || undefined}
       onKeyDown={(event) => {
         if (event.key === 'Escape' && open) {
           event.preventDefault();
@@ -134,7 +150,7 @@ export function PersonaPicker({ value, onChange }: PersonaPickerProps) {
       </button>
 
       {open && (
-        <div className={styles.menu}>
+        <div className={styles.menu} data-persona-menu>
           <p id={menuLabelId} className={styles.menuLabel}>换一种追问的性情</p>
           <div id={menuId} className={styles.menuList} role="listbox" aria-labelledby={menuLabelId}>
             {PERSONAS.map((option, index) => {

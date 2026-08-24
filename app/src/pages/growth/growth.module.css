@@ -183,7 +183,6 @@
   align-items: flex-end;
   justify-content: center;
   overflow: hidden;
-  border-bottom: 1px solid var(--paper-edge);
 }
 
 .portraitStage > * { max-width: 100%; }
@@ -191,10 +190,10 @@
 .portraitCaption {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: var(--gap-tight);
   margin-top: var(--gap-tight);
-  padding-inline: var(--gap-hair);
+  padding-inline: var(--gap-hair) 3.15rem;
 }
 
 .portraitName {
@@ -220,34 +219,45 @@
   transform: rotate(-5deg);
 }
 
-.profileStageTicket {
+.portrait .profileStageTicket {
   position: absolute;
-  right: -0.5rem;
-  bottom: -0.7rem;
-  display: flex;
-  min-width: 6.25rem;
-  flex-direction: column;
-  padding: 0.32rem 0.75rem 0.38rem;
-  border: 1px solid var(--azure);
-  border-radius: var(--radius-tag);
+  right: -0.55rem;
+  bottom: -0.4rem;
+  z-index: 2;
+  width: 4.7rem;
+  height: 4.7rem;
+  border: 1.5px solid var(--seal-red);
+  color: var(--seal-red);
   background: var(--paper);
-  color: var(--azure-deep);
-  transform: rotate(2.2deg);
-  box-shadow: var(--shadow-paper);
+  pointer-events: none;
 }
 
-.profileStageTicket strong {
-  font-family: var(--font-serif);
-  font-size: var(--fs-sub);
-  line-height: 1;
-  letter-spacing: 0.16em;
-}
-
-.profileStageTicket small {
-  margin-top: 0.16rem;
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
+.profileStageTicket .profileStageInner {
+  width: 3.75rem;
+  height: 3.75rem;
+  flex-direction: column;
+  gap: 0.12rem;
+  border: 1px dashed var(--seal-red);
+  text-transform: none;
   letter-spacing: 0.08em;
+  opacity: 1;
+  line-height: 1.15;
+  color: inherit;
+}
+
+.profileStageInner strong {
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.18em;
+}
+
+.profileStageInner small {
+  margin: 0;
+  font-family: var(--font-typewriter);
+  font-size: 0.5rem;
+  letter-spacing: 0.06em;
 }
 
 .profileFacts {
@@ -828,18 +838,25 @@
     height: 6.5rem !important;
     max-width: none;
   }
-  .portraitCaption { margin-top: var(--gap-hair); padding-inline: 0; }
+  .portraitCaption { margin-top: var(--gap-hair); padding-inline: 0 2.4rem; }
   .portraitName { font-size: var(--fs-tiny); }
   .portraitSeal { display: none; }
 
   .profileStageTicket {
-    right: -0.2rem;
-    bottom: -0.65rem;
-    min-width: 5.25rem;
-    padding-inline: 0.55rem;
+    right: -0.4rem;
+    bottom: -0.35rem;
+    width: 3.6rem;
+    height: 3.6rem;
   }
 
-  .profileStageTicket strong { font-size: var(--fs-body); }
+  .profileStageTicket .profileStageInner {
+    width: 2.8rem;
+    height: 2.8rem;
+    gap: 0.06rem;
+  }
+
+  .profileStageInner strong { font-size: var(--fs-tiny); }
+  .profileStageInner small { font-size: 0.42rem; }
 
   .profileFacts {
     display: grid;
