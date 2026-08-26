@@ -257,7 +257,11 @@ export default function GrowthPage() {
 
   const selNode = nodes.find((n) => n.topic.topicId === selected) ?? null;
   const evidencePanelRef = useRef<HTMLElement | null>(null);
+  const evidenceScrollRef = useRef<HTMLDivElement | null>(null);
   const evidenceScrollTimerRef = useRef<number | null>(null);
+  const [evidenceMore, setEvidenceMore] = useState(false);
+  const [evidenceCloseOn, setEvidenceCloseOn] = useState(false);
+  const evidenceCloseTimerRef = useRef<number | null>(null);
   // 同印章册预览:收起时缓存内容,折叠动画不吃空
   const lastNodeRef = useRef<MapNode | null>(null);
   if (selNode) lastNodeRef.current = selNode;
@@ -313,7 +317,52 @@ export default function GrowthPage() {
     if (evidenceScrollTimerRef.current !== null) {
       window.clearTimeout(evidenceScrollTimerRef.current);
     }
+    if (evidenceCloseTimerRef.current !== null) {
+      window.clearTimeout(evidenceCloseTimerRef.current);
+    }
   }, []);
+
+  const showEvidenceClose = () => {
+    setEvidenceCloseOn(true);
+    if (evidenceCloseTimerRef.current !== null) {
+      window.clearTimeout(evidenceCloseTimerRef.current);
+      evidenceCloseTimerRef.current = null;
+    }
+  };
+
+  const hideEvidenceCloseSoon = () => {
+    if (evidenceCloseTimerRef.current !== null) {
+      window.clearTimeout(evidenceCloseTimerRef.current);
+    }
+    evidenceCloseTimerRef.current = window.setTimeout(() => {
+      evidenceCloseTimerRef.current = null;
+      setEvidenceCloseOn(false);
+    }, 1400);
+  };
+
+  useEffect(() => {
+    const scroller = evidenceScrollRef.current;
+    if (!scroller) {
+      setEvidenceMore(false);
+      return;
+    }
+    const sync = () => {
+      setEvidenceMore(scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight > 8);
+    };
+    const onScroll = () => {
+      sync();
+      showEvidenceClose();
+      hideEvidenceCloseSoon();
+    };
+    sync();
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    const observer = new ResizeObserver(sync);
+    observer.observe(scroller);
+    return () => {
+      scroller.removeEventListener('scroll', onScroll);
+      observer.disconnect();
+    };
+  }, [selected, shownNode, shownEvents.length]);
 
   const selectStar = (topicId: string) => {
     const nextId = selected === topicId ? null : topicId;
@@ -644,20 +693,42 @@ export default function GrowthPage() {
                 statusFocus={statusFocus}
                 bridge={{ toFull: starsToFull, seals: earnedCount }}
                 onSelect={selectStar}
-              />
+              >
               {selNode ? (
           <aside
             id="knowledge-evidence"
             ref={evidencePanelRef}
             className={`${s.evidenceDock} ${s.evidenceDockOpen}`}
+            data-more={evidenceMore || undefined}
             aria-label="掌握度证据链"
             aria-live="polite"
             onKeyDown={(event) => {
               if (event.key === 'Escape') closeEvidence();
             }}
+            onPointerMove={(event) => {
+              const box = event.currentTarget.getBoundingClientRect();
+              if (box.right - event.clientX <= 72 && event.clientY - box.top <= 72) {
+                showEvidenceClose();
+              }
+            }}
+            onPointerLeave={hideEvidenceCloseSoon}
+            onWheel={() => {
+              showEvidenceClose();
+              hideEvidenceCloseSoon();
+            }}
           >
+            <button
+              type="button"
+              className={`${s.evidenceClose} ${evidenceCloseOn ? s.evidenceCloseOn : ''}`}
+              aria-label={`收起${selNode.topic.title}的证据链`}
+              onClick={closeEvidence}
+              onFocus={showEvidenceClose}
+              onBlur={hideEvidenceCloseSoon}
+            >
+              <Icon name="x" size={18} strokeWidth={2.2} />
+            </button>
             <div className={`${s.collapse} ${s.open}`}>
-              <div>
+              <div ref={evidenceScrollRef}>
                 {shownNode && shownNode.state && (
                   <div className={s.nodePanel}>
                     <div className={s.panelHead}>
@@ -675,14 +746,6 @@ export default function GrowthPage() {
                       <span className={s.chip}>
                         要点 {shownNode.state.hitChecklist.length}/{shownNode.topic.checklist.length}
                       </span>
-                      <button
-                        type="button"
-                        className={s.evidenceClose}
-                        aria-label={`收起${shownNode.topic.title}的证据链`}
-                        onClick={closeEvidence}
-                      >
-                        <Icon name="x" size={15} />
-                      </button>
                     </div>
                 {/* 星链行:这颗星在星海里牵着的邻星,点一枚即跳选(证据链随之切换);
                     未开放的邻星按星图纪律禁用,不做空跳 */}
@@ -856,8 +919,12 @@ export default function GrowthPage() {
             )}
           </div>
         </div>
+            <span className={s.evidenceMore} aria-hidden="true">
+              <i className={s.evidenceMoreChevron} />
+            </span>
           </aside>
               ) : null}
+              </KnowledgeMap>
             </div>
             {/* 图例升为「巡天筛选器」:点一态,余星连线视觉下沉(不卸载,量测/Tab 序稳);
                 再点或点「全览」复位。计数实时派生自 nodes。 */}

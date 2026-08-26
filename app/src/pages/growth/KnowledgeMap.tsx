@@ -2,11 +2,11 @@
  * 学问星海：所有课程共用一片连续深空。知识点仍一讲一星，但只让少量主星
  * 常显星芒与题名；其余节点收成可交互星核，选中时才展开真实语义星链。
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Topic, TopicState } from '../../types';
 import { KnowledgeSeaField } from './KnowledgeSeaField';
 import { KnowledgeSeaList } from './KnowledgeSeaList';
-import { groupByCourse } from './knowledgeSeaGeometry';
+import { groupByCourse, layoutSea, pickDockCorner } from './knowledgeSeaGeometry';
 import s from './KnowledgeSeaFrame.module.css';
 
 export type NodeStatus = 'locked' | 'unlearned' | 'learning' | 'forgotten' | 'mastered';
@@ -31,12 +31,14 @@ export function KnowledgeMap({
   onSelect,
   statusFocus = null,
   bridge = null,
+  children = null,
 }: {
   nodes: MapNode[];
   selectedId: string | null;
   onSelect: (topicId: string) => void;
   statusFocus?: NodeStatus | null;
   bridge?: { toFull: number; seals: number } | null;
+  children?: ReactNode;
 }) {
   const realms = useMemo(() => groupByCourse(nodes), [nodes]);
   const [courseFocus, setCourseFocus] = useState<string | null>(null);
@@ -70,7 +72,14 @@ export function KnowledgeMap({
   const litStars = nodes.filter((node) => node.status === 'mastered').length;
   const fogStars = nodes.filter((node) => node.status === 'forgotten').length;
   const selectedNode = nodes.find((node) => node.topic.topicId === selectedId) ?? null;
-
+  const seaPoints = useMemo(
+    () => layoutSea(visibleNodes, courseFocus !== null, compact),
+    [compact, courseFocus, visibleNodes],
+  );
+  const dockCorner = useMemo(
+    () => pickDockCorner(selectedId, seaPoints),
+    [seaPoints, selectedId],
+  );
   return (
     <div className={s.atlas}>
       <div className={s.chart} role="group" aria-label="学问星海，一讲一星">
@@ -130,23 +139,27 @@ export function KnowledgeMap({
           </p>
         ) : null}
 
-        {viewMode === 'list' ? (
-          <KnowledgeSeaList
-            nodes={visibleNodes}
-            selectedId={selectedId}
-            statusFocus={statusFocus}
-            onSelect={onSelect}
-          />
-        ) : (
-          <KnowledgeSeaField
-            nodes={visibleNodes}
-            selectedId={selectedId}
-            statusFocus={statusFocus}
-            compact={compact}
-            focusedCourse={courseFocus !== null}
-            onSelect={onSelect}
-          />
-        )}
+        <div className={s.skyStage} data-corner={dockCorner}>
+          {viewMode === 'list' ? (
+            <KnowledgeSeaList
+              nodes={visibleNodes}
+              selectedId={selectedId}
+              statusFocus={statusFocus}
+              onSelect={onSelect}
+            />
+          ) : (
+            <KnowledgeSeaField
+              nodes={visibleNodes}
+              selectedId={selectedId}
+              statusFocus={statusFocus}
+              compact={compact}
+              focusedCourse={courseFocus !== null}
+              onSelect={onSelect}
+              points={seaPoints}
+            />
+          )}
+          {children}
+        </div>
 
         <p className={s.hint}>
           {compact ? '先选课程，再点星观测；可切到名录查找。' : '方向键巡星，回车展开证据；点课程可收拢星区。'}

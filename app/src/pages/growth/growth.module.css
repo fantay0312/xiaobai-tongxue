@@ -2000,22 +2000,25 @@
   --shadow-paper: 0 14px 38px color-mix(in oklch, var(--star-sky-deep) 72%, transparent);
 
   position: absolute;
-  top: clamp(0.85rem, 1.6vw, 1.25rem);
-  left: clamp(0.75rem, 2vw, 1.25rem);
-  z-index: 15;
-  width: min(22rem, calc(100% - 2rem));
-  max-height: min(31rem, calc(100vh - var(--header-h) - 2rem));
-  max-height: min(31rem, calc(100dvh - var(--header-h) - 2rem));
-  overflow: auto;
+  top: clamp(0.4rem, 1vw, 0.65rem);
+  left: clamp(0.4rem, 1.2vw, 0.7rem);
+  z-index: 20;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  width: min(18.5rem, calc(100% - 1.1rem));
+  max-height: min(24rem, 72%);
+  overflow: hidden;
   overscroll-behavior: contain;
   scroll-margin-top: calc(var(--header-h) + var(--gap-tight));
-  scrollbar-gutter: stable;
-  border: 1px solid var(--line-strong);
+  border: 1px solid color-mix(in oklch, var(--line-strong) 88%, var(--star-sky-moon));
   border-radius: var(--radius);
-  background: var(--paper);
+  background: color-mix(in oklch, var(--paper) 78%, transparent);
+  backdrop-filter: blur(16px) saturate(1.18);
+  -webkit-backdrop-filter: blur(16px) saturate(1.18);
   box-shadow:
-    0 1px 0 color-mix(in oklch, var(--star-sky-moon) 10%, transparent),
-    0 18px 40px color-mix(in oklch, var(--star-sky-deep) 55%, transparent);
+    0 1px 0 color-mix(in oklch, var(--star-sky-moon) 12%, transparent),
+    0 18px 40px color-mix(in oklch, var(--star-sky-deep) 48%, transparent);
   pointer-events: none;
   touch-action: manipulation;
   transform: translate3d(0, 0.4rem, 0);
@@ -2034,6 +2037,81 @@
   visibility: visible;
   transform: none;
   transition-delay: 0s;
+}
+
+:global([data-corner='right']) .evidenceDock {
+  left: auto;
+  right: clamp(0.4rem, 1.2vw, 0.7rem);
+}
+
+.evidenceDock .collapse {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.evidenceDock .collapse > div {
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 2.4rem;
+  scrollbar-width: none;
+}
+
+.evidenceDock .collapse > div::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.evidenceMore {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 4;
+  display: grid;
+  height: 2.85rem;
+  pointer-events: none;
+  place-items: end center;
+  background: linear-gradient(
+    to top,
+    var(--paper) 0%,
+    color-mix(in oklch, var(--paper) 88%, transparent) 38%,
+    color-mix(in oklch, var(--paper) 28%, transparent) 72%,
+    transparent 100%
+  );
+  box-shadow: inset 0 -1.4rem 1.6rem color-mix(in oklch, var(--paper) 55%, transparent);
+}
+
+.evidenceMore::before {
+  content: '';
+  position: absolute;
+  right: 22%;
+  bottom: 1.45rem;
+  left: 22%;
+  height: 1px;
+  background: color-mix(in oklch, var(--ink) 42%, transparent);
+}
+
+.evidenceMoreChevron {
+  display: block;
+  width: 0;
+  height: 0;
+  margin-bottom: 0.42rem;
+  border-right: 6px solid transparent;
+  border-left: 6px solid transparent;
+  border-top: 7px solid var(--ink);
+  opacity: 0.28;
+  filter: drop-shadow(0 1px 2px var(--paper));
+}
+
+.evidenceDock[data-more] .evidenceMoreChevron {
+  opacity: 0.92;
+  animation: evidenceMoreNudge 1.5s var(--ease-loop) infinite alternate;
+}
+
+@keyframes evidenceMoreNudge {
+  from { transform: translateY(0); }
+  to { transform: translateY(3px); }
 }
 
 .evidenceEmpty {
@@ -2093,10 +2171,10 @@
 /* 证据链面板改浅卡:卷三落在 shade 带上,warm 底立不住(R3) */
 .nodePanel {
   margin-top: 0;
-  background: var(--paper);
+  background: transparent;
   border: 0;
   border-radius: inherit;
-  padding: var(--gap);
+  padding: var(--gap-tight);
 }
 
 .panelHead {
@@ -2110,25 +2188,35 @@
 .evidenceDock .panelHead { gap: var(--gap-hair) var(--gap-tight); }
 
 .evidenceClose {
-  position: sticky;
-  top: 0;
-  right: 0;
+  position: absolute;
+  top: 0.1rem;
+  right: 0.1rem;
+  z-index: 40;
   display: grid;
   width: 2.75rem;
   height: 2.75rem;
   flex: none;
   place-items: center;
-  margin-left: auto;
+  margin: 0;
   padding: 0;
-  border: 1px solid var(--paper-edge);
-  border-radius: 50%;
-  background: var(--ink-wash);
-  color: var(--ink-soft);
-  transition: color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 0 4px var(--paper)) drop-shadow(0 1px 2px var(--paper));
+  transition: opacity var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+}
+
+.evidenceCloseOn,
+.evidenceClose:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .evidenceClose:hover {
-  background: var(--azure-wash);
+  background: transparent;
   color: var(--ink);
 }
 
@@ -2144,6 +2232,31 @@
 .evidenceDock .recallHead small {
   display: block;
   margin: var(--gap-hair) 0 0;
+}
+
+.evidenceDock .h3 {
+  font-size: var(--fs-tiny);
+  margin-bottom: var(--gap-hair);
+}
+
+.evidenceDock .timelineTime,
+.evidenceDock .timelineText,
+.evidenceDock .muted {
+  font-size: 0.68rem;
+}
+
+.evidenceDock .masteryProofHead h3 {
+  font-size: var(--fs-tiny);
+}
+
+.evidenceDock .masteryProofHead > strong {
+  font-size: var(--fs-sub);
+}
+
+.evidenceDock .masteryFactors dt,
+.evidenceDock .masteryFactors dd,
+.evidenceDock .masteryFormula {
+  font-size: 0.68rem;
 }
 
 .masteryProof {
@@ -2255,12 +2368,12 @@
 
 @media (max-width: 960px) {
   .evidenceDock {
-    top: auto;
-    right: 0.55rem;
-    bottom: 0.55rem;
-    left: 0.55rem;
-    width: auto;
-    max-height: min(22rem, 58%);
+    top: 0.4rem;
+    right: auto;
+    bottom: auto;
+    left: 0.4rem;
+    width: min(18.5rem, calc(100% - 0.8rem));
+    max-height: min(20rem, 70%);
     transform: translate3d(0, 0.75rem, 0);
   }
 
@@ -2285,6 +2398,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .evidenceClose { transition: none; }
+  .evidenceDock[data-more] .evidenceMoreChevron { animation: none; }
 }
 
 .panelTitle { font-size: var(--fs-sub); color: var(--ink); }

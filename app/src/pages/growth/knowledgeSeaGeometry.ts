@@ -7,15 +7,23 @@ export interface SeaPoint {
   y: number;
 }
 
+export type LabelSide = 'below' | 'above' | 'left' | 'right';
+
 export interface CourseRealm {
   course: string;
   nodes: MapNode[];
 }
 
-export interface DecorativeStar extends SeaPoint {
+export interface SkyStar {
+  x: number;
+  y: number;
+  z: number;
+  mag: number;
   size: number;
   opacity: number;
-  delay: number;
+  twinkle: number;
+  phase: number;
+  tint: 0 | 1 | 2 | 3;
 }
 
 export const SEA_WIDTH = 960;
@@ -96,6 +104,13 @@ export function layoutSea(
   return points;
 }
 
+export function labelSideFor(point: SeaPoint): LabelSide {
+  if (point.y > SEA_HEIGHT - 118) return 'above';
+  if (point.x > SEA_WIDTH - 150) return 'left';
+  if (point.x < 150) return 'right';
+  return 'below';
+}
+
 export function courseLabelPoint(
   realm: CourseRealm,
   points: Map<string, SeaPoint>,
@@ -105,17 +120,17 @@ export function courseLabelPoint(
   if (realmCount > 1) {
     return {
       x: (SEA_WIDTH / (realmCount + 1)) * (realmIndex + 1),
-      y: 104,
+      y: 72,
     };
   }
   const available = realm.nodes.flatMap((node) => {
     const point = points.get(node.topic.topicId);
     return point ? [point] : [];
   });
-  if (available.length === 0) return { x: SEA_WIDTH / 2, y: 118 };
+  if (available.length === 0) return { x: SEA_WIDTH / 2, y: 72 };
   const x = available.reduce((sum, point) => sum + point.x, 0) / available.length;
   const top = Math.min(...available.map((point) => point.y));
-  return { x, y: Math.max(104, top - 44) };
+  return { x, y: Math.max(72, top - 56) };
 }
 
 export function featuredStarIds(
@@ -152,20 +167,84 @@ export function activeStarLinks(
     .slice(0, 3);
 }
 
-export function curvedPath(from: SeaPoint, to: SeaPoint, index: number): string {
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const length = Math.max(1, Math.hypot(dx, dy));
-  const bow = Math.min(28, Math.max(10, length * 0.055)) * (index % 2 === 0 ? 1 : -1);
-  const controlX = (from.x + to.x) / 2 - (dy / length) * bow;
-  const controlY = (from.y + to.y) / 2 + (dx / length) * bow;
-  return `M ${from.x.toFixed(1)} ${from.y.toFixed(1)} Q ${controlX.toFixed(1)} ${controlY.toFixed(1)} ${to.x.toFixed(1)} ${to.y.toFixed(1)}`;
+export type DockCorner = 'left' | 'right';
+
+export function pickDockCorner(
+  selectedId: string | null,
+  points: Map<string, SeaPoint>,
+): DockCorner {
+  if (!selectedId) return 'left';
+  const point = points.get(selectedId);
+  if (!point) return 'left';
+  return point.x < SEA_WIDTH / 2 ? 'right' : 'left';
 }
 
-export const DECORATIVE_STARS: DecorativeStar[] = Array.from({ length: 28 }, (_, index) => ({
-  x: 28 + hash01(`decor-x-${index}`, 23) * (SEA_WIDTH - 56),
-  y: 104 + hash01(`decor-y-${index}`, 29) * (SEA_HEIGHT - 136),
-  size: 3 + hash01(`decor-s-${index}`, 31) * 5,
-  opacity: 0.07 + hash01(`decor-o-${index}`, 37) * 0.11,
-  delay: hash01(`decor-d-${index}`, 41) * 6,
-}));
+export function linkPath(from: SeaPoint, to: SeaPoint): string {
+  return `M ${from.x.toFixed(1)} ${from.y.toFixed(1)} L ${to.x.toFixed(1)} ${to.y.toFixed(1)}`;
+}
+
+function spectralTint(roll: number): SkyStar['tint'] {
+  if (roll < 0.11) return 1;
+  if (roll < 0.16) return 2;
+  if (roll < 0.22) return 3;
+  return 0;
+}
+
+function rotateGalactic(x: number, y: number, z: number, tilt: number, spin: number) {
+  const ct = Math.cos(tilt);
+  const st = Math.sin(tilt);
+  const y2 = y * ct - z * st;
+  const z2 = y * st + z * ct;
+  const cs = Math.cos(spin);
+  const ss = Math.sin(spin);
+  return {
+    x: x * cs - z2 * ss,
+    y: y2,
+    z: x * ss + z2 * cs,
+  };
+}
+
+export function seedSkyStars(count: number): SkyStar[] {
+  const total = Math.max(80, Math.min(1800, Math.round(count)));
+  return Array.from({ length: total }, (_, index) => {
+    const y = 1 - (index / Math.max(1, total - 1)) * 2;
+    const radius = Math.sqrt(Math.max(0, 1 - y * y));
+    const theta = Math.PI * (3 - Math.sqrt(5)) * index + hash01(`sky-j-${index}`, 2) * 0.08;
+    const mag = Math.pow(hash01(`sky-m-${index}`, 11), 0.58) * 6.4;
+    return {
+      x: Math.cos(theta) * radius,
+      y,
+      z: Math.sin(theta) * radius,
+      mag,
+      size: Math.max(0.22, 2.35 * Math.pow(10, -0.17 * mag)),
+      opacity: Math.max(0.1, 1.02 * Math.pow(10, -0.13 * mag)),
+      twinkle: 0.00045 + hash01(`sky-w-${index}`, 17) * 0.0018,
+      phase: hash01(`sky-p-${index}`, 19) * Math.PI * 2,
+      tint: spectralTint(hash01(`sky-t-${index}`, 53)),
+    };
+  });
+}
+
+export function seedMilkyWay(count: number): SkyStar[] {
+  const total = Math.max(48, Math.min(1100, Math.round(count)));
+  return Array.from({ length: total }, (_, index) => {
+    const lon = hash01(`mw-l-${index}`, 3) * Math.PI * 2;
+    const lat = (hash01(`mw-b-${index}`, 5) - 0.5) * 0.42;
+    const local = {
+      x: Math.cos(lat) * Math.sin(lon),
+      y: Math.sin(lat),
+      z: Math.cos(lat) * Math.cos(lon),
+    };
+    const rotated = rotateGalactic(local.x, local.y, local.z, 0.51, 0.84);
+    const mag = 4.1 + hash01(`mw-m-${index}`, 11) * 2.2;
+    return {
+      ...rotated,
+      mag,
+      size: 0.22 + hash01(`mw-s-${index}`, 13) * 0.55,
+      opacity: 0.07 + hash01(`mw-o-${index}`, 17) * 0.16,
+      twinkle: 0.0003 + hash01(`mw-w-${index}`, 19) * 0.001,
+      phase: hash01(`mw-p-${index}`, 23) * Math.PI * 2,
+      tint: 0,
+    };
+  });
+}
