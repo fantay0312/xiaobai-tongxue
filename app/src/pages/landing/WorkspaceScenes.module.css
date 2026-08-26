@@ -298,3 +298,22 @@
   .examVerdict,
   .caret { animation: none; opacity: 1; transform: none; }
 }
+
+/* 科技主题:演示幕改石墨金属圈(真 border,不是贴在板上的投影),板心冻结 */
+:global(html[data-theme='tech']) .boardScene {
+  border: 10px solid;
+  border-image: linear-gradient(
+    165deg,
+    color-mix(in oklch, var(--inkstone-line) 38%, var(--terra)) 0%,
+    color-mix(in oklch, var(--inkstone-line) 62%, var(--terra-deep)) 42%,
+    color-mix(in oklch, var(--inkstone) 72%, var(--terra-deep)) 100%
+  ) 1;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklch, var(--terra) 48%, transparent),
+    inset 0 2px 0 0 color-mix(in oklch, var(--terra) 32%, transparent),
+    0 0 0 1px color-mix(in oklch, var(--terra) 26%, transparent);
+}
+
+:global(html[data-theme='tech']) .classroomDock {
+  border-color: color-mix(in oklch, var(--terra) 28%, var(--board-line));
+}

@@ -10,7 +10,7 @@
           var parsed = JSON.parse(raw);
           var theme = parsed && parsed.state && parsed.state.theme;
           var tone = parsed && parsed.state && parsed.state.tone;
-          if (theme === 'anime' || theme === 'paper') {
+          if (theme === 'anime' || theme === 'paper' || theme === 'tech') {
             document.documentElement.dataset.theme = theme;
           }
           if (theme === 'anime' && (tone === 'day' || tone === 'night')) {

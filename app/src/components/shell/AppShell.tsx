@@ -13,6 +13,8 @@ import { Seal } from './Seal';
 import { StoryTrail } from '../story/StoryTrail';
 import { Icon } from '../ui/Icon';
 import { AmbiencePlayer, AtmosphereToggles } from './Atmosphere';
+import { TechBarfield } from './TechBarfield';
+import { useThemeStore } from '../../store/themeStore';
 import { useAuthStore } from '../../store/authStore';
 import { profileAccountKey, useProfileStore } from '../../store/profileStore';
 import { ProfileAvatar } from './ProfileAvatar';
@@ -80,6 +82,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navRef = useRef<HTMLElement>(null);
   const lastScrollY = useRef(0);
   const reducedMotion = useReducedMotion();
+  const uiTheme = useThemeStore((s) => s.theme);
   const closeProfile = useCallback(() => setProfileOpen(false), []);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
   const authStatus = useAuthStore((s) => s.status);
@@ -181,6 +184,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className={shellClass}>
+      {uiTheme === 'tech' && <TechBarfield />}
       <header
         className={`${styles.header}${headerHidden ? ` ${styles.headerHidden}` : ''}${reducedMotion ? ` ${styles.headerInstant}` : ''}`}
         onFocusCapture={() => setHeaderHidden(false)}

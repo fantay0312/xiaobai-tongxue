@@ -164,3 +164,35 @@
   border-radius: var(--radius-l);
   background: color-mix(in oklch, var(--paper-blush) 62%, var(--paper));
 }
+
+/* 夜景板:blush×paper 会混成浊绛,流程带改走夜青,和票卡同一路藍夜。 */
+:global(html[data-theme='anime'][data-tone='night']) .flow {
+  background: color-mix(in oklch, var(--paper-warm) 80%, var(--paper));
+  border-color: color-mix(in oklch, var(--paper-edge) 78%, var(--terra-deep));
+}
+
+:global(html[data-theme='tech']) .page::before {
+  background: color-mix(in oklch, var(--terra) 18%, transparent);
+  filter: blur(2.4rem);
+}
+
+:global(html[data-theme='tech']) .sectionTitle {
+  font-weight: 400;
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}
+
+:global(html[data-theme='tech']) .sectionTitle em {
+  font-style: normal;
+  color: var(--terra);
+  text-shadow: 0 0 12px color-mix(in oklch, var(--terra) 36%, transparent);
+}
+
+:global(html[data-theme='tech']) .flow {
+  margin-top: 1rem;
+  padding-inline: clamp(1.1rem, 3vw, 2rem);
+  border: 1px solid color-mix(in oklch, var(--terra) 32%, transparent);
+  border-radius: var(--radius-l);
+  background: color-mix(in oklch, var(--paper-warm) 58%, transparent);
+  box-shadow: 0 0 28px color-mix(in oklch, var(--terra) 10%, transparent);
+}

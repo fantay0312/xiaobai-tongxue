@@ -1,12 +1,12 @@
 /**
  * 界面主题 —— 仅本机外观偏好,不进学习存档、不同步账号。
- * paper = 现行老学堂票据风;anime = 克制的日系现代动漫风。
- * 动漫主题可再分白天/黑夜;背景乐开关独立记忆。
+ * paper = 现行老学堂票据风;anime = 克制的日系现代动漫风;
+ * tech = 暗底霓虹科技风。动漫主题可再分白天/黑夜;背景乐开关独立记忆。
  */
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-export const UI_THEMES = ['paper', 'anime'] as const;
+export const UI_THEMES = ['paper', 'anime', 'tech'] as const;
 export type UiTheme = (typeof UI_THEMES)[number];
 
 export const UI_TONES = ['day', 'night'] as const;
@@ -15,7 +15,7 @@ export type UiTone = (typeof UI_TONES)[number];
 export const THEME_STORAGE_KEY = 'xiaobai-ui-theme-v1';
 
 export function isUiTheme(value: unknown): value is UiTheme {
-  return value === 'paper' || value === 'anime';
+  return value === 'paper' || value === 'anime' || value === 'tech';
 }
 
 export function isUiTone(value: unknown): value is UiTone {

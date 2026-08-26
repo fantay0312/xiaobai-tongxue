@@ -13,6 +13,7 @@ function readSource(relativePath: string): string {
 
 const themeStore = readSource('../src/store/themeStore.ts');
 const animeTokens = readSource('../src/styles/theme-anime.css');
+const techTokens = readSource('../src/styles/theme-tech.css');
 const indexCss = readSource('../src/index.css');
 const indexHtml = readSource('../index.html');
 const settingsDialog = readSource('../src/components/shell/SettingsDialog.tsx');
@@ -22,10 +23,13 @@ const paperCss = readSource('../src/styles/paper.module.css');
 const heroCss = readSource('../src/pages/landing/LandingHero.module.css');
 const landingCss = readSource('../src/pages/landing/landing.module.css');
 const finalCalloutCss = readSource('../src/pages/landing/FinalCallout.module.css');
+const techBarfield = readSource('../src/components/shell/TechBarfield.tsx');
+const classroomCss = readSource('../src/pages/classroom/classroom.module.css');
+const workspaceScenesCss = readSource('../src/pages/landing/WorkspaceScenes.module.css');
 
 /* ── 接线 ── */
 
-assert.match(themeStore, /export const UI_THEMES = \['paper', 'anime'\]/);
+assert.match(themeStore, /export const UI_THEMES = \['paper', 'anime', 'tech'\]/);
 assert.match(themeStore, /THEME_STORAGE_KEY = 'xiaobai-ui-theme-v1'/);
 assert.match(themeStore, /root\.dataset\.theme = theme/);
 assert.match(themeStore, /tone: state\.tone/);
@@ -33,27 +37,41 @@ assert.match(themeStore, /musicOn: state\.musicOn/);
 assert.match(themeStore, /soundUrl\(/);
 
 assert.match(indexCss, /@import '\.\/styles\/theme-anime\.css'/);
+assert.match(indexCss, /@import '\.\/styles\/theme-tech\.css'/);
 assert.match(indexHtml, /xiaobai-ui-theme-v1/);
 assert.match(indexHtml, /data-theme="paper"/);
+assert.match(indexHtml, /theme === 'tech'/);
 
 assert.match(animeTokens, /html\[data-theme='anime'\]/);
 assert.match(animeTokens, /--terra-ink:/);
 assert.match(animeTokens, /--paper:/);
 assert.match(animeTokens, /data-tone='night'/);
 
+assert.match(techTokens, /html\[data-theme='tech'\]/);
+assert.match(techTokens, /--terra-ink:/);
+assert.match(techTokens, /--paper:/);
+assert.match(techTokens, /Fusion Pixel 12px Proportional/);
+assert.match(techTokens, /--font-serif:\s*'Fusion Pixel 12px Proportional'/);
+assert.match(techTokens, /--font-typewriter:\s*'Fusion Pixel 12px Proportional'/);
+
 assert.match(settingsDialog, /id: 'look'/);
 assert.match(settingsDialog, /日系动漫/);
+assert.match(settingsDialog, /科技 · 霓虹/);
 assert.match(settingsDialog, /setTheme\(option\.id\)/);
 assert.match(settingsDialog, /setTone\(option\)/);
 assert.match(settingsDialog, /setMusicOn\(!musicOn\)/);
 assert.match(appShell, /AtmosphereToggles/);
 assert.match(appShell, /AmbiencePlayer/);
+assert.match(appShell, /TechBarfield/);
 assert.match(appShell, /SettingsDialog open=\{settingsOpen\}/);
 assert.match(appShell, /headerHidden/);
 assert.match(appShell, /onFocusCapture/);
 assert.match(appShellCss, /:global\(html\[data-theme='anime'\]\) \.headerInner/);
+assert.match(appShellCss, /:global\(html\[data-theme='tech'\]\) \.headerInner/);
 assert.match(appShellCss, /\.headerHidden/);
 assert.match(appShellCss, /prefers-reduced-transparency/);
+assert.match(techBarfield, /prefers-reduced-motion|useReducedMotion/);
+assert.match(techBarfield, /requestAnimationFrame/);
 
 /* ── 讲解舱不受外观影响 ── */
 
@@ -63,6 +81,8 @@ assert.doesNotMatch(
   '讲解舱黑板令牌不得被外观主题覆盖(夜自习是场景叙事,不是暗色模式)',
 );
 assert.doesNotMatch(animeTokens, /--chalk:/, '粉笔色同上,不得被外观主题覆盖');
+assert.doesNotMatch(techTokens, /--board:/, '科技主题也不得覆盖讲解舱黑板令牌');
+assert.doesNotMatch(techTokens, /--chalk:/, '科技主题粉笔色同上,不得被外观主题覆盖');
 
 /* ── 反 AI-Slop:色相 ──
    hue 265-290 是 AI 生成图的紫蓝指纹,也是 DESIGN.md 第一条禁令。整段禁用。 */
@@ -184,6 +204,69 @@ assert.doesNotMatch(
   paperAnime,
   /display:\s*none/,
   'paper.module.css:挂孔/撕票线等工艺件不得在动漫态被隐藏',
+);
+
+/** 抽出文件里所有 tech 选择器块的声明体(不含注释) */
+function techBlocks(css: string): string {
+  const stripped = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  return [...stripped.matchAll(/\[data-theme=['"]tech['"]\][^{]*\{([^}]*)\}/g)]
+    .map((match) => match[1])
+    .join('\n');
+}
+
+const classroomTech = techBlocks(classroomCss);
+assert.match(
+  classroomCss,
+  /:global\(html\[data-theme='tech'\]\) \.stream/,
+  '科技主题须给讲解舱木框换仪器屏框(方案 B:框改语义,板心冻结)',
+);
+assert.match(classroomTech, /border-image/, '讲解舱科技框须用石墨金属圈,不得只改投影');
+assert.match(classroomTech, /var\(--terra\)/, '讲解舱科技框须接电青,不得另造色');
+assert.doesNotMatch(
+  classroomTech,
+  /repeating-linear-gradient/,
+  '讲解舱科技框不得再用扫描线条纹(条码感)',
+);
+assert.doesNotMatch(classroomTech, /--board:/, '讲解舱科技覆盖不得改写 --board');
+assert.doesNotMatch(classroomTech, /--chalk:/, '讲解舱科技覆盖不得改写 --chalk');
+
+const workspaceTech = techBlocks(workspaceScenesCss);
+assert.match(
+  workspaceScenesCss,
+  /:global\(html\[data-theme='tech'\]\) \.boardScene/,
+  '落地讲解/再讲演示幕须加科技仪器屏框,避免整幕跳进另一套色温',
+);
+assert.match(workspaceTech, /border-image/, '演示幕科技框须用石墨金属圈');
+assert.match(workspaceTech, /var\(--terra\)/, '演示幕科技框须接电青');
+assert.doesNotMatch(
+  workspaceTech,
+  /repeating-linear-gradient/,
+  '演示幕科技框不得再用扫描线条纹',
+);
+assert.doesNotMatch(workspaceTech, /--board:/, '演示幕科技覆盖不得改写 --board');
+assert.doesNotMatch(workspaceTech, /--chalk:/, '演示幕科技覆盖不得改写 --chalk');
+
+const paperTech = techBlocks(paperCss);
+assert.doesNotMatch(
+  paperTech,
+  /transform:\s*none/,
+  'paper.module.css:斜贴票卡是全站招牌构图,科技态不得拉平',
+);
+assert.doesNotMatch(
+  paperTech,
+  /display:\s*none/,
+  'paper.module.css:挂孔/撕票线等工艺件不得在科技态被隐藏',
+);
+
+assert.doesNotMatch(
+  techTokens,
+  /--font-serif:\s*var\(--font-body\)/,
+  '科技主题题头不得塌成正文无衬线',
+);
+assert.doesNotMatch(
+  techTokens,
+  /--font-typewriter:\s*var\(--font-body\)/,
+  '科技主题打字机小签不得塌成正文无衬线',
 );
 
 console.log('外观主题契约:接线 + 反 AI-Slop 纪律 全部通过 ✓');
