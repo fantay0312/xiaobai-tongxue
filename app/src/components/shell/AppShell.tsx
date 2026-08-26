@@ -6,7 +6,8 @@
  * / (宣传页)下头部同样吸顶;下滚收起、上滚滑出;品牌落款回宣传页,「书斋」导航到 /study。
  * 宣传页头部不放应用内导航/登入——对外留品牌、「进入书斋」与外观设置入口。
  */
-import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, NavLink, useLocation } from 'react-router';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { Seal } from './Seal';
@@ -18,6 +19,11 @@ import { useThemeStore } from '../../store/themeStore';
 import { useAuthStore } from '../../store/authStore';
 import { profileAccountKey, useProfileStore } from '../../store/profileStore';
 import { ProfileAvatar } from './ProfileAvatar';
+import {
+  LETTER_CLOSED_EVENT,
+  THEME_HINT_EVENT,
+  markThemeHintDone,
+} from '../tour/tourState';
 import styles from './AppShell.module.css';
 
 const ProfileDialog = lazy(() =>
@@ -66,6 +72,72 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
+const THEME_HINT_ID = 'xiaobai-theme-hint';
+const THEME_HINT_COPY = '开始前可以选一个好看的主题呀，点我选择！';
+
+function SettingsGear({
+  hint,
+  wrapRef,
+  bubbleRef,
+  onClick,
+}: {
+  hint: boolean;
+  wrapRef: RefObject<HTMLSpanElement | null>;
+  bubbleRef: RefObject<HTMLButtonElement | null>;
+  onClick: () => void;
+}) {
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!hint) {
+      setPos(null);
+      return undefined;
+    }
+    const place = () => {
+      const gear = wrapRef.current?.querySelector('button');
+      if (!gear) return;
+      const rect = gear.getBoundingClientRect();
+      setPos({
+        top: Math.round(rect.bottom + 6),
+        right: Math.round(window.innerWidth - rect.right),
+      });
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, [hint, wrapRef]);
+
+  return (
+    <span className={styles.gearWrap} ref={wrapRef}>
+      <button
+        type="button"
+        className={hint ? `${styles.gearBtn} ${styles.gearBtnHint}` : styles.gearBtn}
+        onClick={onClick}
+        aria-haspopup="dialog"
+        aria-label="打开设置"
+        aria-describedby={hint ? THEME_HINT_ID : undefined}
+        title="设置"
+      >
+        <Icon name="settings" size={16} />
+      </button>
+      {hint && pos && createPortal(
+        <button
+          id={THEME_HINT_ID}
+          ref={bubbleRef}
+          type="button"
+          className={styles.themeHint}
+          style={{ top: pos.top, right: pos.right }}
+          aria-live="polite"
+          onClick={onClick}
+        >
+          {THEME_HINT_COPY}
+        </button>,
+        document.body,
+      )}
+    </span>
+  );
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   // 讲解舱已改「亮书斋 + 木框黑板物件」,全暗外壳退役(board 变体样式保留备用)
@@ -77,9 +149,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const authMode = pathname === '/login';
   const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [themeHint, setThemeHint] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [headerHidden, setHeaderHidden] = useState(false);
   const navRef = useRef<HTMLElement>(null);
+  const themeHintRef = useRef<HTMLSpanElement>(null);
+  const themeHintBubbleRef = useRef<HTMLButtonElement>(null);
+  const themeHintOn = useRef(false);
   const lastScrollY = useRef(0);
   const reducedMotion = useReducedMotion();
   const uiTheme = useThemeStore((s) => s.theme);
@@ -88,12 +164,51 @@ export function AppShell({ children }: { children: ReactNode }) {
   const authStatus = useAuthStore((s) => s.status);
   const authUser = useAuthStore((s) => s.user);
   const avatar = useProfileStore((s) => s.avatars[profileAccountKey(authUser)] ?? null);
+  themeHintOn.current = themeHint;
 
   const openSettings = useCallback(() => {
     setOpenMenu(null);
     setProfileOpen(false);
     setSettingsOpen(true);
   }, []);
+
+  const settleThemeHint = useCallback((openPanel: boolean) => {
+    if (themeHintOn.current) {
+      themeHintOn.current = false;
+      setThemeHint(false);
+      markThemeHintDone();
+      window.dispatchEvent(new CustomEvent(LETTER_CLOSED_EVENT));
+    }
+    if (openPanel) openSettings();
+  }, [openSettings]);
+
+  useEffect(() => {
+    const onHint = () => {
+      themeHintOn.current = true;
+      setThemeHint(true);
+      setHeaderHidden(false);
+    };
+    window.addEventListener(THEME_HINT_EVENT, onHint);
+    return () => window.removeEventListener(THEME_HINT_EVENT, onHint);
+  }, []);
+
+  useEffect(() => {
+    if (!themeHint) return undefined;
+    const onPointer = (event: PointerEvent) => {
+      const node = event.target as Node;
+      if (themeHintRef.current?.contains(node) || themeHintBubbleRef.current?.contains(node)) return;
+      settleThemeHint(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') settleThemeHint(false);
+    };
+    window.addEventListener('pointerdown', onPointer);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('pointerdown', onPointer);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [themeHint, settleThemeHint]);
 
   const openSettingsFromProfile = useCallback(() => {
     setProfileOpen(false);
@@ -123,7 +238,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       const y = window.scrollY;
       const delta = y - lastScrollY.current;
       lastScrollY.current = y;
-      if (openMenu || profileOpen || settingsOpen || y < 16) {
+      if (openMenu || profileOpen || settingsOpen || themeHint || y < 16) {
         setHeaderHidden(false);
         return;
       }
@@ -133,7 +248,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, [appLocked, openMenu, profileOpen, settingsOpen]);
+  }, [appLocked, openMenu, profileOpen, settingsOpen, themeHint]);
 
   useEffect(() => {
     if (!openMenu) return undefined;
@@ -201,16 +316,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           {landingMode ? (
             <nav className={styles.nav} aria-label="入口">
               <AtmosphereToggles />
-              <button
-                type="button"
-                className={styles.gearBtn}
-                onClick={openSettings}
-                aria-haspopup="dialog"
-                aria-label="打开设置"
-                title="设置"
-              >
-                <Icon name="settings" size={16} />
-              </button>
+              <SettingsGear
+                hint={themeHint}
+                wrapRef={themeHintRef}
+                bubbleRef={themeHintBubbleRef}
+                onClick={() => settleThemeHint(true)}
+              />
               <NavLink to="/study" className={styles.loginBtn}>进入书斋</NavLink>
             </nav>
           ) : (
@@ -290,16 +401,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             )}
             <AtmosphereToggles />
-            <button
-              type="button"
-              className={styles.gearBtn}
-              onClick={openSettings}
-              aria-haspopup="dialog"
-              aria-label="打开设置"
-              title="设置"
-            >
-              <Icon name="settings" size={16} />
-            </button>
+            <SettingsGear
+              hint={themeHint}
+              wrapRef={themeHintRef}
+              bubbleRef={themeHintBubbleRef}
+              onClick={() => settleThemeHint(true)}
+            />
           </nav>
           )}
         </div>

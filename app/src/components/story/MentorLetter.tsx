@@ -16,7 +16,12 @@ import { TOPICS } from '../../data';
 import { nextStep } from '../../engine/journey';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { Icon } from '../ui/Icon';
-import { LETTER_CLOSED_EVENT, LETTER_OPEN_EVENT } from '../tour/tourState';
+import {
+  LETTER_CLOSED_EVENT,
+  LETTER_OPEN_EVENT,
+  THEME_HINT_EVENT,
+  isThemeHintDone,
+} from '../tour/tourState';
 import s from './story.module.css';
 import paper from '../../styles/paper.module.css';
 
@@ -104,15 +109,20 @@ export function MentorLetter() {
     if (open && !closing) dialogRef.current?.focus({ preventScroll: true });
   }, [closing, open]);
 
-  /** 关帖并把焦点还给案头的「展帖重读」(dialog 焦点归还契约) */
-  const close = useCallback(() => {
+  /** 关帖并把焦点还给案头的「展帖重读」(dialog 焦点归还契约)。
+      点「收下」且尚未给过主题提示时,先派主题气泡、暂不派 LETTER_CLOSED,
+      等顶栏气泡收掉再放行门厅引路,两层不会叠上。 */
+  const close = useCallback((opts?: { offerThemeHint?: boolean }) => {
     if (!open || closing) return;
+    const offerThemeHint = opts?.offerThemeHint === true && !isThemeHintDone();
 
     const finish = () => {
       exitTimerRef.current = null;
       setOpen(false);
       setClosing(false);
-      window.dispatchEvent(new CustomEvent(LETTER_CLOSED_EVENT));
+      window.dispatchEvent(
+        new CustomEvent(offerThemeHint ? THEME_HINT_EVENT : LETTER_CLOSED_EVENT),
+      );
       if (stripBtnRef.current?.isConnected) stripBtnRef.current.focus();
     };
 
@@ -191,7 +201,7 @@ export function MentorLetter() {
             aria-label="小白的拜师帖"
             tabIndex={-1}
           >
-            <button type="button" className={s.modalClose} onClick={close} aria-label="关上拜师帖">
+            <button type="button" className={s.modalClose} onClick={() => close()} aria-label="关上拜师帖">
               <Icon name="x" size={19} />
             </button>
 
@@ -229,8 +239,8 @@ export function MentorLetter() {
                 <Link className={s.letterCta} to={step.to} onClick={leaveForJourney}>
                   {step.cta}
                 </Link>
-                <button type="button" className={s.dismissBtn} onClick={close}>
-                  先收着
+                <button type="button" className={s.dismissBtn} onClick={() => close({ offerThemeHint: true })}>
+                  收下
                 </button>
               </div>
             </div>

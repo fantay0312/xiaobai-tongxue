@@ -555,6 +555,81 @@
   color: var(--chalk);
 }
 
+/* 拜师帖「收下」后的主题气泡:贴齿轮右下,令牌色随主题走,不另开色盘 */
+.gearWrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.gearBtnHint {
+  color: var(--azure);
+}
+
+.themeHint {
+  position: fixed;
+  z-index: 45;
+  width: max-content;
+  max-width: min(11.25rem, calc(100vw - 2rem));
+  padding: 0.38rem 0.52rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  background: var(--paper-warm);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+  text-align: left;
+  box-shadow: var(--shadow-paper);
+  cursor: pointer;
+  animation: themeHintIn var(--t-med) var(--ease-out) both;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    color var(--t-fast) var(--ease-out);
+}
+
+.themeHint::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  right: 0.7rem;
+  width: 8px;
+  height: 8px;
+  background: inherit;
+  border-left: 1px solid var(--line-strong);
+  border-top: 1px solid var(--line-strong);
+  transform: rotate(45deg);
+}
+
+.themeHint:hover {
+  background: var(--paper);
+}
+
+.themeHint:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+@keyframes themeHintIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .themeHint {
+    animation: none;
+  }
+}
+
 /* ── 内容区 ── */
 
 .main {
