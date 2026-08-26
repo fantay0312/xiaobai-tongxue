@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { STAGE_META, getStageMeta } from '../src/engine/evolution';
+import { pickDockCorner } from '../src/pages/growth/knowledgeSeaGeometry';
 
 type JsxNode = ts.JsxElement | ts.JsxSelfClosingElement;
 
@@ -13,12 +14,14 @@ const personaPickerPath = fileURLToPath(new URL('../src/pages/growth/PersonaPick
 const personaStylePath = fileURLToPath(new URL('../src/pages/growth/PersonaPicker.module.css', import.meta.url));
 const seaStylePath = fileURLToPath(new URL('../src/pages/growth/KnowledgeSeaField.module.css', import.meta.url));
 const seaFieldPath = fileURLToPath(new URL('../src/pages/growth/KnowledgeSeaField.tsx', import.meta.url));
+const seaSkyPath = fileURLToPath(new URL('../src/pages/growth/StarSkyCanvas.tsx', import.meta.url));
 const seaGeometryPath = fileURLToPath(new URL('../src/pages/growth/knowledgeSeaGeometry.ts', import.meta.url));
 const growthStyle = readFileSync(growthStylePath, 'utf8');
 const personaPickerSource = readFileSync(personaPickerPath, 'utf8');
 const personaStyle = readFileSync(personaStylePath, 'utf8');
 const seaStyle = readFileSync(seaStylePath, 'utf8');
 const seaFieldSource = readFileSync(seaFieldPath, 'utf8');
+const seaSkySource = readFileSync(seaSkyPath, 'utf8');
 const seaGeometrySource = readFileSync(seaGeometryPath, 'utf8');
 const sourceFile = ts.createSourceFile(
   sourcePath,
@@ -282,6 +285,28 @@ assert.match(nodeRule, /width:\s*44px/, '星宿按钮宽度必须保持 44px');
 assert.match(nodeRule, /height:\s*44px/, '星宿按钮高度必须保持 44px');
 assert.match(classRule(growthStyle, 'evidenceOrbit'), /border:\s*0\.75px\s+solid/, '星海证据空态轨道也必须是细实线');
 assert.match(seaFieldSource, /<svg[\s\S]*?aria-hidden="true"/, '语义星链 SVG 必须对读屏隐藏');
+assert.match(seaFieldSource, /<StarSkyCanvas compact=\{compact\}/, '星图必须挂载透视星空画布');
+assert.match(seaSkySource, /<canvas[\s\S]*?aria-hidden="true"/, '装饰星空画布必须对读屏隐藏');
+assert.match(classRule(seaStyle, 'sky'), /pointer-events:\s*none/, '装饰星空不得拦截星宿点击');
+assert.match(seaSkySource, /useReducedMotion/, '星空 3D 动画必须读取减少动态偏好');
+assert.match(seaSkySource, /IntersectionObserver/, '星空离开视口必须停画,避免后台空转');
 assert.match(seaGeometrySource, /\.slice\(0,\s*3\)/, '单颗星一次最多显示 3 条语义链');
+assert.match(seaGeometrySource, /export function seedSkyStars/, '装饰星空必须用确定性种子,避免每帧乱生');
+assert.match(seaGeometrySource, /export function seedMilkyWay/, '星图必须铺一层银河带尘埃');
+assert.match(seaSkySource, /drawSpikes/, '亮星必须有望远镜式衍射芒');
+assert.match(seaSkySource, /hitsKeepout/, '景深星必须避开知识星占位');
+assert.match(seaFieldSource, /keepouts=\{keepouts\}/, '星空画布必须接收知识星避让点');
+assert.match(seaGeometrySource, /export function pickDockCorner/, '星海浮卡必须能按遮挡改挂左右上角');
+
+assert.equal(
+  pickDockCorner('a', new Map([['a', { x: 80, y: 120 }]])),
+  'right',
+  '点选左半场星时浮卡必须挂在右侧',
+);
+assert.equal(
+  pickDockCorner('c', new Map([['c', { x: 820, y: 140 }]])),
+  'left',
+  '点选右半场星时浮卡必须挂在左侧',
+);
 
 console.log('growth hero contract: all assertions passed');

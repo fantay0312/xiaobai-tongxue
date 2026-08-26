@@ -148,6 +148,12 @@
   opacity: 0.72;
 }
 
+.skyStage {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+}
+
 .liveAnnouncement {
   margin: 0 0 var(--gap-hair);
   color: var(--sky-blue);

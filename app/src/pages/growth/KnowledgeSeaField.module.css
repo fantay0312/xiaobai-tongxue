@@ -11,10 +11,7 @@
   overflow: hidden;
   border-top: 1px solid color-mix(in oklch, var(--sky-moon) 15%, transparent);
   border-bottom: 1px solid color-mix(in oklch, var(--sky-moon) 12%, transparent);
-  background-color: var(--sky-ink);
-  background-image: url('../../assets/knowledge-star-sea.webp');
-  background-position: center;
-  background-size: cover;
+  background-color: var(--sky-deep);
 }
 .field::after {
   content: '';
@@ -22,35 +19,32 @@
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background: color-mix(in oklch, var(--sky-deep) 16%, transparent);
+  background: linear-gradient(
+    to top,
+    color-mix(in oklch, var(--sky-blue) 18%, transparent),
+    transparent 32%
+  );
 }
-.decorStar {
+.sky {
   position: absolute;
+  inset: 0;
   z-index: 2;
-  height: auto;
-  transform: translate(-50%, -50%);
+  display: block;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-  animation: decorBreath 10s var(--ease-loop) infinite alternate;
-}
-@keyframes decorBreath {
-  from {
-    filter: drop-shadow(0 0 1px transparent);
-  }
-  to {
-    filter: drop-shadow(0 0 2px color-mix(in oklch, var(--sky-moon) 28%, transparent));
-  }
 }
 .courseMarker {
   position: absolute;
   z-index: 4;
   transform: translate(-50%, -50%);
-  color: color-mix(in oklch, var(--sky-moon) 68%, transparent);
+  color: color-mix(in oklch, var(--sky-moon) 46%, transparent);
   font-family: var(--font-display);
   font-size: var(--fs-tiny);
-  letter-spacing: 0.13em;
+  letter-spacing: 0.28em;
   white-space: nowrap;
   pointer-events: none;
-  text-shadow: 0 1px 8px var(--sky-deep);
+  text-shadow: 0 0 12px var(--sky-deep), 0 1px 8px var(--sky-deep);
 }
 .linkLayer,
 .nodeList {
@@ -73,15 +67,15 @@
 }
 
 .link {
-  stroke: color-mix(in oklch, var(--sky-blue) 54%, var(--sky-moon));
-  stroke-width: 0.75;
+  stroke: color-mix(in oklch, var(--sky-moon) 58%, var(--sky-blue));
+  stroke-width: 0.6;
   stroke-dasharray: none;
-  opacity: 0.72;
+  opacity: 0.58;
 }
 
 .linkGlow {
-  stroke: color-mix(in oklch, var(--sky-blue) 10%, transparent);
-  stroke-width: 2.25;
+  stroke: color-mix(in oklch, var(--sky-moon) 12%, transparent);
+  stroke-width: 1.85;
 }
 
 .nodeList {
@@ -114,17 +108,34 @@
   transition: opacity var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
 }
 
-.node::before {
+.node::before,
+.node::after {
   content: '';
   position: absolute;
-  width: 30px;
-  height: 30px;
-  border: 1px solid color-mix(in oklch, var(--sky-moon) 46%, transparent);
-  border-radius: 50%;
-  box-shadow: 0 0 14px color-mix(in oklch, currentcolor 20%, transparent);
+  pointer-events: none;
   opacity: 0;
-  transform: scale(0.72);
+}
+.node::before {
+  width: 34px;
+  height: 34px;
+  border: 1.25px solid var(--sky-moon);
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+  transform: scale(0.86);
   transition: opacity var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
+}
+.node::after {
+  width: 50px;
+  height: 50px;
+  background-image:
+    linear-gradient(var(--sky-moon), var(--sky-moon)),
+    linear-gradient(var(--sky-moon), var(--sky-moon)),
+    linear-gradient(var(--sky-moon), var(--sky-moon)),
+    linear-gradient(var(--sky-moon), var(--sky-moon));
+  background-repeat: no-repeat;
+  background-size: 1.5px 8px, 1.5px 8px, 8px 1.5px, 8px 1.5px;
+  background-position: top center, bottom center, center left, center right;
 }
 
 .node:focus-visible {
@@ -154,14 +165,40 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: 3px;
-  height: 3px;
+  width: 4px;
+  height: 4px;
   border: 0;
   border-radius: 50%;
   background: color-mix(in oklch, currentColor 76%, var(--sky-moon));
   box-shadow:
     0 0 1px color-mix(in oklch, var(--sky-moon) 72%, transparent),
-    0 0 4px color-mix(in oklch, currentColor 24%, transparent);
+    0 0 6px color-mix(in oklch, currentColor 28%, transparent);
+}
+.core::before,
+.core::after {
+  content: '';
+  position: absolute;
+  background: color-mix(in oklch, var(--sky-moon) 82%, currentColor);
+  opacity: 0;
+  pointer-events: none;
+}
+.core::before {
+  width: 15px;
+  height: 1px;
+}
+.core::after {
+  width: 1px;
+  height: 15px;
+}
+.node[data-featured='true'] .core::before,
+.node[data-featured='true'] .core::after,
+.node:hover .core::before,
+.node:hover .core::after,
+.node:focus-visible .core::before,
+.node:focus-visible .core::after,
+.node[data-selected='true'] .core::before,
+.node[data-selected='true'] .core::after {
+  opacity: 0.55;
 }
 
 .core img {
@@ -179,6 +216,11 @@
 .node[data-featured='true'] .core img {
   opacity: 0.92;
   transform: scale(1);
+  animation: starPulse 6.4s var(--ease-loop) infinite alternate;
+}
+@keyframes starPulse {
+  from { opacity: 0.82; }
+  to { opacity: 1; }
 }
 
 .node:hover .core img,
@@ -188,8 +230,7 @@
   transform: scale(1.06);
 }
 
-.node[data-featured='true'] .core,
-.node[data-selected='true'] .core {
+.node[data-featured='true'] .core {
   border-color: transparent;
   background: transparent;
 }
@@ -263,10 +304,51 @@
 
 .node[data-featured='true'] .nodeCopy,
 .node:hover .nodeCopy,
-.node:focus-visible .nodeCopy,
-.node[data-selected='true'] .nodeCopy {
+.node:focus-visible .nodeCopy {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
+}
+
+.node[data-featured='true'] .nodeCopy small {
+  display: none;
+}
+
+.node:hover .nodeCopy small,
+.node:focus-visible .nodeCopy small {
+  display: block;
+}
+
+.nodeSlot[data-label='below'] .nodeCopy {
+  top: 22px;
+  left: 50%;
+  width: 6.1rem;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.nodeSlot[data-label='above'] .nodeCopy {
+  top: auto;
+  bottom: 22px;
+  left: 50%;
+  width: 6.1rem;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.nodeSlot[data-label='right'] .nodeCopy {
+  top: 50%;
+  left: 24px;
+  width: 6.4rem;
+  transform: translateY(-50%);
+  text-align: left;
+}
+
+.nodeSlot[data-label='left'] .nodeCopy {
+  top: 50%;
+  left: auto;
+  right: 24px;
+  width: 6.4rem;
+  transform: translateY(-50%);
+  text-align: right;
 }
 
 .node[data-linked='true'] .core {
@@ -275,27 +357,40 @@
 
 .node[data-selected='true'] {
   z-index: 4;
-  transform: translateY(-1px);
+}
+
+.node[data-selected='true']::before,
+.node[data-selected='true']::after {
+  opacity: 1;
 }
 
 .node[data-selected='true']::before {
-  opacity: 1;
   transform: scale(1);
 }
 
-.node[data-selected='true'] .core img {
-  transform: scale(1.28);
-  filter:
-    drop-shadow(0 0 2px color-mix(in oklch, var(--sky-moon) 92%, transparent))
-    drop-shadow(0 0 9px color-mix(in oklch, currentcolor 68%, transparent));
+.node[data-selected='true'] .core {
+  background: var(--sky-moon);
+  box-shadow: none;
+}
+
+.node[data-selected='true'] .core img,
+.node[data-selected='true'] .core::before,
+.node[data-selected='true'] .core::after,
+.node[data-selected='true'] .fog {
+  opacity: 0;
 }
 
 .node[data-selected='true'] .nodeCopy {
-  padding: 0.3rem 0.45rem;
-  border: 1px solid color-mix(in oklch, var(--sky-moon) 18%, transparent);
-  border-radius: var(--radius-tag);
-  background: color-mix(in oklch, var(--sky-deep) 84%, transparent);
-  box-shadow: 0 6px 18px color-mix(in oklch, var(--sky-deep) 45%, transparent);
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  opacity: 0;
+}
+
+.node[data-selected='true'] .nodeCopy b,
+.node[data-selected='true'] .nodeCopy small {
+  color: var(--sky-moon);
 }
 
 @media (max-width: 720px) {
@@ -317,7 +412,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .decorStar {
+  .node[data-featured='true'] .core img {
     animation: none;
   }
 

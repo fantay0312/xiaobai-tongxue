@@ -3,16 +3,18 @@ import type { KeyboardEvent } from 'react';
 import starGlyphUrl from '../../assets/knowledge-star.svg';
 import type { MapNode, NodeStatus } from './KnowledgeMap';
 import {
-  DECORATIVE_STARS,
   SEA_HEIGHT,
   SEA_WIDTH,
   activeStarLinks,
   courseLabelPoint,
-  curvedPath,
   featuredStarIds,
   groupByCourse,
+  labelSideFor,
   layoutSea,
+  linkPath,
+  type SeaPoint,
 } from './knowledgeSeaGeometry';
+import { StarSkyCanvas } from './StarSkyCanvas';
 import s from './KnowledgeSeaField.module.css';
 
 function label(node: MapNode): string {
@@ -68,6 +70,7 @@ export function KnowledgeSeaField({
   compact,
   focusedCourse,
   onSelect,
+  points: pointsProp,
 }: {
   nodes: MapNode[];
   selectedId: string | null;
@@ -75,6 +78,7 @@ export function KnowledgeSeaField({
   compact: boolean;
   focusedCourse: boolean;
   onSelect: (topicId: string) => void;
+  points?: Map<string, SeaPoint>;
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
@@ -82,8 +86,8 @@ export function KnowledgeSeaField({
   const nodeRefs = useRef(new Map<string, HTMLButtonElement>());
   const realms = useMemo(() => groupByCourse(nodes), [nodes]);
   const points = useMemo(
-    () => layoutSea(nodes, focusedCourse, compact),
-    [compact, focusedCourse, nodes],
+    () => pointsProp ?? layoutSea(nodes, focusedCourse, compact),
+    [compact, focusedCourse, nodes, pointsProp],
   );
   const activeId = hoveredId ?? focusedId ?? selectedId;
   const links = useMemo(() => activeStarLinks(activeId, points), [activeId, points]);
@@ -96,6 +100,7 @@ export function KnowledgeSeaField({
     () => nodes.filter((node) => node.status !== 'locked').map((node) => node.topic.topicId),
     [nodes],
   );
+  const keepouts = useMemo(() => [...points.values()], [points]);
 
   useEffect(() => {
     if (rovingId && accessible.includes(rovingId)) return;
@@ -122,22 +127,7 @@ export function KnowledgeSeaField({
 
   return (
     <div className={s.field} data-course-focus={focusedCourse || undefined}>
-      {DECORATIVE_STARS.slice(0, compact ? 14 : 28).map((star, index) => (
-        <img
-          key={index}
-          className={s.decorStar}
-          src={starGlyphUrl}
-          alt=""
-          aria-hidden="true"
-          style={{
-            left: `${(star.x / SEA_WIDTH) * 100}%`,
-            top: `${(star.y / SEA_HEIGHT) * 100}%`,
-            width: `${star.size}px`,
-            opacity: star.opacity,
-            animationDelay: `${-star.delay}s`,
-          }}
-        />
-      ))}
+      <StarSkyCanvas compact={compact} keepouts={keepouts} />
 
       {realms.map((realm, realmIndex) => {
         const marker = courseLabelPoint(realm, points, realmIndex, realms.length);
@@ -161,11 +151,11 @@ export function KnowledgeSeaField({
         preserveAspectRatio="none"
         aria-hidden="true"
       >
-        {links.map((link, index) => {
+        {links.map((link) => {
           const from = points.get(link.a);
           const to = points.get(link.b);
           if (!from || !to) return null;
-          const path = curvedPath(from, to, index);
+          const path = linkPath(from, to);
           return (
             <g key={`${link.a}:${link.b}`}>
               <path className={s.linkGlow} d={path} />
@@ -186,6 +176,7 @@ export function KnowledgeSeaField({
               key={id}
               className={s.nodeSlot}
               data-star-id={id}
+              data-label={labelSideFor(point)}
               style={{
                 left: `${(point.x / SEA_WIDTH) * 100}%`,
                 top: `${(point.y / SEA_HEIGHT) * 100}%`,
