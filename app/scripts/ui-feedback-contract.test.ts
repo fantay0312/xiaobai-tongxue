@@ -52,6 +52,14 @@ assert.match(trailStyles, /grid-template-rows:\s*0fr/, '篇章栏收起后必须
 assert.match(trailStyles, /justify-content:\s*center/, '篇章栏初始必须居中');
 
 assert.match(letter, /const \[closing, setClosing\]/, '拜师帖必须有关闭过渡态');
+assert.match(letter, />[\s\n]*收下[\s\n]*</, '拜师帖收帖主按钮必须是「收下」');
+assert.match(letter, /offerThemeHint:\s*true/, '收下必须触发主题气泡而不是直接放行引路');
+assert.match(letter, /THEME_HINT_EVENT/, '收下后必须先广播主题气泡');
+assert.match(shell, /开始前可以选一个好看的主题呀，点我选择！/, '设置钮气泡文案必须与产品口径一致');
+assert.match(shell, /THEME_HINT_EVENT/, '外壳必须收听主题气泡广播');
+assert.match(shell, /markThemeHintDone/, '点过主题气泡后必须落盘不再弹');
+assert.match(read('../src/components/tour/tourState.ts'), /xiaobai-theme-hint-v1/, '主题气泡痕迹必须与引路分钥落盘');
+assert.match(read('../src/components/shell/AppShell.module.css'), /\.themeHint[\s\S]*?background:\s*var\(--paper-warm\)/, '主题气泡必须跟令牌走色');
 assert.match(letterStyles, /transform-origin:\s*50% 100%/, '拜师帖必须从底边展开');
 assert.match(letterStyles, /@keyframes letter-rise[\s\S]*?translate3d\(0, 5rem, 0\)/, '展帖必须从下方升起');
 assert.match(letterStyles, /@keyframes letter-sink/, '关帖必须有对应的下沉过渡');

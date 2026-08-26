@@ -12,6 +12,11 @@ export type TourKey = 'home' | 'prep' | 'teach';
 export const LETTER_OPEN_EVENT = 'xiaobai:letter-open';
 export const LETTER_CLOSED_EVENT = 'xiaobai:letter-closed';
 
+/** 拜师帖「收下」后:顶栏设置钮弹出主题气泡;AppShell 收气泡时再派 LETTER_CLOSED,引路继续礼让 */
+export const THEME_HINT_EVENT = 'xiaobai:theme-hint';
+const THEME_HINT_KEY = 'xiaobai-theme-hint-v1';
+let memThemeHintDone = false;
+
 type DoneMap = Partial<Record<TourKey, true>>;
 
 function read(): DoneMap {
@@ -53,6 +58,24 @@ export function subscribeTours(fn: () => void): () => void {
   return () => {
     listeners.delete(fn);
   };
+}
+
+export function isThemeHintDone(): boolean {
+  if (memThemeHintDone) return true;
+  try {
+    return localStorage.getItem(THEME_HINT_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function markThemeHintDone(): void {
+  memThemeHintDone = true;
+  try {
+    localStorage.setItem(THEME_HINT_KEY, '1');
+  } catch {
+    /* 同 write:存不进则本次访问内不再弹 */
+  }
 }
 
 /** 清空全部引路痕迹并广播 —— 当前页若挂着引路会立即重开 */

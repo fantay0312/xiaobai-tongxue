@@ -333,7 +333,7 @@
   outline-offset: 3px;
 }
 
-/* 「先收着」:幽灵按钮,与 CTA 同一字号族但不抢主次 */
+/* 「收下」:幽灵按钮,与 CTA 同一字号族但不抢主次 */
 .dismissBtn {
   padding: var(--gap-tight) calc(var(--gap) * 1.5);
   background: transparent;
