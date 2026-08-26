@@ -1,0 +1,150 @@
+/* ─────────────────────────────────────────────────────────
+   科技主题「霓虹」(可选外观)
+   —— 本机可选的暗底霓虹分支,不是默认气质,也不改课程与讲解舱叙事。
+
+   视觉语法(仅此分支,见 DESIGN.md 豁免):
+     近黑底 + 电青主动作 + 品红高光 · 允许霓虹描边与有限玻璃
+     题头 / 台词 / 小签走缝合像素字体 · 正文仍走无衬线
+     竖条波纹场是氛围层,不接音频
+
+   只覆盖令牌与全站底,不改路由、业务、讲解舱黑板叙事。
+   --board/--chalk 系故意不改:夜自习是场景叙事,不随外观走。
+   ───────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: 'Fusion Pixel 12px Proportional';
+  src: url('/fonts/fusion-pixel-12px-proportional-zh_hans.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+html[data-theme='tech'] {
+  color-scheme: dark;
+
+  /* ── 主动作:电青 —— 大字/图形档;小字走 --terra-ink ── */
+  --terra: oklch(0.780 0.148 210.4);
+  --terra-ink: oklch(0.742 0.126 208.6);
+  --terra-deep: oklch(0.562 0.118 216.2);
+  --terra-wash: oklch(0.780 0.148 210.4 / 0.18);
+
+  /* 高光面:品红霓虹块,一页至多一张 */
+  --mustard: oklch(0.712 0.214 328.6);
+  --mustard-wash: oklch(0.712 0.214 328.6 / 0.28);
+
+  /* 历史锚名 → 本主题别名(不动任何组件契约) */
+  --lilac: var(--terra);
+  --lilac-ink: var(--terra-ink);
+  --lilac-deep: var(--terra-deep);
+  --lilac-wash: var(--terra-wash);
+
+  /* 次级冷色:紫蓝霓虹,与电青拉开色相 */
+  --reed: oklch(0.688 0.142 278.4);
+  --reed-ink: oklch(0.762 0.118 276.8);
+  --reed-deep: oklch(0.498 0.122 280.2);
+  --reed-wash: oklch(0.688 0.142 278.4 / 0.22);
+
+  /* ── 近黑底:带一点冷青,不是纯黑 ── */
+  --paper: oklch(0.168 0.026 260.4);
+  --paper-warm: oklch(0.214 0.032 268.6);
+  --paper-blush: oklch(0.206 0.042 318.2);
+  --paper-edge: oklch(0.328 0.038 258.8);
+  --paper-shade: oklch(0.128 0.022 261.2);
+  --line-strong: oklch(0.428 0.062 204.6);
+
+  /* ── 冷白字:近白不纯白 ── */
+  --ink: oklch(0.938 0.018 228.4);
+  --ink-soft: oklch(0.782 0.020 230.2);
+  --ink-faint: oklch(0.628 0.022 232.0);
+  --ink-wash: oklch(0.938 0.018 228.4 / 0.08);
+
+  --azure: var(--terra-ink);
+  --azure-deep: var(--terra-deep);
+  --azure-wash: var(--terra-wash);
+
+  /* 警示:霓虹珊瑚,只给误区/盲区 */
+  --cinnabar: oklch(0.684 0.188 22.6);
+  --cinnabar-wash: oklch(0.684 0.188 22.6 / 0.16);
+  --seal-red: oklch(0.700 0.176 24.0);
+  --seal-red-wash: oklch(0.700 0.176 24.0 / 0.16);
+  --ink-on-seal: oklch(0.168 0.026 260.4);
+
+  /* 三态:掌握=电绿 / 衰减=电金 / 未学=冷灰 */
+  --jade: oklch(0.748 0.162 154.8);
+  --jade-ink: oklch(0.812 0.128 156.2);
+  --jade-wash: oklch(0.748 0.162 154.8 / 0.18);
+  --amber: oklch(0.802 0.148 84.6);
+  --amber-ink: oklch(0.856 0.112 82.4);
+  --amber-wash: oklch(0.802 0.148 84.6 / 0.18);
+  --dust: oklch(0.512 0.018 258.0);
+
+  --wood: oklch(0.448 0.036 68.2);
+  --wood-deep: oklch(0.328 0.028 66.4);
+  --wood-sheen: oklch(0.558 0.034 74.0);
+
+  --gold: oklch(0.828 0.132 86.2);
+  --gold-ink: oklch(0.884 0.098 84.0);
+
+  /* 深色锚点:比纸底更深一档的面板 */
+  --inkstone: oklch(0.132 0.024 262.0);
+  --inkstone-deep: oklch(0.108 0.020 264.0);
+  --inkstone-line: oklch(0.318 0.036 258.0);
+  --moon-on-ink: oklch(0.938 0.018 228.4);
+  --moonsoft-on-ink: oklch(0.760 0.020 230.0);
+
+  /* ── 四声部:题头 / 台词 / 小签改像素体,正文不塌 ──
+     像素字号用 12 的整数倍才锐;faux-bold 会糊,题头改 400 */
+  --font-serif: 'Fusion Pixel 12px Proportional', 'DM Sans', 'PingFang SC', sans-serif;
+  --font-display: 'Fusion Pixel 12px Proportional', 'LXGW WenKai Screen', 'Kaiti SC', sans-serif;
+  --font-typewriter: 'Fusion Pixel 12px Proportional', 'Courier Prime', monospace;
+  --track-label: 0.12em;
+
+  --fs-hero: 36px;
+  --fs-stat: 36px;
+  --fs-title: 24px;
+  --fs-sub: 24px;
+  --fs-tiny: 12px;
+
+  --radius-s: 4px;
+  --radius: 8px;
+  --radius-l: 12px;
+  --radius-tag: 2px;
+
+  --header-h: 3.6rem;
+
+  /* 投影:浅霓虹晕,不是奶油纸影 */
+  --shadow-paper:
+    0 0 0 1px color-mix(in oklch, var(--terra) 28%, transparent),
+    0 8px 28px oklch(0.108 0.020 264 / 0.42);
+  --shadow-lift:
+    0 0 0 1px color-mix(in oklch, var(--terra) 42%, transparent),
+    0 0 24px color-mix(in oklch, var(--terra) 22%, transparent),
+    0 16px 40px oklch(0.108 0.020 264 / 0.5);
+}
+
+html[data-theme='tech'] body {
+  background-color: var(--paper);
+  background-image: none;
+}
+
+html[data-theme='tech'] body::after {
+  opacity: 0.045;
+}
+
+html[data-theme='tech'] ::selection {
+  background: color-mix(in oklch, var(--terra) 38%, transparent);
+  color: var(--ink);
+}
+
+html[data-theme='tech'] :focus-visible {
+  outline-color: var(--terra-ink);
+}
+
+html[data-theme='tech'] h1,
+html[data-theme='tech'] h2,
+html[data-theme='tech'] h3,
+html[data-theme='tech'] h4 {
+  font-weight: 400;
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}

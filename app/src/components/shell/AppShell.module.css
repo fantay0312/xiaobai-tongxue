@@ -651,6 +651,17 @@
   box-shadow: 0 3px 0 oklch(0.140 0.024 260 / 0.6);
 }
 
+/* 夜景板 --paper 已翻成藍夜,源图是深色实底。
+   Seal 改走奶白纸底图,再加月白细环,章才读得出 */
+:global(html[data-theme='anime'][data-tone='night']) .seal {
+  padding: 0;
+  object-fit: contain;
+  background: var(--moon-on-ink);
+  box-shadow:
+    0 0 0 1.5px color-mix(in oklch, var(--ink) 22%, transparent),
+    0 0 0 3px color-mix(in oklch, var(--moon-on-ink) 78%, var(--paper-edge));
+}
+
 @media (max-width: 480px) {
   :global(html[data-theme='anime']) .headerInner {
     border-radius: var(--radius);
@@ -660,6 +671,90 @@
 @media (prefers-reduced-motion: reduce) {
   :global(html[data-theme='anime']) .loginBtn:hover,
   :global(html[data-theme='anime']) .loginBtn:active {
+    transform: none;
+  }
+}
+
+/* ── 科技主题:暗底霓虹导航 ──
+   打字机小签与圆点标记仍是骨架,只换霓虹描边,不拆制式。 */
+
+:global(html[data-theme='tech']) .shell {
+  background: transparent;
+}
+
+:global(html[data-theme='tech']) .main {
+  position: relative;
+  z-index: 1;
+}
+
+:global(html[data-theme='tech']) .header {
+  background: color-mix(in oklch, var(--paper) 72%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-bottom-color: color-mix(in oklch, var(--terra) 34%, transparent);
+}
+
+:global(html[data-theme='tech']) .headerInner {
+  background: color-mix(in oklch, var(--paper-warm) 54%, transparent);
+  border: 1px solid color-mix(in oklch, var(--terra) 32%, transparent);
+  box-shadow: 0 0 18px color-mix(in oklch, var(--terra) 12%, transparent);
+}
+
+:global(html[data-theme='tech']) .headerInner::after {
+  background: color-mix(in oklch, var(--terra) 48%, transparent);
+}
+
+/* 源图 logo.png 是深色实底;科技主题改走 favicon-192 那张奶白纸底,
+   再加一圈电青细环,暗顶栏上才读得出章 */
+:global(html[data-theme='tech']) .seal {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  object-fit: contain;
+  background: var(--moon-on-ink);
+  box-shadow:
+    0 0 0 1.5px color-mix(in oklch, var(--terra) 40%, transparent),
+    0 0 0 3px color-mix(in oklch, var(--moon-on-ink) 70%, var(--paper-edge));
+}
+
+:global(html[data-theme='tech']) .link:hover,
+:global(html[data-theme='tech']) .linkActive {
+  color: var(--terra-ink);
+}
+
+:global(html[data-theme='tech']) .link::after {
+  background: var(--terra);
+  box-shadow: 0 0 8px color-mix(in oklch, var(--terra) 60%, transparent);
+}
+
+:global(html[data-theme='tech']) .loginBtn {
+  /* 基础态 color 走 --paper;科技主题里 --paper 是近黑,必须改成冷白字 */
+  color: var(--ink);
+  border-color: var(--terra);
+  background: color-mix(in oklch, var(--terra) 36%, var(--paper));
+  box-shadow: 0 0 12px color-mix(in oklch, var(--terra) 22%, transparent);
+}
+
+:global(html[data-theme='tech']) .loginBtn:hover {
+  color: var(--ink);
+  background: color-mix(in oklch, var(--terra) 52%, var(--paper));
+  transform: translateY(-1px);
+  box-shadow: 0 0 18px color-mix(in oklch, var(--terra) 34%, transparent);
+}
+
+:global(html[data-theme='tech']) .loginBtn:active {
+  transform: translateY(1px);
+}
+
+:global(html[data-theme='tech']) .sectionMenu {
+  border: 1px solid color-mix(in oklch, var(--terra) 36%, transparent);
+  background: color-mix(in oklch, var(--paper) 92%, transparent);
+  box-shadow: 0 0 16px color-mix(in oklch, var(--terra) 14%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(html[data-theme='tech']) .loginBtn:hover,
+  :global(html[data-theme='tech']) .loginBtn:active {
     transform: none;
   }
 }

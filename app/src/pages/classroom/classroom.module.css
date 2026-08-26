@@ -892,3 +892,58 @@
   .teacherImage { max-block-size: 13rem; }
   .sendBtn { padding-inline: 0.8rem; }
 }
+
+/* ── 科技主题:木框改仪器屏框(深炭金属圈 + 电青细线 + HUD 角标),板心冻结 ── */
+:global(html[data-theme='tech']) .stream {
+  border-image: linear-gradient(
+    165deg,
+    color-mix(in oklch, var(--inkstone-line) 38%, var(--terra)) 0%,
+    color-mix(in oklch, var(--inkstone-line) 62%, var(--terra-deep)) 42%,
+    color-mix(in oklch, var(--inkstone) 72%, var(--terra-deep)) 100%
+  ) 1;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklch, var(--terra) 48%, transparent),
+    inset 0 2px 0 0 color-mix(in oklch, var(--terra) 32%, transparent),
+    inset 0 0 28px color-mix(in oklab, var(--board-shade) 58%, transparent),
+    0 0 0 1px color-mix(in oklch, var(--terra) 26%, transparent);
+}
+
+:global(html[data-theme='tech']) .tray {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--inkstone-line) 70%, var(--terra-deep)),
+    var(--inkstone-deep)
+  );
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--terra) 22%, transparent),
+    inset 0 1px 0 color-mix(in oklch, var(--terra) 28%, transparent);
+}
+
+:global(html[data-theme='tech']) .boardChit {
+  color: var(--terra-ink);
+  background: color-mix(in oklch, var(--inkstone) 86%, var(--paper));
+  border-color: color-mix(in oklch, var(--terra) 40%, transparent);
+  box-shadow: none;
+}
+
+:global(html[data-theme='tech']) .plate {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--inkstone) 80%, var(--terra-deep)),
+    var(--inkstone-deep)
+  );
+  border-color: color-mix(in oklch, var(--terra) 28%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--terra) 18%, transparent);
+}
+
+:global(html[data-theme='tech']) .plateName {
+  color: var(--ink);
+}
+
+:global(html[data-theme='tech']) .boardFrame {
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklch, var(--terra) 18%, transparent),
+    transparent 74%
+  );
+}

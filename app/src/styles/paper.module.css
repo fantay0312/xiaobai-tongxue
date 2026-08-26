@@ -146,3 +146,42 @@
     filter: none;
   }
 }
+
+/* ── 科技主题:票据工艺改语义,不取消 ──
+   斜贴 / 撕票线 / 挂孔 / 转戳仍在,只换成扫描线与霓虹描边。 */
+
+:global(html[data-theme='tech']) .texture::before {
+  opacity: 0.22;
+  mix-blend-mode: screen;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    color-mix(in oklch, var(--terra) 22%, transparent) 0 1px,
+    transparent 1px 3px
+  );
+}
+
+:global(html[data-theme='tech']) .tiltL:hover,
+:global(html[data-theme='tech']) .tiltR:hover {
+  filter: drop-shadow(0 0 10px color-mix(in oklch, var(--terra) 36%, transparent));
+}
+
+:global(html[data-theme='tech']) .perfLine {
+  border-top-style: dashed;
+  border-top-color: color-mix(in oklch, var(--terra) 38%, transparent);
+}
+
+:global(html[data-theme='tech']) .stamp {
+  border-color: color-mix(in oklch, var(--terra) 52%, transparent);
+  box-shadow: 0 0 12px color-mix(in oklch, var(--terra) 18%, transparent);
+}
+
+:global(html[data-theme='tech']) .stampInner {
+  border-color: color-mix(in oklch, var(--mustard) 40%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(html[data-theme='tech']) .tiltL:hover,
+  :global(html[data-theme='tech']) .tiltR:hover {
+    filter: none;
+  }
+}

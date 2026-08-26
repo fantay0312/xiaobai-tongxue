@@ -395,7 +395,7 @@
 .themeGroup {
   align-self: stretch;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
 }
 
@@ -459,7 +459,7 @@
   color: var(--ink-soft);
 }
 
-@media (max-width: 560px) {
+@media (max-width: 720px) {
   .themeGroup {
     grid-template-columns: 1fr;
   }

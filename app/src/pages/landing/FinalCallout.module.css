@@ -163,3 +163,26 @@
     transform: none;
   }
 }
+
+:global(html[data-theme='tech']) .action {
+  color: var(--ink);
+  border: 1px solid var(--terra);
+  background: color-mix(in oklch, var(--terra) 36%, var(--paper));
+  box-shadow: 0 0 16px color-mix(in oklch, var(--terra) 28%, transparent);
+}
+
+:global(html[data-theme='tech']) .action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 22px color-mix(in oklch, var(--terra) 40%, transparent);
+}
+
+:global(html[data-theme='tech']) .action:active {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(html[data-theme='tech']) .action:hover,
+  :global(html[data-theme='tech']) .action:active {
+    transform: none;
+  }
+}

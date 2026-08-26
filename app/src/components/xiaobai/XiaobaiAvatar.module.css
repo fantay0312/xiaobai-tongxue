@@ -266,3 +266,7 @@
     animation: none;
   }
 }
+
+:global(html[data-theme='tech']) .avatar {
+  filter: drop-shadow(0 0 14px color-mix(in oklch, var(--terra) 28%, transparent));
+}

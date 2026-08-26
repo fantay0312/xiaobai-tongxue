@@ -492,10 +492,117 @@
   border: 1.5px solid color-mix(in oklch, var(--ink) 16%, var(--ticket-face));
 }
 
+/* 夜景板:mustard×paper-warm 会混成浊紫,票面改走夜青(和頁底同相、略提亮)。
+   叠卡也收进同一路藍夜,不再用月光藍垫在浊紫底下。 */
+:global(html[data-theme='anime'][data-tone='night']) .ticket {
+  --ticket-face: color-mix(in oklch, var(--paper-warm) 68%, var(--paper-edge));
+  border-color: color-mix(in oklch, var(--terra-deep) 36%, var(--ticket-face));
+  box-shadow: 5px 5px 0 oklch(0.140 0.024 260 / 0.42);
+}
+
+:global(html[data-theme='anime'][data-tone='night']) .ticketWrap:hover .ticket {
+  box-shadow: 7px 7px 0 oklch(0.140 0.024 260 / 0.5);
+}
+
+:global(html[data-theme='anime'][data-tone='night']) .ticketWrap::before {
+  background: color-mix(in oklch, var(--terra-deep) 58%, var(--paper-warm));
+  border-color: color-mix(in oklch, var(--terra-deep) 46%, var(--paper-edge));
+}
+
+:global(html[data-theme='anime'][data-tone='night']) .ticketWrap::after {
+  background: color-mix(in oklch, var(--paper-shade) 72%, var(--paper-warm));
+}
+
+:global(html[data-theme='anime'][data-tone='night']) .pupil {
+  background: color-mix(in oklch, var(--paper) 82%, var(--paper-warm));
+  border-color: var(--paper-edge);
+}
+
+/* 演示票右上角:夜景票面是藍夜,源图深底会糊。
+   Seal 已换奶白纸底图,再垫月白细环才落得住 */
+:global(html[data-theme='anime'][data-tone='night']) .seal {
+  border-radius: 22%;
+  object-fit: contain;
+  background: var(--moon-on-ink);
+  box-shadow:
+    0 0 0 1.5px color-mix(in oklch, var(--ink) 22%, transparent),
+    0 0 0 3px color-mix(in oklch, var(--moon-on-ink) 78%, var(--paper-edge));
+}
+
 @media (prefers-reduced-motion: reduce) {
   :global(html[data-theme='anime']) .ticketWrap:hover .ticket,
   :global(html[data-theme='anime']) .primary:hover,
   :global(html[data-theme='anime']) .primary:active {
+    transform: none;
+  }
+}
+
+:global(html[data-theme='tech']) .hero::after {
+  background: color-mix(in oklch, var(--terra) 42%, transparent);
+}
+
+:global(html[data-theme='tech']) .title {
+  font-size: 36px;
+  font-weight: 400;
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}
+
+:global(html[data-theme='tech']) .title em {
+  font-style: normal;
+  color: var(--terra);
+  text-shadow: 0 0 14px color-mix(in oklch, var(--terra) 40%, transparent);
+}
+
+:global(html[data-theme='tech']) .primary {
+  color: var(--ink);
+  border: 1px solid var(--terra);
+  background: color-mix(in oklch, var(--terra) 36%, var(--paper));
+  box-shadow: 0 0 16px color-mix(in oklch, var(--terra) 28%, transparent);
+}
+
+:global(html[data-theme='tech']) .primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 22px color-mix(in oklch, var(--terra) 40%, transparent);
+}
+
+:global(html[data-theme='tech']) .primary:active {
+  transform: translateY(1px);
+}
+
+:global(html[data-theme='tech']) .secondary {
+  border-bottom-color: color-mix(in oklch, var(--terra) 50%, transparent);
+  color: var(--terra-ink);
+}
+
+:global(html[data-theme='tech']) .ticket {
+  border: 1px solid color-mix(in oklch, var(--terra) 36%, var(--ticket-face));
+  background: color-mix(in oklch, var(--paper-warm) 70%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 0 18px color-mix(in oklch, var(--terra) 16%, transparent);
+}
+
+/* 演示票右上角:源图是深色实底,贴在暗票面上会糊。
+   Seal 在科技主题已换奶白纸底图,再加一圈电青细环才落得住 */
+:global(html[data-theme='tech']) .seal {
+  border-radius: 22%;
+  object-fit: contain;
+  background: var(--moon-on-ink);
+  box-shadow:
+    0 0 0 1.5px color-mix(in oklch, var(--terra) 40%, transparent),
+    0 0 0 3px color-mix(in oklch, var(--moon-on-ink) 70%, var(--paper-edge));
+}
+
+:global(html[data-theme='tech']) .ticketWrap:hover .ticket {
+  transform: rotate(0.4deg) translateY(-3px);
+  box-shadow: 0 0 26px color-mix(in oklch, var(--terra) 26%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(html[data-theme='tech']) .ticketWrap:hover .ticket,
+  :global(html[data-theme='tech']) .primary:hover,
+  :global(html[data-theme='tech']) .primary:active {
     transform: none;
   }
 }
