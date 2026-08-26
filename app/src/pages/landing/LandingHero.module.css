@@ -119,24 +119,84 @@
   color: var(--terra);
 }
 
+/* 登机牌/听课证外壳:叠卡阵 + 挂孔 + 相片窗 + 撕票咬口。
+   入场动画落在 wrap 上,斜置落在票面,避免 rise 的 transform:none 压死倾角。 */
+.ticketWrap {
+  position: relative;
+  isolation: isolate;
+  z-index: 1;
+  align-self: center;
+  justify-self: end;
+  width: min(100%, 23.5rem);
+}
+
+.ticketWrap::before,
+.ticketWrap::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  border-radius: var(--radius-s);
+  box-shadow: var(--shadow-paper);
+  pointer-events: none;
+}
+
+.ticketWrap::before {
+  top: 16%;
+  right: -0.55rem;
+  bottom: -0.4rem;
+  left: 22%;
+  background: var(--terra);
+  border: 1px solid color-mix(in oklch, var(--terra) 55%, var(--ink));
+  transform: rotate(-2.5deg);
+}
+
+.ticketWrap::after {
+  top: 18%;
+  right: 18%;
+  bottom: -0.5rem;
+  left: -0.5rem;
+  background: var(--paper-shade);
+  border: 1px solid var(--line-strong);
+  transform: rotate(2.8deg);
+}
+
 .ticket {
+  --ticket-face: color-mix(in oklch, var(--mustard) 28%, var(--paper-warm));
   position: relative;
   z-index: 1;
   overflow: hidden;
-  align-self: center;
-  width: min(100%, 23.5rem);
-  justify-self: end;
-  padding: 2rem;
-  border: 1px solid color-mix(in oklch, var(--mustard) 56%, var(--ink));
-  border-radius: var(--radius);
-  background: var(--mustard);
-  box-shadow: var(--shadow-lift);
-  transform: rotate(1.2deg);
-  transition: transform var(--t-med) var(--ease-out);
+  padding: 1.7rem 1.45rem 1.2rem;
+  border: 1px solid color-mix(in oklch, var(--ink) 16%, var(--ticket-face));
+  border-radius: var(--radius-s);
+  background: var(--ticket-face);
+  box-shadow:
+    var(--shadow-paper),
+    inset 0 1px 0 color-mix(in oklch, var(--paper) 55%, transparent);
+  transform: rotate(1.6deg);
+  transition:
+    transform var(--t-med) var(--ease-out),
+    box-shadow var(--t-med) var(--ease-out);
 }
 
-.ticket:hover {
-  transform: rotate(0.4deg) translateY(-4px);
+.ticketWrap:hover .ticket {
+  transform: rotate(0.5deg) translateY(-3px);
+  box-shadow: var(--shadow-lift);
+}
+
+.punch {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 2;
+  width: 2.6rem;
+  height: 1.15rem;
+  transform: translateX(-50%);
+  background: var(--paper);
+  border: 1px solid color-mix(in oklch, var(--ink) 14%, var(--ticket-face));
+  border-top: 0;
+  border-radius: 0 0 50% 50%;
+  box-shadow: inset 0 -1px 3px var(--ink-wash);
+  pointer-events: none;
 }
 
 .ticketHead,
@@ -160,13 +220,18 @@
 .seal {
   width: 2.2rem;
   height: 2.2rem;
+  flex: none;
 }
 
 .pupil {
   justify-content: flex-start;
-  margin: 1.4rem 0;
-  padding: 0.9rem;
-  border-block: 1px dashed color-mix(in oklab, var(--ink) 32%, transparent);
+  gap: 0.7rem;
+  margin: 1.05rem 0 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid color-mix(in oklch, var(--ink) 12%, var(--paper-edge));
+  border-radius: var(--radius-tag);
+  background: var(--paper);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--paper) 80%, transparent);
 }
 
 .pupilName {
@@ -182,9 +247,44 @@
   color: var(--ink-soft);
 }
 
+.pupilCopy {
+  min-width: 0;
+}
+
+.stageName {
+  white-space: nowrap;
+}
+
+.tear {
+  position: relative;
+  margin: 1rem -1.45rem;
+}
+
+.tear::before,
+.tear::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ink) 10%, var(--ticket-face));
+}
+
+.tear::before {
+  left: 0;
+  transform: translate(-50%, -50%);
+}
+
+.tear::after {
+  right: 0;
+  transform: translate(50%, -50%);
+}
+
 .ticketMeta {
   display: grid;
-  gap: 0.75rem;
+  gap: 0;
   margin: 0;
 }
 
@@ -193,6 +293,11 @@
   grid-template-columns: 5rem 1fr;
   align-items: baseline;
   gap: 0.75rem;
+  padding: 0.48rem 0;
+}
+
+.ticketMeta div + div {
+  border-top: 1px solid color-mix(in oklab, var(--ink) 10%, transparent);
 }
 
 .ticketMeta dt {
@@ -209,9 +314,9 @@
 }
 
 .ticketFoot {
-  margin-top: 1.4rem;
-  padding-top: 0.85rem;
-  border-top: 1px dashed color-mix(in oklab, var(--ink) 38%, transparent);
+  margin-top: 0.85rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid color-mix(in oklab, var(--ink) 16%, transparent);
 }
 
 .ticketFoot a {
@@ -222,6 +327,16 @@
   border-radius: 50%;
   background: var(--inkstone);
   color: var(--mustard);
+  transition: scale 150ms var(--ease-out);
+}
+
+.ticketFoot a:active {
+  scale: 0.96;
+}
+
+.ticketFoot a:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 3px;
 }
 
 .marginalia {
@@ -249,7 +364,7 @@
     padding-right: 0;
   }
 
-  .ticket {
+  .ticketWrap {
     justify-self: center;
     width: min(100%, 30rem);
   }
@@ -269,7 +384,11 @@
   }
 
   .ticket {
-    padding: 1.35rem;
+    padding: 1.25rem 1.15rem 1.05rem;
+  }
+
+  .tear {
+    margin: 0.85rem -1.15rem;
   }
 
   .proofLine {
@@ -282,9 +401,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ticket:hover,
-  .primary:hover {
+  .ticketWrap:hover .ticket,
+  .primary:hover,
+  .ticketFoot a:hover,
+  .ticketFoot a:active {
     transform: none;
+    scale: 1;
   }
 }
 
@@ -335,23 +457,43 @@
 
 /* 主票卡:保留斜贴(这是全站招牌构图),把柔投影换成硬边落影 */
 :global(html[data-theme='anime']) .ticket {
-  border: 1.5px solid color-mix(in oklch, var(--ink) 34%, var(--mustard));
-  border-radius: var(--radius);
-  background: var(--mustard);
+  border: 1.5px solid color-mix(in oklch, var(--ink) 28%, var(--ticket-face));
+  border-radius: var(--radius-s);
+  background: var(--ticket-face);
   box-shadow: 5px 5px 0 color-mix(in oklch, var(--terra-deep) 20%, transparent);
 }
 
-:global(html[data-theme='anime']) .ticket:hover {
+:global(html[data-theme='anime']) .ticketWrap:hover .ticket {
   transform: rotate(0.4deg) translateY(-3px);
   box-shadow: 7px 7px 0 color-mix(in oklch, var(--terra-deep) 24%, transparent);
 }
 
+:global(html[data-theme='anime']) .ticketWrap::before {
+  box-shadow: 4px 4px 0 color-mix(in oklch, var(--terra-deep) 18%, transparent);
+}
+
+:global(html[data-theme='anime']) .ticketWrap::after {
+  box-shadow: 4px 4px 0 color-mix(in oklch, var(--ink) 10%, transparent);
+}
+
+:global(html[data-theme='anime']) .punch {
+  border: 1.5px solid color-mix(in oklch, var(--ink) 22%, var(--ticket-face));
+  box-shadow: none;
+}
+
 :global(html[data-theme='anime']) .pupil {
-  border-block: 1.5px solid color-mix(in oklch, var(--ink) 22%, var(--mustard));
+  border: 1.5px solid color-mix(in oklch, var(--ink) 18%, var(--paper-edge));
+  box-shadow: 2px 2px 0 color-mix(in oklch, var(--terra-deep) 14%, transparent);
+}
+
+:global(html[data-theme='anime']) .tear::before,
+:global(html[data-theme='anime']) .tear::after {
+  box-shadow: none;
+  border: 1.5px solid color-mix(in oklch, var(--ink) 16%, var(--ticket-face));
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :global(html[data-theme='anime']) .ticket:hover,
+  :global(html[data-theme='anime']) .ticketWrap:hover .ticket,
   :global(html[data-theme='anime']) .primary:hover,
   :global(html[data-theme='anime']) .primary:active {
     transform: none;

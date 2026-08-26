@@ -183,6 +183,17 @@
 }
 
 @media (min-width: 961px) {
+  .arrow {
+    border-bottom: 0;
+    border-top: 1.5px solid var(--azure);
+    border-right: 1.5px solid var(--azure);
+    transform: rotate(45deg);
+  }
+
+  .arrowOpen {
+    transform: rotate(225deg);
+  }
+
   .trigger {
     min-height: 5rem;
     padding: 0.8rem 0.9rem;

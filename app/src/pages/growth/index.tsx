@@ -371,9 +371,11 @@ export default function GrowthPage() {
               <span className={s.portraitName}>弟子 · 小白</span>
               <span className={s.portraitSeal}>白</span>
             </figcaption>
-            <span className={s.profileStageTicket}>
-              <strong>{currentStage.name}</strong>
-              <small>{currentStage.description}</small>
+            <span className={`${paper.stamp} ${s.profileStageTicket}`}>
+              <span className={`${paper.stampInner} ${s.profileStageInner}`}>
+                <strong>{currentStage.name}</strong>
+                <small>{currentStage.description}</small>
+              </span>
             </span>
           </figure>
 

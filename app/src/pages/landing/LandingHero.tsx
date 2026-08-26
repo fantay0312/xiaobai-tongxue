@@ -60,49 +60,55 @@ export function LandingHero({ onFlowClick }: LandingHeroProps) {
         </p>
       </div>
 
-      <article
-        className={`${styles.ticket} ${paper.texture} ${styles.enter}`}
+      <div
+        className={`${styles.ticketWrap} ${styles.enter}`}
         style={{ animationDelay: '120ms' }}
-        aria-label="Token 与分词演示课"
       >
-        <span className={paper.notch} aria-hidden="true" />
-        <header className={styles.ticketHead}>
-          <div>
-            <p className={`${paper.typeLabel} ${styles.ticketKicker}`}>本次演示</p>
-            <h2 className={styles.ticketTitle}>Token 与分词</h2>
+        <article
+          className={`${styles.ticket} ${paper.texture}`}
+          aria-label="Token 与分词演示课"
+        >
+          <span className={styles.punch} aria-hidden="true" />
+          <header className={styles.ticketHead}>
+            <div>
+              <p className={`${paper.typeLabel} ${styles.ticketKicker}`}>本次演示</p>
+              <h2 className={styles.ticketTitle}>Token 与分词</h2>
+            </div>
+            <Seal className={styles.seal} />
+          </header>
+          <div className={styles.pupil}>
+            <XiaobaiAvatar variant="paper" mood="curious" level={2} size={106} />
+            <div className={styles.pupilCopy}>
+              <p className={styles.pupilName}>
+                小白 · {DEMO_STAGE.name} ·{' '}
+                <span className={styles.stageName}>{DEMO_STAGE.description}</span>
+              </p>
+              <p className={styles.pupilRole}>等你来教</p>
+            </div>
           </div>
-          <Seal className={styles.seal} />
-        </header>
-        <div className={styles.pupil}>
-          <XiaobaiAvatar variant="paper" mood="curious" level={2} size={106} />
-          <div>
-            <p className={styles.pupilName}>
-              小白 · {DEMO_STAGE.name} · {DEMO_STAGE.description}
-            </p>
-            <p className={styles.pupilRole}>等你来教</p>
-          </div>
-        </div>
-        <dl className={styles.ticketMeta}>
-          <div>
-            <dt>所属课程</dt>
-            <dd>大模型训练</dd>
-          </div>
-          <div>
-            <dt>你要完成</dt>
-            <dd>备课 · 讲解 · 纠错</dd>
-          </div>
-          <div>
-            <dt>课后可看</dt>
-            <dd>随堂测验 · 五维批注</dd>
-          </div>
-        </dl>
-        <footer className={styles.ticketFoot}>
-          <span className={paper.typeLabel}>演示课 · TOKENIZATION</span>
-          <Link to="/study" aria-label="进入书斋体验 Token 与分词">
-            <Icon name="arrow-right" size={18} />
-          </Link>
-        </footer>
-      </article>
+          <div className={`${paper.perfLine} ${styles.tear}`} aria-hidden="true" />
+          <dl className={styles.ticketMeta}>
+            <div>
+              <dt>所属课程</dt>
+              <dd>大模型训练</dd>
+            </div>
+            <div>
+              <dt>你要完成</dt>
+              <dd>备课 · 讲解 · 纠错</dd>
+            </div>
+            <div>
+              <dt>课后可看</dt>
+              <dd>随堂测验 · 五维批注</dd>
+            </div>
+          </dl>
+          <footer className={styles.ticketFoot}>
+            <span className={paper.typeLabel}>演示课 · TOKENIZATION</span>
+            <Link to="/study" aria-label="进入书斋体验 Token 与分词">
+              <Icon name="arrow-right" size={18} />
+            </Link>
+          </footer>
+        </article>
+      </div>
 
       <blockquote className={`${anchor.quote} ${styles.marginalia}`}>
         <p className={anchor.quoteText}>
