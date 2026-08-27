@@ -3,7 +3,8 @@
  * 函套按 TOPICS 首现顺序陈列在上层搁板,点函切换下方章节区(默认翻开第一函);
  * 章节区超过一层容量折成多层搁板,层尾一枚木书立,书高书宽按全架位次查错落表。
  * mastery 染色:黛绿出师 / 藤黄待复习 / 靛青学习中;未学素净不标字(图例代言),locked 压暗标「未开放」。
- * 点击章节:locked 不可点;备课完成或有进度 → /teach/:topicId,否则 → /prep/:topicId。
+ * 点击章节:locked 不可点;其余一律先回 /prep/:topicId 温书。
+ * 已备过的课仍可在备课页主动选择「直接开讲」,书架不再替用户跳过未完成的备课。
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -34,10 +35,6 @@ function spineStatus(topic: Topic, st: TopicState | undefined): SpineStatus {
     return 'learning';
   }
   return 'fresh';
-}
-
-function hasProgress(st: TopicState | undefined): boolean {
-  return !!st && (st.prepDone || st.hitChecklist.length > 0 || st.mastery > 0);
 }
 
 /** 按 course 分组,保持 TOPICS 数组顺序(首次出现的课程排前) */
@@ -95,8 +92,7 @@ export function Bookshelf() {
 
   const openTopic = (topic: Topic) => {
     if (topic.locked) return;
-    const st = topicStates[topic.topicId];
-    navigate(hasProgress(st) ? `/teach/${topic.topicId}` : `/prep/${topic.topicId}`);
+    navigate(`/prep/${topic.topicId}`);
   };
 
   const masteredOf = (topics: Topic[]) =>

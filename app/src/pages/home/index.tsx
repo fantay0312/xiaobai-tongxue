@@ -38,7 +38,7 @@ function buildHomeTour(hasStory: boolean): TourStep[] {
     {
       target: '#shelf',
       title: '满架的课',
-      text: '一函一课。新书翻开先进备课桌温一遍;已开讲的书,翻开就回讲解舱接着讲。',
+      text: '一函一课。无论新课旧课,翻开都先回备课桌温一遍;备过的课仍可在桌边直接开讲。',
     },
     {
       target: '[data-tour="nav-growth"]',

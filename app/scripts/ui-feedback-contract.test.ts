@@ -9,6 +9,8 @@ const read = (relativePath: string): string =>
   readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8');
 
 const home = read('../src/pages/home/index.tsx');
+const bookshelf = read('../src/pages/home/Bookshelf.tsx');
+const classroom = read('../src/pages/classroom/index.tsx');
 const homeStyles = read('../src/pages/home/home.module.css');
 const app = read('../src/App.tsx');
 const shell = read('../src/components/shell/AppShell.tsx');
@@ -36,6 +38,18 @@ const achievementStyles = read('../src/pages/growth/AchievementWall.module.css')
 const firstStep = nextStep({ events: [], reports: [], topicStates: {}, topics: TOPICS });
 assert.equal(firstStep.to, '/study#shelf', '首次旅程必须先让用户到书架选课');
 assert.equal(firstStep.cta, '去书架选课', '首次行动文案必须明示选课');
+
+assert.match(
+  bookshelf,
+  /const openTopic = \(topic: Topic\) => \{[\s\S]*?navigate\(`\/prep\/\$\{topic\.topicId\}`\);[\s\S]*?\};/,
+  '从书架打开新课、旧课或待复习课程时都必须先回到对应备课页',
+);
+assert.doesNotMatch(bookshelf, /function hasProgress/, '书架不得再按历史进度自动跳过备课');
+assert.match(
+  classroom,
+  /const quit = \(\) => \{[\s\S]*?abandonSession\(\);[\s\S]*?navigate\(`\/prep\/\$\{topicId\}`\);[\s\S]*?\};/,
+  '讲解舱暂离后必须回到当前知识点的备课页',
+);
 
 assert.match(home, /MOTTO_LINES[\s\S]*?Array\.from\(line\)/, '精神锚点必须按 Unicode 字符逐字落墨');
 assert.match(home, /className=\{styles\.srOnly\}/, '逐字视觉层必须保留读屏全文');
