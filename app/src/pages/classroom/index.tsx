@@ -575,7 +575,7 @@ export default function ClassroomPage() {
 
   const quit = () => {
     abandonSession();
-    navigate('/study');
+    navigate(`/prep/${topicId}`);
   };
   const dismissClass = () => {
     const sid = endSession();
