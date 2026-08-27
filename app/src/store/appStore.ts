@@ -13,7 +13,9 @@ import { getTopic, TOPICS } from '../data';
 import { XIAOBAI_EXAM_READY_LINE } from '../data/xiaobaiLines';
 import {
   applyEvents, buildReport, decide, DEFLECTION_LINE, evaluate, extractTeacherTerms,
-  initialTopicState, isExtractionAttempt, openingCard, replayTopicState, runXiaobaiQuiz, speakXiaobai,
+  initialTopicState, isExtractionAttempt, openingCard, questionClarificationSource,
+  recentXiaobaiQuestionText, replayTopicState, runXiaobaiQuiz,
+  speakQuestionClarification, speakXiaobai,
 } from '../engine';
 import type { EventDraft } from '../engine';
 // 跨会话回忆:直接从 recall 模块导入,不走 engine barrel(simulate 在 Node 加载 barrel,recall 不得混入)
@@ -289,7 +291,15 @@ export const useAppStore = create<AppState>()(
         }
 
         try {
-          const description = image ? await describeTeachingImage(image.blob, settings) : null;
+          const lastXiaobaiText = recentXiaobaiQuestionText(live.messages);
+          const clarificationSource = questionClarificationSource(
+            visibleText, lastXiaobaiText,
+          );
+          // 明确的“请小白重述上一问”整轮按元对话处理；图片也不送视觉模型，
+          // 避免引用问题中的关键词被评估器误记为要点、认同、纠正或复习通过。
+          const description = clarificationSource
+            ? null
+            : image ? await describeTeachingImage(image.blob, settings) : null;
           if (get().live?.sessionId !== sessionId) return { accepted: false, error: 'teaching-stale' };
           const privateUtterance = description
             ? privateImageUtterance(visibleText, description)
@@ -308,8 +318,40 @@ export const useAppStore = create<AppState>()(
 
           const state = get().topicState(topic.topicId);
           const g = get().global;
-          const lastXiaobaiText = [...live.messages].reverse()
-            .find((message) => message.role === 'xiaobai')?.text ?? null;
+          // 老师是在请小白解释自己上一问，不是“不会讲”。在进入评估/导演前截住，
+          // 不写事件、不推进 trace 或 R1-R4；明确的讲解请放到下一轮，避免一轮双重语义。
+          if (clarificationSource) {
+            const speak = await speakQuestionClarification({
+              questionSource: clarificationSource,
+              topic,
+              state,
+              global: g,
+              recentMessages: [...live.messages, teacherMsg],
+              settings,
+              seed: live.traces.length + 1,
+            });
+            if (get().live?.sessionId !== sessionId) return { accepted: true };
+            set((s) => {
+              if (!s.live || s.live.sessionId !== sessionId) return {};
+              const currentTopic = s.topicStates[topic.topicId] ?? state;
+              return {
+                topicStates: {
+                  ...s.topicStates,
+                  [topic.topicId]: { ...currentTopic, stuckStreak: 0 },
+                },
+                live: {
+                  ...s.live,
+                  busy: false,
+                  mood: speak.mood,
+                  messages: [
+                    ...s.live.messages,
+                    msg('xiaobai', speak.text, { mood: speak.mood }),
+                  ],
+                },
+              };
+            });
+            return { accepted: true };
+          }
           const privateEval = await evaluate({
             utterance: privateUtterance, lastXiaobaiText, topic, state,
             pendingMcId: live.pendingMcId, settings,
