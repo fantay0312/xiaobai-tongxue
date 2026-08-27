@@ -5,19 +5,27 @@
  * speakXiaobai 是唯一出口:渲染 → 泄漏检测 → 重试(≤2) → 兜底。
  */
 import type {
-  ChatMessage, InstructionCard, LlmSettings, Topic, TopicState, XiaobaiMood,
+  ChatMessage, InstructionCard, LlmSettings, Topic, TopicState, XiaobaiGlobal, XiaobaiMood,
 } from '../types';
 import {
   XIAOBAI_LINES, XIAOBAI_PROBE_BRIDGES, XIAOBAI_TANGENT_ACKS,
 } from '../data/xiaobaiLines';
 import { FALLBACK_LINE, leakageCheck } from './leakage';
 import { llmCall } from './llm';
+import { mockQuestionClarificationReply, repeatsQuestionVerbatim } from './conversationRepair';
+
+type QuestionClarificationCard = Omit<InstructionCard, 'action'> & {
+  action: 'rephrase_question';
+  questionSource: string;
+};
+type RuntimeInstructionCard = InstructionCard | QuestionClarificationCard;
 
 const ACTION_MOOD: Record<string, XiaobaiMood> = {
   ask_clarify: 'curious', ask_example: 'curious', ask_boundary: 'thinking',
   inject_misconception: 'confused', ask_transfer: 'curious',
   express_understanding: 'aha', rescue_hint: 'confused', propose_lookup: 'shy',
   stay_confused: 'confused', trigger_review: 'shy',
+  rephrase_question: 'shy',
 };
 
 /** 从老师最近发言中提取本知识点术语(术语镜像规则的白名单来源) */
@@ -90,8 +98,14 @@ const R4_LINE = '唔……老师,这段我们俩好像都卡住了。要不先�
 const OFFTOPIC_LINE = '老师,这个好像不是今天要讲的吧?我还想听你接着讲刚才那个呢。';
 
 function mockRender(
-  card: InstructionCard, topic: Topic, seed: number,
+  card: RuntimeInstructionCard, topic: Topic, seed: number,
 ): { text: string; mood: XiaobaiMood } {
+  if (card.action === 'rephrase_question') {
+    return {
+      text: mockQuestionClarificationReply(card.questionSource, card.style.persona),
+      mood: 'shy',
+    };
+  }
   // 回答了小白自己的题外追问:导演用无复述素材的 express_understanding 表示“收住”。
   if (
     card.action === 'express_understanding' && !card.paraphraseSource &&
@@ -134,7 +148,7 @@ function mockRender(
 }
 
 async function apiRender(
-  card: InstructionCard, topic: Topic, recent: ChatMessage[], settings: LlmSettings,
+  card: RuntimeInstructionCard, topic: Topic, recent: ChatMessage[], settings: LlmSettings,
   bannedTerms: string[],
 ): Promise<string> {
   const system = [
@@ -142,6 +156,7 @@ async function apiRender(
     '【你的认知状态(白名单,这是你全部的知识)】',
     card.knownWhitelist.length ? card.knownWhitelist.map((w) => `- ${w}`).join('\n') : '(你还什么都不懂)',
     card.mcBelief ? `【你当前坚信的观点】${card.mcBelief}\n你真诚地认为这是对的,除非老师给出让你信服的解释。` : '',
+    card.action === 'rephrase_question' ? `【待换说法的上一问】${card.questionSource}` : '',
     '【铁律】',
     '1. 白名单之外的任何概念你都不懂,被问到只能困惑求教:"我就是不知道才问你呀,老师。"',
     '2. 你只能使用三类词汇:老师说过的词 / 白名单中的词 / 你观点中的词。绝不使用其他专业术语。',
@@ -160,7 +175,10 @@ async function apiRender(
   return raw.trim().replace(/^["“「『]+/, '').replace(/["”」』]+$/, '').replace(/^小白[::]\s*/, '').trim();
 }
 
-function actionBrief(card: InstructionCard, topic: Topic): string {
+function actionBrief(card: RuntimeInstructionCard, topic: Topic): string {
+  if (card.action === 'rephrase_question') {
+    return '老师明确说没听懂你上一句问题。先承认是自己问绕了,再把【待换说法的上一问】拆成“举的情形”和“真正想问的点”,换成更短、更直白的话。不得原样复读,不得回答自己的问题,不得补充新知识或新术语。';
+  }
   const bridge = '先用一个短分句接住老师最后一句(只可复用“老师最近说过的词”),再';
   const targetProbe = card.targetChecklistId
     ? topic.checklist.find((item) => item.id === card.targetChecklistId)?.probeLine
@@ -201,7 +219,7 @@ export interface SpeakResult { text: string; mood: XiaobaiMood; leakageRetries: 
 
 /** 渲染 + 出口守门(唯一调用入口) */
 export async function speakXiaobai(input: {
-  card: InstructionCard;
+  card: RuntimeInstructionCard;
   topic: Topic;
   state: TopicState;
   recentMessages: ChatMessage[];
@@ -237,6 +255,12 @@ export async function speakXiaobai(input: {
     } else {
       ({ text, mood } = mockRender(card, topic, seed + attempt));
     }
+    if (
+      card.action === 'rephrase_question'
+      && repeatsQuestionVerbatim(text, card.questionSource)
+    ) {
+      continue;
+    }
     const leaks = leakageCheck({
       reply: text, topic,
       whitelistChecklist: state.hitChecklist,
@@ -248,4 +272,36 @@ export async function speakXiaobai(input: {
     for (const t of leaks) if (!banned.includes(t)) banned.push(t);
   }
   return { text: FALLBACK_LINE, mood: 'confused', leakageRetries: 3, leaked: [] };
+}
+
+/** 元对话专用出口：只让小白重述自己的上一问，不进入教学导演与事件流。 */
+export function speakQuestionClarification(input: {
+  questionSource: string;
+  topic: Topic;
+  state: TopicState;
+  global: XiaobaiGlobal;
+  recentMessages: ChatMessage[];
+  settings: LlmSettings;
+  seed: number;
+}): Promise<SpeakResult> {
+  const { questionSource, topic, state, global, recentMessages, settings, seed } = input;
+  const card: QuestionClarificationCard = {
+    action: 'rephrase_question',
+    questionSource,
+    mcId: null,
+    mcBelief: null,
+    targetChecklistId: null,
+    knownWhitelist: state.hitChecklist.map(
+      (id) => topic.checklist.find((item) => item.id === id)?.point ?? id,
+    ),
+    recentTeacherTerms: extractTeacherTerms(recentMessages, topic),
+    style: {
+      persona: global.persona,
+      learningLevel: global.learningLevel,
+      maxSentences: 2,
+      mustEndWithQuestion: true,
+    },
+    paraphraseSource: null,
+  };
+  return speakXiaobai({ card, topic, state, recentMessages, settings, seed });
 }
