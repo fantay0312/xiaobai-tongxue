@@ -34,7 +34,6 @@ function StageArtifact({ activeIndex }: WorkspaceCourseRailProps) {
       <div className={s.artifactTicket}>
         <span>{stage.step} · {stage.title}</span>
         <strong>{stage.artifact}</strong>
-        <small>完成后，与这堂课的其他证据一起留存。</small>
       </div>
     </section>
   );

@@ -36,9 +36,9 @@ export function PrepScene({
   return (
     <section className={`${s.scene} ${s.paperScene}`} data-motion={motionMode}>
       <SceneHeading
-        eyebrow="备课 · 摸底快测"
-        title="先看看哪一处最容易讲岔"
-        note={`第二波 · 第 ${DEMO.prepStep} / ${DEMO.prepTotal} 题`}
+        eyebrow="备课"
+        title="摸底"
+        note={`${DEMO.prepStep} / ${DEMO.prepTotal}`}
       />
       <div className={s.prepGrid}>
         <article className={s.quizSheet}>

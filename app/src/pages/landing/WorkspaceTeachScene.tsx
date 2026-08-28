@@ -40,14 +40,14 @@ function initialMessages(epoch: number): TeachDemoMessage[] {
 }
 
 function statusCopy(phase: TeachDemoPhase, outcome: TeachDemoOutcome) {
-  if (phase === 'auto-draft') return ['自动示范正在输入', '你可随时点进输入框接管'];
-  if (phase === 'thinking') return ['小白正在琢磨', '和真实讲解舱一样，回应生成期间不能重复发送'];
-  if (phase === 'reply') return ['小白正在回应', '回复已生成，正在像真实讲解舱一样逐字显现'];
-  if (phase === 'question') return ['小白正在追问', '等它说完，也可以直接开始作答'];
-  if (outcome === 'corrected') return ['误区已纠正', '这一轮不会再把“一字一块”带进考场'];
-  if (outcome === 'adopted') return ['误区被带偏', '会带入下一步“赴考”，并在批注中留下证据'];
-  if (outcome === 'needs-example') return ['小白继续追问', '还需要一个对比例子把切法讲明白'];
-  return ['等你接着讲', '输入一句自己的解释，看看小白如何回应'];
+  if (phase === 'auto-draft') return ['自动示范', '点输入框即可接管'];
+  if (phase === 'thinking') return ['小白正在琢磨', '生成时先等一等'];
+  if (phase === 'reply') return ['小白正在回应', ''];
+  if (phase === 'question') return ['小白正在追问', ''];
+  if (outcome === 'corrected') return ['误区已纠正', ''];
+  if (outcome === 'adopted') return ['误区被带偏', '会带进下一场赴考'];
+  if (outcome === 'needs-example') return ['小白继续追问', '还差一个对比'];
+  return ['等你接着讲', ''];
 }
 
 export function TeachScene({
@@ -217,18 +217,18 @@ export function TeachScene({
       data-interactive={interactive}
     >
       <header className={base.sceneHeading}>
-        <div><span>讲解舱 · 本地互动示范</span><h3>你正在讲：{DEMO.title}</h3></div>
-        <p>自动示范 · 随时接管</p>
+        <div><span>讲解舱</span><h3>你正在讲：{DEMO.title}</h3></div>
+        <p>可随时接管</p>
       </header>
       <aside className={base.branchNotice} aria-label="本次互动演示说明">
-        <span>不留档演示</span><p>{DEMO.branchNotice}</p>
+        <span>不留档演示</span>
       </aside>
       <div className={base.classroom}>
         <aside className={base.pupilStage}>
           <XiaobaiAvatar mood={mood} level={1} size={118} variant="board" speaking={speaking} />
           <div className={base.pupilIdentity}><strong>小白</strong><small>好奇型 · 已讲 {turnRef.current} 轮</small></div>
           <div className={base.branchStatus} aria-live="polite">
-            <span>演示解说</span><strong>{status}</strong><small>{statusDetail}</small>
+            <span>演示</span><strong>{status}</strong>{statusDetail ? <small>{statusDetail}</small> : null}
           </div>
         </aside>
         <div className={s.liveLesson}>

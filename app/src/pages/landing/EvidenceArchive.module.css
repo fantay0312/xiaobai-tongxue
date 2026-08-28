@@ -4,10 +4,6 @@
   color: var(--ink);
 }
 .heading {
-  display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(18rem, 0.55fr);
-  align-items: end;
-  gap: var(--gap-loose);
   margin: 0 var(--gap-tight) var(--gap-loose);
 }
 .recordLabel {
@@ -222,11 +218,8 @@
   color: var(--ink);
 }
 .metrics {
-  display: grid;
-  grid-template-columns: minmax(12rem, 0.72fr) minmax(0, 2fr);
-  gap: var(--gap);
   margin-top: var(--gap-loose);
-  padding: var(--gap) var(--gap-tight);
+  padding: var(--gap) 0;
   border-block: 1px solid var(--line-strong);
 }
 .metricsHeading { padding-right: var(--gap); }

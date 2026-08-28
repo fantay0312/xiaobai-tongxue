@@ -22,7 +22,6 @@ export function FinalCallout() {
         <h2 id="final-callout-title" className={styles.title}>
           挑一课，开讲吧
         </h2>
-        <p className={styles.note}>先做摸底题，再把它讲给小白听。</p>
         <Link className={styles.action} to="/study">
           去课程书架
           <Icon name="arrow-right" size={17} />
