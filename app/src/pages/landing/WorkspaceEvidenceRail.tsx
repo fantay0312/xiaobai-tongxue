@@ -16,7 +16,6 @@ function PrepEvidence() {
         <p className={s.largeResult}>
           {DEMO.prepStep} <small>/ {DEMO.prepTotal}</small>
         </p>
-        <p>这是第二波自检；错题相关讲义会默认展开。</p>
       </section>
       <section className={s.evidenceCard}>
         <h3>备课材料</h3>
@@ -42,19 +41,15 @@ function TeachEvidence({ session }: { session: TeachDemoSessionSummary }) {
         <dl className={s.factList}>
           <div>
             <dt>小白</dt>
-            <dd>好奇型 · {DEMO.pupilStage.name} · {DEMO.pupilStage.description}</dd>
+            <dd>好奇型 · {DEMO.pupilStage.name}</dd>
           </div>
-          <div><dt>方式</dt><dd>本地三分支 · 仿真实节奏回应</dd></div>
           <div><dt>轮次</dt><dd>第 {session.turn} 轮 · {outcomeLabel}</dd></div>
-          <div><dt>留档</dt><dd>本页不写入个人学习记录</dd></div>
         </dl>
       </section>
       <section className={`${s.evidenceCard} ${s.blindCard}`}>
         <h3>{session.teacherLine ? '本轮讲解证据' : '你可以直接试讲'}</h3>
-        <strong>{session.teacherLine || '输入 → 小白琢磨 → 分支回应'}</strong>
-        <p>{session.teacherLine
-          ? journey.review.findingEvidence
-          : '自动示范会先走错误分支；也可以接管输入，当场把误区纠正。'}</p>
+        <strong>{session.teacherLine || '输入后，小白会接上'}</strong>
+        {session.teacherLine ? <p>{journey.review.findingEvidence}</p> : null}
       </section>
     </>
   );
@@ -65,8 +60,8 @@ function ExamEvidence({ session }: { session: TeachDemoSessionSummary }) {
   return (
     <>
       <section className={s.evidenceCard}>
-        <h3>考场规则</h3>
-        <p>先生只能观战，不能追加提示。</p>
+        <h3>考场</h3>
+        <p>只能观战，不能提示。</p>
       </section>
       <section className={s.evidenceCard}>
         <h3>{journey.review.resultLabel}</h3>
@@ -157,10 +152,6 @@ function ReteachEvidence({ session }: { session: TeachDemoSessionSummary }) {
         <h3>{journey.branch === 'passed' ? '迁移复述' : open ? '待补完' : '重讲结果'}</h3>
         <p><Icon name={open ? 'circle-help' : 'circle-check'} size={16} />{journey.reteach.result}</p>
       </section>
-      <section className={s.evidenceCard}>
-        <h3>长期记录</h3>
-        <p>讲解报告、出师记录和复习事件会写进成长册。</p>
-      </section>
     </>
   );
 }
@@ -190,9 +181,6 @@ export function WorkspaceEvidenceRail({
   return (
     <aside className={s.evidenceRail} aria-label="当前步骤的信息">
       <RailContent stageId={stageId} teachSession={teachSession} />
-      <blockquote className={s.evidenceNote}>
-        基于 Token 真实课程分支制作；完整书斋会继续记录事件、考试与复盘证据。
-      </blockquote>
     </aside>
   );
 }

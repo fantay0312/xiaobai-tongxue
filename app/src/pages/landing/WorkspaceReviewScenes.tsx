@@ -117,9 +117,6 @@ export function ReviewScene({
           <li key={label}><time>{label}</time><span>{detail}</span></li>
         ))}
       </ol>
-      <p className={s.persistenceNote}>
-        课后长期保留的是这类结构化事件；课堂关闭后，不把整段对话冒充永久录像。
-      </p>
     </section>
   );
 }

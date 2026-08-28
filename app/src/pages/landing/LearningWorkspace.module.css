@@ -58,8 +58,8 @@
   position: relative;
   display: flex;
   flex: 1 0 9.5rem;
-  min-height: 5rem;
-  align-items: flex-start;
+  min-height: 3.4rem;
+  align-items: center;
   gap: 0.55rem;
   padding: 1rem 0.7rem;
   color: var(--ink-faint);
@@ -272,7 +272,7 @@
   .demoHeader { align-items: flex-start; padding: 0.7rem; }
   .demoHeader > div:first-child { display: grid; gap: 0.25rem; }
   .playbackControls button { padding-inline: 0.5rem; }
-  .stageTab { flex-basis: 8rem; min-height: 4.6rem; padding: 0.8rem 0.55rem; }
+  .stageTab { flex-basis: 8rem; min-height: 3.2rem; padding: 0.7rem 0.55rem; }
   .courseRail,
   .evidenceRail { display: block; }
   .courseTicket,

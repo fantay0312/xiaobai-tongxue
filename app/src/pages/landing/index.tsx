@@ -76,7 +76,7 @@ export default function LandingPage() {
       >
         <header className={styles.sectionHead}>
           <p className={styles.kicker} data-landing-reveal data-reveal-order="0">
-            《Token 与分词》演示课
+            演示课
           </p>
           <h2
             id="full-flow-title"
@@ -84,13 +84,8 @@ export default function LandingPage() {
             data-landing-reveal
             data-reveal-order="1"
           >
-            看一次讲岔，
-            <br />
-            <em>怎样被追回来</em>
+            Token 与分词
           </h2>
-          <p className={styles.sectionNote} data-landing-reveal data-reveal-order="2">
-            这是一次完整的失败分支：老师顺着误区讲错，小白带着错误赴考，再由批注、补学和重讲把它纠正。可暂停或点开任一步细看。
-          </p>
         </header>
         <div className={styles.workspaceReveal} data-landing-reveal data-reveal-order="0">
           <LearningWorkspace />

@@ -30,34 +30,19 @@ export function LandingHero({ onFlowClick }: LandingHeroProps) {
           <br />
           把知识<em>讲明白</em>
         </h1>
-        <p
-          className={`${styles.lede} ${styles.enter}`}
-          style={{ animationDelay: '140ms' }}
-        >
-          选一个知识点，先备课，再讲给小白听。它会接着问，也会把听岔的地方带进考场。
-          哪一步没讲清，课后批注会告诉你。
-        </p>
         <div
           className={`${styles.actions} ${styles.enter}`}
-          style={{ animationDelay: '210ms' }}
+          style={{ animationDelay: '140ms' }}
         >
           <Link className={styles.primary} to="/study">
             去课程书架
             <Icon name="arrow-right" size={17} />
           </Link>
           <a className={styles.secondary} href="#full-flow" onClick={onFlowClick}>
-            看看一堂课怎么走
+            看演示
             <Icon name="chevron-down" size={15} />
           </a>
         </div>
-        <p
-          className={`${styles.proofLine} ${styles.enter}`}
-          style={{ animationDelay: '280ms' }}
-        >
-          <span>按课程内容追问</span>
-          <span>考试时不接收提示</span>
-          <span>关键判断留下原话摘录</span>
-        </p>
       </div>
 
       <div

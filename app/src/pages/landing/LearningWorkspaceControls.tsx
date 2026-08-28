@@ -112,7 +112,7 @@ export function StageTabs(props: StageTabsProps) {
             onKeyDown={(event) => handleKey(event, index)}
           >
             <span className={s.stageNumber}>{stage.step}</span>
-            <span><strong>{stage.title}</strong><small>{stage.summary}</small></span>
+            <strong>{stage.title}</strong>
           </button>
         );
       })}
