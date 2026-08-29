@@ -49,6 +49,11 @@ function repositoryFixture() {
       },
       async findOwned(ownerId, id) { return [...courses.values()].find((course) => course.id === id && course.ownerId === ownerId) ?? null; },
       async findById(id) { return courses.get(id) ?? null; },
+      async findOwnedByKnowledgeBaseIds(ownerId, wkDocKbId, wkFaqKbId) {
+        return [...courses.values()].find((course) => (
+          course.ownerId === ownerId && course.wkDocKbId === wkDocKbId && course.wkFaqKbId === wkFaqKbId
+        )) ?? null;
+      },
     },
     assets: {
       async createUploadIntent(input) {
@@ -91,6 +96,12 @@ function repositoryFixture() {
       async findOwned(ownerId, id) {
         const asset = assets.get(id);
         return asset && courses.get(asset.courseId)?.ownerId === ownerId ? asset : null;
+      },
+      async findOwnedByStorageRefs(ownerId, cosKey, wkKnowledgeId) {
+        return [...assets.values()].find((asset) => (
+          asset.cosKey === cosKey && asset.wkKnowledgeId === wkKnowledgeId
+          && courses.get(asset.courseId)?.ownerId === ownerId
+        )) ?? null;
       },
       async findManyOwned(ownerId, courseId, ids) {
         return this.listOwned(ownerId, courseId).then((rows) => rows.filter((asset) => ids.includes(asset.id)));
@@ -730,4 +741,43 @@ test('asset deletion resumes idempotently from a persisted deleting state', asyn
   await service.deleteAsset(owner, asset.id, 'delete-retry');
   assert.equal(await repository.assets.findOwned(owner.id, asset.id), null);
   assert.equal(cos.objects.size, 0);
+});
+
+test('lost commit acknowledgements recover committed course and asset rows without compensation', async () => {
+  const repository = repositoryFixture();
+  const cos = cosFixture();
+  const deleted = [];
+  const weknora = {
+    async healthCheck() { return true; },
+    async createKnowledgeBase(input) { return { id: input.id }; },
+    async deleteKnowledgeBase(id) { deleted.push(`kb:${id}`); },
+    async uploadFile() { return { id: 'wk-commit-asset', parse_status: 'completed', enable_status: 'enabled' }; },
+    async findKnowledgeByMetadata() { return null; },
+    async deleteKnowledge(id) { deleted.push(`knowledge:${id}`); },
+    isTerminalParseStatus(status) { return status === 'completed'; },
+  };
+  const finalizeCourse = repository.courses.finalizeCreationIntent;
+  repository.courses.finalizeCreationIntent = async (...args) => {
+    await finalizeCourse.apply(repository.courses, args);
+    throw new Error('lost-course-commit-ack');
+  };
+  const service = createCustomContentService({
+    repository, weknora, cos, compiler: { async compile() {} }, embeddingModelId: 'embed-1',
+  });
+  const owner = { id: IDS[17], name: 'Owner' };
+  const course = await service.createCourse(owner, '提交回执恢复');
+  assert.equal(course.title, '提交回执恢复');
+  assert.deepEqual(deleted, [], '课程已提交时不得补偿删除其 KB');
+
+  const finalizeAsset = repository.assets.finalizeUploadIntent;
+  repository.assets.finalizeUploadIntent = async (...args) => {
+    await finalizeAsset.apply(repository.assets, args);
+    throw new Error('lost-asset-commit-ack');
+  };
+  const asset = await service.uploadAsset(owner, course.id, {
+    bytes: Buffer.from('%PDF-1.7\ncommit\n%%EOF'), filename: 'commit.pdf', assetRole: 'lecture', requestId: 'commit-asset',
+  });
+  assert.equal(asset.wkKnowledgeId, 'wk-commit-asset');
+  assert.deepEqual(deleted, [], '资产已提交时不得补偿删除 WeKnora 副本');
+  assert.equal(cos.objects.size, 1, '资产已提交时不得补偿删除 COS 原件');
 });

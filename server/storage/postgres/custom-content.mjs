@@ -217,6 +217,18 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       const result = await queryable.query('SELECT * FROM custom_courses WHERE id = $1', [courseId]);
       return courseRow(result.rows[0]);
     },
+
+    async findOwnedByKnowledgeBaseIds(ownerId, wkDocKbId, wkFaqKbId) {
+      assertUuid(ownerId);
+      assertUuid(wkDocKbId);
+      assertUuid(wkFaqKbId);
+      const result = await queryable.query(
+        `SELECT * FROM custom_courses
+          WHERE owner_id = $1 AND wk_doc_kb_id = $2 AND wk_faq_kb_id = $3`,
+        [ownerId, wkDocKbId, wkFaqKbId],
+      );
+      return courseRow(result.rows[0]);
+    },
   });
 
   const assets = Object.freeze({
@@ -344,6 +356,18 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
            JOIN custom_courses c ON c.id = a.course_id
           WHERE a.id = $1 AND c.owner_id = $2`,
         [assetId, ownerId],
+      );
+      return assetRow(result.rows[0]);
+    },
+
+    async findOwnedByStorageRefs(ownerId, cosKey, wkKnowledgeId) {
+      assertUuid(ownerId);
+      const result = await queryable.query(
+        `SELECT a.*
+           FROM custom_assets a
+           JOIN custom_courses c ON c.id = a.course_id
+          WHERE c.owner_id = $1 AND a.cos_key = $2 AND a.wk_knowledge_id = $3`,
+        [ownerId, cosKey, wkKnowledgeId],
       );
       return assetRow(result.rows[0]);
     },

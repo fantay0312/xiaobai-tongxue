@@ -680,6 +680,12 @@ export function createCustomContentService({
         if (!course) throw new Error('course-create-intent-missing');
         return publicCourse(course);
       } catch (error) {
+        const committed = await repository.courses.findOwnedByKnowledgeBaseIds(
+          owner.id,
+          docId,
+          faqId,
+        ).catch(() => null);
+        if (committed) return publicCourse(committed);
         await Promise.all([
           compensateKnowledgeBase(docId, requestId, { repeat: true }),
           compensateKnowledgeBase(faqId, requestId, { repeat: true }),
@@ -811,6 +817,12 @@ export function createCustomContentService({
         if (!asset) throw new Error('upload-intent-finalize-failed');
         return publicAsset(asset);
       } catch (error) {
+        const committed = await repository.assets.findOwnedByStorageRefs(
+          owner.id,
+          stored.key,
+          uploaded.id,
+        ).catch(() => null);
+        if (committed) return publicAsset(committed);
         const cleanup = await Promise.allSettled([
           weknora.deleteKnowledge(uploaded.id, requestId),
           cos.delete({ userId: owner.id, key: stored.key }),
