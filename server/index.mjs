@@ -2012,7 +2012,15 @@ function handleMe(req, res) {
 }
 
 /** LLM 代理:模型/密钥/端点全部服务器侧决定,客户端只能传对话内容与少量参数 */
-const ROLE_MAX_TOKENS = { xiaobai: 400, evaluator: 700, report: 900, coach: 700 };
+/**
+ * coach 走 upstreamModelCoach(推理模型),思考 token 与正文共用 max_tokens。
+ * 实测:助教 system(~1.3k 字)+ 满载折叠历史下,思考单次可吃满 700 → 正文被截成空串
+ * → 网关回 502 → 前端静默降级「离线锦囊」(线上「助教离线」就是这么来的)。
+ * 2200 给思考留够余量;正文本身 3~6 句,300 token 足矣。
+ */
+const ROLE_MAX_TOKENS = { xiaobai: 400, evaluator: 700, report: 900, coach: 2200 };
+/** 推理模型的思考预算:不设则思考会自行膨胀(实测 479→86 token,首字延迟 13s→6s) */
+const COACH_REASONING_EFFORT = 'low';
 const UPSTREAM_TIMEOUT = 45_000;
 
 async function handleChat(req, res) {
@@ -2066,27 +2074,52 @@ async function handleChat(req, res) {
 
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), UPSTREAM_TIMEOUT);
-  try {
+  /** 发一次上游;返回 {ok,status,content,finish} —— content 为空串也算「答上来但没正文」 */
+  const callUpstream = async (model, withReasoningCap) => {
     const upstream = await fetch(`${UPSTREAM}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
       body: JSON.stringify({
-        model: role === 'coach' ? MODEL_COACH : MODEL,
+        model,
         temperature,
         max_tokens: ROLE_MAX_TOKENS[role],
+        ...(withReasoningCap ? { reasoning_effort: COACH_REASONING_EFFORT } : {}),
         ...(wantJson ? { response_format: { type: 'json_object' } } : {}),
         messages: clean,
       }),
       signal: ctrl.signal,
     });
-    if (!upstream.ok) {
-      console.error(`[chat] upstream ${upstream.status}`);
-      return send(res, 502, { error: 'upstream', status: upstream.status });
-    }
+    if (!upstream.ok) return { ok: false, status: upstream.status };
     const data = await upstream.json();
-    const content = data?.choices?.[0]?.message?.content;
-    if (typeof content !== 'string' || !content) return send(res, 502, { error: 'upstream-empty' });
-    send(res, 200, { content });
+    const choice = data?.choices?.[0];
+    const text = choice?.message?.content;
+    return {
+      ok: true,
+      content: typeof text === 'string' ? text : '',
+      finish: choice?.finish_reason,
+    };
+  };
+
+  try {
+    const coachModel = role === 'coach' ? MODEL_COACH : MODEL;
+    const useReasoningCap = role === 'coach' && MODEL_COACH !== MODEL;
+    let r = await callUpstream(coachModel, useReasoningCap);
+    // 推理模型偶发空正文(思考吃满额度 finish=length,或径直 finish=stop 却不吐字)。
+    // 助教是备课页唯一的答疑入口,空正文会让前端整段降级成「离线锦囊」——
+    // 这里用非推理主模型补一刀(实测 ~2.5s),把「助教离线」压回真正的上游故障。
+    if (r.ok && !r.content && useReasoningCap) {
+      console.error(`[chat] coach empty (finish=${r.finish}), retry with ${MODEL}`);
+      r = await callUpstream(MODEL, false);
+    }
+    if (!r.ok) {
+      console.error(`[chat] upstream ${r.status}`);
+      return send(res, 502, { error: 'upstream', status: r.status });
+    }
+    if (!r.content) {
+      console.error(`[chat] upstream-empty role=${role} finish=${r.finish}`);
+      return send(res, 502, { error: 'upstream-empty' });
+    }
+    send(res, 200, { content: r.content });
   } catch (e) {
     console.error('[chat] error:', e?.name === 'AbortError' ? 'timeout' : e?.message);
     send(res, 504, { error: 'upstream-timeout' });
