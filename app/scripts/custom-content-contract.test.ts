@@ -7,6 +7,8 @@ import {
   runtimeTopic,
 } from '../src/data/runtimeTopics';
 import { getTopic, TOPICS } from '../src/data';
+import { mergeEval, type EvaluateInput } from '../src/engine/evaluator';
+import type { EvalResult, TopicState } from '../src/types';
 
 const raw = {
   topicId: 'custom-12345678-abcdef12',
@@ -73,14 +75,55 @@ assert.deepEqual(teacherTopic.misconceptions[0].correctionCriteria, ['完整纠�
 assert.equal(runtimeTopic(teacherTopic.topicId), undefined, '教师稿不得自动进入全局学生运行时表');
 assert.equal(hydrateTeacherRuntimeTopic(raw), null, '脱敏学生稿不能冒充教师备课稿');
 
+const customState: TopicState = {
+  topicId: hydrated.topicId,
+  knowledgeState: '没懂',
+  level: 'L1',
+  hitChecklist: [],
+  mcStates: {},
+  accuracyFlags: [],
+  stuckStreak: 0,
+  rescueLevel: 0,
+  prepDone: false,
+  lastVerified: null,
+  reviewDue: null,
+  forgotten: false,
+  mastery: 0,
+};
+const customInput: EvaluateInput = {
+  utterance: '我提到了要点1，但结论其实讲反了',
+  lastXiaobaiText: null,
+  topic: hydrated,
+  state: customState,
+  pendingMcId: null,
+  settings: { mode: 'proxy', baseUrl: '', apiKey: '', model: '', temperature: 0 },
+};
+const ruleFalsePositive: EvalResult = {
+  checklistHits: ['c1'], accuracyFlags: [], mcEvent: null,
+  stuckSignal: false, offTopic: false, answeredTangent: false,
+  goldenAnalogy: null, reasoning: '关键词命中',
+};
+const semanticVeto = mergeEval(ruleFalsePositive, {
+  checklistHits: [],
+  accuracyFlags: [{ checklistId: 'c1', note: '结论与完整 rubric 相悖' }],
+}, customInput);
+assert.deepEqual(semanticVeto.checklistHits, [], '自定义课服务端 rubric 应否决关键词假阳性');
+assert.equal(semanticVeto.accuracyFlags[0]?.checklistId, 'c1');
+
 const appSource = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8');
 const pageSource = await readFile(new URL('../src/pages/custom-content/index.tsx', import.meta.url), 'utf8');
 const apiSource = await readFile(new URL('../src/lib/customContent.ts', import.meta.url), 'utf8');
+const evaluatorSource = await readFile(new URL('../src/engine/evaluator.ts', import.meta.url), 'utf8');
+const storeSource = await readFile(new URL('../src/store/appStore.ts', import.meta.url), 'utf8');
 assert.match(appSource, /path="\/custom-content"/);
 assert.match(pageSource, /自选讲义/);
 assert.match(pageSource, /getCourseCompileJob/);
 assert.match(pageSource, /考小白的随堂题/);
+assert.match(pageSource, /重编题号/);
 assert.match(pageSource, /查找课件出处/);
+assert.match(evaluatorSource, /evaluateCustomTopicSemantic/);
+assert.match(evaluatorSource, /startsWith\('custom-'\)\s*\? await evaluateCustomTopicSemantic/);
+assert.match(storeSource, /learningLevel:\s*deriveEvolution\(state\.events, getAllTopics\(\)\)\.stage/);
 assert.doesNotMatch(apiSource, /X-API-Key|WK_API_KEY|WeKnora.*key/i, '浏览器 API 层不得持有 WeKnora 凭据');
 
-console.log('custom content contract: 24 assertions passed');
+console.log('custom content contract: 30 assertions passed');

@@ -54,22 +54,24 @@ function repositoryFixture() {
         return row;
       },
       async remove(id) { return assets.delete(id); },
+      async claimDelete(ownerId, id) {
+        const asset = await this.findOwned(ownerId, id);
+        if (!asset || await this.isReferenced(id)) return null;
+        const row = { ...asset, parseStatus: 'deleting', enableStatus: 'disabled', errorMessage: null };
+        assets.set(id, row);
+        return row;
+      },
       async isReferenced(id) {
-        return [...topics.values()].some((topic) => (
+        return [...jobs.values()].some((job) => (
+          (job.status === 'queued' || job.status === 'running' || job.status === 'needs_review')
+          && job.assetIds.includes(id)
+        )) || [...topics.values()].some((topic) => (
           (topic.status === 'draft' || topic.status === 'ready')
           && (topic.payload?.sources ?? []).some((source) => source.assetId === id)
         ));
       },
     },
     topics: {
-      async createDraft(input) {
-        const row = {
-          id: nextId(), ...input, status: 'draft', publishedAt: null,
-          createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-        };
-        topics.set(row.id, row);
-        return row;
-      },
       async findOwned(ownerId, id) {
         const topic = topics.get(id);
         return topic && courses.get(topic.courseId)?.ownerId === ownerId ? topic : null;
@@ -98,9 +100,34 @@ function repositoryFixture() {
     },
     jobs: {
       async create(input) {
+        const ready = input.assetIds.every((id) => assets.get(id)?.courseId === input.courseId && assets.get(id)?.parseStatus === 'completed');
+        if (!ready) return null;
         const row = { id: nextId(), ...input, topicId: null, status: 'queued', errorCode: null, createdAt: new Date().toISOString() };
         jobs.set(row.id, row);
         return row;
+      },
+      async createDraftAndAttach(input) {
+        let topic = [...topics.values()].find((candidate) => candidate.topicId === input.topicId);
+        if (!topic) {
+          topic = {
+            id: nextId(),
+            topicId: input.topicId,
+            courseId: input.courseId,
+            payload: input.payload,
+            qualityIssues: input.qualityIssues,
+            promptVersion: input.promptVersion,
+            status: 'draft',
+            publishedAt: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          topics.set(topic.id, topic);
+        }
+        const job = jobs.get(input.jobId);
+        if (!job || (job.status !== 'queued' && job.status !== 'running')) return null;
+        const attached = { ...job, status: 'needs_review', topicId: topic.id, errorCode: null };
+        jobs.set(job.id, attached);
+        return { topic, job: attached };
       },
       async findOwned(ownerId, id) {
         const job = jobs.get(id);
@@ -114,7 +141,9 @@ function repositoryFixture() {
           && (job.status === 'queued' || job.status === 'running' || job.status === 'needs_review')
         )) ?? null;
       },
-      async update(id, patch) {
+      async transitionActive(id, patch) {
+        const current = jobs.get(id);
+        if (!current || (current.status !== 'queued' && current.status !== 'running')) return null;
         const row = { ...jobs.get(id), ...patch };
         jobs.set(id, row);
         return row;
@@ -200,7 +229,7 @@ function cosFixture() {
 
 test('custom content service runs create, upload, compile, review, publish and student-view flow', async () => {
   const repository = repositoryFixture();
-  const calls = { faq: null, deleted: [] };
+  const calls = { faq: null, deleted: [], evaluation: null };
   let kb = 0;
   let knowledge = 0;
   const weknora = {
@@ -230,6 +259,20 @@ test('custom content service runs create, upload, compile, review, publish and s
       });
       return { topic, qualityIssues: [], chunkCount: 1 };
     },
+    async evaluateSemantic(input) {
+      calls.evaluation = input;
+      return {
+        checklistHits: [{ id: 'c1', quote: '要点1原理' }],
+        mcJudgement: null,
+        accuracyFlags: [],
+        stuckSignal: false,
+        offTopic: false,
+        answeredTangent: false,
+        goldenAnalogy: null,
+        reasoning: '符合完整评估依据',
+        forbiddenExtra: input.topic.checklist[0].groundTruth,
+      };
+    },
   };
   const cos = cosFixture();
   const ids = IDS.slice(20);
@@ -252,6 +295,12 @@ test('custom content service runs create, upload, compile, review, publish and s
   assert.equal(cos.objects.size, 1, '用户原文件应先落 COS');
 
   const queued = await service.startCompile(alice, { courseId: course.id, assetIds: [asset.id], title: '栈与函数调用' });
+  await assert.rejects(
+    service.deleteAsset(alice, asset.id, 'trace-delete-running'),
+    /asset-in-use/,
+    '开放编译任务引用的资料不得从 WeKnora、COS 或数据库删除',
+  );
+  assert.equal(cos.objects.size, 1);
   let job = queued;
   for (let attempt = 0; attempt < 20 && job.status !== 'needs_review'; attempt += 1) {
     await waitTurn();
@@ -274,6 +323,20 @@ test('custom content service runs create, upload, compile, review, publish and s
   const published = await service.publishTopic(alice, saved.id, 'trace-publish');
   assert.equal(published.status, 'ready');
   assert.equal(calls.faq.length, 2);
+
+  const evaluation = await service.evaluateTopic(alice, published.topicId, {
+    utterance: '我来讲要点1原理',
+    lastXiaobaiText: null,
+    hitChecklist: [],
+    pendingMcId: null,
+  }, 'trace-evaluate');
+  assert.equal(calls.evaluation.topic.checklist[0].groundTruth, '课件中的要点1原理');
+  assert.deepEqual(evaluation.checklistHits, [{ id: 'c1', quote: '要点1原理' }]);
+  assert.equal(Object.hasOwn(evaluation, 'forbiddenExtra'), false, '评估响应不得回传完整 rubric 或上游额外字段');
+  await assert.rejects(
+    service.evaluateTopic(bob, published.topicId, { utterance: '越权评估' }),
+    /topic-not-found/,
+  );
 
   const student = await service.listPublishedTopics(alice);
   assert.equal(student.length, 1);

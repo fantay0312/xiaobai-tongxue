@@ -185,10 +185,11 @@ node index.mjs
 
 - `GET/POST /api/xb/courses`：列出或创建当前账号的自选课程；创建时在 sidecar 建独立 document/FAQ 双库。
 - `GET/POST /api/xb/courses/:id/assets`：列出资料或 multipart 上传；单账号一次一份、全站最多两份并发。
-- `GET/DELETE /api/xb/assets/:id`、`POST /api/xb/assets/:id/reparse`：查状态、删除与重新解析。
+- `GET/DELETE /api/xb/assets/:id`、`POST /api/xb/assets/:id/reparse`：查状态、删除与重新解析；开放编译任务或草稿引用的资料由 PostgreSQL 行锁阻止删除。
 - `POST /api/xb/topics/compile`、`GET /api/xb/compile-jobs/:id`：从已完成资料异步编译课题。
 - `GET /api/xb/courses/:id/compile-job`：刷新或重新进入页面时找回该课程唯一的编译中/待校订任务，避免草稿失联。
 - `POST /api/xb/topics/:id/source-candidates`：只在该草稿原始资料范围内返回最多 5 个出处候选，不接受客户端传 knowledge ID。
+- `POST /api/xb/topics/:topicId/evaluate`：完整 `groundTruth` 与纠正标准只在 BFF 内参与自定义课语义评估，浏览器只收到脱敏判定。
 - `PUT /api/xb/topics/:id/draft`、`POST /api/xb/topics/:id/publish`：校订、重新核验出处并发布；发布课题与完成任务在 PostgreSQL 内原子提交。
 - `GET /api/xb/topics` 与 `GET /api/xb/topics/:topicId`：只返回学生视图，剥离 `groundTruth`、`correctionCriteria`、`probe.explanation`、源分块正文与 WeKnora 绑定。
 - `GET /api/xb/topics/:topicId/teacher`：仅课程所有者在备课页按需读取完整稿；前端只放页面局部内存，不注册进学生运行时课题表。

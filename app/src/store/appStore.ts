@@ -211,7 +211,14 @@ export const useAppStore = create<AppState>()(
           if (sequence !== customTopicsLoadSequence) return;
           const topics = raw.map(hydrateRuntimeTopic).filter((topic): topic is Topic => topic !== null);
           registerRuntimeTopics(topics);
-          set({ customTopics: topics, customTopicsStatus: 'ready' });
+          set((state) => ({
+            customTopics: topics,
+            customTopicsStatus: 'ready',
+            global: {
+              ...state.global,
+              learningLevel: deriveEvolution(state.events, getAllTopics()).stage,
+            },
+          }));
           get().rebuildStates();
         } catch {
           if (sequence !== customTopicsLoadSequence) return;
@@ -222,7 +229,14 @@ export const useAppStore = create<AppState>()(
       clearCustomTopics: () => {
         customTopicsLoadSequence += 1;
         registerRuntimeTopics([]);
-        set({ customTopics: [], customTopicsStatus: 'idle' });
+        set((state) => ({
+          customTopics: [],
+          customTopicsStatus: 'idle',
+          global: {
+            ...state.global,
+            learningLevel: deriveEvolution(state.events, getAllTopics()).stage,
+          },
+        }));
         get().rebuildStates();
       },
 

@@ -38,6 +38,12 @@ function cleanText(value, maximum) {
     : '';
 }
 
+function cleanMultiline(value, maximum) {
+  return typeof value === 'string'
+    ? value.normalize('NFKC').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim().slice(0, maximum)
+    : '';
+}
+
 function cleanFilename(value) {
   const normalized = String(value ?? '').normalize('NFKC').replaceAll('\\', '/').replace(/[\u0000-\u001f\u007f]/g, '');
   if (!normalized || normalized.startsWith('/') || normalized.length > 260) throw publicError('filename-invalid');
@@ -200,6 +206,37 @@ function faqEntry(mc) {
     answers: [mc.correctionCriteria.join('；')],
     is_enabled: true,
     is_recommended: false,
+  };
+}
+
+function publicSemanticEvaluation(value, topic) {
+  const checklistIds = new Set(topic.checklist.map((item) => item.id));
+  const checklistHits = (Array.isArray(value?.checklistHits) ? value.checklistHits : [])
+    .map((item) => ({
+      id: cleanText(item?.id, 40),
+      quote: cleanMultiline(item?.quote, 200),
+    }))
+    .filter((item) => checklistIds.has(item.id) && item.quote)
+    .slice(0, 7);
+  const accuracyFlags = (Array.isArray(value?.accuracyFlags) ? value.accuracyFlags : [])
+    .map((item) => ({
+      checklistId: cleanText(item?.checklistId, 40),
+      note: cleanMultiline(item?.note, 240),
+    }))
+    .filter((item) => checklistIds.has(item.checklistId) && item.note)
+    .slice(0, 3);
+  const judgement = value?.mcJudgement;
+  return {
+    checklistHits,
+    mcJudgement: judgement === 'corrected' || judgement === 'adopted' || judgement === 'pending'
+      ? judgement
+      : null,
+    accuracyFlags,
+    stuckSignal: value?.stuckSignal === true,
+    offTopic: value?.offTopic === true,
+    answeredTangent: value?.answeredTangent === true,
+    goldenAnalogy: cleanMultiline(value?.goldenAnalogy, 1_000) || null,
+    reasoning: cleanMultiline(value?.reasoning, 500),
   };
 }
 
@@ -371,7 +408,8 @@ export function createCustomContentService({
     const task = (async () => {
       const job = await repository.jobs.findById(jobId);
       if (!job || (job.status !== 'queued' && job.status !== 'running')) return;
-      await repository.jobs.update(job.id, { status: 'running' });
+      const running = await repository.jobs.transitionActive(job.id, { status: 'running' });
+      if (!running) return;
       try {
         const course = await repository.courses.findById(job.courseId);
         if (!course) throw new Error('course-not-found');
@@ -387,17 +425,18 @@ export function createCustomContentService({
           requestedTitle: job.requestedTitle,
           requestId: `xb-compile-${job.id}`,
         });
-        const topic = await repository.topics.createDraft({
+        const attached = await repository.jobs.createDraftAndAttach({
+          jobId: job.id,
           topicId,
           courseId: course.id,
           payload: result.topic,
           qualityIssues: result.qualityIssues,
           promptVersion: TOPIC_PROMPT_VERSION,
         });
-        await repository.jobs.update(job.id, { status: 'needs_review', topicId: topic.id });
+        if (!attached) throw new Error('compile-attach-failed');
       } catch (error) {
         logger.error?.('[custom-content] compile failed:', stableCompilerError(error));
-        await repository.jobs.update(job.id, {
+        await repository.jobs.transitionActive(job.id, {
           status: 'failed',
           errorCode: stableCompilerError(error),
         }).catch(() => {});
@@ -605,15 +644,27 @@ export function createCustomContentService({
     async deleteAsset(owner, assetId, requestId) {
       const asset = await repository.assets.findOwned(owner.id, assetId).catch(() => null);
       if (!asset) throw publicError('asset-not-found', 404);
-      if (await repository.assets.isReferenced(asset.id)) throw publicError('asset-in-use', 409);
-      await weknora.deleteKnowledge(asset.wkKnowledgeId, requestId).catch((error) => {
-        if (!String(error?.message).startsWith('weknora-not-found')) {
-          throw publicError('asset-delete-upstream-failed', 502);
-        }
-      });
-      await cos.delete({ userId: owner.id, key: asset.cosKey }).catch(() => {
-        throw publicError('asset-storage-delete-failed', 502);
-      });
+      const claimed = await repository.assets.claimDelete(owner.id, asset.id);
+      if (!claimed) throw publicError('asset-in-use', 409);
+      let knowledgeDeleted = false;
+      try {
+        await weknora.deleteKnowledge(asset.wkKnowledgeId, requestId).catch((error) => {
+          if (!String(error?.message).startsWith('weknora-not-found')) throw error;
+        });
+        knowledgeDeleted = true;
+        await cos.delete({ userId: owner.id, key: asset.cosKey });
+      } catch {
+        await repository.assets.updateStatus(asset.id, knowledgeDeleted ? {
+          parseStatus: 'failed',
+          enableStatus: 'disabled',
+          errorMessage: '资料删除未完成，可再次删除重试',
+        } : {
+          parseStatus: asset.parseStatus,
+          enableStatus: asset.enableStatus,
+          errorMessage: asset.errorMessage,
+        }).catch(() => {});
+        throw publicError(knowledgeDeleted ? 'asset-storage-delete-failed' : 'asset-delete-upstream-failed', 502);
+      }
       await repository.assets.remove(asset.id);
       return { ok: true };
     },
@@ -635,6 +686,7 @@ export function createCustomContentService({
         if (error?.code === '23505') throw publicError('compile-job-active', 409);
         throw error;
       }
+      if (!job) throw publicError('assets-not-ready', 409);
       scheduleJob(job.id);
       return job;
     },
@@ -681,6 +733,34 @@ export function createCustomContentService({
           filename: chunk.filename,
           excerpt: chunk.content.replace(/\s+/g, ' ').slice(0, 800),
         }));
+    },
+
+    async evaluateTopic(owner, topicId, input, requestId) {
+      if (typeof compiler.evaluateSemantic !== 'function') throw publicError('custom-evaluator-unavailable', 503);
+      const record = await repository.topics.findReadyOwnedByTopicId(owner.id, topicId);
+      if (!record) throw publicError('topic-not-found', 404);
+      const utterance = cleanMultiline(input?.utterance, 20_000);
+      const lastXiaobaiText = cleanMultiline(input?.lastXiaobaiText, 4_000) || null;
+      if (!utterance) throw publicError('evaluation-utterance-required');
+      const checklistIds = new Set(record.payload.checklist.map((item) => item.id));
+      const hitChecklist = Array.isArray(input?.hitChecklist)
+        ? [...new Set(input.hitChecklist.map((id) => cleanText(id, 40)).filter((id) => checklistIds.has(id)))].slice(0, 7)
+        : [];
+      const pendingMcId = cleanText(input?.pendingMcId, 100) || null;
+      if (pendingMcId && !record.payload.misconceptions.some((item) => item.mcId === pendingMcId)) {
+        throw publicError('evaluation-misconception-invalid');
+      }
+      const result = await compiler.evaluateSemantic({
+        topic: record.payload,
+        utterance,
+        lastXiaobaiText,
+        hitChecklist,
+        pendingMcId,
+        requestId,
+      }).catch((error) => {
+        throw publicError(stableCompilerError(error), 502);
+      });
+      return publicSemanticEvaluation(result, record.payload);
     },
 
     async updateDraft(owner, id, candidate, requestId) {

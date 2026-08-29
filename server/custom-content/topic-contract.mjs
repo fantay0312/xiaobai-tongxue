@@ -21,13 +21,19 @@ function keywordGroups(value) {
     .slice(0, 8);
 }
 
+function quizOptions(value) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 6).map((item) => text(item, 500));
+}
+
 function cleanId(value, fallback, maximum = 80) {
   const candidate = text(value, maximum).replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
   return candidate || fallback;
 }
 
 function normalizeQuiz(item, index) {
-  const options = stringList(item?.options, 6, 500);
+  // 题目选项保留空槽交给质量闸门；删除空槽会令 answerIndex 静默指向另一项。
+  const options = quizOptions(item?.options);
   return {
     id: cleanId(item?.id, `q${index + 1}`, 60),
     ...(text(item?.code, 4_000) ? { code: text(item.code, 4_000) } : {}),
@@ -155,7 +161,7 @@ function validateQuizItems(items, path, checklistIds, misconceptionIds, issues, 
     const options = Array.isArray(item.options) ? item.options : [];
     if (!item.id || ids.has(item.id)) issues.push(issue('quiz-id', `${itemPath}.id`, '题目编号必须非空且不重复'));
     ids.add(item.id);
-    if (!item.question || options.length < 2) {
+    if (!item.question || options.length < 2 || options.some((option) => !option)) {
       issues.push(issue('quiz-shape', itemPath, '每题须有题干与至少两个选项'));
     }
     if (!Number.isInteger(item.answerIndex) || item.answerIndex < 0 || item.answerIndex >= options.length) {

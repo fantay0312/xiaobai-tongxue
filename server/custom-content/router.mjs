@@ -261,6 +261,21 @@ export function createCustomContentRouter({
         });
       }
 
+      const evaluateTopicMatch = /^\/api\/xb\/topics\/([^/]+)\/evaluate$/.exec(pathname);
+      if (evaluateTopicMatch && req.method === 'POST') {
+        return withOwnerJson(req, res, 'custom-topic-evaluate', async (owner, traceId, body) => {
+          if (!await admit(owner, res, 'semantic-evaluate', 2_000, 86_400, 20_000)) return;
+          return send(res, 200, {
+            evaluation: await service.evaluateTopic(
+              owner,
+              decodeURIComponent(evaluateTopicMatch[1]),
+              body,
+              traceId,
+            ),
+          });
+        });
+      }
+
       const draftMatch = /^\/api\/xb\/topics\/([^/]+)\/draft$/.exec(pathname);
       if (draftMatch && req.method === 'PUT') {
         return withOwnerJson(req, res, 'custom-topic-draft', async (owner, traceId, body) => (

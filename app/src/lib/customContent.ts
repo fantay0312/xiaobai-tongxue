@@ -217,3 +217,22 @@ export async function getTeacherCustomTopic(topicId: string, signal?: AbortSigna
     { signal },
   )).topic;
 }
+
+/** 自定义课的完整 rubric 只在 BFF 内参与评估；浏览器只收回脱敏后的判定结果。 */
+export async function evaluateCustomTopicSemantic(input: {
+  topicId: string;
+  utterance: string;
+  lastXiaobaiText: string | null;
+  hitChecklist: string[];
+  pendingMcId: string | null;
+}): Promise<Record<string, unknown>> {
+  return (await request<{ evaluation: Record<string, unknown> }>(
+    `/topics/${encodeURIComponent(input.topicId)}/evaluate`,
+    json('POST', {
+      utterance: input.utterance,
+      lastXiaobaiText: input.lastXiaobaiText,
+      hitChecklist: input.hitChecklist,
+      pendingMcId: input.pendingMcId,
+    }),
+  )).evaluation;
+}

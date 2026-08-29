@@ -73,6 +73,25 @@ function jobRow(row) {
 export function createCustomContentRepository(queryable, { uuid = randomUUID } = {}) {
   if (!queryable?.query) throw new Error('postgres-queryable-required');
 
+  async function withTransaction(work) {
+    // PoolClient 由外层事务持有并带 release()；Pool 才在此开短事务。
+    if (typeof queryable.connect !== 'function' || typeof queryable.release === 'function') {
+      return work(queryable);
+    }
+    const client = await queryable.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await work(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   const courses = Object.freeze({
     async create({ ownerId, title, wkDocKbId, wkFaqKbId }) {
       const id = uuid();
@@ -221,15 +240,71 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       return result.rowCount > 0;
     },
 
+    async claimDelete(ownerId, id) {
+      assertUuid(ownerId);
+      assertUuid(id);
+      const source = JSON.stringify([{ assetId: id }]);
+      return withTransaction(async (client) => {
+        const locked = await client.query(
+          `SELECT a.*
+             FROM custom_assets a
+             JOIN custom_courses c ON c.id = a.course_id
+            WHERE a.id = $1
+              AND c.owner_id = $2
+              AND a.parse_status <> 'deleting'
+            FOR UPDATE OF a`,
+          [id, ownerId],
+        );
+        if (!locked.rows[0]) return null;
+        const referenced = await client.query(
+          `SELECT (
+             EXISTS (
+               SELECT 1
+                 FROM custom_topics t
+                WHERE t.status IN ('draft', 'ready')
+                  AND COALESCE(t.payload->'sources', '[]'::jsonb) @> $2::jsonb
+             ) OR EXISTS (
+               SELECT 1
+                 FROM custom_compile_jobs j
+                WHERE j.course_id = $3
+                  AND j.status IN ('queued', 'running', 'needs_review')
+                  AND $1 = ANY(j.asset_ids)
+             )
+           ) AS referenced`,
+          [id, source, locked.rows[0].course_id],
+        );
+        if (referenced.rows[0]?.referenced === true) return null;
+        const result = await client.query(
+          `UPDATE custom_assets
+              SET parse_status = 'deleting',
+                  enable_status = 'disabled',
+                  error_message = NULL,
+                  updated_at = NOW()
+            WHERE id = $1
+            RETURNING *`,
+          [id],
+        );
+        return assetRow(result.rows[0]);
+      });
+    },
+
     async isReferenced(id) {
       assertUuid(id);
       const source = JSON.stringify([{ assetId: id }]);
       const result = await queryable.query(
-        `SELECT EXISTS (
-           SELECT 1
-             FROM custom_topics
-            WHERE status IN ('draft', 'ready')
-              AND COALESCE(payload->'sources', '[]'::jsonb) @> $2::jsonb
+        `SELECT (
+           EXISTS (
+             SELECT 1
+               FROM custom_topics
+              WHERE status IN ('draft', 'ready')
+                AND COALESCE(payload->'sources', '[]'::jsonb) @> $2::jsonb
+           ) OR EXISTS (
+             SELECT 1
+               FROM custom_compile_jobs j
+              WHERE j.course_id = custom_assets.course_id
+                AND j.status IN ('queued', 'running', 'needs_review')
+                AND custom_assets.id = ANY(j.asset_ids)
+           )
          ) AS referenced
          FROM custom_assets
          WHERE id = $1`,
@@ -240,20 +315,6 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
   });
 
   const topics = Object.freeze({
-    async createDraft({ topicId, courseId, payload, qualityIssues, promptVersion }) {
-      const id = uuid();
-      assertUuid(id);
-      assertUuid(courseId);
-      const result = await queryable.query(
-        `INSERT INTO custom_topics
-           (id, topic_id, course_id, status, payload, quality_issues, prompt_version)
-         VALUES ($1, $2, $3, 'draft', $4::jsonb, $5::jsonb, $6)
-         RETURNING *`,
-        [id, topicId, courseId, JSON.stringify(payload), JSON.stringify(qualityIssues), promptVersion],
-      );
-      return topicRow(result.rows[0]);
-    },
-
     async findOwned(ownerId, id) {
       assertUuid(ownerId);
       assertUuid(id);
@@ -345,14 +406,72 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       assertUuid(id);
       assertUuid(courseId);
       for (const assetId of assetIds) assertUuid(assetId);
+      return withTransaction(async (client) => {
+        const selected = await client.query(
+          `SELECT id
+             FROM custom_assets
+            WHERE course_id = $1
+              AND id = ANY($2::uuid[])
+              AND parse_status = 'completed'
+            ORDER BY id
+            FOR UPDATE`,
+          [courseId, assetIds],
+        );
+        if (selected.rows.length !== assetIds.length) return null;
+        const result = await client.query(
+          `INSERT INTO custom_compile_jobs
+             (id, course_id, asset_ids, requested_title, status)
+           VALUES ($1, $2, $3::uuid[], $4, 'queued')
+           RETURNING *`,
+          [id, courseId, assetIds, requestedTitle ?? null],
+        );
+        return jobRow(result.rows[0]);
+      });
+    },
+
+    async createDraftAndAttach({
+      jobId,
+      topicId,
+      courseId,
+      payload,
+      qualityIssues,
+      promptVersion,
+    }) {
+      const id = uuid();
+      assertUuid(id);
+      assertUuid(jobId);
+      assertUuid(courseId);
       const result = await queryable.query(
-        `INSERT INTO custom_compile_jobs
-           (id, course_id, asset_ids, requested_title, status)
-         VALUES ($1, $2, $3::uuid[], $4, 'queued')
-         RETURNING *`,
-        [id, courseId, assetIds, requestedTitle ?? null],
+        `WITH attached_topic AS (
+           INSERT INTO custom_topics
+             (id, topic_id, course_id, status, payload, quality_issues, prompt_version)
+           VALUES ($2, $3, $4, 'draft', $5::jsonb, $6::jsonb, $7)
+           ON CONFLICT (topic_id) DO UPDATE
+             SET topic_id = EXCLUDED.topic_id
+             WHERE custom_topics.course_id = EXCLUDED.course_id
+           RETURNING *
+         ), attached_job AS (
+           UPDATE custom_compile_jobs j
+              SET status = 'needs_review',
+                  topic_id = t.id,
+                  error_code = NULL,
+                  updated_at = NOW()
+             FROM attached_topic t
+            WHERE j.id = $1
+              AND j.course_id = $4
+              AND j.status IN ('queued', 'running')
+            RETURNING j.*
+         )
+         SELECT row_to_json(t) AS topic, row_to_json(j) AS job
+           FROM attached_topic t
+           JOIN attached_job j ON j.topic_id = t.id`,
+        [
+          jobId, id, topicId, courseId, JSON.stringify(payload),
+          JSON.stringify(qualityIssues), promptVersion,
+        ],
       );
-      return jobRow(result.rows[0]);
+      const row = result.rows[0];
+      return row ? { topic: topicRow(row.topic), job: jobRow(row.job) } : null;
     },
 
     async findOwned(ownerId, id) {
@@ -395,13 +514,14 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       return jobRow(result.rows[0]);
     },
 
-    async update(id, { status, topicId = null, errorCode = null }) {
+    async transitionActive(id, { status, topicId = null, errorCode = null }) {
       assertUuid(id);
       if (topicId) assertUuid(topicId);
       const result = await queryable.query(
         `UPDATE custom_compile_jobs
             SET status = $2, topic_id = COALESCE($3, topic_id), error_code = $4, updated_at = NOW()
           WHERE id = $1
+            AND status IN ('queued', 'running')
           RETURNING *`,
         [id, status, topicId, errorCode],
       );

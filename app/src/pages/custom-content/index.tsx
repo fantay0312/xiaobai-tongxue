@@ -182,13 +182,20 @@ function QuizEditor({
     ...items,
     nextQuiz(idPrefix, checklist[0]?.id ?? 'c1', items, fixedMcRef ?? null),
   ]);
+  const renumberItems = () => onChange(items.map((item, index) => ({
+    ...item,
+    id: `${idPrefix}-q${index + 1}`,
+  })));
   const maximum = exactCount ?? 8;
   const minimum = exactCount ?? 3;
   return (
     <section className={s.quizGroup}>
       <header>
         <div><span>QUIZ</span><h4>{title}</h4><small>{exactCount ? `须恰好 ${exactCount} 题` : '可编 3–8 题'}；正确答案按选项顺序选择</small></div>
-        <button type="button" onClick={addItem} disabled={items.length >= maximum}>＋ 添一题</button>
+        <div className={s.quizActions}>
+          <button type="button" onClick={renumberItems}>重编题号</button>
+          <button type="button" onClick={addItem} disabled={items.length >= maximum}>＋ 添一题</button>
+        </div>
       </header>
       <div className={s.quizList}>
         {items.map((item, index) => (
@@ -514,15 +521,22 @@ export default function CustomContentPage() {
     if (!activeJobId || (activeJobStatus !== 'queued' && activeJobStatus !== 'running')) return undefined;
     let active = true;
     let timer = 0;
+    let failures = 0;
     const poll = async () => {
       try {
         const next = await getCompileJob(activeJobId);
         if (!active) return;
+        failures = 0;
         setJob(next);
         if (next.topic && next.status === 'needs_review') setDraftRecord(next.topic);
         else if (next.status === 'queued' || next.status === 'running') timer = window.setTimeout(() => void poll(), 2_000);
       } catch (error) {
-        if (active) setNotice(errorHint(error));
+        if (active) {
+          setNotice(errorHint(error));
+          failures += 1;
+          const retryDelay = Math.min(15_000, 1_000 * (2 ** Math.min(failures, 4)));
+          timer = window.setTimeout(() => void poll(), retryDelay);
+        }
       }
     };
     timer = window.setTimeout(() => void poll(), 700);
@@ -705,6 +719,11 @@ export default function CustomContentPage() {
                   <div className={s.assetLedger} aria-live="polite">
                     {assets.map((asset) => {
                       const ready = asset.parseStatus === 'completed';
+                      const lockedByJob = Boolean(
+                        job
+                        && (job.status === 'queued' || job.status === 'running' || job.status === 'needs_review')
+                        && job.assetIds.includes(asset.id),
+                      );
                       return (
                         <article key={asset.id} className={s.assetRow}>
                           <label className={s.assetPick}>
@@ -715,13 +734,13 @@ export default function CustomContentPage() {
                           <div className={s.assetName}><strong>{asset.filename}</strong><small>{ROLE_LABEL[asset.assetRole]} · {fileSize(asset.byteSize)}</small></div>
                           <span className={`${s.assetStatus} ${s[`status_${asset.parseStatus}`]}`}>{STATUS_LABEL[asset.parseStatus]}</span>
                           {asset.parseStatus === 'failed' || asset.parseStatus === 'cancelled' ? <button type="button" onClick={() => void reparseCustomAsset(asset.id).then((next) => { setAssets((current) => current.map((item) => item.id === next.id ? next : item)); setAssetRefreshToken((value) => value + 1); }).catch((error) => setNotice(errorHint(error)))}>重新解析</button> : null}
-                          {deleteArmedId === asset.id ? (
+                          {deleteArmedId === asset.id && !lockedByJob ? (
                             <span className={s.deleteConfirm}>
                               <button type="button" onClick={() => void deleteCustomAsset(asset.id).then(() => { setAssets((current) => current.filter((item) => item.id !== asset.id)); setDeleteArmedId(null); }).catch((error) => { setNotice(errorHint(error)); setDeleteArmedId(null); })}>确认删除</button>
                               <button type="button" onClick={() => setDeleteArmedId(null)}>保留</button>
                             </span>
                           ) : (
-                            <button className={s.iconButton} type="button" aria-label={`准备删除 ${asset.filename}`} onClick={() => setDeleteArmedId(asset.id)}><Icon name="trash" size={15} /></button>
+                            <button className={s.iconButton} type="button" aria-label={`准备删除 ${asset.filename}`} title={lockedByJob ? '这份资料正在被未完成讲稿使用' : undefined} disabled={lockedByJob} onClick={() => setDeleteArmedId(asset.id)}><Icon name="trash" size={15} /></button>
                           )}
                         </article>
                       );

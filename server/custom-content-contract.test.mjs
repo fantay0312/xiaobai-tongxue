@@ -7,6 +7,7 @@ import {
   studentTopicView,
   validateTopicDraft,
 } from './custom-content/topic-contract.mjs';
+import { createTopicCompiler } from './custom-content/topic-compiler.mjs';
 
 function completeDraft() {
   const checklist = Array.from({ length: 3 }, (_, index) => ({
@@ -117,6 +118,46 @@ test('quality gate preserves and reports invalid quiz references and answers', (
   assert.ok(issues.some((item) => item.code === 'quiz-checklist-ref'));
   assert.ok(issues.some((item) => item.code === 'quiz-misconception-ref'));
   assert.ok(issues.some((item) => item.code === 'quiz-count' && item.path.includes('predictionQuiz')));
+});
+
+test('blank quiz options remain positional and cannot silently retarget the answer', () => {
+  const raw = completeDraft();
+  raw.quizBank[0].options = ['甲', '', '丙'];
+  raw.quizBank[0].answerIndex = 2;
+  const topic = normalizeTopicDraft(raw, { topicId: 'custom-blank-option', courseTitle: '我的课程' });
+  assert.deepEqual(topic.quizBank[0].options, ['甲', '', '丙']);
+  assert.equal(topic.quizBank[0].answerIndex, 2);
+  const issues = validateTopicDraft(topic, { sourceCorpus: '要点1 要点2 要点3' });
+  assert.ok(issues.some((item) => item.code === 'quiz-shape' && item.path === 'quizBank.0'));
+});
+
+test('custom semantic evaluation keeps the full rubric inside the server compiler', async () => {
+  const topic = normalizeTopicDraft(completeDraft(), {
+    topicId: 'custom-server-eval', courseTitle: '我的课程', sourceAssets: [],
+  });
+  let captured = null;
+  const compiler = createTopicCompiler({
+    weknora: { async listChunks() { return []; }, async search() { return []; } },
+    llm: {
+      model: 'test-model',
+      async generate(prompt) {
+        captured = prompt;
+        return JSON.stringify({ checklistHits: [], accuracyFlags: [], reasoning: '严格判定' });
+      },
+    },
+  });
+  const result = await compiler.evaluateSemantic({
+    topic,
+    utterance: '老师本轮讲解',
+    lastXiaobaiText: '小白上一句',
+    hitChecklist: [],
+    pendingMcId: topic.misconceptions[0].mcId,
+    requestId: 'eval-test',
+  });
+  assert.equal(result.reasoning, '严格判定');
+  assert.match(captured.user, /课件明确说明要点1的原理/);
+  assert.match(captured.user, /明确否定/);
+  assert.match(captured.system, /不可信原文/);
 });
 
 test('custom content migration anchors COS ownership and active compile uniqueness', async () => {

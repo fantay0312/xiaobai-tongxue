@@ -349,6 +349,7 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .quizGroup > header h4 { font-family: var(--font-serif); font-size: 1.2rem; }
 .quizGroup > header small { color: var(--ink-faint); font-size: var(--fs-tiny); }
 .quizGroup > header button { border: 0; background: transparent; color: var(--azure); font-weight: 700; white-space: nowrap; }
+.quizGroup > header > .quizActions { display: flex; gap: 0.65rem; align-items: center; }
 .quizList { display: grid; }
 .quizCard { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr); gap: 0.55rem; padding: 0.8rem; border-bottom: 1px dashed var(--paper-edge); }
 .quizCard:last-child { border-bottom: 0; }
