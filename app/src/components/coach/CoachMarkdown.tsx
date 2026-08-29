@@ -273,7 +273,7 @@ export function CoachMarkdownMessage({ text, animate, onTick, onDone }: {
   if (!typing) return <CoachMarkdown text={text} />;
   return (
     <span className={s.streaming} aria-hidden="true">
-      {text.slice(0, visibleLength)}<span className={s.caret}>▍</span>
+      {text.slice(0, visibleLength).replace(/\*\*|^#{1,3}\s/gm, '')}<span className={s.caret}>▍</span>
     </span>
   );
 }
