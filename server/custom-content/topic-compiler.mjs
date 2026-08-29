@@ -141,7 +141,7 @@ export function createTopicCompiler({ weknora, llm } = {}) {
   return Object.freeze({
     async compile({ course, assets, topicId, requestedTitle, requestId }) {
       const chunkLists = await Promise.all(assets.map(async (asset) => {
-        const chunks = await weknora.listChunks(asset.wkKnowledgeId, requestId);
+        const chunks = await weknora.listChunks(asset.wkKnowledgeId, requestId, 500);
         return chunks.map((value) => ({
           id: chunkId(value),
           content: chunkContent(value),

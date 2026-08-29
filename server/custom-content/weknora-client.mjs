@@ -218,14 +218,19 @@ export function createWeKnoraClient({
       return json('delete-knowledge', 'DELETE', `/knowledge/${encodeURIComponent(id)}`, undefined, { requestId });
     },
 
-    async listChunks(knowledgeId, requestId) {
+    async listChunks(knowledgeId, requestId, maximum = 1_000) {
+      if (!Number.isInteger(maximum) || maximum < 1 || maximum > 5_000) {
+        throw new Error('weknora-chunk-limit-invalid');
+      }
       const chunks = [];
       const pageSize = 200;
       for (let page = 1; page <= 100; page += 1) {
+        const requested = Math.min(pageSize, maximum - chunks.length);
+        if (requested <= 0) break;
         const data = await json(
           'list-chunks',
           'GET',
-          `/chunks/${encodeURIComponent(knowledgeId)}?page=${page}&page_size=${pageSize}`,
+          `/chunks/${encodeURIComponent(knowledgeId)}?page=${page}&page_size=${requested}`,
           undefined,
           { requestId },
         );
@@ -233,10 +238,11 @@ export function createWeKnoraClient({
         chunks.push(...batch);
         const total = Number(data?.total ?? data?.pagination?.total);
         const hasMore = data?.has_more === true || data?.hasMore === true;
-        if (batch.length < pageSize && !hasMore) break;
+        if (chunks.length >= maximum) break;
+        if (batch.length < requested && !hasMore) break;
         if (Number.isFinite(total) && chunks.length >= total) break;
       }
-      return chunks;
+      return chunks.slice(0, maximum);
     },
 
     async search({ kbId, query, knowledgeIds, requestId }) {

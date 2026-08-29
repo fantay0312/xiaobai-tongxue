@@ -282,7 +282,9 @@ export function createCustomContentService({
       filename: asset.filename,
       assetRole: asset.assetRole,
     }));
-    const chunkLists = await Promise.all(assets.map((asset) => weknora.listChunks(asset.wkKnowledgeId, requestId)));
+    const chunkLists = await Promise.all(
+      assets.map((asset) => weknora.listChunks(asset.wkKnowledgeId, requestId, 500)),
+    );
     const chunks = chunkLists.flat().map((value) => ({ id: chunkId(value), content: chunkContent(value) }))
       .filter((chunk) => chunk.id && chunk.content);
     const chunkMap = new Map(chunks.map((chunk) => [chunk.id, chunk.content]));

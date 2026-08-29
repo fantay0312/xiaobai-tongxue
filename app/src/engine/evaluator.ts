@@ -301,7 +301,14 @@ function buildEvalPrompt(input: EvaluateInput): LlmPayload {
     已讲清的要点: state.hitChecklist.map(
       (id) => topic.checklist.find((c) => c.id === id)?.point ?? id,
     ),
-    当前误区: mc ? { 错误认知: mc.belief, 纠正标准: mc.correctionCriteria } : null,
+    当前误区: mc ? {
+      错误认知: mc.belief,
+      // 自定义课的学生视图会物理剥离 correctionCriteria；此时用已下发的规则命中词
+      // 作为语义评估兜底，不向浏览器恢复完整教师标准。
+      纠正标准: mc.correctionCriteria.length > 0
+        ? mc.correctionCriteria
+        : mc.correctionKeywords.map((group) => group.join('、')),
+    } : null,
   });
   return { system, user, json: true };
 }
