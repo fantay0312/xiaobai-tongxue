@@ -2791,6 +2791,7 @@ const customContentRouter = customContentService
     readRaw,
     hasJsonContentType,
     rateLimit: (input) => productionStorage.redisOtp.rateLimit(input),
+    rateLimitMany: (inputs) => productionStorage.redisOtp.rateLimitMany(inputs),
   })
   : null;
 const staticHandler = createStaticHandler({

@@ -125,6 +125,7 @@ export function createCustomContentRouter({
   readRaw,
   hasJsonContentType,
   rateLimit = null,
+  rateLimitMany = null,
   logger = console,
 } = {}) {
   if (!service || !resolveOwner || !send || !readJson || !readRaw) {
@@ -134,24 +135,30 @@ export function createCustomContentRouter({
   const uploadOwners = new Set();
 
   async function admit(owner, res, scope, limit, windowSeconds, globalLimit = null) {
-    if (!rateLimit) return true;
+    if (!rateLimit && !rateLimitMany) return true;
     try {
       const checks = [
-        [owner.id, limit],
-        ...(globalLimit ? [['global', globalLimit]] : []),
-      ];
-      for (const [subject, maximum] of checks) {
-        const decision = await rateLimit({
-          scope: `custom-content-${scope}${subject === 'global' ? '-global' : ''}`,
-          subject,
-          limit: maximum,
+        {
+          scope: `custom-content-${scope}`,
+          subject: owner.id,
+          limit,
           windowSeconds,
-        });
-        if (!decision.allowed) {
-          const retryAfter = Math.max(1, decision.retryAfterSeconds || 1);
-          send(res, 429, { error: 'rate-limited', retryAfter }, { 'Retry-After': String(retryAfter) });
-          return false;
-        }
+        },
+        ...(globalLimit ? [{
+          scope: `custom-content-${scope}-global`,
+          subject: 'global',
+          limit: globalLimit,
+          windowSeconds,
+        }] : []),
+      ];
+      const decision = checks.length > 1
+        ? await rateLimitMany?.(checks)
+        : await rateLimit?.(checks[0]);
+      if (!decision) throw new Error('atomic-rate-limit-required');
+      if (!decision.allowed) {
+        const retryAfter = Math.max(1, decision.retryAfterSeconds || 1);
+        send(res, 429, { error: 'rate-limited', retryAfter }, { 'Retry-After': String(retryAfter) });
+        return false;
       }
       return true;
     } catch {

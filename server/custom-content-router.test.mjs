@@ -105,3 +105,30 @@ test('custom JSON endpoints reject parsed primitives with a bounded 400', async 
   assert.equal(compiled, false);
   assert.deepEqual(responses, [{ status: 400, body: { error: 'json-object-required' } }]);
 });
+
+test('custom owner and global quotas use one atomic reservation', async () => {
+  const responses = [];
+  let reservations = null;
+  const router = createCustomContentRouter({
+    service: {
+      maxFileBytes: 80 * 1024 * 1024,
+      async createCourse() { return { id: 'course-id', title: '原子配额' }; },
+    },
+    async resolveOwner() { return { id: 'owner-id', name: 'Owner' }; },
+    send(_res, status, body) { responses.push({ status, body }); },
+    async readJson() { return { title: '原子配额' }; },
+    async readRaw() { return Buffer.alloc(0); },
+    async rateLimit() { throw new Error('sequential-rate-limit-must-not-run'); },
+    async rateLimitMany(inputs) {
+      reservations = inputs;
+      return { allowed: true, retryAfterSeconds: 0 };
+    },
+  });
+  await router.handle({ method: 'POST', headers: {}, resume() {} }, { headersSent: false }, '/api/xb/courses');
+  assert.equal(reservations.length, 2);
+  assert.deepEqual(reservations.map((item) => item.subject), ['owner-id', 'global']);
+  assert.deepEqual(responses, [{
+    status: 201,
+    body: { course: { id: 'course-id', title: '原子配额' } },
+  }]);
+});

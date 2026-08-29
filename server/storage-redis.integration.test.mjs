@@ -111,6 +111,62 @@ test('Redis Lua scripts consume once, expire attempts, and preserve TradingVane 
     });
     assert.deepEqual([first.allowed, second.allowed, third.allowed], [true, true, false]);
 
+    const firstPair = await store.rateLimitMany([
+      { scope: 'custom-owner', subject: 'owner-a', limit: 1, windowSeconds: 60 },
+      { scope: 'custom-global', subject: 'global-a', limit: 1, windowSeconds: 60 },
+    ]);
+    const deniedPair = await store.rateLimitMany([
+      { scope: 'custom-owner', subject: 'owner-b', limit: 1, windowSeconds: 60 },
+      { scope: 'custom-global', subject: 'global-a', limit: 1, windowSeconds: 60 },
+    ]);
+    const ownerWasNotDebited = await store.rateLimitMany([
+      { scope: 'custom-owner', subject: 'owner-b', limit: 1, windowSeconds: 60 },
+      { scope: 'custom-global', subject: 'global-b', limit: 1, windowSeconds: 60 },
+    ]);
+    assert.equal(firstPair.allowed, true);
+    assert.equal(deniedPair.allowed, false);
+    assert.equal(ownerWasNotDebited.allowed, true);
+
+    await store.rateLimit({
+      scope: 'custom-corrupt-global', subject: 'global', limit: 5, windowSeconds: 60,
+    });
+    const [corruptGlobalKey] = await client.keys('xiaobai:otp:rate:custom-corrupt-global:*');
+    assert.ok(corruptGlobalKey);
+    await client.set(corruptGlobalKey, 'not-an-integer');
+    await assert.rejects(
+      store.rateLimitMany([
+        { scope: 'custom-corrupt-owner', subject: 'owner', limit: 5, windowSeconds: 60 },
+        { scope: 'custom-corrupt-global', subject: 'global', limit: 5, windowSeconds: 60 },
+      ]),
+      /redis-bad-response/,
+    );
+    assert.deepEqual(await client.keys('xiaobai:otp:rate:custom-corrupt-owner:*'), []);
+
+    await store.rateLimit({
+      scope: 'custom-no-ttl', subject: 'owner', limit: 5, windowSeconds: 60,
+    });
+    const [legacyNoTtlKey] = await client.keys('xiaobai:otp:rate:custom-no-ttl:*');
+    await client.persist(legacyNoTtlKey);
+    const repairedTtl = await store.rateLimitMany([
+      { scope: 'custom-no-ttl', subject: 'owner', limit: 5, windowSeconds: 60 },
+    ]);
+    assert.equal(repairedTtl.allowed, true);
+    assert.ok(await client.ttl(legacyNoTtlKey) > 0);
+
+    await store.rateLimit({
+      scope: 'custom-precise-ttl', subject: 'owner', limit: 5, windowSeconds: 60,
+    });
+    const [preciseTtlKey] = await client.keys('xiaobai:otp:rate:custom-precise-ttl:*');
+    await client.pExpire(preciseTtlKey, 400);
+    const beforePreciseReservation = await client.pTTL(preciseTtlKey);
+    const preciseReservation = await store.rateLimitMany([
+      { scope: 'custom-precise-ttl', subject: 'owner', limit: 5, windowSeconds: 60 },
+    ]);
+    const afterPreciseReservation = await client.pTTL(preciseTtlKey);
+    assert.equal(preciseReservation.allowed, true);
+    assert.ok(afterPreciseReservation > 0);
+    assert.ok(afterPreciseReservation <= beforePreciseReservation + 25);
+
     const quotaInput = {
       userId: '11111111-1111-4111-8111-111111111111',
       providerMessageId: 'provider-message-1',

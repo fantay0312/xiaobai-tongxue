@@ -225,7 +225,9 @@ test('custom maintenance starts after listen and shares the COS upload ceiling',
   const serviceSource = await readFile(new URL('./custom-content/service.mjs', import.meta.url), 'utf8');
   const routerSource = await readFile(new URL('./custom-content/router.mjs', import.meta.url), 'utf8');
   const weknoraSource = await readFile(new URL('./custom-content/weknora-client.mjs', import.meta.url), 'utf8');
+  const fileValidatorSource = await readFile(new URL('./custom-content/file-validator.mjs', import.meta.url), 'utf8');
   const repositorySource = await readFile(new URL('./storage/postgres/custom-content.mjs', import.meta.url), 'utf8');
+  const redisSource = await readFile(new URL('./storage/redis-otp-store.mjs', import.meta.url), 'utf8');
   const cosSource = await readFile(new URL('./storage/cos-store.mjs', import.meta.url), 'utf8');
   const configuredBlock = indexSource.slice(
     indexSource.indexOf('if (WK_CONFIGURED)'),
@@ -260,7 +262,16 @@ test('custom maintenance starts after listen and shares the COS upload ceiling',
   assert.match(serviceSource, /if \(overrideMatches\.length > 0\)/);
   assert.match(serviceSource, /names\.has\(canonicalName\)/);
   assert.match(serviceSource, /asciiFold\(packagePartName\(mapping\.partName\)\)/);
+  assert.match(fileValidatorSource, /new Worker\(WORKER_URL/);
+  assert.match(serviceSource, /await validateUploadedFile\(\{/);
   assert.match(repositorySource, /WHERE id = \$1 AND parse_status = 'deleting'/);
   assert.match(repositorySource, /claimStaleDeletingAssets/);
   assert.match(serviceSource, /asset-delete-finalize-failed/);
+  assert.match(redisSource, /RATE_LIMIT_MANY_SCRIPT/);
+  assert.match(redisSource, /redis\.call\('MSET', unpack\(updates\)\)/);
+  assert.match(redisSource, /redis\.call\('PTTL', KEYS\[i\]\)/);
+  assert.match(redisSource, /redis\.call\('PEXPIRE', KEYS\[i\], expiry\)/);
+  assert.match(redisSource, /duplicate-rate-limit-reservation/);
+  assert.match(routerSource, /rateLimitMany\?\.\(checks\)/);
+  assert.match(indexSource, /redisOtp\.rateLimitMany\(inputs\)/);
 });

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { TextDecoder } from 'node:util';
 import { inflateRawSync } from 'node:zlib';
 import { SaxesParser } from 'saxes';
+import { validateUploadedFile } from './file-validator.mjs';
 import {
   hasBlockingIssues,
   normalizeTopicDraft,
@@ -41,7 +42,7 @@ const CRC32_TABLE = Uint32Array.from({ length: 256 }, (_, value) => {
   return crc >>> 0;
 });
 
-function zipCrc32(bytes) {
+export function zipCrc32(bytes) {
   let crc = 0xffffffff;
   for (let index = 0; index < bytes.length; index += 1) {
     crc = CRC32_TABLE[(crc ^ bytes[index]) & 0xff] ^ (crc >>> 8);
@@ -659,7 +660,7 @@ function validUtf8Text(bytes) {
   }
 }
 
-function validateFile(bytes, filename, maximum) {
+export function validateFileInProcess(bytes, filename, maximum) {
   if (!Buffer.isBuffer(bytes) || bytes.length === 0) throw publicError('file-empty');
   if (bytes.length > maximum) throw publicError('file-too-large', 413);
   const extension = path.extname(filename.split('/').at(-1)).toLowerCase();
@@ -1268,7 +1269,14 @@ export function createCustomContentService({
       const course = await requireCourse(owner.id, courseId);
       const filename = cleanFilename(filenameValue);
       const assetRole = ASSET_ROLES.has(roleValue) ? roleValue : 'lecture';
-      const { contentType } = validateFile(bytes, filename, maxFileBytes);
+      const validated = await validateUploadedFile({
+        bytes,
+        filename,
+        maximum: maxFileBytes,
+        validateInProcess: validateFileInProcess,
+      });
+      bytes = validated.bytes;
+      const { contentType } = validated;
       const sha256 = crypto.createHash('sha256').update(bytes).digest('hex');
       const plannedCosKey = cos.createCustomCourseAssetKey({ userId: owner.id, courseId: course.id });
       const intent = await repository.assets.createUploadIntent({

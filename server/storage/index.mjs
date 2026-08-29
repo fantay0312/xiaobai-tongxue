@@ -16,6 +16,7 @@ export {
   CONSUME_OTP_SCRIPT,
   ISSUE_OTP_SCRIPT,
   RATE_LIMIT_SCRIPT,
+  RATE_LIMIT_MANY_SCRIPT,
   createRedisOtpStore,
   createRedisOtpStoreFromEnv,
   redisClientOptionsFromEnv,

@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setImmediate as waitTurn } from 'node:timers/promises';
-import { crc32, deflateRawSync } from 'node:zlib';
-import { createCustomContentService } from './custom-content/service.mjs';
+import { deflateRawSync } from 'node:zlib';
+import { createCustomContentService, validateFileInProcess, zipCrc32 } from './custom-content/service.mjs';
+import { validateUploadedFile } from './custom-content/file-validator.mjs';
 import { normalizeTopicDraft } from './custom-content/topic-contract.mjs';
 
 const IDS = Array.from({ length: 30 }, (_, index) => `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`);
@@ -343,7 +344,7 @@ function storedZip(files, archiveComment = Buffer.alloc(0)) {
     const expanded = Buffer.from(file.body ?? 'x');
     const data = file.method === 8 ? deflateRawSync(expanded) : expanded;
     const expandedSize = file.expandedSize ?? expanded.length;
-    const checksum = file.crc ?? (crc32(expanded) >>> 0);
+    const checksum = file.crc ?? zipCrc32(expanded);
     const local = Buffer.alloc(30);
     local.writeUInt32LE(0x04034b50, 0);
     local.writeUInt16LE(20, 4);
@@ -764,6 +765,22 @@ test('OOXML uploads require bounded DOCX/PPTX archive structure', async () => {
     { name: '_rels/.rels', body: DOCX_RELATIONSHIPS },
     { name: 'word/document.xml', body: DOCX_DOCUMENT, method: 8 },
   ]);
+  const transferableDocx = storedZip([
+    { name: '[Content_Types].xml', body: DOCX_CONTENT_TYPES },
+    { name: '_rels/.rels', body: DOCX_RELATIONSHIPS },
+    { name: 'word/document.xml', body: DOCX_DOCUMENT, method: 8 },
+  ], Buffer.alloc(65_000, 0x61));
+  let eventLoopYielded = false;
+  void waitTurn().then(() => { eventLoopYielded = true; });
+  const workerValidated = await validateUploadedFile({
+    bytes: transferableDocx,
+    filename: 'worker-check.docx',
+    maximum: 1024 * 1024,
+    validateInProcess: validateFileInProcess,
+  });
+  assert.equal(workerValidated.contentType, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+  assert.ok(workerValidated.bytes.length > 64 * 1024);
+  assert.equal(eventLoopYielded, true, 'OOXML validation must yield the gateway event loop');
   const uploaded = await service.uploadAsset(owner, course.id, {
     bytes: validDocx, filename: 'lesson.docx', assetRole: 'lecture', requestId: 'docx-valid',
   });

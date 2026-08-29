@@ -47,6 +47,51 @@ end
 return {0, count, ttl}
 `;
 
+export const RATE_LIMIT_MANY_SCRIPT = `
+local allowed = 1
+local retry_after_ms = 0
+local next_values = {}
+local windows = {}
+local ttls = {}
+for i = 1, #KEYS do
+  local window = tonumber(ARGV[(i - 1) * 2 + 1])
+  local maximum = tonumber(ARGV[(i - 1) * 2 + 2])
+  local raw = redis.call('GET', KEYS[i])
+  if raw and not string.match(raw, '^%d+$') then
+    return {-1, 0}
+  end
+  local current = tonumber(raw) or 0
+  local ttl = redis.call('PTTL', KEYS[i])
+  next_values[i] = current + 1
+  windows[i] = window
+  ttls[i] = ttl
+  if current + 1 > maximum then
+    allowed = 0
+    if ttl < 0 then ttl = window * 1000 end
+    if ttl > retry_after_ms then retry_after_ms = ttl end
+  end
+end
+if allowed == 0 then
+  return {0, math.ceil(retry_after_ms / 1000)}
+end
+local updates = {}
+for i = 1, #KEYS do
+  table.insert(updates, KEYS[i])
+  table.insert(updates, tostring(next_values[i]))
+end
+redis.call('MSET', unpack(updates))
+local result = {1, 0}
+for i = 1, #KEYS do
+  local expiry = ttls[i]
+  if expiry < 0 then expiry = windows[i] * 1000 end
+  if expiry == 0 then expiry = 1 end
+  redis.call('PEXPIRE', KEYS[i], expiry)
+  table.insert(result, next_values[i])
+  table.insert(result, redis.call('TTL', KEYS[i]))
+end
+return result
+`;
+
 const SAFE_TOKEN = /^[a-z0-9][a-z0-9:_-]{0,79}$/i;
 const STATUS = ['expired', 'consumed', 'invalid', 'attempts-exhausted'];
 
@@ -156,6 +201,56 @@ export function createRedisOtpStore({ client, hashKey } = {}) {
         count: Number(result[1]),
         remaining: Math.max(0, max - Number(result[1])),
         retryAfterSeconds: Math.max(0, Number(result[2])),
+      };
+    },
+
+    async rateLimitMany(limits) {
+      if (!Array.isArray(limits) || limits.length < 1 || limits.length > 4) {
+        throw new Error('invalid-rate-limit-reservations');
+      }
+      const reservations = limits.map(({ scope, subject, limit, windowSeconds }) => {
+        if (typeof subject !== 'string' || subject.trim() === '') {
+          throw new Error('invalid-rate-limit-subject');
+        }
+        return {
+          key: rateKey(hashKey, scope, subject.trim()),
+          maximum: positiveInteger(limit, undefined, 'rate-limit', 100_000),
+          window: positiveInteger(windowSeconds, undefined, 'rate-limit-window', 86_400),
+        };
+      });
+      if (new Set(reservations.map((reservation) => reservation.key)).size !== reservations.length) {
+        throw new Error('duplicate-rate-limit-reservation');
+      }
+      const result = await client.eval(RATE_LIMIT_MANY_SCRIPT, {
+        keys: reservations.map((reservation) => reservation.key),
+        arguments: reservations.flatMap((reservation) => [
+          String(reservation.window),
+          String(reservation.maximum),
+        ]),
+      });
+      if (!Array.isArray(result) || result.length < 2) throw new Error('redis-bad-response');
+      const status = Number(result[0]);
+      if (status !== 0 && status !== 1) throw new Error('redis-bad-response');
+      const allowed = status === 1;
+      if (!allowed) {
+        return {
+          allowed: false,
+          retryAfterSeconds: Math.max(0, Number(result[1])),
+          reservations: [],
+        };
+      }
+      if (result.length !== 2 + reservations.length * 2) throw new Error('redis-bad-response');
+      return {
+        allowed: true,
+        retryAfterSeconds: 0,
+        reservations: reservations.map((reservation, index) => {
+          const count = Number(result[2 + index * 2]);
+          return {
+            count,
+            remaining: Math.max(0, reservation.maximum - count),
+            ttlSeconds: Math.max(0, Number(result[3 + index * 2])),
+          };
+        }),
       };
     },
 
