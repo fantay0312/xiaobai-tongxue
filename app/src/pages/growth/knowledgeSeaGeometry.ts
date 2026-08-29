@@ -104,10 +104,13 @@ export function layoutSea(
   return points;
 }
 
-export function labelSideFor(point: SeaPoint): LabelSide {
+/* 题签落位:边缘星往内侧挂;中场星按序号奇偶上下交错,同一行相邻主星的题签不再撞在一起。
+   首行(y ≤ 200)不往上挂,免得压到课程名。 */
+export function labelSideFor(point: SeaPoint, index = 0): LabelSide {
   if (point.y > SEA_HEIGHT - 118) return 'above';
   if (point.x > SEA_WIDTH - 150) return 'left';
   if (point.x < 150) return 'right';
+  if (point.y > 200 && index % 2 === 1) return 'above';
   return 'below';
 }
 

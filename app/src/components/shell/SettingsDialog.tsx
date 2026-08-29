@@ -1,15 +1,16 @@
 /**
- * 设置弹窗 —— 居中双栏册页:左侧目录,右侧详情(2026-07-13 由右侧抽屉改制,DESIGN.md 弹层豁免已扩入)。
+ * 设置弹窗 —— 居中双栏:左侧目录,右侧一列「标签 + 右侧控件」的设置行(2026-08-29 改为极简制式:
+ * 不带眉批、编号、说明卡;每行一件事,细线分隔,控件靠右)。
  * LlmSettings 表单:proxy/mock/api 模式切换 + 小白台词温度。
  * 评估与状态机永远本地规则运行,LLM 只负责理解与台词。
  * 滚动锁与拜师帖(MentorLetter)逐行同款:doc+body 双锁 + 「别人持锁就不抢」守卫,改一处必对照另一处。
  */
 import {
   useEffect, useId, useRef, useState,
-  type ComponentProps, type CSSProperties, type KeyboardEvent, type MouseEvent,
+  type ComponentProps, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode,
 } from 'react';
 import { useAppStore } from '../../store/appStore';
-import { UI_THEMES, UI_TONES, useThemeStore, type UiTheme } from '../../store/themeStore';
+import { UI_TONES, useThemeStore, type UiTheme, type UiTone } from '../../store/themeStore';
 import { llmCall } from '../../engine';
 import { Icon, type IconName } from '../ui/Icon';
 import { isTourDone, resetTours, type TourKey } from '../tour/tourState';
@@ -23,71 +24,43 @@ type TestState =
 
 type TabId = 'look' | 'engine' | 'voice' | 'temper' | 'tour';
 
-const TABS: { id: TabId; label: string; note: string; icon: IconName }[] = [
-  { id: 'look', label: '外观主题', note: '昼夜与音乐', icon: 'sparkles' },
-  { id: 'engine', label: '台词引擎', note: '模型与线路', icon: 'pen' },
-  { id: 'voice', label: '语音输入', note: '口述转文字', icon: 'mic' },
-  { id: 'temper', label: '台词性情', note: '沉稳或活泼', icon: 'sprout' },
-  { id: 'tour', label: '新手引路', note: '重走学习路线', icon: 'route' },
+const TABS: { id: TabId; label: string; icon: IconName }[] = [
+  { id: 'look', label: '外观', icon: 'lamp' },
+  { id: 'engine', label: '台词引擎', icon: 'pen' },
+  { id: 'voice', label: '语音输入', icon: 'mic' },
+  { id: 'temper', label: '台词性情', icon: 'sprout' },
+  { id: 'tour', label: '新手引路', icon: 'route' },
 ];
 
-const THEME_OPTIONS: {
-  id: UiTheme;
-  name: string;
-  desc: string;
-  swatches: readonly string[];
-}[] = [
-  {
-    id: 'paper',
-    name: '老学堂 · 票据',
-    desc: '奶油纸、铅字小签与赭陶邮戳。现行默认视觉，功能与阅读气质不变。',
-    swatches: [
-      'oklch(0.959 0.010 87.5)',
-      'oklch(0.601 0.143 38.4)',
-      'oklch(0.847 0.161 83.4)',
-      'oklch(0.247 0.004 90)',
-    ],
-  },
-  {
-    id: 'anime',
-    name: '日系动漫 · 赛璐珞',
-    desc: '取色自小白的立绘：奶油画板、藍衣冷影、朱色点睛。平涂硬边、網点上灰，不改课程与交互。',
-    swatches: [
-      'oklch(0.968 0.019 74)',
-      'oklch(0.462 0.098 252.4)',
-      'oklch(0.925 0.062 86)',
-      'oklch(0.498 0.165 27.5)',
-    ],
-  },
-  {
-    id: 'tech',
-    name: '科技 · 霓虹',
-    desc: '近黑底、电青描边与像素题头。竖条波纹只作氛围，不改课程与交互。',
-    swatches: [
-      'oklch(0.168 0.026 260.4)',
-      'oklch(0.780 0.148 210.4)',
-      'oklch(0.712 0.214 328.6)',
-      'oklch(0.938 0.018 228.4)',
-    ],
-  },
+/* 三套主题:全名进 title/读屏,分段钮只显短名;色点取该主题的主色 */
+const THEME_OPTIONS: { id: UiTheme; name: string; short: string; dot: string }[] = [
+  { id: 'paper', name: '老学堂 · 票据', short: '老学堂', dot: 'oklch(0.601 0.143 38.4)' },
+  { id: 'anime', name: '日系动漫 · 赛璐珞', short: '日系动漫', dot: 'oklch(0.462 0.098 252.4)' },
+  { id: 'tech', name: '科技 · 霓虹', short: '科技', dot: 'oklch(0.780 0.148 210.4)' },
 ];
+
+const TONE_OPTIONS: { id: UiTone; name: string; short: string }[] = UI_TONES.map((option) => ({
+  id: option,
+  name: option === 'day' ? '日景板' : '夜景板',
+  short: option === 'day' ? '日景' : '夜景',
+}));
 
 const ENGINE_MODES = [
-  { mode: 'proxy', name: '服务器模式', desc: '走服务器网关调大模型,密钥不出服务器(需登录)' },
-  { mode: 'mock', name: '演示模式', desc: '零依赖,内置教学引擎,断网也能完整跑通' },
-  { mode: 'api', name: '自定义 API', desc: '浏览器直连自己的 OpenAI 兼容端点(密钥存本机)' },
+  { id: 'proxy', short: '服务器', name: '服务器模式', desc: '走服务器网关调用模型，密钥不出服务器，需登录。' },
+  { id: 'mock', short: '演示', name: '演示模式', desc: '内置教学引擎，零依赖，断网也能完整跑通。' },
+  { id: 'api', short: '自定义', name: '自定义 API', desc: '浏览器直连自己的 OpenAI 兼容端点，密钥只存本机。' },
 ] as const;
 
 const ASR_MODES = [
-  { mode: 'proxy', name: '服务器模式', desc: '走服务器网关转写,密钥不出服务器(需登录)' },
-  { mode: 'api', name: '自定义 API', desc: '浏览器直连自己的转写端点(密钥存本机)' },
+  { id: 'proxy', short: '服务器', name: '服务器模式', desc: '走服务器网关转写，密钥不出服务器，需登录。' },
+  { id: 'api', short: '自定义', name: '自定义 API', desc: '浏览器直连自己的转写端点，密钥只存本机。' },
 ] as const;
 
 /* 温度档位的口吻注解:描述倾向,不许诺具体行为(台词仍由引擎定) */
 const TEMPER_BANDS: { max: number; name: string; line: string }[] = [
-  { max: 0.35, name: '沉稳', line: '字斟句酌,句句落在点上,很少发散。' },
-  { max: 0.95, name: '平和', line: '偶尔打个比方,大体跟着你的思路走。' },
-  { max: Infinity, name: '活泼', line: '爱举例子也爱追问,时不时蹦出个新鲜联想。' },
+  { max: 0.35, name: '沉稳', line: '字斟句酌，句句落在点上，很少发散。' },
+  { max: 0.95, name: '平和', line: '偶尔打个比方，大体跟着你的思路走。' },
+  { max: Infinity, name: '活泼', line: '爱举例子也爱追问，时不时蹦出个新鲜联想。' },
 ];
 
 const temperBand = (t: number) =>
@@ -140,7 +113,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
       const ms = Math.round(performance.now() - t0);
       setTest({ status: 'ok', detail: `连接成功 · ${ms}ms · ${reply.trim().slice(0, 24)}` });
     } catch (e) {
-      setTest({ status: 'fail', detail: `连接失败:${e instanceof Error ? e.message : String(e)}` });
+      setTest({ status: 'fail', detail: `连接失败：${e instanceof Error ? e.message : String(e)}` });
     }
   };
 
@@ -256,7 +229,10 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   if (!render) return null;
 
   const band = temperBand(settings.temperature);
-  const activeIndex = TABS.findIndex((tab) => tab.id === active) + 1;
+  const activeTab = TABS.find((tab) => tab.id === active) ?? TABS[0];
+  const engineMode = ENGINE_MODES.find((m) => m.id === settings.mode) ?? ENGINE_MODES[0];
+  const asrMode = ASR_MODES.find((m) => m.id === asr.mode) ?? ASR_MODES[0];
+  const apiReady = Boolean(settings.baseUrl && settings.apiKey && settings.model);
 
   return (
     <div
@@ -274,30 +250,17 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         aria-labelledby="settings-title"
         tabIndex={-1}
       >
-        <header className={styles.head}>
-          <div className={styles.headCopy}>
-            <p className={styles.eyebrow}>书斋偏好</p>
-            <h2 id="settings-title" className={styles.title}>设置</h2>
-          </div>
-          <div className={styles.headActions}>
-            <span className={styles.saveState}><Icon name="circle-check" size={14} />自动保存至本机</span>
-            <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="关闭设置">
-              <Icon name="x" size={18} />
-            </button>
-          </div>
-        </header>
-
-        <div className={styles.body}>
-          <nav
-            className={styles.rail}
-            role="tablist"
-            aria-label="设置目录"
-            aria-orientation={narrow ? 'horizontal' : 'vertical'}
-            onKeyDown={onTabsKey}
-          >
-            <div className={styles.railHead} aria-hidden="true">
-              <span>设置目录</span><small>{String(TABS.length).padStart(2, '0')} 项</small>
-            </div>
+        <nav
+          className={styles.rail}
+          role="tablist"
+          aria-label="设置目录"
+          aria-orientation={narrow ? 'horizontal' : 'vertical'}
+          onKeyDown={onTabsKey}
+        >
+          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="关闭设置">
+            <Icon name="x" size={18} />
+          </button>
+          <div className={styles.railList}>
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -310,210 +273,158 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 className={styles.railBtn}
                 onClick={() => setActive(t.id)}
               >
-                <Icon name={t.icon} size={15} className={styles.railIcon} />
-                <span className={styles.railCopy}><strong>{t.label}</strong><small>{t.note}</small></span>
+                <Icon name={t.icon} size={17} className={styles.railIcon} />
+                <span>{t.label}</span>
               </button>
             ))}
-            <p className={styles.railFoot} aria-hidden="true"><Icon name="check" size={13} />调整后即时生效</p>
-          </nav>
+          </div>
+        </nav>
 
-          <div
-            className={styles.pane}
-            role="tabpanel"
-            id={`settings-pane-${active}`}
-            aria-labelledby={`settings-tab-${active}`}
-          >
-            {active === 'look' && (
-              <>
-                <div className={styles.paneHead}>
-                  <p className={styles.paneEyebrow}>偏好 {String(activeIndex).padStart(2, '0')}</p>
-                  <h3 className={styles.paneTitle}>外观主题</h3>
-                  <p className={styles.paneDesc}>
-                    只换视觉语言，不改课程、路由或学习记录。选择会记在本机，下次打开仍在。
-                  </p>
-                </div>
+        <div
+          className={styles.pane}
+          role="tabpanel"
+          id={`settings-pane-${active}`}
+          aria-labelledby={`settings-tab-${active}`}
+        >
+          <h2 id="settings-title" className={styles.paneTitle}>{activeTab.label}</h2>
 
-                <div className={styles.themeGroup} role="radiogroup" aria-label="外观主题">
-                  {THEME_OPTIONS.map((option) => {
-                    const selected = theme === option.id;
-                    return (
-                      <button
-                        key={option.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={selected}
-                        className={selected ? `${styles.themeCard} ${styles.themeCardActive}` : styles.themeCard}
-                        onClick={() => setTheme(option.id)}
-                      >
-                        <span className={styles.themeSwatches} aria-hidden="true">
-                          {option.swatches.map((color) => (
-                            <i key={color} style={{ background: color }} />
-                          ))}
-                        </span>
-                        <span className={styles.themeName}>{option.name}</span>
-                        <span className={styles.themeDesc}>{option.desc}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                {theme === 'anime' && (
-                  <div className={styles.toneGroup} role="radiogroup" aria-label="日景板或夜景板">
-                    {UI_TONES.map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        role="radio"
-                        aria-checked={tone === option}
-                        className={tone === option ? `${styles.toneBtn} ${styles.toneBtnActive}` : styles.toneBtn}
-                        onClick={() => setTone(option)}
-                      >
-                        <Icon name={option === 'day' ? 'sun' : 'moon'} size={15} />
-                        {option === 'day' ? '日景板' : '夜景板'}
-                      </button>
-                    ))}
-                  </div>
-                )}
+          {active === 'look' && (
+            <div className={styles.rows}>
+              <Row label="主题" note="只换视觉，不改课程与学习记录">
+                <Segmented
+                  label="主题"
+                  options={THEME_OPTIONS}
+                  value={theme}
+                  onSelect={(option) => setTheme(option.id)}
+                />
+              </Row>
+              {theme === 'anime' && (
+                <Row label="景板">
+                  <Segmented
+                    label="日景板或夜景板"
+                    options={TONE_OPTIONS}
+                    value={tone}
+                    onSelect={({ id: option }) => setTone(option)}
+                  />
+                </Row>
+              )}
+              <Row label="背景音乐" note="循环播放，随时可关">
+                <Switch label="背景音乐" checked={musicOn} onChange={() => setMusicOn(!musicOn)} />
+              </Row>
+            </div>
+          )}
 
-                <button
-                  type="button"
-                  className={musicOn ? `${styles.musicBtn} ${styles.musicBtnOn}` : styles.musicBtn}
-                  onClick={() => setMusicOn(!musicOn)}
-                  aria-pressed={musicOn}
-                >
-                  <Icon name={musicOn ? 'volume' : 'volume-off'} size={16} />
-                  <span>
-                    <strong>{musicOn ? '背景音乐开' : '背景音乐关'}</strong>
-                    <small>使用 sharyap 同款循环曲，可随时关掉</small>
-                  </span>
-                </button>
-
-                <p className={styles.hint}>
-                  {UI_THEMES.length} 套主题可随时来回切换；动漫主题可再切日景板/夜景板。讲解舱黑板场景保持夜自习。
-                </p>
-              </>
-            )}
-
-            {active === 'engine' && (
-              <>
-                <div className={styles.paneHead}>
-                  <p className={styles.paneEyebrow}>偏好 {String(activeIndex).padStart(2, '0')}</p>
-                  <h3 className={styles.paneTitle}>台词引擎</h3>
-                  <p className={styles.paneDesc}>选择小白台词的生成线路；线路失败时会降级为演示模式，课程不中断。</p>
-                </div>
-
-                <ModeGroup
+          {active === 'engine' && (
+            <div className={styles.rows}>
+              <Row label="线路" note={engineMode.desc}>
+                <Segmented
                   label="台词引擎模式"
                   options={ENGINE_MODES}
                   value={settings.mode}
-                  onSelect={(mode) => { setSettings({ mode }); setTest({ status: 'idle' }); }}
+                  onSelect={(option) => { setSettings({ mode: option.id }); setTest({ status: 'idle' }); }}
                 />
+              </Row>
 
-                {settings.mode === 'proxy' && (
-                  <div className={styles.fields}>
-                    <hr className={styles.split} />
-                    <ConnTest onTest={runTest} test={test} />
-                    <p className={styles.hint}>密钥与模型由服务器代管,浏览器只传对话内容;需登录后才可调用(llm-auth 表示未登录)。</p>
-                  </div>
-                )}
+              {settings.mode === 'proxy' && (
+                <Row label="连接" note="线路失败时会降级为演示模式，课程不中断">
+                  <ConnTest onTest={runTest} test={test} />
+                </Row>
+              )}
 
-                {settings.mode === 'api' && (
-                  <div className={styles.fields}>
-                    <hr className={styles.split} />
-                    <Field
-                      label="Base URL"
+              {settings.mode === 'api' && (
+                <>
+                  <Row label="Base URL">
+                    <input
+                      className={styles.input}
                       type="url"
                       value={settings.baseUrl}
                       placeholder="https://api.deepseek.com/v1"
                       spellCheck={false}
+                      aria-label="Base URL"
                       onChange={(e) => { setSettings({ baseUrl: e.target.value }); setTest({ status: 'idle' }); }}
                     />
-                    <SecretField
+                  </Row>
+                  <Row label="API Key" note="只存本机浏览器，不上传">
+                    <SecretInput
                       label="API Key"
                       value={settings.apiKey}
                       placeholder="sk-…"
                       autoComplete="off"
                       onChange={(e) => { setSettings({ apiKey: e.target.value }); setTest({ status: 'idle' }); }}
                     />
-                    <Field
-                      label="模型"
+                  </Row>
+                  <Row label="模型">
+                    <input
+                      className={styles.input}
                       type="text"
                       value={settings.model}
                       placeholder="如 deepseek-v4-flash"
                       spellCheck={false}
+                      aria-label="模型"
                       onChange={(e) => { setSettings({ model: e.target.value }); setTest({ status: 'idle' }); }}
                     />
-                    <ConnTest
-                      disabled={!settings.baseUrl || !settings.apiKey || !settings.model}
-                      onTest={runTest}
-                      test={test}
-                    />
-                    <p className={styles.hint}>任何 OpenAI 兼容端点(/chat/completions)均可;密钥只存在本机浏览器,不上传。</p>
-                  </div>
-                )}
-              </>
-            )}
+                  </Row>
+                  <Row label="连接" note="任何 OpenAI 兼容端点（/chat/completions）均可">
+                    <ConnTest disabled={!apiReady} onTest={runTest} test={test} />
+                  </Row>
+                </>
+              )}
+            </div>
+          )}
 
-            {active === 'voice' && (
-              <>
-                <div className={styles.paneHead}>
-                  <p className={styles.paneEyebrow}>偏好 {String(activeIndex).padStart(2, '0')}</p>
-                  <h3 className={styles.paneTitle}>语音输入</h3>
-                  <p className={styles.paneDesc}>讲课页输入框旁的麦克风,把课堂口述转成文字。</p>
-                </div>
-
-                <ModeGroup
+          {active === 'voice' && (
+            <div className={styles.rows}>
+              <Row label="线路" note={asrMode.desc}>
+                <Segmented
                   label="语音转写引擎模式"
                   options={ASR_MODES}
                   value={asr.mode}
-                  onSelect={(mode) => setAsrSettings({ mode })}
+                  onSelect={(option) => setAsrSettings({ mode: option.id })}
                 />
+              </Row>
+              {asr.mode === 'api' && (
+                <>
+                  <Row label="Base URL">
+                    <input
+                      className={styles.input}
+                      type="url"
+                      value={asr.baseUrl}
+                      placeholder="https://openrouter.ai/api/v1"
+                      spellCheck={false}
+                      aria-label="转写 Base URL"
+                      onChange={(e) => setAsrSettings({ baseUrl: e.target.value })}
+                    />
+                  </Row>
+                  <Row label="API Key" note="只存本机浏览器，不上传、不随学习存档同步">
+                    <SecretInput
+                      label="转写 API Key"
+                      value={asr.apiKey}
+                      placeholder="sk-…"
+                      autoComplete="off"
+                      onChange={(e) => setAsrSettings({ apiKey: e.target.value })}
+                    />
+                  </Row>
+                  <Row label="模型" note="任何 OpenAI 兼容转写端点（/audio/transcriptions）均可">
+                    <input
+                      className={styles.input}
+                      type="text"
+                      value={asr.model}
+                      placeholder="如 qwen/qwen3-asr-flash-2026-02-10"
+                      spellCheck={false}
+                      aria-label="转写模型"
+                      onChange={(e) => setAsrSettings({ model: e.target.value })}
+                    />
+                  </Row>
+                </>
+              )}
+              <p className={styles.foot}>讲课页输入框旁的麦克风，把课堂口述转成文字。</p>
+            </div>
+          )}
 
-                <div className={styles.fields}>
-                  <hr className={styles.split} />
-                  {asr.mode === 'api' ? (
-                    <>
-                      <Field
-                        label="Base URL"
-                        type="url"
-                        value={asr.baseUrl}
-                        placeholder="https://openrouter.ai/api/v1"
-                        spellCheck={false}
-                        onChange={(e) => setAsrSettings({ baseUrl: e.target.value })}
-                      />
-                      <SecretField
-                        label="API Key"
-                        value={asr.apiKey}
-                        placeholder="sk-…"
-                        autoComplete="off"
-                        onChange={(e) => setAsrSettings({ apiKey: e.target.value })}
-                      />
-                      <Field
-                        label="模型"
-                        type="text"
-                        value={asr.model}
-                        placeholder="如 qwen/qwen3-asr-flash-2026-02-10"
-                        spellCheck={false}
-                        onChange={(e) => setAsrSettings({ model: e.target.value })}
-                      />
-                      <p className={styles.hint}>任何 OpenAI 兼容转写端点(/audio/transcriptions)均可;密钥只存在本机浏览器,不上传、也不随学习存档同步。</p>
-                    </>
-                  ) : (
-                    <p className={styles.hint}>转写密钥由服务器代管,需登录后使用。</p>
-                  )}
-                </div>
-              </>
-            )}
-
-            {active === 'temper' && (
-              <>
-                <div className={styles.paneHead}>
-                  <p className={styles.paneEyebrow}>偏好 {String(activeIndex).padStart(2, '0')}</p>
-                  <h3 className={styles.paneTitle}>台词性情</h3>
-                  <p className={styles.paneDesc}>只影响小白说话的活泼程度;讲解评估恒用 temperature 0,保证判定一致。</p>
-                </div>
-
-                <div className={styles.sliderRow}>
-                  <span className={styles.sliderEnd}>沉稳</span>
+          {active === 'temper' && (
+            <div className={styles.rows}>
+              <Row label="活泼程度" note={`${band.name} · ${band.line}`}>
+                <span className={styles.sliderWrap}>
                   <input
                     className={styles.slider}
                     style={{ '--fill': `${(settings.temperature / 1.5) * 100}%` } as CSSProperties}
@@ -524,52 +435,34 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                     value={settings.temperature}
                     onChange={(e) => setSettings({ temperature: Number(e.target.value) })}
                     aria-label="小白台词温度"
+                    aria-valuetext={`${settings.temperature.toFixed(2)}，${band.name}`}
                   />
-                  <span className={styles.sliderEnd}>活泼</span>
                   <span className={styles.sliderValue}>{settings.temperature.toFixed(2)}</span>
-                </div>
+                </span>
+              </Row>
+              <p className={styles.foot}>只影响小白说话的活泼程度；讲解评估恒用 temperature 0，判定不受影响。</p>
+            </div>
+          )}
 
-                <div className={styles.temperNote} aria-live="polite">
-                  <span className={styles.temperName}>{band.name}</span>
-                  <span className={styles.temperLine}>{band.line}</span>
-                </div>
-              </>
-            )}
-
-            {active === 'tour' && (
-              <>
-                <div className={styles.paneHead}>
-                  <p className={styles.paneEyebrow}>偏好 {String(activeIndex).padStart(2, '0')}</p>
-                  <h3 className={styles.paneTitle}>新手引路</h3>
-                  <p className={styles.paneDesc}>
-                    小白带你把门厅、备课桌、讲解舱各认一遍路;每处只自动引一次。重新引路只清引路痕迹,不动学习记录。
-                  </p>
-                </div>
-
-                {/* 引路痕迹是 localStorage 快照:弹窗开着时引路无从推进,渲染时读一次即够新 */}
-                <ul className={styles.tourList}>
-                  {TOUR_STOPS.map((t) => {
-                    const done = isTourDone(t.key);
-                    return (
-                      <li key={t.key} className={styles.tourRow}>
-                        <span className={styles.tourName}>{t.name}</span>
-                        {done ? (
-                          <span className={styles.tourDone}>
-                            <Icon name="check" size={13} className={styles.tourDoneIcon} />
-                            已走过
-                          </span>
-                        ) : (
-                          <span className={styles.tourTodo}>还没走</span>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-
-                {/* 清痕后立即关窗:当前页若有引路会随即上前,也避免弹窗与引路的 Esc 抢按键 */}
+          {active === 'tour' && (
+            <div className={styles.rows}>
+              {/* 引路痕迹是 localStorage 快照:弹窗开着时引路无从推进,渲染时读一次即够新 */}
+              {TOUR_STOPS.map((t) => {
+                const done = isTourDone(t.key);
+                return (
+                  <Row key={t.key} label={t.name}>
+                    <span className={done ? styles.stateDone : styles.stateTodo}>
+                      {done && <Icon name="check" size={14} />}
+                      {done ? '已走过' : '未走过'}
+                    </span>
+                  </Row>
+                );
+              })}
+              {/* 清痕后立即关窗:当前页若有引路会随即上前,也避免弹窗与引路的 Esc 抢按键 */}
+              <Row label="重新引路" note="只清引路痕迹，不动学习记录">
                 <button
                   type="button"
-                  className={styles.actionBtn}
+                  className={styles.btn}
                   onClick={() => {
                     resetTours();
                     onClose();
@@ -577,93 +470,116 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 >
                   重新引路
                 </button>
-              </>
-            )}
-          </div>
+              </Row>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-/** 单选卡组:台词引擎与语音转写共用一套形制,改样式/无障碍属性只改这一处 */
-function ModeGroup<M extends string>({ label, options, value, onSelect }: {
+/** 设置行:左标签(可带一行注),右控件;细线分隔 */
+function Row({ label, note, children }: { label: string; note?: string; children: ReactNode }) {
+  return (
+    <div className={styles.row}>
+      <div className={styles.rowCopy}>
+        <span className={styles.rowLabel}>{label}</span>
+        {note ? <span className={styles.rowNote}>{note}</span> : null}
+      </div>
+      <div className={styles.rowControl}>{children}</div>
+    </div>
+  );
+}
+
+/** 分段单选:主题/景板/线路共用一套形制 */
+function Segmented<O extends { id: string; short: string; name?: string; dot?: string }>({
+  label, options, value, onSelect,
+}: {
   label: string;
-  options: readonly { mode: M; name: string; desc: string }[];
-  value: M;
-  onSelect: (mode: M) => void;
+  options: readonly O[];
+  value: O['id'];
+  onSelect: (option: O) => void;
 }) {
   return (
-    <div className={styles.modeGroup} role="radiogroup" aria-label={label}>
-      {options.map((m) => (
+    <div className={styles.seg} role="radiogroup" aria-label={label}>
+      {options.map((option) => (
         <button
-          key={m.mode}
+          key={option.id}
           type="button"
           role="radio"
-          aria-checked={value === m.mode}
-          className={value === m.mode ? `${styles.modeBtn} ${styles.modeBtnActive}` : styles.modeBtn}
-          onClick={() => onSelect(m.mode)}
+          aria-checked={value === option.id}
+          aria-label={option.name ?? option.short}
+          title={option.name}
+          className={styles.segBtn}
+          onClick={() => onSelect(option)}
         >
-          <span className={styles.modeDot} aria-hidden="true" />
-          <span className={styles.modeName}>{m.name}</span>
-          <span className={styles.modeDesc}>{m.desc}</span>
+          {option.dot ? <i className={styles.segDot} style={{ background: option.dot }} aria-hidden="true" /> : null}
+          {option.short}
         </button>
       ))}
     </div>
   );
 }
 
-/** 表单行:标签 + 输入框(六个凭据字段共用) */
-function Field({ label, ...input }: { label: string } & ComponentProps<'input'>) {
+/** 开关 */
+function Switch({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
   return (
-    <label className={styles.field}>
-      <span className={styles.fieldLabel}>{label}</span>
-      <input className={styles.input} {...input} />
-    </label>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      className={styles.switch}
+      onClick={onChange}
+    />
   );
 }
 
-function SecretField({ label, ...input }: { label: string } & Omit<ComponentProps<'input'>, 'type'>) {
+function SecretInput({ label, ...input }: { label: string } & Omit<ComponentProps<'input'>, 'type'>) {
   const [revealed, setRevealed] = useState(false);
   const generatedId = useId();
   const inputId = input.id ?? generatedId;
   return (
-    <div className={styles.field}>
-      <label className={styles.fieldLabel} htmlFor={inputId}>{label}</label>
-      <span className={styles.secretInput}>
-        <input className={styles.input} id={inputId} type={revealed ? 'text' : 'password'} {...input} />
-        <button
-          type="button"
-          className={styles.revealButton}
-          onClick={() => setRevealed((current) => !current)}
-          aria-label={revealed ? '隐藏 API Key' : '显示 API Key'}
-          aria-pressed={revealed}
-        >
-          <Icon name={revealed ? 'eye-off' : 'eye'} size={16} />
-        </button>
-      </span>
-    </div>
+    <span className={styles.secretInput}>
+      <input
+        className={styles.input}
+        id={inputId}
+        type={revealed ? 'text' : 'password'}
+        aria-label={label}
+        {...input}
+      />
+      <button
+        type="button"
+        className={styles.revealButton}
+        onClick={() => setRevealed((current) => !current)}
+        aria-label={revealed ? `隐藏 ${label}` : `显示 ${label}`}
+        aria-pressed={revealed}
+      >
+        <Icon name={revealed ? 'eye-off' : 'eye'} size={16} />
+      </button>
+    </span>
   );
 }
 
-/** 连接测试行:按钮 + 结果(成功靛青对钩,失败朱砂警示) */
+/** 连接测试:按钮 + 结果一行 */
 function ConnTest({ disabled = false, onTest, test }: { disabled?: boolean; onTest: () => void; test: TestState }) {
   return (
-    <div className={styles.testRow}>
-      <button
-        type="button"
-        className={styles.actionBtn}
-        onClick={onTest}
-        disabled={disabled || test.status === 'busy'}
-      >
-        {test.status === 'busy' ? '测试中…' : '测试连接'}
-      </button>
+    <span className={styles.testWrap}>
       {(test.status === 'ok' || test.status === 'fail') && (
         <span className={test.status === 'ok' ? `${styles.testStatus} ${styles.testOk}` : `${styles.testStatus} ${styles.testFail}`}>
           <Icon name={test.status === 'ok' ? 'circle-check' : 'circle-x'} size={14} className={styles.testIcon} />
           {test.detail}
         </span>
       )}
-    </div>
+      <button
+        type="button"
+        className={styles.btn}
+        onClick={onTest}
+        disabled={disabled || test.status === 'busy'}
+      >
+        {test.status === 'busy' ? '测试中…' : '测试连接'}
+      </button>
+    </span>
   );
 }

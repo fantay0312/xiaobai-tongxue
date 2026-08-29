@@ -1,8 +1,11 @@
 .root {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--gap-tight) var(--gap);
+  gap: var(--gap);
+  min-height: 3.5rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--paper-edge);
 }
 
 .fileInput {
@@ -19,108 +22,103 @@
 
 .avatarButton {
   position: relative;
-  grid-column: 1;
-  grid-row: 1 / span 3;
   padding: 0;
   border: 0;
-  background: transparent;
-}
-
-.avatarButton:disabled { cursor: wait; opacity: 0.7; }
-
-.cameraBadge {
-  position: absolute;
-  right: -0.35rem;
-  bottom: -0.2rem;
-  display: grid;
-  width: 1.85rem;
-  height: 1.85rem;
-  place-items: center;
-  border: 2px solid var(--paper-blush);
   border-radius: 50%;
-  background: var(--inkstone);
-  color: var(--moon-on-ink);
-  transform: rotate(2deg);
-  transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+  background: transparent;
+  transition: box-shadow var(--t-fast) var(--ease-out);
 }
 
-.avatarButton:hover .cameraBadge { background: var(--azure-deep); transform: rotate(0) scale(1.06); }
+.avatarButton:hover:not(:disabled) {
+  box-shadow: 0 0 0 3px var(--ink-wash);
+}
+
+.avatarButton:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
 
 .copy {
-  grid-column: 2;
-  grid-row: 1;
+  display: flex;
   min-width: 0;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.label {
+  color: var(--ink);
+  font-size: var(--fs-body);
+  line-height: 1.4;
+}
+
+.note {
+  color: var(--ink-faint);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+}
+
+.note span[data-notice='true'] {
+  color: var(--jade-ink);
+}
+
+.note span[data-error='true'] {
+  color: var(--cinnabar);
 }
 
 .actions {
-  grid-column: 2;
-  grid-row: 2;
   display: flex;
-  min-width: 0;
+  flex: none;
   align-items: center;
-  flex-wrap: wrap;
-  gap: var(--gap-hair);
+  gap: 0.5rem;
 }
 
-.changeButton,
-.removeButton {
+.button,
+.ghostButton {
   display: inline-flex;
-  min-height: 2.4rem;
+  min-height: 2.2rem;
   align-items: center;
-  justify-content: center;
-  gap: var(--gap-hair);
-  padding: 0.35rem 0.68rem;
-  border-radius: var(--radius-s);
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+  padding: 0 0.9rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    color var(--t-fast) var(--ease-out);
 }
 
-.changeButton {
-  border: 1px solid var(--azure);
-  background: var(--azure);
-  color: var(--paper);
+.button:hover:not(:disabled) {
+  background: var(--ink-wash);
 }
 
-.changeButton:hover:not(:disabled) { background: var(--azure-deep); }
-
-.removeButton {
-  border: 1px solid var(--paper-edge);
-  background: color-mix(in oklab, var(--paper) 70%, transparent);
+.ghostButton {
+  border-color: transparent;
+  background: transparent;
   color: var(--ink-faint);
 }
 
-.removeButton:hover:not(:disabled) { border-color: var(--cinnabar); color: var(--cinnabar); }
-.changeButton:disabled,
-.removeButton:disabled { cursor: wait; opacity: 0.58; }
-
-.actions > span {
-  color: var(--ink-faint);
-  font-size: var(--fs-tiny);
+.ghostButton:hover:not(:disabled) {
+  color: var(--cinnabar);
+  background: var(--cinnabar-wash);
 }
 
-.feedback {
-  grid-column: 2;
-  grid-row: 3;
-  min-height: 1.15rem;
-  color: var(--jade-ink);
-  font-size: var(--fs-tiny);
+.button:disabled,
+.ghostButton:disabled {
+  cursor: wait;
+  opacity: 0.55;
 }
-
-.feedback span[data-error='true'] { color: var(--cinnabar); }
 
 @media (max-width: 560px) {
-  .root { grid-template-columns: 1fr; justify-items: start; }
-  .avatarButton,
-  .copy,
-  .actions,
-  .feedback { grid-column: 1; grid-row: auto; }
-  .feedback { min-height: 0; }
-}
+  .root {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  .cameraBadge,
-  .changeButton,
-  .removeButton { transition: none; }
-  .avatarButton:hover .cameraBadge { transform: none; }
+  .actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
 }

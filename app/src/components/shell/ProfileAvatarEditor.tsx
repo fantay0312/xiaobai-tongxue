@@ -1,7 +1,7 @@
+/** 头像编辑行:左圆头像,中标签与状态,右上传/移除;与个人中心其他设置行同一制式 */
 import { useRef, useState, type ReactNode } from 'react';
 import { prepareProfileAvatar, PROFILE_AVATAR_ACCEPT, ProfileAvatarError } from '../../lib/profileAvatar';
 import { profileAccountKey, useProfileStore } from '../../store/profileStore';
-import { Icon } from '../ui/Icon';
 import { ProfileAvatar } from './ProfileAvatar';
 import styles from './ProfileAvatarEditor.module.css';
 
@@ -52,33 +52,33 @@ export function ProfileAvatarEditor({ account, children }: { account: string; ch
         aria-label={avatar ? '更换头像' : '上传头像'}
       >
         <ProfileAvatar name={account} src={avatar} size="hero" />
-        <span className={styles.cameraBadge} aria-hidden="true"><Icon name="camera" size={15} /></span>
       </button>
-      <div className={styles.copy}>{children}</div>
+      <div className={styles.copy}>
+        <span className={styles.label}>{children}</span>
+        <span className={styles.note} aria-live="polite" aria-atomic="true">
+          {issue ? <span data-error="true">{issue}</span>
+            : notice ? <span data-notice="true">{notice}</span>
+              : 'JPG、PNG 或 WebP，自动裁切，仅存本机'}
+        </span>
+      </div>
       <div className={styles.actions}>
-        <button type="button" className={styles.changeButton} onClick={chooseAvatar} disabled={busy}>
-          <Icon name="upload" size={14} />
-          {busy ? '处理中…' : avatar ? '更换头像' : '上传头像'}
-        </button>
         {avatar ? (
           <button
             type="button"
-            className={styles.removeButton}
+            className={styles.ghostButton}
             disabled={busy}
             onClick={() => {
               removeAvatar(account);
               setIssue(null);
-              setNotice('已恢复为名字印章');
+              setNotice('已恢复为默认头像');
             }}
           >
             移除
           </button>
         ) : null}
-        <span>JPG、PNG 或 WebP · 自动裁切 · 仅存本机</span>
-      </div>
-      <div className={styles.feedback} aria-live="polite" aria-atomic="true">
-        {notice ? <span>{notice}</span> : null}
-        {issue ? <span data-error="true">{issue}</span> : null}
+        <button type="button" className={styles.button} onClick={chooseAvatar} disabled={busy}>
+          {busy ? '处理中…' : avatar ? '更换' : '上传'}
+        </button>
       </div>
     </div>
   );

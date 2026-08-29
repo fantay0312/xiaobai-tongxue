@@ -189,8 +189,6 @@
   .brandMotto {
     display: none;
   }
-
-  .profileName { display: none; }
 }
 
 /* ── 导航链接:打字机铅字小签,当前路由缀一枚赭陶圆点(参考稿侧栏「My Wallet」点)── */
@@ -198,7 +196,7 @@
 .nav {
   display: flex;
   align-items: center;
-  gap: clamp(1rem, 2.4vw, 1.9rem);
+  gap: 0.35rem;
 }
 
 .navGroup {
@@ -206,6 +204,8 @@
   display: flex;
   align-items: center;
   gap: 0.05rem;
+  /* 导航组之间留宽距;右侧图标钮之间只留窄距 */
+  margin-right: clamp(0.5rem, 1.6vw, 1.25rem);
 }
 
 .link {
@@ -408,6 +408,7 @@
 .navRule {
   width: 1px;
   height: 1rem;
+  margin-inline: 0.15rem 0.5rem;
   background: var(--paper-edge);
   flex: none;
 }
@@ -461,85 +462,69 @@
   background: color-mix(in oklab, var(--chalk) 12%, transparent);
 }
 
-/* ── 已登录:名章触发器;退出与安全信息收进个人中心 ── */
+/* ── 已登录:一枚圆头像即触发器;hover/展开时外圈一道淡墨环 ── */
 
 .profileTrigger {
-  display: inline-flex;
-  max-width: 14rem;
-  min-height: 2.75rem;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.16rem 0.38rem 0.16rem 0.16rem;
-  border: 1px solid transparent;
-  border-radius: 999px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
   background: transparent;
-  color: var(--ink-soft);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
   touch-action: manipulation;
-  transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+  transition: box-shadow var(--t-fast) var(--ease-out);
 }
 
-/* 触发器 hover 走站点动作色:淡赭陶晕 + 纸边圈,而非通用墨晕 */
+/* 命中区撑到 ≥40px */
+.profileTrigger::after {
+  content: '';
+  position: absolute;
+  inset: -0.2rem;
+}
+
 .profileTrigger:hover {
-  border-color: var(--paper-edge);
-  background: var(--azure-wash);
+  box-shadow: 0 0 0 3px var(--ink-wash);
 }
 
-.profileName {
-  min-width: 0;
-  overflow: hidden;
-  letter-spacing: 0.04em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.profileTrigger[aria-expanded='true'] {
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ink) 16%, transparent);
 }
 
-.profileChevron {
-  flex: none;
-  color: var(--ink-faint);
-  transition: transform var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+.board .profileTrigger:hover,
+.board .profileTrigger[aria-expanded='true'] {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--chalk) 16%, transparent);
 }
 
-.profileTrigger:hover .profileChevron { color: var(--ink-soft); }
-.profileTrigger[aria-expanded='true'] .profileChevron { transform: rotate(180deg); }
-
-.board .profileTrigger {
-  color: var(--chalk-soft);
-}
-
-.board .profileTrigger:hover {
-  border-color: var(--board-line);
-  background: color-mix(in oklab, var(--chalk) 10%, transparent);
-}
-
-.board .profileChevron { color: var(--chalk-soft); }
-
-/* ── 齿轮按钮 ── */
+/* ── 齿轮按钮:与氛围钮同制式,方角、静止、淡墨晕 ── */
 
 .gearBtn {
   position: relative;
   display: grid;
   place-items: center;
-  width: 1.9rem;
-  height: 1.9rem;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
   border: none;
   background: transparent;
   color: var(--ink-faint);
-  border-radius: var(--radius-s);
+  border-radius: var(--radius);
   touch-action: manipulation;
-  transition: color var(--t-fast) var(--ease-out), transform var(--t-med) var(--ease-out);
+  transition: color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
 }
 
 /* 视觉不变,命中区扩到 ≥40px(触控目标基线) */
 .gearBtn::after {
   content: '';
   position: absolute;
-  inset: -0.35rem;
+  inset: -0.25rem;
 }
 
 .gearBtn:hover {
   color: var(--ink);
-  transform: rotate(45deg);
+  background: var(--ink-wash);
 }
 
 /* 焦点环走 index.css 全局基线;黑板变体顶栏换粉笔色(azure 在深底上 ~2:1 看不见) */
@@ -841,7 +826,11 @@
   }
 
   .nav {
-    gap: 0.28rem;
+    gap: 0.2rem;
+  }
+
+  .navGroup {
+    margin-right: 0.35rem;
   }
 
   .link {
@@ -890,6 +879,10 @@
     gap: 0.12rem;
   }
 
+  .navGroup {
+    margin-right: 0;
+  }
+
   .link {
     padding-inline: 0.42rem 0.08rem;
     font-size: var(--fs-tiny);
@@ -910,10 +903,5 @@
   .loginBtn {
     padding-inline: 0.58rem;
     letter-spacing: 0.06em;
-  }
-
-  .profileTrigger {
-    gap: 0.16rem;
-    padding-right: 0.12rem;
   }
 }

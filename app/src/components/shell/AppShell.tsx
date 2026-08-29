@@ -376,11 +376,19 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             <span className={styles.navRule} aria-hidden="true" />
 
+            <AtmosphereToggles />
+            <SettingsGear
+              hint={themeHint}
+              wrapRef={themeHintRef}
+              bubbleRef={themeHintBubbleRef}
+              onClick={() => settleThemeHint(true)}
+            />
             {authStatus === 'anon' && (
               <NavLink to="/login" className={styles.loginBtn}>
                 登入
               </NavLink>
             )}
+            {/* 已登录:只留一枚圆头像,名字与状态收进个人中心 */}
             {authStatus === 'authed' && (
               <button
                 type="button"
@@ -393,20 +401,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                   setOpenMenu(null);
                   setProfileOpen(true);
                 }}
-                title={`打开 ${authUser ?? ''} 的个人中心`}
+                title={authUser ?? '个人中心'}
               >
                 <ProfileAvatar name={authUser} src={avatar} size="nav" />
-                <span className={styles.profileName}>{authUser}</span>
-                <Icon name="chevron-down" size={14} className={styles.profileChevron} />
               </button>
             )}
-            <AtmosphereToggles />
-            <SettingsGear
-              hint={themeHint}
-              wrapRef={themeHintRef}
-              bubbleRef={themeHintBubbleRef}
-              onClick={() => settleThemeHint(true)}
-            />
           </nav>
           )}
         </div>

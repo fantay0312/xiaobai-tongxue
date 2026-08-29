@@ -166,7 +166,7 @@ export function KnowledgeSeaField({
       </svg>
 
       <ol className={s.nodeList} aria-label="知识星列表，使用方向键巡览，回车选择">
-        {nodes.map((node) => {
+        {nodes.map((node, index) => {
           const point = points.get(node.topic.topicId);
           if (!point) return null;
           const id = node.topic.topicId;
@@ -176,7 +176,7 @@ export function KnowledgeSeaField({
               key={id}
               className={s.nodeSlot}
               data-star-id={id}
-              data-label={labelSideFor(point)}
+              data-label={labelSideFor(point, index)}
               style={{
                 left: `${(point.x / SEA_WIDTH) * 100}%`,
                 top: `${(point.y / SEA_HEIGHT) * 100}%`,

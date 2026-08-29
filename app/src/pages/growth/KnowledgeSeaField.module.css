@@ -9,21 +9,18 @@
   position: relative;
   min-height: clamp(34rem, 49vw, 41rem);
   overflow: hidden;
-  border-top: 1px solid color-mix(in oklch, var(--sky-moon) 15%, transparent);
-  border-bottom: 1px solid color-mix(in oklch, var(--sky-moon) 12%, transparent);
   background-color: var(--sky-deep);
 }
+/* 地平线微光 + 四角暗角:让星区有纵深,不做整幅色团 */
 .field::after {
   content: '';
   position: absolute;
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background: linear-gradient(
-    to top,
-    color-mix(in oklch, var(--sky-blue) 18%, transparent),
-    transparent 32%
-  );
+  background:
+    linear-gradient(to top, color-mix(in oklch, var(--sky-blue) 12%, transparent), transparent 30%),
+    radial-gradient(120% 90% at 50% 40%, transparent 55%, color-mix(in oklch, var(--sky-deep) 70%, transparent) 100%);
 }
 .sky {
   position: absolute;
@@ -38,10 +35,10 @@
   position: absolute;
   z-index: 4;
   transform: translate(-50%, -50%);
-  color: color-mix(in oklch, var(--sky-moon) 46%, transparent);
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.28em;
+  color: color-mix(in oklch, var(--sky-moon) 40%, transparent);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
   white-space: nowrap;
   pointer-events: none;
   text-shadow: 0 0 12px var(--sky-deep), 0 1px 8px var(--sky-deep);
@@ -203,13 +200,13 @@
 
 .core img {
   position: absolute;
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   opacity: 0;
   transform: scale(0.58);
   filter:
     drop-shadow(0 0 1px color-mix(in oklch, var(--sky-moon) 82%, transparent))
-    drop-shadow(0 0 5px color-mix(in oklch, currentColor 48%, transparent));
+    drop-shadow(0 0 6px color-mix(in oklch, currentColor 55%, transparent));
   transition: opacity var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
 }
 
@@ -270,17 +267,18 @@
   opacity: 1;
 }
 
+/* 题签:小字、中等字重、月白略压,深底晕影托字;主星常显,其余 hover/焦点才浮出 */
 .nodeCopy {
   position: absolute;
   top: 36px;
   left: 50%;
   z-index: 3;
-  width: 9.5rem;
+  width: 7.5rem;
   transform: translateX(-50%) translateY(4px);
   opacity: 0;
   pointer-events: none;
   text-align: center;
-  text-shadow: 0 1px 7px var(--sky-deep), 0 1px 12px var(--sky-deep);
+  text-shadow: 0 0 6px var(--sky-deep), 0 1px 10px var(--sky-deep), 0 0 18px var(--sky-deep);
   transition: opacity var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
 }
 
@@ -290,16 +288,19 @@
 }
 
 .nodeCopy b {
-  color: var(--sky-moon);
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
+  color: color-mix(in oklch, var(--sky-moon) 88%, transparent);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   line-height: 1.35;
 }
 
 .nodeCopy small {
-  margin-top: 0.08rem;
+  margin-top: 0.1rem;
   color: currentColor;
   font-size: 0.62rem;
+  opacity: 0.85;
 }
 
 .node[data-featured='true'] .nodeCopy,
@@ -318,26 +319,26 @@
 }
 
 .nodeSlot[data-label='below'] .nodeCopy {
-  top: 22px;
+  top: 23px;
   left: 50%;
-  width: 6.1rem;
+  width: 7rem;
   transform: translateX(-50%);
   text-align: center;
 }
 
 .nodeSlot[data-label='above'] .nodeCopy {
   top: auto;
-  bottom: 22px;
+  bottom: 23px;
   left: 50%;
-  width: 6.1rem;
+  width: 7rem;
   transform: translateX(-50%);
   text-align: center;
 }
 
 .nodeSlot[data-label='right'] .nodeCopy {
   top: 50%;
-  left: 24px;
-  width: 6.4rem;
+  left: 25px;
+  width: 7rem;
   transform: translateY(-50%);
   text-align: left;
 }
@@ -345,8 +346,8 @@
 .nodeSlot[data-label='left'] .nodeCopy {
   top: 50%;
   left: auto;
-  right: 24px;
-  width: 6.4rem;
+  right: 25px;
+  width: 7rem;
   transform: translateY(-50%);
   text-align: right;
 }

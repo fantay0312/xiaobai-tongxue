@@ -673,7 +673,7 @@ export default function GrowthPage() {
           <small>
             {forgottenNodes.length > 0
               ? '小白来信了——雾气漫上来的地方'
-              : '一片星海,照见每一讲的掌握证据'}
+              : '一讲一星，照见每一讲的掌握证据'}
           </small>
         </h2>
         <div className={s.observatory}>

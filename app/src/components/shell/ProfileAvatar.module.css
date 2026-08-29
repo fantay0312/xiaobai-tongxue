@@ -1,61 +1,46 @@
+/* 共享头像:圆形、平贴、不倾斜。文字头像用主色实底 + 亮白首字,图片头像贴一圈极淡描边 */
+
 .avatar {
   position: relative;
   display: grid;
   flex: none;
   place-items: center;
   overflow: hidden;
-  border-radius: var(--radius-s);
-  background: var(--seal-red);
+  border-radius: 50%;
+  background: var(--terra-ink);
   color: var(--ink-on-seal);
   -webkit-text-fill-color: var(--ink-on-seal);
-  font-family: var(--font-display);
-  font-weight: 700;
+  font-family: var(--font-body);
+  font-weight: 600;
   line-height: 1;
-  transform: rotate(-3deg);
-  box-shadow:
-    inset 0 0 0 2px var(--seal-red),
-    inset 0 0 0 3px color-mix(in oklab, var(--paper) 30%, transparent),
-    var(--shadow-paper);
+  text-transform: uppercase;
 }
 
 .avatar[data-size='nav'] {
-  width: 1.9rem;
-  height: 1.9rem;
-  font-size: var(--fs-small);
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.8125rem;
 }
 
 .avatar[data-size='rail'] {
-  width: 2.35rem;
-  height: 2.35rem;
+  width: 2.5rem;
+  height: 2.5rem;
   font-size: var(--fs-body);
 }
 
 .avatar[data-size='hero'] {
-  width: clamp(4.4rem, 7vw, 5.25rem);
-  height: clamp(4.4rem, 7vw, 5.25rem);
-  font-size: var(--fs-title);
-  box-shadow:
-    inset 0 0 0 3px var(--seal-red),
-    inset 0 0 0 4px color-mix(in oklab, var(--paper) 32%, transparent),
-    var(--shadow-paper);
+  width: 4rem;
+  height: 4rem;
+  font-size: 1.5rem;
 }
 
 .avatar[data-image='true'] {
-  border: 1px solid color-mix(in oklab, var(--seal-red) 48%, var(--paper-edge));
-  background: var(--paper-warm);
-  transform: rotate(-1.5deg);
-  box-shadow:
-    inset 0 0 0 3px color-mix(in oklab, var(--paper) 68%, transparent),
-    0 0 0 1px var(--paper),
-    var(--shadow-paper);
+  background: var(--paper-shade);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ink) 12%, transparent);
 }
 
 .avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .avatar { transform: none; }
 }
