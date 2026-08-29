@@ -906,7 +906,12 @@ export function createCustomContentService({
         job = await repository.jobs.create({ courseId: course.id, assetIds, requestedTitle });
       } catch (error) {
         if (error?.code === '23505') throw publicError('compile-job-active', 409);
-        throw error;
+        const committed = await repository.jobs.findOpenByCourse(course.id).catch(() => null);
+        const sameAssets = committed
+          && committed.assetIds.length === assetIds.length
+          && committed.assetIds.every((id) => assetIds.includes(id));
+        if (sameAssets && committed.requestedTitle === requestedTitle) job = committed;
+        else throw error;
       }
       if (!job) throw publicError('assets-not-ready', 409);
       scheduleJob(job.id);
@@ -1012,7 +1017,14 @@ export function createCustomContentService({
     async discardDraft(owner, id) {
       const current = await loadOwnedTopic(owner.id, id);
       if (current.status !== 'draft') throw publicError('topic-not-editable', 409);
-      const archived = await repository.topics.discardDraft(owner.id, current.id);
+      let archived;
+      try {
+        archived = await repository.topics.discardDraft(owner.id, current.id);
+      } catch (error) {
+        const committed = await repository.topics.findOwned(owner.id, current.id).catch(() => null);
+        if (committed?.status === 'archived') return { ok: true };
+        throw error;
+      }
       if (!archived) throw publicError('topic-not-editable', 409);
       return { ok: true };
     },
@@ -1039,11 +1051,19 @@ export function createCustomContentService({
           throw publicError('faq-sync-failed', 502);
         });
       }
-      const published = await repository.topics.publishValidated(
-        current.id,
-        current.payload,
-        normalized,
-      );
+      let published;
+      try {
+        published = await repository.topics.publishValidated(
+          current.id,
+          current.payload,
+          normalized,
+        );
+      } catch (error) {
+        const committed = await repository.topics.findReadyOwnedByTopicId(owner.id, current.topicId)
+          .catch(() => null);
+        if (committed) return committed;
+        throw error;
+      }
       if (!published) throw publicError('topic-not-editable', 409);
       return published;
     },
