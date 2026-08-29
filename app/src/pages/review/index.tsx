@@ -397,6 +397,11 @@ export default function ReviewPage() {
                           <span className={s.traceTurn}>第 {t.turn} 轮</span>
                           <span>{t.evalResult.reasoning}</span>
                           <span className={s.traceAction}>→ {t.card.action}</span>
+                          {t.llmMode !== undefined && t.llmMode !== 'mock' && (t.renderSource === 'mock' || t.evalSource === 'rules') ? (
+                            <span className={s.traceNote}>
+                              {[t.evalSource === 'rules' ? '规则评估' : null, t.renderSource === 'mock' ? '离线台词' : null].filter(Boolean).join(' · ')}
+                            </span>
+                          ) : null}
                         </li>
                       ))}
                     </ol>

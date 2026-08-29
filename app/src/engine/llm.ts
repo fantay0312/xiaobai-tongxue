@@ -19,8 +19,13 @@ export interface LlmPayload {
  * coach 给 2200:助教常配推理模型(VITE_LLM_MODEL_COACH),思考 token 与正文共用这个额度,
  * 700 会被思考吃空 → 正文空串 → 整段降级「离线锦囊」。与服务器网关同一处修复保持一致。
  * (不下发 reasoning_effort:api 模式端点由用户自带,未知参数可能被判 400。)
+ * 2026-08-30 实测(deepseek-v4-flash 为推理模型):评估器在一段带类比的讲解上 reasoning_tokens 达 600–1250,
+ * 700 的额度被思考吃空 → finish_reason=length、content 空串 → 整轮静默降级规则评估;小白台词 reasoning 50–190。
+ * 故评估器放宽到 2000、小白到 800(只是上限,不增加正常开销);proxy 模式由服务器网关按 role 裁决,此处不参与。
+ * TODO(follow-up, server/**): server/index.mjs 的 ROLE 上限仍是 { xiaobai: 400, evaluator: 700 },需镜像为 800 / 2000;
+ * 在此之前 proxy 模式会更频繁地出现「规则评估 · 离线台词」(批注页会如实标注)。
  */
-const ROLE_MAX_TOKENS: Record<LlmRole, number> = { xiaobai: 400, evaluator: 700, report: 900, coach: 2200 };
+const ROLE_MAX_TOKENS: Record<LlmRole, number> = { xiaobai: 800, evaluator: 2000, report: 900, coach: 2200 };
 
 /** 各角色温度(与服务器网关一致,proxy 模式下服务器按 role 重新裁决,不信客户端) */
 function roleTemperature(role: LlmRole, settings: LlmSettings): number {

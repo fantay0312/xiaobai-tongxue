@@ -22,6 +22,8 @@ import type { EventDraft } from '../engine';
 import { recallGreetingLine } from '../engine/recall';
 // 进化派生(升期):同为不进 barrel 的纯函数,按路径直连
 import { deriveEvolution } from '../engine/evolution';
+// 课堂小本本:每轮派生一次,同时喂给评估器(轮次/上一轮讲解)与小白提示(【这堂课到现在】);不进 barrel
+import { deriveSessionBrief } from '../engine/sessionBrief';
 // 语音转写默认配置:同为浏览器专用模块,不走 barrel
 import { DEFAULT_ASR } from '../engine/asr';
 // 学伴记忆:纯引擎按路径直连(不进 barrel);LLM 润色在独立 sidecar,只在非 mock 模式后台调用
@@ -338,8 +340,10 @@ export const useAppStore = create<AppState>()(
           items: get().memory.items, topicId, course: topic.course, topic,
           hitChecklist: state.hitChecklist, now: now(),
         });
+        // 开场小本本:空对话,但 reteach/review 里"已听懂的要点"已有内容,值得进【这堂课到现在】
+        const sessionBrief = deriveSessionBrief({ topic, state, messages: [], traces: [], pendingMcId: opening.pendingMcId });
         const speak = await speakXiaobai({
-          card: opening.card, topic, state, recentMessages: [], settings: get().settings, seed: 0, memoryHints,
+          card: opening.card, topic, state, recentMessages: [], settings: get().settings, seed: 0, memoryHints, sessionBrief,
         });
         // api 模式下渲染可能耗时数秒,期间用户可能已退出/切换会话 —— 续体只允许写回本会话
         if (get().live?.sessionId !== sessionId) return;
@@ -390,7 +394,7 @@ export const useAppStore = create<AppState>()(
         // 入口守门:这一轮若是「套答案/角色反转/窃取提示词」而非讲课,当场婉拒,
         // 不进评估/导演/渲染链,不推进任何状态(检查清单命中、误区判定一概不发生)。
         if (isExtractionAttempt(visibleText)) {
-          teacherMsg = createTeacherMessage();
+          teacherMsg = { ...createTeacherMessage(), blocked: true };
           set((s) => {
             if (!s.live || s.live.sessionId !== sessionId || !teacherMsg) return {};
             teacherAccepted = true;
@@ -437,6 +441,14 @@ export const useAppStore = create<AppState>()(
 
           const state = get().topicState(topic.topicId);
           const g = get().global;
+          // 老师最近说过的本课术语:一次算清,交给导演填指令卡(可见消息,不含图片识别文本)
+          // 守门拦截过的老师发言(blocked)不进术语提取与小本本:被拦的注入句不得在下一轮以「老师上一轮讲解」回流评估器
+          const unblockedMessages = live.messages.filter((m) => !m.blocked);
+          const recentTeacherTerms = extractTeacherTerms([...unblockedMessages, teacherMsg], topic);
+          // 课堂小本本:本轮评估前的课堂全貌(轮次/已懂要点/自己上一问/老师上一轮讲解/讲法),评估器与小白共用
+          const sessionBrief = deriveSessionBrief({
+            topic, state, messages: [...unblockedMessages, teacherMsg], traces: live.traces, pendingMcId: live.pendingMcId,
+          });
           // 老师是在请小白解释自己上一问，不是“不会讲”。在进入评估/导演前截住，
           // 不写事件、不推进 trace 或 R1-R4；明确的讲解请放到下一轮，避免一轮双重语义。
           if (clarificationSource) {
@@ -473,14 +485,16 @@ export const useAppStore = create<AppState>()(
           }
           const privateEval = await evaluate({
             utterance: privateUtterance, lastXiaobaiText, topic, state,
-            pendingMcId: live.pendingMcId, settings,
+            pendingMcId: live.pendingMcId, settings, sessionBrief,
           });
-          const evalResult = image ? privateEvalToRecord(privateEval, visibleText) : privateEval;
+          // 诚实降级标记只落 trace 顶层,不随 EvalResult 进导演/事件/复盘
+          const { evalSource, ...privateEvalCore } = privateEval;
+          const evalResult = image ? privateEvalToRecord(privateEvalCore, visibleText) : privateEvalCore;
           // 长 await 期间用户可能已退出教室/开启新会话:陈旧续体不得写入事件流与新会话
           if (get().live?.sessionId !== sessionId) return { accepted: true };
           const decision = decide({
             evalResult, topic, state, global: g, mode: live.mode,
-            pendingMcId: live.pendingMcId, turn: live.traces.length, utterance: safeUtterance,
+            pendingMcId: live.pendingMcId, utterance: safeUtterance, recentTeacherTerms,
           });
 
           // 复习模式:纠正成功即复习通过
@@ -502,18 +516,16 @@ export const useAppStore = create<AppState>()(
           });
 
           const stateAfter = get().topicState(topic.topicId);
-          const recordCard = {
-            ...decision.card,
-            recentTeacherTerms: extractTeacherTerms([...live.messages, teacherMsg], topic),
-          };
           const privateMessages = [...live.messages, privateTeacherMsg];
-          const privateCard = {
+          // 图片脱敏接缝(不是双重补丁):trace 记 decision.card(只含可见发言的术语);
+          // 只有带图片识别文本时才另起一份私有卡给渲染层——复述素材与术语镜像可用图片描述,但不入档。
+          const privateCard = description ? {
             ...decision.card,
             paraphraseSource: decision.card.paraphraseSource === safeUtterance
               ? privateUtterance
               : decision.card.paraphraseSource,
             recentTeacherTerms: extractTeacherTerms(privateMessages, topic),
-          };
+          } : decision.card;
           // 金句一出即边讲边记(事件已 append):本轮的「爱打比方」习惯就能进这一轮的提示
           const golden = stamped.find((e) => e.type === 'golden_analogy_saved');
           if (golden) {
@@ -528,7 +540,7 @@ export const useAppStore = create<AppState>()(
           const speak = await speakXiaobai({
             card: privateCard, topic, state: stateAfter,
             recentMessages: privateMessages,
-            settings, seed: live.traces.length + 1, memoryHints,
+            settings, seed: live.traces.length + 1, memoryHints, sessionBrief,
           });
           if (get().live?.sessionId !== sessionId) return { accepted: true };
 
@@ -554,17 +566,21 @@ export const useAppStore = create<AppState>()(
               busy: false,
               mood: shouldCueExam ? 'happy' : speak.mood,
               pendingMcId: decision.pendingMcAfter,
-              lookupChecklistId: decision.action === 'propose_lookup' ? recordCard.targetChecklistId : null,
+              lookupChecklistId: decision.action === 'propose_lookup' ? decision.card.targetChecklistId : null,
               examCuedAt: shouldCueExam ? s.live.traces.length + 1 : s.live.examCuedAt,
               ended: decision.forceEnd,
               messages: [...s.live.messages, ...newMessages],
               traces: [...s.live.traces, {
                 turn: s.live.traces.length + 1,
                 teacherText: safeUtterance,
-                evalResult, card: recordCard,
+                evalResult, card: decision.card,
                 xiaobaiText: speak.text,
                 leakageRetries: speak.leakageRetries,
                 t: now(),
+                renderSource: speak.source,
+                evalSource: evalSource ?? (settings.mode === 'mock' ? 'rules' : undefined),
+                moodSource: speak.moodSource,
+                llmMode: settings.mode,
               }],
             },
           } : {});
@@ -623,7 +639,7 @@ export const useAppStore = create<AppState>()(
         const report = buildReport({
           sessionId: live.sessionId, topic, mode: live.mode,
           startedAt: live.startedAt, endedAt: now(),
-          traces: live.traces, state, quiz, prevRadar, global: g,
+          traces: live.traces, state, quiz, prevRadar,
         });
 
         if (report.masteredNow && state.knowledgeState !== '出师') {

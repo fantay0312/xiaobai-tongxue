@@ -24,6 +24,7 @@ import {
 } from '../src/engine/evolution';
 import { deriveSessionHonors } from '../src/engine/honors';
 import { rebuildMemoryFromHistory } from '../src/engine/learnerMemory';
+import { deriveSessionBrief } from '../src/engine/sessionBrief';
 import type {
   ChatMessage, DemoLine, LearnEvent, LearnEventType, LlmSettings, Topic, TopicState,
   TurnTrace, XiaobaiGlobal,
@@ -118,13 +119,19 @@ async function teachTurn(sim: Sim, text: string): Promise<TurnOut> {
   const { topic } = sim;
   const lastXiaobaiText = [...sim.messages].reverse()
     .find((message) => message.role === 'xiaobai')?.text ?? null;
-  const evalResult = await evaluate({
+  const teacherMsg: ChatMessage = { id: uid(), role: 'teacher', text, t: now() };
+  // 镜像 store:术语与小本本在评估前各算一次;mock 路径两者都不影响输出(确定性由本脚本证明)
+  const recentTeacherTerms = extractTeacherTerms([...sim.messages, teacherMsg], topic);
+  const sessionBrief = deriveSessionBrief({
+    topic, state: sim.state, messages: [...sim.messages, teacherMsg], traces: sim.traces, pendingMcId: sim.pendingMcId,
+  });
+  const { evalSource, ...evalResult } = await evaluate({
     utterance: text, lastXiaobaiText, topic, state: sim.state,
-    pendingMcId: sim.pendingMcId, settings: MOCK,
+    pendingMcId: sim.pendingMcId, settings: MOCK, sessionBrief,
   });
   const decision = decide({
     evalResult, topic, state: sim.state, global: sim.global, mode: 'teach',
-    pendingMcId: sim.pendingMcId, turn: sim.traces.length, utterance: text,
+    pendingMcId: sim.pendingMcId, utterance: text, recentTeacherTerms,
   });
   if (!isValidAction(decision.action)) throw new Error(`非法动作:${decision.action}`);
 
@@ -138,14 +145,11 @@ async function teachTurn(sim: Sim, text: string): Promise<TurnOut> {
   st = { ...st, ...decision.stateDelta, mcStates: { ...st.mcStates, ...(decision.stateDelta.mcStates ?? {}) } };
   sim.state = st;
 
-  const teacherMsg: ChatMessage = { id: uid(), role: 'teacher', text, t: now() };
-  const card = {
-    ...decision.card,
-    recentTeacherTerms: extractTeacherTerms([...sim.messages, teacherMsg], topic),
-  };
+  // 导演已按 recentTeacherTerms 填好指令卡,不再事后补丁
+  const card = decision.card;
   const speak = await speakXiaobai({
     card, topic, state: sim.state, recentMessages: [...sim.messages, teacherMsg],
-    settings: MOCK, seed: sim.traces.length + 1,
+    settings: MOCK, seed: sim.traces.length + 1, sessionBrief,
   });
 
   const turn = sim.traces.length + 1;
@@ -154,6 +158,7 @@ async function teachTurn(sim: Sim, text: string): Promise<TurnOut> {
   sim.traces.push({
     turn, teacherText: text, evalResult, card,
     xiaobaiText: speak.text, leakageRetries: speak.leakageRetries, t: now(),
+    renderSource: speak.source, evalSource, moodSource: speak.moodSource,
   });
   sim.pendingMcId = decision.pendingMcAfter;
   sim.forceEnded = decision.forceEnd;
@@ -257,7 +262,7 @@ async function simCorrectPath(topic: Topic, script: DemoLine[]): Promise<void> {
 
   const report = buildReport({
     sessionId: 'sim', topic, mode: 'teach', startedAt: now(), endedAt: now(),
-    traces: sim.traces, state: sim.state, quiz, prevRadar: null, global: sim.global,
+    traces: sim.traces, state: sim.state, quiz, prevRadar: null,
   });
   check('buildReport.masteredNow === true', report.masteredNow);
   const dims = Object.entries(report.radar) as [string, number][];
@@ -299,7 +304,7 @@ async function simAdoptPath(topic: Topic, script: DemoLine[]): Promise<void> {
   const quiz = runXiaobaiQuiz(topic, sim.state);
   const report = buildReport({
     sessionId: 'sim', topic, mode: 'teach', startedAt: now(), endedAt: now(),
-    traces: sim.traces, state: sim.state, quiz, prevRadar: null, global: sim.global,
+    traces: sim.traces, state: sim.state, quiz, prevRadar: null,
   });
   check(`带偏后考小白 <80(实得 ${quiz.score},关联题必错)`, quiz.score < 80);
   check('盲区报告含 severity=high 的被带偏误区', report.blindSpots.some((b) => b.severity === 'high' && b.mcId !== null));

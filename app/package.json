@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "test:commerce": "tsx scripts/commerce-contract.test.ts",
     "test:auth": "tsx scripts/auth-state.test.ts",
+    "test:agent": "tsx scripts/xiaobai-agent.test.ts",
     "test:coach-markdown": "tsx scripts/coach-markdown.test.ts",
     "test:conversation": "tsx scripts/conversation-repair.test.ts",
     "test:custom-content": "tsx scripts/custom-content-contract.test.ts",

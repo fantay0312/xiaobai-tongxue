@@ -43,8 +43,9 @@ export interface DecideInput {
   global: XiaobaiGlobal;
   mode: SessionMode;
   pendingMcId: string | null;
-  turn: number;
   utterance: string;
+  /** 老师最近发言里出现过的本课术语(调用方用 extractTeacherTerms 算一次);导演据此填指令卡,store 不再事后补丁 */
+  recentTeacherTerms: string[];
 }
 
 /** 由已命中项推导当前追问层级:第一个还有未命中项的层级 */
@@ -101,7 +102,7 @@ function pickNextTarget(topic: Topic, hitNow: string[], learningLevel: number): 
 }
 
 export function decide(input: DecideInput): Decision {
-  const { evalResult: ev, topic, state, global: g, pendingMcId, utterance } = input;
+  const { evalResult: ev, topic, state, global: g, pendingMcId, utterance, recentTeacherTerms } = input;
   const hitNow = [...state.hitChecklist, ...ev.checklistHits];
   const events: EventDraft[] = [];
   const stateDelta: Partial<TopicState> = {};
@@ -135,7 +136,7 @@ export function decide(input: DecideInput): Decision {
     mcId: null, mcBelief: null, targetChecklistId: null,
     knownWhitelist: hitNow
       .map((id) => topic.checklist.find((c) => c.id === id)?.point ?? id),
-    recentTeacherTerms: [],  // store 注入
+    recentTeacherTerms,
     style: {
       persona: g.persona, learningLevel: g.learningLevel,
       maxSentences: 2, mustEndWithQuestion: action !== 'express_understanding',

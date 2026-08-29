@@ -2113,7 +2113,10 @@ function handleMe(req, res) {
  * → 网关回 502 → 前端静默降级「离线锦囊」(线上「助教离线」就是这么来的)。
  * 2200 给思考留够余量;正文本身 3~6 句,300 token 足矣。
  */
-const ROLE_MAX_TOKENS = { xiaobai: 400, evaluator: 700, report: 900, coach: 2200 };
+/** 2026-08-30:deepseek-v4-flash 也是推理模型——评估器在带类比的讲解上 reasoning 达 600–1250 token,
+ *  700 会把 JSON 正文挤没(finish_reason=length → 客户端静默退回规则评估);小白台词 reasoning 50–190。
+ *  放宽为 evaluator 2000 / xiaobai 800,与 app/src/engine/llm.ts 镜像;只是上限,不增加正常开销。 */
+const ROLE_MAX_TOKENS = { xiaobai: 800, evaluator: 2000, report: 900, coach: 2200 };
 /** 推理模型的思考预算:不设则思考会自行膨胀(实测 479→86 token,首字延迟 13s→6s) */
 const COACH_REASONING_EFFORT = 'low';
 const UPSTREAM_TIMEOUT = 45_000;
