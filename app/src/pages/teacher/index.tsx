@@ -11,11 +11,12 @@ import type {
   BlindSpot, KnowledgeState, McState, SessionMode, SessionReport, Topic, TopicState,
 } from '../../types';
 import { useAppStore } from '../../store/appStore';
-import { getTopic, TOPICS } from '../../data';
+import { getTopic } from '../../data';
 import { demonName } from '../../engine/story';
 import { Radar } from '../review/Radar';
 import { Icon } from '../../components/ui/Icon';
 import { useDocTitle } from '../../hooks/useDocTitle';
+import { useAllTopics } from '../../hooks/useAllTopics';
 import s from './teacher.module.css';
 
 // ── 展示词表(与复盘页同一套口径,评价语言不允许分叉) ──
@@ -168,8 +169,9 @@ export default function TeacherPage() {
   const global = useAppStore((st) => st.global);
   const topicStates = useAppStore((st) => st.topicStates);
   const topicStateOf = useAppStore((st) => st.topicState);
+  const allTopics = useAllTopics();
 
-  const openTopics = TOPICS.filter((t) => !t.locked);
+  const openTopics = allTopics.filter((t) => !t.locked);
   const stateOf = (topicId: string): TopicState => topicStates[topicId] ?? topicStateOf(topicId);
 
   // ── ① 档案总览带:纯事件流计数 ──
@@ -256,7 +258,7 @@ export default function TeacherPage() {
       <header id="teacher-overview" className={`${s.head} ${s.rise}`} style={rise(0)}>
         <h1 className={s.title}>教师看板</h1>
         <p className={s.demoNote}>
-          {[...new Set(TOPICS.map((t) => t.course))].join(' · ')}。数据来自你的学习记录，每上完一课自动更新。
+          {[...new Set(allTopics.map((t) => t.course))].join(' · ')}。数据来自你的学习记录，每上完一课自动更新。
         </p>
       </header>
 

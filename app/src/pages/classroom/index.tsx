@@ -340,6 +340,7 @@ export default function ClassroomPage() {
   const live = useAppStore((st) => st.live);
   const events = useAppStore((st) => st.events);
   const g = useAppStore((st) => st.global);
+  const customTopicsStatus = useAppStore((st) => st.customTopicsStatus);
   const submitTeaching = useAppStore((st) => st.submitTeaching);
   const closeLookup = useAppStore((st) => st.closeLookup);
   const endSession = useAppStore((st) => st.endSession);
@@ -457,10 +458,13 @@ export default function ClassroomPage() {
   }, [animateId, msgCount, live?.busy]);
 
   if (!topic || topic.locked) {
+    const loadingCustom = topicId.startsWith('custom-')
+      && (customTopicsStatus === 'idle' || customTopicsStatus === 'loading');
     return (
       <div className={s.holder}>
         <p>
-          这间教室还没有开放。<Link to="/study"><Icon name="arrow-left" size={15} />回书斋</Link>
+          {loadingCustom ? '正在把自选讲义送进教室。' : '这间教室还没有开放。'}
+          {!loadingCustom ? <Link to="/study"><Icon name="arrow-left" size={15} />回书斋</Link> : null}
         </p>
       </div>
     );

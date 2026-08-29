@@ -7,7 +7,7 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router';
 import { useAppStore } from '../../store/appStore';
-import { TOPICS } from '../../data';
+import { useAllTopics } from '../../hooks/useAllTopics';
 import { deriveAchievements, deriveTeacherRank } from '../../engine/achievements';
 import { nextStep } from '../../engine/journey';
 import { deriveWisdom } from '../../engine/evolution';
@@ -21,9 +21,10 @@ export function JourneyRibbon() {
   const reports = useAppStore((st) => st.reports);
   const global = useAppStore((st) => st.global);
   const topicStates = useAppStore((st) => st.topicStates);
+  const allTopics = useAllTopics();
 
   const { rank, step, latest, nextSeal, wisdomLevel } = useMemo(() => {
-    const input = { events, reports, global, topicStates, topics: TOPICS };
+    const input = { events, reports, global, topicStates, topics: allTopics };
     const all = deriveAchievements(input);
     const earned = all
       .filter((a) => a.earnedAt !== null)
@@ -39,13 +40,13 @@ export function JourneyRibbon() {
       })[0] ?? null;
     return {
       rank: deriveTeacherRank(input),
-      step: nextStep({ events, reports, topicStates, topics: TOPICS }),
+      step: nextStep({ events, reports, topicStates, topics: allTopics }),
       latest: earned[0] ?? null,
       nextSeal: ghost,
       // 小白学识阶次(无上限升级轨),并入下方师道行尾作一小段纯文本
       wisdomLevel: deriveWisdom(events).level,
     };
-  }, [events, reports, global, topicStates]);
+  }, [events, reports, global, topicStates, allTopics]);
 
   const dreamLeft = Math.max(0, DREAM_GOAL - global.topicsMastered);
 

@@ -74,6 +74,10 @@ import { createAdminService } from './admin/service.mjs';
 import { createCommerceRouter } from './commerce/router.mjs';
 import { createCommerceService } from './commerce/service.mjs';
 import { createStaticHandler } from './static-hosting.mjs';
+import { createCustomContentRouter } from './custom-content/router.mjs';
+import { createCustomContentService } from './custom-content/service.mjs';
+import { createJsonLlmClient, createTopicCompiler } from './custom-content/topic-compiler.mjs';
+import { createWeKnoraClient } from './custom-content/weknora-client.mjs';
 import {
   createAccountVerificationGrants,
   isAccountVerificationAction,
@@ -279,6 +283,55 @@ if (!VISION_KEY) {
 }
 if (!productionStorage) {
   console.warn('[warn] 未配置生产存储,用户状态与成绩单使用本机兼容存储');
+}
+
+const WK_BASE_URL = process.env.WK_BASE_URL ?? '';
+const WK_API_KEY = process.env.WK_API_KEY ?? '';
+const WK_EMBEDDING_MODEL_ID = process.env.WK_EMBEDDING_MODEL_ID ?? '';
+const WK_SUMMARY_MODEL_ID = process.env.WK_SUMMARY_MODEL_ID ?? '';
+const WK_CONFIGURED = Boolean(WK_BASE_URL || WK_API_KEY || WK_EMBEDDING_MODEL_ID || WK_SUMMARY_MODEL_ID);
+let customContentService = null;
+if (WK_CONFIGURED) {
+  const maxFileMb = Number(process.env.WK_MAX_FILE_MB ?? 80);
+  if (
+    !productionStorage
+    || !WK_BASE_URL
+    || !WK_API_KEY
+    || !WK_EMBEDDING_MODEL_ID
+    || !API_KEY
+    || !Number.isInteger(maxFileMb)
+    || maxFileMb < 1
+    || maxFileMb > 80
+  ) {
+    console.error('[fatal] WeKnora 自定义课程配置不完整或 WK_MAX_FILE_MB 超出 1–80');
+    process.exit(2);
+  }
+  try {
+    const weknora = createWeKnoraClient({ baseUrl: WK_BASE_URL, apiKey: WK_API_KEY });
+    const compiler = createTopicCompiler({
+      weknora,
+      llm: createJsonLlmClient({
+        baseUrl: UPSTREAM,
+        apiKey: API_KEY,
+        model: MODEL_COACH,
+      }),
+    });
+    customContentService = createCustomContentService({
+      repository: productionStorage.postgres.customContent,
+      weknora,
+      cos: productionStorage.cos,
+      compiler,
+      embeddingModelId: WK_EMBEDDING_MODEL_ID,
+      summaryModelId: WK_SUMMARY_MODEL_ID,
+      maxFileBytes: maxFileMb * 1024 * 1024,
+    });
+    await customContentService.resumePendingJobs();
+  } catch (error) {
+    console.error('[fatal] WeKnora 自定义课程初始化失败:', safeDiagnosticMessage(error?.message));
+    process.exit(2);
+  }
+} else {
+  console.warn('[warn] WeKnora 未配置,自定义课程上传功能关闭');
 }
 
 // ───────────────────────── 注册用户(落盘持久化) ─────────────────────────
@@ -2684,6 +2737,20 @@ const commerceRouter = commerceService
     clientIp,
   })
   : null;
+const customContentRouter = customContentService
+  ? createCustomContentRouter({
+    service: customContentService,
+    resolveOwner: async (req, res, operation) => {
+      const publicUser = await protectedUser(req, res, operation);
+      return publicUser ? findUser(publicUser.name) : null;
+    },
+    send,
+    readJson: (req, limit) => readJson(req, limit, 5_000),
+    readRaw,
+    hasJsonContentType,
+    rateLimit: (input) => productionStorage.redisOtp.rateLimit(input),
+  })
+  : null;
 const staticHandler = createStaticHandler({
   mainDist: DIST,
   adminDist: ADMIN_DIST,
@@ -2698,6 +2765,10 @@ const server = http.createServer((req, res) => {
     pathname = pathname.slice(PREFIX.length) || '/';
   }
   if (pathname.startsWith('/api/')) {
+    if (pathname === '/api/xb' || pathname.startsWith('/api/xb/')) {
+      if (!customContentRouter) return send(res, 503, { error: 'custom-content-unavailable' });
+      return void customContentRouter.handle(req, res, pathname);
+    }
     if (pathname === '/api/admin/v1' || pathname.startsWith('/api/admin/v1/')) {
       if (!adminRouter) return send(res, 503, { error: 'admin-unavailable' });
       return void adminRouter.handle(req, res, pathname);

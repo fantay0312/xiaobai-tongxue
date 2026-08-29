@@ -12,9 +12,10 @@
 
 /* 题头:打字机眉批小签 + 衬线大题,收在暖灰 hairline 上(叠 2px 墨短线作骨) */
 .head {
-  display: grid;
-  gap: 0.6rem;
-  max-width: 42rem;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--gap-loose);
   margin-bottom: clamp(1.4rem, 3vw, 2rem);
 }
 
@@ -43,9 +44,46 @@
 }
 
 .sub {
+  margin-top: 0.6rem;
   font-size: var(--fs-body);
   line-height: 1.8;
   color: var(--ink-soft);
+}
+
+.customLink {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.6rem;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s);
+  color: var(--azure);
+  font-family: var(--font-body);
+  font-size: var(--fs-small);
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out);
+}
+
+.customLink:hover,
+.customLink:focus-visible {
+  background: var(--paper-warm);
+  transform: translateY(-1px);
+}
+
+.customLink:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 2px;
+}
+
+@media (max-width: 560px) {
+  .head {
+    align-items: start;
+    flex-direction: column;
+    gap: var(--gap);
+  }
 }
 
 /* ── 函套排架 ── */

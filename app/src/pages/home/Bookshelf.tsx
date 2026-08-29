@@ -7,11 +7,12 @@
  * 已备过的课仍可在备课页主动选择「直接开讲」,书架不再替用户跳过未完成的备课。
  */
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { TOPICS } from '../../data';
 import { COURSE_COVERS } from '../../data/courseCovers';
 import { useAppStore } from '../../store/appStore';
 import type { Topic, TopicState } from '../../types';
+import { Icon } from '../../components/ui/Icon';
 import styles from './shelf.module.css';
 
 type SpineStatus = 'mastered' | 'review' | 'learning' | 'fresh' | 'locked';
@@ -84,8 +85,9 @@ function cnCount(n: number): string {
 export function Bookshelf() {
   const navigate = useNavigate();
   const topicStates = useAppStore((s) => s.topicStates);
+  const customTopics = useAppStore((s) => s.customTopics);
 
-  const courses = groupByCourse(TOPICS);
+  const courses = groupByCourse([...TOPICS, ...customTopics]);
   const [openCourse, setOpenCourse] = useState(courses[0]?.course ?? '');
   const current = courses.find((c) => c.course === openCourse) ?? courses[0];
   const currentCover = COURSE_COVERS[current.course];
@@ -104,8 +106,13 @@ export function Bookshelf() {
   return (
     <section id="shelf" className={styles.shelf} aria-label="知识点书架">
       <header className={styles.head}>
-        <h2 className={styles.title}>知识点书架</h2>
-        <p className={styles.sub}>取一函，挑一讲，讲给小白听。</p>
+        <div>
+          <h2 className={styles.title}>知识点书架</h2>
+          <p className={styles.sub}>取一函，挑一讲，讲给小白听。</p>
+        </div>
+        <Link className={styles.customLink} to="/custom-content">
+          <Icon name="upload" size={16} /> 自选讲义
+        </Link>
       </header>
 
       {/* ── 函套排架:一门课一函,函厚随讲数 ── */}

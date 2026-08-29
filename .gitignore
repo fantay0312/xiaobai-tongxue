@@ -11,6 +11,7 @@ doc/resendkey.md
 doc/验证/验证.md
 doc/数据库/
 server/config.json
+deploy/weknora-sidecar/.env
 
 # 注册用户凭据/按账号学习存档(网关运行时落盘),禁止入库
 server/registered-users.json

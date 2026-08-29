@@ -162,7 +162,7 @@ export async function copyRuntimeModules(root) {
   await Promise.all(runtimeModules.map((file) => (
     copyFile(path.join(SERVER_DIR, file), path.join(root, file))
   )));
-  await Promise.all(['admin', 'commerce'].map((directory) => cp(
+  await Promise.all(['admin', 'commerce', 'custom-content'].map((directory) => cp(
     path.join(SERVER_DIR, directory),
     path.join(root, directory),
     { recursive: true },

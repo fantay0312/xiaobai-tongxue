@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import type { LearnEventType, RadarScores, SessionMode } from '../../types';
 import { useAppStore } from '../../store/appStore';
-import { getTopic, TOPICS } from '../../data';
+import { getTopic } from '../../data';
 import { deriveDemonReport, deriveDiary, type DemonEncounter } from '../../engine/story';
 import { deriveSessionHonors } from '../../engine/honors';
 import { HonorRoll } from '../../components/story/HonorRoll';
@@ -18,6 +18,7 @@ import { XiaobaiDiary } from '../../components/story/XiaobaiDiary';
 import { Icon } from '../../components/ui/Icon';
 import { RoundStamp } from '../../components/ui/RoundStamp';
 import { useDocTitle } from '../../hooks/useDocTitle';
+import { useAllTopics } from '../../hooks/useAllTopics';
 import { Radar } from './Radar';
 import { RemedyPath } from './RemedyPath';
 import paper from '../../styles/paper.module.css';
@@ -82,6 +83,7 @@ export default function ReviewPage() {
   const live = useAppStore((st) => st.live);
   const global = useAppStore((st) => st.global);
   const topicStates = useAppStore((st) => st.topicStates);
+  const allTopics = useAllTopics();
 
   const report = reports.find((r) => r.sessionId === sessionId);
   const topic = report ? getTopic(report.topicId) : undefined;
@@ -115,7 +117,7 @@ export default function ReviewPage() {
   const diary = topic ? deriveDiary({ topic, sessionEvents, report }) : null;
   // 下课钤印:课前/课后事件切片各复算一遍印匣,差集即本课新落之印(老档案回看同样成立)
   const honors = sessionId
-    ? deriveSessionHonors({ events, reports, global, topicStates, topics: TOPICS }, sessionId)
+    ? deriveSessionHonors({ events, reports, global, topicStates, topics: allTopics }, sessionId)
     : null;
 
   /** 「去救小白」:展开该心魔的补学微路径,并把对应盲区条目滚进视野 */

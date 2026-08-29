@@ -12,7 +12,7 @@ import {
 } from 'react';
 import { Link } from 'react-router';
 import { useAppStore } from '../../store/appStore';
-import { TOPICS } from '../../data';
+import { useAllTopics } from '../../hooks/useAllTopics';
 import { nextStep } from '../../engine/journey';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { Icon } from '../ui/Icon';
@@ -36,10 +36,11 @@ export function MentorLetter() {
   const events = useAppStore((st) => st.events);
   const reports = useAppStore((st) => st.reports);
   const topicStates = useAppStore((st) => st.topicStates);
+  const allTopics = useAllTopics();
 
   const step = useMemo(
-    () => nextStep({ events, reports, topicStates, topics: TOPICS }),
-    [events, reports, topicStates],
+    () => nextStep({ events, reports, topicStates, topics: allTopics }),
+    [events, reports, topicStates, allTopics],
   );
   const reducedMotion = useReducedMotion();
 

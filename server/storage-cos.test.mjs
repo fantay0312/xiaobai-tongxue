@@ -18,6 +18,12 @@ class FakeCos {
 
   async getObject(parameters) {
     this.calls.push({ method: 'getObject', parameters });
+    if (parameters.Range) {
+      return {
+        Body: Buffer.from('s'),
+        headers: { 'content-range': 'bytes 0-0/8', 'content-type': 'application/pdf', etag: '"etag"' },
+      };
+    }
     return {
       Body: Buffer.from('stored'),
       headers: { 'content-type': 'application/pdf', etag: '"etag"' },
@@ -60,6 +66,18 @@ test('COS store creates random private SSE keys scoped to the user UUID', async 
   assert.equal('GrantRead' in put, false);
   assert.notEqual(put.ACL, 'public-read');
   assert.equal(uploaded.publicUrl, undefined);
+
+  const custom = await store.uploadCustomCourseAsset({
+    userId: USER_ID,
+    courseId: '33333333-3333-4333-8333-333333333333',
+    body: Buffer.from('pdf-data'),
+    contentType: 'application/pdf',
+  });
+  assert.equal(
+    custom.key,
+    `xiaobai/users/${USER_ID}/custom-course-assets/33333333-3333-4333-8333-333333333333/${'ab'.repeat(16)}`,
+  );
+  assert.equal((await store.verifySize({ userId: USER_ID, key: custom.key })).byteSize, 8);
 
   const read = await store.read({ userId: USER_ID, key: uploaded.key });
   assert.equal(read.body.toString(), 'stored');

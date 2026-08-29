@@ -15,7 +15,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useAppStore } from '../../store/appStore';
-import { getTopic, TOPICS } from '../../data';
+import { getTopic } from '../../data';
 // 记忆回执:engine/recall 纯派生(不进 barrel),按路径直连
 import { deriveTopicRecall, type TopicRecall } from '../../engine/recall';
 import type { PrepContext } from '../../engine/coach';
@@ -28,6 +28,7 @@ import { Tour, type TourStep } from '../../components/tour/Tour';
 import { Icon } from '../../components/ui/Icon';
 import type { Misconception, PrepReference, QuestionLevel, XiaobaiMood } from '../../types';
 import { useDocTitle } from '../../hooks/useDocTitle';
+import { useAllTopics } from '../../hooks/useAllTopics';
 import { deriveTeachingFlow } from './flow';
 import paper from '../../styles/paper.module.css';
 import s from './prep.module.css';
@@ -291,10 +292,12 @@ function PrepRoom({ topicId }: { topicId: string }) {
   const completePrep = useAppStore((st) => st.completePrep);
   const prepDone = useAppStore((st) => st.topicStates[topicId]?.prepDone ?? false);
   const level = useAppStore((st) => st.global.learningLevel);
+  const customTopicsStatus = useAppStore((st) => st.customTopicsStatus);
   // 记忆回执数据源:事件流 / 报告 / 主题状态(备课页原本不订阅,此处按需取,不改 store)
   const events = useAppStore((st) => st.events);
   const reports = useAppStore((st) => st.reports);
   const topicStates = useAppStore((st) => st.topicStates);
+  const allTopics = useAllTopics();
 
   /** 摸底第一波(判断题):已作答的选择(true=判"对",false=判"错") */
   const [answers, setAnswers] = useState<boolean[]>([]);
@@ -320,8 +323,8 @@ function PrepRoom({ topicId }: { topicId: string }) {
   /* 派生态提前算(hooks 必须在提前 return 之前):不可用主题一律给空 */
   // 记忆回执:首学该课(零事件)deriveTopicRecall 返回 null → 顶部纸条完全不渲染
   const recall = useMemo(
-    () => (usable ? deriveTopicRecall({ topicId, events, reports, topicStates, topics: TOPICS }) : null),
-    [usable, topicId, events, reports, topicStates],
+    () => (usable ? deriveTopicRecall({ topicId, events, reports, topicStates, topics: allTopics }) : null),
+    [usable, topicId, events, reports, topicStates, allTopics],
   );
   const probes = usable ? topic!.misconceptions.slice(0, 3) : [];
   const selfTest = usable ? getSelfTest(topicId) : [];
@@ -398,14 +401,18 @@ function PrepRoom({ topicId }: { topicId: string }) {
   }, []);
 
   if (!topic || topic.locked) {
+    const loadingCustom = topicId.startsWith('custom-')
+      && (customTopicsStatus === 'idle' || customTopicsStatus === 'loading');
     return (
       <div className={s.page}>
         <div className={s.notFound}>
-          <h1 className={s.notFoundTitle}>这个知识点还没有开放</h1>
+          <h1 className={s.notFoundTitle}>{loadingCustom ? '正在从自选课架取讲义' : '这个知识点还没有开放'}</h1>
           <p className={s.notFoundText}>
-            书架上还有已开放的课在等你,先回书斋挑一本,回头再来看它。
+            {loadingCustom
+              ? '稍等片刻，备课材料正在归案。'
+              : '书架上还有已开放的课在等你,先回书斋挑一本,回头再来看它。'}
           </p>
-          <Link to="/study" className={s.primaryBtn}>回书斋门厅</Link>
+          {!loadingCustom ? <Link to="/study" className={s.primaryBtn}>回书斋门厅</Link> : null}
         </div>
       </div>
     );

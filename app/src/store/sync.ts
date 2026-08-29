@@ -7,7 +7,7 @@ import {
 } from './pendingSync';
 import { pendingSyncQueue } from './pendingSyncQueue';
 import { API_BASE, gatewayFetch } from '../lib/api';
-import { TOPICS } from '../data';
+import { getAllTopics } from '../data';
 import { deriveEvolution } from '../engine/evolution';
 
 const LAST_USER_KEY = 'xiaobai-sync-user';
@@ -62,7 +62,7 @@ function commitMerged(state: SyncPayload): void {
       events: state.events,
       reports: state.reports,
       topicStates: {},
-      global: { ...state.global, learningLevel: deriveEvolution(state.events, TOPICS).stage },
+      global: { ...state.global, learningLevel: deriveEvolution(state.events, getAllTopics()).stage },
     });
     useAppStore.getState().rebuildStates();
   } finally { applyingRemote = false; }
@@ -70,7 +70,7 @@ function commitMerged(state: SyncPayload): void {
 
 function sanitize(remote: Partial<SyncPayload>): SyncPayload {
   const state = sanitizeSyncPayload(remote, DEFAULT_GLOBAL);
-  state.global.learningLevel = deriveEvolution(state.events, TOPICS).stage;
+  state.global.learningLevel = deriveEvolution(state.events, getAllTopics()).stage;
   return state;
 }
 

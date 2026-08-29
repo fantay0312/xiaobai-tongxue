@@ -121,6 +121,7 @@ COS_SECRET_KEY=...
 COS_BUCKET=...
 COS_REGION=ap-guangzhou
 COS_PREFIX=xiaobai
+COS_MAX_OBJECT_BYTES=83886080
 
 RESEND_API_KEY=...
 RESEND_FROM=小白同学 <noreply@mail.tokentosea.com>
@@ -153,6 +154,13 @@ ADMIN_INVITE_TTL_HOURS=24
 ADMIN_BOOTSTRAP_RETRY_SECONDS=300
 CDK_HMAC_KEY_VERSION=1
 CDK_HMAC_KEY=<32-byte base64>
+
+# 自定义课程 sidecar（真实值只放此 root 专属环境文件）
+WK_BASE_URL=http://127.0.0.1:8180/api/v1
+WK_API_KEY=...
+WK_EMBEDDING_MODEL_ID=...
+WK_SUMMARY_MODEL_ID=...
+WK_MAX_FILE_MB=80
 ```
 
 PostgreSQL 与 Redis 的明文连接只允许 RFC1918 私网地址，并且必须显式开启对应的
@@ -170,6 +178,21 @@ npm run check
 npm test
 node index.mjs
 ```
+
+## 自定义课程接口
+
+`/api/xb/*` 全部沿用现网登录会话、手机号/邮箱验证与账号访问门禁；WeKnora API Key 永不下发浏览器。
+
+- `GET/POST /api/xb/courses`：列出或创建当前账号的自选课程；创建时在 sidecar 建独立 document/FAQ 双库。
+- `GET/POST /api/xb/courses/:id/assets`：列出资料或 multipart 上传；单账号一次一份、全站最多两份并发。
+- `GET/DELETE /api/xb/assets/:id`、`POST /api/xb/assets/:id/reparse`：查状态、删除与重新解析。
+- `POST /api/xb/topics/compile`、`GET /api/xb/compile-jobs/:id`：从已完成资料异步编译课题。
+- `PUT /api/xb/topics/:id/draft`、`POST /api/xb/topics/:id/publish`：校订、重新核验出处并发布。
+- `GET /api/xb/topics` 与 `GET /api/xb/topics/:topicId`：只返回学生视图，剥离 `groundTruth`、`correctionCriteria`、`probe.explanation`、源分块正文与 WeKnora 绑定。
+
+Sidecar 编排与首次模型/API Key 初始化见 `deploy/weknora-sidecar/README.md`。未配置任一 `WK_*` 时功能整体返回 503，预埋课程与其它 API 不受影响；若开始配置但缺项，网关拒绝启动，避免出现可上传却不可检索的半成品。
+
+用户上传的原文件由小白 BFF 先写既有私有 COS，路径按 `users/<user UUID>/custom-course-assets/<course UUID>/...` 隔离，并启用 COS 服务端 AES256 加密；数据库只保存私有 object key、SHA-256 与大小。写入后只 Range 读取 1 字节，从 `Content-Range` 核对对象总长度，再把字节副本交给 WeKnora（现有 CAM 未开放 `HeadObject`，因此不依赖该动作）。任一步失败都会补偿删除已写对象；删除资料时先确认没有课题引用，再同时清理 WeKnora 知识与 COS 原件。浏览器响应不返回 COS key。
 
 前端根路径生产构建：
 

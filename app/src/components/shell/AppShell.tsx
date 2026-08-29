@@ -50,6 +50,14 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    key: 'custom-content', path: '/custom-content', label: '自选课', end: true,
+    sections: [
+      { to: '/custom-content#custom-overview', label: '自选讲义' },
+      { to: '/custom-content#custom-assets', label: '资料入库' },
+      { to: '/custom-content#custom-compiler', label: '课题编译' },
+    ],
+  },
+  {
     key: 'growth', path: '/growth', label: '成长册', end: false,
     sections: [
       { to: '/growth#growth-overview', label: '册页卷首' },

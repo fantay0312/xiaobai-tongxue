@@ -1,0 +1,151 @@
+name: xiaobai-weknora
+
+services:
+  app:
+    image: ${WEKNORA_APP_IMAGE}
+    mem_limit: 2g
+    cpus: 1.0
+    pids_limit: 512
+    ports:
+      - "127.0.0.1:${WK_BIND_PORT:-8180}:8080"
+    env_file:
+      - ${WK_ENV_FILE:-.env}
+    environment:
+      GIN_MODE: release
+      LOG_LEVEL: warn
+      TZ: Asia/Shanghai
+      AUTO_MIGRATE: "true"
+      DISABLE_REGISTRATION: ${DISABLE_REGISTRATION:-true}
+      WEKNORA_AUTH_DEFAULT_TENANT_MODE: create_personal
+      WEKNORA_TENANT_SELF_SERVICE_CREATION_ENABLED: "false"
+      WEKNORA_TENANT_ENABLE_CROSS_TENANT_ACCESS: "false"
+      DB_DRIVER: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      RETRIEVE_DRIVER: postgres
+      STORAGE_TYPE: local
+      STORAGE_ALLOW_LIST: local
+      LOCAL_STORAGE_BASE_DIR: /data/files
+      DOCREADER_ADDR: docreader:50051
+      GRPC_AUTH_TOKEN: ${GRPC_AUTH_TOKEN}
+      STREAM_MANAGER_TYPE: redis
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_PREFIX: "wk:"
+      SYSTEM_AES_KEY: ${SYSTEM_AES_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      MAX_FILE_SIZE_MB: "80"
+      NEO4J_ENABLE: "false"
+      OLLAMA_OPTIONAL: "true"
+      CONCURRENCY_POOL_SIZE: "2"
+      WEKNORA_ASYNQ_CORE_CONCURRENCY: "2"
+      WEKNORA_ASYNQ_POSTPROCESS_CONCURRENCY: "1"
+      WEKNORA_ASYNQ_ENRICHMENT_CONCURRENCY: "2"
+      WEKNORA_ASYNQ_MAINTENANCE_CONCURRENCY: "1"
+      WEKNORA_ASYNQ_SHARED_CONCURRENCY: "2"
+      WEKNORA_MODEL_MAX_CONCURRENCY: "4"
+      WEKNORA_DOCUMENT_PROCESS_TIMEOUT: 2h
+      WEKNORA_DOCREADER_CALL_TIMEOUT: 30m
+    volumes:
+      - data-files:/data/files
+      - docreader-tmp:/tmp/docreader:ro
+      - ./config.yaml:/app/config/config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      docreader:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 20s
+      timeout: 8s
+      retries: 5
+      start_period: 90s
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - sidecar
+
+  docreader:
+    image: ${WEKNORA_DOCREADER_IMAGE}
+    mem_limit: 3g
+    cpus: 1.5
+    pids_limit: 512
+    expose:
+      - "50051"
+    environment:
+      TZ: Asia/Shanghai
+      DOCREADER_IMAGE_OUTPUT_DIR: /tmp/docreader
+      MAX_FILE_SIZE_MB: "80"
+      DOCREADER_GRPC_MAX_FILE_SIZE_MB: "80"
+      DOCREADER_GRPC_MAX_WORKERS: "2"
+      DOCREADER_GRPC_PORT: "50051"
+      DOCREADER_MARKITDOWN_MAX_WORKERS: "1"
+      DOCREADER_PDF_RENDER_MAX_WORKERS: "1"
+      GRPC_AUTH_TOKEN: ${GRPC_AUTH_TOKEN}
+    volumes:
+      - docreader-tmp:/tmp/docreader
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=localhost:50051"]
+      interval: 20s
+      timeout: 8s
+      retries: 5
+      start_period: 90s
+    restart: unless-stopped
+    networks:
+      - sidecar
+
+  postgres:
+    image: ${WEKNORA_POSTGRES_IMAGE}
+    mem_limit: 2g
+    cpus: 0.75
+    pids_limit: 256
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 8s
+      retries: 6
+      start_period: 30s
+    stop_grace_period: 1m
+    restart: unless-stopped
+    networks:
+      - sidecar
+
+  redis:
+    image: ${WEKNORA_REDIS_IMAGE}
+    mem_limit: 512m
+    cpus: 0.25
+    pids_limit: 128
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+    networks:
+      - sidecar
+
+volumes:
+  data-files:
+  docreader-tmp:
+  postgres-data:
+  redis-data:
+
+networks:
+  sidecar:
+    driver: bridge

@@ -4,7 +4,7 @@ import { Link } from 'react-router';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
 import { profileAccountKey, useProfileStore } from '../../store/profileStore';
-import { TOPICS } from '../../data';
+import { useAllTopics } from '../../hooks/useAllTopics';
 // 学习身份三引擎：同 growth 页按路径直连纯派生，不进 engine barrel
 import { deriveTeacherRank } from '../../engine/achievements';
 import { deriveWisdom, deriveEvolution, getStageMeta } from '../../engine/evolution';
@@ -83,12 +83,13 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
   const events = useAppStore((state) => state.events);
   const reports = useAppStore((state) => state.reports);
   const topicStates = useAppStore((state) => state.topicStates);
+  const allTopics = useAllTopics();
   const rank = useMemo(
-    () => deriveTeacherRank({ events, reports, global, topicStates, topics: TOPICS }),
-    [events, reports, global, topicStates],
+    () => deriveTeacherRank({ events, reports, global, topicStates, topics: allTopics }),
+    [events, reports, global, topicStates, allTopics],
   );
   const wisdom = useMemo(() => deriveWisdom(events), [events]);
-  const evolution = useMemo(() => deriveEvolution(events, TOPICS), [events]);
+  const evolution = useMemo(() => deriveEvolution(events, allTopics), [events, allTopics]);
   const stageMeta = getStageMeta(evolution.stage);
   const [activeSection, setActiveSection] = useState<ProfileSection>('overview');
   const [logoutBusy, setLogoutBusy] = useState(false);
