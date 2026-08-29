@@ -152,12 +152,13 @@ function validateQuizItems(items, path, checklistIds, misconceptionIds, issues, 
   const ids = new Set();
   for (const [index, item] of items.entries()) {
     const itemPath = `${path}.${index}`;
+    const options = Array.isArray(item.options) ? item.options : [];
     if (!item.id || ids.has(item.id)) issues.push(issue('quiz-id', `${itemPath}.id`, '题目编号必须非空且不重复'));
     ids.add(item.id);
-    if (!item.question || !Array.isArray(item.options) || item.options.length < 2) {
+    if (!item.question || options.length < 2) {
       issues.push(issue('quiz-shape', itemPath, '每题须有题干与至少两个选项'));
     }
-    if (!Number.isInteger(item.answerIndex) || item.answerIndex < 0 || item.answerIndex >= item.options.length) {
+    if (!Number.isInteger(item.answerIndex) || item.answerIndex < 0 || item.answerIndex >= options.length) {
       issues.push(issue('quiz-answer', `${itemPath}.answerIndex`, '正确选项下标无效'));
     }
     if (!item.explanation) issues.push(issue('quiz-explanation', `${itemPath}.explanation`, '每题须附课件依据'));

@@ -96,7 +96,7 @@ function lines(value: string): string[] {
   return value.split(/\n+/).map((item) => item.trim()).filter(Boolean);
 }
 
-function starterQuiz(prefix: string, checklistRef: string): PredictionQuizItem[] {
+function starterQuiz(prefix: string, checklistRef: string, mcRef: string | null = null): PredictionQuizItem[] {
   return Array.from({ length: 3 }, (_, index) => ({
     id: `${prefix}-q${index + 1}`,
     question: '',
@@ -104,7 +104,7 @@ function starterQuiz(prefix: string, checklistRef: string): PredictionQuizItem[]
     answerIndex: 0,
     explanation: '',
     checklistRef,
-    mcRef: null,
+    mcRef,
   }));
 }
 
@@ -135,7 +135,7 @@ function starterMisconception(topicId: string, mcId: string, checklistId: string
     probe: { statement: '', isTrue: false, explanation: '' },
     remedy: {
       microLesson: { title: '', body: '', askBack: '' },
-      predictionQuiz: starterQuiz(mcId, checklistId),
+      predictionQuiz: starterQuiz(mcId, checklistId, mcId),
     },
   };
 }
@@ -213,7 +213,7 @@ function QuizEditor({
                 <label>关联要点<select value={item.checklistRef} onChange={(event) => patchItem(index, { checklistRef: event.target.value })}>{checklist.map((check) => <option key={check.id} value={check.id}>{check.id} · {check.point}</option>)}</select></label>
                 <label>课件依据<input value={item.explanation} placeholder="解释正确答案为什么成立" onChange={(event) => patchItem(index, { explanation: event.target.value })} /></label>
               </div>
-              {!fixedMcRef ? <label>关联误区<select value={item.mcRef ?? ''} onChange={(event) => patchItem(index, { mcRef: event.target.value || null })}><option value="">不关联误区</option>{misconceptions.map((mc) => <option key={mc.mcId} value={mc.mcId}>{mc.mcId} · {mc.belief || '未命名误区'}</option>)}</select></label> : null}
+              <label>关联误区<select value={item.mcRef ?? ''} onChange={(event) => patchItem(index, { mcRef: event.target.value || null })}><option value="">不关联误区</option>{(fixedMcRef ? misconceptions.filter((mc) => mc.mcId === fixedMcRef) : misconceptions).map((mc) => <option key={mc.mcId} value={mc.mcId}>{mc.mcId} · {mc.belief || '未命名误区'}</option>)}</select></label>
               <button className={s.removeLine} type="button" onClick={() => onChange(items.filter((_, at) => at !== index))} disabled={items.length <= minimum}>删去此题</button>
             </div>
           </article>
