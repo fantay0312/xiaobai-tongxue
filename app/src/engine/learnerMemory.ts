@@ -634,7 +634,7 @@ export function composeLearnerProfile(input: {
   }
   // 习惯句合并成一句:「讲课爱打比方，一开口就是一大段」——去掉重复的「先生」主语,像人写的画像
   const topHabits = habits.slice(0, 2).map((it) => it.text.replace(/^先生/, ''));
-  if (topHabits.length > 0) clauses.push(`${stale ? '从前' : ''}${topHabits.join('，')}。`);
+  if (topHabits.length > 0) clauses.push(`${stale ? '先生从前' : ''}${topHabits.join('，')}。`);
   const milestone = visible.filter((it) => it.kind === 'milestone')
     .sort((a, b) => b.lastSeenAt.localeCompare(a.lastSeenAt) || a.id.localeCompare(b.id))[0];
   if (milestone) clauses.push(`最近一回，${milestone.text}。`);
