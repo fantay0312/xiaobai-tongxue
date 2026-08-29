@@ -38,9 +38,13 @@
 .crumb a { color: var(--ink-soft); }
 .crumb a:hover { color: var(--azure); }
 
-/* 卷宗题头:双线书版式(R2)——通栏 hairline 上叠一段 2px 墨色短线,题头有骨 */
+/* 卷首:左题名 + 右档案卡,通栏 hairline 上叠 2px 墨短线收底 */
 .head {
   position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(17rem, 20rem);
+  align-items: end;
+  column-gap: clamp(var(--gap-loose), 5vw, 5rem);
   border-bottom: 1px solid var(--line-strong);
   padding-bottom: var(--gap);
   margin-bottom: var(--gap-loose);
@@ -56,19 +60,7 @@
   background: var(--ink);
 }
 
-/* 转戳:本页唯一一枚旋转邮戳,压在题头右上留白里(非常规瞬间) */
-.headStamp {
-  position: absolute;
-  top: -0.25rem;
-  right: 0;
-  color: var(--terra);
-  opacity: 0.9;
-  pointer-events: none;
-}
-
-@media (max-width: 720px) {
-  .headStamp { display: none; }
-}
+.headMain { min-width: 0; }
 
 .title {
   font-size: var(--fs-hero);
@@ -83,17 +75,58 @@
   margin-top: var(--gap-hair);
 }
 
-.meta {
-  margin-top: var(--gap-tight);
+/* 档案卡:卷宗索引卡制式——麦色纸、细边、微斜一度手贴感,底缘撕票线(texture 由 TSX 叠) */
+.fileCard {
+  align-self: end;
+  padding: var(--gap-tight) var(--gap) var(--gap-hair);
+  background: var(--paper-warm);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-tag);
+  box-shadow: var(--shadow-paper);
+  transform: rotate(1.2deg);
+}
+
+.fileCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-tight);
+  padding-bottom: var(--gap-hair);
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.fileRows {
+  margin: var(--gap-hair) 0 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.fileRows > div {
+  display: grid;
+  grid-template-columns: 3.2em minmax(0, 1fr);
+  gap: var(--gap-tight);
+  align-items: baseline;
   font-size: var(--fs-small);
+}
+
+.fileRows dt {
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.14em;
   color: var(--ink-faint);
 }
 
-/* 档案号编号牌:小块砚墨压纸角(R1 的微量用法,不与出师证书争主角) */
-.fileNo {
+.fileRows dd {
+  margin: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+/* 档案号:一小块砚墨压在卡上(R1 微量用法);选择器写足 .fileRows 才压得过 dd 的墨色 */
+.fileRows .fileNo {
+  justify-self: start;
   display: inline-block;
-  margin-left: var(--gap-tight);
-  padding: 0.1rem 0.55rem;
+  padding: 0.05rem 0.5rem;
   border-radius: var(--radius-tag);
   background: linear-gradient(160deg, var(--inkstone), var(--inkstone-deep));
   color: var(--moon-on-ink);
@@ -102,15 +135,28 @@
   letter-spacing: 0.06em;
 }
 
+.fileFoot {
+  margin-top: var(--gap-tight);
+  padding-top: var(--gap-hair);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--gap-tight);
+}
+
 .masteredBadge {
-  display: inline-block;
-  margin-left: var(--gap-tight);
-  padding: 0.1rem 0.6rem;
+  flex: none;
+  padding: 0.05rem 0.55rem;
   border: 1px solid var(--jade);
   border-radius: var(--radius-s);
   color: var(--jade-ink);
   font-family: var(--font-display);
-  font-size: var(--fs-small);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 720px) {
+  .head { grid-template-columns: 1fr; row-gap: var(--gap); }
+  .fileCard { max-width: 22rem; transform: none; }
 }
 
 /* ── 双栏:正文 + 眉批侧注 ── */
@@ -203,31 +249,29 @@
     var(--paper-shade);
 }
 
-/* 区块题头:双线书版式(R2)——2px 墨色短线叠在通栏 hairline 上 */
+/* 区块题头:极简制式(与备课页/宣传页同源)——衬线序号题名,一句话副题落在下一行;
+   不带打字机眉批、通栏 hairline 与 2px 墨骨(2026-08-30 与全站同步) */
 .h2 {
-  position: relative;
-  font-size: var(--fs-title);
-  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
   margin-bottom: var(--gap);
-  padding-bottom: var(--gap-hair);
-  border-bottom: 1px solid var(--line-strong);
-}
-
-.h2::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  width: 2.5rem;
-  height: 2px;
-  background: linear-gradient(90deg, var(--lilac-ink), var(--reed));
+  margin-left: -0.02em;
+  font-family: var(--font-serif);
+  font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.015em;
+  color: var(--ink);
 }
 
 .h2 small {
-  font-size: var(--fs-small);
-  color: var(--ink-faint);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
   font-weight: 400;
-  margin-left: var(--gap-tight);
+  line-height: 1.7;
+  color: var(--ink-soft);
+  margin-left: 0;
 }
 
 .h3 {

@@ -2,6 +2,10 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Achievement } from '../../engine/achievements';
 
 const SEEN_SEALS_KEY = 'xiaobai-growth-seals-seen-v3';
+
+/** 印钮 DOM id —— 仪式钩子与印章册共用同一契约,别再各写各的(曾因前缀不一致让仪式永远起不来:
+    新印一直停在 pending(隐藏)态,自动翻页效应还会把跨页反复拽回去)。 */
+export const sealButtonId = (id: string): string => `achievement-seal-${id}`;
 const CEREMONY_MS = 1800;
 const fallbackSeenSeals = new Set<string>();
 
@@ -102,7 +106,7 @@ export function useSealCeremony(achievements: Achievement[], visibleSealIds: rea
     }
     if (celebrating || startingMarkRef.current) return undefined;
     const candidates = queue.flatMap((item) => {
-      const element = document.getElementById(`achievement-${item.id}`);
+      const element = document.getElementById(sealButtonId(item.id));
       return element ? [{ element, item }] : [];
     });
     if (candidates.length === 0) return undefined;

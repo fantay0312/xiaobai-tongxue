@@ -71,3 +71,13 @@
 
 ## 2026-08-29 晚 小砚面板外观重做(PR #49 → main cca1660,已发布 release 20260829T093949Z-cca1660-pr49-coach-panel)
 - 纸面卡壳(coach-in/out,关面板 200ms 退场后卸载)、图集裁头像圆像 + 呼吸状态点、滑块分段页签、无边框气泡、建议卡列表、胶囊输入 + 圆形递上钮;试讲误区改单选行;草稿加题头字数;流式不露 markdown 原文;切页不重放打字机;reduced-motion 全关。
+
+## 2026-08-30 凌晨 场景深度优化轮(分支 feat/scene-polish-round)
+- **印章册 bug 根因**:`useSealCeremony` 找 `achievement-<id>`,印钮 id 实为 `achievement-seal-<id>`——仪式永远起不来,新印停在 pending(隐藏)态,`AchievementWall` 的「翻到待落印跨页」效应还把翻页反复拽回。修法:`sealButtonId` 收进 useSealCeremony 导出共用。实测:三枚旧印依次落章,自动翻到第 3 页给「夜读」落印,前后翻页恢复。
+- **讲解舱黑板重做**:`boardObj > frame(木框:四角铜钉 + 纵木纹 + 上受光下入影) > slate(板面:暖灯 + 粉笔浮灰 + 板擦横扫痕 + 噪点颗粒) > chalkHead(粉笔写的「今日课题·<讲名>」+ 手画底线(mask 取形)+ 课次) + stream`;下挂 `ledge` 通长粉笔槽(两截粉笔 + 板擦)。删板角纸签 boardChit / 旧 tray。老师便签加纸胶带,小白粉笔字加微晕;桌牌加铜钉与受光;讲台便签改纸条;输入框改横格讲稿纸。科技主题覆盖改落在 `.frame/.ledge`,`theme-contract.test.ts` 同步改断 `.frame`。
+- **考场作答台重做**(`ExamQuestion.tsx`+css 整体重写):左试卷(卷头小签/装订朱线/题干/作答栏两行格线 + 落笔拍 SVG 手写墨迹 stroke-dash 写出/判定章盖在作答栏右侧/卷角折页),右考生席(心声气泡带尾巴 + 小白 150px + 四拍横轨),题头右侧答题卡小格 + 直接放榜,底栏状态句 + 下一题。送考页转戳删除。
+- **批注页**:题头转戳删除,右侧改「档案卡」(DOSSIER 眉签/档案号砚墨块/课型/开讲/讲解轮次/高光·盲区计数/底缘撕票线,微斜 1.2°);区块题头改极简制式(衬线序号 + 副题另起一行,无 hairline/墨骨);下课钤印条去红晕改麦色纸。
+- **自选课**:首屏三步票签改活态(`data-state` done/now/todo 按资料/编译/发布状态点亮);无课程空态改「虚位以待」空函位 + 「去写课程名」聚焦按钮;编译台无课程时只留一行锁灯提示;当前函赭陶书脊线 + 麦色底;投放区改牛皮纸斜纹 + 圆形图标;资料状态签加状态点(解析中呼吸)。
+- DESIGN.md:转戳 RoundStamp 标记全站退役(组件保留,不得挂回)。
+- 门禁:tsc/lint(仅 fsImpl 旧警告)/test:feedback/test:growth/test:theme/test:custom-content/test:qa-evidence/test:landing-motion 全绿;Chrome 1440 实拍讲解舱(空板/满板)/送考/作答四拍/放榜/批注/成长册落印翻页/自选课空态与有课态。窄屏未真机(窗口最小宽受限)。
+

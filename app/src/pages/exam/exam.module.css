@@ -75,20 +75,6 @@
   border-radius: 50%;
 }
 
-/* 转戳:送考台唯一一枚旋转官戳(准考验讫),压在候考区右上角 */
-.examStamp {
-  position: absolute;
-  top: var(--gap);
-  right: var(--gap);
-  color: var(--azure-deep);
-  opacity: 0.72;
-  pointer-events: none;
-}
-
-@media (max-width: 720px) {
-  .examStamp { display: none; }
-}
-
 .satchel {
   padding: 0.28rem 0.85rem;
   border: 1px solid var(--line-strong);

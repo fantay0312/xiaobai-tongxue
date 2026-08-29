@@ -180,8 +180,9 @@
   pointer-events: none;
   animation: tapBlush 900ms var(--ease-out) backwards;
 }
-/* 木桌牌:讲台上那块刻字的深木名牌 */
+/* 木桌牌:讲台上那块刻字的深木名牌,两侧各一枚铜钉,上沿受光下沿入影 */
 .plate {
+  position: relative;
   margin-top: calc(-1 * var(--gap-tight));
   background: linear-gradient(180deg, color-mix(in oklab, var(--wood) 55%, var(--wood-deep)), color-mix(in oklab, var(--wood-deep) 88%, var(--ink)));
   border: 1px solid color-mix(in oklab, var(--wood-deep) 72%, var(--ink));
@@ -191,8 +192,25 @@
   flex-direction: column;
   gap: 2px;
   align-items: center;
-  box-shadow: var(--shadow-paper);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, var(--wood-sheen) 50%, transparent),
+    inset 0 -1px 0 color-mix(in oklab, var(--ink) 45%, transparent),
+    var(--shadow-paper);
 }
+.plate::before,
+.plate::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--mustard), var(--gold-ink) 70%);
+  box-shadow: 0 1px 1px color-mix(in oklab, var(--ink) 50%, transparent);
+  transform: translateY(-50%);
+}
+.plate::before { left: 0.4rem; }
+.plate::after { right: 0.4rem; }
 /* 桌牌=铅字刻名:打字机小签声部,大写宽距压在深木上 */
 .plateName {
   font-family: var(--font-typewriter);
@@ -214,16 +232,26 @@
   color: var(--amber-ink);
   animation: pulse 1.2s var(--ease-out) infinite alternate;
 }
+/* 讲台便签:一张手贴在桌牌下的纸条,楷体小字,微斜 */
 .stageHint {
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
-  line-height: 1.9;
-  max-width: 24ch;
+  max-width: 21ch;
+  margin-top: var(--gap-hair);
+  padding: 0.55rem 0.85rem;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-tag);
+  box-shadow: var(--shadow-paper);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  line-height: 1.8;
   text-align: center;
-  margin-top: auto;
+  transform: rotate(-1.6deg);
 }
 
-/* ── 木框黑板 ── */
+/* ── 木框黑板 ──
+   结构:boardObj(整件家具) > frame(木框) > slate(板面) > chalkHead(板头粉笔字) + stream(对话流);
+   boardObj 底下挂 ledge(粉笔槽)。木框与板面全靠令牌派生:木色三件套 + --board 系,不新造色值。 */
 .chat {
   display: flex;
   flex-direction: column;
@@ -232,7 +260,7 @@
 }
 
 .boardObj {
-  position: relative; /* 板角登记签的锚 */
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -240,48 +268,145 @@
   margin: var(--gap) clamp(1rem, 2.5vw, 2rem) 0;
 }
 
-/* 板角登记签:一张手贴在木框右上角的打字机小签(装饰,微斜,压在框缘上) */
-.boardChit {
+/* 木框:四角铜钉 + 细木纹 + 上沿受光下沿入影;宽木边让板面像"镶"进去的 */
+.frame {
+  --frame-w: 0.9rem;
+  --screw: radial-gradient(circle, var(--wood-deep) 0 1.3px, color-mix(in oklab, var(--wood-sheen) 60%, var(--paper)) 1.4px 2.4px, color-mix(in oklab, var(--wood-deep) 55%, transparent) 2.5px 3.1px, transparent 3.2px);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--frame-w);
+  border-radius: 3px;
+  background:
+    var(--screw) 0.36rem 0.36rem / 0.5rem 0.5rem no-repeat,
+    var(--screw) calc(100% - 0.36rem) 0.36rem / 0.5rem 0.5rem no-repeat,
+    var(--screw) 0.36rem calc(100% - 0.36rem) / 0.5rem 0.5rem no-repeat,
+    var(--screw) calc(100% - 0.36rem) calc(100% - 0.36rem) / 0.5rem 0.5rem no-repeat,
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--wood-deep) 16%, transparent) 0 1px,
+      transparent 1px 6px,
+      color-mix(in oklab, var(--wood-sheen) 18%, transparent) 6px 7px,
+      transparent 7px 17px
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--wood-sheen) 55%, var(--wood)),
+      var(--wood) 38%,
+      color-mix(in oklab, var(--wood) 62%, var(--wood-deep))
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, var(--wood-sheen) 70%, var(--paper)),
+    inset 0 -2px 0 var(--wood-deep),
+    inset 2px 0 0 color-mix(in oklab, var(--wood-sheen) 45%, transparent),
+    inset -2px 0 0 color-mix(in oklab, var(--wood-deep) 60%, transparent),
+    0 2px 4px color-mix(in oklab, var(--ink) 14%, transparent),
+    0 18px 40px color-mix(in oklab, var(--ink) 16%, transparent);
+}
+
+/* 板面:一盏暖灯从上方打下,板上有几片擦过粉笔的浮灰与一道板擦横扫的痕,四周入影 */
+.slate {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 2px;
+  background:
+    radial-gradient(64% 42% at 50% 0%, color-mix(in oklab, var(--board-glow) 72%, transparent), transparent 62%),
+    radial-gradient(26rem 8rem at 24% 40%, color-mix(in oklab, var(--chalk) 6%, transparent), transparent 70%),
+    radial-gradient(32rem 11rem at 72% 64%, color-mix(in oklab, var(--chalk) 5%, transparent), transparent 72%),
+    linear-gradient(104deg, transparent 32%, color-mix(in oklab, var(--chalk) 3.5%, transparent) 44%, transparent 56%),
+    radial-gradient(120% 100% at 50% 118%, color-mix(in oklab, var(--board-shade) 80%, transparent), transparent 55%),
+    var(--board);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--board-shade) 85%, transparent),
+    inset 0 3px 10px color-mix(in oklab, var(--board-shade) 90%, transparent),
+    inset 0 0 44px color-mix(in oklab, var(--board-shade) 55%, transparent);
+  /* 板内是深色世界:滚动条/表单控件按暗色渲染 */
+  color-scheme: dark;
+}
+
+/* 板面颗粒:一层分形噪点做粉笔灰的质感(overlay 在深板上只提粒度不提亮) */
+.slate::before {
+  content: '';
   position: absolute;
-  top: calc(var(--gap) - 0.6rem);
-  right: 1rem;
-  z-index: 2;
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  text-transform: uppercase;
-  letter-spacing: var(--track-label);
-  color: var(--ink-soft);
-  background: color-mix(in oklch, var(--paper) 90%, var(--paper-blush));
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-tag);
-  padding: 0.12rem 0.4rem 0.12rem 0.55rem;
-  box-shadow: var(--shadow-paper);
-  transform: rotate(-3deg);
+  inset: 0;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg width='240' height='240' viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)'/%3E%3C/svg%3E");
+  opacity: 0.16;
+  mix-blend-mode: overlay;
   pointer-events: none;
 }
 
+/* 板头:先生上课前写的课题一行——楷体粉笔字 + 手画的粉笔底线(mask 取形,颜色仍走令牌) */
+.chalkHead {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding: 0.9rem clamp(1rem, 2.5vw, 2rem) 0.4rem;
+  color: var(--chalk);
+  font-family: var(--font-display);
+}
+
+.chalkTopic {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  min-width: 0;
+  padding-bottom: 0.4rem;
+  font-size: var(--fs-sub);
+  letter-spacing: 0.06em;
+  opacity: 0.92;
+  text-shadow: 0 0 7px color-mix(in oklab, var(--chalk) 22%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chalkTopic small {
+  flex: none;
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.22em;
+  color: var(--chalk-soft);
+}
+
+.chalkTopic::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0.2rem;
+  bottom: 0;
+  height: 5px;
+  background: var(--chalk);
+  opacity: 0.62;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 6' preserveAspectRatio='none'%3E%3Cpath d='M1 3.6c10-3 20 2.6 30-.2s20-2.4 30 .4 20 2.2 30-.6 19-2 28 .4' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 6' preserveAspectRatio='none'%3E%3Cpath d='M1 3.6c10-3 20 2.6 30-.2s20-2.4 30 .4 20 2.2 30-.6 19-2 28 .4' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+}
+
+.chalkMeta {
+  flex: none;
+  font-size: var(--fs-small);
+  letter-spacing: 0.14em;
+  color: var(--chalk-soft);
+  opacity: 0.85;
+}
+
 .stream {
+  position: relative;
+  z-index: 1;
   flex: 1;
   overflow-y: auto;
-  /* 板内是深色世界:滚动条/表单控件按暗色渲染 */
-  color-scheme: dark;
-  padding: var(--gap) clamp(1rem, 2.5vw, 2rem);
+  padding: var(--gap-tight) clamp(1rem, 2.5vw, 2rem) var(--gap);
   display: flex;
   flex-direction: column;
   gap: var(--gap);
   color: var(--chalk);
-  /* 板面:顶部一盏暖灯的光晕 + 底部收暗的渐晕,住在木框里 */
-  background:
-    radial-gradient(70% 46% at 50% 0%, color-mix(in oklab, var(--board-glow) 80%, transparent), transparent 62%),
-    radial-gradient(120% 120% at 50% 122%, color-mix(in oklab, var(--board-shade) 75%, transparent), transparent 55%),
-    var(--board);
-  /* 木框:方角,上沿受光下沿入影 */
-  border: 7px solid;
-  border-image: linear-gradient(180deg, var(--wood-sheen), var(--wood) 30%, var(--wood-deep)) 1;
-  box-shadow:
-    inset 0 0 34px color-mix(in oklab, var(--board-shade) 60%, transparent),
-    0 2px 6px color-mix(in oklab, var(--ink) 10%, transparent),
-    0 14px 34px color-mix(in oklab, var(--ink) 12%, transparent);
 }
 
 /* 板上元素的焦点环用粉笔色(azure 在深板上看不清) */
@@ -289,38 +414,52 @@
   outline-color: var(--chalk-soft);
 }
 
-/* 粉笔槽:板下木沿,搁着一截粉笔和一块板擦 */
-.tray {
+/* 粉笔槽:通长木沿,上沿一线受光,槽里两截粉笔与一块板擦 */
+.ledge {
   position: relative;
-  align-self: center;
-  width: min(52%, 24rem);
-  height: 0.55rem;
-  border-radius: 0 0 3px 3px;
-  background: linear-gradient(180deg, var(--wood), var(--wood-deep));
-  box-shadow: 0 3px 7px color-mix(in oklab, var(--ink) 22%, transparent);
+  height: 1rem;
+  margin: 0 0.4rem;
+  border-radius: 0 0 4px 4px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--wood-sheen) 80%, var(--paper)) 0 2px, var(--wood) 2px 50%, var(--wood-deep));
+  box-shadow:
+    inset 0 -1px 0 color-mix(in oklab, var(--ink) 35%, transparent),
+    0 5px 12px color-mix(in oklab, var(--ink) 24%, transparent);
 }
-.tray::before {
-  content: '';
+
+.chalkA,
+.chalkB,
+.eraser {
   position: absolute;
+  display: block;
+  border-radius: 2px;
+  box-shadow: 0 1px 1px color-mix(in oklab, var(--ink) 35%, transparent);
+}
+
+.chalkA {
+  top: -0.3rem;
+  left: 13%;
+  width: 1.9rem;
+  height: 0.32rem;
+  background: linear-gradient(180deg, var(--chalk), var(--chalk-soft));
+  transform: rotate(-4deg);
+}
+
+.chalkB {
   top: -0.28rem;
-  left: 17%;
-  width: 1.6rem;
-  height: 0.28rem;
-  border-radius: 2px;
-  background: var(--chalk);
-  transform: rotate(-7deg);
-  box-shadow: 0 1px 1px color-mix(in oklab, var(--ink) 30%, transparent);
+  left: calc(13% + 2.3rem);
+  width: 1.05rem;
+  height: 0.3rem;
+  background: linear-gradient(180deg, var(--chalk-amber), color-mix(in oklab, var(--chalk-amber) 70%, var(--wood-deep)));
+  transform: rotate(3deg);
 }
-.tray::after {
-  content: '';
-  position: absolute;
-  top: -0.42rem;
-  right: 13%;
-  width: 2.6rem;
-  height: 0.42rem;
-  border-radius: 2px;
-  background: linear-gradient(180deg, var(--inkstone-line), var(--inkstone));
-  box-shadow: 0 1px 2px color-mix(in oklab, var(--ink) 30%, transparent);
+
+.eraser {
+  top: -0.52rem;
+  right: 11%;
+  width: 2.9rem;
+  height: 0.55rem;
+  background: linear-gradient(180deg, var(--wood-sheen) 0 42%, var(--inkstone-line) 42% 60%, var(--inkstone) 60%);
+  box-shadow: 0 1px 2px color-mix(in oklab, var(--ink) 40%, transparent);
 }
 
 /* ── 板上对话流 ── */
@@ -332,6 +471,7 @@
   animation: global(rise) var(--t-med) var(--ease-out) both;
 }
 .bubbleT {
+  position: relative;
   max-width: 78%;
   background: color-mix(in oklch, var(--paper) 86%, var(--paper-blush));
   color: var(--ink);
@@ -363,6 +503,20 @@
 }
 .teacherText { display: block; }
 .bubbleTWithImage .teacherText { padding: 0.15rem 0.45rem 0.35rem; }
+/* 便签顶缘一条半透明纸胶带,把它"贴"在黑板上 */
+.bubbleT::before {
+  content: '';
+  position: absolute;
+  top: -0.42rem;
+  left: 50%;
+  width: 2.4rem;
+  height: 0.8rem;
+  border-radius: 1px;
+  background: color-mix(in oklab, var(--chalk) 34%, transparent);
+  box-shadow: 0 1px 1px color-mix(in oklab, var(--ink) 14%, transparent);
+  transform: translateX(-50%) rotate(-2.5deg);
+  pointer-events: none;
+}
 /* 纸便签贴在黑板上,一张张微微歪着(交替倾角;气泡无 hover 变换,静态 transform 安全) */
 .rowT:nth-child(odd) .bubbleT { transform: rotate(0.35deg); }
 .rowT:nth-child(even) .bubbleT { transform: rotate(-0.3deg); }
@@ -408,6 +562,7 @@
   border-left: 2px solid var(--board-line);
   padding: 0.1rem 0.35rem 0.1rem 0.9rem;
   border-radius: 0 var(--radius-s) var(--radius-s) 0;
+  text-shadow: 0 0 6px color-mix(in oklab, var(--chalk) 18%, transparent);
 }
 
 /* 情绪分档的粉笔配色:开窍/开心/出师 → 黛绿粉笔;困惑/害羞 → 藤黄粉笔(默认灰粉笔) */
@@ -550,7 +705,10 @@
 .input {
   flex: 1;
   width: 100%;
-  background: var(--paper);
+  /* 讲稿纸:一行一线的横格,随文字一起滚动 */
+  background:
+    repeating-linear-gradient(transparent 0 calc(1.7em - 1px), var(--paper-edge) calc(1.7em - 1px) 1.7em) 0 0.55rem / 100% 1.7em local,
+    var(--paper);
   color: var(--ink);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-s);
@@ -879,7 +1037,10 @@
   .plate { align-items: flex-start; padding: 0.35rem 0.65rem; }
   .plateRow:nth-of-type(n + 3) { display: none; }
   .boardObj { margin: var(--gap-tight) var(--gap-tight) 0; }
-  .stream { border-width: 5px; padding: var(--gap-tight); }
+  .frame { --frame-w: 0.5rem; }
+  .chalkHead { padding: 0.6rem var(--gap-tight) 0.3rem; }
+  .chalkMeta { display: none; }
+  .stream { padding: var(--gap-hair) var(--gap-tight) var(--gap-tight); }
   .inputBar {
     flex-direction: column;
     padding-bottom: max(var(--gap-tight), env(safe-area-inset-bottom));
@@ -894,21 +1055,21 @@
 }
 
 /* ── 科技主题:木框改仪器屏框(深炭金属圈 + 电青细线 + HUD 角标),板心冻结 ── */
-:global(html[data-theme='tech']) .stream {
-  border-image: linear-gradient(
+:global(html[data-theme='tech']) .frame {
+  border: 1px solid;
+  border-image: linear-gradient(165deg, var(--terra), color-mix(in oklch, var(--terra) 40%, var(--inkstone-line))) 1;
+  background: linear-gradient(
     165deg,
     color-mix(in oklch, var(--inkstone-line) 38%, var(--terra)) 0%,
     color-mix(in oklch, var(--inkstone-line) 62%, var(--terra-deep)) 42%,
     color-mix(in oklch, var(--inkstone) 72%, var(--terra-deep)) 100%
-  ) 1;
+  );
   box-shadow:
     inset 0 0 0 1px color-mix(in oklch, var(--terra) 48%, transparent),
-    inset 0 2px 0 0 color-mix(in oklch, var(--terra) 32%, transparent),
-    inset 0 0 28px color-mix(in oklab, var(--board-shade) 58%, transparent),
     0 0 0 1px color-mix(in oklch, var(--terra) 26%, transparent);
 }
 
-:global(html[data-theme='tech']) .tray {
+:global(html[data-theme='tech']) .ledge {
   background: linear-gradient(
     180deg,
     color-mix(in oklch, var(--inkstone-line) 70%, var(--terra-deep)),
@@ -919,12 +1080,9 @@
     inset 0 1px 0 color-mix(in oklch, var(--terra) 28%, transparent);
 }
 
-:global(html[data-theme='tech']) .boardChit {
-  color: var(--terra-ink);
-  background: color-mix(in oklch, var(--inkstone) 86%, var(--paper));
-  border-color: color-mix(in oklch, var(--terra) 40%, transparent);
-  box-shadow: none;
-}
+:global(html[data-theme='tech']) .chalkA,
+:global(html[data-theme='tech']) .chalkB,
+:global(html[data-theme='tech']) .eraser { display: none; }
 
 :global(html[data-theme='tech']) .plate {
   background: linear-gradient(

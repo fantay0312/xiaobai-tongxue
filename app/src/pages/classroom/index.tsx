@@ -696,44 +696,60 @@ export default function ClassroomPage() {
         {/* ── 右 2/3:木框黑板(对话流写在板上,板下粉笔槽) ── */}
         <section className={s.chat}>
           <div className={s.boardObj} data-tour="board">
-            <span className={s.boardChit} aria-hidden="true">
-              {mode === 'review' ? '温故' : mode === 'reteach' ? '重讲' : '夜课'}
-            </span>
-            <div className={s.stream} ref={streamRef}>
-              {live.messages.map((m) =>
-              m.role === 'system' ? (
-                m.id === delayedSystemId ? null : (
-                  <div key={m.id} className={s.rowSys}>
-                    <span className={s.sysTag}>导演</span>
-                    {m.text}
+            {/* 木框:四角铜钉、纵向木纹、上受光下入影;板面住在框内 */}
+            <div className={s.frame}>
+              <div className={s.slate}>
+                {/* 板头:先生上课前用粉笔写下的课题与课次(装饰,不入对话流) */}
+                <div className={s.chalkHead} aria-hidden="true">
+                  <span className={s.chalkTopic}>
+                    <small>今日课题</small>
+                    {topic.title}
+                  </span>
+                  <span className={s.chalkMeta}>
+                    {mode === 'review' ? '温故' : mode === 'reteach' ? '重讲' : '夜课'} · 第 {live.traces.length + 1} 轮
+                  </span>
+                </div>
+                <div className={s.stream} ref={streamRef}>
+                  {live.messages.map((m) =>
+                  m.role === 'system' ? (
+                    m.id === delayedSystemId ? null : (
+                      <div key={m.id} className={s.rowSys}>
+                        <span className={s.sysTag}>导演</span>
+                        {m.text}
+                      </div>
+                    )
+                  ) : m.role === 'teacher' ? (
+                    <TeacherBubble key={m.id} message={m} golden={isGoldenRow(m.text)} />
+                  ) : (
+                    <XiaobaiBubble
+                      key={m.id}
+                      m={m}
+                      animate={m.id === animateId}
+                      onTick={() => scrollToBottom(false)}
+                      onDone={() => handleTypeDone(m.id)}
+                    />
+                  ),
+                )}
+                {live.busy && (
+                  <div className={s.rowX}>
+                    <div className={s.thinking}>
+                      {isLookingAtImage ? '小白正在看图' : '小白正在琢磨'}
+                      <span className={s.dots}><i>.</i><i>.</i><i>.</i></span>
+                    </div>
                   </div>
-                )
-              ) : m.role === 'teacher' ? (
-                <TeacherBubble key={m.id} message={m} golden={isGoldenRow(m.text)} />
-              ) : (
-                <XiaobaiBubble
-                  key={m.id}
-                  m={m}
-                  animate={m.id === animateId}
-                  onTick={() => scrollToBottom(false)}
-                  onDone={() => handleTypeDone(m.id)}
-                />
-              ),
-            )}
-            {live.busy && (
-              <div className={s.rowX}>
-                <div className={s.thinking}>
-                  {isLookingAtImage ? '小白正在看图' : '小白正在琢磨'}
-                  <span className={s.dots}><i>.</i><i>.</i><i>.</i></span>
+                )}
+                  <p className={s.srOnly} aria-live="polite">
+                    {!typingNow && !live.busy ? lastXiaobai?.text ?? '' : ''}
+                  </p>
                 </div>
               </div>
-            )}
-              <p className={s.srOnly} aria-live="polite">
-                {!typingNow && !live.busy ? lastXiaobai?.text ?? '' : ''}
-              </p>
             </div>
-            {/* 粉笔槽:板下木沿,搁着一截粉笔和板擦 */}
-            <div className={s.tray} aria-hidden="true" />
+            {/* 粉笔槽:通长木沿,搁着两截粉笔和一块板擦 */}
+            <div className={s.ledge} aria-hidden="true">
+              <i className={s.chalkA} />
+              <i className={s.chalkB} />
+              <i className={s.eraser} />
+            </div>
           </div>
 
           {/* ── 底部讲桌:结束面板 或 演示助手 + 输入区 ── */}

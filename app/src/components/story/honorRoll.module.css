@@ -6,8 +6,8 @@
 .roll {
   margin-bottom: var(--gap-loose);
   padding: var(--gap) var(--gap-loose);
-  background: linear-gradient(var(--seal-red-wash), var(--seal-red-wash)) var(--paper-warm);
-  border: 1px solid var(--paper-edge);
+  background: var(--paper-warm);
+  border: 1px solid var(--line-strong);
   border-left: 3px solid var(--seal-red);
   border-radius: var(--radius);
   box-shadow: var(--shadow-paper);

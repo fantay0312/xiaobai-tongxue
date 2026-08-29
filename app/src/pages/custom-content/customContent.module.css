@@ -84,9 +84,30 @@
 }
 
 .routeTicket li:last-child { border-bottom: 0; }
-.routeTicket li > span { font-family: var(--font-display); color: var(--azure); }
+.routeTicket li > span {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  color: var(--ink-faint);
+  transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+}
 .routeTicket p { display: grid; gap: 0.15rem; color: var(--ink-soft); font-size: var(--fs-small); }
 .routeTicket strong { color: var(--ink); font-size: var(--fs-body); }
+
+/* 票签活态:做完的步子落黛绿圆点,当前步描赭并压一道芥末底,未到的步子淡下去 */
+.routeTicket li[data-state='done'] > span { color: var(--jade-ink); border-color: var(--jade); background: var(--jade-wash); }
+.routeTicket li[data-state='now'] {
+  margin-inline: -0.6rem;
+  padding-inline: 0.6rem;
+  background: linear-gradient(var(--mustard-wash), var(--mustard-wash)) var(--paper-warm);
+  border-radius: var(--radius-tag);
+}
+.routeTicket li[data-state='now'] > span { color: var(--paper); border-color: var(--azure); background: var(--azure); }
+.routeTicket li[data-state='todo'] { opacity: 0.62; }
 
 .notice {
   display: flex;
@@ -125,18 +146,22 @@
   grid-template-columns: 1.8rem minmax(0, 1fr) auto;
   gap: 0.6rem;
   align-items: center;
-  padding: 0.85rem 0.2rem;
+  padding: 0.85rem 0.5rem 0.85rem 0.6rem;
   border: 0;
+  border-left: 3px solid transparent;
   border-bottom: 1px solid var(--paper-edge);
   background: transparent;
   color: var(--ink-soft);
   text-align: left;
-  transition: transform var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+  transition: background-color var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
 
 .courseList > button:hover,
-.courseList > button:focus-visible,
-.courseList > .courseActive { color: var(--ink); transform: translateX(0.2rem); }
+.courseList > button:focus-visible { color: var(--ink); background: color-mix(in oklab, var(--paper-warm) 70%, transparent); }
+/* 当前函:赭陶书脊线 + 麦色纸底,像被抽出半寸的那一函 */
+.courseList > .courseActive { color: var(--ink); border-left-color: var(--azure); background: var(--paper-warm); }
+.courseList > .courseActive > span { color: var(--azure); }
+.courseList > .courseActive svg { color: var(--azure); }
 .courseList > button:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
 .courseList > button > span { font-family: var(--font-typewriter); font-size: var(--fs-tiny); color: var(--ink-faint); }
 .courseList p { min-width: 0; display: grid; gap: 0.15rem; }
@@ -212,19 +237,31 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .uploadControls select { width: auto; }
 
 .dropZone {
+  position: relative;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 1rem;
+  gap: 1.1rem;
   align-items: center;
   min-height: 8.5rem;
-  padding: clamp(1rem, 3vw, 1.6rem);
-  border: 1px dashed var(--line-strong);
-  background: var(--paper-warm);
-  transition: transform var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out);
+  padding: clamp(1rem, 3vw, 1.6rem) clamp(1rem, 3vw, 1.8rem);
+  border: 2px dashed var(--line-strong);
+  border-radius: var(--radius-s);
+  /* 牛皮纸档案袋:麦色底 + 极淡的斜纹,投放时描赭 */
+  background:
+    repeating-linear-gradient(-45deg, transparent 0 9px, color-mix(in oklab, var(--wood) 7%, transparent) 9px 10px),
+    var(--paper-warm);
+  transition: transform var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out);
 }
 
-.dropZoneActive { transform: translateY(-2px); background: var(--paper-blush); }
-.dropZone > svg { color: var(--azure); }
+.dropZoneActive { transform: translateY(-2px); border-color: var(--azure); background-color: var(--paper-blush); }
+.dropZone > svg {
+  box-sizing: content-box;
+  padding: 0.85rem;
+  border: 1px solid color-mix(in oklab, var(--azure) 40%, transparent);
+  border-radius: 50%;
+  color: var(--azure);
+  background: var(--paper);
+}
 .dropZone > div { display: grid; gap: 0.25rem; }
 .dropZone strong { color: var(--ink); }
 .dropZone span { color: var(--ink-faint); font-size: var(--fs-small); }
@@ -249,7 +286,9 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .assetName { min-width: 0; display: grid; gap: 0.12rem; }
 .assetName strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .assetName small { color: var(--ink-faint); }
-.assetStatus { padding: 0.25rem 0.45rem; border: 1px solid var(--paper-edge); color: var(--ink-soft); font: var(--fs-tiny) var(--font-typewriter); letter-spacing: 0.08em; }
+.assetStatus { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.55rem; border: 1px solid var(--paper-edge); border-radius: var(--radius-tag); color: var(--ink-soft); font: var(--fs-tiny) var(--font-typewriter); letter-spacing: 0.08em; white-space: nowrap; }
+.assetStatus::before { content: ''; width: 0.4rem; height: 0.4rem; border-radius: 50%; background: currentColor; opacity: 0.7; }
+.status_processing::before, .status_finalizing::before, .status_deleting::before { animation: customPulse 1.5s var(--ease-loop) infinite; }
 .status_completed { border-color: color-mix(in oklab, var(--jade) 55%, var(--paper-edge)); color: var(--jade); }
 .status_failed, .status_cancelled { border-color: color-mix(in oklab, var(--cinnabar) 55%, var(--paper-edge)); color: var(--cinnabar); }
 .status_processing, .status_finalizing, .status_deleting { color: var(--azure); }
@@ -260,8 +299,7 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .deleteConfirm button { border: 0; background: transparent; font-size: var(--fs-tiny); color: var(--ink-soft); }
 .deleteConfirm button:first-child { color: var(--cinnabar); font-weight: 700; }
 
-.emptyAssets,
-.emptyDesk {
+.emptyAssets {
   display: flex;
   align-items: center;
   gap: 0.8rem;
@@ -270,6 +308,72 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 }
 .emptyAssets p { display: grid; gap: 0.15rem; }
 .emptyAssets strong { color: var(--ink-soft); }
+
+/* 空函位:一只虚线描出的函套立在台面上,旁边一句话把人引去左侧起名 */
+.emptyDesk {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: clamp(1.2rem, 3vw, 2.2rem);
+  align-items: center;
+  padding: clamp(1.2rem, 3vw, 2rem);
+  border-radius: var(--radius-l);
+  background: var(--paper-shade);
+}
+.emptyCase {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 5.4rem;
+  height: 8.6rem;
+  border: 2px dashed var(--line-strong);
+  border-radius: var(--radius-tag);
+  background: var(--paper);
+  transform: rotate(-2deg);
+}
+.emptyCase::before {
+  content: '';
+  position: absolute;
+  inset: 0.45rem auto 0.45rem 0.45rem;
+  width: 1px;
+  background: var(--line-strong);
+}
+.emptyCase i {
+  writing-mode: vertical-rl;
+  font-family: var(--font-display);
+  font-style: normal;
+  font-size: var(--fs-small);
+  letter-spacing: 0.3em;
+  color: var(--ink-faint);
+}
+.emptyDesk > div { display: grid; gap: 0.5rem; justify-items: start; }
+.emptyDesk strong { font-family: var(--font-serif); font-size: var(--fs-sub); color: var(--ink); }
+.emptyDesk p { max-width: 34rem; color: var(--ink-soft); font-size: var(--fs-small); line-height: 1.8; }
+.emptyDesk button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--azure);
+  border-radius: var(--radius-s);
+  background: var(--paper);
+  color: var(--azure);
+  font-weight: 700;
+  font-size: var(--fs-small);
+}
+.emptyDesk button:hover { background: var(--azure-wash); }
+
+.lockedNote {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 1rem 0;
+  border-block: 1px dashed var(--paper-edge);
+  color: var(--ink-faint);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+}
+.lockedNote svg { color: var(--amber-ink); }
 
 .compileStarter {
   display: grid;
@@ -394,6 +498,8 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   .sectionHead { align-items: start; flex-direction: column; }
   .sectionHead > p { text-align: left; }
   .dropZone { grid-template-columns: auto 1fr; }
+  .emptyDesk { grid-template-columns: 1fr; }
+  .emptyCase { display: none; }
   .dropZone button { grid-column: 1 / -1; width: 100%; }
   .assetRow { grid-template-columns: auto auto minmax(0, 1fr) auto; }
   .assetStatus { grid-column: 3; justify-self: start; }

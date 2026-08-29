@@ -215,9 +215,10 @@ function techBlocks(css: string): string {
 }
 
 const classroomTech = techBlocks(classroomCss);
+// 2026-08-30 黑板重做后木框是独立的 .frame 层(.slate 板面 / .stream 对话流各司其职),科技覆盖落在框上
 assert.match(
   classroomCss,
-  /:global\(html\[data-theme='tech'\]\) \.stream/,
+  /:global\(html\[data-theme='tech'\]\) \.frame/,
   '科技主题须给讲解舱木框换仪器屏框(方案 B:框改语义,板心冻结)',
 );
 assert.match(classroomTech, /border-image/, '讲解舱科技框须用石墨金属圈,不得只改投影');
