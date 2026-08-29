@@ -378,6 +378,36 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       return topicRow(result.rows[0]);
     },
 
+    async discardDraft(ownerId, id) {
+      assertUuid(ownerId);
+      assertUuid(id);
+      const result = await queryable.query(
+        `WITH archived AS (
+           UPDATE custom_topics t
+              SET status = 'archived', updated_at = NOW()
+             FROM custom_courses c
+            WHERE t.id = $1
+              AND t.course_id = c.id
+              AND c.owner_id = $2
+              AND t.status = 'draft'
+            RETURNING t.*
+         ), closed_job AS (
+           UPDATE custom_compile_jobs j
+              SET status = 'failed',
+                  error_code = 'teacher-discarded',
+                  updated_at = NOW()
+             FROM archived t
+            WHERE j.topic_id = t.id
+              AND j.status = 'needs_review'
+            RETURNING j.id
+         )
+         SELECT a.*, (SELECT COUNT(*) FROM closed_job) AS closed_jobs
+           FROM archived a`,
+        [id, ownerId],
+      );
+      return topicRow(result.rows[0]);
+    },
+
     async publish(id) {
       assertUuid(id);
       const result = await queryable.query(

@@ -284,6 +284,11 @@ export function createCustomContentRouter({
           })
         ));
       }
+      if (draftMatch && req.method === 'DELETE') {
+        return withOwner(req, res, 'custom-topic-discard', async (owner) => (
+          send(res, 200, await service.discardDraft(owner, decodeURIComponent(draftMatch[1])))
+        ));
+      }
 
       const publishMatch = /^\/api\/xb\/topics\/([^/]+)\/publish$/.exec(pathname);
       if (publishMatch && req.method === 'POST') {

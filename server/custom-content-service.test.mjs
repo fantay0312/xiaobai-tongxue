@@ -90,6 +90,15 @@ function repositoryFixture() {
         topics.set(id, row);
         return row;
       },
+      async discardDraft(ownerId, id) {
+        const topic = topics.get(id);
+        if (!topic || topic.status !== 'draft' || courses.get(topic.courseId)?.ownerId !== ownerId) return null;
+        const archived = { ...topic, status: 'archived', updatedAt: new Date().toISOString() };
+        topics.set(id, archived);
+        const job = [...jobs.values()].find((candidate) => candidate.topicId === id && candidate.status === 'needs_review');
+        if (job) jobs.set(job.id, { ...job, status: 'failed', errorCode: 'teacher-discarded' });
+        return archived;
+      },
       async publish(id) {
         const row = { ...topics.get(id), status: 'ready', publishedAt: new Date().toISOString() };
         topics.set(id, row);
@@ -346,6 +355,24 @@ test('custom content service runs create, upload, compile, review, publish and s
   await assert.rejects(service.deleteAsset(alice, asset.id, 'trace-delete'), /asset-in-use/);
   assert.equal(cos.objects.size, 1, '被课题引用的 COS 原件不能删除');
   assert.equal(await service.getCourseCompileJob(alice, course.id), null, '发布后课程不再保留开放编译任务');
+
+  const disposableCourse = await service.createCourse(alice, '可放弃草稿');
+  const disposableAsset = await service.uploadAsset(alice, disposableCourse.id, {
+    bytes: Buffer.from('%PDF-1.7\ndisposable\n%%EOF'), filename: 'disposable.pdf', assetRole: 'lecture', requestId: 'discard-upload',
+  });
+  const disposableQueued = await service.startCompile(alice, {
+    courseId: disposableCourse.id, assetIds: [disposableAsset.id], title: '不要的草稿',
+  });
+  let disposableJob = disposableQueued;
+  for (let attempt = 0; attempt < 20 && disposableJob.status !== 'needs_review'; attempt += 1) {
+    await waitTurn();
+    disposableJob = await service.getCompileJob(alice, disposableQueued.id);
+  }
+  assert.equal(disposableJob.status, 'needs_review');
+  await service.discardDraft(alice, disposableJob.topic.id);
+  assert.equal(await service.getCourseCompileJob(alice, disposableCourse.id), null);
+  await service.deleteAsset(alice, disposableAsset.id, 'discard-delete');
+  assert.equal(cos.objects.size, 1, '放弃草稿后应解除资料引用并允许删除其 COS 原件');
 });
 
 test('teacher-added checklist item is grounded against owned course chunks on save', async () => {

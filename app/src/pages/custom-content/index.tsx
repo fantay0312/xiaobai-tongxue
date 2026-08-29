@@ -14,6 +14,7 @@ import {
   createCustomCourse,
   customContentStatus,
   deleteCustomAsset,
+  discardTopicDraft,
   findTopicSourceCandidates,
   getCompileJob,
   getCourseCompileJob,
@@ -434,6 +435,8 @@ export default function CustomContentPage() {
   const [draftRecord, setDraftRecord] = useState<CustomTopicRecord | null>(null);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [discardArmed, setDiscardArmed] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
   const [publishedTopicId, setPublishedTopicId] = useState<string | null>(null);
   const [deleteArmedId, setDeleteArmedId] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
@@ -503,6 +506,7 @@ export default function CustomContentPage() {
     setJob(null);
     setDraftRecord(null);
     setPublishedTopicId(null);
+    setDiscardArmed(false);
     setRecoveringJob(true);
     void getCourseCompileJob(courseId).then((next) => {
       if (!active) return;
@@ -599,6 +603,7 @@ export default function CustomContentPage() {
     setNotice('');
     setDraftRecord(null);
     setPublishedTopicId(null);
+    setDiscardArmed(false);
     try {
       setJob(await startTopicCompile({
         courseId,
@@ -649,6 +654,25 @@ export default function CustomContentPage() {
     }
   };
 
+  const discardDraft = async () => {
+    if (!draftRecord || !discardArmed || discarding || draftRecord.status !== 'draft') return;
+    const draftId = draftRecord.id;
+    setDiscarding(true);
+    setNotice('');
+    try {
+      await discardTopicDraft(draftId);
+      setDraftRecord((current) => current?.id === draftId ? null : current);
+      setJob((current) => current?.topicId === draftId || current?.topic?.id === draftId ? null : current);
+      setPublishedTopicId(null);
+      setDiscardArmed(false);
+      setNotice('这份草稿已放回废稿篓，可以重新选择资料生成。');
+    } catch (error) {
+      setNotice(errorHint(error));
+    } finally {
+      setDiscarding(false);
+    }
+  };
+
   return (
     <div className={s.page}>
       <section id="custom-overview" className={s.hero}>
@@ -677,7 +701,7 @@ export default function CustomContentPage() {
             <header><span>COURSE FILE</span><h2>自选课程</h2></header>
             <div className={s.courseList}>
               {courses.map((course, index) => (
-                <button key={course.id} type="button" className={course.id === courseId ? s.courseActive : ''} onClick={() => { setCourseId(course.id); setAssets([]); setSelectedAssetIds(new Set()); setDeleteArmedId(null); setJob(null); setDraftRecord(null); setPublishedTopicId(null); }}>
+                <button key={course.id} type="button" className={course.id === courseId ? s.courseActive : ''} onClick={() => { setCourseId(course.id); setAssets([]); setSelectedAssetIds(new Set()); setDeleteArmedId(null); setJob(null); setDraftRecord(null); setPublishedTopicId(null); setDiscardArmed(false); }}>
                   <span>{String(index + 1).padStart(2, '0')}</span>
                   <p><strong>{course.title}</strong><small>{course.assetCount} 份资料 · {course.topicCount} 个课题</small></p>
                   <Icon name="chevron-right" size={15} />
@@ -774,6 +798,12 @@ export default function CustomContentPage() {
                   <div className={s.reviewMain}>
                     <DraftEditor record={draftRecord} onError={(error) => setNotice(errorHint(error))} onChange={(payload) => setDraftRecord((current) => current ? { ...current, payload } : current)} />
                     <footer className={s.reviewActions}>
+                      {draftRecord.status === 'draft' ? discardArmed ? (
+                        <span className={s.discardConfirm}>
+                          <button type="button" onClick={() => void discardDraft()} disabled={saving || publishing || discarding}>{discarding ? '正在放弃…' : '确认放弃'}</button>
+                          <button type="button" onClick={() => setDiscardArmed(false)} disabled={discarding}>保留草稿</button>
+                        </span>
+                      ) : <button type="button" className={s.discardButton} onClick={() => setDiscardArmed(true)} disabled={saving || publishing}>放弃这份草稿</button> : null}
                       <button type="button" className={s.saveButton} onClick={() => void saveDraft()} disabled={saving || publishing || draftRecord.status !== 'draft'}>{saving ? '正在核验出处…' : '保存校订'}</button>
                       <button type="button" className={s.publishButton} onClick={() => void publish()} disabled={saving || publishing || draftRecord.status !== 'draft'}>{publishing ? '盖印发布中…' : '发布到书架'} <Icon name="arrow-right" size={16} /></button>
                     </footer>

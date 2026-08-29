@@ -32,6 +32,7 @@ import { hydrateRuntimeTopic, registerRuntimeTopics } from '../data/runtimeTopic
 const uid = () => (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
 const now = () => new Date().toISOString();
 let customTopicsLoadSequence = 0;
+const CUSTOM_TOPICS_RETRY_MS = [750, 1_500] as const;
 
 /** 导出给 sync 拉档时兜底:远端 global 缺字段(或被手工改坏)不得让页面派生层崩掉 */
 export const DEFAULT_GLOBAL: XiaobaiGlobal = {
@@ -206,24 +207,34 @@ export const useAppStore = create<AppState>()(
         if (!force && (get().customTopicsStatus === 'loading' || get().customTopicsStatus === 'ready')) return;
         const sequence = ++customTopicsLoadSequence;
         set({ customTopicsStatus: 'loading' });
-        try {
-          const raw = await listPublishedCustomTopics();
-          if (sequence !== customTopicsLoadSequence) return;
-          const topics = raw.map(hydrateRuntimeTopic).filter((topic): topic is Topic => topic !== null);
-          registerRuntimeTopics(topics);
-          set((state) => ({
-            customTopics: topics,
-            customTopicsStatus: 'ready',
-            global: {
-              ...state.global,
-              learningLevel: deriveEvolution(state.events, getAllTopics()).stage,
-            },
-          }));
-          get().rebuildStates();
-        } catch {
-          if (sequence !== customTopicsLoadSequence) return;
-          set({ customTopicsStatus: 'error' });
+        let raw: unknown[] | null = null;
+        for (let attempt = 0; attempt <= CUSTOM_TOPICS_RETRY_MS.length; attempt += 1) {
+          try {
+            raw = await listPublishedCustomTopics();
+            break;
+          } catch {
+            if (sequence !== customTopicsLoadSequence) return;
+            const delay = CUSTOM_TOPICS_RETRY_MS[attempt];
+            if (delay === undefined) break;
+            await new Promise((resolve) => window.setTimeout(resolve, delay));
+          }
         }
+        if (sequence !== customTopicsLoadSequence) return;
+        if (!raw) {
+          set({ customTopicsStatus: 'error' });
+          return;
+        }
+        const topics = raw.map(hydrateRuntimeTopic).filter((topic): topic is Topic => topic !== null);
+        registerRuntimeTopics(topics);
+        set((state) => ({
+          customTopics: topics,
+          customTopicsStatus: 'ready',
+          global: {
+            ...state.global,
+            learningLevel: deriveEvolution(state.events, getAllTopics()).stage,
+          },
+        }));
+        get().rebuildStates();
       },
 
       clearCustomTopics: () => {

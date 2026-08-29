@@ -417,7 +417,7 @@ export function createCustomContentService({
         if (assets.length !== job.assetIds.length || assets.some((asset) => asset.parseStatus !== 'completed')) {
           throw new Error('assets-not-ready');
         }
-        const topicId = `custom-${course.id.slice(0, 8)}-${job.id.slice(0, 8)}`;
+        const topicId = `custom-${course.id}-${job.id}`;
         const result = await compiler.compile({
           course,
           assets,
@@ -771,6 +771,14 @@ export function createCustomContentService({
       const updated = await repository.topics.updateDraft(current.id, teacherEditableDraft(normalized), issues);
       if (!updated) throw publicError('topic-not-editable', 409);
       return updated;
+    },
+
+    async discardDraft(owner, id) {
+      const current = await loadOwnedTopic(owner.id, id);
+      if (current.status !== 'draft') throw publicError('topic-not-editable', 409);
+      const archived = await repository.topics.discardDraft(owner.id, current.id);
+      if (!archived) throw publicError('topic-not-editable', 409);
+      return { ok: true };
     },
 
     async publishTopic(owner, id, requestId) {

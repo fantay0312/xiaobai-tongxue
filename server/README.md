@@ -190,7 +190,7 @@ node index.mjs
 - `GET /api/xb/courses/:id/compile-job`：刷新或重新进入页面时找回该课程唯一的编译中/待校订任务，避免草稿失联。
 - `POST /api/xb/topics/:id/source-candidates`：只在该草稿原始资料范围内返回最多 5 个出处候选，不接受客户端传 knowledge ID。
 - `POST /api/xb/topics/:topicId/evaluate`：完整 `groundTruth` 与纠正标准只在 BFF 内参与自定义课语义评估，浏览器只收到脱敏判定。
-- `PUT /api/xb/topics/:id/draft`、`POST /api/xb/topics/:id/publish`：校订、重新核验出处并发布；发布课题与完成任务在 PostgreSQL 内原子提交。
+- `PUT/DELETE /api/xb/topics/:id/draft`、`POST /api/xb/topics/:id/publish`：校订、放弃或发布；放弃会原子归档草稿并关闭任务，发布课题与完成任务也在 PostgreSQL 内原子提交。
 - `GET /api/xb/topics` 与 `GET /api/xb/topics/:topicId`：只返回学生视图，剥离 `groundTruth`、`correctionCriteria`、`probe.explanation`、源分块正文与 WeKnora 绑定。
 - `GET /api/xb/topics/:topicId/teacher`：仅课程所有者在备课页按需读取完整稿；前端只放页面局部内存，不注册进学生运行时课题表。
 

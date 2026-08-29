@@ -160,6 +160,39 @@ test('custom semantic evaluation keeps the full rubric inside the server compile
   assert.match(captured.system, /不可信原文/);
 });
 
+test('topic compiler retrieves a requested title before applying the source budget', async () => {
+  const chunks = Array.from({ length: 240 }, (_, index) => ({
+    id: `long-${index}`,
+    content: index === 239
+      ? '深处主题：课件明确说明要点1的原理、要点2的原理、要点3的原理。'
+      : `背景段落${index}：${'普通材料'.repeat(100)}`,
+  }));
+  let captured = null;
+  const compiler = createTopicCompiler({
+    weknora: {
+      async listChunks() { return chunks; },
+      async search() { return [chunks.at(-1)]; },
+    },
+    llm: {
+      model: 'test-model',
+      async generate(prompt) {
+        captured = prompt;
+        return JSON.stringify(completeDraft());
+      },
+    },
+  });
+  await compiler.compile({
+    course: { id: 'course', title: '长讲义', wkDocKbId: 'kb-long' },
+    assets: [{ id: 'asset', wkKnowledgeId: 'knowledge-long', filename: 'long.pdf', assetRole: 'lecture' }],
+    topicId: 'custom-long-topic',
+    requestedTitle: '深处主题',
+    requestId: 'compile-long',
+  });
+  const request = JSON.parse(captured.user);
+  assert.match(request.source, /深处主题/);
+  assert.ok(request.source.length <= 72_000);
+});
+
 test('custom content migration anchors COS ownership and active compile uniqueness', async () => {
   const sql = await readFile(new URL('./storage/postgres/migrations/004_custom_course_content.sql', import.meta.url), 'utf8');
   const openJobSql = await readFile(new URL('./storage/postgres/migrations/005_custom_compile_open_job.sql', import.meta.url), 'utf8');

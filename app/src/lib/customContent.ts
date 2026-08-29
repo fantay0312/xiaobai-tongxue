@@ -188,6 +188,10 @@ export async function saveTopicDraft(id: string, draft: CustomTopicPayload): Pro
   )).topic;
 }
 
+export async function discardTopicDraft(id: string): Promise<void> {
+  await request(`/topics/${encodeURIComponent(id)}/draft`, { method: 'DELETE' });
+}
+
 export async function findTopicSourceCandidates(
   id: string,
   point: string,

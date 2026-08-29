@@ -360,6 +360,10 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .prepFields { display: grid; gap: 0.8rem; padding-top: 1rem; }
 
 .reviewActions { display: flex; justify-content: flex-end; gap: 0.8rem; margin-top: 1.3rem; padding-top: 1rem; border-top: 1px solid var(--line-strong); }
+.discardButton { margin-right: auto; border: 0; background: transparent; color: var(--cinnabar); font-size: var(--fs-small); }
+.discardConfirm { display: inline-flex; align-items: center; gap: 0.45rem; margin-right: auto; }
+.discardConfirm button { border: 0; background: transparent; color: var(--ink-soft); font-size: var(--fs-small); }
+.discardConfirm button:first-child { color: var(--cinnabar); font-weight: 700; }
 .saveButton { min-height: 2.65rem; padding: 0.58rem 0.9rem; border: 1px solid var(--line-strong); border-radius: var(--radius-s); background: transparent; color: var(--ink); font-weight: 700; }
 .publishButton { display: inline-flex; align-items: center; gap: 0.45rem; }
 .published { display: flex; align-items: center; gap: 0.45rem; margin-top: 1rem; padding: 0.8rem; background: color-mix(in oklab, var(--jade) 10%, var(--paper)); color: var(--jade); }
@@ -396,6 +400,7 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   .quizGroup > header { align-items: start; flex-direction: column; }
   .reviewActions { flex-direction: column; }
   .reviewActions button { width: 100%; justify-content: center; }
+  .discardConfirm { width: 100%; }
 }
 
 @media (max-width: 560px) {

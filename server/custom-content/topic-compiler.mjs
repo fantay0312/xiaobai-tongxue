@@ -59,6 +59,48 @@ function bestLocalSource(checklistItem, chunks) {
   return score >= 0.2 ? best : null;
 }
 
+function stratifiedOrder(items, strata = 12) {
+  if (items.length <= strata) return items;
+  const buckets = Array.from({ length: strata }, () => []);
+  for (const [index, item] of items.entries()) {
+    const bucket = Math.min(strata - 1, Math.floor((index * strata) / items.length));
+    buckets[bucket].push(item);
+  }
+  const ordered = [];
+  const rounds = Math.max(...buckets.map((bucket) => bucket.length));
+  for (let round = 0; round < rounds; round += 1) {
+    for (const bucket of buckets) if (bucket[round]) ordered.push(bucket[round]);
+  }
+  return ordered;
+}
+
+function fairChunkOrder(chunkLists) {
+  const lists = chunkLists.map((chunks) => stratifiedOrder(chunks));
+  const ordered = [];
+  const rounds = Math.max(...lists.map((chunks) => chunks.length));
+  for (let round = 0; round < rounds; round += 1) {
+    for (const chunks of lists) if (chunks[round]) ordered.push(chunks[round]);
+  }
+  return ordered;
+}
+
+function boundedSourceText(chunks) {
+  let usedChars = 0;
+  const sourceParts = [];
+  const seen = new Set();
+  for (const chunk of chunks) {
+    if (!chunk?.id || !chunk?.content || seen.has(chunk.id)) continue;
+    seen.add(chunk.id);
+    const header = `\n\n[chunk:${chunk.id} file:${chunk.filename}]\n`;
+    const remaining = MAX_SOURCE_CHARS - usedChars - header.length;
+    if (remaining <= 0) break;
+    const content = chunk.content.slice(0, remaining);
+    sourceParts.push(`${header}${content}`);
+    usedChars += header.length + content.length;
+  }
+  return sourceParts.join('');
+}
+
 function compilerPrompt({ courseTitle, requestedTitle, sourceText }) {
   const system = [
     '你是「小白同学」课程编译器。学生把知识讲给 AI 学生小白听；你只把课件编译为可教的 Topic，不直接回答课件内容。',
@@ -189,17 +231,35 @@ export function createTopicCompiler({ weknora, llm } = {}) {
       const chunks = chunkLists.flat();
       if (chunks.length === 0) throw new Error('compiler-no-chunks');
 
-      let usedChars = 0;
-      const sourceParts = [];
-      for (const chunk of chunks) {
-        const header = `\n\n[chunk:${chunk.id} file:${chunk.filename}]\n`;
-        const remaining = MAX_SOURCE_CHARS - usedChars - header.length;
-        if (remaining <= 0) break;
-        const content = chunk.content.slice(0, remaining);
-        sourceParts.push(`${header}${content}`);
-        usedChars += header.length + content.length;
+      const knowledgeIds = assets.map((asset) => asset.wkKnowledgeId);
+      const chunksById = new Map(chunks.map((chunk) => [chunk.id, chunk]));
+      let titleHits = [];
+      if (typeof requestedTitle === 'string' && requestedTitle.trim()) {
+        try {
+          const results = await weknora.search({
+            kbId: course.wkDocKbId,
+            query: requestedTitle.trim(),
+            knowledgeIds,
+            requestId,
+          });
+          titleHits = results.map((value) => {
+            const id = chunkId(value);
+            const loaded = chunksById.get(id);
+            return {
+              id,
+              content: chunkContent(value) || loaded?.content || '',
+              knowledgeId: loaded?.knowledgeId ?? '',
+              filename: loaded?.filename ?? '检索命中片段',
+            };
+          }).filter((chunk) => chunk.id && chunk.content).slice(0, 24);
+        } catch {
+          // 检索失败时仍按各资料全篇分层抽样，避免顺序截断只看到第一份讲义开头。
+        }
       }
-      const sourceText = sourceParts.join('');
+      const sourceText = boundedSourceText([
+        ...titleHits,
+        ...fairChunkOrder(chunkLists),
+      ]);
       const prompt = compilerPrompt({
         courseTitle: course.title,
         requestedTitle,
@@ -214,7 +274,6 @@ export function createTopicCompiler({ weknora, llm } = {}) {
         model: llm.model,
       });
 
-      const knowledgeIds = assets.map((asset) => asset.wkKnowledgeId);
       await Promise.all(topic.checklist.map(async (item) => {
         let hit = null;
         try {

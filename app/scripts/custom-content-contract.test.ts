@@ -121,9 +121,11 @@ assert.match(pageSource, /getCourseCompileJob/);
 assert.match(pageSource, /考小白的随堂题/);
 assert.match(pageSource, /重编题号/);
 assert.match(pageSource, /查找课件出处/);
+assert.match(pageSource, /放弃这份草稿/);
 assert.match(evaluatorSource, /evaluateCustomTopicSemantic/);
 assert.match(evaluatorSource, /startsWith\('custom-'\)\s*\? await evaluateCustomTopicSemantic/);
 assert.match(storeSource, /learningLevel:\s*deriveEvolution\(state\.events, getAllTopics\(\)\)\.stage/);
+assert.match(storeSource, /CUSTOM_TOPICS_RETRY_MS\[attempt\]/);
 assert.doesNotMatch(apiSource, /X-API-Key|WK_API_KEY|WeKnora.*key/i, '浏览器 API 层不得持有 WeKnora 凭据');
 
-console.log('custom content contract: 30 assertions passed');
+console.log('custom content contract: 32 assertions passed');
