@@ -14,8 +14,13 @@ export interface LlmPayload {
   json?: boolean; // 需要结构化输出
 }
 
-/** 各角色输出上限:台词短、评估中等、报告长、备课助教答疑中长 */
-const ROLE_MAX_TOKENS: Record<LlmRole, number> = { xiaobai: 400, evaluator: 700, report: 900, coach: 700 };
+/**
+ * 各角色输出上限:台词短、评估中等、报告长、备课助教答疑中长。
+ * coach 给 2200:助教常配推理模型(VITE_LLM_MODEL_COACH),思考 token 与正文共用这个额度,
+ * 700 会被思考吃空 → 正文空串 → 整段降级「离线锦囊」。与服务器网关同一处修复保持一致。
+ * (不下发 reasoning_effort:api 模式端点由用户自带,未知参数可能被判 400。)
+ */
+const ROLE_MAX_TOKENS: Record<LlmRole, number> = { xiaobai: 400, evaluator: 700, report: 900, coach: 2200 };
 
 /** 各角色温度(与服务器网关一致,proxy 模式下服务器按 role 重新裁决,不信客户端) */
 function roleTemperature(role: LlmRole, settings: LlmSettings): number {

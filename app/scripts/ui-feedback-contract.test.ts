@@ -14,8 +14,6 @@ const classroom = read('../src/pages/classroom/index.tsx');
 const homeStyles = read('../src/pages/home/home.module.css');
 const app = read('../src/App.tsx');
 const shell = read('../src/components/shell/AppShell.tsx');
-const trail = read('../src/components/story/StoryTrail.tsx');
-const trailStyles = read('../src/components/story/storyTrail.module.css');
 const letter = read('../src/components/story/MentorLetter.tsx');
 const letterStyles = read('../src/components/story/story.module.css');
 const tokens = read('../src/styles/tokens.css');
@@ -57,11 +55,7 @@ assert.ok(
 );
 assert.match(homeStyles, /\.dreamQuote::before[\s\S]*?bottom:\s*-0\.42rem[\s\S]*?rotate\(45deg\)/, '气泡尾必须向下指向头像');
 
-assert.match(trail, /setTimeout\(\(\) => setCollapsed\(true\), 5000\)/, '篇章栏必须在 5 秒后收起');
-assert.match(trail, /data-collapsed=\{collapsed \|\| undefined\}/, '篇章栏必须暴露折叠态');
-assert.match(trailStyles, /grid-template-rows:\s*0fr/, '篇章栏收起后必须释放布局高度');
-assert.match(trailStyles, /justify-content:\s*center/, '篇章栏初始必须居中');
-
+// 篇章条(StoryTrail)已于 2026-08-29 整体删除(用户定案:与极简制式不协调),不再断言。
 assert.match(letter, /const \[closing, setClosing\]/, '拜师帖必须有关闭过渡态');
 assert.match(letter, />[\s\n]*收下[\s\n]*</, '拜师帖收帖主按钮必须是「收下」');
 assert.match(letter, /offerThemeHint:\s*true/, '收下必须触发主题气泡而不是直接放行引路');
