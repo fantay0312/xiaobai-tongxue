@@ -285,6 +285,32 @@ export function createWeKnoraClient({
       );
     },
 
+    async waitForFaqImport(taskId, requestId, maximumWaitMs = 60_000) {
+      if (typeof taskId !== 'string' || !/^[A-Za-z0-9-]{1,100}$/.test(taskId)) {
+        throw new Error('weknora-faq-task-invalid');
+      }
+      const deadline = Date.now() + maximumWaitMs;
+      while (Date.now() < deadline) {
+        const data = await json(
+          'faq-import-progress',
+          'GET',
+          `/faq/import/progress/${encodeURIComponent(taskId)}`,
+          undefined,
+          { requestId },
+        );
+        const status = String(data?.status ?? data?.state ?? '').toLowerCase();
+        if (status === 'completed' || status === 'success') return data;
+        if (status === 'failed') throw new WeKnoraError('weknora-faq-import-failed', {
+          operation: 'faq-import-progress',
+        });
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+      throw new WeKnoraError('weknora-faq-import-timeout', {
+        operation: 'faq-import-progress',
+        retryable: true,
+      });
+    },
+
     isTerminalParseStatus(status) {
       return TERMINAL_PARSE_STATUSES.has(status);
     },

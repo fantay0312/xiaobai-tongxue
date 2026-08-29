@@ -210,7 +210,8 @@ test('custom content service runs create, upload, compile, review, publish and s
       return [{ id: 'chunk-1', content: '课件中的要点1原理、要点2原理、要点3原理，以及递归调用。' }];
     },
     async search() { return [{ id: 'chunk-1', content: '课件中的要点原理' }]; },
-    async upsertFaqEntries(_id, entries) { calls.faq = entries; },
+    async upsertFaqEntries(_id, entries) { calls.faq = entries; return { task_id: 'faq-test' }; },
+    async waitForFaqImport(taskId) { assert.equal(taskId, 'faq-test'); return { status: 'completed' }; },
     isTerminalParseStatus(status) { return status === 'completed' || status === 'failed' || status === 'cancelled'; },
   };
   const compiler = {

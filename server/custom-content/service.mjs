@@ -613,7 +613,11 @@ export function createCustomContentService({
         .flatMap((topic) => topic.misconceptions ?? [])
         .map(faqEntry);
       if (course.wkFaqKbId && faqEntries.length > 0) {
-        await weknora.upsertFaqEntries(course.wkFaqKbId, faqEntries, requestId).catch(() => {
+        await (async () => {
+          const task = await weknora.upsertFaqEntries(course.wkFaqKbId, faqEntries, requestId);
+          if (!task?.task_id) throw new Error('faq-task-missing');
+          await weknora.waitForFaqImport(task.task_id, requestId);
+        })().catch(() => {
           throw publicError('faq-sync-failed', 502);
         });
       }
