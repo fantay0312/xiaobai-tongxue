@@ -280,6 +280,7 @@ const REACT_BAD: PupilState[] = [
   { mood: 'shy', line: '先生别急,这个坑我课上八成也会掉。' },
   { mood: 'confused', line: '那……到底是哪儿不对呀?' },
 ];
+const TEACHER_TOPIC_RETRY_MS = [750, 1_500] as const;
 
 export default function PrepPage() {
   const { topicId = '' } = useParams();
@@ -311,17 +312,28 @@ function PrepRoom({ topicId }: { topicId: string }) {
     const controller = new AbortController();
     const requestEpoch = currentAuthEpoch();
     setTeacherTopicState({ key: teacherRequestKey, status: 'loading', topic: undefined });
-    void getTeacherCustomTopic(topicId, controller.signal).then((record) => {
-      if (controller.signal.aborted || requestEpoch !== currentAuthEpoch()) return;
-      const hydrated = record.topicId === topicId && record.payload?.topicId === topicId
-        ? hydrateTeacherRuntimeTopic(record.payload)
-        : null;
-      if (!hydrated || hydrated.topicId !== topicId) throw new Error('teacher-topic-invalid');
-      setTeacherTopicState({ key: teacherRequestKey, status: 'ready', topic: hydrated });
-    }).catch(() => {
-      if (controller.signal.aborted || requestEpoch !== currentAuthEpoch()) return;
-      setTeacherTopicState({ key: teacherRequestKey, status: 'error', topic: undefined });
-    });
+    void (async () => {
+      for (let attempt = 0; attempt <= TEACHER_TOPIC_RETRY_MS.length; attempt += 1) {
+        try {
+          const record = await getTeacherCustomTopic(topicId, controller.signal);
+          if (controller.signal.aborted || requestEpoch !== currentAuthEpoch()) return;
+          const hydrated = record.topicId === topicId && record.payload?.topicId === topicId
+            ? hydrateTeacherRuntimeTopic(record.payload)
+            : null;
+          if (!hydrated || hydrated.topicId !== topicId) throw new Error('teacher-topic-invalid');
+          setTeacherTopicState({ key: teacherRequestKey, status: 'ready', topic: hydrated });
+          return;
+        } catch {
+          if (controller.signal.aborted || requestEpoch !== currentAuthEpoch()) return;
+          const delay = TEACHER_TOPIC_RETRY_MS[attempt];
+          if (delay === undefined) break;
+          await new Promise((resolve) => window.setTimeout(resolve, delay));
+        }
+      }
+      if (!controller.signal.aborted && requestEpoch === currentAuthEpoch()) {
+        setTeacherTopicState({ key: teacherRequestKey, status: 'error', topic: undefined });
+      }
+    })();
     return () => controller.abort();
   }, [authUser, customTopic, teacherRequestKey, topicId]);
   const currentTeacherTopicState = teacherTopicState.key === teacherRequestKey

@@ -67,9 +67,14 @@ test('COS store creates random private SSE keys scoped to the user UUID', async 
   assert.notEqual(put.ACL, 'public-read');
   assert.equal(uploaded.publicUrl, undefined);
 
+  const plannedKey = store.createCustomCourseAssetKey({
+    userId: USER_ID,
+    courseId: '33333333-3333-4333-8333-333333333333',
+  });
   const custom = await store.uploadCustomCourseAsset({
     userId: USER_ID,
     courseId: '33333333-3333-4333-8333-333333333333',
+    key: plannedKey,
     body: Buffer.from('pdf-data'),
     contentType: 'application/pdf',
   });

@@ -325,7 +325,14 @@ if (WK_CONFIGURED) {
       summaryModelId: WK_SUMMARY_MODEL_ID,
       maxFileBytes: maxFileMb * 1024 * 1024,
     });
+    await customContentService.reconcileUploadIntents();
     await customContentService.resumePendingJobs();
+    const customCleanupTimer = setInterval(() => {
+      void customContentService.reconcileUploadIntents().catch((error) => {
+        console.error('[custom-content] cleanup sweep failed:', safeDiagnosticMessage(error?.message));
+      });
+    }, 15 * 60_000);
+    customCleanupTimer.unref?.();
   } catch (error) {
     console.error('[fatal] WeKnora 自定义课程初始化失败:', safeDiagnosticMessage(error?.message));
     process.exit(2);

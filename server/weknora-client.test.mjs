@@ -75,6 +75,26 @@ test('WeKnora upload uses multipart file and process_config without exposing key
   assert.doesNotMatch(wire, /wk-private-key/);
 });
 
+test('WeKnora client reconciles an ambiguous upload by private metadata marker', async () => {
+  let requestedUrl = '';
+  await withServer(async (req, res) => {
+    requestedUrl = req.url;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      success: true,
+      data: [{ id: 'knowledge-ambiguous', metadata: { xiaobai_upload_marker: 'marker-1' } }],
+      total: 1,
+    }));
+  }, async (baseUrl) => {
+    const client = createWeKnoraClient({ baseUrl, apiKey: 'wk-private-key' });
+    const found = await client.findKnowledgeByMetadata({
+      kbId: 'kb-1', key: 'xiaobai_upload_marker', value: 'marker-1', maximumWaitMs: 0,
+    });
+    assert.equal(found.id, 'knowledge-ambiguous');
+  });
+  assert.equal(requestedUrl, '/api/v1/knowledge-bases/kb-1/knowledge?page=1&page_size=200');
+});
+
 test('WeKnora client turns upstream pages into stable errors', async () => {
   await withServer(async (_req, res) => {
     res.writeHead(502, { 'Content-Type': 'text/html' });

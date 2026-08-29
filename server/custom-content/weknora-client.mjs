@@ -75,6 +75,18 @@ function requestIdHeader(requestId) {
     : `xb-${randomUUID()}`;
 }
 
+function metadataObject(value) {
+  if (!value) return {};
+  if (typeof value === 'object' && !Array.isArray(value)) return value;
+  if (typeof value !== 'string') return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 export function createWeKnoraClient({
   baseUrl,
   apiKey,
@@ -243,6 +255,31 @@ export function createWeKnoraClient({
         if (Number.isFinite(total) && chunks.length >= total) break;
       }
       return chunks.slice(0, maximum);
+    },
+
+    async findKnowledgeByMetadata({ kbId, key, value, requestId, maximumWaitMs = 3_000 }) {
+      if (!/^[a-z0-9_]{1,80}$/i.test(String(key ?? '')) || typeof value !== 'string' || !value) {
+        throw new Error('weknora-metadata-query-invalid');
+      }
+      const deadline = Date.now() + maximumWaitMs;
+      do {
+        for (let page = 1; page <= 10; page += 1) {
+          const data = await json(
+            'list-knowledge',
+            'GET',
+            `/knowledge-bases/${encodeURIComponent(kbId)}/knowledge?page=${page}&page_size=200`,
+            undefined,
+            { requestId },
+          );
+          const batch = asArray(data);
+          const match = batch.find((item) => String(metadataObject(item?.metadata)[key] ?? '') === value);
+          if (match) return match;
+          if (batch.length < 200) break;
+        }
+        if (Date.now() >= deadline) break;
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      } while (Date.now() < deadline);
+      return null;
     },
 
     async search({ kbId, query, knowledgeIds, requestId }) {

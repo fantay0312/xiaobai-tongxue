@@ -186,7 +186,7 @@ node index.mjs
 - `GET/POST /api/xb/courses`：列出或创建当前账号的自选课程；创建时在 sidecar 建独立 document/FAQ 双库。
 - `GET/POST /api/xb/courses/:id/assets`：列出资料或 multipart 上传；单账号一次一份、全站最多两份并发。
 - `GET/DELETE /api/xb/assets/:id`、`POST /api/xb/assets/:id/reparse`：查状态、删除与重新解析；开放编译任务或草稿引用的资料由 PostgreSQL 行锁阻止删除。
-- `POST /api/xb/topics/compile`、`GET /api/xb/compile-jobs/:id`：从已完成资料异步编译课题。
+- `POST /api/xb/topics/compile`、`GET /api/xb/compile-jobs/:id`：从已完成资料异步编译课题；数据库租约保证多进程只由一个 worker 领取，过期任务可恢复。
 - `GET /api/xb/courses/:id/compile-job`：刷新或重新进入页面时找回该课程唯一的编译中/待校订任务，避免草稿失联。
 - `POST /api/xb/topics/:id/source-candidates`：只在该草稿原始资料范围内返回最多 5 个出处候选，不接受客户端传 knowledge ID。
 - `POST /api/xb/topics/:topicId/evaluate`：完整 `groundTruth` 与纠正标准只在 BFF 内参与自定义课语义评估，浏览器只收到脱敏判定。
@@ -196,7 +196,7 @@ node index.mjs
 
 Sidecar 编排与首次模型/API Key 初始化见 `deploy/weknora-sidecar/README.md`。未配置任一 `WK_*` 时功能整体返回 503，预埋课程与其它 API 不受影响；若开始配置但缺项，网关拒绝启动，避免出现可上传却不可检索的半成品。
 
-用户上传的原文件由小白 BFF 先写既有私有 COS，路径按 `users/<user UUID>/custom-course-assets/<course UUID>/...` 隔离，并启用 COS 服务端 AES256 加密；数据库只保存私有 object key、SHA-256 与大小。写入后只 Range 读取 1 字节，从 `Content-Range` 核对对象总长度，再把字节副本交给 WeKnora（现有 CAM 未开放 `HeadObject`，因此不依赖该动作）。任一步失败都会补偿删除已写对象；删除资料时先确认没有课题引用，再同时清理 WeKnora 知识与 COS 原件。浏览器响应不返回 COS key。
+用户上传的原文件由小白 BFF 先写既有私有 COS，路径按 `users/<user UUID>/custom-course-assets/<course UUID>/...` 隔离，并启用 COS 服务端 AES256 加密；object key 在 PUT 前生成，清理意图先持久化，WeKnora 副本也带私有 marker，因此超时、断线或进程退出后的歧义写入可由 15 分钟清扫继续回收。数据库正式资产只保存私有 object key、SHA-256 与大小。写入后只 Range 读取 1 字节，从 `Content-Range` 核对对象总长度，再把字节副本交给 WeKnora（现有 CAM 未开放 `HeadObject`，因此不依赖该动作）。任一步失败都会补偿删除已写对象；删除状态可幂等续作，且删除资料时先确认没有开放任务或课题引用，再同时清理 WeKnora 知识与 COS 原件。浏览器响应不返回 COS key。
 
 前端根路径生产构建：
 

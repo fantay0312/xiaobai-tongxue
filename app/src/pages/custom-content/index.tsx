@@ -97,6 +97,10 @@ function lines(value: string): string[] {
   return value.split(/\n+/).map((item) => item.trim()).filter(Boolean);
 }
 
+function retryDelay(failures: number): number {
+  return Math.min(15_000, 1_000 * (2 ** Math.min(failures, 4)));
+}
+
 function starterQuiz(prefix: string, checklistRef: string, mcRef: string | null = null): PredictionQuizItem[] {
   return Array.from({ length: 3 }, (_, index) => ({
     id: `${prefix}-q${index + 1}`,
@@ -123,7 +127,7 @@ function nextQuiz(prefix: string, checklistRef: string, items: PredictionQuizIte
   };
 }
 
-function starterMisconception(topicId: string, mcId: string, checklistId: string): Misconception {
+function starterMisconception(topicId: string, mcId: string, checklistId: string, quizPrefix: string): Misconception {
   return {
     mcId,
     topicId,
@@ -136,7 +140,7 @@ function starterMisconception(topicId: string, mcId: string, checklistId: string
     probe: { statement: '', isTrue: false, explanation: '' },
     remedy: {
       microLesson: { title: '', body: '', askBack: '' },
-      predictionQuiz: starterQuiz(mcId, checklistId, mcId),
+      predictionQuiz: starterQuiz(quizPrefix, checklistId, mcId),
     },
   };
 }
@@ -288,7 +292,7 @@ function DraftEditor({
     patchTop({
       misconceptions: [
         ...draft.misconceptions,
-        starterMisconception(draft.topicId, mcId, firstChecklist),
+        starterMisconception(draft.topicId, mcId, firstChecklist, `remedy-${sequence}`),
       ],
     });
   };
@@ -376,7 +380,7 @@ function DraftEditor({
                   title="补学后的预测题"
                   items={item.remedy.predictionQuiz}
                   checklist={draft.checklist}
-                  idPrefix={item.mcId}
+                  idPrefix={`remedy-${index + 1}`}
                   misconceptions={draft.misconceptions}
                   fixedMcRef={item.mcId}
                   exactCount={3}
@@ -397,7 +401,7 @@ function DraftEditor({
           title="课题总题库"
           items={draft.quizBank}
           checklist={draft.checklist}
-          idPrefix={`${draft.topicId}-main`}
+          idPrefix="main"
           misconceptions={draft.misconceptions}
           onChange={(quizBank) => patchTop({ quizBank })}
         />
@@ -478,17 +482,23 @@ export default function CustomContentPage() {
     }
     let active = true;
     let timer = 0;
+    let failures = 0;
     const refresh = async () => {
       try {
         const next = await listCourseAssets(courseId);
         if (!active) return;
+        failures = 0;
         setAssets(next);
         setSelectedAssetIds((current) => new Set([...current].filter((id) => next.some((asset) => asset.id === id && asset.parseStatus === 'completed'))));
         if (next.some((asset) => asset.parseStatus === 'pending' || asset.parseStatus === 'processing' || asset.parseStatus === 'finalizing')) {
           timer = window.setTimeout(() => void refresh(), 2_000);
         }
       } catch (error) {
-        if (active) setNotice(errorHint(error));
+        if (active) {
+          setNotice(errorHint(error));
+          failures += 1;
+          timer = window.setTimeout(() => void refresh(), retryDelay(failures));
+        }
       }
     };
     void refresh();
@@ -508,17 +518,25 @@ export default function CustomContentPage() {
     setPublishedTopicId(null);
     setDiscardArmed(false);
     setRecoveringJob(true);
-    void getCourseCompileJob(courseId).then((next) => {
-      if (!active) return;
-      setJob(next);
-      setDraftRecord(next?.status === 'needs_review' && next.topic ? next.topic : null);
-      if (next) setSelectedAssetIds(new Set(next.assetIds));
-    }).catch((error) => {
-      if (active) setNotice(errorHint(error));
-    }).finally(() => {
-      if (active) setRecoveringJob(false);
-    });
-    return () => { active = false; };
+    let timer = 0;
+    let failures = 0;
+    const recover = async () => {
+      try {
+        const next = await getCourseCompileJob(courseId);
+        if (!active) return;
+        setJob(next);
+        setDraftRecord(next?.status === 'needs_review' && next.topic ? next.topic : null);
+        if (next) setSelectedAssetIds(new Set(next.assetIds));
+        setRecoveringJob(false);
+      } catch (error) {
+        if (!active) return;
+        setNotice(errorHint(error));
+        failures += 1;
+        timer = window.setTimeout(() => void recover(), retryDelay(failures));
+      }
+    };
+    void recover();
+    return () => { active = false; window.clearTimeout(timer); };
   }, [courseId]);
 
   useEffect(() => {
@@ -538,8 +556,7 @@ export default function CustomContentPage() {
         if (active) {
           setNotice(errorHint(error));
           failures += 1;
-          const retryDelay = Math.min(15_000, 1_000 * (2 ** Math.min(failures, 4)));
-          timer = window.setTimeout(() => void poll(), retryDelay);
+          timer = window.setTimeout(() => void poll(), retryDelay(failures));
         }
       }
     };

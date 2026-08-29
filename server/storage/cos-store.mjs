@@ -108,6 +108,14 @@ export function createPrivateCosStore({
     return put(key, body, contentType);
   }
 
+  function customCourseAssetKey(rawUserId, rawCourseId) {
+    const userId = assertUuid(rawUserId, 'user-id');
+    const courseId = assertUuid(rawCourseId, 'course-id');
+    const random = randomBytes(16);
+    if (!Buffer.isBuffer(random) || random.length !== 16) throw new Error('cos-random-source-failed');
+    return `${safePrefix}/users/${userId}/custom-course-assets/${courseId}/${random.toString('hex')}`;
+  }
+
   return Object.freeze({
     uploadTranscript(input) {
       return upload('transcript', input);
@@ -115,13 +123,18 @@ export function createPrivateCosStore({
     uploadEmailAttachment(input) {
       return upload('email_attachment', input);
     },
-    uploadCustomCourseAsset({ userId: rawUserId, courseId: rawCourseId, body, contentType }) {
+    createCustomCourseAssetKey({ userId, courseId }) {
+      return customCourseAssetKey(userId, courseId);
+    },
+    uploadCustomCourseAsset({ userId: rawUserId, courseId: rawCourseId, key, body, contentType }) {
       const userId = assertUuid(rawUserId, 'user-id');
       const courseId = assertUuid(rawCourseId, 'course-id');
-      const random = randomBytes(16);
-      if (!Buffer.isBuffer(random) || random.length !== 16) throw new Error('cos-random-source-failed');
-      const key = `${safePrefix}/users/${userId}/custom-course-assets/${courseId}/${random.toString('hex')}`;
-      return put(key, body, contentType);
+      const safeKey = key === undefined
+        ? customCourseAssetKey(userId, courseId)
+        : assertOwnedKey(userId, safePrefix, key);
+      const expectedPrefix = `${safePrefix}/users/${userId}/custom-course-assets/${courseId}/`;
+      if (!safeKey.startsWith(expectedPrefix)) throw new Error('invalid-cos-key');
+      return put(safeKey, body, contentType);
     },
     async read({ userId, key }) {
       const safeKey = assertOwnedKey(userId, safePrefix, key);

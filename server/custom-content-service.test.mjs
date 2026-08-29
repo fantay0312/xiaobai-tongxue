@@ -10,6 +10,7 @@ function repositoryFixture() {
   let sequence = 0;
   const courses = new Map();
   const assets = new Map();
+  const uploadIntents = new Map();
   const topics = new Map();
   const jobs = new Map();
   const nextId = () => IDS[sequence++];
@@ -31,6 +32,34 @@ function repositoryFixture() {
       async findById(id) { return courses.get(id) ?? null; },
     },
     assets: {
+      async createUploadIntent(input) {
+        const course = courses.get(input.courseId);
+        if (!course || course.ownerId !== input.ownerId) return null;
+        const row = { id: nextId(), ...input, wkKnowledgeId: null, wkDocKbId: course.wkDocKbId };
+        uploadIntents.set(row.id, row);
+        return row;
+      },
+      async setUploadIntentKnowledge(ownerId, id, wkKnowledgeId) {
+        const intent = uploadIntents.get(id);
+        if (!intent || intent.ownerId !== ownerId) return null;
+        const row = { ...intent, wkKnowledgeId };
+        uploadIntents.set(id, row);
+        return row;
+      },
+      async removeUploadIntent(ownerId, id) {
+        const intent = uploadIntents.get(id);
+        if (!intent || intent.ownerId !== ownerId) return false;
+        return uploadIntents.delete(id);
+      },
+      async listStaleUploadIntents() { return []; },
+      async finalizeUploadIntent(ownerId, intentId, input) {
+        const intent = uploadIntents.get(intentId);
+        if (!intent || intent.ownerId !== ownerId || intent.courseId !== input.courseId || intent.wkKnowledgeId !== input.wkKnowledgeId) return null;
+        const row = { id: nextId(), ...input, cosKey: intent.cosKey, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+        assets.set(row.id, row);
+        uploadIntents.delete(intentId);
+        return row;
+      },
       async create(input) {
         const row = { id: nextId(), ...input, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
         assets.set(row.id, row);
@@ -99,8 +128,16 @@ function repositoryFixture() {
         if (job) jobs.set(job.id, { ...job, status: 'failed', errorCode: 'teacher-discarded' });
         return archived;
       },
-      async publish(id) {
-        const row = { ...topics.get(id), status: 'ready', publishedAt: new Date().toISOString() };
+      async publishValidated(id, expectedPayload, verifiedPayload) {
+        const current = topics.get(id);
+        if (!current || current.status !== 'draft' || JSON.stringify(current.payload) !== JSON.stringify(expectedPayload)) return null;
+        const row = {
+          ...current,
+          payload: verifiedPayload,
+          qualityIssues: [],
+          status: 'ready',
+          publishedAt: new Date().toISOString(),
+        };
         topics.set(id, row);
         const job = [...jobs.values()].find((candidate) => candidate.topicId === id && candidate.status === 'needs_review');
         if (job) jobs.set(job.id, { ...job, status: 'done', errorCode: null });
@@ -133,8 +170,11 @@ function repositoryFixture() {
           topics.set(topic.id, topic);
         }
         const job = jobs.get(input.jobId);
-        if (!job || (job.status !== 'queued' && job.status !== 'running')) return null;
-        const attached = { ...job, status: 'needs_review', topicId: topic.id, errorCode: null };
+        if (!job || job.status !== 'running' || job.leaseToken !== input.leaseToken) return null;
+        const attached = {
+          ...job, status: 'needs_review', topicId: topic.id, errorCode: null,
+          leaseToken: null, leaseExpiresAt: null,
+        };
         jobs.set(job.id, attached);
         return { topic, job: attached };
       },
@@ -143,17 +183,26 @@ function repositoryFixture() {
         return job && courses.get(job.courseId)?.ownerId === ownerId ? job : null;
       },
       async findById(id) { return jobs.get(id) ?? null; },
-      async listResumable() { return [...jobs.values()].filter((job) => job.status === 'queued' || job.status === 'running'); },
+      async listClaimable() {
+        return [...jobs.values()].filter((job) => job.status === 'queued' || (job.status === 'running' && !job.leaseToken));
+      },
+      async claimForRun(id, leaseToken) {
+        const job = jobs.get(id);
+        if (!job || (job.status !== 'queued' && !(job.status === 'running' && !job.leaseToken))) return null;
+        const claimed = { ...job, status: 'running', leaseToken, leaseExpiresAt: new Date(Date.now() + 600_000).toISOString() };
+        jobs.set(id, claimed);
+        return claimed;
+      },
       async findOpenByCourse(courseId) {
         return [...jobs.values()].find((job) => (
           job.courseId === courseId
           && (job.status === 'queued' || job.status === 'running' || job.status === 'needs_review')
         )) ?? null;
       },
-      async transitionActive(id, patch) {
+      async transitionClaimed(id, leaseToken, patch) {
         const current = jobs.get(id);
-        if (!current || (current.status !== 'queued' && current.status !== 'running')) return null;
-        const row = { ...jobs.get(id), ...patch };
+        if (!current || current.status !== 'running' || current.leaseToken !== leaseToken) return null;
+        const row = { ...current, ...patch, leaseToken: null, leaseExpiresAt: null };
         jobs.set(id, row);
         return row;
       },
@@ -222,8 +271,10 @@ function cosFixture() {
   const objects = new Map();
   return {
     objects,
-    async uploadCustomCourseAsset({ userId, courseId, body }) {
-      const key = `xiaobai/users/${userId}/custom-course-assets/${courseId}/fixture`;
+    createCustomCourseAssetKey({ userId, courseId }) {
+      return `xiaobai/users/${userId}/custom-course-assets/${courseId}/fixture`;
+    },
+    async uploadCustomCourseAsset({ userId, courseId, key = this.createCustomCourseAssetKey({ userId, courseId }), body }) {
       objects.set(key, Buffer.from(body));
       return { key, byteSize: body.length, etag: 'etag' };
     },
@@ -239,6 +290,7 @@ function cosFixture() {
 test('custom content service runs create, upload, compile, review, publish and student-view flow', async () => {
   const repository = repositoryFixture();
   const calls = { faq: null, deleted: [], evaluation: null };
+  let mutateDuringFaq = null;
   let kb = 0;
   let knowledge = 0;
   const weknora = {
@@ -246,6 +298,7 @@ test('custom content service runs create, upload, compile, review, publish and s
     async createKnowledgeBase() { return { id: `wk-kb-${++kb}` }; },
     async deleteKnowledgeBase(id) { calls.deleted.push(id); },
     async uploadFile() { return { id: `wk-knowledge-${++knowledge}`, parse_status: 'completed', enable_status: 'enabled' }; },
+    async findKnowledgeByMetadata() { return null; },
     async getKnowledge(id) { return { id, parse_status: 'completed', enable_status: 'enabled' }; },
     async reparseKnowledge() {},
     async deleteKnowledge(id) { calls.deleted.push(id); },
@@ -254,7 +307,15 @@ test('custom content service runs create, upload, compile, review, publish and s
     },
     async search() { return [{ id: 'chunk-1', content: '课件中的要点原理' }]; },
     async upsertFaqEntries(_id, entries) { calls.faq = entries; return { task_id: 'faq-test' }; },
-    async waitForFaqImport(taskId) { assert.equal(taskId, 'faq-test'); return { status: 'completed' }; },
+    async waitForFaqImport(taskId) {
+      assert.equal(taskId, 'faq-test');
+      if (mutateDuringFaq) {
+        const mutate = mutateDuringFaq;
+        mutateDuringFaq = null;
+        await mutate();
+      }
+      return { status: 'completed' };
+    },
     isTerminalParseStatus(status) { return status === 'completed' || status === 'failed' || status === 'cancelled'; },
   };
   const compiler = {
@@ -329,7 +390,16 @@ test('custom content service runs create, upload, compile, review, publish and s
 
   const saved = await service.updateDraft(alice, job.topic.id, job.topic.payload, 'trace-save');
   assert.deepEqual(saved.qualityIssues, []);
-  const published = await service.publishTopic(alice, saved.id, 'trace-publish');
+  mutateDuringFaq = async () => {
+    await repository.topics.updateDraft(saved.id, { ...saved.payload, title: '并发未验证稿' }, [{ code: 'race' }]);
+  };
+  await assert.rejects(
+    service.publishTopic(alice, saved.id, 'trace-publish-raced'),
+    /topic-not-editable/,
+    'FAQ 同步期间并发修改的 payload 不得跨过已验证快照发布',
+  );
+  const restoredDraft = await service.updateDraft(alice, saved.id, saved.payload, 'trace-restore');
+  const published = await service.publishTopic(alice, restoredDraft.id, 'trace-publish');
   assert.equal(published.status, 'ready');
   assert.equal(calls.faq.length, 2);
 
@@ -384,6 +454,7 @@ test('teacher-added checklist item is grounded against owned course chunks on sa
     async createKnowledgeBase() { return { id: `wk-kb-${++kb}` }; },
     async deleteKnowledgeBase() {},
     async uploadFile() { return { id: `wk-knowledge-${++knowledge}`, parse_status: 'completed', enable_status: 'enabled' }; },
+    async findKnowledgeByMetadata() { return null; },
     async getKnowledge(id) { return { id, parse_status: 'completed', enable_status: 'enabled' }; },
     async listChunks() {
       return [
@@ -453,6 +524,7 @@ test('custom content service rejects disguised and oversized files before WeKnor
     async createKnowledgeBase() { return { id: `wk-${Math.random()}` }; },
     async deleteKnowledgeBase() {},
     async uploadFile() { uploadCalls += 1; },
+    async findKnowledgeByMetadata() { return null; },
     isTerminalParseStatus() { return true; },
   };
   const service = createCustomContentService({
@@ -485,6 +557,7 @@ test('failed WeKnora ingestion compensates the already written COS original', as
     async createKnowledgeBase() { return { id: `wk-${Math.random()}` }; },
     async deleteKnowledgeBase() {},
     async uploadFile() { throw new Error('weknora-upstream-failed'); },
+    async findKnowledgeByMetadata() { return null; },
     isTerminalParseStatus() { return true; },
   };
   const service = createCustomContentService({
@@ -508,4 +581,40 @@ test('failed WeKnora ingestion compensates the already written COS original', as
   );
   assert.equal(cos.objects.size, 0, 'WeKnora 失败后不得遗留 COS 原件');
   assert.equal((await repository.assets.listOwned(owner.id, course.id)).length, 0);
+});
+
+test('asset deletion resumes idempotently from a persisted deleting state', async () => {
+  const repository = repositoryFixture();
+  const cos = cosFixture();
+  let removeCalls = 0;
+  const remove = repository.assets.remove;
+  repository.assets.remove = async (id) => {
+    removeCalls += 1;
+    if (removeCalls === 1) throw new Error('simulated-db-delete-failure');
+    return remove.call(repository.assets, id);
+  };
+  const weknora = {
+    async healthCheck() { return true; },
+    async createKnowledgeBase() { return { id: `wk-${Math.random()}` }; },
+    async deleteKnowledgeBase() {},
+    async uploadFile() { return { id: 'wk-delete-resume', parse_status: 'completed', enable_status: 'enabled' }; },
+    async findKnowledgeByMetadata() { return null; },
+    async deleteKnowledge() {},
+    isTerminalParseStatus(status) { return status === 'completed'; },
+  };
+  const service = createCustomContentService({
+    repository, weknora, cos,
+    compiler: { async compile() {} }, embeddingModelId: 'embed-1', uuid: () => IDS[29],
+  });
+  const owner = { id: IDS[28], name: 'Owner' };
+  const course = await service.createCourse(owner, '删除续作');
+  const asset = await service.uploadAsset(owner, course.id, {
+    bytes: Buffer.from('%PDF-1.7\nresume\n%%EOF'), filename: 'resume.pdf', assetRole: 'lecture', requestId: 'upload',
+  });
+  await assert.rejects(service.deleteAsset(owner, asset.id, 'delete-first'), /simulated-db-delete-failure/);
+  const stranded = await repository.assets.findOwned(owner.id, asset.id);
+  assert.equal(stranded.parseStatus, 'deleting');
+  await service.deleteAsset(owner, asset.id, 'delete-retry');
+  assert.equal(await repository.assets.findOwned(owner.id, asset.id), null);
+  assert.equal(cos.objects.size, 0);
 });

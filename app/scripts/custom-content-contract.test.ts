@@ -115,6 +115,8 @@ const pageSource = await readFile(new URL('../src/pages/custom-content/index.tsx
 const apiSource = await readFile(new URL('../src/lib/customContent.ts', import.meta.url), 'utf8');
 const evaluatorSource = await readFile(new URL('../src/engine/evaluator.ts', import.meta.url), 'utf8');
 const storeSource = await readFile(new URL('../src/store/appStore.ts', import.meta.url), 'utf8');
+const prepSource = await readFile(new URL('../src/pages/prep/index.tsx', import.meta.url), 'utf8');
+const shellCss = await readFile(new URL('../src/components/shell/AppShell.module.css', import.meta.url), 'utf8');
 assert.match(appSource, /path="\/custom-content"/);
 assert.match(pageSource, /自选讲义/);
 assert.match(pageSource, /getCourseCompileJob/);
@@ -122,10 +124,14 @@ assert.match(pageSource, /考小白的随堂题/);
 assert.match(pageSource, /重编题号/);
 assert.match(pageSource, /查找课件出处/);
 assert.match(pageSource, /放弃这份草稿/);
+assert.match(pageSource, /listCourseAssets[\s\S]{0,700}retryDelay\(failures\)/);
+assert.match(pageSource, /getCourseCompileJob[\s\S]{0,900}retryDelay\(failures\)/);
 assert.match(evaluatorSource, /evaluateCustomTopicSemantic/);
 assert.match(evaluatorSource, /startsWith\('custom-'\)\s*\? await evaluateCustomTopicSemantic/);
 assert.match(storeSource, /learningLevel:\s*deriveEvolution\(state\.events, getAllTopics\(\)\)\.stage/);
 assert.match(storeSource, /CUSTOM_TOPICS_RETRY_MS\[attempt\]/);
+assert.match(prepSource, /TEACHER_TOPIC_RETRY_MS\[attempt\]/);
+assert.match(shellCss, /@media \(max-width: 520px\)[\s\S]*navGroup:has\(\.linkActive\) \.menuButton/);
 assert.doesNotMatch(apiSource, /X-API-Key|WK_API_KEY|WeKnora.*key/i, '浏览器 API 层不得持有 WeKnora 凭据');
 
-console.log('custom content contract: 32 assertions passed');
+console.log('custom content contract: 36 assertions passed');

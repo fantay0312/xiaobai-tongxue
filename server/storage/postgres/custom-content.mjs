@@ -70,6 +70,20 @@ function jobRow(row) {
   };
 }
 
+function uploadIntentRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    courseId: row.course_id,
+    ownerId: row.owner_id,
+    cosKey: row.cos_key,
+    wkKnowledgeId: row.wk_knowledge_id,
+    wkDocKbId: row.wk_doc_kb_id ?? null,
+    createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at),
+  };
+}
+
 export function createCustomContentRepository(queryable, { uuid = randomUUID } = {}) {
   if (!queryable?.query) throw new Error('postgres-queryable-required');
 
@@ -146,6 +160,88 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
   });
 
   const assets = Object.freeze({
+    async createUploadIntent({ ownerId, courseId, cosKey }) {
+      const id = uuid();
+      assertUuid(id);
+      assertUuid(ownerId);
+      assertUuid(courseId);
+      const result = await queryable.query(
+        `INSERT INTO custom_asset_upload_intents (id, course_id, owner_id, cos_key)
+         SELECT $1, c.id, c.owner_id, $4
+           FROM custom_courses c
+          WHERE c.id = $2 AND c.owner_id = $3
+         RETURNING *`,
+        [id, courseId, ownerId, cosKey],
+      );
+      return uploadIntentRow(result.rows[0]);
+    },
+
+    async setUploadIntentKnowledge(ownerId, id, wkKnowledgeId) {
+      assertUuid(ownerId);
+      assertUuid(id);
+      const result = await queryable.query(
+        `UPDATE custom_asset_upload_intents
+            SET wk_knowledge_id = $3, updated_at = NOW()
+          WHERE id = $1 AND owner_id = $2
+          RETURNING *`,
+        [id, ownerId, wkKnowledgeId],
+      );
+      return uploadIntentRow(result.rows[0]);
+    },
+
+    async removeUploadIntent(ownerId, id) {
+      assertUuid(ownerId);
+      assertUuid(id);
+      const result = await queryable.query(
+        'DELETE FROM custom_asset_upload_intents WHERE id = $1 AND owner_id = $2',
+        [id, ownerId],
+      );
+      return result.rowCount > 0;
+    },
+
+    async listStaleUploadIntents() {
+      const result = await queryable.query(
+        `SELECT i.*, c.wk_doc_kb_id
+           FROM custom_asset_upload_intents i
+           JOIN custom_courses c ON c.id = i.course_id
+          WHERE i.created_at <= NOW() - INTERVAL '10 minutes'
+          ORDER BY i.created_at
+          LIMIT 100`,
+      );
+      return result.rows.map(uploadIntentRow);
+    },
+
+    async finalizeUploadIntent(ownerId, intentId, input) {
+      const id = uuid();
+      assertUuid(id);
+      assertUuid(ownerId);
+      assertUuid(intentId);
+      return withTransaction(async (client) => {
+        const locked = await client.query(
+          `SELECT * FROM custom_asset_upload_intents
+            WHERE id = $1 AND owner_id = $2
+            FOR UPDATE`,
+          [intentId, ownerId],
+        );
+        const intent = locked.rows[0];
+        if (!intent || intent.course_id !== input.courseId || intent.wk_knowledge_id !== input.wkKnowledgeId) return null;
+        const result = await client.query(
+          `INSERT INTO custom_assets
+             (id, course_id, asset_role, filename, content_type, byte_size, sha256,
+              cos_key, wk_knowledge_id, parse_status, enable_status, error_message)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           RETURNING *`,
+          [
+            id, input.courseId, input.assetRole, input.filename, input.contentType,
+            input.byteSize, input.sha256, intent.cos_key, input.wkKnowledgeId, input.parseStatus,
+            input.enableStatus ?? 'disabled', input.errorMessage ?? null,
+          ],
+        );
+        await client.query('DELETE FROM custom_asset_upload_intents WHERE id = $1', [intentId]);
+        return assetRow(result.rows[0]);
+      });
+    },
+
     async create(input) {
       const id = uuid();
       assertUuid(id);
@@ -251,7 +347,6 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
              JOIN custom_courses c ON c.id = a.course_id
             WHERE a.id = $1
               AND c.owner_id = $2
-              AND a.parse_status <> 'deleting'
             FOR UPDATE OF a`,
           [id, ownerId],
         );
@@ -395,6 +490,8 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
            UPDATE custom_compile_jobs j
               SET status = 'failed',
                   error_code = 'teacher-discarded',
+                  lease_token = NULL,
+                  lease_expires_at = NULL,
                   updated_at = NOW()
              FROM archived t
             WHERE j.topic_id = t.id
@@ -408,23 +505,33 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       return topicRow(result.rows[0]);
     },
 
-    async publish(id) {
+    async publishValidated(id, expectedPayload, verifiedPayload) {
       assertUuid(id);
       const result = await queryable.query(
         `WITH published AS (
            UPDATE custom_topics
-              SET status = 'ready', published_at = NOW(), updated_at = NOW()
-            WHERE id = $1 AND status = 'draft'
+              SET payload = $3::jsonb,
+                  quality_issues = '[]'::jsonb,
+                  status = 'ready',
+                  published_at = NOW(),
+                  updated_at = NOW()
+            WHERE id = $1
+              AND status = 'draft'
+              AND payload = $2::jsonb
             RETURNING *
          ), completed_job AS (
            UPDATE custom_compile_jobs
-              SET status = 'done', error_code = NULL, updated_at = NOW()
+              SET status = 'done',
+                  error_code = NULL,
+                  lease_token = NULL,
+                  lease_expires_at = NULL,
+                  updated_at = NOW()
             WHERE topic_id = $1
               AND status = 'needs_review'
               AND EXISTS (SELECT 1 FROM published)
          )
          SELECT * FROM published`,
-        [id],
+        [id, JSON.stringify(expectedPayload), JSON.stringify(verifiedPayload)],
       );
       return topicRow(result.rows[0]);
     },
@@ -461,6 +568,7 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
 
     async createDraftAndAttach({
       jobId,
+      leaseToken,
       topicId,
       courseId,
       payload,
@@ -470,12 +578,22 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       const id = uuid();
       assertUuid(id);
       assertUuid(jobId);
+      assertUuid(leaseToken);
       assertUuid(courseId);
       const result = await queryable.query(
-        `WITH attached_topic AS (
+        `WITH claimed_job AS MATERIALIZED (
+           SELECT id, course_id
+             FROM custom_compile_jobs
+            WHERE id = $1
+              AND course_id = $4
+              AND status = 'running'
+              AND lease_token = $8
+            FOR UPDATE
+         ), attached_topic AS (
            INSERT INTO custom_topics
              (id, topic_id, course_id, status, payload, quality_issues, prompt_version)
-           VALUES ($2, $3, $4, 'draft', $5::jsonb, $6::jsonb, $7)
+           SELECT $2, $3, $4, 'draft', $5::jsonb, $6::jsonb, $7
+             FROM claimed_job
            ON CONFLICT (topic_id) DO UPDATE
              SET topic_id = EXCLUDED.topic_id
              WHERE custom_topics.course_id = EXCLUDED.course_id
@@ -485,11 +603,13 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
               SET status = 'needs_review',
                   topic_id = t.id,
                   error_code = NULL,
+                  lease_token = NULL,
+                  lease_expires_at = NULL,
                   updated_at = NOW()
-             FROM attached_topic t
-            WHERE j.id = $1
-              AND j.course_id = $4
-              AND j.status IN ('queued', 'running')
+             FROM attached_topic t, claimed_job c
+            WHERE c.id = j.id
+              AND j.status = 'running'
+              AND j.lease_token = $8
             RETURNING j.*
          )
          SELECT row_to_json(t) AS topic, row_to_json(j) AS job
@@ -497,7 +617,7 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
            JOIN attached_job j ON j.topic_id = t.id`,
         [
           jobId, id, topicId, courseId, JSON.stringify(payload),
-          JSON.stringify(qualityIssues), promptVersion,
+          JSON.stringify(qualityIssues), promptVersion, leaseToken,
         ],
       );
       const row = result.rows[0];
@@ -523,13 +643,35 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       return jobRow(result.rows[0]);
     },
 
-    async listResumable() {
+    async listClaimable() {
       const result = await queryable.query(
         `SELECT * FROM custom_compile_jobs
-          WHERE status IN ('queued', 'running')
+          WHERE status = 'queued'
+             OR (status = 'running' AND (lease_expires_at IS NULL OR lease_expires_at <= NOW()))
           ORDER BY created_at`,
       );
       return result.rows.map(jobRow);
+    },
+
+    async claimForRun(id, leaseToken) {
+      assertUuid(id);
+      assertUuid(leaseToken);
+      const result = await queryable.query(
+        `UPDATE custom_compile_jobs
+            SET status = 'running',
+                lease_token = $2,
+                lease_expires_at = NOW() + INTERVAL '10 minutes',
+                error_code = NULL,
+                updated_at = NOW()
+          WHERE id = $1
+            AND (
+              status = 'queued'
+              OR (status = 'running' AND (lease_expires_at IS NULL OR lease_expires_at <= NOW()))
+            )
+          RETURNING *`,
+        [id, leaseToken],
+      );
+      return jobRow(result.rows[0]);
     },
 
     async findOpenByCourse(courseId) {
@@ -544,16 +686,23 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       return jobRow(result.rows[0]);
     },
 
-    async transitionActive(id, { status, topicId = null, errorCode = null }) {
+    async transitionClaimed(id, leaseToken, { status, topicId = null, errorCode = null }) {
       assertUuid(id);
+      assertUuid(leaseToken);
       if (topicId) assertUuid(topicId);
       const result = await queryable.query(
         `UPDATE custom_compile_jobs
-            SET status = $2, topic_id = COALESCE($3, topic_id), error_code = $4, updated_at = NOW()
+            SET status = $3,
+                topic_id = COALESCE($4, topic_id),
+                error_code = $5,
+                lease_token = NULL,
+                lease_expires_at = NULL,
+                updated_at = NOW()
           WHERE id = $1
-            AND status IN ('queued', 'running')
+            AND status = 'running'
+            AND lease_token = $2
           RETURNING *`,
-        [id, status, topicId, errorCode],
+        [id, leaseToken, status, topicId, errorCode],
       );
       return jobRow(result.rows[0]);
     },
@@ -562,7 +711,11 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       assertUuid(topicId);
       const result = await queryable.query(
         `UPDATE custom_compile_jobs
-            SET status = 'done', error_code = NULL, updated_at = NOW()
+            SET status = 'done',
+                error_code = NULL,
+                lease_token = NULL,
+                lease_expires_at = NULL,
+                updated_at = NOW()
           WHERE topic_id = $1 AND status = 'needs_review'
           RETURNING *`,
         [topicId],

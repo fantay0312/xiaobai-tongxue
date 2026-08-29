@@ -27,8 +27,13 @@ function quizOptions(value) {
 }
 
 function cleanId(value, fallback, maximum = 80) {
-  const candidate = text(value, maximum).replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
-  return candidate || fallback;
+  const candidate = text(value, Math.min(MAX_TEXT, maximum * 8))
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (!candidate) return fallback;
+  if (candidate.length <= maximum) return candidate;
+  const suffixLength = Math.min(20, Math.floor(maximum / 3));
+  return `${candidate.slice(0, maximum - suffixLength - 1)}-${candidate.slice(-suffixLength)}`;
 }
 
 function normalizeQuiz(item, index) {

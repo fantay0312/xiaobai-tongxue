@@ -131,6 +131,15 @@ test('blank quiz options remain positional and cannot silently retarget the answ
   assert.ok(issues.some((item) => item.code === 'quiz-shape' && item.path === 'quizBank.0'));
 });
 
+test('long topic-prefixed quiz ids preserve their distinguishing suffixes', () => {
+  const raw = completeDraft();
+  const prefix = `custom-${'a'.repeat(80)}`;
+  raw.quizBank.forEach((item, index) => { item.id = `${prefix}-main-q${index + 1}`; });
+  const topic = normalizeTopicDraft(raw, { topicId: prefix, courseTitle: '我的课程' });
+  assert.equal(new Set(topic.quizBank.map((item) => item.id)).size, 3);
+  assert.deepEqual(topic.quizBank.map((item) => item.id.slice(-2)), ['q1', 'q2', 'q3']);
+});
+
 test('custom semantic evaluation keeps the full rubric inside the server compiler', async () => {
   const topic = normalizeTopicDraft(completeDraft(), {
     topicId: 'custom-server-eval', courseTitle: '我的课程', sourceAssets: [],
@@ -196,8 +205,14 @@ test('topic compiler retrieves a requested title before applying the source budg
 test('custom content migration anchors COS ownership and active compile uniqueness', async () => {
   const sql = await readFile(new URL('./storage/postgres/migrations/004_custom_course_content.sql', import.meta.url), 'utf8');
   const openJobSql = await readFile(new URL('./storage/postgres/migrations/005_custom_compile_open_job.sql', import.meta.url), 'utf8');
+  const leaseSql = await readFile(new URL('./storage/postgres/migrations/006_custom_compile_leases.sql', import.meta.url), 'utf8');
+  const uploadIntentSql = await readFile(new URL('./storage/postgres/migrations/007_custom_upload_cleanup_intents.sql', import.meta.url), 'utf8');
   assert.match(sql, /owner_id UUID NOT NULL REFERENCES users\(id\) ON DELETE CASCADE/);
   assert.match(sql, /cos_key TEXT NOT NULL UNIQUE/);
   assert.match(openJobSql, /custom_compile_jobs_one_active_per_course_idx/);
   assert.match(openJobSql, /WHERE status IN \('queued', 'running', 'needs_review'\)/);
+  assert.match(leaseSql, /lease_token UUID/);
+  assert.match(leaseSql, /lease_expires_at TIMESTAMPTZ/);
+  assert.match(uploadIntentSql, /custom_asset_upload_intents/);
+  assert.match(uploadIntentSql, /cos_key TEXT NOT NULL UNIQUE/);
 });

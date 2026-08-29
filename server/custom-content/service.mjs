@@ -254,8 +254,12 @@ export function createCustomContentService({
   if (!repository?.courses || !repository?.assets || !repository?.topics || !repository?.jobs) {
     throw new Error('custom-content-repository-required');
   }
-  if (!weknora?.createKnowledgeBase || !weknora?.uploadFile) throw new Error('weknora-client-required');
-  if (!cos?.uploadCustomCourseAsset || !cos?.verifySize || !cos?.delete) throw new Error('custom-content-cos-required');
+  if (!weknora?.createKnowledgeBase || !weknora?.uploadFile || !weknora?.findKnowledgeByMetadata) {
+    throw new Error('weknora-client-required');
+  }
+  if (!cos?.createCustomCourseAssetKey || !cos?.uploadCustomCourseAsset || !cos?.verifySize || !cos?.delete) {
+    throw new Error('custom-content-cos-required');
+  }
   if (!compiler?.compile) throw new Error('topic-compiler-required');
   if (!embeddingModelId) throw new Error('weknora-embedding-model-required');
   const runningJobs = new Map();
@@ -294,13 +298,21 @@ export function createCustomContentService({
     return course;
   }
 
-  async function compensateCos(userId, key, reason) {
-    if (!key) return;
-    try {
-      await cos.delete({ userId, key });
-    } catch {
-      logger.error?.(`[custom-content] COS compensation failed: ${reason}`);
+  async function compensateCos(userId, key, reason, { repeat = false } = {}) {
+    if (!key) return true;
+    const attempts = repeat ? 2 : 1;
+    let lastFailed = false;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 1_500));
+      try {
+        await cos.delete({ userId, key });
+        lastFailed = false;
+      } catch {
+        lastFailed = true;
+      }
     }
+    if (lastFailed) logger.error?.(`[custom-content] COS compensation failed: ${reason}`);
+    return !lastFailed;
   }
 
   async function refreshAsset(asset, requestId) {
@@ -320,6 +332,33 @@ export function createCustomContentService({
         });
       }
       return asset;
+    }
+  }
+
+  async function reconcileUploadIntent(intent) {
+    let knowledgeId = intent.wkKnowledgeId;
+    try {
+      if (!knowledgeId) {
+        const ambiguous = await weknora.findKnowledgeByMetadata({
+          kbId: intent.wkDocKbId,
+          key: 'xiaobai_upload_marker',
+          value: intent.id,
+          requestId: `xb-upload-reconcile-${intent.id}`,
+          maximumWaitMs: 0,
+        });
+        knowledgeId = String(ambiguous?.id ?? ambiguous?.knowledge_id ?? '').trim() || null;
+      }
+      if (knowledgeId) {
+        await weknora.deleteKnowledge(knowledgeId, `xb-upload-reconcile-${intent.id}`).catch((error) => {
+          if (!String(error?.message).startsWith('weknora-not-found')) throw error;
+        });
+      }
+      await cos.delete({ userId: intent.ownerId, key: intent.cosKey });
+      await repository.assets.removeUploadIntent(intent.ownerId, intent.id);
+      return true;
+    } catch {
+      logger.error?.('[custom-content] stale upload intent reconciliation failed');
+      return false;
     }
   }
 
@@ -406,10 +445,9 @@ export function createCustomContentService({
   async function runJob(jobId) {
     if (runningJobs.has(jobId)) return runningJobs.get(jobId);
     const task = (async () => {
-      const job = await repository.jobs.findById(jobId);
-      if (!job || (job.status !== 'queued' && job.status !== 'running')) return;
-      const running = await repository.jobs.transitionActive(job.id, { status: 'running' });
-      if (!running) return;
+      const leaseToken = crypto.randomUUID();
+      const job = await repository.jobs.claimForRun(jobId, leaseToken);
+      if (!job) return;
       try {
         const course = await repository.courses.findById(job.courseId);
         if (!course) throw new Error('course-not-found');
@@ -427,6 +465,7 @@ export function createCustomContentService({
         });
         const attached = await repository.jobs.createDraftAndAttach({
           jobId: job.id,
+          leaseToken,
           topicId,
           courseId: course.id,
           payload: result.topic,
@@ -436,7 +475,7 @@ export function createCustomContentService({
         if (!attached) throw new Error('compile-attach-failed');
       } catch (error) {
         logger.error?.('[custom-content] compile failed:', stableCompilerError(error));
-        await repository.jobs.transitionActive(job.id, {
+        await repository.jobs.transitionClaimed(job.id, leaseToken, {
           status: 'failed',
           errorCode: stableCompilerError(error),
         }).catch(() => {});
@@ -546,18 +585,29 @@ export function createCustomContentService({
       const assetRole = ASSET_ROLES.has(roleValue) ? roleValue : 'lecture';
       const { contentType } = validateFile(bytes, filename, maxFileBytes);
       const sha256 = crypto.createHash('sha256').update(bytes).digest('hex');
-      let stored;
+      const plannedCosKey = cos.createCustomCourseAssetKey({ userId: owner.id, courseId: course.id });
+      const intent = await repository.assets.createUploadIntent({
+        ownerId: owner.id,
+        courseId: course.id,
+        cosKey: plannedCosKey,
+      });
+      if (!intent) throw publicError('asset-storage-failed', 502);
+      const uploadMarker = intent.id;
+      let stored = { key: plannedCosKey };
       try {
         stored = await cos.uploadCustomCourseAsset({
           userId: owner.id,
           courseId: course.id,
+          key: plannedCosKey,
           body: bytes,
           contentType,
         });
         const verified = await cos.verifySize({ userId: owner.id, key: stored.key });
         if (verified.byteSize !== bytes.length) throw new Error('cos-object-size-mismatch');
       } catch {
-        await compensateCos(owner.id, stored?.key, 'verify-upload');
+        // PUT 超时可能是“服务端已落盘、客户端没收到响应”；已预生成 key，并延迟再删一次收窄歧义窗。
+        const cleaned = await compensateCos(owner.id, plannedCosKey, 'verify-upload', { repeat: true });
+        if (cleaned) await repository.assets.removeUploadIntent(owner.id, intent.id).catch(() => {});
         throw publicError('asset-storage-failed', 502);
       }
       let uploaded;
@@ -566,7 +616,12 @@ export function createCustomContentService({
           bytes,
           filename,
           contentType,
-          metadata: { xiaobai_course_id: course.id, asset_role: assetRole, sha256 },
+          metadata: {
+            xiaobai_course_id: course.id,
+            xiaobai_upload_marker: uploadMarker,
+            asset_role: assetRole,
+            sha256,
+          },
           processConfig: {
             parser_engine_rules: [
               { file_types: ['.ppt', '.pptx', '.pdf', '.docx', '.md', '.txt'], engine: 'builtin' },
@@ -583,25 +638,51 @@ export function createCustomContentService({
           requestId,
         }));
       } catch (error) {
-        await compensateCos(owner.id, stored.key, 'weknora-upload');
+        let reconciled = true;
+        if (error?.retryable === true || /weknora-(?:timeout|unreachable)/.test(String(error?.message))) {
+          try {
+            const ambiguous = await weknora.findKnowledgeByMetadata({
+              kbId: course.wkDocKbId,
+              key: 'xiaobai_upload_marker',
+              value: uploadMarker,
+              requestId,
+            });
+            const ambiguousId = String(ambiguous?.id ?? ambiguous?.knowledge_id ?? '').trim();
+            if (ambiguousId) await weknora.deleteKnowledge(ambiguousId, requestId);
+          } catch {
+            reconciled = false;
+            logger.error?.('[custom-content] ambiguous WeKnora upload reconciliation failed');
+          }
+        }
+        const cosCleaned = await compensateCos(owner.id, stored.key, 'weknora-upload');
+        if (reconciled && cosCleaned) {
+          await repository.assets.removeUploadIntent(owner.id, intent.id).catch(() => {});
+        }
         if (String(error?.message).startsWith('weknora-conflict')) throw publicError('asset-duplicate', 409);
         if (String(error?.message).startsWith('weknora-file-too-large')) throw publicError('file-too-large', 413);
         throw publicError('asset-upload-upstream-failed', 502);
       }
       try {
-        return publicAsset(await repository.assets.create({
+        const intentWithKnowledge = await repository.assets.setUploadIntentKnowledge(
+          owner.id,
+          intent.id,
+          uploaded.id,
+        );
+        if (!intentWithKnowledge) throw new Error('upload-intent-missing');
+        const asset = await repository.assets.finalizeUploadIntent(owner.id, intent.id, {
           courseId: course.id,
           assetRole,
           filename,
           contentType,
           byteSize: bytes.length,
           sha256,
-          cosKey: stored.key,
           wkKnowledgeId: uploaded.id,
           parseStatus: uploaded.parseStatus,
           enableStatus: uploaded.enableStatus,
           errorMessage: uploaded.errorMessage,
-        }));
+        });
+        if (!asset) throw new Error('upload-intent-finalize-failed');
+        return publicAsset(asset);
       } catch (error) {
         const cleanup = await Promise.allSettled([
           weknora.deleteKnowledge(uploaded.id, requestId),
@@ -609,6 +690,8 @@ export function createCustomContentService({
         ]);
         if (cleanup.some((result) => result.status === 'rejected')) {
           logger.error?.('[custom-content] upload compensation incomplete');
+        } else {
+          await repository.assets.removeUploadIntent(owner.id, intent.id).catch(() => {});
         }
         if (error?.code === '23505') throw publicError('asset-duplicate', 409);
         throw error;
@@ -700,6 +783,13 @@ export function createCustomContentService({
     async getCourseCompileJob(owner, courseId) {
       const course = await requireCourse(owner.id, courseId);
       return jobWithTopic(owner, await repository.jobs.findOpenByCourse(course.id));
+    },
+
+    async reconcileUploadIntents() {
+      const intents = await repository.assets.listStaleUploadIntents();
+      let cleaned = 0;
+      for (const intent of intents) if (await reconcileUploadIntent(intent)) cleaned += 1;
+      return { scanned: intents.length, cleaned };
     },
 
     async findSourceCandidates(owner, id, input, requestId) {
@@ -803,9 +893,11 @@ export function createCustomContentService({
           throw publicError('faq-sync-failed', 502);
         });
       }
-      const updated = await repository.topics.updateDraft(current.id, normalized, []);
-      if (!updated) throw publicError('topic-not-editable', 409);
-      const published = await repository.topics.publish(current.id);
+      const published = await repository.topics.publishValidated(
+        current.id,
+        current.payload,
+        normalized,
+      );
       if (!published) throw publicError('topic-not-editable', 409);
       return published;
     },
@@ -827,7 +919,7 @@ export function createCustomContentService({
     },
 
     async resumePendingJobs() {
-      const jobs = await repository.jobs.listResumable();
+      const jobs = await repository.jobs.listClaimable();
       for (const job of jobs) scheduleJob(job.id);
       return jobs.length;
     },
