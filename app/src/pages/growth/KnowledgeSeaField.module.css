@@ -10,6 +10,8 @@
   min-height: clamp(34rem, 49vw, 41rem);
   overflow: hidden;
   background-color: var(--sky-deep);
+  /* 竖滑仍给页面;横滑才交给 JS 转镜头。鼠标悬停不受 touch-action 影响。 */
+  touch-action: pan-y;
 }
 /* 地平线微光 + 四角暗角:让星区有纵深,不做整幅色团 */
 .field::after {

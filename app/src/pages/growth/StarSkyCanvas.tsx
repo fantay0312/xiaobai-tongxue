@@ -257,15 +257,82 @@ export function StarSkyCanvas({
       raf = window.requestAnimationFrame(tick);
     };
 
-    const onPointerMove = (event: PointerEvent) => {
+    /** 鼠标/笔走悬停;触摸走原生 touch*(iOS 在滚动手势里不发 pointermove)。绘制公式共用 applyLook。 */
+    const hoverInput = (event: PointerEvent) =>
+      event.pointerType === 'mouse' || event.pointerType === 'pen';
+
+    const applyLook = (clientX: number, clientY: number) => {
       const box = host.getBoundingClientRect();
       if (box.width === 0 || box.height === 0) return;
-      pointer.tx = ((event.clientX - box.left) / box.width) * 2 - 1;
-      pointer.ty = ((event.clientY - box.top) / box.height) * 2 - 1;
+      pointer.tx = ((clientX - box.left) / box.width) * 2 - 1;
+      pointer.ty = ((clientY - box.top) / box.height) * 2 - 1;
     };
-    const onPointerLeave = () => {
+
+    type TouchDrag = { id: number; x: number; y: number; axis: 'x' | 'y' | null };
+    let touchDrag: TouchDrag | null = null;
+    const coarseHover = window.matchMedia('(hover: none)');
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (!hoverInput(event)) return;
+      applyLook(event.clientX, event.clientY);
+    };
+
+    const onPointerLeave = (event: PointerEvent) => {
+      if (!hoverInput(event)) return;
       pointer.tx = 0;
       pointer.ty = 0;
+    };
+
+    const touchById = (event: TouchEvent, id: number): Touch | undefined => {
+      for (let i = 0; i < event.changedTouches.length; i += 1) {
+        if (event.changedTouches[i].identifier === id) return event.changedTouches[i];
+      }
+      for (let i = 0; i < event.touches.length; i += 1) {
+        if (event.touches[i].identifier === id) return event.touches[i];
+      }
+      return undefined;
+    };
+
+    const onTouchStart = (event: TouchEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest('button, a')) return;
+      if (touchDrag) return;
+      const point = event.changedTouches[0];
+      if (!point) return;
+      touchDrag = { id: point.identifier, x: point.clientX, y: point.clientY, axis: null };
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (!touchDrag) return;
+      const point = touchById(event, touchDrag.id);
+      if (!point) return;
+      const dx = point.clientX - touchDrag.x;
+      const dy = point.clientY - touchDrag.y;
+      if (touchDrag.axis === null && (dx * dx + dy * dy) >= 100) {
+        touchDrag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      }
+      if (touchDrag.axis !== 'x') return;
+      event.preventDefault();
+      applyLook(point.clientX, point.clientY);
+    };
+
+    const onTouchEnd = (event: TouchEvent) => {
+      if (!touchDrag) return;
+      const point = touchById(event, touchDrag.id);
+      if (point && touchDrag.axis === null) {
+        const dx = point.clientX - touchDrag.x;
+        const dy = point.clientY - touchDrag.y;
+        if (dx * dx + dy * dy < 100) applyLook(point.clientX, point.clientY);
+      }
+      touchDrag = null;
+    };
+
+    const onScroll = () => {
+      if (!coarseHover.matches || touchDrag) return;
+      const box = host.getBoundingClientRect();
+      const viewH = window.innerHeight || 1;
+      const center = (box.top + box.bottom) / 2 / viewH;
+      pointer.ty = Math.max(-1, Math.min(1, (0.5 - center) * 1.6));
     };
 
     const resize = () => {
@@ -293,7 +360,13 @@ export function StarSkyCanvas({
     io.observe(host);
     host.addEventListener('pointermove', onPointerMove, { passive: true });
     host.addEventListener('pointerleave', onPointerLeave);
+    host.addEventListener('touchstart', onTouchStart, { passive: true });
+    host.addEventListener('touchmove', onTouchMove, { passive: false });
+    host.addEventListener('touchend', onTouchEnd);
+    host.addEventListener('touchcancel', onTouchEnd);
+    window.addEventListener('scroll', onScroll, { passive: true });
     document.addEventListener('visibilitychange', resume);
+    onScroll();
     resume();
 
     return () => {
@@ -303,6 +376,11 @@ export function StarSkyCanvas({
       io.disconnect();
       host.removeEventListener('pointermove', onPointerMove);
       host.removeEventListener('pointerleave', onPointerLeave);
+      host.removeEventListener('touchstart', onTouchStart);
+      host.removeEventListener('touchmove', onTouchMove);
+      host.removeEventListener('touchend', onTouchEnd);
+      host.removeEventListener('touchcancel', onTouchEnd);
+      window.removeEventListener('scroll', onScroll);
       document.removeEventListener('visibilitychange', resume);
     };
   }, [compact, reduced]);
