@@ -115,7 +115,7 @@ ok(stuck && stuck.kind === 'weakness' && stuck.scope.topicId === topic.topicId
 ok(drafts.every((d) => !d.text.includes('undefined')), '缺 checklistId 的 R1/R3 不得生成「undefined」条目');
 ok(!drafts.some((d) => d.dedupeKey === 'mc:no_such_mc'), '主题里不存在的误区不出草稿');
 const adopted = byKey(`mc:${mc.mcId}`);
-ok(adopted && adopted.kind === 'weakness' && !adopted.text.includes(mc.belief) && adopted.text.startsWith('『'),
+ok(adopted && adopted.kind === 'weakness' && !adopted.text.includes(mc.belief) && adopted.text.includes('『'),
   '被带偏 → 短板,用心魔策展名而非 belief 原文');
 ok(adopted!.evidence.length === 2 && adopted!.evidence[0] === sessionEvents[6].id, '误区证据 = 事件 id + belief 引文');
 const quiz = byKey('quiz');
@@ -149,7 +149,7 @@ ok(analogyItem.seenCount === 2 && Math.abs(analogyItem.confidence - 0.95) < 1e-9
   'UPDATE:seenCount++、置信 +0.15、刷新 lastSeenAt');
 const corrected: MemoryDraft = {
   kind: 'strength', scope: { topicId: topic.topicId }, dedupeKey: `mc:${mc.mcId}`,
-  contradictionKey: `mc:${mc.mcId}`, text: '『心魔』这一误区，先生自己纠回来了', confidence: 0.7, evidence: ['x'],
+  contradictionKey: `mc:${mc.mcId}`, text: '先生把『心魔』这处误区纠了回来', confidence: 0.7, evidence: ['x'],
 };
 const third = reconcileMemories(second.items, [corrected], LATER);
 const adoptedId = memoryItemId('weakness', { topicId: topic.topicId }, `mc:${mc.mcId}`);

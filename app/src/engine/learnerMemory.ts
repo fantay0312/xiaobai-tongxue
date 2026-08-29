@@ -262,8 +262,8 @@ export function extractSessionMemories(input: ExtractInput): MemoryDraft[] {
       kind: adopted ? 'weakness' : 'strength', scope: topicScope,
       dedupeKey: `mc:${mcId}`, contradictionKey: `mc:${mcId}`,
       text: clipText(adopted
-        ? `『${name}』这一误区，先生把小白带偏过`
-        : `『${name}』这一误区，先生自己纠回来了`),
+        ? `先生在『${name}』上被小白带偏过`
+        : `先生把『${name}』这处误区纠了回来`),
       confidence: 0.7,
       evidence: [e.id, ...quotes([mc.belief], 1)],
     });
@@ -630,10 +630,11 @@ export function composeLearnerProfile(input: {
   const clauses: string[] = [];
   if (stale && daysSince !== null) clauses.push(`先生上回来是 ${daysSince} 天前。`);
   if (basis.sessionCount > 0) {
-    clauses.push(`先生一共讲了 ${basis.sessionCount} 堂课${mastered > 0 ? `，${mastered} 门出师` : ''}。`);
+    clauses.push(`先生讲过 ${basis.sessionCount} 堂课${mastered > 0 ? `，${mastered} 门出师` : ''}。`);
   }
-  const topHabits = habits.slice(0, 2).map((it) => (stale ? it.text.replace(/^先生/, '先生从前') : it.text));
-  if (topHabits.length > 0) clauses.push(`${topHabits.join('，')}。`);
+  // 习惯句合并成一句:「讲课爱打比方，一开口就是一大段」——去掉重复的「先生」主语,像人写的画像
+  const topHabits = habits.slice(0, 2).map((it) => it.text.replace(/^先生/, ''));
+  if (topHabits.length > 0) clauses.push(`${stale ? '从前' : ''}${topHabits.join('，')}。`);
   const milestone = visible.filter((it) => it.kind === 'milestone')
     .sort((a, b) => b.lastSeenAt.localeCompare(a.lastSeenAt) || a.id.localeCompare(b.id))[0];
   if (milestone) clauses.push(`最近一回，${milestone.text}。`);
