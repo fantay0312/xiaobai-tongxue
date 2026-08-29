@@ -606,8 +606,8 @@ export function createCustomContentService({
         if (verified.byteSize !== bytes.length) throw new Error('cos-object-size-mismatch');
       } catch {
         // PUT 超时可能是“服务端已落盘、客户端没收到响应”；已预生成 key，并延迟再删一次收窄歧义窗。
-        const cleaned = await compensateCos(owner.id, plannedCosKey, 'verify-upload', { repeat: true });
-        if (cleaned) await repository.assets.removeUploadIntent(owner.id, intent.id).catch(() => {});
+        await compensateCos(owner.id, plannedCosKey, 'verify-upload', { repeat: true });
+        // 即时删除成功也保留 intent：迟到的 PUT 仍可能在超时响应之后落盘，由周期清扫再次确认。
         throw publicError('asset-storage-failed', 502);
       }
       let uploaded;
@@ -639,7 +639,9 @@ export function createCustomContentService({
         }));
       } catch (error) {
         let reconciled = true;
-        if (error?.retryable === true || /weknora-(?:timeout|unreachable)/.test(String(error?.message))) {
+        const ambiguousFailure = error?.retryable === true
+          || /weknora-(?:timeout|unreachable)/.test(String(error?.message));
+        if (ambiguousFailure) {
           try {
             const ambiguous = await weknora.findKnowledgeByMetadata({
               kbId: course.wkDocKbId,
@@ -655,7 +657,7 @@ export function createCustomContentService({
           }
         }
         const cosCleaned = await compensateCos(owner.id, stored.key, 'weknora-upload');
-        if (reconciled && cosCleaned) {
+        if (!ambiguousFailure && reconciled && cosCleaned) {
           await repository.assets.removeUploadIntent(owner.id, intent.id).catch(() => {});
         }
         if (String(error?.message).startsWith('weknora-conflict')) throw publicError('asset-duplicate', 409);
