@@ -158,6 +158,15 @@ export function createCustomContentRouter({
         ));
       }
 
+      const courseJobMatch = /^\/api\/xb\/courses\/([^/]+)\/compile-job$/.exec(pathname);
+      if (courseJobMatch && req.method === 'GET') {
+        return withOwner(req, res, 'custom-course-compile-job', async (owner) => (
+          send(res, 200, {
+            job: await service.getCourseCompileJob(owner, decodeURIComponent(courseJobMatch[1])),
+          })
+        ));
+      }
+
       const assetsMatch = /^\/api\/xb\/courses\/([^/]+)\/assets$/.exec(pathname);
       if (assetsMatch && req.method === 'GET') {
         return withOwner(req, res, 'custom-assets-list', async (owner) => (
@@ -235,6 +244,21 @@ export function createCustomContentRouter({
         return withOwner(req, res, 'custom-topics-list', async (owner) => (
           send(res, 200, { topics: await service.listPublishedTopics(owner) })
         ));
+      }
+
+      const sourceCandidatesMatch = /^\/api\/xb\/topics\/([^/]+)\/source-candidates$/.exec(pathname);
+      if (sourceCandidatesMatch && req.method === 'POST') {
+        return withOwnerJson(req, res, 'custom-topic-source-candidates', async (owner, traceId, body) => {
+          if (!await admit(owner, res, 'source-search', 120, 86_400, 1_200)) return;
+          return send(res, 200, {
+            candidates: await service.findSourceCandidates(
+              owner,
+              decodeURIComponent(sourceCandidatesMatch[1]),
+              body,
+              traceId,
+            ),
+          });
+        });
       }
 
       const draftMatch = /^\/api\/xb\/topics\/([^/]+)\/draft$/.exec(pathname);

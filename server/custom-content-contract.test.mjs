@@ -100,10 +100,30 @@ test('quality gate blocks ungrounded and incomplete drafts', () => {
   assert.ok(issues.some((item) => item.code === 'misconception-count'));
 });
 
+test('quality gate preserves and reports invalid quiz references and answers', () => {
+  const raw = completeDraft();
+  raw.quizBank[0].answerIndex = 99;
+  raw.quizBank[1].checklistRef = 'missing-checklist';
+  raw.quizBank[2].mcRef = 'missing-misconception';
+  raw.misconceptions[0].remedy.predictionQuiz.push({
+    ...raw.misconceptions[0].remedy.predictionQuiz[0],
+    id: 'extra-remedy-question',
+  });
+  const topic = normalizeTopicDraft(raw, { topicId: 'custom-invalid-quiz', courseTitle: '我的课程' });
+  assert.equal(topic.quizBank[0].answerIndex, 99);
+  assert.equal(topic.quizBank[1].checklistRef, 'missing-checklist');
+  const issues = validateTopicDraft(topic, { sourceCorpus: '要点1 要点2 要点3' });
+  assert.ok(issues.some((item) => item.code === 'quiz-answer'));
+  assert.ok(issues.some((item) => item.code === 'quiz-checklist-ref'));
+  assert.ok(issues.some((item) => item.code === 'quiz-misconception-ref'));
+  assert.ok(issues.some((item) => item.code === 'quiz-count' && item.path.includes('predictionQuiz')));
+});
+
 test('custom content migration anchors COS ownership and active compile uniqueness', async () => {
   const sql = await readFile(new URL('./storage/postgres/migrations/004_custom_course_content.sql', import.meta.url), 'utf8');
+  const openJobSql = await readFile(new URL('./storage/postgres/migrations/005_custom_compile_open_job.sql', import.meta.url), 'utf8');
   assert.match(sql, /owner_id UUID NOT NULL REFERENCES users\(id\) ON DELETE CASCADE/);
   assert.match(sql, /cos_key TEXT NOT NULL UNIQUE/);
-  assert.match(sql, /custom_compile_jobs_one_active_per_course_idx/);
-  assert.match(sql, /WHERE status IN \('queued', 'running'\)/);
+  assert.match(openJobSql, /custom_compile_jobs_one_active_per_course_idx/);
+  assert.match(openJobSql, /WHERE status IN \('queued', 'running', 'needs_review'\)/);
 });

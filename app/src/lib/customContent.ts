@@ -36,6 +36,13 @@ export interface QualityIssue {
   level: 'error' | 'warning';
 }
 
+export interface SourceCandidate {
+  chunkId: string;
+  assetId: string;
+  filename: string;
+  excerpt: string;
+}
+
 export type CustomChecklistItem = ChecklistItem & {
   sourceChunkIds: string[];
   sourceExcerpt: string;
@@ -168,11 +175,28 @@ export async function getCompileJob(jobId: string): Promise<CompileJob> {
   return (await request<{ job: CompileJob }>(`/compile-jobs/${encodeURIComponent(jobId)}`)).job;
 }
 
+export async function getCourseCompileJob(courseId: string): Promise<CompileJob | null> {
+  return (await request<{ job: CompileJob | null }>(
+    `/courses/${encodeURIComponent(courseId)}/compile-job`,
+  )).job;
+}
+
 export async function saveTopicDraft(id: string, draft: CustomTopicPayload): Promise<CustomTopicRecord> {
   return (await request<{ topic: CustomTopicRecord }>(
     `/topics/${encodeURIComponent(id)}/draft`,
     json('PUT', { draft }),
   )).topic;
+}
+
+export async function findTopicSourceCandidates(
+  id: string,
+  point: string,
+  groundTruth: string,
+): Promise<SourceCandidate[]> {
+  return (await request<{ candidates: SourceCandidate[] }>(
+    `/topics/${encodeURIComponent(id)}/source-candidates`,
+    json('POST', { point, groundTruth }),
+  )).candidates;
 }
 
 export async function publishCustomTopic(id: string): Promise<CustomTopicRecord> {
@@ -185,4 +209,11 @@ export async function publishCustomTopic(id: string): Promise<CustomTopicRecord>
 export async function listPublishedCustomTopics(): Promise<unknown[]> {
   const value = await request<{ topics?: unknown[] }>('/topics');
   return Array.isArray(value.topics) ? value.topics : [];
+}
+
+export async function getTeacherCustomTopic(topicId: string, signal?: AbortSignal): Promise<CustomTopicRecord> {
+  return (await request<{ topic: CustomTopicRecord }>(
+    `/topics/${encodeURIComponent(topicId)}/teacher`,
+    { signal },
+  )).topic;
 }

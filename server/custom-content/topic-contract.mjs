@@ -26,27 +26,21 @@ function cleanId(value, fallback, maximum = 80) {
   return candidate || fallback;
 }
 
-function normalizeQuiz(item, index, checklistIds, fallbackChecklist) {
+function normalizeQuiz(item, index) {
   const options = stringList(item?.options, 6, 500);
-  const answerIndex = Number.isInteger(item?.answerIndex)
-    && item.answerIndex >= 0
-    && item.answerIndex < options.length
-    ? item.answerIndex
-    : 0;
-  const requestedRef = cleanId(item?.checklistRef, fallbackChecklist, 40);
   return {
     id: cleanId(item?.id, `q${index + 1}`, 60),
     ...(text(item?.code, 4_000) ? { code: text(item.code, 4_000) } : {}),
     question: text(item?.question, 1_000),
     options,
-    answerIndex,
+    answerIndex: Number.isInteger(item?.answerIndex) ? item.answerIndex : -1,
     explanation: text(item?.explanation, 1_500),
-    checklistRef: checklistIds.has(requestedRef) ? requestedRef : fallbackChecklist,
+    checklistRef: cleanId(item?.checklistRef, '', 40),
     mcRef: item?.mcRef === null ? null : text(item?.mcRef, 80) || null,
   };
 }
 
-function normalizeRemedy(value, checklistIds, fallbackChecklist) {
+function normalizeRemedy(value) {
   return {
     microLesson: {
       title: text(value?.microLesson?.title, 160),
@@ -55,7 +49,7 @@ function normalizeRemedy(value, checklistIds, fallbackChecklist) {
     },
     predictionQuiz: (Array.isArray(value?.predictionQuiz) ? value.predictionQuiz : [])
       .slice(0, 5)
-      .map((item, index) => normalizeQuiz(item, index, checklistIds, fallbackChecklist)),
+      .map((item, index) => normalizeQuiz(item, index)),
   };
 }
 
@@ -82,7 +76,6 @@ export function normalizeTopicDraft(raw, {
       sourceExcerpt: text(item?.sourceExcerpt, 800),
     }));
   const checklistIds = new Set(checklist.map((item) => item.id));
-  const fallbackChecklist = checklist[0]?.id ?? 'c1';
   const misconceptions = (Array.isArray(value.misconceptions) ? value.misconceptions : [])
     .slice(0, 8)
     .map((item, index) => ({
@@ -100,11 +93,11 @@ export function normalizeTopicDraft(raw, {
         isTrue: false,
         explanation: text(item?.probe?.explanation, 1_200),
       },
-      remedy: normalizeRemedy(item?.remedy, checklistIds, fallbackChecklist),
+      remedy: normalizeRemedy(item?.remedy),
     }));
   const quizBank = (Array.isArray(value.quizBank) ? value.quizBank : [])
     .slice(0, 8)
-    .map((item, index) => normalizeQuiz(item, index, checklistIds, fallbackChecklist));
+    .map((item, index) => normalizeQuiz(item, index));
 
   return {
     topicId,
@@ -148,10 +141,13 @@ function issue(code, path, message, level = 'error') {
   return { code, path, message, level };
 }
 
-function validateQuizItems(items, path, checklistIds, issues, minimum = 3) {
-  if (!Array.isArray(items) || items.length < minimum) {
-    issues.push(issue('quiz-count', path, `至少需要 ${minimum} 道题`));
+function validateQuizItems(items, path, checklistIds, misconceptionIds, issues, { minimum = 3, exact = null } = {}) {
+  if (!Array.isArray(items)) {
+    issues.push(issue('quiz-count', path, exact ? `恰好需要 ${exact} 道题` : `至少需要 ${minimum} 道题`));
     return;
+  }
+  if ((exact !== null && items.length !== exact) || (exact === null && items.length < minimum)) {
+    issues.push(issue('quiz-count', path, exact ? `恰好需要 ${exact} 道题` : `至少需要 ${minimum} 道题`));
   }
   const ids = new Set();
   for (const [index, item] of items.entries()) {
@@ -167,6 +163,9 @@ function validateQuizItems(items, path, checklistIds, issues, minimum = 3) {
     if (!item.explanation) issues.push(issue('quiz-explanation', `${itemPath}.explanation`, '每题须附课件依据'));
     if (!checklistIds.has(item.checklistRef)) {
       issues.push(issue('quiz-checklist-ref', `${itemPath}.checklistRef`, '题目必须关联已有讲解要点'));
+    }
+    if (item.mcRef && !misconceptionIds.has(item.mcRef)) {
+      issues.push(issue('quiz-misconception-ref', `${itemPath}.mcRef`, '题目关联的误区不存在'));
     }
   }
 }
@@ -204,11 +203,13 @@ export function validateTopicDraft(topic, { sourceCorpus = '' } = {}) {
   if (!Array.isArray(topic?.misconceptions) || topic.misconceptions.length < 2 || topic.misconceptions.length > 5) {
     issues.push(issue('misconception-count', 'misconceptions', '误区须为 2–5 条'));
   }
-  const misconceptionIds = new Set();
-  for (const [index, item] of (topic?.misconceptions ?? []).entries()) {
+  const misconceptionItems = topic?.misconceptions ?? [];
+  const misconceptionIds = new Set(misconceptionItems.map((item) => item.mcId).filter(Boolean));
+  const seenMisconceptionIds = new Set();
+  for (const [index, item] of misconceptionItems.entries()) {
     const path = `misconceptions.${index}`;
-    if (!item.mcId || misconceptionIds.has(item.mcId)) issues.push(issue('misconception-id', `${path}.mcId`, '误区编号必须非空且不重复'));
-    misconceptionIds.add(item.mcId);
+    if (!item.mcId || seenMisconceptionIds.has(item.mcId)) issues.push(issue('misconception-id', `${path}.mcId`, '误区编号必须非空且不重复'));
+    seenMisconceptionIds.add(item.mcId);
     if (!item.belief) issues.push(issue('belief-required', `${path}.belief`, '错误认知描述不能为空'));
     if (!item.triggerLine || !/[?？]$/.test(item.triggerLine)) {
       issues.push(issue('trigger-question', `${path}.triggerLine`, '误区注入台词必须是学生口吻问句'));
@@ -219,10 +220,23 @@ export function validateTopicDraft(topic, { sourceCorpus = '' } = {}) {
     if (!item.correctionCriteria.length || !item.correctionKeywords.length || !item.adoptionKeywords.length) {
       issues.push(issue('misconception-evidence', path, '误区需补齐纠正标准、纠正词与认同词'));
     }
-    validateQuizItems(item.remedy?.predictionQuiz, `${path}.remedy.predictionQuiz`, ids, issues, 3);
+    if (!item.probe?.statement || !item.probe?.explanation) {
+      issues.push(issue('misconception-probe', `${path}.probe`, '摸底判断题须有题干与课件解释'));
+    }
+    if (!item.remedy?.microLesson?.title || !item.remedy?.microLesson?.body || !item.remedy?.microLesson?.askBack) {
+      issues.push(issue('remedy-incomplete', `${path}.remedy.microLesson`, '补学小笺须有标题、正文与回问'));
+    }
+    validateQuizItems(
+      item.remedy?.predictionQuiz,
+      `${path}.remedy.predictionQuiz`,
+      ids,
+      misconceptionIds,
+      issues,
+      { exact: 3 },
+    );
   }
 
-  validateQuizItems(topic?.quizBank, 'quizBank', ids, issues, 3);
+  validateQuizItems(topic?.quizBank, 'quizBank', ids, misconceptionIds, issues, { minimum: 3 });
   if (!topic?.prep?.microLecture?.body || !topic?.prep?.taskCard || topic?.prep?.selfCheck?.length < 3) {
     issues.push(issue('prep-incomplete', 'prep', '备课包需包含微课、任务卡与至少 3 条自检'));
   }

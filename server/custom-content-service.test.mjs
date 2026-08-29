@@ -91,6 +91,8 @@ function repositoryFixture() {
       async publish(id) {
         const row = { ...topics.get(id), status: 'ready', publishedAt: new Date().toISOString() };
         topics.set(id, row);
+        const job = [...jobs.values()].find((candidate) => candidate.topicId === id && candidate.status === 'needs_review');
+        if (job) jobs.set(job.id, { ...job, status: 'done', errorCode: null });
         return row;
       },
     },
@@ -106,8 +108,11 @@ function repositoryFixture() {
       },
       async findById(id) { return jobs.get(id) ?? null; },
       async listResumable() { return [...jobs.values()].filter((job) => job.status === 'queued' || job.status === 'running'); },
-      async findActiveByCourse(courseId) {
-        return [...jobs.values()].find((job) => job.courseId === courseId && (job.status === 'queued' || job.status === 'running')) ?? null;
+      async findOpenByCourse(courseId) {
+        return [...jobs.values()].find((job) => (
+          job.courseId === courseId
+          && (job.status === 'queued' || job.status === 'running' || job.status === 'needs_review')
+        )) ?? null;
       },
       async update(id, patch) {
         const row = { ...jobs.get(id), ...patch };
@@ -255,6 +260,15 @@ test('custom content service runs create, upload, compile, review, publish and s
   assert.equal(job.status, 'needs_review');
   assert.ok(job.topic);
 
+  const restored = await service.getCourseCompileJob(alice, course.id);
+  assert.equal(restored.id, queued.id, '刷新页面后应能按课程找回待校订任务');
+  assert.equal(restored.topic.id, job.topic.id);
+  await assert.rejects(
+    service.startCompile(alice, { courseId: course.id, assetIds: [asset.id] }),
+    /compile-job-active/,
+    '待校订草稿未发布前不得创建第二个孤儿草稿',
+  );
+
   const saved = await service.updateDraft(alice, job.topic.id, job.topic.payload, 'trace-save');
   assert.deepEqual(saved.qualityIssues, []);
   const published = await service.publishTopic(alice, saved.id, 'trace-publish');
@@ -268,6 +282,77 @@ test('custom content service runs create, upload, compile, review, publish and s
   assert.equal(Object.hasOwn(student[0], 'sources'), false);
   await assert.rejects(service.deleteAsset(alice, asset.id, 'trace-delete'), /asset-in-use/);
   assert.equal(cos.objects.size, 1, '被课题引用的 COS 原件不能删除');
+  assert.equal(await service.getCourseCompileJob(alice, course.id), null, '发布后课程不再保留开放编译任务');
+});
+
+test('teacher-added checklist item is grounded against owned course chunks on save', async () => {
+  const repository = repositoryFixture();
+  let kb = 0;
+  let knowledge = 0;
+  const weknora = {
+    async healthCheck() { return true; },
+    async createKnowledgeBase() { return { id: `wk-kb-${++kb}` }; },
+    async deleteKnowledgeBase() {},
+    async uploadFile() { return { id: `wk-knowledge-${++knowledge}`, parse_status: 'completed', enable_status: 'enabled' }; },
+    async getKnowledge(id) { return { id, parse_status: 'completed', enable_status: 'enabled' }; },
+    async listChunks() {
+      return [
+        { id: 'chunk-1', content: '课件中的要点1原理、要点2原理、要点3原理。' },
+        { id: 'chunk-2', content: '课件说明递归终止条件决定调用何时返回。' },
+      ];
+    },
+    async search() { return []; },
+    async upsertFaqEntries() { return { task_id: 'faq-test' }; },
+    async waitForFaqImport() {},
+    isTerminalParseStatus(status) { return status === 'completed'; },
+  };
+  const compiler = {
+    async compile({ course, assets, topicId }) {
+      return {
+        topic: normalizeTopicDraft(rawDraft(), {
+          topicId, courseTitle: course.title, sourceAssets: assets, promptVersion: 'custom-topic-v1', model: 'test-model',
+        }),
+        qualityIssues: [],
+      };
+    },
+  };
+  const ids = IDS.slice(20);
+  const service = createCustomContentService({
+    repository, weknora, cos: cosFixture(), compiler, embeddingModelId: 'embed-1',
+    uuid: () => ids.shift(), logger: { error() {} },
+  });
+  const owner = { id: IDS[19], name: 'Alice' };
+  const course = await service.createCourse(owner, '递归课程');
+  const asset = await service.uploadAsset(owner, course.id, {
+    bytes: Buffer.from('%PDF-1.7\nlesson\n%%EOF'), filename: 'lesson.pdf', assetRole: 'lecture', requestId: 'upload',
+  });
+  const queued = await service.startCompile(owner, { courseId: course.id, assetIds: [asset.id] });
+  let job = queued;
+  for (let attempt = 0; attempt < 20 && job.status !== 'needs_review'; attempt += 1) {
+    await waitTurn();
+    job = await service.getCompileJob(owner, queued.id);
+  }
+  const candidates = await service.findSourceCandidates(owner, job.topic.id, {
+    point: '递归终止条件', groundTruth: '递归终止条件决定调用何时返回',
+  }, 'source-candidates');
+  assert.deepEqual(candidates.map((candidate) => candidate.chunkId), ['chunk-2']);
+  assert.equal(Object.hasOwn(candidates[0], 'wkKnowledgeId'), false);
+  await assert.rejects(
+    service.findSourceCandidates({ id: IDS[18] }, job.topic.id, {
+      point: '递归终止条件', groundTruth: '递归终止条件决定调用何时返回',
+    }),
+    /topic-not-found/,
+  );
+  const candidate = structuredClone(job.topic.payload);
+  candidate.checklist.push({
+    id: 'c4', point: '递归终止条件', groundTruth: '递归终止条件决定调用何时返回',
+    keywords: [['递归', '终止']], terms: ['递归'], level: 'L3',
+    lookupCard: '检查递归出口', probeLine: '没有终止条件会怎样？', sourceChunkIds: [], sourceExcerpt: '',
+  });
+  const saved = await service.updateDraft(owner, job.topic.id, candidate, 'save-added');
+  assert.deepEqual(saved.payload.checklist[3].sourceChunkIds, ['chunk-2']);
+  assert.match(saved.payload.checklist[3].sourceExcerpt, /递归终止条件/);
+  assert.equal(saved.qualityIssues.some((issue) => issue.path.startsWith('checklist.3') && issue.code === 'source-missing'), false);
 });
 
 test('custom content service rejects disguised and oversized files before WeKnora', async () => {

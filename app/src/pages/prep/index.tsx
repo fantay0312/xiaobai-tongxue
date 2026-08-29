@@ -15,7 +15,11 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useAppStore } from '../../store/appStore';
+import { useAuthStore } from '../../store/authStore';
 import { getTopic } from '../../data';
+import { hydrateTeacherRuntimeTopic } from '../../data/runtimeTopics';
+import { currentAuthEpoch } from '../../lib/api';
+import { getTeacherCustomTopic } from '../../lib/customContent';
 // 记忆回执:engine/recall 纯派生(不进 barrel),按路径直连
 import { deriveTopicRecall, type TopicRecall } from '../../engine/recall';
 import type { PrepContext } from '../../engine/coach';
@@ -286,7 +290,44 @@ export default function PrepPage() {
 
 function PrepRoom({ topicId }: { topicId: string }) {
   const navigate = useNavigate();
-  const topic = getTopic(topicId);
+  const studentTopic = getTopic(topicId);
+  const customTopic = topicId.startsWith('custom-');
+  const authUser = useAuthStore((state) => state.user);
+  const teacherRequestKey = `${authUser ?? ''}:${topicId}`;
+  const [teacherTopicState, setTeacherTopicState] = useState<{
+    key: string;
+    status: 'idle' | 'loading' | 'ready' | 'error';
+    topic: typeof studentTopic;
+  }>({ key: '', status: 'idle', topic: undefined });
+  useEffect(() => {
+    if (!customTopic) {
+      setTeacherTopicState({ key: '', status: 'idle', topic: undefined });
+      return undefined;
+    }
+    if (!authUser) {
+      setTeacherTopicState({ key: teacherRequestKey, status: 'loading', topic: undefined });
+      return undefined;
+    }
+    const controller = new AbortController();
+    const requestEpoch = currentAuthEpoch();
+    setTeacherTopicState({ key: teacherRequestKey, status: 'loading', topic: undefined });
+    void getTeacherCustomTopic(topicId, controller.signal).then((record) => {
+      if (controller.signal.aborted || requestEpoch !== currentAuthEpoch()) return;
+      const hydrated = record.topicId === topicId && record.payload?.topicId === topicId
+        ? hydrateTeacherRuntimeTopic(record.payload)
+        : null;
+      if (!hydrated || hydrated.topicId !== topicId) throw new Error('teacher-topic-invalid');
+      setTeacherTopicState({ key: teacherRequestKey, status: 'ready', topic: hydrated });
+    }).catch(() => {
+      if (controller.signal.aborted || requestEpoch !== currentAuthEpoch()) return;
+      setTeacherTopicState({ key: teacherRequestKey, status: 'error', topic: undefined });
+    });
+    return () => controller.abort();
+  }, [authUser, customTopic, teacherRequestKey, topicId]);
+  const currentTeacherTopicState = teacherTopicState.key === teacherRequestKey
+    ? teacherTopicState
+    : { key: teacherRequestKey, status: 'loading' as const, topic: undefined };
+  const topic = customTopic ? currentTeacherTopicState.topic : studentTopic;
   useDocTitle(topic ? `灯下温书 · ${topic.title}` : undefined);
   const usable = !!topic && !topic.locked;
   const completePrep = useAppStore((st) => st.completePrep);
@@ -401,15 +442,22 @@ function PrepRoom({ topicId }: { topicId: string }) {
   }, []);
 
   if (!topic || topic.locked) {
-    const loadingCustom = topicId.startsWith('custom-')
-      && (customTopicsStatus === 'idle' || customTopicsStatus === 'loading');
+    const teacherLoadFailed = customTopic && currentTeacherTopicState.status === 'error';
+    const loadingCustom = customTopic && !teacherLoadFailed && (
+      currentTeacherTopicState.status === 'idle'
+      || currentTeacherTopicState.status === 'loading'
+      || customTopicsStatus === 'idle'
+      || customTopicsStatus === 'loading'
+    );
     return (
       <div className={s.page}>
         <div className={s.notFound}>
-          <h1 className={s.notFoundTitle}>{loadingCustom ? '正在从自选课架取讲义' : '这个知识点还没有开放'}</h1>
+          <h1 className={s.notFoundTitle}>{loadingCustom ? '正在从自选课架取讲义' : teacherLoadFailed ? '完整备课稿没有取回' : '这个知识点还没有开放'}</h1>
           <p className={s.notFoundText}>
             {loadingCustom
               ? '稍等片刻，备课材料正在归案。'
+              : teacherLoadFailed
+                ? '为避免用到缺少评估依据的学生稿，本次没有打开备课台；请稍后重试。'
               : '书架上还有已开放的课在等你,先回书斋挑一本,回头再来看它。'}
           </p>
           {!loadingCustom ? <Link to="/study" className={s.primaryBtn}>回书斋门厅</Link> : null}

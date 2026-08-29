@@ -109,11 +109,18 @@ function upstreamKnowledge(value) {
 }
 
 function chunkContent(value) {
-  return String(value?.content ?? value?.text ?? value?.chunk_content ?? '').trim();
+  return String(
+    value?.content
+    ?? value?.text
+    ?? value?.chunk_content
+    ?? value?.chunk?.content
+    ?? value?.document?.content
+    ?? '',
+  ).trim();
 }
 
 function chunkId(value) {
-  return String(value?.id ?? value?.chunk_id ?? '').trim();
+  return String(value?.id ?? value?.chunk_id ?? value?.chunkId ?? value?.chunk?.id ?? '').trim();
 }
 
 function sourceOverlap(query, content) {
@@ -132,6 +139,20 @@ function sourceOverlap(query, content) {
   let matched = 0;
   for (const token of wanted) if (haystack.includes(token)) matched += 1;
   return matched / wanted.size;
+}
+
+function bestGroundedChunk(item, chunks) {
+  const query = `${item.point} ${item.groundTruth} ${(item.terms ?? []).join(' ')}`;
+  let best = null;
+  let bestScore = 0;
+  for (const chunk of chunks) {
+    const score = sourceOverlap(query, chunk.content);
+    if (score > bestScore) {
+      best = chunk;
+      bestScore = score;
+    }
+  }
+  return bestScore >= 0.15 ? best : null;
 }
 
 function stableCompilerError(error) {
@@ -296,13 +317,38 @@ export function createCustomContentService({
       model: current.payload?.compileMeta?.model ?? '',
     });
     normalized.compileMeta.teacherEdited = true;
-    for (const item of normalized.checklist) {
-      item.sourceChunkIds = item.sourceChunkIds.filter((id) => chunkMap.has(id));
-      item.sourceExcerpt = item.sourceChunkIds[0]
-        ? chunkMap.get(item.sourceChunkIds[0]).replace(/\s+/g, ' ').slice(0, 800)
+    const knowledgeIds = sourceAssets.map((asset) => asset.wkKnowledgeId);
+    await Promise.all(normalized.checklist.map(async (item) => {
+      const query = `${item.point} ${item.groundTruth} ${(item.terms ?? []).join(' ')}`;
+      const validIds = item.sourceChunkIds.filter((id) => chunkMap.has(id));
+      const supportedId = validIds.find((id) => sourceOverlap(query, chunkMap.get(id) ?? '') >= 0.15);
+      let selected = supportedId
+        ? { id: supportedId, content: chunkMap.get(supportedId) }
+        : bestGroundedChunk(item, chunks);
+
+      if (!selected && knowledgeIds.length > 0) {
+        try {
+          const hits = await weknora.search({
+            kbId: course.wkDocKbId,
+            query,
+            knowledgeIds,
+            requestId,
+          });
+          const candidates = hits.map((hit) => ({ id: chunkId(hit), content: chunkContent(hit) }))
+            .filter((hit) => hit.id && hit.content);
+          selected = bestGroundedChunk(item, candidates);
+          if (selected) chunkMap.set(selected.id, selected.content);
+        } catch {
+          // 本地分块仍是保存闸门的证据；检索暂时不可用时不放宽出处校验。
+        }
+      }
+
+      item.sourceChunkIds = selected?.id ? [selected.id] : [];
+      item.sourceExcerpt = selected?.content
+        ? selected.content.replace(/\s+/g, ' ').slice(0, 800)
         : '';
-    }
-    const sourceCorpus = chunks.map((chunk) => chunk.content).join('\n');
+    }));
+    const sourceCorpus = [...new Set(chunkMap.values())].join('\n');
     const issues = validateTopicDraft(normalized, { sourceCorpus });
     for (const [index, item] of normalized.checklist.entries()) {
       const supported = item.sourceChunkIds.some((id) => (
@@ -378,6 +424,17 @@ export function createCustomContentService({
     queuedJobIds.add(jobId);
     compileQueue.push(jobId);
     queueMicrotask(pumpCompileQueue);
+  }
+
+  async function jobWithTopic(owner, job) {
+    if (!job) return null;
+    if ((job.status === 'queued' || job.status === 'running') && !runningJobs.has(job.id)) scheduleJob(job.id);
+    const topic = job.topicId ? await repository.topics.findOwned(owner.id, job.topicId) : null;
+    if (job.status === 'needs_review' && topic?.status === 'ready') {
+      await repository.jobs.markDoneForTopic(topic.id);
+      return null;
+    }
+    return { ...job, topic };
   }
 
   return Object.freeze({
@@ -568,7 +625,8 @@ export function createCustomContentService({
       const assets = await repository.assets.findManyOwned(owner.id, course.id, assetIds).catch(() => []);
       if (assets.length !== assetIds.length) throw publicError('asset-not-found', 404);
       if (assets.some((asset) => asset.parseStatus !== 'completed')) throw publicError('assets-not-ready', 409);
-      if (await repository.jobs.findActiveByCourse(course.id)) throw publicError('compile-job-active', 409);
+      const openJob = await repository.jobs.findOpenByCourse(course.id);
+      if (await jobWithTopic(owner, openJob)) throw publicError('compile-job-active', 409);
       const requestedTitle = cleanText(input?.title, TOPIC_TITLE_MAX) || null;
       let job;
       try {
@@ -584,9 +642,45 @@ export function createCustomContentService({
     async getCompileJob(owner, jobId) {
       const job = await repository.jobs.findOwned(owner.id, jobId).catch(() => null);
       if (!job) throw publicError('compile-job-not-found', 404);
-      if ((job.status === 'queued' || job.status === 'running') && !runningJobs.has(job.id)) scheduleJob(job.id);
-      const topic = job.topicId ? await repository.topics.findOwned(owner.id, job.topicId) : null;
-      return { ...job, topic };
+      return jobWithTopic(owner, job);
+    },
+
+    async getCourseCompileJob(owner, courseId) {
+      const course = await requireCourse(owner.id, courseId);
+      return jobWithTopic(owner, await repository.jobs.findOpenByCourse(course.id));
+    },
+
+    async findSourceCandidates(owner, id, input, requestId) {
+      const current = await loadOwnedTopic(owner.id, id);
+      if (current.status !== 'draft') throw publicError('topic-not-editable', 409);
+      const point = cleanText(input?.point, 160);
+      const groundTruth = cleanText(input?.groundTruth, 2_000);
+      if (point.length < 2 || groundTruth.length < 4) throw publicError('source-query-invalid');
+      const sourceIds = (current.payload?.sources ?? []).map((source) => source.assetId).filter(Boolean);
+      const assets = sourceIds.length
+        ? await repository.assets.findManyByCourse(current.courseId, sourceIds)
+        : [];
+      const chunkLists = await Promise.all(assets.map(async (asset) => (
+        (await weknora.listChunks(asset.wkKnowledgeId, requestId, 500)).map((value) => ({
+          id: chunkId(value),
+          content: chunkContent(value),
+          assetId: asset.id,
+          filename: asset.filename,
+        }))
+      )));
+      const query = `${point} ${groundTruth}`;
+      return chunkLists.flat()
+        .filter((chunk) => chunk.id && chunk.content)
+        .map((chunk) => ({ ...chunk, score: sourceOverlap(query, chunk.content) }))
+        .filter((chunk) => chunk.score >= 0.15)
+        .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))
+        .slice(0, 5)
+        .map((chunk) => ({
+          chunkId: chunk.id,
+          assetId: chunk.assetId,
+          filename: chunk.filename,
+          excerpt: chunk.content.replace(/\s+/g, ' ').slice(0, 800),
+        }));
     },
 
     async updateDraft(owner, id, candidate, requestId) {
@@ -625,7 +719,6 @@ export function createCustomContentService({
       if (!updated) throw publicError('topic-not-editable', 409);
       const published = await repository.topics.publish(current.id);
       if (!published) throw publicError('topic-not-editable', 409);
-      await repository.jobs.markDoneForTopic(current.id).catch(() => {});
       return published;
     },
 

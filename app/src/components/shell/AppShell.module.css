@@ -893,6 +893,12 @@
     width: 2rem;
     min-width: 2rem;
     min-height: 2.5rem;
+    display: none;
+  }
+
+  /* 四个一级入口都保留；手机上只给当前页留下章节快跳，避免新增“自选课”后挤出账号动作。 */
+  .navGroup:has(.linkActive) .menuButton {
+    display: grid;
   }
 
   .menuChevron {

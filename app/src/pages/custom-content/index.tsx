@@ -14,7 +14,9 @@ import {
   createCustomCourse,
   customContentStatus,
   deleteCustomAsset,
+  findTopicSourceCandidates,
   getCompileJob,
+  getCourseCompileJob,
   listCourseAssets,
   listCustomCourses,
   publishCustomTopic,
@@ -30,6 +32,7 @@ import {
   type CustomTopicPayload,
   type CustomTopicRecord,
   type QualityIssue,
+  type SourceCandidate,
 } from '../../lib/customContent';
 import { useAppStore } from '../../store/appStore';
 import type { Misconception, PredictionQuizItem } from '../../types';
@@ -71,7 +74,8 @@ function errorHint(error: unknown): string {
     'rate-limit-unavailable': '上传用量校验暂不可用，请稍后再试。',
     'assets-not-ready': '请等所选资料全部显示“已入库”再生成课题。',
     'asset-in-use': '这份资料已被课题引用，不能直接删除。',
-    'compile-job-active': '这门课程已有一份讲稿正在编译，请等它完成。',
+    'compile-job-active': '这门课程已有一份未完成讲稿，请先校订或发布。',
+    'source-query-invalid': '要点名和评估依据再写具体一些，才能查找出处。',
     'topic-quality-gate-failed': '仍有发布前必须修正的条目。',
     'faq-sync-failed': '误区备份没有同步完成，本次没有发布。',
     'compiler-timeout': '课题编译超时，可稍后重新发起。',
@@ -95,29 +99,42 @@ function lines(value: string): string[] {
 function starterQuiz(prefix: string, checklistRef: string): PredictionQuizItem[] {
   return Array.from({ length: 3 }, (_, index) => ({
     id: `${prefix}-q${index + 1}`,
-    question: `请补写预测题 ${index + 1}`,
-    options: ['正确说法', '错误说法'],
+    question: '',
+    options: ['', ''],
     answerIndex: 0,
-    explanation: '请依据课件补写解释',
+    explanation: '',
     checklistRef,
     mcRef: null,
   }));
 }
 
-function starterMisconception(topicId: string, index: number, checklistId: string): Misconception {
-  const mcId = `${topicId}_M${index + 1}`;
+function nextQuiz(prefix: string, checklistRef: string, items: PredictionQuizItem[], mcRef: string | null): PredictionQuizItem {
+  let sequence = items.length + 1;
+  while (items.some((item) => item.id === `${prefix}-q${sequence}`)) sequence += 1;
+  return {
+    id: `${prefix}-q${sequence}`,
+    question: '',
+    options: ['', ''],
+    answerIndex: 0,
+    explanation: '',
+    checklistRef,
+    mcRef,
+  };
+}
+
+function starterMisconception(topicId: string, mcId: string, checklistId: string): Misconception {
   return {
     mcId,
     topicId,
-    belief: '请写出常见错误认知',
-    triggerLine: '老师，是不是这样理解就可以了？',
-    correctionCriteria: ['明确指出哪里不对', '用课件依据解释原因'],
-    correctionKeywords: [['不是', '原因']],
-    adoptionKeywords: [['是的']],
+    belief: '',
+    triggerLine: '',
+    correctionCriteria: [],
+    correctionKeywords: [],
+    adoptionKeywords: [],
     injectAfterChecklist: [checklistId],
-    probe: { statement: '请改成一条判断题', isTrue: false, explanation: '请补错误原因' },
+    probe: { statement: '', isTrue: false, explanation: '' },
     remedy: {
-      microLesson: { title: '补学小笺', body: '请补写补学内容', askBack: '下次小白再这么问，你会怎样解释？' },
+      microLesson: { title: '', body: '', askBack: '' },
       predictionQuiz: starterQuiz(mcId, checklistId),
     },
   };
@@ -139,32 +156,113 @@ function Issues({ issues }: { issues: QualityIssue[] }) {
   );
 }
 
+function QuizEditor({
+  title,
+  items,
+  checklist,
+  idPrefix,
+  misconceptions,
+  fixedMcRef,
+  exactCount,
+  onChange,
+}: {
+  title: string;
+  items: PredictionQuizItem[];
+  checklist: CustomTopicPayload['checklist'];
+  idPrefix: string;
+  misconceptions: Misconception[];
+  fixedMcRef?: string;
+  exactCount?: number;
+  onChange: (next: PredictionQuizItem[]) => void;
+}) {
+  const patchItem = (index: number, patch: Partial<PredictionQuizItem>) => {
+    onChange(items.map((item, at) => at === index ? { ...item, ...patch } : item));
+  };
+  const addItem = () => onChange([
+    ...items,
+    nextQuiz(idPrefix, checklist[0]?.id ?? 'c1', items, fixedMcRef ?? null),
+  ]);
+  const maximum = exactCount ?? 8;
+  const minimum = exactCount ?? 3;
+  return (
+    <section className={s.quizGroup}>
+      <header>
+        <div><span>QUIZ</span><h4>{title}</h4><small>{exactCount ? `须恰好 ${exactCount} 题` : '可编 3–8 题'}；正确答案按选项顺序选择</small></div>
+        <button type="button" onClick={addItem} disabled={items.length >= maximum}>＋ 添一题</button>
+      </header>
+      <div className={s.quizList}>
+        {items.map((item, index) => (
+          <article className={s.quizCard} key={`${item.id}-${index}`}>
+            <span className={s.quizNo}>Q{String(index + 1).padStart(2, '0')}</span>
+            <div className={s.quizBody}>
+              <label>题干<input value={item.question} placeholder="写一道能检验理解的题" onChange={(event) => patchItem(index, { question: event.target.value })} /></label>
+              <div className={s.inlineFields}>
+                <label>选项<small>一行一个选项</small><textarea rows={3} value={item.options.join('\n')} onChange={(event) => {
+                  // 保留正在输入的空行，否则受控 textarea 会吞掉 Enter，无法补第二个选项。
+                  const options = event.target.value.replace(/\r/g, '').split('\n').slice(0, 6);
+                  patchItem(index, {
+                    options,
+                    answerIndex: item.answerIndex >= 0 && item.answerIndex < options.length ? item.answerIndex : 0,
+                  });
+                }} /></label>
+                <label>正确答案<select value={item.answerIndex} onChange={(event) => patchItem(index, { answerIndex: Number(event.target.value) })}>
+                  {item.options.map((option, optionIndex) => <option key={`${option}-${optionIndex}`} value={optionIndex}>{optionIndex + 1} · {option || '空选项'}</option>)}
+                </select></label>
+              </div>
+              <div className={s.inlineFields}>
+                <label>关联要点<select value={item.checklistRef} onChange={(event) => patchItem(index, { checklistRef: event.target.value })}>{checklist.map((check) => <option key={check.id} value={check.id}>{check.id} · {check.point}</option>)}</select></label>
+                <label>课件依据<input value={item.explanation} placeholder="解释正确答案为什么成立" onChange={(event) => patchItem(index, { explanation: event.target.value })} /></label>
+              </div>
+              {!fixedMcRef ? <label>关联误区<select value={item.mcRef ?? ''} onChange={(event) => patchItem(index, { mcRef: event.target.value || null })}><option value="">不关联误区</option>{misconceptions.map((mc) => <option key={mc.mcId} value={mc.mcId}>{mc.mcId} · {mc.belief || '未命名误区'}</option>)}</select></label> : null}
+              <button className={s.removeLine} type="button" onClick={() => onChange(items.filter((_, at) => at !== index))} disabled={items.length <= minimum}>删去此题</button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function DraftEditor({
   record,
   onChange,
+  onError,
 }: {
   record: CustomTopicRecord;
   onChange: (next: CustomTopicPayload) => void;
+  onError: (error: unknown) => void;
 }) {
   const draft = record.payload;
+  const [sourceChoices, setSourceChoices] = useState<Record<string, SourceCandidate[]>>({});
+  const [findingSourceId, setFindingSourceId] = useState<string | null>(null);
   const patchTop = (patch: Partial<CustomTopicPayload>) => onChange({ ...draft, ...patch });
   const patchChecklist = (index: number, patch: Partial<CustomTopicPayload['checklist'][number]>) => {
     const checklist = draft.checklist.map((item, at) => at === index ? { ...item, ...patch } : item);
     patchTop({ checklist });
   };
-  const removeChecklist = (index: number) => patchTop({ checklist: draft.checklist.filter((_, at) => at !== index) });
+  const checklistReferenced = (id: string) => (
+    draft.misconceptions.some((item) => item.injectAfterChecklist.includes(id)
+      || item.remedy.predictionQuiz.some((quiz) => quiz.checklistRef === id))
+    || draft.quizBank.some((quiz) => quiz.checklistRef === id)
+  );
+  const removeChecklist = (index: number) => {
+    const item = draft.checklist[index];
+    if (!item || checklistReferenced(item.id)) return;
+    patchTop({ checklist: draft.checklist.filter((_, at) => at !== index) });
+  };
   const addChecklist = () => {
-    const index = draft.checklist.length;
+    let sequence = 1;
+    while (draft.checklist.some((item) => item.id === `c${sequence}`)) sequence += 1;
     patchTop({
       checklist: [...draft.checklist, {
-        id: `c${index + 1}`,
-        point: '新讲解要点',
-        groundTruth: '请依据课件补写评估依据',
-        keywords: [['关键词']],
+        id: `c${sequence}`,
+        point: '',
+        groundTruth: '',
+        keywords: [],
         terms: [],
         level: 'L5',
-        lookupCard: '请补写查书卡',
-        probeLine: '老师，这一点该怎样理解？',
+        lookupCard: '',
+        probeLine: '',
         sourceChunkIds: [],
         sourceExcerpt: '',
       }],
@@ -176,12 +274,27 @@ function DraftEditor({
   };
   const addMc = () => {
     const firstChecklist = draft.checklist[0]?.id ?? 'c1';
+    let sequence = 1;
+    while (draft.misconceptions.some((item) => item.mcId === `${draft.topicId}_M${sequence}`)) sequence += 1;
+    const mcId = `${draft.topicId}_M${sequence}`;
     patchTop({
       misconceptions: [
         ...draft.misconceptions,
-        starterMisconception(draft.topicId, draft.misconceptions.length, firstChecklist),
+        starterMisconception(draft.topicId, mcId, firstChecklist),
       ],
     });
+  };
+  const findSources = async (item: CustomTopicPayload['checklist'][number]) => {
+    if (findingSourceId) return;
+    setFindingSourceId(item.id);
+    try {
+      const candidates = await findTopicSourceCandidates(record.id, item.point, item.groundTruth);
+      setSourceChoices((current) => ({ ...current, [item.id]: candidates }));
+    } catch (error) {
+      onError(error);
+    } finally {
+      setFindingSourceId(null);
+    }
   };
 
   return (
@@ -201,10 +314,10 @@ function DraftEditor({
               <div className={s.rowIndex}>C{String(index + 1).padStart(2, '0')}</div>
               <div className={s.rowBody}>
                 <div className={s.inlineFields}>
-                  <label>要点名<input value={item.point} onChange={(event) => patchChecklist(index, { point: event.target.value })} /></label>
+                  <label>要点名<input value={item.point} placeholder="例如：递归终止条件" onChange={(event) => patchChecklist(index, { point: event.target.value })} /></label>
                   <label>追问层级<select value={item.level} onChange={(event) => patchChecklist(index, { level: event.target.value as typeof item.level })}><option>L1</option><option>L2</option><option>L3</option><option>L5</option></select></label>
                 </div>
-                <label>评估依据<textarea rows={2} value={item.groundTruth} onChange={(event) => patchChecklist(index, { groundTruth: event.target.value })} /></label>
+                <label>评估依据<textarea rows={2} value={item.groundTruth} placeholder="写下课件明确支持的判断依据" onChange={(event) => patchChecklist(index, { groundTruth: event.target.value })} /></label>
                 <div className={s.inlineFields}>
                   <label>命中词组<small>每行一组，组内用顿号</small><textarea rows={3} value={groupsText(item.keywords)} onChange={(event) => patchChecklist(index, { keywords: parseGroups(event.target.value) })} /></label>
                   <label>术语<small>用顿号分开</small><textarea rows={3} value={item.terms.join('、')} onChange={(event) => patchChecklist(index, { terms: event.target.value.split(/[、,，]+/).map((term) => term.trim()).filter(Boolean) })} /></label>
@@ -212,7 +325,13 @@ function DraftEditor({
                 <label>小白追问<input value={item.probeLine} onChange={(event) => patchChecklist(index, { probeLine: event.target.value })} /></label>
                 <label>一起查书卡<textarea rows={2} value={item.lookupCard} onChange={(event) => patchChecklist(index, { lookupCard: event.target.value })} /></label>
                 <blockquote className={s.sourceProof}>{item.sourceExcerpt || '保存时将重新核验课件出处'}</blockquote>
-                <button className={s.removeLine} type="button" onClick={() => removeChecklist(index)} disabled={draft.checklist.length <= 3}>删去此条</button>
+                <button className={s.sourceButton} type="button" onClick={() => void findSources(item)} disabled={findingSourceId !== null || item.point.trim().length < 2 || item.groundTruth.trim().length < 4}>{findingSourceId === item.id ? '正在翻检课件…' : item.sourceChunkIds.length > 0 ? '更换课件出处' : '查找课件出处'}</button>
+                {Object.hasOwn(sourceChoices, item.id) ? (
+                  sourceChoices[item.id].length > 0 ? <div className={s.sourceCandidates} role="radiogroup" aria-label={`${item.point || item.id}的课件出处`}>
+                    {sourceChoices[item.id].map((candidate) => <label key={candidate.chunkId}><input type="radio" name={`source-${item.id}`} checked={item.sourceChunkIds[0] === candidate.chunkId} onChange={() => patchChecklist(index, { sourceChunkIds: [candidate.chunkId], sourceExcerpt: candidate.excerpt })} /><span><strong>{candidate.filename}</strong>{candidate.excerpt}</span></label>)}
+                  </div> : <p className={s.sourceEmpty}>没有找到足够相关的片段，请把要点名和评估依据写得更贴近课件原文。</p>
+                ) : null}
+                <button className={s.removeLine} type="button" title={checklistReferenced(item.id) ? '请先改掉误区或题目中的关联' : undefined} onClick={() => removeChecklist(index)} disabled={draft.checklist.length <= 3 || checklistReferenced(item.id)}>删去此条</button>
               </div>
             </article>
           ))}
@@ -226,8 +345,8 @@ function DraftEditor({
             <article className={s.ledgerRow} key={`${item.mcId}-${index}`}>
               <div className={`${s.rowIndex} ${s.mcIndex}`}>M{String(index + 1).padStart(2, '0')}</div>
               <div className={s.rowBody}>
-                <label>错误认知<input value={item.belief} onChange={(event) => patchMc(index, { belief: event.target.value })} /></label>
-                <label>小白注入台词<input value={item.triggerLine} onChange={(event) => patchMc(index, { triggerLine: event.target.value })} /></label>
+                <label>错误认知<input value={item.belief} placeholder="写出一个真实常见的误解" onChange={(event) => patchMc(index, { belief: event.target.value })} /></label>
+                <label>小白注入台词<input value={item.triggerLine} placeholder="用学生口吻写成问句" onChange={(event) => patchMc(index, { triggerLine: event.target.value })} /></label>
                 <div className={s.inlineFields}>
                   <label>纠正标准<small>一行一条</small><textarea rows={3} value={item.correctionCriteria.join('\n')} onChange={(event) => patchMc(index, { correctionCriteria: lines(event.target.value) })} /></label>
                   <label>挂在哪个要点之后<select value={item.injectAfterChecklist[0] ?? ''} onChange={(event) => patchMc(index, { injectAfterChecklist: [event.target.value] })}>{draft.checklist.map((check) => <option key={check.id} value={check.id}>{check.id} · {check.point}</option>)}</select></label>
@@ -236,11 +355,44 @@ function DraftEditor({
                   <label>纠正命中词<textarea rows={2} value={groupsText(item.correctionKeywords)} onChange={(event) => patchMc(index, { correctionKeywords: parseGroups(event.target.value) })} /></label>
                   <label>认同错误词<textarea rows={2} value={groupsText(item.adoptionKeywords)} onChange={(event) => patchMc(index, { adoptionKeywords: parseGroups(event.target.value) })} /></label>
                 </div>
+                <div className={s.inlineFields}>
+                  <label>摸底判断题<input value={item.probe.statement} placeholder="写一条判断题" onChange={(event) => patchMc(index, { probe: { ...item.probe, statement: event.target.value } })} /></label>
+                  <label>错误解释<input value={item.probe.explanation} placeholder="依据课件解释为什么错" onChange={(event) => patchMc(index, { probe: { ...item.probe, explanation: event.target.value } })} /></label>
+                </div>
+                <div className={s.inlineFields}>
+                  <label>补学小笺标题<input value={item.remedy.microLesson.title} placeholder="给补学内容起个短标题" onChange={(event) => patchMc(index, { remedy: { ...item.remedy, microLesson: { ...item.remedy.microLesson, title: event.target.value } } })} /></label>
+                  <label>回问一句<input value={item.remedy.microLesson.askBack} placeholder="下次再遇到时该怎么解释？" onChange={(event) => patchMc(index, { remedy: { ...item.remedy, microLesson: { ...item.remedy.microLesson, askBack: event.target.value } } })} /></label>
+                </div>
+                <label>补学正文<textarea rows={4} value={item.remedy.microLesson.body} placeholder="写清输入、加工与回到讲解舱的路径" onChange={(event) => patchMc(index, { remedy: { ...item.remedy, microLesson: { ...item.remedy.microLesson, body: event.target.value } } })} /></label>
+                <QuizEditor
+                  title="补学后的预测题"
+                  items={item.remedy.predictionQuiz}
+                  checklist={draft.checklist}
+                  idPrefix={item.mcId}
+                  misconceptions={draft.misconceptions}
+                  fixedMcRef={item.mcId}
+                  exactCount={3}
+                  onChange={(predictionQuiz) => patchMc(index, {
+                    remedy: { ...item.remedy, predictionQuiz },
+                  })}
+                />
                 <button className={s.removeLine} type="button" onClick={() => patchTop({ misconceptions: draft.misconceptions.filter((_, at) => at !== index) })} disabled={draft.misconceptions.length <= 2}>删去此条</button>
               </div>
             </article>
           ))}
         </div>
+      </section>
+
+      <section className={s.editorSection}>
+        <header><div><span>QUIZ BANK</span><h3>考小白的随堂题</h3></div></header>
+        <QuizEditor
+          title="课题总题库"
+          items={draft.quizBank}
+          checklist={draft.checklist}
+          idPrefix={`${draft.topicId}-main`}
+          misconceptions={draft.misconceptions}
+          onChange={(quizBank) => patchTop({ quizBank })}
+        />
       </section>
 
       <section className={s.editorSection}>
@@ -271,6 +423,7 @@ export default function CustomContentPage() {
   const [dragging, setDragging] = useState(false);
   const [topicTitle, setTopicTitle] = useState('');
   const [job, setJob] = useState<CompileJob | null>(null);
+  const [recoveringJob, setRecoveringJob] = useState(false);
   const [draftRecord, setDraftRecord] = useState<CustomTopicRecord | null>(null);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -331,6 +484,31 @@ export default function CustomContentPage() {
     void refresh();
     return () => { active = false; window.clearTimeout(timer); };
   }, [courseId, assetRefreshToken]);
+
+  useEffect(() => {
+    if (!courseId) {
+      setJob(null);
+      setDraftRecord(null);
+      setRecoveringJob(false);
+      return undefined;
+    }
+    let active = true;
+    setJob(null);
+    setDraftRecord(null);
+    setPublishedTopicId(null);
+    setRecoveringJob(true);
+    void getCourseCompileJob(courseId).then((next) => {
+      if (!active) return;
+      setJob(next);
+      setDraftRecord(next?.status === 'needs_review' && next.topic ? next.topic : null);
+      if (next) setSelectedAssetIds(new Set(next.assetIds));
+    }).catch((error) => {
+      if (active) setNotice(errorHint(error));
+    }).finally(() => {
+      if (active) setRecoveringJob(false);
+    });
+    return () => { active = false; };
+  }, [courseId]);
 
   useEffect(() => {
     if (!activeJobId || (activeJobStatus !== 'queued' && activeJobStatus !== 'running')) return undefined;
@@ -403,7 +581,7 @@ export default function CustomContentPage() {
   });
 
   const beginCompile = async () => {
-    if (!courseId || selectedReadyAssets.length === 0 || job?.status === 'queued' || job?.status === 'running') return;
+    if (!courseId || recoveringJob || selectedReadyAssets.length === 0 || job?.status === 'queued' || job?.status === 'running' || job?.status === 'needs_review') return;
     setNotice('');
     setDraftRecord(null);
     setPublishedTopicId(null);
@@ -562,7 +740,7 @@ export default function CustomContentPage() {
               <div className={s.compileStarter}>
                 <label>课题名（可留空让小砚拟题）<input value={topicTitle} maxLength={160} onChange={(event) => setTopicTitle(event.target.value)} placeholder="例如：栈与函数调用" /></label>
                 <p>已选 <strong>{selectedReadyAssets.length}</strong> 份已入库资料</p>
-                <button type="button" onClick={() => void beginCompile()} disabled={!courseId || selectedReadyAssets.length === 0 || job?.status === 'queued' || job?.status === 'running'}><Icon name="presentation" size={17} />生成课题草稿</button>
+                <button type="button" onClick={() => void beginCompile()} disabled={!courseId || recoveringJob || selectedReadyAssets.length === 0 || job?.status === 'queued' || job?.status === 'running' || job?.status === 'needs_review'}><Icon name="presentation" size={17} />{recoveringJob ? '正在找回草稿…' : '生成课题草稿'}</button>
               </div>
 
               {job ? (
@@ -575,7 +753,7 @@ export default function CustomContentPage() {
               {draftRecord ? (
                 <div className={s.reviewLayout}>
                   <div className={s.reviewMain}>
-                    <DraftEditor record={draftRecord} onChange={(payload) => setDraftRecord((current) => current ? { ...current, payload } : current)} />
+                    <DraftEditor record={draftRecord} onError={(error) => setNotice(errorHint(error))} onChange={(payload) => setDraftRecord((current) => current ? { ...current, payload } : current)} />
                     <footer className={s.reviewActions}>
                       <button type="button" className={s.saveButton} onClick={() => void saveDraft()} disabled={saving || publishing || draftRecord.status !== 'draft'}>{saving ? '正在核验出处…' : '保存校订'}</button>
                       <button type="button" className={s.publishButton} onClick={() => void publish()} disabled={saving || publishing || draftRecord.status !== 'draft'}>{publishing ? '盖印发布中…' : '发布到书架'} <Icon name="arrow-right" size={16} /></button>

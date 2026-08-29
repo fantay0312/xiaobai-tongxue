@@ -320,10 +320,19 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
     async publish(id) {
       assertUuid(id);
       const result = await queryable.query(
-        `UPDATE custom_topics
-            SET status = 'ready', published_at = NOW(), updated_at = NOW()
-          WHERE id = $1 AND status = 'draft'
-          RETURNING *`,
+        `WITH published AS (
+           UPDATE custom_topics
+              SET status = 'ready', published_at = NOW(), updated_at = NOW()
+            WHERE id = $1 AND status = 'draft'
+            RETURNING *
+         ), completed_job AS (
+           UPDATE custom_compile_jobs
+              SET status = 'done', error_code = NULL, updated_at = NOW()
+            WHERE topic_id = $1
+              AND status = 'needs_review'
+              AND EXISTS (SELECT 1 FROM published)
+         )
+         SELECT * FROM published`,
         [id],
       );
       return topicRow(result.rows[0]);
@@ -374,11 +383,11 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       return result.rows.map(jobRow);
     },
 
-    async findActiveByCourse(courseId) {
+    async findOpenByCourse(courseId) {
       assertUuid(courseId);
       const result = await queryable.query(
         `SELECT * FROM custom_compile_jobs
-          WHERE course_id = $1 AND status IN ('queued', 'running')
+          WHERE course_id = $1 AND status IN ('queued', 'running', 'needs_review')
           ORDER BY created_at DESC
           LIMIT 1`,
         [courseId],

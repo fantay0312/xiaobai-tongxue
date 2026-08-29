@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { hydrateRuntimeTopic, registerRuntimeTopics, runtimeTopic } from '../src/data/runtimeTopics';
+import {
+  hydrateRuntimeTopic,
+  hydrateTeacherRuntimeTopic,
+  registerRuntimeTopics,
+  runtimeTopic,
+} from '../src/data/runtimeTopics';
 import { getTopic, TOPICS } from '../src/data';
 
 const raw = {
@@ -52,11 +57,30 @@ assert.equal(getTopic(hydrated.topicId)?.course, '数据结构');
 assert.equal(TOPICS.some((topic) => topic.topicId === hydrated.topicId), false, '运行时课题不得改写预埋课程数组');
 registerRuntimeTopics([]);
 
+const teacherRaw = structuredClone(raw) as typeof raw & {
+  checklist: Array<(typeof raw.checklist)[number] & { groundTruth: string }>;
+  misconceptions: Array<(typeof raw.misconceptions)[number] & { correctionCriteria: string[]; probe: { statement: string; isTrue: false; explanation: string } }>;
+};
+teacherRaw.checklist.forEach((item, index) => { item.groundTruth = `完整评估依据${index + 1}`; });
+teacherRaw.misconceptions.forEach((item, index) => {
+  item.correctionCriteria = [`完整纠正标准${index + 1}`];
+  item.probe.explanation = `完整错误解释${index + 1}`;
+});
+const teacherTopic = hydrateTeacherRuntimeTopic(teacherRaw);
+assert.ok(teacherTopic, '完整教师稿应能通过严格 hydration');
+assert.equal(teacherTopic.checklist[0].groundTruth, '完整评估依据1');
+assert.deepEqual(teacherTopic.misconceptions[0].correctionCriteria, ['完整纠正标准1']);
+assert.equal(runtimeTopic(teacherTopic.topicId), undefined, '教师稿不得自动进入全局学生运行时表');
+assert.equal(hydrateTeacherRuntimeTopic(raw), null, '脱敏学生稿不能冒充教师备课稿');
+
 const appSource = await readFile(new URL('../src/App.tsx', import.meta.url), 'utf8');
 const pageSource = await readFile(new URL('../src/pages/custom-content/index.tsx', import.meta.url), 'utf8');
 const apiSource = await readFile(new URL('../src/lib/customContent.ts', import.meta.url), 'utf8');
 assert.match(appSource, /path="\/custom-content"/);
 assert.match(pageSource, /自选讲义/);
+assert.match(pageSource, /getCourseCompileJob/);
+assert.match(pageSource, /考小白的随堂题/);
+assert.match(pageSource, /查找课件出处/);
 assert.doesNotMatch(apiSource, /X-API-Key|WK_API_KEY|WeKnora.*key/i, '浏览器 API 层不得持有 WeKnora 凭据');
 
-console.log('custom content contract: 15 assertions passed');
+console.log('custom content contract: 24 assertions passed');

@@ -18,9 +18,7 @@ function groups(value: unknown): string[][] {
     : [];
 }
 
-/** 学生接口刻意不返回 groundTruth / correctionCriteria / probe.explanation。
- *  客户端只补 Topic 冻结类型所需的空位；规则评估仍使用服务端下发的关键词契约。 */
-export function hydrateRuntimeTopic(value: unknown): Topic | null {
+function hydrateTopic(value: unknown, teacherView: boolean): Topic | null {
   if (!value || typeof value !== 'object') return null;
   const raw = value as Record<string, unknown>;
   const topicId = nonEmpty(raw.topicId, 160);
@@ -38,8 +36,8 @@ export function hydrateRuntimeTopic(value: unknown): Topic | null {
     return {
       id: nonEmpty(item.id, 40) || `c${index + 1}`,
       point,
-      // 只用要点名占冻结接口空位，不还原服务端评估依据。
-      groundTruth: point,
+      // 学生视图只用要点名占冻结接口空位，不还原服务端评估依据。
+      groundTruth: teacherView ? nonEmpty(item.groundTruth, 5_000) : point,
       keywords: groups(item.keywords),
       terms: stringArray(item.terms),
       level,
@@ -61,14 +59,14 @@ export function hydrateRuntimeTopic(value: unknown): Topic | null {
         topicId,
         belief: nonEmpty(item.belief, 800),
         triggerLine: nonEmpty(item.triggerLine, 600),
-        correctionCriteria: [],
+        correctionCriteria: teacherView ? stringArray(item.correctionCriteria, 10) : [],
         correctionKeywords: groups(item.correctionKeywords),
         adoptionKeywords: groups(item.adoptionKeywords),
         injectAfterChecklist: stringArray(item.injectAfterChecklist, 8).filter((id) => checklistIds.has(id)),
         probe: {
           statement: nonEmpty(probe.statement, 600),
           isTrue: false as const,
-          explanation: '',
+          explanation: teacherView ? nonEmpty(probe.explanation, 2_000) : '',
         },
         remedy: {
           microLesson: {
@@ -83,7 +81,7 @@ export function hydrateRuntimeTopic(value: unknown): Topic | null {
   const prep = raw.prep && typeof raw.prep === 'object' ? raw.prep as Record<string, unknown> : {};
   const microLecture = prep.microLecture && typeof prep.microLecture === 'object'
     ? prep.microLecture as Record<string, unknown> : {};
-  return {
+  const topic: Topic = {
     topicId,
     title,
     course,
@@ -102,6 +100,22 @@ export function hydrateRuntimeTopic(value: unknown): Topic | null {
     },
     transferHint: nonEmpty(raw.transferHint, 240),
   };
+  if (teacherView && (
+    topic.checklist.some((item) => !item.groundTruth)
+    || topic.misconceptions.some((item) => item.correctionCriteria.length === 0 || !item.probe.explanation)
+  )) return null;
+  return topic;
+}
+
+/** 学生接口刻意不返回 groundTruth / correctionCriteria / probe.explanation。
+ *  客户端只补 Topic 冻结类型所需的空位；规则评估仍使用服务端下发的关键词契约。 */
+export function hydrateRuntimeTopic(value: unknown): Topic | null {
+  return hydrateTopic(value, false);
+}
+
+/** 教师完整稿只在备课页局部内存中使用，不能注册进全局运行时课题表。 */
+export function hydrateTeacherRuntimeTopic(value: unknown): Topic | null {
+  return hydrateTopic(value, true);
 }
 
 export function registerRuntimeTopics(topics: Topic[]): void {
