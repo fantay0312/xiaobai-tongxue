@@ -283,6 +283,26 @@ function DraftEditor({
       }],
     });
   };
+  const renumberChecklist = () => {
+    const idMap = new Map<string, string>();
+    draft.checklist.forEach((item, index) => {
+      if (!idMap.has(item.id)) idMap.set(item.id, `c${index + 1}`);
+    });
+    const fallback = 'c1';
+    const remap = (id: string) => idMap.get(id) ?? fallback;
+    patchTop({
+      checklist: draft.checklist.map((item, index) => ({ ...item, id: `c${index + 1}` })),
+      misconceptions: draft.misconceptions.map((item) => ({
+        ...item,
+        injectAfterChecklist: [...new Set(item.injectAfterChecklist.map(remap))],
+        remedy: {
+          ...item.remedy,
+          predictionQuiz: item.remedy.predictionQuiz.map((quiz) => ({ ...quiz, checklistRef: remap(quiz.checklistRef) })),
+        },
+      })),
+      quizBank: draft.quizBank.map((quiz) => ({ ...quiz, checklistRef: remap(quiz.checklistRef) })),
+    });
+  };
   const patchMc = (index: number, patch: Partial<Misconception>) => {
     const misconceptions = draft.misconceptions.map((item, at) => at === index ? { ...item, ...patch } : item);
     patchTop({ misconceptions });
@@ -297,6 +317,30 @@ function DraftEditor({
         ...draft.misconceptions,
         starterMisconception(draft.topicId, mcId, firstChecklist, `remedy-${sequence}`),
       ],
+    });
+  };
+  const renumberMisconceptions = () => {
+    const idMap = new Map<string, string>();
+    draft.misconceptions.forEach((item, index) => {
+      if (!idMap.has(item.mcId)) idMap.set(item.mcId, `${draft.topicId}_M${index + 1}`);
+    });
+    patchTop({
+      misconceptions: draft.misconceptions.map((item, index) => {
+        const mcId = `${draft.topicId}_M${index + 1}`;
+        return {
+          ...item,
+          mcId,
+          topicId: draft.topicId,
+          remedy: {
+            ...item.remedy,
+            predictionQuiz: item.remedy.predictionQuiz.map((quiz) => ({ ...quiz, mcRef: mcId })),
+          },
+        };
+      }),
+      quizBank: draft.quizBank.map((quiz) => ({
+        ...quiz,
+        mcRef: quiz.mcRef ? idMap.get(quiz.mcRef) ?? quiz.mcRef : null,
+      })),
     });
   };
   const findSources = async (item: CustomTopicPayload['checklist'][number]) => {
@@ -322,7 +366,7 @@ function DraftEditor({
       </fieldset>
 
       <section className={s.editorSection}>
-        <header><div><span>CHECKLIST</span><h3>讲解要点</h3></div><button type="button" onClick={addChecklist}>＋ 添一条</button></header>
+        <header><div><span>CHECKLIST</span><h3>讲解要点</h3></div><div className={s.editorActions}><button type="button" onClick={renumberChecklist}>重编要点编号</button><button type="button" onClick={addChecklist} disabled={draft.checklist.length >= 7}>＋ 添一条</button></div></header>
         <div className={s.ledgerRows}>
           {draft.checklist.map((item, index) => (
             <article className={s.ledgerRow} key={`${item.id}-${index}`}>
@@ -354,7 +398,7 @@ function DraftEditor({
       </section>
 
       <section className={s.editorSection}>
-        <header><div><span>MISCONCEPTION</span><h3>小白会想岔的地方</h3></div><button type="button" onClick={addMc}>＋ 添一处</button></header>
+        <header><div><span>MISCONCEPTION</span><h3>小白会想岔的地方</h3></div><div className={s.editorActions}><button type="button" onClick={renumberMisconceptions}>重编误区编号</button><button type="button" onClick={addMc} disabled={draft.misconceptions.length >= 5}>＋ 添一处</button></div></header>
         <div className={s.ledgerRows}>
           {draft.misconceptions.map((item, index) => (
             <article className={s.ledgerRow} key={`${item.mcId}-${index}`}>

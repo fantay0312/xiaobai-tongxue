@@ -18,13 +18,13 @@ function repositoryFixture() {
   return {
     courses: {
       async createCreationIntent(input) {
-        const row = { id: nextId(), ...input, createdAt: new Date().toISOString() };
+        const row = { id: nextId(), ...input, cleanupStartedAt: null, createdAt: new Date().toISOString() };
         courseIntents.set(row.id, row);
         return row;
       },
       async finalizeCreationIntent(ownerId, intentId) {
         const intent = courseIntents.get(intentId);
-        if (!intent || intent.ownerId !== ownerId) return null;
+        if (!intent || intent.ownerId !== ownerId || intent.cleanupStartedAt) return null;
         const row = {
           id: nextId(), ownerId, title: intent.title,
           wkDocKbId: intent.wkDocKbId, wkFaqKbId: intent.wkFaqKbId,
@@ -39,7 +39,7 @@ function repositoryFixture() {
         if (!intent || intent.ownerId !== ownerId) return false;
         return courseIntents.delete(intentId);
       },
-      async listStaleCreationIntents() { return []; },
+      async claimStaleCreationIntents() { return []; },
       async listByOwner(ownerId) {
         return [...courses.values()].filter((course) => course.ownerId === ownerId).map((course) => ({
           ...course,
@@ -59,13 +59,13 @@ function repositoryFixture() {
       async createUploadIntent(input) {
         const course = courses.get(input.courseId);
         if (!course || course.ownerId !== input.ownerId) return null;
-        const row = { id: nextId(), ...input, wkKnowledgeId: null, wkDocKbId: course.wkDocKbId };
+        const row = { id: nextId(), ...input, wkKnowledgeId: null, wkDocKbId: course.wkDocKbId, cleanupStartedAt: null };
         uploadIntents.set(row.id, row);
         return row;
       },
       async setUploadIntentKnowledge(ownerId, id, wkKnowledgeId) {
         const intent = uploadIntents.get(id);
-        if (!intent || intent.ownerId !== ownerId) return null;
+        if (!intent || intent.ownerId !== ownerId || intent.cleanupStartedAt) return null;
         const row = { ...intent, wkKnowledgeId };
         uploadIntents.set(id, row);
         return row;
@@ -75,10 +75,11 @@ function repositoryFixture() {
         if (!intent || intent.ownerId !== ownerId) return false;
         return uploadIntents.delete(id);
       },
-      async listStaleUploadIntents() { return []; },
+      async claimStaleUploadIntents() { return []; },
       async finalizeUploadIntent(ownerId, intentId, input) {
         const intent = uploadIntents.get(intentId);
-        if (!intent || intent.ownerId !== ownerId || intent.courseId !== input.courseId || intent.wkKnowledgeId !== input.wkKnowledgeId) return null;
+        if (!intent || intent.ownerId !== ownerId || intent.cleanupStartedAt
+          || intent.courseId !== input.courseId || intent.wkKnowledgeId !== input.wkKnowledgeId) return null;
         const row = { id: nextId(), ...input, cosKey: intent.cosKey, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
         assets.set(row.id, row);
         uploadIntents.delete(intentId);
@@ -108,6 +109,7 @@ function repositoryFixture() {
       },
       async findManyByCourse(courseId, ids) { return [...assets.values()].filter((asset) => asset.courseId === courseId && ids.includes(asset.id)); },
       async updateStatus(id, patch) {
+        if (assets.get(id)?.parseStatus === 'deleting') return null;
         const row = { ...assets.get(id), ...patch, updatedAt: new Date().toISOString() };
         assets.set(id, row);
         return row;

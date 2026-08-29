@@ -327,6 +327,8 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .editorSection > header { display: flex; align-items: end; justify-content: space-between; gap: 1rem; padding-bottom: 0.65rem; border-bottom: 2px solid var(--ink); }
 .editorSection h3 { margin-top: 0.2rem; font-family: var(--font-serif); font-size: 1.55rem; }
 .editorSection header > button { border: 0; background: transparent; color: var(--azure); font-weight: 700; }
+.editorActions { display: flex; align-items: center; gap: 0.65rem; }
+.editorActions button { border: 0; background: transparent; color: var(--azure); font-weight: 700; white-space: nowrap; }
 .ledgerRows { display: grid; }
 .ledgerRow { display: grid; grid-template-columns: 3.3rem minmax(0, 1fr); border-bottom: 1px solid var(--paper-edge); }
 .rowIndex { padding-top: 1.1rem; font: 700 var(--fs-small) var(--font-typewriter); letter-spacing: 0.08em; color: var(--azure); }
@@ -400,6 +402,7 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   .compileStarter p { padding: 0; }
   .inlineFields { grid-template-columns: 1fr; }
   .quizGroup > header { align-items: start; flex-direction: column; }
+  .editorActions { align-items: flex-end; flex-direction: column; }
   .reviewActions { flex-direction: column; }
   .reviewActions button { width: 100%; justify-content: center; }
   .discardConfirm { width: 100%; }

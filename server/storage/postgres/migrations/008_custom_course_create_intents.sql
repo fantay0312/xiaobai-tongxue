@@ -4,6 +4,7 @@ CREATE TABLE custom_course_create_intents (
   title VARCHAR(120) NOT NULL,
   wk_doc_kb_id UUID NOT NULL UNIQUE,
   wk_faq_kb_id UUID NOT NULL UNIQUE,
+  cleanup_started_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

@@ -148,7 +148,7 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
           [intentId, ownerId],
         );
         const intent = locked.rows[0];
-        if (!intent) return null;
+        if (!intent || intent.cleanup_started_at) return null;
         const result = await client.query(
           `INSERT INTO custom_courses
              (id, owner_id, title, wk_doc_kb_id, wk_faq_kb_id)
@@ -171,12 +171,22 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       return result.rowCount > 0;
     },
 
-    async listStaleCreationIntents() {
+    async claimStaleCreationIntents() {
       const result = await queryable.query(
-        `SELECT * FROM custom_course_create_intents
-          WHERE created_at <= NOW() - INTERVAL '10 minutes'
-          ORDER BY created_at
-          LIMIT 100`,
+        `WITH candidates AS (
+           SELECT id
+             FROM custom_course_create_intents
+            WHERE created_at <= NOW() - INTERVAL '10 minutes'
+              AND (cleanup_started_at IS NULL OR cleanup_started_at <= NOW() - INTERVAL '30 minutes')
+            ORDER BY created_at
+            FOR UPDATE SKIP LOCKED
+            LIMIT 100
+         )
+         UPDATE custom_course_create_intents i
+            SET cleanup_started_at = NOW()
+           FROM candidates c
+          WHERE i.id = c.id
+          RETURNING i.*`,
       );
       return result.rows.map(courseIntentRow);
     },
@@ -254,7 +264,7 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       const result = await queryable.query(
         `UPDATE custom_asset_upload_intents
             SET wk_knowledge_id = $3, updated_at = NOW()
-          WHERE id = $1 AND owner_id = $2
+          WHERE id = $1 AND owner_id = $2 AND cleanup_started_at IS NULL
           RETURNING *`,
         [id, ownerId, wkKnowledgeId],
       );
@@ -271,14 +281,26 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       return result.rowCount > 0;
     },
 
-    async listStaleUploadIntents() {
+    async claimStaleUploadIntents() {
       const result = await queryable.query(
-        `SELECT i.*, c.wk_doc_kb_id
-           FROM custom_asset_upload_intents i
-           JOIN custom_courses c ON c.id = i.course_id
-          WHERE i.created_at <= NOW() - INTERVAL '10 minutes'
-          ORDER BY i.created_at
-          LIMIT 100`,
+        `WITH candidates AS (
+           SELECT id
+             FROM custom_asset_upload_intents
+            WHERE created_at <= NOW() - INTERVAL '10 minutes'
+              AND (cleanup_started_at IS NULL OR cleanup_started_at <= NOW() - INTERVAL '30 minutes')
+            ORDER BY created_at
+            FOR UPDATE SKIP LOCKED
+            LIMIT 100
+         ), claimed AS (
+           UPDATE custom_asset_upload_intents i
+              SET cleanup_started_at = NOW(), updated_at = NOW()
+             FROM candidates c
+            WHERE i.id = c.id
+            RETURNING i.*
+         )
+         SELECT i.*, c.wk_doc_kb_id
+           FROM claimed i
+           JOIN custom_courses c ON c.id = i.course_id`,
       );
       return result.rows.map(uploadIntentRow);
     },
@@ -296,7 +318,8 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
           [intentId, ownerId],
         );
         const intent = locked.rows[0];
-        if (!intent || intent.course_id !== input.courseId || intent.wk_knowledge_id !== input.wkKnowledgeId) return null;
+        if (!intent || intent.cleanup_started_at
+          || intent.course_id !== input.courseId || intent.wk_knowledge_id !== input.wkKnowledgeId) return null;
         const result = await client.query(
           `INSERT INTO custom_assets
              (id, course_id, asset_role, filename, content_type, byte_size, sha256,
@@ -408,6 +431,7 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
                 error_message = $4,
                 updated_at = NOW()
           WHERE id = $1
+            AND parse_status <> 'deleting'
           RETURNING *`,
         [id, parseStatus, enableStatus ?? 'disabled', errorMessage ?? null],
       );

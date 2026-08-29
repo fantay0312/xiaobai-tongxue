@@ -146,6 +146,8 @@ assert.match(pageSource, /自选讲义/);
 assert.match(pageSource, /getCourseCompileJob/);
 assert.match(pageSource, /考小白的随堂题/);
 assert.match(pageSource, /重编题号/);
+assert.match(pageSource, /重编要点编号/);
+assert.match(pageSource, /重编误区编号/);
 assert.match(pageSource, /查找课件出处/);
 assert.match(pageSource, /放弃这份草稿/);
 assert.match(pageSource, /重新连接资料服务/);
@@ -160,4 +162,4 @@ assert.match(prepSource, /TEACHER_TOPIC_RETRY_MS\[attempt\]/);
 assert.match(shellCss, /@media \(max-width: 520px\)[\s\S]*navGroup:has\(\.linkActive\) \.menuButton/);
 assert.doesNotMatch(apiSource, /X-API-Key|WK_API_KEY|WeKnora.*key/i, '浏览器 API 层不得持有 WeKnora 凭据');
 
-console.log('custom content contract: 43 assertions passed');
+console.log('custom content contract: 45 assertions passed');

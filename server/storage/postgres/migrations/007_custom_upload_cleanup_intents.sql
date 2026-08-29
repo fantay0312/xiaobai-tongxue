@@ -4,6 +4,7 @@ CREATE TABLE custom_asset_upload_intents (
   owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   cos_key TEXT NOT NULL UNIQUE,
   wk_knowledge_id VARCHAR(80),
+  cleanup_started_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

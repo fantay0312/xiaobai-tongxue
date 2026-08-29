@@ -422,6 +422,7 @@ export function createCustomContentService({
   }
 
   async function refreshAsset(asset, requestId) {
+    if (asset.parseStatus === 'deleting') return asset;
     if (weknora.isTerminalParseStatus(asset.parseStatus)) return asset;
     try {
       const status = upstreamKnowledge(await weknora.getKnowledge(asset.wkKnowledgeId, requestId));
@@ -430,12 +431,12 @@ export function createCustomContentService({
         && status.enableStatus === asset.enableStatus
         && status.errorMessage === asset.errorMessage
       ) return asset;
-      return await repository.assets.updateStatus(asset.id, status);
+      return await repository.assets.updateStatus(asset.id, status) ?? asset;
     } catch (error) {
       if (String(error?.message).startsWith('weknora-not-found')) {
-        return repository.assets.updateStatus(asset.id, {
+        return await repository.assets.updateStatus(asset.id, {
           parseStatus: 'failed', enableStatus: 'disabled', errorMessage: '资料在解析服务中不存在',
-        });
+        }) ?? asset;
       }
       return asset;
     }
@@ -930,14 +931,14 @@ export function createCustomContentService({
     },
 
     async reconcileUploadIntents() {
-      const intents = await repository.assets.listStaleUploadIntents();
+      const intents = await repository.assets.claimStaleUploadIntents();
       let cleaned = 0;
       for (const intent of intents) if (await reconcileUploadIntent(intent)) cleaned += 1;
       return { scanned: intents.length, cleaned };
     },
 
     async reconcileCourseCreationIntents() {
-      const intents = await repository.courses.listStaleCreationIntents();
+      const intents = await repository.courses.claimStaleCreationIntents();
       let cleaned = 0;
       for (const intent of intents) if (await reconcileCourseCreationIntent(intent)) cleaned += 1;
       return { scanned: intents.length, cleaned };
