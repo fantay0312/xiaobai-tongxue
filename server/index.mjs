@@ -972,7 +972,9 @@ function readRaw(req, limit, timeout = 0) {
       if (settled) return;
       settled = true;
       cleanup();
-      resolve(Buffer.concat(chunks));
+      const body = Buffer.concat(chunks);
+      chunks.length = 0;
+      resolve(body);
     };
     const onError = (error) => fail(error);
 

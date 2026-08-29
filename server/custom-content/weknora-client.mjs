@@ -1,5 +1,6 @@
 import net from 'node:net';
 import { randomUUID } from 'node:crypto';
+import { Readable } from 'node:stream';
 
 const TERMINAL_PARSE_STATUSES = new Set(['completed', 'failed', 'cancelled']);
 
@@ -101,6 +102,7 @@ export function createWeKnoraClient({
 
   async function request(operation, method, pathname, {
     body,
+    duplex,
     headers = {},
     requestId,
     timeout = timeoutMs,
@@ -119,6 +121,7 @@ export function createWeKnoraClient({
           ...headers,
         },
         ...(body === undefined ? {} : { body }),
+        ...(duplex ? { duplex } : {}),
         signal: controller.signal,
       });
       raw = await response.text();
@@ -205,14 +208,39 @@ export function createWeKnoraClient({
       processConfig,
       requestId,
     }) {
-      const form = new FormData();
-      form.append('file', new Blob([bytes], { type: contentType }), filename);
-      form.append('fileName', filename);
-      form.append('channel', 'api');
-      if (metadata) form.append('metadata', JSON.stringify(metadata));
-      if (processConfig) form.append('process_config', JSON.stringify(processConfig));
+      if (!Buffer.isBuffer(bytes) || bytes.length < 1) throw new Error('weknora-upload-bytes-invalid');
+      if (typeof contentType !== 'string'
+        || !/^[a-z0-9][a-z0-9!#$&^_.+-]{0,63}\/[a-z0-9][a-z0-9!#$&^_.+-]{0,190}$/i.test(contentType)) {
+        throw new Error('weknora-upload-content-type-invalid');
+      }
+      const boundary = `----xiaobai-${randomUUID().replaceAll('-', '')}`;
+      const safeFilename = String(filename ?? '').replace(/[\u0000-\u001f\u007f"]/g, '_');
+      if (!safeFilename || safeFilename.length > 512) throw new Error('weknora-upload-filename-invalid');
+      const parts = [];
+      const field = (name, value) => {
+        parts.push(Buffer.from(
+          `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
+          'utf8',
+        ));
+      };
+      parts.push(Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${safeFilename}"\r\nContent-Type: ${contentType}\r\n\r\n`,
+        'utf8',
+      ));
+      parts.push(bytes, Buffer.from('\r\n', 'ascii'));
+      field('fileName', safeFilename);
+      field('channel', 'api');
+      if (metadata) field('metadata', JSON.stringify(metadata));
+      if (processConfig) field('process_config', JSON.stringify(processConfig));
+      parts.push(Buffer.from(`--${boundary}--\r\n`, 'ascii'));
+      const contentLength = parts.reduce((total, part) => total + part.length, 0);
       return request('upload-file', 'POST', `/knowledge-bases/${encodeURIComponent(kbId)}/knowledge/file`, {
-        body: form,
+        body: Readable.from(parts),
+        duplex: 'half',
+        headers: {
+          'Content-Type': `multipart/form-data; boundary=${boundary}`,
+          'Content-Length': String(contentLength),
+        },
         requestId,
         timeout: uploadTimeoutMs,
       });

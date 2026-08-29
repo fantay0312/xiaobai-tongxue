@@ -224,6 +224,7 @@ test('custom maintenance starts after listen and shares the COS upload ceiling',
   const indexSource = await readFile(new URL('./index.mjs', import.meta.url), 'utf8');
   const serviceSource = await readFile(new URL('./custom-content/service.mjs', import.meta.url), 'utf8');
   const routerSource = await readFile(new URL('./custom-content/router.mjs', import.meta.url), 'utf8');
+  const weknoraSource = await readFile(new URL('./custom-content/weknora-client.mjs', import.meta.url), 'utf8');
   const cosSource = await readFile(new URL('./storage/cos-store.mjs', import.meta.url), 'utf8');
   const configuredBlock = indexSource.slice(
     indexSource.indexOf('if (WK_CONFIGURED)'),
@@ -243,6 +244,11 @@ test('custom maintenance starts after listen and shares the COS upload ceiling',
   assert.match(routerSource, /custom-content-auth-unavailable/);
   assert.match(routerSource, /idleTimeoutMs: UPLOAD_IDLE_TIMEOUT_MS/);
   assert.match(routerSource, /MIN_UPLOAD_BYTES_PER_SECOND/);
+  assert.match(routerSource, /bytes: filePart\.bytes/);
+  assert.doesNotMatch(routerSource, /\.formData\(\)|\.arrayBuffer\(\)/);
+  assert.match(weknoraSource, /Readable\.from\(parts\)/);
+  assert.doesNotMatch(weknoraSource, /new Blob\(|new FormData\(/);
+  assert.match(routerSource, /json-object-required/);
   assert.match(indexSource, /const refreshIdleTimer = \(\) =>/);
   assert.match(serviceSource, /healthy: await weknora\.healthCheck\(\), maxFileBytes/);
 });

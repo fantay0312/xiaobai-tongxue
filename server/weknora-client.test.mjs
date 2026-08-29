@@ -83,6 +83,7 @@ test('WeKnora upload uses multipart file and process_config without exposing key
     assert.equal(result.id, 'knowledge-1');
   });
   assert.match(captured.headers['content-type'], /^multipart\/form-data; boundary=/);
+  assert.equal(Number(captured.headers['content-length']), captured.raw.length);
   const wire = captured.raw.toString('utf8');
   assert.match(wire, /name="file"; filename="[^"]+"/);
   assert.match(wire, /name="process_config"/);

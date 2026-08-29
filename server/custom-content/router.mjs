@@ -5,6 +5,9 @@ const MULTIPART_OVERHEAD = 2 * 1024 * 1024;
 const UPLOAD_IDLE_TIMEOUT_MS = 120_000;
 const MIN_UPLOAD_BYTES_PER_SECOND = 64 * 1024;
 const MIN_UPLOAD_TOTAL_TIMEOUT_MS = 10 * 60_000;
+const MULTIPART_MAX_PARTS = 8;
+const MULTIPART_MAX_HEADER_BYTES = 16 * 1024;
+const MULTIPART_MAX_FIELD_BYTES = 4 * 1024;
 
 function requestId(req) {
   const supplied = req.headers['x-request-id'];
@@ -26,9 +29,73 @@ function errorCode(error) {
   return /^[a-z0-9-]{1,80}$/.test(message) ? message : 'custom-content-failed';
 }
 
+function multipartBoundary(contentType) {
+  if (typeof contentType !== 'string' || !/^multipart\/form-data\s*;/i.test(contentType)) return null;
+  const match = /(?:^|;)\s*boundary=(?:"([^"]+)"|([^;\s]+))/i.exec(contentType);
+  const boundary = match?.[1] ?? match?.[2] ?? '';
+  return /^[0-9A-Za-z'()+_,./:=?-]{1,70}$/.test(boundary) ? boundary : null;
+}
+
+function parseMultipart(body, boundary) {
+  const marker = Buffer.from(`--${boundary}`, 'ascii');
+  const delimiter = Buffer.concat([Buffer.from('\r\n', 'ascii'), marker]);
+  const headerSeparator = Buffer.from('\r\n\r\n', 'ascii');
+  const fields = new Map();
+  let filePart = null;
+  let cursor = 0;
+  let parts = 0;
+  if (!body.subarray(0, marker.length).equals(marker)) return null;
+  cursor = marker.length;
+  while (cursor < body.length) {
+    if (body.subarray(cursor, cursor + 2).equals(Buffer.from('--', 'ascii'))) {
+      cursor += 2;
+      if (body.subarray(cursor, cursor + 2).equals(Buffer.from('\r\n', 'ascii'))) cursor += 2;
+      return cursor === body.length && filePart ? {
+        bytes: filePart.bytes,
+        filename: fields.get('fileName') || filePart.filename,
+        assetRole: fields.get('asset_role') || 'lecture',
+      } : null;
+    }
+    if (!body.subarray(cursor, cursor + 2).equals(Buffer.from('\r\n', 'ascii'))) return null;
+    cursor += 2;
+    parts += 1;
+    if (parts > MULTIPART_MAX_PARTS) return null;
+    const headerEnd = body.indexOf(headerSeparator, cursor);
+    if (headerEnd < 0 || headerEnd - cursor > MULTIPART_MAX_HEADER_BYTES) return null;
+    const headerLines = body.subarray(cursor, headerEnd).toString('utf8').split('\r\n');
+    const headers = new Map();
+    for (const line of headerLines) {
+      const split = line.indexOf(':');
+      if (split < 1) return null;
+      const name = line.slice(0, split).trim().toLowerCase();
+      const value = line.slice(split + 1).trim();
+      if (!name || headers.has(name)) return null;
+      headers.set(name, value);
+    }
+    const disposition = headers.get('content-disposition') ?? '';
+    const name = /(?:^|;)\s*name="([^"\r\n]{1,100})"/i.exec(disposition)?.[1] ?? '';
+    const filename = /(?:^|;)\s*filename="([^"\r\n]{0,512})"/i.exec(disposition)?.[1] ?? '';
+    if (!/^form-data(?:;|$)/i.test(disposition) || !name) return null;
+    const dataStart = headerEnd + headerSeparator.length;
+    const nextBoundary = body.indexOf(delimiter, dataStart);
+    if (nextBoundary < 0) return null;
+    const data = body.subarray(dataStart, nextBoundary);
+    if (name === 'file') {
+      if (filePart || data.length < 1) return null;
+      filePart = { bytes: data, filename };
+    } else {
+      if (data.length > MULTIPART_MAX_FIELD_BYTES || fields.has(name)) return null;
+      fields.set(name, data.toString('utf8'));
+    }
+    cursor = nextBoundary + delimiter.length;
+  }
+  return null;
+}
+
 async function multipartUpload(req, readRaw, limit) {
   const contentType = req.headers['content-type'];
-  if (typeof contentType !== 'string' || !/^multipart\/form-data\s*;/i.test(contentType)) {
+  const boundary = multipartBoundary(contentType);
+  if (!boundary) {
     const error = new Error('multipart-required');
     error.status = 415;
     throw error;
@@ -41,28 +108,13 @@ async function multipartUpload(req, readRaw, limit) {
       Math.ceil(bodyLimit / MIN_UPLOAD_BYTES_PER_SECOND) * 1_000,
     ),
   });
-  const parsed = await new Request('http://localhost/upload', {
-    method: 'POST',
-    headers: { 'Content-Type': contentType },
-    body,
-  }).formData().catch(() => null);
+  const parsed = parseMultipart(body, boundary);
   if (!parsed) {
     const error = new Error('multipart-invalid');
     error.status = 400;
     throw error;
   }
-  const file = parsed.get('file');
-  if (!file || typeof file.arrayBuffer !== 'function') {
-    const error = new Error('file-required');
-    error.status = 400;
-    throw error;
-  }
-  const bytes = Buffer.from(await file.arrayBuffer());
-  return {
-    bytes,
-    filename: String(parsed.get('fileName') || file.name || ''),
-    assetRole: String(parsed.get('asset_role') || 'lecture'),
-  };
+  return parsed;
 }
 
 export function createCustomContentRouter({
@@ -138,7 +190,12 @@ export function createCustomContentRouter({
       return null;
     }
     try {
-      return await readJson(req, limit);
+      const body = await readJson(req, limit);
+      if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        send(res, 400, { error: 'json-object-required' });
+        return null;
+      }
+      return body;
     } catch (error) {
       send(res, error?.message === 'body-too-large' ? 413 : 400, { error: errorCode(error) });
       return null;
@@ -148,7 +205,7 @@ export function createCustomContentRouter({
   async function withOwnerJson(req, res, operation, task) {
     return withOwner(req, res, operation, async (owner, traceId) => {
       const body = await jsonBody(req, res);
-      if (!body) return;
+      if (body === null) return;
       return task(owner, traceId, body);
     });
   }
