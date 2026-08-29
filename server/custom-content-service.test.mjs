@@ -82,13 +82,30 @@ function repositoryFixture() {
         const intent = uploadIntents.get(intentId);
         if (!intent || intent.ownerId !== ownerId || intent.cleanupStartedAt
           || intent.courseId !== input.courseId || intent.wkKnowledgeId !== input.wkKnowledgeId) return null;
-        const row = { id: nextId(), ...input, cosKey: intent.cosKey, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+        const row = {
+          id: nextId(),
+          ...input,
+          cosKey: intent.cosKey,
+          reparseToken: null,
+          reparseStartedAt: null,
+          statusRevision: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
         assets.set(row.id, row);
         uploadIntents.delete(intentId);
         return row;
       },
       async create(input) {
-        const row = { id: nextId(), ...input, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+        const row = {
+          id: nextId(),
+          ...input,
+          reparseToken: null,
+          reparseStartedAt: null,
+          statusRevision: 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
         assets.set(row.id, row);
         return row;
       },
@@ -110,9 +127,18 @@ function repositoryFixture() {
         return this.listOwned(ownerId, courseId).then((rows) => rows.filter((asset) => ids.includes(asset.id)));
       },
       async findManyByCourse(courseId, ids) { return [...assets.values()].filter((asset) => asset.courseId === courseId && ids.includes(asset.id)); },
-      async updateStatus(id, patch) {
-        if (assets.get(id)?.parseStatus === 'deleting') return null;
-        const row = { ...assets.get(id), ...patch, updatedAt: new Date().toISOString() };
+      async updateStatus(id, patch, { expectedStatusRevision, expectedReparseToken = null } = {}) {
+        const current = assets.get(id);
+        if (!current
+          || current.parseStatus === 'deleting'
+          || current.statusRevision !== expectedStatusRevision
+          || (current.reparseToken ?? null) !== expectedReparseToken) return null;
+        const row = {
+          ...current,
+          ...patch,
+          statusRevision: current.statusRevision + 1,
+          updatedAt: new Date(Date.now() + 1).toISOString(),
+        };
         assets.set(id, row);
         return row;
       },
@@ -124,6 +150,7 @@ function repositoryFixture() {
           parseStatus: 'failed',
           enableStatus: 'disabled',
           errorMessage,
+          statusRevision: current.statusRevision + 1,
           updatedAt: new Date().toISOString(),
         };
         assets.set(id, row);
@@ -133,8 +160,77 @@ function repositoryFixture() {
       async remove(id) { return assets.delete(id); },
       async claimDelete(ownerId, id) {
         const asset = await this.findOwned(ownerId, id);
-        if (!asset || await this.isReferenced(id)) return null;
-        const row = { ...asset, parseStatus: 'deleting', enableStatus: 'disabled', errorMessage: null };
+        if (!asset
+          || !['completed', 'failed', 'cancelled'].includes(asset.parseStatus)
+          || await this.isReferenced(id)) return null;
+        const row = {
+          ...asset,
+          parseStatus: 'deleting',
+          enableStatus: 'disabled',
+          errorMessage: null,
+          statusRevision: asset.statusRevision + 1,
+        };
+        assets.set(id, row);
+        return row;
+      },
+      async claimReparse(ownerId, id) {
+        const asset = await this.findOwned(ownerId, id);
+        if (!asset
+          || !['completed', 'failed', 'cancelled'].includes(asset.parseStatus)
+          || await this.isReferenced(id)) return null;
+        const row = {
+          ...asset,
+          parseStatus: 'pending',
+          enableStatus: 'disabled',
+          errorMessage: null,
+          reparseToken: nextId(),
+          reparseStartedAt: new Date().toISOString(),
+          statusRevision: asset.statusRevision + 1,
+          updatedAt: new Date(Date.now() + 1).toISOString(),
+        };
+        assets.set(id, row);
+        return row;
+      },
+      async acknowledgeReparse(id, reparseToken) {
+        const current = assets.get(id);
+        if (!current || current.parseStatus !== 'pending' || current.reparseToken !== reparseToken) return null;
+        const row = {
+          ...current,
+          reparseToken: null,
+          reparseStartedAt: null,
+          statusRevision: current.statusRevision + 1,
+          updatedAt: new Date(Date.now() + 2).toISOString(),
+        };
+        assets.set(id, row);
+        return row;
+      },
+      async failReparse(id, reparseToken, errorMessage) {
+        const current = assets.get(id);
+        if (!current || current.reparseToken !== reparseToken) return null;
+        const row = {
+          ...current,
+          parseStatus: 'failed',
+          enableStatus: 'disabled',
+          errorMessage,
+          reparseToken: null,
+          reparseStartedAt: null,
+          statusRevision: current.statusRevision + 1,
+          updatedAt: new Date(Date.now() + 2).toISOString(),
+        };
+        assets.set(id, row);
+        return row;
+      },
+      async finishReparseStatus(id, reparseToken, patch) {
+        const current = assets.get(id);
+        if (!current || current.reparseToken !== reparseToken) return null;
+        const row = {
+          ...current,
+          ...patch,
+          reparseToken: null,
+          reparseStartedAt: null,
+          statusRevision: current.statusRevision + 1,
+          updatedAt: new Date(Date.now() + 2).toISOString(),
+        };
         assets.set(id, row);
         return row;
       },
@@ -477,7 +573,7 @@ function minimalPowerPointCfb() {
 
 test('custom content service runs create, upload, compile, review, publish and student-view flow', async () => {
   const repository = repositoryFixture();
-  const calls = { faq: null, deleted: [], evaluation: null };
+  const calls = { faq: null, deleted: [], evaluation: null, reparse: 0 };
   let mutateDuringFaq = null;
   let kb = 0;
   let knowledge = 0;
@@ -488,7 +584,7 @@ test('custom content service runs create, upload, compile, review, publish and s
     async uploadFile() { return { id: `wk-knowledge-${++knowledge}`, parse_status: 'completed', enable_status: 'enabled' }; },
     async findKnowledgeByMetadata() { return null; },
     async getKnowledge(id) { return { id, parse_status: 'completed', enable_status: 'enabled' }; },
-    async reparseKnowledge() {},
+    async reparseKnowledge() { calls.reparse += 1; },
     async deleteKnowledge(id) { calls.deleted.push(id); },
     async listChunks() {
       return [{ id: 'chunk-1', content: '课件中的要点1原理、要点2原理、要点3原理，以及递归调用。' }];
@@ -563,6 +659,12 @@ test('custom content service runs create, upload, compile, review, publish and s
     /asset-in-use/,
     '开放编译任务引用的资料不得从 WeKnora、COS 或数据库删除',
   );
+  await assert.rejects(
+    service.reparseAsset(alice, asset.id, 'trace-reparse-running'),
+    /asset-in-use/,
+    '开放编译任务引用的资料不得重新解析',
+  );
+  assert.equal(calls.reparse, 0);
   assert.equal(cos.objects.size, 1);
   let job = queued;
   for (let attempt = 0; attempt < 20 && job.status !== 'needs_review'; attempt += 1) {
@@ -1066,6 +1168,94 @@ test('stale upload reconciliation is bounded to four concurrent upstream deletio
   });
   assert.deepEqual(await service.reconcileUploadIntents(), { scanned: 12, cleaned: 12 });
   assert.equal(maximum, 4);
+});
+
+test('failed reparse claims settle to failed without disturbing referenced assets', async () => {
+  const repository = repositoryFixture();
+  const weknora = {
+    async healthCheck() { return true; },
+    async createKnowledgeBase(input) { return { id: input.id }; },
+    async deleteKnowledgeBase() {},
+    async uploadFile() { return { id: 'wk-reparse-fail', parse_status: 'completed', enable_status: 'enabled' }; },
+    async findKnowledgeByMetadata() { return null; },
+    async reparseKnowledge() { throw new Error('upstream-failed'); },
+    isTerminalParseStatus(status) { return status === 'completed' || status === 'failed'; },
+  };
+  const service = createCustomContentService({
+    repository, weknora, cos: cosFixture(),
+    compiler: { async compile() {} }, embeddingModelId: 'embed-1',
+  });
+  const owner = { id: IDS[15], name: 'Owner' };
+  const course = await service.createCourse(owner, '重解析失败');
+  const asset = await service.uploadAsset(owner, course.id, {
+    bytes: Buffer.from('%PDF-1.7\nreparse\n%%EOF'),
+    filename: 'reparse.pdf',
+    assetRole: 'lecture',
+    requestId: 'upload-reparse',
+  });
+  await assert.rejects(service.reparseAsset(owner, asset.id, 'reparse-fail'), /asset-reparse-upstream-failed/);
+  const failed = await repository.assets.findOwned(owner.id, asset.id);
+  assert.equal(failed.parseStatus, 'failed');
+  assert.match(failed.errorMessage, /重新解析未启动/);
+});
+
+test('reparse claims block stale polling, duplicate reparse, delete and compile readiness', async () => {
+  const repository = repositoryFixture();
+  let releaseReparse;
+  let markReparseStarted;
+  let knowledgeReads = 0;
+  const reparseStarted = new Promise((resolve) => { markReparseStarted = resolve; });
+  const weknora = {
+    async healthCheck() { return true; },
+    async createKnowledgeBase(input) { return { id: input.id }; },
+    async deleteKnowledgeBase() {},
+    async uploadFile() { return { id: 'wk-reparse-claim', parse_status: 'completed', enable_status: 'enabled' }; },
+    async findKnowledgeByMetadata() { return null; },
+    async reparseKnowledge() {
+      markReparseStarted();
+      await new Promise((resolve) => { releaseReparse = resolve; });
+    },
+    async getKnowledge() {
+      knowledgeReads += 1;
+      return { id: 'wk-reparse-claim', parse_status: 'completed', enable_status: 'enabled' };
+    },
+    async deleteKnowledge() {},
+    isTerminalParseStatus(status) { return status === 'completed' || status === 'failed'; },
+  };
+  const service = createCustomContentService({
+    repository, weknora, cos: cosFixture(),
+    compiler: { async compile() {} }, embeddingModelId: 'embed-1',
+  });
+  const owner = { id: IDS[14], name: 'Owner' };
+  const course = await service.createCourse(owner, '重解析领取');
+  const asset = await service.uploadAsset(owner, course.id, {
+    bytes: Buffer.from('%PDF-1.7\nreparse-claim\n%%EOF'),
+    filename: 'reparse-claim.pdf',
+    assetRole: 'lecture',
+    requestId: 'upload-reparse-claim',
+  });
+  const staleSnapshot = await repository.assets.findOwned(owner.id, asset.id);
+  const firstReparse = service.reparseAsset(owner, asset.id, 'reparse-first');
+  await reparseStarted;
+  assert.equal(await repository.assets.updateStatus(asset.id, {
+    parseStatus: 'completed', enableStatus: 'enabled', errorMessage: null,
+  }, {
+    expectedStatusRevision: staleSnapshot.statusRevision,
+    expectedReparseToken: null,
+  }), null);
+  const during = await service.listAssets(owner, course.id);
+  assert.equal(during[0].parseStatus, 'pending');
+  assert.equal(knowledgeReads, 0);
+  await assert.rejects(service.reparseAsset(owner, asset.id, 'reparse-second'), /asset-in-use/);
+  await assert.rejects(service.deleteAsset(owner, asset.id, 'delete-during-reparse'), /asset-in-use/);
+  await assert.rejects(
+    service.startCompile(owner, { courseId: course.id, assetIds: [asset.id] }),
+    /assets-not-ready/,
+  );
+  releaseReparse();
+  assert.equal((await firstReparse).parseStatus, 'pending');
+  assert.equal((await service.listAssets(owner, course.id))[0].parseStatus, 'completed');
+  assert.equal(knowledgeReads, 1);
 });
 
 test('asset deletion resumes idempotently from a persisted deleting state', async () => {

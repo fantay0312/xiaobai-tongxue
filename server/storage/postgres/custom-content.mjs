@@ -46,6 +46,9 @@ function assetRow(row) {
     parseStatus: row.parse_status,
     enableStatus: row.enable_status,
     errorMessage: row.error_message,
+    reparseToken: row.reparse_token ?? null,
+    reparseStartedAt: iso(row.reparse_started_at),
+    statusRevision: Number(row.status_revision ?? 0),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   };
@@ -422,18 +425,35 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       return result.rows.map(assetRow);
     },
 
-    async updateStatus(id, { parseStatus, enableStatus, errorMessage }) {
+    async updateStatus(id, { parseStatus, enableStatus, errorMessage }, {
+      expectedStatusRevision,
+      expectedReparseToken = null,
+    } = {}) {
       assertUuid(id);
+      if (!Number.isSafeInteger(expectedStatusRevision) || expectedStatusRevision < 0) {
+        throw new Error('asset-status-guard-required');
+      }
+      if (expectedReparseToken !== null) assertUuid(expectedReparseToken);
       const result = await queryable.query(
         `UPDATE custom_assets
             SET parse_status = $2,
                 enable_status = $3,
                 error_message = $4,
+                status_revision = status_revision + 1,
                 updated_at = NOW()
           WHERE id = $1
             AND parse_status <> 'deleting'
+            AND status_revision = $5
+            AND reparse_token IS NOT DISTINCT FROM $6::uuid
           RETURNING *`,
-        [id, parseStatus, enableStatus ?? 'disabled', errorMessage ?? null],
+        [
+          id,
+          parseStatus,
+          enableStatus ?? 'disabled',
+          errorMessage ?? null,
+          expectedStatusRevision,
+          expectedReparseToken,
+        ],
       );
       return assetRow(result.rows[0]);
     },
@@ -445,6 +465,7 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
             SET parse_status = 'failed',
                 enable_status = 'disabled',
                 error_message = $2,
+                status_revision = status_revision + 1,
                 updated_at = NOW()
           WHERE id = $1 AND parse_status = 'deleting'
           RETURNING *`,
@@ -497,7 +518,8 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
             FOR UPDATE OF a`,
           [id, ownerId],
         );
-        if (!locked.rows[0]) return null;
+        if (!locked.rows[0]
+          || !['completed', 'failed', 'cancelled'].includes(locked.rows[0].parse_status)) return null;
         const referenced = await client.query(
           `SELECT (
              EXISTS (
@@ -521,6 +543,7 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
               SET parse_status = 'deleting',
                   enable_status = 'disabled',
                   error_message = NULL,
+                  status_revision = status_revision + 1,
                   updated_at = NOW()
             WHERE id = $1
             RETURNING *`,
@@ -528,6 +551,115 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
         );
         return assetRow(result.rows[0]);
       });
+    },
+
+    async claimReparse(ownerId, id) {
+      assertUuid(ownerId);
+      assertUuid(id);
+      const reparseToken = uuid();
+      assertUuid(reparseToken);
+      const source = JSON.stringify([{ assetId: id }]);
+      return withTransaction(async (client) => {
+        const locked = await client.query(
+          `SELECT a.*
+             FROM custom_assets a
+             JOIN custom_courses c ON c.id = a.course_id
+            WHERE a.id = $1
+              AND c.owner_id = $2
+            FOR UPDATE OF a`,
+          [id, ownerId],
+        );
+        if (!locked.rows[0]
+          || !['completed', 'failed', 'cancelled'].includes(locked.rows[0].parse_status)) return null;
+        const referenced = await client.query(
+          `SELECT (
+             EXISTS (
+               SELECT 1
+                 FROM custom_topics t
+                WHERE t.status IN ('draft', 'ready')
+                  AND COALESCE(t.payload->'sources', '[]'::jsonb) @> $2::jsonb
+             ) OR EXISTS (
+               SELECT 1
+                 FROM custom_compile_jobs j
+                WHERE j.course_id = $3
+                  AND j.status IN ('queued', 'running', 'needs_review')
+                  AND $1 = ANY(j.asset_ids)
+             )
+           ) AS referenced`,
+          [id, source, locked.rows[0].course_id],
+        );
+        if (referenced.rows[0]?.referenced === true) return null;
+        const result = await client.query(
+          `UPDATE custom_assets
+              SET parse_status = 'pending',
+                  enable_status = 'disabled',
+                  error_message = NULL,
+                  reparse_token = $2,
+                  reparse_started_at = NOW(),
+                  status_revision = status_revision + 1,
+                  updated_at = NOW()
+            WHERE id = $1
+            RETURNING *`,
+          [id, reparseToken],
+        );
+        return assetRow(result.rows[0]);
+      });
+    },
+
+    async acknowledgeReparse(id, reparseToken) {
+      assertUuid(id);
+      assertUuid(reparseToken);
+      const result = await queryable.query(
+        `UPDATE custom_assets
+            SET reparse_token = NULL,
+                reparse_started_at = NULL,
+                status_revision = status_revision + 1,
+                updated_at = NOW()
+          WHERE id = $1
+            AND parse_status = 'pending'
+            AND reparse_token = $2
+          RETURNING *`,
+        [id, reparseToken],
+      );
+      return assetRow(result.rows[0]);
+    },
+
+    async failReparse(id, reparseToken, errorMessage) {
+      assertUuid(id);
+      assertUuid(reparseToken);
+      const result = await queryable.query(
+        `UPDATE custom_assets
+            SET parse_status = 'failed',
+                enable_status = 'disabled',
+                error_message = $3,
+                reparse_token = NULL,
+                reparse_started_at = NULL,
+                status_revision = status_revision + 1,
+                updated_at = NOW()
+          WHERE id = $1 AND reparse_token = $2
+          RETURNING *`,
+        [id, reparseToken, String(errorMessage ?? '').slice(0, 2_000)],
+      );
+      return assetRow(result.rows[0]);
+    },
+
+    async finishReparseStatus(id, reparseToken, { parseStatus, enableStatus, errorMessage }) {
+      assertUuid(id);
+      assertUuid(reparseToken);
+      const result = await queryable.query(
+        `UPDATE custom_assets
+            SET parse_status = $3,
+                enable_status = $4,
+                error_message = $5,
+                reparse_token = NULL,
+                reparse_started_at = NULL,
+                status_revision = status_revision + 1,
+                updated_at = NOW()
+          WHERE id = $1 AND reparse_token = $2
+          RETURNING *`,
+        [id, reparseToken, parseStatus, enableStatus ?? 'disabled', errorMessage ?? null],
+      );
+      return assetRow(result.rows[0]);
     },
 
     async isReferenced(id) {

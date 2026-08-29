@@ -208,6 +208,7 @@ test('custom content migration anchors COS ownership and active compile uniquene
   const leaseSql = await readFile(new URL('./storage/postgres/migrations/006_custom_compile_leases.sql', import.meta.url), 'utf8');
   const uploadIntentSql = await readFile(new URL('./storage/postgres/migrations/007_custom_upload_cleanup_intents.sql', import.meta.url), 'utf8');
   const courseIntentSql = await readFile(new URL('./storage/postgres/migrations/008_custom_course_create_intents.sql', import.meta.url), 'utf8');
+  const reparseClaimSql = await readFile(new URL('./storage/postgres/migrations/009_custom_asset_reparse_claims.sql', import.meta.url), 'utf8');
   assert.match(sql, /owner_id UUID NOT NULL REFERENCES users\(id\) ON DELETE CASCADE/);
   assert.match(sql, /cos_key TEXT NOT NULL UNIQUE/);
   assert.match(openJobSql, /custom_compile_jobs_one_active_per_course_idx/);
@@ -218,6 +219,9 @@ test('custom content migration anchors COS ownership and active compile uniquene
   assert.match(uploadIntentSql, /cos_key TEXT NOT NULL UNIQUE/);
   assert.match(courseIntentSql, /custom_course_create_intents/);
   assert.match(courseIntentSql, /wk_doc_kb_id UUID NOT NULL UNIQUE/);
+  assert.match(reparseClaimSql, /reparse_token UUID/);
+  assert.match(reparseClaimSql, /status_revision BIGINT NOT NULL DEFAULT 0/);
+  assert.match(reparseClaimSql, /custom_assets_reparse_claim_pair/);
 });
 
 test('custom maintenance starts after listen and shares the COS upload ceiling', async () => {
@@ -266,7 +270,11 @@ test('custom maintenance starts after listen and shares the COS upload ceiling',
   assert.match(serviceSource, /await validateUploadedFile\(\{/);
   assert.match(repositorySource, /WHERE id = \$1 AND parse_status = 'deleting'/);
   assert.match(repositorySource, /claimStaleDeletingAssets/);
+  assert.match(repositorySource, /async claimReparse\(ownerId, id\)/);
+  assert.match(repositorySource, /!\['completed', 'failed', 'cancelled'\]\.includes/);
   assert.match(serviceSource, /asset-delete-finalize-failed/);
+  assert.match(serviceSource, /repository\.assets\.claimReparse\(owner\.id, asset\.id\)/);
+  assert.match(repositorySource, /status_revision = \$5/);
   assert.match(redisSource, /RATE_LIMIT_MANY_SCRIPT/);
   assert.match(redisSource, /redis\.call\('MSET', unpack\(updates\)\)/);
   assert.match(redisSource, /redis\.call\('PTTL', KEYS\[i\]\)/);

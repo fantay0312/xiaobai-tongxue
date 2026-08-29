@@ -16,6 +16,7 @@ import { TOPIC_PROMPT_VERSION } from './topic-compiler.mjs';
 const COURSE_TITLE_MAX = 120;
 const TOPIC_TITLE_MAX = 160;
 const DEFAULT_MAX_FILE_BYTES = 80 * 1024 * 1024;
+const REPARSE_RECONCILE_AFTER_MS = 60_000;
 const ASSET_ROLES = new Set(['lecture', 'lab', 'syllabus', 'reading']);
 const PARSE_STATUSES = new Set([
   'pending', 'processing', 'finalizing', 'completed', 'failed', 'deleting', 'cancelled',
@@ -921,17 +922,30 @@ export function createCustomContentService({
   async function refreshAsset(asset, requestId) {
     if (asset.parseStatus === 'deleting') return asset;
     if (weknora.isTerminalParseStatus(asset.parseStatus)) return asset;
+    const reparseAge = asset.reparseToken
+      ? Date.now() - Date.parse(asset.reparseStartedAt ?? '')
+      : 0;
+    if (asset.reparseToken && Number.isFinite(reparseAge) && reparseAge < REPARSE_RECONCILE_AFTER_MS) {
+      return asset;
+    }
+    const persistStatus = (status) => asset.reparseToken
+      ? repository.assets.finishReparseStatus(asset.id, asset.reparseToken, status)
+      : repository.assets.updateStatus(asset.id, status, {
+        expectedStatusRevision: asset.statusRevision,
+        expectedReparseToken: null,
+      });
     try {
       const status = upstreamKnowledge(await weknora.getKnowledge(asset.wkKnowledgeId, requestId));
+      if (asset.reparseToken) return await persistStatus(status) ?? asset;
       if (
         status.parseStatus === asset.parseStatus
         && status.enableStatus === asset.enableStatus
         && status.errorMessage === asset.errorMessage
       ) return asset;
-      return await repository.assets.updateStatus(asset.id, status) ?? asset;
+      return await persistStatus(status) ?? asset;
     } catch (error) {
       if (String(error?.message).startsWith('weknora-not-found')) {
-        return await repository.assets.updateStatus(asset.id, {
+        return await persistStatus({
           parseStatus: 'failed', enableStatus: 'disabled', errorMessage: '资料在解析服务中不存在',
         }) ?? asset;
       }
@@ -1417,12 +1431,27 @@ export function createCustomContentService({
       if (!asset) throw publicError('asset-not-found', 404);
       const stored = await cos.verifySize({ userId: owner.id, key: asset.cosKey }).catch(() => null);
       if (!stored || stored.byteSize !== asset.byteSize) throw publicError('asset-storage-missing', 409);
-      await weknora.reparseKnowledge(asset.wkKnowledgeId, {}, requestId).catch(() => {
+      const claimed = await repository.assets.claimReparse(owner.id, asset.id);
+      if (!claimed) throw publicError('asset-in-use', 409);
+      try {
+        await weknora.reparseKnowledge(asset.wkKnowledgeId, {}, requestId);
+      } catch (error) {
+        const ambiguous = error?.retryable === true
+          || /weknora-(?:timeout|unreachable|invalid-response)/.test(String(error?.message));
+        if (!ambiguous) {
+          await repository.assets.failReparse(
+            asset.id,
+            claimed.reparseToken,
+            '资料重新解析未启动，可再次重试',
+          ).catch(() => {});
+        }
         throw publicError('asset-reparse-upstream-failed', 502);
-      });
-      return publicAsset(await repository.assets.updateStatus(asset.id, {
-        parseStatus: 'pending', enableStatus: 'disabled', errorMessage: null,
-      }));
+      }
+      const acknowledged = await repository.assets.acknowledgeReparse(
+        asset.id,
+        claimed.reparseToken,
+      ).catch(() => null);
+      return publicAsset(acknowledged ?? claimed);
     },
 
     async deleteAsset(owner, assetId, requestId) {
