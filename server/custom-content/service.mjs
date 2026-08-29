@@ -153,6 +153,280 @@ function isOle(bytes) {
   return bytes.length >= signature.length && signature.every((value, index) => bytes[index] === value);
 }
 
+function cfbChain(fat, start, sectorCount, maximum) {
+  const FREE = 0xffffffff;
+  const END = 0xfffffffe;
+  const FAT = 0xfffffffd;
+  const DIFAT = 0xfffffffc;
+  const chain = [];
+  const seen = new Set();
+  let sector = start;
+  while (sector !== END) {
+    if (sector === FREE || sector === FAT || sector === DIFAT
+      || sector >= sectorCount || seen.has(sector) || chain.length >= maximum) {
+      throw publicError('file-content-mismatch', 415);
+    }
+    seen.add(sector);
+    chain.push(sector);
+    sector = fat[sector];
+    if (sector === undefined) throw publicError('file-content-mismatch', 415);
+  }
+  return chain;
+}
+
+function cfbStream(bytes, chain, offsetOf, unitSize, size, readSize = size) {
+  return cfbStreamSlice(bytes, chain, offsetOf, unitSize, size, 0, Math.min(size, readSize));
+}
+
+function cfbStreamSlice(bytes, chain, offsetOf, unitSize, size, start, length) {
+  if (size < 1 || start < 0 || length < 1 || start + length > size
+    || chain.length * unitSize < size) return null;
+  const requested = length;
+  const result = Buffer.allocUnsafe(requested);
+  let written = 0;
+  let logicalOffset = start;
+  while (written < requested) {
+    const chainIndex = Math.floor(logicalOffset / unitSize);
+    const withinSector = logicalOffset % unitSize;
+    const sector = chain[chainIndex];
+    const offset = offsetOf(sector) + withinSector;
+    const copyLength = Math.min(unitSize - withinSector, requested - written);
+    if (sector === undefined || offset < 0 || offset + copyLength > bytes.length) return null;
+    bytes.copy(result, written, offset, offset + copyLength);
+    written += copyLength;
+    logicalOffset += copyLength;
+  }
+  return written === requested ? result : null;
+}
+
+function pptRecordHeader(bytes, streamSize, offset) {
+  if (!bytes || bytes.length < 8 || offset < 0 || offset + 8 > streamSize) return null;
+  const versionAndInstance = bytes.readUInt16LE(0);
+  const length = bytes.readUInt32LE(4);
+  if (offset + 8 + length > streamSize) return null;
+  return {
+    version: versionAndInstance & 0x000f,
+    instance: versionAndInstance >>> 4,
+    type: bytes.readUInt16LE(2),
+    length,
+  };
+}
+
+function validLegacyPowerPoint(bytes) {
+  if (!isOle(bytes) || bytes.length < 512) return false;
+  const major = bytes.readUInt16LE(26);
+  const byteOrder = bytes.readUInt16LE(28);
+  const sectorShift = bytes.readUInt16LE(30);
+  const miniSectorShift = bytes.readUInt16LE(32);
+  const fatSectorCount = bytes.readUInt32LE(44);
+  const firstDirectorySector = bytes.readUInt32LE(48);
+  const miniCutoff = bytes.readUInt32LE(56);
+  const firstMiniFatSector = bytes.readUInt32LE(60);
+  const miniFatSectorCount = bytes.readUInt32LE(64);
+  const firstDifatSector = bytes.readUInt32LE(68);
+  const difatSectorCount = bytes.readUInt32LE(72);
+  const sectorSize = 2 ** sectorShift;
+  if (byteOrder !== 0xfffe || miniSectorShift !== 6 || miniCutoff !== 4096
+    || !((major === 3 && sectorShift === 9) || (major === 4 && sectorShift === 12))
+    || fatSectorCount < 1 || fatSectorCount > 2_048 || difatSectorCount > 64
+    || miniFatSectorCount > 2_048 || bytes.length < sectorSize * 2 || bytes.length % sectorSize !== 0) return false;
+  const sectorCount = bytes.length / sectorSize - 1;
+  const sectorOffset = (sector) => (sector + 1) * sectorSize;
+  const FREE = 0xffffffff;
+  const END = 0xfffffffe;
+  const unusedDifatEntry = (sector) => sector === FREE || sector === END;
+  const fatSectorIds = [];
+  for (let index = 0; index < 109; index += 1) {
+    const sector = bytes.readUInt32LE(76 + index * 4);
+    if (!unusedDifatEntry(sector)) fatSectorIds.push(sector);
+  }
+  let difatSector = firstDifatSector;
+  const seenDifat = new Set();
+  for (let index = 0; index < difatSectorCount; index += 1) {
+    if (difatSector >= sectorCount || seenDifat.has(difatSector)) return false;
+    seenDifat.add(difatSector);
+    const offset = sectorOffset(difatSector);
+    const entries = sectorSize / 4 - 1;
+    for (let at = 0; at < entries; at += 1) {
+      const sector = bytes.readUInt32LE(offset + at * 4);
+      if (!unusedDifatEntry(sector)) fatSectorIds.push(sector);
+    }
+    difatSector = bytes.readUInt32LE(offset + sectorSize - 4);
+  }
+  if ((difatSectorCount === 0 && !unusedDifatEntry(firstDifatSector))
+    || (difatSectorCount > 0 && !unusedDifatEntry(difatSector))
+    || fatSectorIds.length !== fatSectorCount) return false;
+  const selectedFatIds = fatSectorIds;
+  if (new Set(selectedFatIds).size !== selectedFatIds.length
+    || selectedFatIds.some((sector) => sector >= sectorCount)) return false;
+  const fat = [];
+  for (const sector of selectedFatIds) {
+    const offset = sectorOffset(sector);
+    for (let at = 0; at < sectorSize; at += 4) fat.push(bytes.readUInt32LE(offset + at));
+  }
+  if (selectedFatIds.some((sector) => fat[sector] !== 0xfffffffd)
+    || [...seenDifat].some((sector) => fat[sector] !== 0xfffffffc)) return false;
+  let directorySectors;
+  try {
+    directorySectors = cfbChain(fat, firstDirectorySector, sectorCount, sectorCount);
+  } catch {
+    return false;
+  }
+  if (directorySectors.length > 2_048) throw publicError('file-archive-too-large', 413);
+  const directory = Buffer.concat(directorySectors.map((sector) => (
+    bytes.subarray(sectorOffset(sector), sectorOffset(sector) + sectorSize)
+  )));
+  const directoryEntries = [];
+  let root = null;
+  let totalDeclared = 0;
+  for (let offset = 0; offset + 128 <= directory.length; offset += 128) {
+    const index = offset / 128;
+    const nameLength = directory.readUInt16LE(offset + 64);
+    const type = directory[offset + 66];
+    if (type === 0) {
+      directoryEntries[index] = null;
+      continue;
+    }
+    if (nameLength < 2 || nameLength > 64 || nameLength % 2 !== 0) return false;
+    const name = directory.subarray(offset, offset + nameLength - 2).toString('utf16le');
+    const entry = {
+      index,
+      name,
+      type,
+      left: directory.readUInt32LE(offset + 68),
+      right: directory.readUInt32LE(offset + 72),
+      child: directory.readUInt32LE(offset + 76),
+      start: directory.readUInt32LE(offset + 116),
+      size: 0,
+    };
+    directoryEntries[index] = entry;
+    if (type === 5) {
+      if (index !== 0 || name !== 'Root Entry' || root
+        || entry.left !== 0xffffffff || entry.right !== 0xffffffff) return false;
+      const size64 = directory.readBigUInt64LE(offset + 120);
+      if (size64 > BigInt(bytes.length)) return false;
+      entry.size = Number(size64);
+      root = entry;
+      continue;
+    }
+    if (type !== 1 && type !== 2) return false;
+    if (type === 2 && entry.child !== 0xffffffff) return false;
+    const size64 = directory.readBigUInt64LE(offset + 120);
+    if (size64 > BigInt(256 * 1024 * 1024)) throw publicError('file-archive-too-large', 413);
+    const size = Number(size64);
+    entry.size = size;
+    totalDeclared += size;
+    if (totalDeclared > 256 * 1024 * 1024 || size > bytes.length) {
+      throw publicError('file-archive-too-large', 413);
+    }
+  }
+  if (!root || root.child === 0xffffffff) return false;
+  const reachable = new Set();
+  const pending = [root.child];
+  while (pending.length > 0) {
+    const index = pending.pop();
+    if (index === 0xffffffff) continue;
+    if (index >= directoryEntries.length || reachable.has(index)) return false;
+    const entry = directoryEntries[index];
+    if (!entry || entry.type === 5) return false;
+    reachable.add(index);
+    pending.push(entry.left, entry.right);
+    if (entry.type === 1) pending.push(entry.child);
+  }
+  const targetStreams = new Map();
+  for (const index of reachable) {
+    const entry = directoryEntries[index];
+    if (entry.type !== 2 || (entry.name !== 'PowerPoint Document' && entry.name !== 'Current User')) continue;
+    if (targetStreams.has(entry.name)) return false;
+    targetStreams.set(entry.name, entry);
+  }
+  if (!targetStreams.has('PowerPoint Document') || !targetStreams.has('Current User')) return false;
+
+  let rootMiniStream = null;
+  let miniFat = null;
+  const readStream = ({ start, size }) => {
+    if (size < 1) return null;
+    try {
+      if (size >= miniCutoff) {
+        const chain = cfbChain(fat, start, sectorCount, sectorCount);
+        if (chain.length * sectorSize < size) return null;
+        return {
+          size,
+          read: (offset, length) => cfbStreamSlice(bytes, chain, sectorOffset, sectorSize, size, offset, length),
+        };
+      }
+      if (!rootMiniStream) {
+        if (root.size < 1 || root.size > bytes.length) return null;
+        const rootChain = cfbChain(fat, root.start, sectorCount, sectorCount);
+        rootMiniStream = cfbStream(bytes, rootChain, sectorOffset, sectorSize, root.size);
+        if (!rootMiniStream) return null;
+      }
+      if (!miniFat) {
+        if (miniFatSectorCount < 1 || firstMiniFatSector === 0xfffffffe) return null;
+        const miniFatChain = cfbChain(fat, firstMiniFatSector, sectorCount, sectorCount);
+        if (miniFatChain.length !== miniFatSectorCount) return null;
+        const miniFatBytes = cfbStream(
+          bytes,
+          miniFatChain,
+          sectorOffset,
+          sectorSize,
+          miniFatSectorCount * sectorSize,
+        );
+        if (!miniFatBytes) return null;
+        miniFat = [];
+        for (let at = 0; at < miniFatBytes.length; at += 4) miniFat.push(miniFatBytes.readUInt32LE(at));
+      }
+      const miniSectorSize = 2 ** miniSectorShift;
+      const miniSectorCount = Math.ceil(rootMiniStream.length / miniSectorSize);
+      const chain = cfbChain(miniFat, start, miniSectorCount, miniSectorCount);
+      if (chain.length * miniSectorSize < size) return null;
+      return {
+        size,
+        read: (offset, length) => cfbStreamSlice(
+          rootMiniStream,
+          chain,
+          (sector) => sector * miniSectorSize,
+          miniSectorSize,
+          size,
+          offset,
+          length,
+        ),
+      };
+    } catch {
+      return null;
+    }
+  };
+  const documentStream = readStream(targetStreams.get('PowerPoint Document'));
+  const currentUserStream = readStream(targetStreams.get('Current User'));
+  if (!documentStream || !currentUserStream || currentUserStream.size < 28) return false;
+  const currentUserAtom = currentUserStream.read(0, 28);
+  const currentHeader = pptRecordHeader(currentUserAtom, currentUserStream.size, 0);
+  if (!currentHeader || currentHeader.version !== 0 || currentHeader.instance !== 0
+    || currentHeader.type !== 0x0ff6 || currentHeader.length < 20
+    || currentUserAtom.readUInt32LE(8) !== 20
+    || currentUserAtom.readUInt32LE(12) !== 0xe391c05f
+    || currentUserAtom.readUInt16LE(22) !== 0x03f4
+    || currentUserAtom[24] !== 3 || currentUserAtom[25] !== 0) return false;
+  const currentEditOffset = currentUserAtom.readUInt32LE(16);
+  const currentEditBytes = documentStream.read(currentEditOffset, 24);
+  const currentEditHeader = pptRecordHeader(currentEditBytes, documentStream.size, currentEditOffset);
+  if (!currentEditHeader || currentEditHeader.version !== 0 || currentEditHeader.instance !== 0
+    || currentEditHeader.type !== 0x0ff5
+    || currentEditHeader.length < 28 || currentEditHeader.length > 32) return false;
+  const persistDirectoryOffset = currentEditBytes.readUInt32LE(20);
+  const persistDirectoryBytes = documentStream.read(persistDirectoryOffset, 8);
+  const persistDirectoryHeader = pptRecordHeader(
+    persistDirectoryBytes,
+    documentStream.size,
+    persistDirectoryOffset,
+  );
+  return Boolean(persistDirectoryHeader
+    && persistDirectoryHeader.version === 0
+    && persistDirectoryHeader.instance === 0
+    && persistDirectoryHeader.type === 0x1772
+    && persistDirectoryHeader.length >= 4);
+}
+
 function validUtf8Text(bytes) {
   if (bytes.includes(0)) return false;
   try {
@@ -172,7 +446,7 @@ function validateFile(bytes, filename, maximum) {
   const valid = extension === '.pdf'
     ? bytes.subarray(0, 5).toString('ascii') === '%PDF-'
     : extension === '.ppt'
-      ? isOle(bytes)
+      ? validLegacyPowerPoint(bytes)
       : extension === '.pptx' || extension === '.docx'
         ? validOoxml(bytes, extension)
         : validUtf8Text(bytes);

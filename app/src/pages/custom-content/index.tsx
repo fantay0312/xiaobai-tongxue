@@ -36,6 +36,7 @@ import {
   type SourceCandidate,
 } from '../../lib/customContent';
 import { useAppStore } from '../../store/appStore';
+import { useAuthStore } from '../../store/authStore';
 import type { Misconception, PredictionQuizItem } from '../../types';
 import s from './customContent.module.css';
 
@@ -468,8 +469,10 @@ function DraftEditor({
 
 export default function CustomContentPage() {
   useDocTitle('自选讲义');
+  const authUser = useAuthStore((state) => state.user);
   const refreshRuntimeTopics = useAppStore((state) => state.loadCustomTopics);
   const [service, setService] = useState<'checking' | 'ready' | 'unhealthy' | 'unavailable'>('checking');
+  const [workspaceOwner, setWorkspaceOwner] = useState<string | null>(null);
   const [bootstrapToken, setBootstrapToken] = useState(0);
   const [courses, setCourses] = useState<CustomCourse[]>([]);
   const [courseId, setCourseId] = useState('');
@@ -493,6 +496,17 @@ export default function CustomContentPage() {
   const [deleteArmedId, setDeleteArmedId] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const courseIdRef = useRef(courseId);
+  const authUserRef = useRef(authUser);
+  const workspaceGenerationRef = useRef(0);
+  courseIdRef.current = courseId;
+  authUserRef.current = authUser;
+
+  const workspaceIsCurrent = (owner: string | null, generation: number, expectedCourse?: string) => (
+    workspaceGenerationRef.current === generation
+    && authUserRef.current === owner
+    && (expectedCourse === undefined || courseIdRef.current === expectedCourse)
+  );
 
   const selectedCourse = courses.find((course) => course.id === courseId) ?? null;
   const activeJobId = job?.id ?? null;
@@ -503,29 +517,56 @@ export default function CustomContentPage() {
   );
 
   const refreshCourses = useCallback(async (preferredId?: string) => {
+    const ownerAtRequest = authUserRef.current;
+    const generationAtRequest = workspaceGenerationRef.current;
     const next = await listCustomCourses();
+    if (authUserRef.current !== ownerAtRequest || workspaceGenerationRef.current !== generationAtRequest) return;
     setCourses(next);
-    setCourseId((current) => preferredId ?? (next.some((course) => course.id === current) ? current : next[0]?.id ?? ''));
+    setCourseId((current) => (
+      preferredId && next.some((course) => course.id === preferredId)
+        ? preferredId
+        : next.some((course) => course.id === current) ? current : next[0]?.id ?? ''
+    ));
   }, []);
 
   useEffect(() => {
     let active = true;
+    setWorkspaceOwner(null);
+    setCourses([]);
+    setCourseId('');
+    setAssets([]);
+    setSelectedAssetIds(new Set());
+    setJob(null);
+    setDraftRecord(null);
+    setPublishedTopicId(null);
+    setNewCourseTitle('');
+    setTopicTitle('');
+    setNotice('');
+    setUploading(null);
+    setDragging(false);
+    setCreatingCourse(false);
+    setSaving(false);
+    setPublishing(false);
+    setDiscarding(false);
+    setDeleteArmedId(null);
+    setDiscardArmed(false);
     setService('checking');
     void (async () => {
       let finalState: 'unhealthy' | 'unavailable' = 'unhealthy';
       for (let attempt = 0; attempt <= CUSTOM_BOOTSTRAP_RETRY_MS.length; attempt += 1) {
         try {
           const [status, nextCourses] = await Promise.all([customContentStatus(), listCustomCourses()]);
-          if (!active) return;
+          if (!active || authUserRef.current !== authUser) return;
           if (status.healthy) {
             setService('ready');
             setCourses(nextCourses);
             setCourseId(nextCourses[0]?.id ?? '');
+            setWorkspaceOwner(authUser);
             return;
           }
           finalState = 'unhealthy';
         } catch (error) {
-          if (!active) return;
+          if (!active || authUserRef.current !== authUser) return;
           finalState = error instanceof CustomContentError && error.status === 503 ? 'unavailable' : 'unhealthy';
           setNotice(errorHint(error));
         }
@@ -533,10 +574,13 @@ export default function CustomContentPage() {
         if (delay === undefined) break;
         await new Promise((resolve) => window.setTimeout(resolve, delay));
       }
-      if (active) setService(finalState);
+      if (active && authUserRef.current === authUser) {
+        setWorkspaceOwner(authUser);
+        setService(finalState);
+      }
     })();
     return () => { active = false; };
-  }, [bootstrapToken]);
+  }, [authUser, bootstrapToken]);
 
   useEffect(() => {
     if (!courseId) {
@@ -566,9 +610,15 @@ export default function CustomContentPage() {
     };
     void refresh();
     return () => { active = false; window.clearTimeout(timer); };
-  }, [courseId, assetRefreshToken]);
+  }, [authUser, courseId, assetRefreshToken]);
 
   useEffect(() => {
+    workspaceGenerationRef.current += 1;
+    setUploading(null);
+    setCreatingCourse(false);
+    setSaving(false);
+    setPublishing(false);
+    setDiscarding(false);
     if (!courseId) {
       setJob(null);
       setDraftRecord(null);
@@ -600,7 +650,7 @@ export default function CustomContentPage() {
     };
     void recover();
     return () => { active = false; window.clearTimeout(timer); };
-  }, [courseId]);
+  }, [authUser, courseId]);
 
   useEffect(() => {
     if (!activeJobId || (activeJobStatus !== 'queued' && activeJobStatus !== 'running')) return undefined;
@@ -625,38 +675,47 @@ export default function CustomContentPage() {
     };
     timer = window.setTimeout(() => void poll(), 700);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [activeJobId, activeJobStatus]);
+  }, [activeJobId, activeJobStatus, authUser]);
 
   const makeCourse = async () => {
     if (creatingCourse || !newCourseTitle.trim()) return;
     setCreatingCourse(true);
     setNotice('');
+    const ownerAtRequest = authUser;
+    const generationAtRequest = workspaceGenerationRef.current;
     try {
       const course = await createCustomCourse(newCourseTitle);
+      if (!workspaceIsCurrent(ownerAtRequest, generationAtRequest)) return;
       setNewCourseTitle('');
       setAssets([]);
       setSelectedAssetIds(new Set());
       await refreshCourses(course.id);
     } catch (error) {
-      setNotice(errorHint(error));
+      if (workspaceIsCurrent(ownerAtRequest, generationAtRequest)) setNotice(errorHint(error));
     } finally {
-      setCreatingCourse(false);
+      if (workspaceIsCurrent(ownerAtRequest, generationAtRequest)) setCreatingCourse(false);
     }
   };
 
   const uploadFiles = async (files: File[]) => {
     if (!courseId || files.length === 0 || uploading) return;
     const usable = files.filter((file) => file.size > 0 && file.size <= MAX_BYTES);
+    const ownerAtRequest = authUser;
+    const generationAtRequest = workspaceGenerationRef.current;
+    const courseAtRequest = courseId;
     if (usable.length !== files.length) setNotice('已跳过空文件或超过 80 MB 的资料。');
     for (const [index, file] of usable.entries()) {
       setUploading({ name: file.name, index: index + 1, total: usable.length });
       try {
-        const asset = await uploadCourseAsset(courseId, file, assetRole);
+        const asset = await uploadCourseAsset(courseAtRequest, file, assetRole);
+        if (!workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) break;
         setAssets((current) => [asset, ...current.filter((item) => item.id !== asset.id)]);
       } catch (error) {
+        if (!workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) break;
         setNotice(`${file.name}：${errorHint(error)}`);
       }
     }
+    if (!workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) return;
     setUploading(null);
     setAssetRefreshToken((value) => value + 1);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -678,80 +737,132 @@ export default function CustomContentPage() {
     return next;
   });
 
+  const reparseAsset = async (assetId: string) => {
+    const ownerAtRequest = authUser;
+    const generationAtRequest = workspaceGenerationRef.current;
+    const courseAtRequest = courseId;
+    try {
+      const next = await reparseCustomAsset(assetId);
+      if (!workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) return;
+      setAssets((current) => current.map((item) => item.id === next.id ? next : item));
+      setAssetRefreshToken((value) => value + 1);
+    } catch (error) {
+      if (workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) setNotice(errorHint(error));
+    }
+  };
+
+  const removeAsset = async (assetId: string) => {
+    const ownerAtRequest = authUser;
+    const generationAtRequest = workspaceGenerationRef.current;
+    const courseAtRequest = courseId;
+    try {
+      await deleteCustomAsset(assetId);
+      if (!workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) return;
+      setAssets((current) => current.filter((item) => item.id !== assetId));
+      setDeleteArmedId(null);
+    } catch (error) {
+      if (!workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) return;
+      setNotice(errorHint(error));
+      setDeleteArmedId(null);
+    }
+  };
+
   const beginCompile = async () => {
     if (!courseId || recoveringJob || selectedReadyAssets.length === 0 || job?.status === 'queued' || job?.status === 'running' || job?.status === 'needs_review') return;
     setNotice('');
     setDraftRecord(null);
     setPublishedTopicId(null);
     setDiscardArmed(false);
+    const ownerAtRequest = authUser;
+    const generationAtRequest = workspaceGenerationRef.current;
+    const courseAtRequest = courseId;
     try {
-      setJob(await startTopicCompile({
+      const nextJob = await startTopicCompile({
         courseId,
         assetIds: selectedReadyAssets.map((asset) => asset.id),
         ...(topicTitle.trim() ? { title: topicTitle.trim() } : {}),
-      }));
+      });
+      if (workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) setJob(nextJob);
     } catch (error) {
-      setNotice(errorHint(error));
+      if (workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) setNotice(errorHint(error));
     }
   };
 
   const saveDraft = async (): Promise<CustomTopicRecord | null> => {
     if (!draftRecord || saving) return null;
+    const draftId = draftRecord.id;
+    const courseAtSave = courseId;
+    const ownerAtSave = authUser;
+    const generationAtSave = workspaceGenerationRef.current;
     setSaving(true);
     setNotice('');
     try {
       const saved = await saveTopicDraft(draftRecord.id, draftRecord.payload);
-      setDraftRecord(saved);
+      if (!workspaceIsCurrent(ownerAtSave, generationAtSave, courseAtSave)) return null;
+      setDraftRecord((current) => current?.id === draftId ? saved : current);
       return saved;
     } catch (error) {
-      setNotice(errorHint(error));
+      if (workspaceIsCurrent(ownerAtSave, generationAtSave, courseAtSave)) setNotice(errorHint(error));
       return null;
     } finally {
-      setSaving(false);
+      if (workspaceIsCurrent(ownerAtSave, generationAtSave, courseAtSave)) setSaving(false);
     }
   };
 
   const publish = async () => {
     if (!draftRecord || publishing) return;
+    const courseAtPublish = courseId;
+    const ownerAtPublish = authUser;
+    const generationAtPublish = workspaceGenerationRef.current;
     setPublishing(true);
     setNotice('');
     try {
       const saved = await saveTopicDraft(draftRecord.id, draftRecord.payload);
+      if (!workspaceIsCurrent(ownerAtPublish, generationAtPublish, courseAtPublish)) return;
       setDraftRecord(saved);
       if (saved.qualityIssues.some((issue) => issue.level === 'error')) {
         setNotice('质量闸门仍有未通过项，草稿已保存但没有发布。');
         return;
       }
       const published = await publishCustomTopic(saved.id);
+      if (!workspaceIsCurrent(ownerAtPublish, generationAtPublish, courseAtPublish)) return;
       setPublishedTopicId(published.topicId);
       setDraftRecord({ ...published, payload: published.payload });
       setJob((current) => current ? { ...current, status: 'done' } : current);
       await Promise.all([refreshRuntimeTopics(true), refreshCourses(courseId)]);
     } catch (error) {
-      setNotice(errorHint(error));
+      if (workspaceIsCurrent(ownerAtPublish, generationAtPublish, courseAtPublish)) setNotice(errorHint(error));
     } finally {
-      setPublishing(false);
+      if (workspaceIsCurrent(ownerAtPublish, generationAtPublish, courseAtPublish)) setPublishing(false);
     }
   };
 
   const discardDraft = async () => {
     if (!draftRecord || !discardArmed || discarding || draftRecord.status !== 'draft') return;
     const draftId = draftRecord.id;
+    const courseAtDiscard = courseId;
+    const ownerAtDiscard = authUser;
+    const generationAtDiscard = workspaceGenerationRef.current;
     setDiscarding(true);
     setNotice('');
     try {
       await discardTopicDraft(draftId);
+      if (!workspaceIsCurrent(ownerAtDiscard, generationAtDiscard, courseAtDiscard)) return;
       setDraftRecord((current) => current?.id === draftId ? null : current);
       setJob((current) => current?.topicId === draftId || current?.topic?.id === draftId ? null : current);
       setPublishedTopicId(null);
       setDiscardArmed(false);
       setNotice('这份草稿已放回废稿篓，可以重新选择资料生成。');
     } catch (error) {
-      setNotice(errorHint(error));
+      if (workspaceIsCurrent(ownerAtDiscard, generationAtDiscard, courseAtDiscard)) setNotice(errorHint(error));
     } finally {
-      setDiscarding(false);
+      if (workspaceIsCurrent(ownerAtDiscard, generationAtDiscard, courseAtDiscard)) setDiscarding(false);
     }
   };
+
+  const workspaceMatchesOwner = workspaceOwner === authUser;
+  const visibleService = workspaceMatchesOwner ? service : 'checking';
+  const visibleNotice = workspaceMatchesOwner ? notice : '';
 
   return (
     <div className={s.page}>
@@ -768,13 +879,13 @@ export default function CustomContentPage() {
         </ol>
       </section>
 
-      {notice ? <p className={s.notice} role="status"><Icon name="circle-help" size={16} />{notice}</p> : null}
-      {service !== 'ready' ? (
+      {visibleNotice ? <p className={s.notice} role="status"><Icon name="circle-help" size={16} />{visibleNotice}</p> : null}
+      {visibleService !== 'ready' ? (
         <section className={s.unavailable} role="status">
-          <span>{service === 'checking' ? 'CHECKING' : 'SIDE-CAR'}</span>
-          <h2>{service === 'checking' ? '正在翻检资料服务…' : '资料服务暂时没有应答'}</h2>
-          <p>{service === 'unavailable' ? '服务器尚未启用自定义课程 sidecar。现有课程与学习记录不受影响。' : '可以稍后重试；现有课程仍可照常学习。'}</p>
-          {service !== 'checking' ? <button type="button" onClick={() => setBootstrapToken((value) => value + 1)}>重新连接资料服务</button> : null}
+          <span>{visibleService === 'checking' ? 'CHECKING' : 'SIDE-CAR'}</span>
+          <h2>{visibleService === 'checking' ? '正在翻检资料服务…' : '资料服务暂时没有应答'}</h2>
+          <p>{visibleService === 'unavailable' ? '服务器尚未启用自定义课程 sidecar。现有课程与学习记录不受影响。' : '可以稍后重试；现有课程仍可照常学习。'}</p>
+          {visibleService !== 'checking' ? <button type="button" onClick={() => setBootstrapToken((value) => value + 1)}>重新连接资料服务</button> : null}
         </section>
       ) : (
         <div className={s.workspace}>
@@ -782,7 +893,7 @@ export default function CustomContentPage() {
             <header><span>COURSE FILE</span><h2>自选课程</h2></header>
             <div className={s.courseList}>
               {courses.map((course, index) => (
-                <button key={course.id} type="button" className={course.id === courseId ? s.courseActive : ''} onClick={() => { setCourseId(course.id); setAssets([]); setSelectedAssetIds(new Set()); setDeleteArmedId(null); setJob(null); setDraftRecord(null); setPublishedTopicId(null); setDiscardArmed(false); }}>
+                <button key={course.id} type="button" className={course.id === courseId ? s.courseActive : ''} disabled={Boolean(uploading) || creatingCourse || saving || publishing || discarding} onClick={() => { setCourseId(course.id); setAssets([]); setSelectedAssetIds(new Set()); setDeleteArmedId(null); setJob(null); setDraftRecord(null); setPublishedTopicId(null); setDiscardArmed(false); }}>
                   <span>{String(index + 1).padStart(2, '0')}</span>
                   <p><strong>{course.title}</strong><small>{course.assetCount} 份资料 · {course.topicCount} 个课题</small></p>
                   <Icon name="chevron-right" size={15} />
@@ -838,10 +949,10 @@ export default function CustomContentPage() {
                           <Icon name="file" size={18} />
                           <div className={s.assetName}><strong>{asset.filename}</strong><small>{ROLE_LABEL[asset.assetRole]} · {fileSize(asset.byteSize)}</small></div>
                           <span className={`${s.assetStatus} ${s[`status_${asset.parseStatus}`]}`}>{STATUS_LABEL[asset.parseStatus]}</span>
-                          {asset.parseStatus === 'failed' || asset.parseStatus === 'cancelled' ? <button type="button" onClick={() => void reparseCustomAsset(asset.id).then((next) => { setAssets((current) => current.map((item) => item.id === next.id ? next : item)); setAssetRefreshToken((value) => value + 1); }).catch((error) => setNotice(errorHint(error)))}>重新解析</button> : null}
+                          {asset.parseStatus === 'failed' || asset.parseStatus === 'cancelled' ? <button type="button" onClick={() => void reparseAsset(asset.id)}>重新解析</button> : null}
                           {deleteArmedId === asset.id && !lockedByJob ? (
                             <span className={s.deleteConfirm}>
-                              <button type="button" onClick={() => void deleteCustomAsset(asset.id).then(() => { setAssets((current) => current.filter((item) => item.id !== asset.id)); setDeleteArmedId(null); }).catch((error) => { setNotice(errorHint(error)); setDeleteArmedId(null); })}>确认删除</button>
+                              <button type="button" onClick={() => void removeAsset(asset.id)}>确认删除</button>
                               <button type="button" onClick={() => setDeleteArmedId(null)}>保留</button>
                             </span>
                           ) : (

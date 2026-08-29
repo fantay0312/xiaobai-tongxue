@@ -366,6 +366,81 @@ function storedZip(files) {
   return Buffer.concat([...localParts, directory, eocd]);
 }
 
+function minimalPowerPointCfb() {
+  const sectorSize = 512;
+  const header = Buffer.alloc(512);
+  Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]).copy(header, 0);
+  header.writeUInt16LE(0x003e, 24);
+  header.writeUInt16LE(3, 26);
+  header.writeUInt16LE(0xfffe, 28);
+  header.writeUInt16LE(9, 30);
+  header.writeUInt16LE(6, 32);
+  header.writeUInt32LE(1, 44);
+  header.writeUInt32LE(0, 48);
+  header.writeUInt32LE(4096, 56);
+  header.writeUInt32LE(11, 60);
+  header.writeUInt32LE(1, 64);
+  header.writeUInt32LE(0xfffffffe, 68);
+  header.writeUInt32LE(0, 72);
+  header.fill(0xff, 76);
+  header.writeUInt32LE(1, 76);
+
+  const directory = Buffer.alloc(sectorSize);
+  const writeEntry = (index, name, type, start, size) => {
+    const offset = index * 128;
+    const encoded = Buffer.from(`${name}\0`, 'utf16le');
+    encoded.copy(directory, offset);
+    directory.writeUInt16LE(encoded.length, offset + 64);
+    directory[offset + 66] = type;
+    directory.writeUInt32LE(0xffffffff, offset + 68);
+    directory.writeUInt32LE(0xffffffff, offset + 72);
+    directory.writeUInt32LE(0xffffffff, offset + 76);
+    directory.writeUInt32LE(start, offset + 116);
+    directory.writeBigUInt64LE(BigInt(size), offset + 120);
+  };
+  writeEntry(0, 'Root Entry', 5, 10, 64);
+  writeEntry(1, 'PowerPoint Document', 2, 2, 4096);
+  writeEntry(2, 'Current User', 2, 0, 32);
+  directory.writeUInt32LE(1, 76);
+  directory.writeUInt32LE(2, 128 + 72);
+
+  const fat = Buffer.alloc(sectorSize, 0xff);
+  fat.writeUInt32LE(0xfffffffe, 0 * 4);
+  fat.writeUInt32LE(0xfffffffd, 1 * 4);
+  for (let sector = 2; sector < 9; sector += 1) fat.writeUInt32LE(sector + 1, sector * 4);
+  fat.writeUInt32LE(0xfffffffe, 9 * 4);
+  fat.writeUInt32LE(0xfffffffe, 10 * 4);
+  fat.writeUInt32LE(0xfffffffe, 11 * 4);
+  const documentSectors = Array.from({ length: 8 }, () => Buffer.alloc(sectorSize));
+  documentSectors[0].writeUInt16LE(0, 0);
+  documentSectors[0].writeUInt16LE(0x0ff5, 2);
+  documentSectors[0].writeUInt32LE(28, 4);
+  documentSectors[0].writeUInt32LE(64, 20);
+  documentSectors[0].writeUInt16LE(0, 64);
+  documentSectors[0].writeUInt16LE(0x1772, 66);
+  documentSectors[0].writeUInt32LE(4, 68);
+  const rootMiniStream = Buffer.alloc(sectorSize);
+  rootMiniStream.writeUInt16LE(0, 0);
+  rootMiniStream.writeUInt16LE(0x0ff6, 2);
+  rootMiniStream.writeUInt32LE(24, 4);
+  rootMiniStream.writeUInt32LE(20, 8);
+  rootMiniStream.writeUInt32LE(0xe391c05f, 12);
+  rootMiniStream.writeUInt32LE(0, 16);
+  rootMiniStream.writeUInt16LE(0x03f4, 22);
+  rootMiniStream[24] = 3;
+  rootMiniStream[25] = 0;
+  const miniFat = Buffer.alloc(sectorSize, 0xff);
+  miniFat.writeUInt32LE(0xfffffffe, 0);
+  return Buffer.concat([
+    header,
+    directory,
+    fat,
+    ...documentSectors,
+    rootMiniStream,
+    miniFat,
+  ]);
+}
+
 test('custom content service runs create, upload, compile, review, publish and student-view flow', async () => {
   const repository = repositoryFixture();
   const calls = { faq: null, deleted: [], evaluation: null };
@@ -655,6 +730,40 @@ test('OOXML uploads require bounded DOCX/PPTX archive structure', async () => {
     bytes: validDocx, filename: 'lesson.docx', assetRole: 'lecture', requestId: 'docx-valid',
   });
   assert.equal(uploaded.parseStatus, 'completed');
+  const legacy = await service.uploadAsset(owner, course.id, {
+    bytes: minimalPowerPointCfb(), filename: 'legacy.ppt', assetRole: 'lecture', requestId: 'ppt-valid',
+  });
+  assert.equal(legacy.parseStatus, 'completed');
+  const compatibleDifat = minimalPowerPointCfb();
+  compatibleDifat.writeUInt32LE(0xffffffff, 68);
+  compatibleDifat.writeUInt32LE(0xfffffffe, 80);
+  const compatibleLegacy = await service.uploadAsset(owner, course.id, {
+    bytes: compatibleDifat, filename: 'compatible-legacy.ppt', assetRole: 'lecture', requestId: 'ppt-compatible',
+  });
+  assert.equal(compatibleLegacy.parseStatus, 'completed');
+  await assert.rejects(
+    service.uploadAsset(owner, course.id, {
+      bytes: Buffer.concat([Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]), Buffer.alloc(1024)]),
+      filename: 'renamed.ppt', assetRole: 'lecture', requestId: 'ppt-invalid',
+    }),
+    /file-content-mismatch/,
+  );
+  const orphanStreams = minimalPowerPointCfb();
+  orphanStreams.writeUInt32LE(0xffffffff, 512 + 76);
+  await assert.rejects(
+    service.uploadAsset(owner, course.id, {
+      bytes: orphanStreams, filename: 'orphan-streams.ppt', assetRole: 'lecture', requestId: 'ppt-orphan',
+    }),
+    /file-content-mismatch/,
+  );
+  const forgedRecords = minimalPowerPointCfb();
+  forgedRecords.fill(0, 3 * 512, 3 * 512 + 72);
+  await assert.rejects(
+    service.uploadAsset(owner, course.id, {
+      bytes: forgedRecords, filename: 'forged-records.ppt', assetRole: 'lecture', requestId: 'ppt-forged',
+    }),
+    /file-content-mismatch/,
+  );
   await assert.rejects(
     service.uploadAsset(owner, course.id, {
       bytes: storedZip([{ name: 'random.txt', body: 'not OOXML' }]),
@@ -673,7 +782,7 @@ test('OOXML uploads require bounded DOCX/PPTX archive structure', async () => {
     }),
     /file-archive-too-large/,
   );
-  assert.equal(uploads, 1);
+  assert.equal(uploads, 3);
 });
 
 test('failed WeKnora ingestion compensates the already written COS original', async () => {
