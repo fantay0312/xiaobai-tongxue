@@ -8,6 +8,9 @@
  * 全对可跳过备课直接开讲;状态只经 store(completePrep)。
  * 侧栏「备课五步」= 锚点导航:点击平滑滚动到分节,IntersectionObserver 高亮当前在读分节。
  * 右下角常驻备课助教「小砚」(PrepCoach)——只在备课页出现,课堂(/teach)是防作弊红线。
+ *
+ * 2026-08-29 沉浸轮:小白本人坐在页头等你——表情与一句话随摸底/读材料/自检实时变;
+ * 侧栏有备课进度与案头计时;材料翻开几册、连对几题都被看见;小砚(助教)拿到同一份备课情境。
  */
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
@@ -15,14 +18,15 @@ import { useAppStore } from '../../store/appStore';
 import { getTopic, TOPICS } from '../../data';
 // 记忆回执:engine/recall 纯派生(不进 barrel),按路径直连
 import { deriveTopicRecall, type TopicRecall } from '../../engine/recall';
+import type { PrepContext } from '../../engine/coach';
 import { getSelfTest } from '../../data/selfTest';
 import { getFigures } from '../../components/diagrams';
 import { Md } from '../../components/Md';
 import { PrepCoach } from '../../components/coach/PrepCoach';
+import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { Tour, type TourStep } from '../../components/tour/Tour';
 import { Icon } from '../../components/ui/Icon';
-import { RoundStamp } from '../../components/ui/RoundStamp';
-import type { Misconception, PrepReference, QuestionLevel } from '../../types';
+import type { Misconception, PrepReference, QuestionLevel, XiaobaiMood } from '../../types';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { deriveTeachingFlow } from './flow';
 import paper from '../../styles/paper.module.css';
@@ -39,11 +43,11 @@ const LEVEL_META: Record<QuestionLevel, string> = {
 
 /** 壹-伍分节的稳定锚点;侧栏「备课五步」据此导航与 scrollspy 高亮 */
 const SECTIONS = [
-  { id: 'prep-sec-1', name: '摸底快测' },
-  { id: 'prep-sec-2', name: '教学任务卡' },
-  { id: 'prep-sec-3', name: '讲课路线图' },
-  { id: 'prep-sec-4', name: '研读材料包' },
-  { id: 'prep-sec-5', name: '备课自检' },
+  { id: 'prep-sec-1', no: '壹', name: '摸底快测' },
+  { id: 'prep-sec-2', no: '贰', name: '教学任务卡' },
+  { id: 'prep-sec-3', no: '叁', name: '讲课路线图' },
+  { id: 'prep-sec-4', no: '肆', name: '研读材料包' },
+  { id: 'prep-sec-5', no: '伍', name: '备课自检' },
 ] as const;
 
 /** 备课桌引路(称「先生」):只指首访就在场的三处——贰至伍分节要摸完底才摊开,不硬指 */
@@ -61,11 +65,11 @@ const PREP_TOUR: TourStep[] = [
   {
     target: '[data-tour="coach"]',
     title: '备课助教小砚',
-    text: '卡住了就点它。小砚只陪备课、不进课堂,问答也不落进课堂记录,先生放心打草稿。',
+    text: '卡住了就点它。小砚只陪备课、不进课堂,问答也不落进课堂记录;它还能扮小白陪你试讲。',
   },
 ];
 
-/** 延伸书单 kind → 朱文小印用字 */
+/** 延伸书单 kind → 小印用字 */
 const REF_SEAL: Record<PrepReference['kind'], string> = {
   讲义: '义',
   官方文档: '官',
@@ -100,14 +104,21 @@ function relatedToWrong(text: string, wrong: Misconception[]): boolean {
   );
 }
 
-function Collapse({ title, tag, tagTone, defaultOpen, children }: {
+function Collapse({ title, tag, tagTone, defaultOpen, onOpen, children }: {
   title: string;
   tag?: string;
   tagTone?: 'warn' | 'plain';
   defaultOpen: boolean;
+  /** 首次翻开时通知页面(材料翻开几册,进度与小砚都要知道) */
+  onOpen?: (title: string) => void;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const onOpenRef = useRef(onOpen);
+  onOpenRef.current = onOpen;
+  useEffect(() => {
+    if (open) onOpenRef.current?.(title);
+  }, [open, title]);
   return (
     <section className={`${s.collapse} ${open ? s.collapseOn : ''}`}>
       <button
@@ -155,9 +166,6 @@ function RecallCard({ recall }: { recall: TopicRecall }) {
 
   return (
     <aside className={`${s.recall} ${paper.texture}`} aria-label="小白对这门课的记忆">
-      <span className={`${paper.perfNote} ${s.recallTear}`} aria-hidden="true">
-        上次的存根 · 沿此撕开
-      </span>
       <div className={s.recallHead}>
         <span className={s.recallLabel}>接着上次讲</span>
         {whenLabel && <span className={s.recallWhen}>上次温书 · {whenLabel}</span>}
@@ -222,6 +230,52 @@ function RecallCard({ recall }: { recall: TopicRecall }) {
   );
 }
 
+/** 小白在页头的状态:表情 + 一句话,全部从备课进度派生(答题瞬间另有 2.4s 的即时反应) */
+interface PupilState { mood: XiaobaiMood; line: string }
+
+function derivePupil(input: {
+  title: string;
+  started: boolean;
+  quizDone: boolean;
+  allCorrect: boolean;
+  wrongCount: number;
+  materialsVisible: boolean;
+  section: string;
+  allChecked: boolean;
+  checkedCount: number;
+}): PupilState {
+  const { title, started, quizDone, allCorrect, wrongCount, materialsVisible, section, allChecked, checkedCount } = input;
+  if (allChecked) return { mood: 'happy', line: '板凳搬好了,先生请上讲台——我第一个问题已经想好了。' };
+  if (!started) return { mood: 'curious', line: `明日要讲「${title}」,先生且温书。我会带着一个真问题在学堂里等你。` };
+  if (!quizDone) return { mood: 'curious', line: '先生慢慢答,我就在旁边看着——这些说法我有一半也分不清。' };
+  if (allCorrect && !materialsVisible) return { mood: 'happy', line: '先生全对!我等着开讲——不过再翻一翻材料也不亏。' };
+  if (section === '备课自检') {
+    return {
+      mood: checkedCount > 0 ? 'aha' : 'thinking',
+      line: checkedCount > 0 ? '先生点一次头,我就往讲台前挪一步。' : '先生对着清单问问自己,都能点头再上讲台。',
+    };
+  }
+  if (section === '研读材料包') return { mood: 'thinking', line: '先生慢慢读,我在门口候着;讲义里最绕的那段,我课上八成会问。' };
+  if (section === '讲课路线图') return { mood: 'curious', line: '我大概会顺着这条路问下去——先生照着走,别急着赶进度。' };
+  if (section === '教学任务卡') return { mood: 'curious', line: '这张卡上的靶心,先生记牢了,课上我会往它上面撞。' };
+  if (wrongCount > 0) {
+    return { mood: 'confused', line: `有 ${wrongCount} 处我也是这么想的……先生翻翻材料,别让咱俩一起绕进去。` };
+  }
+  return { mood: 'thinking', line: '判断都稳,选择题露了点怯——先生把材料翻一翻,我课上会从那儿问起。' };
+}
+
+/** 答题瞬间的即时反应(2.4s 后回到状态句) */
+const REACT_GOOD: PupilState[] = [
+  { mood: 'happy', line: '先生这题稳。' },
+  { mood: 'aha', line: '哦——原来是这样,我记下了。' },
+  { mood: 'happy', line: '先生一答,我就更放心了。' },
+];
+const REACT_BAD: PupilState[] = [
+  { mood: 'confused', line: '咦,这条我也这么想的……先生要不再看看?' },
+  { mood: 'shy', line: '先生别急,这个坑我课上八成也会掉。' },
+  { mood: 'confused', line: '那……到底是哪儿不对呀?' },
+];
+
 export default function PrepPage() {
   const { topicId = '' } = useParams();
   // 按知识点重挂载:路由参数变化时 React Router 复用同一元素,摸底作答/自检勾选/
@@ -236,6 +290,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
   const usable = !!topic && !topic.locked;
   const completePrep = useAppStore((st) => st.completePrep);
   const prepDone = useAppStore((st) => st.topicStates[topicId]?.prepDone ?? false);
+  const level = useAppStore((st) => st.global.learningLevel);
   // 记忆回执数据源:事件流 / 报告 / 主题状态(备课页原本不订阅,此处按需取,不改 store)
   const events = useAppStore((st) => st.events);
   const reports = useAppStore((st) => st.reports);
@@ -252,6 +307,14 @@ function PrepRoom({ topicId }: { topicId: string }) {
   const [checks, setChecks] = useState<boolean[]>([]);
   /** scrollspy:当前滚入视口阅读带的分节 id */
   const [currentId, setCurrentId] = useState<string>(SECTIONS[0].id);
+  /** 材料包里翻开过的册子(标题去重) */
+  const [opened, setOpened] = useState<string[]>([]);
+  /** 小白的即时反应(答题瞬间),2.4s 后清空 */
+  const [reaction, setReaction] = useState<PupilState | null>(null);
+  /** 连对计数(本轮摸底) */
+  const [streak, setStreak] = useState(0);
+  /** 案头计时:坐下多少分钟 */
+  const [minutesOnDesk, setMinutesOnDesk] = useState(0);
   const submittedRef = useRef(false);
 
   /* 派生态提前算(hooks 必须在提前 return 之前):不可用主题一律给空 */
@@ -266,6 +329,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
   /** 两波都答完才算摸完底;第二波题库为空(如 Python 主题)时与旧行为完全一致 */
   const quizDone = probesDone && mcAnswers.length >= selfTest.length;
   const quizTotal = probes.length + selfTest.length;
+  const quizAnswered = answers.length + mcAnswers.length;
   const correctCount =
     answers.filter((c, i) => c === probes[i]?.probe.isTrue).length +
     mcAnswers.filter((c, i) => c === selfTest[i]?.answerIndex).length;
@@ -320,6 +384,19 @@ function PrepRoom({ topicId }: { topicId: string }) {
     return () => io.disconnect();
   }, [materialsVisible, topicId]);
 
+  /* 小白的即时反应 2.4s 后收回 */
+  useEffect(() => {
+    if (!reaction) return;
+    const id = window.setTimeout(() => setReaction(null), 2400);
+    return () => window.clearTimeout(id);
+  }, [reaction]);
+
+  /* 案头计时(整分钟,页面隐藏时也照走——离开桌子不算) */
+  useEffect(() => {
+    const id = window.setInterval(() => setMinutesOnDesk((m) => m + 1), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   if (!topic || topic.locked) {
     return (
       <div className={s.page}>
@@ -342,6 +419,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
   const exampleDefaultOpen = (i: number) =>
     wrongMcs.length > 0 && (exampleRelated[i] || !anyRelated);
 
+  const checkedCount = checks.filter(Boolean).length;
   const allChecked =
     topic.prep.selfCheck.length > 0 && topic.prep.selfCheck.every((_, i) => checks[i]);
 
@@ -372,6 +450,10 @@ function PrepRoom({ topicId }: { topicId: string }) {
   const references = topic.prep.references ?? [];
   const videoRefs = references.filter((r) => r.kind === '视频');
   const readRefs = references.filter((r) => r.kind !== '视频');
+  /** 材料包册数(与下方 Collapse 渲染一一对应,进度用) */
+  const materialCount =
+    1 + (figures.length > 0 ? 1 : 0) + topic.prep.examples.length + 1 +
+    (videoRefs.length > 0 ? 1 : 0) + (readRefs.length > 0 ? 1 : 0);
 
   /** 侧栏五步的进度态(done/active 与 scrollspy 的"当前在读"叠加,互不打架) */
   const stepStates = [
@@ -385,6 +467,49 @@ function PrepRoom({ topicId }: { topicId: string }) {
     },
     { done: allChecked, active: false, reachable: materialsVisible },
   ];
+  const currentSection = SECTIONS.find((sec) => sec.id === currentId)?.name ?? SECTIONS[0].name;
+
+  /** 备课进度:摸底 40 · 翻材料 20 · 自检 40;全对可直接开讲时直接记满 */
+  const readPart = materialsVisible ? Math.min(1, opened.length / Math.max(1, materialCount)) : 0;
+  const checkPart = topic.prep.selfCheck.length > 0 ? checkedCount / topic.prep.selfCheck.length : 0;
+  const progress = allCorrect && !materialsVisible
+    ? 100
+    : Math.round((quizTotal > 0 ? quizAnswered / quizTotal : 1) * 40 + readPart * 20 + checkPart * 40);
+  const stepsLeft = stepStates.filter((st) => !st.done).length;
+  const canEnter = allChecked || (allCorrect && !materialsVisible);
+
+  /** 小白此刻的表情与一句话 */
+  const pupil: PupilState = reaction ?? derivePupil({
+    title: topic.title,
+    started: quizAnswered > 0,
+    quizDone,
+    allCorrect,
+    wrongCount: wrongMcs.length,
+    materialsVisible,
+    section: currentSection,
+    allChecked,
+    checkedCount,
+  });
+
+  /** 交给小砚的备课情境(全部是页面本来就展示的信息) */
+  const coachCtx: PrepContext = {
+    quiz: { answered: quizAnswered, total: quizTotal, correct: correctCount, done: quizDone },
+    weakBeliefs: wrongMcs.map((mc) => mc.belief),
+    weakDims: wrongSelfTests.map((q) => ({
+      dimension: q.dimension,
+      point: topic.checklist.find((c) => c.id === q.checklistRef)?.point ?? '这个角度',
+    })),
+    section: currentSection,
+    materialsOpen: materialsVisible,
+    selfCheck: { done: checkedCount, total: topic.prep.selfCheck.length },
+    openedMaterials: opened,
+  };
+
+  const react = (good: boolean) => {
+    const pool = good ? REACT_GOOD : REACT_BAD;
+    setReaction(pool[Math.floor(Math.random() * pool.length)]);
+    setStreak((n) => (good ? n + 1 : 0));
+  };
 
   const answer = (choice: boolean) => {
     if (answers.length >= probes.length) return;
@@ -394,6 +519,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
       `${good ? `答对了——这句话是${mc.probe.isTrue ? '对' : '错'}的。` : '答错了——这正是一个高频误区。'}${mc.probe.explanation}`,
     );
     setAnswers((a) => (a.length >= probes.length ? a : [...a, choice]));
+    react(good);
   };
 
   const answerMc = (choice: number) => {
@@ -404,6 +530,11 @@ function PrepRoom({ topicId }: { topicId: string }) {
       `${good ? '答对了。' : `答错了——该选「${q.options[q.answerIndex]}」。`}${q.explanation}`,
     );
     setMcAnswers((a) => (a.length >= selfTest.length ? a : [...a, choice]));
+    react(good);
+  };
+
+  const markOpened = (title: string) => {
+    setOpened((list) => (list.includes(title) ? list : [...list, title]));
   };
 
   /** 锚点滚动:reduced-motion 直接跳,不做平滑 */
@@ -420,6 +551,8 @@ function PrepRoom({ topicId }: { topicId: string }) {
     setMcAnswers([]);
     setLiveMsg('');
     setWantMaterials(false);
+    setStreak(0);
+    setReaction(null);
     jumpTo(SECTIONS[0].id);
   };
 
@@ -436,23 +569,26 @@ function PrepRoom({ topicId }: { topicId: string }) {
       <header className={s.head}>
         <Link to="/study" className={s.back}><Icon name="arrow-left" size={15} />回书斋</Link>
         <div className={s.headGrid}>
-          <div>
-            <p className={`${paper.typeLabel} ${s.course}`}>第一章 · 入书房温书 · {topic.course}</p>
+          <div className={s.headText}>
+            <p className={s.course}>{topic.course}</p>
             <h1 className={s.title}>{topic.title}</h1>
             <p className={s.tagline}>{topic.tagline}</p>
           </div>
-          <aside className={s.prepNote} aria-label="小白的课前问笺">
-            <span className={s.prepNoteIcon} aria-hidden="true"><Icon name="mail" size={20} /></span>
-            <div>
-              <p className={s.prepNoteLabel}>小白的课前问笺</p>
-              <p className={s.prepNoteText}>明日要讲「{topic.title}」，先生且温书。我会带着一个真问题在学堂里等你。</p>
+          {/* 小白本人坐在页头等你:表情与一句话随备课进度实时变 */}
+          <aside className={s.pupil} aria-label="小白在旁候教">
+            <p
+              key={pupil.line}
+              className={`${s.pupilBubble} ${reaction ? s.pupilBubbleReact : ''}`}
+              aria-live="polite"
+            >
+              {pupil.line}
+            </p>
+            <div className={s.pupilFigure}>
+              <XiaobaiAvatar mood={pupil.mood} level={level} variant="paper" size={132} />
+              <span className={s.pupilName}>小白 · 候教中</span>
             </div>
-            {/* 小白的私章:信笺角落钤一枚白文小印(印章形制,走 --seal-red 别名) */}
-            <span className={s.prepNoteSeal} aria-hidden="true">白</span>
           </aside>
         </div>
-        {/* 全页唯一慢转邮戳:钤在问笺一角的邮驿戳(装饰性,RoundStamp 自带 aria-hidden) */}
-        <RoundStamp className={s.headStamp} text="备课台 · 教然后知困 · " size={74} dur={54} />
       </header>
 
       <div className={s.layout}>
@@ -467,18 +603,18 @@ function PrepRoom({ topicId }: { topicId: string }) {
             style={{ animationDelay: '80ms' }}
           >
             <div className={s.secHead}>
-              <span className={`${paper.typeLabel} ${s.secEyebrow}`}>备课台 · NO.01</span>
               <h2 className={s.sectionTitle}>
-                <span className={s.sectionNum}>壹</span>摸底快测
+                <span className={s.sectionNum}>{SECTIONS[0].no}</span>摸底快测
               </h2>
+              {!quizDone && (
+                <span className={s.quizCount}>
+                  已答 {quizAnswered} / {quizTotal}
+                  {streak >= 2 && <em className={s.streak}>连对 {streak}</em>}
+                </span>
+              )}
             </div>
             <p className={s.sectionHint}>
               开讲之前,先看看你现在站在哪。判断下面的说法对不对:
-              {!quizDone && (
-                <span className={s.quizCount}>
-                  已答 {answers.length + mcAnswers.length} / {quizTotal}
-                </span>
-              )}
             </p>
             {/* 常驻 live region:读屏用户答题后在此听到判分(节点须先于反馈存在,否则首条丢播) */}
             <p className={s.srOnly} aria-live="polite">{liveMsg}</p>
@@ -493,6 +629,11 @@ function PrepRoom({ topicId }: { topicId: string }) {
                     key={mc.mcId}
                     className={`${s.probe} ${answered ? (good ? s.probeGood : s.probeBad) : ''}`}
                   >
+                    {answered && (
+                      <span className={`${s.probeMark} ${good ? s.probeMarkGood : s.probeMarkBad}`} aria-hidden="true">
+                        {good ? '对' : '错'}
+                      </span>
+                    )}
                     <p className={s.probeNo}>第 {i + 1} / {probes.length} 题</p>
                     <p className={s.probeStatement}>「{mc.probe.statement}」</p>
                     {/* 答后按钮禁用而不卸载:卸载会把键盘焦点甩回 body,读屏用户直接迷航 */}
@@ -546,6 +687,11 @@ function PrepRoom({ topicId }: { topicId: string }) {
                         key={q.id}
                         className={`${s.probe} ${answered ? (good ? s.probeGood : s.probeBad) : ''}`}
                       >
+                        {answered && (
+                          <span className={`${s.probeMark} ${good ? s.probeMarkGood : s.probeMarkBad}`} aria-hidden="true">
+                            {good ? '对' : '错'}
+                          </span>
+                        )}
                         <p className={s.probeNo}>第 {i + 1} / {selfTest.length} 题</p>
                         <p className={s.probeStatement}>{q.question}</p>
                         {q.code ? (
@@ -633,14 +779,13 @@ function PrepRoom({ topicId }: { topicId: string }) {
               {/* ── 贰 · 教学任务卡 ── */}
               <section id={SECTIONS[1].id} className={s.section}>
                 <div className={s.secHead}>
-                  <span className={`${paper.typeLabel} ${s.secEyebrow}`}>备课台 · NO.02</span>
                   <h2 className={s.sectionTitle}>
-                    <span className={s.sectionNum}>贰</span>教学任务卡
+                    <span className={s.sectionNum}>{SECTIONS[1].no}</span>教学任务卡
                   </h2>
                 </div>
                 <div className={s.taskCard}>
                   <span className={s.taskPin} aria-hidden="true" />
-                  <span className={s.taskLabel}><Icon name="clipboard" size={16} />教 学 任 务</span>
+                  <span className={s.taskLabel}><Icon name="clipboard" size={16} />教学任务</span>
                   <p className={s.taskText}>{topic.prep.taskCard.replace(/^[📋🧾]\s*/u, '')}</p>
                 </div>
               </section>
@@ -648,9 +793,8 @@ function PrepRoom({ topicId }: { topicId: string }) {
               {/* ── 叁 · 讲课路线图 ── */}
               <section id={SECTIONS[2].id} className={`${s.section} ${s.bandWarm}`}>
                 <div className={s.secHead}>
-                  <span className={`${paper.typeLabel} ${s.secEyebrow}`}>备课台 · NO.03</span>
                   <h2 className={s.sectionTitle}>
-                    <span className={s.sectionNum}>叁</span>讲课路线图
+                    <span className={s.sectionNum}>{SECTIONS[2].no}</span>讲课路线图
                   </h2>
                 </div>
                 <p className={s.sectionHint}>
@@ -688,7 +832,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                           </span>
                           <p className={s.roadAmbushText}>
                             途中它还会用错误直觉试探你 ×{topic.misconceptions.length}
-                            ——剧本在下面的「误区剧本」里。
+                            ——剧本在下面的「误区剧本」里,也可以叫小砚扮小白先练一遍。
                           </p>
                         </li>
                       )}
@@ -700,11 +844,12 @@ function PrepRoom({ topicId }: { topicId: string }) {
               {/* ── 肆 · 材料包 ── */}
               <section id={SECTIONS[3].id} className={s.section}>
                 <div className={s.secHead}>
-                  <span className={`${paper.typeLabel} ${s.secEyebrow}`}>备课台 · NO.04</span>
                   <h2 className={s.sectionTitle}>
-                    <span className={s.sectionNum}>肆</span>研读材料包
-                    <span className={s.readTime}>全读约 {readMinutes} 分钟</span>
+                    <span className={s.sectionNum}>{SECTIONS[3].no}</span>研读材料包
                   </h2>
+                  <span className={s.readTime}>
+                    全读约 {readMinutes} 分钟 · 已翻 {Math.min(opened.length, materialCount)}/{materialCount} 册
+                  </span>
                 </div>
                 <p className={s.sectionHint}>
                   {wrongMcs.length > 0
@@ -719,6 +864,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                     tag="微课讲义"
                     tagTone="plain"
                     defaultOpen
+                    onOpen={markOpened}
                   >
                     <Md text={topic.prep.microLecture.body} className={s.md} />
                   </Collapse>
@@ -728,6 +874,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                       tag="图解"
                       tagTone="plain"
                       defaultOpen={wrongMcs.length > 0}
+                      onOpen={markOpened}
                     >
                       {figures.map((fig) => (
                         <figure key={fig.title} className={s.figItem}>
@@ -748,6 +895,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                       tag={wrongMcs.length > 0 && exampleRelated[i] ? '与错题相关' : undefined}
                       tagTone="warn"
                       defaultOpen={exampleDefaultOpen(i)}
+                      onOpen={markOpened}
                     >
                       <pre className={s.code}><code>{ex.code}</code></pre>
                       <p className={s.walkthrough}>{ex.walkthrough}</p>
@@ -758,9 +906,10 @@ function PrepRoom({ topicId }: { topicId: string }) {
                     tag="误区剧本"
                     tagTone="warn"
                     defaultOpen={wrongMcs.length > 0}
+                    onOpen={markOpened}
                   >
                     <p className={s.drillLead}>
-                      纠不动它,它就真的学错——复盘时会现形。
+                      纠不动它,它就真的学错——复盘时会现形。想真刀真枪练,右下角小砚的「试讲」能扮它。
                     </p>
                     <ul className={s.drillList}>
                       {topic.misconceptions.map((mc) => {
@@ -797,6 +946,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                       tag={`选看 · ${videoRefs.length} 部`}
                       tagTone="plain"
                       defaultOpen={wrongMcs.length > 0}
+                      onOpen={markOpened}
                     >
                       <p className={s.refLead}>
                         读不进去的时候换只耳朵——挑一部当预习就够,别当追剧。
@@ -828,7 +978,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                     </Collapse>
                   )}
                   {readRefs.length > 0 && (
-                    <Collapse title="延伸书单" tag="选读" tagTone="plain" defaultOpen={false}>
+                    <Collapse title="延伸书单" tag="选读" tagTone="plain" defaultOpen={false} onOpen={markOpened}>
                       <p className={s.refLead}>课上用不到,课后想深挖再看——先把课讲完。</p>
                       <ul className={s.refList}>
                         {readRefs.map((ref) => (
@@ -862,10 +1012,10 @@ function PrepRoom({ topicId }: { topicId: string }) {
               {/* ── 伍 · 自检清单 ── */}
               <section id={SECTIONS[4].id} className={`${s.section} ${s.bandShade}`}>
                 <div className={s.secHead}>
-                  <span className={`${paper.typeLabel} ${s.secEyebrow}`}>备课台 · NO.05</span>
                   <h2 className={s.sectionTitle}>
-                    <span className={s.sectionNum}>伍</span>备课自检
+                    <span className={s.sectionNum}>{SECTIONS[4].no}</span>备课自检
                   </h2>
+                  <span className={s.quizCount}>已点头 {checkedCount} / {topic.prep.selfCheck.length}</span>
                 </div>
                 <p className={s.sectionHint}>对着清单问自己,都能点头再上讲台。</p>
                 <ul className={s.checkList}>
@@ -895,14 +1045,16 @@ function PrepRoom({ topicId }: { topicId: string }) {
                 <div className={s.unlockRow}>
                   <button
                     type="button"
-                    className={s.primaryBtn}
+                    className={`${s.primaryBtn} ${allChecked ? s.primaryBtnReady : ''}`}
                     disabled={!allChecked}
                     onClick={enterClassroom}
                   >
                     备课完成,拍惊堂木 <Icon name="arrow-right" size={17} />
                   </button>
-                  {!allChecked && (
+                  {!allChecked ? (
                     <p className={s.lockHint}>把自检清单全部勾完,讲解舱才会解锁。</p>
+                  ) : (
+                    <p className={s.unlockHint}>小白已经坐好了,案头 {minutesOnDesk} 分钟没白费。</p>
                   )}
                 </div>
               </section>
@@ -912,6 +1064,27 @@ function PrepRoom({ topicId }: { topicId: string }) {
 
         {/* ── 眉批侧注 ── */}
         <aside className={s.aside}>
+          {/* 备课进度:一条细线 + 还差几步 + 案头计时 */}
+          <div className={s.progressCard} aria-label="备课进度">
+            <div className={s.progressHead}>
+              <span className={s.asideTitle}>备课进度</span>
+              <span className={s.progressPct}>{progress}%</span>
+            </div>
+            <div className={s.progressTrack} aria-hidden="true">
+              <span className={s.progressFill} style={{ transform: `scaleX(${Math.max(0.02, progress / 100)})` }} />
+            </div>
+            <p className={s.progressNote}>
+              {canEnter
+                ? '可以开讲了'
+                : stepsLeft > 0
+                  ? `还差 ${stepsLeft} 步开讲`
+                  : '快了'}
+              <span className={s.progressDesk}>
+                {' · '}
+                {minutesOnDesk === 0 ? '刚坐下' : `案头 ${minutesOnDesk} 分钟`}
+              </span>
+            </p>
+          </div>
           <nav aria-label="备课五步" data-tour="prep-steps">
             <h3 className={s.asideTitle}>备课五步</h3>
             <ol className={s.stepList}>
@@ -993,7 +1166,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
         </aside>
       </div>
 
-      <PrepCoach topic={topic} />
+      <PrepCoach topic={topic} ctx={coachCtx} />
 
       {/* ── 新手引路(首访自动开一次) ── */}
       <Tour tourKey="prep" steps={PREP_TOUR} />

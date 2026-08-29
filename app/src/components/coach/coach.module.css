@@ -1,4 +1,5 @@
-/* 小砚 · 备课助教：吸顶导航 z-index:40，桌宠与答疑面板让位于导航和设置抽屉 */
+/* 小砚 · 备课助教:吸顶导航 z-index:40,桌宠与答疑面板让位于导航和设置抽屉。
+   面板走全站行式极简制式:一张纸,细线分层,不描重框;三种用法(答疑/试讲/草稿)顶部切换。 */
 .root {
   position: fixed;
   right: max(clamp(0.45rem, 1.6vw, 1rem), env(safe-area-inset-right));
@@ -28,8 +29,8 @@
   position: absolute;
   right: calc(100% + 0.7rem);
   bottom: 0.65rem;
-  width: min(23.5rem, calc(100vw - 2rem));
-  max-height: min(34rem, calc(100dvh - 5rem));
+  width: min(26rem, calc(100vw - 2rem));
+  max-height: min(38rem, calc(100dvh - 5rem));
   display: flex;
   flex-direction: column;
   background: var(--paper);
@@ -46,21 +47,30 @@
   gap: var(--gap-hair);
   padding: 0.7rem var(--gap-tight) 0.55rem;
   border-bottom: 1px solid var(--paper-edge);
-  background: var(--paper-warm);
+}
+.panelTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  min-width: 0;
 }
 .panelName {
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: var(--fs-sub);
   color: var(--ink);
   letter-spacing: 0.04em;
 }
-/* 连线状态 → 打字机小签(锐角票据签) */
+.panelRole {
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+}
+/* 连线状态:细字小签 */
 .chipLive,
 .chipOffline {
   margin-left: auto;
-  font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
-  text-transform: uppercase;
   border: 1px solid currentColor;
   border-radius: var(--radius-tag);
   padding: 1px 8px;
@@ -85,7 +95,6 @@
   cursor: pointer;
   transition: color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
 }
-
 .closeBtn::after {
   content: '';
   position: absolute;
@@ -93,18 +102,63 @@
 }
 .closeBtn:hover { color: var(--ink); background: var(--ink-wash); }
 
+/* 案头便签:知识点名 + 小砚此刻知道的备课情况 */
 .panelTopic {
   flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.6rem;
   padding: 0.45rem var(--gap-tight);
   font-size: var(--fs-tiny);
   color: var(--ink-soft);
-  border-bottom: 1px dashed var(--paper-edge);
   letter-spacing: 0.03em;
+  background: var(--paper-shade);
+}
+.panelTopicName {
+  font-family: var(--font-display);
+  color: var(--ink);
+  font-size: var(--fs-small);
+}
+.panelCtx { color: var(--ink-soft); }
+
+/* 三种用法:行式页签,下划线指示 */
+.modes {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.15rem;
+  padding: 0 var(--gap-tight);
+  border-bottom: 1px solid var(--paper-edge);
+}
+.modeBtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: none;
+  border: none;
+  padding: 0.55rem 0.55rem 0.5rem;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-faint);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+}
+.modeBtn:hover { color: var(--ink); }
+.modeOn { color: var(--ink); border-bottom-color: var(--ink); }
+.modeDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--azure);
 }
 
 .msgList {
   flex: 1;
-  min-height: 9rem;
+  min-height: 10rem;
   overflow-y: auto;
   padding: var(--gap-tight);
   display: flex;
@@ -113,7 +167,7 @@
   overscroll-behavior: contain;
 }
 .msg {
-  max-width: 88%;
+  max-width: 90%;
   padding: 0.5rem 0.75rem;
   border-radius: var(--radius-s);
   font-size: var(--fs-small);
@@ -124,7 +178,7 @@
 .msgCoach {
   align-self: flex-start;
   background: var(--paper-warm);
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--paper-edge);
   color: var(--ink);
 }
 .msgTeacher {
@@ -132,6 +186,59 @@
   background: var(--azure-wash);
   border: 1px solid color-mix(in oklab, var(--azure) 22%, transparent);
   color: var(--ink);
+}
+/* 试讲里的小白:楷体引文,朱砂左沿——它在用错误直觉试探你 */
+.msgXiaobai {
+  align-self: flex-start;
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-left: 3px solid var(--cinnabar);
+  color: var(--ink);
+  font-family: var(--font-display);
+}
+.msgGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  max-width: 100%;
+}
+.msgGroup .msg { max-width: 92%; }
+.msgWho {
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  letter-spacing: 0.12em;
+  padding-left: 0.2rem;
+}
+.msgWhoXiaobai { color: var(--cinnabar); }
+/* 记进草稿:小砚每条回复下的细字动作 */
+.keepBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: none;
+  border: none;
+  padding: 0.1rem 0.2rem;
+  color: var(--ink-faint);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: color var(--t-fast) var(--ease-out);
+}
+.keepBtn:hover { color: var(--azure); }
+.savedNote {
+  position: absolute;
+  left: 50%;
+  bottom: 4.6rem;
+  transform: translateX(-50%);
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: var(--inkstone);
+  color: var(--moon-on-ink);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.08em;
+  animation: global(rise) var(--t-fast) var(--ease-out) backwards;
+  pointer-events: none;
 }
 
 /* 思考中:三点研墨 + 状态轮播字(小砚在干活,不让用户干等) */
@@ -181,7 +288,7 @@
   white-space: nowrap;
 }
 
-/* 快捷问 */
+/* 快捷问 / 追问小签 / 试讲误区签 */
 .chips {
   flex: 0 0 auto;
   display: flex;
@@ -190,6 +297,9 @@
   padding: 0 var(--gap-tight) var(--gap-hair);
 }
 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   background: none;
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius-tag);
@@ -198,10 +308,102 @@
   font-family: var(--font-display);
   padding: 0.4rem 0.75rem;
   cursor: pointer;
-  transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+  text-align: left;
+  transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out);
 }
 .chip:hover:enabled { color: var(--azure); border-color: var(--azure); }
 .chip:disabled { opacity: 0.55; cursor: default; }
+.chipFollow { border-style: dashed; }
+.chipOn,
+.chipOn:hover:enabled {
+  color: var(--ink);
+  border-color: var(--ink);
+  background: var(--ink-wash);
+}
+.chipWarn { border-color: color-mix(in oklab, var(--cinnabar) 45%, transparent); }
+.chipMark {
+  font-size: 0.65rem;
+  color: var(--cinnabar);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-tag);
+  padding: 0 0.25rem;
+  letter-spacing: 0.06em;
+}
+
+/* 试讲栏 */
+.rehearseBar {
+  flex: 0 0 auto;
+  border-top: 1px dashed var(--paper-edge);
+  padding-top: var(--gap-hair);
+}
+.rehearseNote {
+  padding: 0 var(--gap-tight) var(--gap-hair);
+  font-size: var(--fs-tiny);
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+
+/* 草稿本 */
+.draftPad {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-hair);
+  padding: var(--gap-tight);
+}
+.draftLead {
+  font-size: var(--fs-tiny);
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+.draftArea {
+  flex: 1;
+  min-height: 12rem;
+  resize: none;
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 calc(1.85em - 1px), var(--paper-edge) calc(1.85em - 1px) 1.85em)
+    0 0.55rem / 100% 1.85em,
+    var(--paper);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  line-height: 1.85;
+  padding: 0.55rem 0.75rem;
+}
+.draftArea:focus {
+  border-color: var(--azure);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--azure-wash);
+}
+.draftArea::placeholder { color: var(--ink-faint); }
+.draftBar {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-hair);
+}
+.draftCount {
+  margin-right: auto;
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+  letter-spacing: 0.06em;
+}
+.ghostBtn {
+  background: none;
+  border: 1px solid var(--paper-edge);
+  border-radius: var(--radius-s);
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  padding: 0.42rem 0.8rem;
+  cursor: pointer;
+  transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+}
+.ghostBtn:hover:enabled { color: var(--ink); border-color: var(--ink-soft); }
+.ghostBtn:disabled { opacity: 0.5; cursor: default; }
 
 /* 输入行 */
 .inputRow {
@@ -232,7 +434,9 @@
   box-shadow: 0 0 0 3px var(--azure-wash);
 }
 .input::placeholder { color: var(--ink-faint); }
-.input[aria-disabled='true'] { background: var(--paper-warm); cursor: wait; }
+.input[aria-disabled='true'],
+.input:read-only { background: var(--paper-warm); }
+.input[aria-disabled='true'] { cursor: wait; }
 .sendBtn {
   flex: 0 0 auto;
   background: var(--azure);
@@ -256,6 +460,7 @@
     max-height: calc(100dvh - 12rem - env(safe-area-inset-bottom));
   }
   .msgList { min-height: 0; }
+  .draftArea { min-height: 8rem; }
 }
 
 @media (max-width: 560px) {
@@ -285,6 +490,6 @@
 @media (prefers-reduced-motion: reduce) {
   .thinkDots i,
   .thinkText { animation: none; }
-  .panel, .hint { animation: none; }
-  .sendBtn, .chip, .closeBtn { transition: none; }
+  .panel, .hint, .savedNote { animation: none; }
+  .sendBtn, .chip, .closeBtn, .modeBtn, .keepBtn, .ghostBtn { transition: none; }
 }

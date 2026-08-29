@@ -257,15 +257,16 @@ export function CoachMarkdownMessage({ text, animate, onTick, onDone }: {
     if (!animate) { setVisibleLength(text.length); return; }
     setVisibleLength(0);
     let nextLength = 0;
+    // 每拍落 3 字(≈125 字/秒):看得出在写,但一条 300 字的回复 3 秒内落完,不让老师干等
     const timer = window.setInterval(() => {
-      nextLength += 1;
+      nextLength = Math.min(text.length, nextLength + 3);
       setVisibleLength(nextLength);
       callbacks.current.onTick?.();
       if (nextLength >= text.length) {
         window.clearInterval(timer);
         callbacks.current.onDone?.();
       }
-    }, 26);
+    }, 24);
     return () => window.clearInterval(timer);
   }, [animate, text]);
   const typing = animate && visibleLength < text.length;

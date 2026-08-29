@@ -11,7 +11,6 @@ import { createPortal } from 'react-dom';
 import { Link, NavLink, useLocation } from 'react-router';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { Seal } from './Seal';
-import { StoryTrail } from '../story/StoryTrail';
 import { Icon } from '../ui/Icon';
 import { AmbiencePlayer, AtmosphereToggles } from './Atmosphere';
 import { TechBarfield } from './TechBarfield';
@@ -411,7 +410,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      {!landingMode && <StoryTrail key={pathname} pathname={pathname} board={boardMode} />}
 
       <main className={styles.main}>{children}</main>
 
