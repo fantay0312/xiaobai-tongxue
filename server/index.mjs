@@ -291,8 +291,11 @@ const WK_EMBEDDING_MODEL_ID = process.env.WK_EMBEDDING_MODEL_ID ?? '';
 const WK_SUMMARY_MODEL_ID = process.env.WK_SUMMARY_MODEL_ID ?? '';
 const WK_CONFIGURED = Boolean(WK_BASE_URL || WK_API_KEY || WK_EMBEDDING_MODEL_ID || WK_SUMMARY_MODEL_ID);
 let customContentService = null;
+let customMaintenanceRunning = false;
+let customCleanupTimer = null;
 if (WK_CONFIGURED) {
   const maxFileMb = Number(process.env.WK_MAX_FILE_MB ?? 80);
+  const maxFileBytes = maxFileMb * 1024 * 1024;
   if (
     !productionStorage
     || !WK_BASE_URL
@@ -302,8 +305,10 @@ if (WK_CONFIGURED) {
     || !Number.isInteger(maxFileMb)
     || maxFileMb < 1
     || maxFileMb > 80
+    || !Number.isSafeInteger(productionStorage?.cos?.maxObjectBytes)
+    || productionStorage?.cos?.maxObjectBytes < maxFileBytes
   ) {
-    console.error('[fatal] WeKnora 自定义课程配置不完整或 WK_MAX_FILE_MB 超出 1–80');
+    console.error('[fatal] WeKnora 自定义课程配置不完整、文件上限无效或超过 COS_MAX_OBJECT_BYTES');
     process.exit(2);
   }
   try {
@@ -323,28 +328,36 @@ if (WK_CONFIGURED) {
       compiler,
       embeddingModelId: WK_EMBEDDING_MODEL_ID,
       summaryModelId: WK_SUMMARY_MODEL_ID,
-      maxFileBytes: maxFileMb * 1024 * 1024,
+      maxFileBytes,
     });
-    await Promise.all([
-      customContentService.reconcileUploadIntents(),
-      customContentService.reconcileCourseCreationIntents(),
-    ]);
-    await customContentService.resumePendingJobs();
-    const customCleanupTimer = setInterval(() => {
-      void Promise.all([
-        customContentService.reconcileUploadIntents(),
-        customContentService.reconcileCourseCreationIntents(),
-      ]).catch((error) => {
-        console.error('[custom-content] cleanup sweep failed:', safeDiagnosticMessage(error?.message));
-      });
-    }, 15 * 60_000);
-    customCleanupTimer.unref?.();
   } catch (error) {
     console.error('[fatal] WeKnora 自定义课程初始化失败:', safeDiagnosticMessage(error?.message));
     process.exit(2);
   }
 } else {
   console.warn('[warn] WeKnora 未配置,自定义课程上传功能关闭');
+}
+
+async function runCustomContentMaintenance() {
+  if (!customContentService || customMaintenanceRunning) return;
+  customMaintenanceRunning = true;
+  try {
+    const operations = await Promise.allSettled([
+      customContentService.reconcileUploadIntents(),
+      customContentService.reconcileCourseCreationIntents(),
+      customContentService.resumePendingJobs(),
+    ]);
+    for (const result of operations) {
+      if (result.status === 'rejected') {
+        console.error(
+          '[custom-content] background maintenance failed:',
+          safeDiagnosticMessage(result.reason instanceof Error ? result.reason.message : 'maintenance-failed'),
+        );
+      }
+    }
+  } finally {
+    customMaintenanceRunning = false;
+  }
 }
 
 // ───────────────────────── 注册用户(落盘持久化) ─────────────────────────
@@ -2831,6 +2844,11 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, '127.0.0.1', () => {
   const registration = registrationAvailable() ? `开放(已注册 ${regUsers.length})` : '关闭';
   console.log(`小白同学网关已启动: http://127.0.0.1:${PORT} (dist: ${DIST}, model: ${MODEL}, coach: ${MODEL_COACH}, vision: ${VISION_KEY ? MODEL_VISION : '关闭'}, asr: ${ASR_KEY ? ASR_MODEL : '关闭'}, 腾讯验证码: ${captchaService.available ? '开启' : '关闭'}, 邮箱验证: ${emailAuth ? '开启' : '关闭'}, 手机验证: ${phoneAuth ? '开启' : '关闭'}, 注册: ${registration})`);
+  if (customContentService && !customCleanupTimer) {
+    void runCustomContentMaintenance();
+    customCleanupTimer = setInterval(() => { void runCustomContentMaintenance(); }, 15 * 60_000);
+    customCleanupTimer.unref?.();
+  }
 });
 
 let shuttingDown = false;
@@ -2838,6 +2856,7 @@ async function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`[shutdown] ${signal}`);
+  if (customCleanupTimer) clearInterval(customCleanupTimer);
   const deadline = setTimeout(() => process.exit(1), 15_000);
   deadline.unref();
   await new Promise((resolve) => server.close(resolve));

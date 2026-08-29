@@ -899,6 +899,24 @@ export function createCustomContentService({
     queueMicrotask(pumpCompileQueue);
   }
 
+  async function reconcileClaimedIntents(intents, reconcile, concurrency = 4) {
+    let cursor = 0;
+    let cleaned = 0;
+    const workerCount = Math.min(concurrency, intents.length);
+    await Promise.all(Array.from({ length: workerCount }, async () => {
+      while (cursor < intents.length) {
+        const index = cursor;
+        cursor += 1;
+        try {
+          if (await reconcile(intents[index])) cleaned += 1;
+        } catch {
+          logger.error?.('[custom-content] stale intent reconciliation worker failed');
+        }
+      }
+    }));
+    return { scanned: intents.length, cleaned };
+  }
+
   async function jobWithTopic(owner, job) {
     if (!job) return null;
     if ((job.status === 'queued' || job.status === 'running') && !runningJobs.has(job.id)) scheduleJob(job.id);
@@ -1206,16 +1224,12 @@ export function createCustomContentService({
 
     async reconcileUploadIntents() {
       const intents = await repository.assets.claimStaleUploadIntents();
-      let cleaned = 0;
-      for (const intent of intents) if (await reconcileUploadIntent(intent)) cleaned += 1;
-      return { scanned: intents.length, cleaned };
+      return reconcileClaimedIntents(intents, reconcileUploadIntent);
     },
 
     async reconcileCourseCreationIntents() {
       const intents = await repository.courses.claimStaleCreationIntents();
-      let cleaned = 0;
-      for (const intent of intents) if (await reconcileCourseCreationIntent(intent)) cleaned += 1;
-      return { scanned: intents.length, cleaned };
+      return reconcileClaimedIntents(intents, reconcileCourseCreationIntent);
     },
 
     async findSourceCandidates(owner, id, input, requestId) {

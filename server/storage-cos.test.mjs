@@ -49,6 +49,7 @@ test('COS store creates random private SSE keys scoped to the user UUID', async 
     region: 'ap-guangzhou',
     randomBytes: () => Buffer.alloc(16, 0xab),
   });
+  assert.equal(store.maxObjectBytes, 80 * 1024 * 1024);
   const uploaded = await store.uploadTranscript({
     userId: USER_ID,
     body: Buffer.from('pdf-data'),
@@ -96,6 +97,13 @@ test('COS store creates random private SSE keys scoped to the user UUID', async 
 
 test('COS configuration and bodies fail closed', async () => {
   assert.throws(() => createPrivateCosStoreFromEnv({}), /COS_SECRET_ID/);
+  const defaultStore = createPrivateCosStoreFromEnv({
+    COS_SECRET_ID: 'id',
+    COS_SECRET_KEY: 'key',
+    COS_BUCKET: 'xiaobai-1250000000',
+    COS_REGION: 'ap-guangzhou',
+  }, { cos: new FakeCos() });
+  assert.equal(defaultStore.maxObjectBytes, 80 * 1024 * 1024);
   const store = createPrivateCosStore({
     cos: new FakeCos(),
     bucket: 'xiaobai-1250000000',

@@ -819,6 +819,40 @@ test('failed WeKnora ingestion compensates the already written COS original', as
   assert.equal((await repository.assets.listOwned(owner.id, course.id)).length, 0);
 });
 
+test('stale upload reconciliation is bounded to four concurrent upstream deletions', async () => {
+  const repository = repositoryFixture();
+  const intents = Array.from({ length: 12 }, (_, index) => ({
+    id: `intent-${index}`,
+    ownerId: IDS[index % IDS.length],
+    cosKey: `cos-key-${index}`,
+    wkKnowledgeId: `knowledge-${index}`,
+    wkDocKbId: 'document-kb',
+  }));
+  repository.assets.claimStaleUploadIntents = async () => intents;
+  repository.assets.removeUploadIntent = async () => true;
+  let active = 0;
+  let maximum = 0;
+  const service = createCustomContentService({
+    repository,
+    cos: cosFixture(),
+    weknora: {
+      async createKnowledgeBase() {},
+      async uploadFile() {},
+      async findKnowledgeByMetadata() { return null; },
+      async deleteKnowledge() {
+        active += 1;
+        maximum = Math.max(maximum, active);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        active -= 1;
+      },
+    },
+    compiler: { async compile() {} },
+    embeddingModelId: 'embedding-model',
+  });
+  assert.deepEqual(await service.reconcileUploadIntents(), { scanned: 12, cleaned: 12 });
+  assert.equal(maximum, 4);
+});
+
 test('asset deletion resumes idempotently from a persisted deleting state', async () => {
   const repository = repositoryFixture();
   const cos = cosFixture();

@@ -68,7 +68,7 @@ export function createPrivateCosStore({
   region,
   prefix = 'xiaobai',
   randomBytes = crypto.randomBytes,
-  maxObjectBytes = 50 * 1024 * 1024,
+  maxObjectBytes = 80 * 1024 * 1024,
 } = {}) {
   if (!cos?.putObject || !cos?.getObject || !cos?.deleteObject) {
     throw new Error('cos-client-required');
@@ -117,6 +117,7 @@ export function createPrivateCosStore({
   }
 
   return Object.freeze({
+    maxObjectBytes: maximumBytes,
     uploadTranscript(input) {
       return upload('transcript', input);
     },
@@ -215,7 +216,7 @@ export function createPrivateCosStoreFromEnv(env = process.env, options = {}) {
     randomBytes: options.randomBytes,
     maxObjectBytes: positiveInteger(
       env.COS_MAX_OBJECT_BYTES,
-      50 * 1024 * 1024,
+      80 * 1024 * 1024,
       'COS_MAX_OBJECT_BYTES',
       100 * 1024 * 1024,
     ),

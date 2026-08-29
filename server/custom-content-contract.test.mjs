@@ -219,3 +219,22 @@ test('custom content migration anchors COS ownership and active compile uniquene
   assert.match(courseIntentSql, /custom_course_create_intents/);
   assert.match(courseIntentSql, /wk_doc_kb_id UUID NOT NULL UNIQUE/);
 });
+
+test('custom maintenance starts after listen and shares the COS upload ceiling', async () => {
+  const indexSource = await readFile(new URL('./index.mjs', import.meta.url), 'utf8');
+  const serviceSource = await readFile(new URL('./custom-content/service.mjs', import.meta.url), 'utf8');
+  const cosSource = await readFile(new URL('./storage/cos-store.mjs', import.meta.url), 'utf8');
+  const configuredBlock = indexSource.slice(
+    indexSource.indexOf('if (WK_CONFIGURED)'),
+    indexSource.indexOf('async function runCustomContentMaintenance'),
+  );
+  const listenBlock = indexSource.slice(indexSource.indexOf("server.listen(PORT"));
+  assert.doesNotMatch(configuredBlock, /await customContentService\.(?:reconcile|resumePendingJobs)/);
+  assert.match(indexSource, /Promise\.allSettled\(\[\s*customContentService\.reconcileUploadIntents\(\)/);
+  assert.match(indexSource, /customMaintenanceRunning/);
+  assert.match(listenBlock, /void runCustomContentMaintenance\(\)/);
+  assert.match(serviceSource, /reconcileClaimedIntents\(intents, reconcileUploadIntent\)/);
+  assert.match(serviceSource, /concurrency = 4/);
+  assert.match(cosSource, /maxObjectBytes = 80 \* 1024 \* 1024/);
+  assert.match(indexSource, /productionStorage\?\.cos\?\.maxObjectBytes < maxFileBytes/);
+});
