@@ -223,6 +223,7 @@ test('custom content migration anchors COS ownership and active compile uniquene
 test('custom maintenance starts after listen and shares the COS upload ceiling', async () => {
   const indexSource = await readFile(new URL('./index.mjs', import.meta.url), 'utf8');
   const serviceSource = await readFile(new URL('./custom-content/service.mjs', import.meta.url), 'utf8');
+  const routerSource = await readFile(new URL('./custom-content/router.mjs', import.meta.url), 'utf8');
   const cosSource = await readFile(new URL('./storage/cos-store.mjs', import.meta.url), 'utf8');
   const configuredBlock = indexSource.slice(
     indexSource.indexOf('if (WK_CONFIGURED)'),
@@ -237,4 +238,7 @@ test('custom maintenance starts after listen and shares the COS upload ceiling',
   assert.match(serviceSource, /concurrency = 4/);
   assert.match(cosSource, /maxObjectBytes = 80 \* 1024 \* 1024/);
   assert.match(indexSource, /productionStorage\?\.cos\?\.maxObjectBytes < maxFileBytes/);
+  assert.match(indexSource, /protectedUser\(req, res, 'all'\)/);
+  assert.doesNotMatch(indexSource, /protectedUser\(req, res, operation\)/);
+  assert.match(routerSource, /custom-content-auth-unavailable/);
 });

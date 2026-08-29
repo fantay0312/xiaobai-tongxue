@@ -97,7 +97,15 @@ export function createCustomContentRouter({
   }
 
   async function withOwner(req, res, operation, task) {
-    const owner = await resolveOwner(req, res, operation);
+    let owner;
+    try {
+      owner = await resolveOwner(req, res, operation);
+    } catch (error) {
+      req.resume();
+      logger.error?.(`[custom-content] ${operation} owner resolution failed:`, errorCode(error));
+      if (!res.headersSent) return send(res, 503, { error: 'custom-content-auth-unavailable' });
+      return;
+    }
     if (!owner) {
       req.resume();
       return;

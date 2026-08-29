@@ -2766,8 +2766,8 @@ const commerceRouter = commerceService
 const customContentRouter = customContentService
   ? createCustomContentRouter({
     service: customContentService,
-    resolveOwner: async (req, res, operation) => {
-      const publicUser = await protectedUser(req, res, operation);
+    resolveOwner: async (req, res) => {
+      const publicUser = await protectedUser(req, res, 'all');
       return publicUser ? findUser(publicUser.name) : null;
     },
     send,
