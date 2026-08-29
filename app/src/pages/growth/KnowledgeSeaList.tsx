@@ -29,7 +29,7 @@ export function KnowledgeSeaList({
   return (
     <div className={s.seaList} aria-label="学问星海名录">
       {groupByCourse(nodes).map((realm) => (
-        <section key={realm.course} className={s.listRealm}>
+        <section key={realm.key} className={s.listRealm}>
           <header>
             <h4>《{realm.course}》</h4>
             <span>{realm.nodes.filter((node) => node.status === 'mastered').length}/{realm.nodes.length} 已明</span>

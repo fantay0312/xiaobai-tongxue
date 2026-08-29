@@ -48,9 +48,12 @@ function normalizedPrefix(value) {
 
 function assertOwnedKey(rawUserId, rootPrefix, key) {
   const prefix = `${rootPrefix}/${userPrefix(rawUserId)}`;
+  const escapedRoot = rootPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const pattern = new RegExp(
-    `^${rootPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`
-    + '/users/[0-9a-f-]{36}/[a-z-]+/[0-9a-f]{32}$',
+    `^${escapedRoot}/users/[0-9a-f-]{36}/(?:`
+    + '[a-z-]+/[0-9a-f]{32}'
+    + '|custom-course-assets/[0-9a-f-]{36}/[0-9a-f]{32}'
+    + ')$',
   );
   if (typeof key !== 'string' || !key.startsWith(prefix) || key.includes('..')
     || !pattern.test(key)) {
@@ -65,7 +68,7 @@ export function createPrivateCosStore({
   region,
   prefix = 'xiaobai',
   randomBytes = crypto.randomBytes,
-  maxObjectBytes = 50 * 1024 * 1024,
+  maxObjectBytes = 80 * 1024 * 1024,
 } = {}) {
   if (!cos?.putObject || !cos?.getObject || !cos?.deleteObject) {
     throw new Error('cos-client-required');
@@ -75,14 +78,8 @@ export function createPrivateCosStore({
   const safePrefix = normalizedPrefix(prefix);
   const maximumBytes = positiveInteger(maxObjectBytes, undefined, 'COS_MAX_OBJECT_BYTES', 100 * 1024 * 1024);
 
-  async function upload(purpose, { userId: rawUserId, body: rawBody, contentType }) {
-    const userId = assertUuid(rawUserId, 'user-id');
-    const path = PURPOSE_PATHS[purpose];
-    if (!path) throw new Error('invalid-file-purpose');
+  async function put(key, rawBody, contentType) {
     const body = asBody(rawBody, maximumBytes);
-    const random = randomBytes(16);
-    if (!Buffer.isBuffer(random) || random.length !== 16) throw new Error('cos-random-source-failed');
-    const key = `${safePrefix}/users/${userId}/${path}/${random.toString('hex')}`;
     const result = await cos.putObject({
       Bucket: safeBucket,
       Region: safeRegion,
@@ -101,12 +98,44 @@ export function createPrivateCosStore({
     };
   }
 
+  async function upload(purpose, { userId: rawUserId, body, contentType }) {
+    const userId = assertUuid(rawUserId, 'user-id');
+    const purposePath = PURPOSE_PATHS[purpose];
+    if (!purposePath) throw new Error('invalid-file-purpose');
+    const random = randomBytes(16);
+    if (!Buffer.isBuffer(random) || random.length !== 16) throw new Error('cos-random-source-failed');
+    const key = `${safePrefix}/users/${userId}/${purposePath}/${random.toString('hex')}`;
+    return put(key, body, contentType);
+  }
+
+  function customCourseAssetKey(rawUserId, rawCourseId) {
+    const userId = assertUuid(rawUserId, 'user-id');
+    const courseId = assertUuid(rawCourseId, 'course-id');
+    const random = randomBytes(16);
+    if (!Buffer.isBuffer(random) || random.length !== 16) throw new Error('cos-random-source-failed');
+    return `${safePrefix}/users/${userId}/custom-course-assets/${courseId}/${random.toString('hex')}`;
+  }
+
   return Object.freeze({
+    maxObjectBytes: maximumBytes,
     uploadTranscript(input) {
       return upload('transcript', input);
     },
     uploadEmailAttachment(input) {
       return upload('email_attachment', input);
+    },
+    createCustomCourseAssetKey({ userId, courseId }) {
+      return customCourseAssetKey(userId, courseId);
+    },
+    uploadCustomCourseAsset({ userId: rawUserId, courseId: rawCourseId, key, body, contentType }) {
+      const userId = assertUuid(rawUserId, 'user-id');
+      const courseId = assertUuid(rawCourseId, 'course-id');
+      const safeKey = key === undefined
+        ? customCourseAssetKey(userId, courseId)
+        : assertOwnedKey(userId, safePrefix, key);
+      const expectedPrefix = `${safePrefix}/users/${userId}/custom-course-assets/${courseId}/`;
+      if (!safeKey.startsWith(expectedPrefix)) throw new Error('invalid-cos-key');
+      return put(safeKey, body, contentType);
     },
     async read({ userId, key }) {
       const safeKey = assertOwnedKey(userId, safePrefix, key);
@@ -125,6 +154,24 @@ export function createPrivateCosStore({
       const safeKey = assertOwnedKey(userId, safePrefix, key);
       await cos.deleteObject({ Bucket: safeBucket, Region: safeRegion, Key: safeKey });
       return true;
+    },
+    async verifySize({ userId, key }) {
+      const safeKey = assertOwnedKey(userId, safePrefix, key);
+      // 当前生产 CAM 允许 GetObject 但不开放 HeadObject。只取第 1 字节，
+      // 从 Content-Range 的总长度核验完整上传，避免为 80 MiB 原件做二次下载。
+      const result = await cos.getObject({
+        Bucket: safeBucket,
+        Region: safeRegion,
+        Key: safeKey,
+        Range: 'bytes=0-0',
+      });
+      const contentRange = String(result.headers?.['content-range'] ?? '');
+      const length = Number(contentRange.split('/').at(-1));
+      return {
+        byteSize: Number.isSafeInteger(length) && length >= 0 ? length : null,
+        contentType: result.headers?.['content-type'] ?? null,
+        etag: result.ETag ?? result.headers?.etag ?? null,
+      };
     },
     async healthCheck() {
       const startedAt = Date.now();
@@ -169,7 +216,7 @@ export function createPrivateCosStoreFromEnv(env = process.env, options = {}) {
     randomBytes: options.randomBytes,
     maxObjectBytes: positiveInteger(
       env.COS_MAX_OBJECT_BYTES,
-      50 * 1024 * 1024,
+      80 * 1024 * 1024,
       'COS_MAX_OBJECT_BYTES',
       100 * 1024 * 1024,
     ),

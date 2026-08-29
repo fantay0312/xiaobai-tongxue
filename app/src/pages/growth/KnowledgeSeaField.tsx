@@ -133,7 +133,7 @@ export function KnowledgeSeaField({
         const marker = courseLabelPoint(realm, points, realmIndex, realms.length);
         return (
           <span
-            key={realm.course}
+            key={realm.key}
             className={s.courseMarker}
             style={{
               left: `${(marker.x / SEA_WIDTH) * 100}%`,

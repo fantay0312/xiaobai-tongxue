@@ -11,11 +11,13 @@ import type {
   BlindSpot, KnowledgeState, McState, SessionMode, SessionReport, Topic, TopicState,
 } from '../../types';
 import { useAppStore } from '../../store/appStore';
-import { getTopic, TOPICS } from '../../data';
+import { getTopic } from '../../data';
+import { topicCourseKey } from '../../data/runtimeTopics';
 import { demonName } from '../../engine/story';
 import { Radar } from '../review/Radar';
 import { Icon } from '../../components/ui/Icon';
 import { useDocTitle } from '../../hooks/useDocTitle';
+import { useAllTopics } from '../../hooks/useAllTopics';
 import s from './teacher.module.css';
 
 // ── 展示词表(与复盘页同一套口径,评价语言不允许分叉) ──
@@ -73,25 +75,35 @@ type TopicRow = {
 
 /** 学情表的课程筛选是界面态,不写入学习档案。点标签只显示该课,长表关在原区域内竖滚。 */
 function TopicProgressTable({ topicRows }: { topicRows: TopicRow[] }) {
-  const courses = [...new Set(topicRows.map((row) => row.topic.course))];
-  const [selected, setSelected] = useState(courses[0] ?? '');
-  const visibleRows = topicRows.filter((row) => row.topic.course === selected);
+  const courseIdentities = [...new Map(topicRows.map((row) => [
+    topicCourseKey(row.topic),
+    { key: topicCourseKey(row.topic), label: row.topic.course },
+  ])).values()];
+  const courses = courseIdentities.map((course) => {
+    const sameTitle = courseIdentities.filter((candidate) => candidate.label === course.label);
+    if (sameTitle.length <= 1) return course;
+    if (!course.key.startsWith('custom:')) return { ...course, label: `${course.label} · 内置` };
+    const index = sameTitle.filter((candidate) => candidate.key.startsWith('custom:')).findIndex((candidate) => candidate.key === course.key) + 1;
+    return { ...course, label: `${course.label} · 自选 ${index}` };
+  });
+  const [selected, setSelected] = useState(courses[0]?.key ?? '');
+  const visibleRows = topicRows.filter((row) => topicCourseKey(row.topic) === selected);
 
   return (
     <>
       <div className={s.tagBar} role="toolbar" aria-label="按课程筛选知识点学情">
         {courses.map((course) => {
-          const on = course === selected;
+          const on = course.key === selected;
           return (
             <button
-              key={course}
+              key={course.key}
               type="button"
               className={`${s.courseChip} ${s.tagBtn} ${on ? s.tagOn : s.tagOff}`}
               aria-pressed={on}
               aria-controls="topic-progress-table"
-              onClick={() => setSelected(course)}
+              onClick={() => setSelected(course.key)}
             >
-              {course}
+              {course.label}
             </button>
           );
         })}
@@ -168,8 +180,9 @@ export default function TeacherPage() {
   const global = useAppStore((st) => st.global);
   const topicStates = useAppStore((st) => st.topicStates);
   const topicStateOf = useAppStore((st) => st.topicState);
+  const allTopics = useAllTopics();
 
-  const openTopics = TOPICS.filter((t) => !t.locked);
+  const openTopics = allTopics.filter((t) => !t.locked);
   const stateOf = (topicId: string): TopicState => topicStates[topicId] ?? topicStateOf(topicId);
 
   // ── ① 档案总览带:纯事件流计数 ──
@@ -256,7 +269,7 @@ export default function TeacherPage() {
       <header id="teacher-overview" className={`${s.head} ${s.rise}`} style={rise(0)}>
         <h1 className={s.title}>教师看板</h1>
         <p className={s.demoNote}>
-          {[...new Set(TOPICS.map((t) => t.course))].join(' · ')}。数据来自你的学习记录，每上完一课自动更新。
+          {[...new Set(allTopics.map((t) => t.course))].join(' · ')}。数据来自你的学习记录，每上完一课自动更新。
         </p>
       </header>
 

@@ -74,6 +74,10 @@ import { createAdminService } from './admin/service.mjs';
 import { createCommerceRouter } from './commerce/router.mjs';
 import { createCommerceService } from './commerce/service.mjs';
 import { createStaticHandler } from './static-hosting.mjs';
+import { createCustomContentRouter } from './custom-content/router.mjs';
+import { createCustomContentService } from './custom-content/service.mjs';
+import { createJsonLlmClient, createTopicCompiler } from './custom-content/topic-compiler.mjs';
+import { createWeKnoraClient } from './custom-content/weknora-client.mjs';
 import {
   createAccountVerificationGrants,
   isAccountVerificationAction,
@@ -279,6 +283,82 @@ if (!VISION_KEY) {
 }
 if (!productionStorage) {
   console.warn('[warn] 未配置生产存储,用户状态与成绩单使用本机兼容存储');
+}
+
+const WK_BASE_URL = process.env.WK_BASE_URL ?? '';
+const WK_API_KEY = process.env.WK_API_KEY ?? '';
+const WK_EMBEDDING_MODEL_ID = process.env.WK_EMBEDDING_MODEL_ID ?? '';
+const WK_SUMMARY_MODEL_ID = process.env.WK_SUMMARY_MODEL_ID ?? '';
+const WK_CONFIGURED = Boolean(WK_BASE_URL || WK_API_KEY || WK_EMBEDDING_MODEL_ID || WK_SUMMARY_MODEL_ID);
+let customContentService = null;
+let customMaintenanceRunning = false;
+let customCleanupTimer = null;
+if (WK_CONFIGURED) {
+  const maxFileMb = Number(process.env.WK_MAX_FILE_MB ?? 80);
+  const maxFileBytes = maxFileMb * 1024 * 1024;
+  if (
+    !productionStorage
+    || !WK_BASE_URL
+    || !WK_API_KEY
+    || !WK_EMBEDDING_MODEL_ID
+    || !API_KEY
+    || !Number.isInteger(maxFileMb)
+    || maxFileMb < 1
+    || maxFileMb > 80
+    || !Number.isSafeInteger(productionStorage?.cos?.maxObjectBytes)
+    || productionStorage?.cos?.maxObjectBytes < maxFileBytes
+  ) {
+    console.error('[fatal] WeKnora 自定义课程配置不完整、文件上限无效或超过 COS_MAX_OBJECT_BYTES');
+    process.exit(2);
+  }
+  try {
+    const weknora = createWeKnoraClient({ baseUrl: WK_BASE_URL, apiKey: WK_API_KEY });
+    const compiler = createTopicCompiler({
+      weknora,
+      llm: createJsonLlmClient({
+        baseUrl: UPSTREAM,
+        apiKey: API_KEY,
+        model: MODEL_COACH,
+      }),
+    });
+    customContentService = createCustomContentService({
+      repository: productionStorage.postgres.customContent,
+      weknora,
+      cos: productionStorage.cos,
+      compiler,
+      embeddingModelId: WK_EMBEDDING_MODEL_ID,
+      summaryModelId: WK_SUMMARY_MODEL_ID,
+      maxFileBytes,
+    });
+  } catch (error) {
+    console.error('[fatal] WeKnora 自定义课程初始化失败:', safeDiagnosticMessage(error?.message));
+    process.exit(2);
+  }
+} else {
+  console.warn('[warn] WeKnora 未配置,自定义课程上传功能关闭');
+}
+
+async function runCustomContentMaintenance() {
+  if (!customContentService || customMaintenanceRunning) return;
+  customMaintenanceRunning = true;
+  try {
+    const operations = await Promise.allSettled([
+      customContentService.reconcileUploadIntents(),
+      customContentService.reconcileCourseCreationIntents(),
+      customContentService.reconcileDeletingAssets(),
+      customContentService.resumePendingJobs(),
+    ]);
+    for (const result of operations) {
+      if (result.status === 'rejected') {
+        console.error(
+          '[custom-content] background maintenance failed:',
+          safeDiagnosticMessage(result.reason instanceof Error ? result.reason.message : 'maintenance-failed'),
+        );
+      }
+    }
+  } finally {
+    customMaintenanceRunning = false;
+  }
 }
 
 // ───────────────────────── 注册用户(落盘持久化) ─────────────────────────
@@ -847,15 +927,19 @@ if (cfg.testMediaBodyTimeoutMs !== undefined) {
   MEDIA_BODY_TIMEOUT = cfg.testMediaBodyTimeoutMs;
 }
 
-function readRaw(req, limit, timeoutMs = 0) {
+function readRaw(req, limit, timeout = 0) {
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks = [];
     let settled = false;
-    let timer;
+    let totalTimer;
+    let idleTimer;
+    const totalTimeoutMs = typeof timeout === 'number' ? timeout : Number(timeout?.totalTimeoutMs ?? 0);
+    const idleTimeoutMs = typeof timeout === 'number' ? 0 : Number(timeout?.idleTimeoutMs ?? 0);
 
     const cleanup = () => {
-      if (timer) clearTimeout(timer);
+      if (totalTimer) clearTimeout(totalTimer);
+      if (idleTimer) clearTimeout(idleTimer);
       req.off('data', onData);
       req.off('end', onEnd);
       req.off('error', onError);
@@ -872,7 +956,15 @@ function readRaw(req, limit, timeoutMs = 0) {
       }
       reject(error);
     };
+    const refreshIdleTimer = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      if (idleTimeoutMs > 0) {
+        idleTimer = setTimeout(() => fail(new Error('body-timeout'), true), idleTimeoutMs);
+        idleTimer.unref();
+      }
+    };
     const onData = (c) => {
+      refreshIdleTimer();
       size += c.length;
       if (size > limit) { fail(new Error('body-too-large'), true); return; }
       chunks.push(c);
@@ -881,16 +973,19 @@ function readRaw(req, limit, timeoutMs = 0) {
       if (settled) return;
       settled = true;
       cleanup();
-      resolve(Buffer.concat(chunks));
+      const body = Buffer.concat(chunks);
+      chunks.length = 0;
+      resolve(body);
     };
     const onError = (error) => fail(error);
 
     req.on('data', onData);
     req.on('end', onEnd);
     req.on('error', onError);
-    if (timeoutMs > 0) {
-      timer = setTimeout(() => fail(new Error('body-timeout'), true), timeoutMs);
-      timer.unref();
+    refreshIdleTimer();
+    if (totalTimeoutMs > 0) {
+      totalTimer = setTimeout(() => fail(new Error('body-timeout'), true), totalTimeoutMs);
+      totalTimer.unref();
     }
   });
 }
@@ -2684,6 +2779,21 @@ const commerceRouter = commerceService
     clientIp,
   })
   : null;
+const customContentRouter = customContentService
+  ? createCustomContentRouter({
+    service: customContentService,
+    resolveOwner: async (req, res) => {
+      const publicUser = await protectedUser(req, res, 'all');
+      return publicUser ? findUser(publicUser.name) : null;
+    },
+    send,
+    readJson: (req, limit) => readJson(req, limit, 5_000),
+    readRaw,
+    hasJsonContentType,
+    rateLimit: (input) => productionStorage.redisOtp.rateLimit(input),
+    rateLimitMany: (inputs) => productionStorage.redisOtp.rateLimitMany(inputs),
+  })
+  : null;
 const staticHandler = createStaticHandler({
   mainDist: DIST,
   adminDist: ADMIN_DIST,
@@ -2698,6 +2808,10 @@ const server = http.createServer((req, res) => {
     pathname = pathname.slice(PREFIX.length) || '/';
   }
   if (pathname.startsWith('/api/')) {
+    if (pathname === '/api/xb' || pathname.startsWith('/api/xb/')) {
+      if (!customContentRouter) return send(res, 503, { error: 'custom-content-unavailable' });
+      return void customContentRouter.handle(req, res, pathname);
+    }
     if (pathname === '/api/admin/v1' || pathname.startsWith('/api/admin/v1/')) {
       if (!adminRouter) return send(res, 503, { error: 'admin-unavailable' });
       return void adminRouter.handle(req, res, pathname);
@@ -2747,6 +2861,11 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, '127.0.0.1', () => {
   const registration = registrationAvailable() ? `开放(已注册 ${regUsers.length})` : '关闭';
   console.log(`小白同学网关已启动: http://127.0.0.1:${PORT} (dist: ${DIST}, model: ${MODEL}, coach: ${MODEL_COACH}, vision: ${VISION_KEY ? MODEL_VISION : '关闭'}, asr: ${ASR_KEY ? ASR_MODEL : '关闭'}, 腾讯验证码: ${captchaService.available ? '开启' : '关闭'}, 邮箱验证: ${emailAuth ? '开启' : '关闭'}, 手机验证: ${phoneAuth ? '开启' : '关闭'}, 注册: ${registration})`);
+  if (customContentService && !customCleanupTimer) {
+    void runCustomContentMaintenance();
+    customCleanupTimer = setInterval(() => { void runCustomContentMaintenance(); }, 2 * 60_000);
+    customCleanupTimer.unref?.();
+  }
 });
 
 let shuttingDown = false;
@@ -2754,6 +2873,7 @@ async function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`[shutdown] ${signal}`);
+  if (customCleanupTimer) clearInterval(customCleanupTimer);
   const deadline = setTimeout(() => process.exit(1), 15_000);
   deadline.unref();
   await new Promise((resolve) => server.close(resolve));

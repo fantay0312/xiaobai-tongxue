@@ -833,6 +833,17 @@
     margin-right: 0.35rem;
   }
 
+  /* 四个一级入口都保留；窄屏只给当前页留下章节快跳，避免“自选课”挤出账号动作。 */
+  .menuButton {
+    width: 2rem;
+    min-width: 2rem;
+    display: none;
+  }
+
+  .navGroup:has(.linkActive) .menuButton {
+    display: grid;
+  }
+
   .link {
     padding-left: 0.55rem;
     font-size: var(--fs-small);

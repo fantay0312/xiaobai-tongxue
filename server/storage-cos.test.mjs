@@ -18,6 +18,12 @@ class FakeCos {
 
   async getObject(parameters) {
     this.calls.push({ method: 'getObject', parameters });
+    if (parameters.Range) {
+      return {
+        Body: Buffer.from('s'),
+        headers: { 'content-range': 'bytes 0-0/8', 'content-type': 'application/pdf', etag: '"etag"' },
+      };
+    }
     return {
       Body: Buffer.from('stored'),
       headers: { 'content-type': 'application/pdf', etag: '"etag"' },
@@ -43,6 +49,7 @@ test('COS store creates random private SSE keys scoped to the user UUID', async 
     region: 'ap-guangzhou',
     randomBytes: () => Buffer.alloc(16, 0xab),
   });
+  assert.equal(store.maxObjectBytes, 80 * 1024 * 1024);
   const uploaded = await store.uploadTranscript({
     userId: USER_ID,
     body: Buffer.from('pdf-data'),
@@ -61,6 +68,23 @@ test('COS store creates random private SSE keys scoped to the user UUID', async 
   assert.notEqual(put.ACL, 'public-read');
   assert.equal(uploaded.publicUrl, undefined);
 
+  const plannedKey = store.createCustomCourseAssetKey({
+    userId: USER_ID,
+    courseId: '33333333-3333-4333-8333-333333333333',
+  });
+  const custom = await store.uploadCustomCourseAsset({
+    userId: USER_ID,
+    courseId: '33333333-3333-4333-8333-333333333333',
+    key: plannedKey,
+    body: Buffer.from('pdf-data'),
+    contentType: 'application/pdf',
+  });
+  assert.equal(
+    custom.key,
+    `xiaobai/users/${USER_ID}/custom-course-assets/33333333-3333-4333-8333-333333333333/${'ab'.repeat(16)}`,
+  );
+  assert.equal((await store.verifySize({ userId: USER_ID, key: custom.key })).byteSize, 8);
+
   const read = await store.read({ userId: USER_ID, key: uploaded.key });
   assert.equal(read.body.toString(), 'stored');
   await store.delete({ userId: USER_ID, key: uploaded.key });
@@ -73,6 +97,13 @@ test('COS store creates random private SSE keys scoped to the user UUID', async 
 
 test('COS configuration and bodies fail closed', async () => {
   assert.throws(() => createPrivateCosStoreFromEnv({}), /COS_SECRET_ID/);
+  const defaultStore = createPrivateCosStoreFromEnv({
+    COS_SECRET_ID: 'id',
+    COS_SECRET_KEY: 'key',
+    COS_BUCKET: 'xiaobai-1250000000',
+    COS_REGION: 'ap-guangzhou',
+  }, { cos: new FakeCos() });
+  assert.equal(defaultStore.maxObjectBytes, 80 * 1024 * 1024);
   const store = createPrivateCosStore({
     cos: new FakeCos(),
     bucket: 'xiaobai-1250000000',

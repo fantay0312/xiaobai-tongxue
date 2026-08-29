@@ -8,7 +8,7 @@ import {
 
 class FakeRedis {
   calls = [];
-  replies = [1, [2, 4, 500], [0, 6, 50]];
+  replies = [1, [2, 4, 500], [0, 6, 50], [1, 0, 1, 60, 1, 60]];
   isOpen = false;
 
   async connect() {
@@ -63,6 +63,19 @@ test('OTP operations are atomic, hashed, and isolated to xiaobai keys', async ()
   });
   assert.equal(limited.allowed, false);
   assert.equal(limited.remaining, 0);
+  const reserved = await store.rateLimitMany([
+    { scope: 'custom-owner', subject: 'owner-1', limit: 5, windowSeconds: 60 },
+    { scope: 'custom-global', subject: 'global', limit: 50, windowSeconds: 60 },
+  ]);
+  assert.equal(reserved.allowed, true);
+  assert.deepEqual(reserved.reservations.map((item) => item.remaining), [4, 49]);
+  await assert.rejects(
+    store.rateLimitMany([
+      { scope: 'duplicate', subject: 'same', limit: 2, windowSeconds: 60 },
+      { scope: 'duplicate', subject: 'same', limit: 2, windowSeconds: 60 },
+    ]),
+    /duplicate-rate-limit-reservation/,
+  );
 
   const evalCalls = client.calls.filter((call) => call.method === 'eval');
   for (const call of evalCalls) {

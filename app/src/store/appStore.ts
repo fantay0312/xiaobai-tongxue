@@ -7,9 +7,9 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type {
   AsrSettings, ChatMessage, EvalResult, LearnEvent, LiveSession, LlmSettings, Persona,
-  SessionMode, SessionReport, TopicState, XiaobaiGlobal,
+  SessionMode, SessionReport, Topic, TopicState, XiaobaiGlobal,
 } from '../types';
-import { getTopic, TOPICS } from '../data';
+import { getAllTopics, getTopic, TOPICS } from '../data';
 import { XIAOBAI_EXAM_READY_LINE } from '../data/xiaobaiLines';
 import {
   applyEvents, buildReport, decide, DEFLECTION_LINE, evaluate, extractTeacherTerms,
@@ -26,9 +26,13 @@ import { deriveEvolution } from '../engine/evolution';
 import { DEFAULT_ASR } from '../engine/asr';
 import type { PreparedImageAttachment } from '../lib/imageAttachment';
 import { describeTeachingImage } from '../lib/vision';
+import { listPublishedCustomTopics } from '../lib/customContent';
+import { hydrateRuntimeTopic, registerRuntimeTopics } from '../data/runtimeTopics';
 
 const uid = () => (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
 const now = () => new Date().toISOString();
+let customTopicsLoadSequence = 0;
+const CUSTOM_TOPICS_RETRY_MS = [750, 1_500] as const;
 
 /** 导出给 sync 拉档时兜底:远端 global 缺字段(或被手工改坏)不得让页面派生层崩掉 */
 export const DEFAULT_GLOBAL: XiaobaiGlobal = {
@@ -117,10 +121,14 @@ export interface AppState {
   settings: LlmSettings;
   /** 语音转文字配置(含密钥):只存本机,永不进服务器学习存档同步 */
   asrSettings: AsrSettings;
+  customTopics: Topic[];
+  customTopicsStatus: 'idle' | 'loading' | 'ready' | 'error';
 
   topicState: (topicId: string) => TopicState;
   appendEvents: (drafts: EventDraft[], sessionId: string | null) => LearnEvent[];
   rebuildStates: () => void;
+  loadCustomTopics: (force?: boolean) => Promise<void>;
+  clearCustomTopics: () => void;
 
   startSession: (topicId: string, mode: SessionMode) => Promise<void>;
   submitTeaching: (text: string, image?: PreparedImageAttachment) => Promise<SubmitTeachingResult>;
@@ -148,6 +156,8 @@ export const useAppStore = create<AppState>()(
       live: null,
       settings: DEFAULT_SETTINGS,
       asrSettings: DEFAULT_ASR,
+      customTopics: [],
+      customTopicsStatus: 'idle',
 
       topicState: (topicId) => {
         const cached = get().topicStates[topicId];
@@ -187,10 +197,58 @@ export const useAppStore = create<AppState>()(
         }
         const EMPTY: LearnEvent[] = [];
         const topicStates: Record<string, TopicState> = {};
-        for (const topic of TOPICS) {
+        for (const topic of getAllTopics()) {
           if (!topic.locked) topicStates[topic.topicId] = replayTopicState(topic, byTopic.get(topic.topicId) ?? EMPTY);
         }
         set({ topicStates });
+      },
+
+      loadCustomTopics: async (force = false) => {
+        if (!force && (get().customTopicsStatus === 'loading' || get().customTopicsStatus === 'ready')) return;
+        const sequence = ++customTopicsLoadSequence;
+        set({ customTopicsStatus: 'loading' });
+        let raw: unknown[] | null = null;
+        for (let attempt = 0; attempt <= CUSTOM_TOPICS_RETRY_MS.length; attempt += 1) {
+          try {
+            raw = await listPublishedCustomTopics();
+            break;
+          } catch {
+            if (sequence !== customTopicsLoadSequence) return;
+            const delay = CUSTOM_TOPICS_RETRY_MS[attempt];
+            if (delay === undefined) break;
+            await new Promise((resolve) => window.setTimeout(resolve, delay));
+          }
+        }
+        if (sequence !== customTopicsLoadSequence) return;
+        if (!raw) {
+          set({ customTopicsStatus: 'error' });
+          return;
+        }
+        const topics = raw.map(hydrateRuntimeTopic).filter((topic): topic is Topic => topic !== null);
+        registerRuntimeTopics(topics);
+        set((state) => ({
+          customTopics: topics,
+          customTopicsStatus: 'ready',
+          global: {
+            ...state.global,
+            learningLevel: deriveEvolution(state.events, getAllTopics()).stage,
+          },
+        }));
+        get().rebuildStates();
+      },
+
+      clearCustomTopics: () => {
+        customTopicsLoadSequence += 1;
+        registerRuntimeTopics([]);
+        set((state) => ({
+          customTopics: [],
+          customTopicsStatus: 'idle',
+          global: {
+            ...state.global,
+            learningLevel: deriveEvolution(state.events, getAllTopics()).stage,
+          },
+        }));
+        get().rebuildStates();
       },
 
       startSession: async (topicId, mode) => {
@@ -502,7 +560,7 @@ export const useAppStore = create<AppState>()(
           const mastered = g.topicsMastered + 1;
           const record = `${live.traces.length} 轮出师`;
           // 进化新规则(出师深度 + 跨课程广度)从新鲜事件流重算修行阶——topic_mastered 已 append,get().events 含之
-          const stage = deriveEvolution(get().events, TOPICS).stage;
+          const stage = deriveEvolution(get().events, getAllTopics()).stage;
           set((s) => ({
             global: {
               ...s.global,

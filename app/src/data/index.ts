@@ -14,6 +14,7 @@ import { mutableDefaultTopic } from './topics/mutableDefault';
 import { lockedTopics } from './topics/locked';
 import { OS_TOPICS } from './topics/os';
 import { DEMO_SCRIPT } from './demoScript';
+import { runtimeTopic, runtimeTopicList } from './runtimeTopics';
 
 /** 书架按 course 分组展示;数组顺序即书架陈列顺序(《大模型训练》为主推课程;《操作系统原理》30 讲对齐 jyy 2026 春) */
 export const TOPICS: Topic[] = [
@@ -24,7 +25,11 @@ export const TOPICS: Topic[] = [
 ];
 
 export function getTopic(topicId: string): Topic | undefined {
-  return TOPICS.find((t) => t.topicId === topicId);
+  return TOPICS.find((t) => t.topicId === topicId) ?? runtimeTopic(topicId);
+}
+
+export function getAllTopics(): Topic[] {
+  return [...TOPICS, ...runtimeTopicList()];
 }
 
 export function getDemoScript(topicId: string): DemoLine[] {

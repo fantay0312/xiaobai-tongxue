@@ -1,6 +1,7 @@
 import { STAR_LINKS } from '../../data/starLinks';
 import type { StarLink } from '../../data/starLinks';
 import type { MapNode, NodeStatus } from './KnowledgeMap';
+import { topicCourseKey } from '../../data/runtimeTopics';
 
 export interface SeaPoint {
   x: number;
@@ -10,6 +11,7 @@ export interface SeaPoint {
 export type LabelSide = 'below' | 'above' | 'left' | 'right';
 
 export interface CourseRealm {
+  key: string;
   course: string;
   nodes: MapNode[];
 }
@@ -56,16 +58,23 @@ export function groupByCourse(nodes: MapNode[]): CourseRealm[] {
   const realms: CourseRealm[] = [];
   const realmByCourse = new Map<string, CourseRealm>();
   for (const node of nodes) {
-    const current = realmByCourse.get(node.topic.course);
+    const key = topicCourseKey(node.topic);
+    const current = realmByCourse.get(key);
     if (current) {
       current.nodes.push(node);
       continue;
     }
-    const realm = { course: node.topic.course, nodes: [node] };
-    realmByCourse.set(node.topic.course, realm);
+    const realm = { key, course: node.topic.course, nodes: [node] };
+    realmByCourse.set(key, realm);
     realms.push(realm);
   }
-  return realms;
+  return realms.map((realm) => {
+    const sameTitle = realms.filter((candidate) => candidate.course === realm.course);
+    if (sameTitle.length <= 1) return realm;
+    if (!realm.key.startsWith('custom:')) return { ...realm, course: `${realm.course} · 内置` };
+    const index = sameTitle.filter((candidate) => candidate.key.startsWith('custom:')).findIndex((candidate) => candidate.key === realm.key) + 1;
+    return { ...realm, course: `${realm.course} · 自选 ${index}` };
+  });
 }
 
 function columnsFor(nodeCount: number, focused: boolean, compact: boolean): number {

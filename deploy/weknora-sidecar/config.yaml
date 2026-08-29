@@ -1,0 +1,100 @@
+server:
+  port: 8080
+  host: "0.0.0.0"
+
+conversation:
+  max_rounds: 5
+  keyword_threshold: 0.3
+  embedding_top_k: 30
+  vector_threshold: 0.2
+  rerank_threshold: 0.3
+  rerank_top_k: 30
+  fallback_strategy: "model"
+  fallback_response: "Sorry, I am unable to answer this question."
+  fallback_prompt_id: "default_fallback_prompt"
+  enable_rewrite: true
+  enable_query_expansion: true
+  enable_rerank: true
+  rewrite_prompt_id: "default_rewrite"
+  generate_summary_prompt_id: "default_summary"
+  generate_session_title_prompt_id: "default_session_title"
+  summary:
+    max_input_chars: 16384
+    repeat_penalty: 1.0
+    temperature: 0.3
+    max_completion_tokens: 2048
+    no_match_prefix: |-
+      <think>
+      </think>
+      NO_MATCH
+    prompt_id: "default_kb"
+    context_template_id: "default_context"
+  extract_entities_prompt_id: "default_extract_entities"
+  extract_relationships_prompt_id: "default_extract_relationships"
+  generate_questions_prompt_id: "default_generate_questions"
+
+knowledge_base:
+  chunk_size: 512
+  chunk_overlap: 80
+  split_markers: ["\n\n", "\n", "。", "！", "？"]
+  document_process_timeout: 2h
+  image_processing:
+    enable_multimodal: false
+
+extract:
+  extract_graph:
+    description: |
+      Based on the given text, complete the information extraction task following these steps, ensuring clear logic and complete, accurate information:
+
+      ## Step 1: Entity Extraction and Attribute Enrichment
+      1. Extract core entities in logical order.
+      2. Enrich each entity only with attributes explicitly stated in the text.
+
+      ## Step 2: Relationship Extraction and Verification
+      1. Select relationship types only from the supplied list: %s.
+      2. Extract only relationships that genuinely exist in the text.
+      3. Identify both entities for every relationship.
+      4. Include directly related attributes when present.
+    tags:
+      - "Author"
+      - "Alias"
+    examples:
+      - text: |
+          "Romeo and Juliet" is a tragedy written by William Shakespeare early in his career.
+          The play is also known as "The Most Excellent and Lamentable Tragedy of Romeo and Juliet".
+        node:
+          - name: "Romeo and Juliet"
+            attributes:
+              - "A tragedy by William Shakespeare"
+          - name: "The Most Excellent and Lamentable Tragedy of Romeo and Juliet"
+            attributes:
+              - "Alternative title for Romeo and Juliet"
+          - name: "William Shakespeare"
+            attributes:
+              - "Playwright"
+        relation:
+          - node1: "Romeo and Juliet"
+            node2: "William Shakespeare"
+            type: "Author"
+          - node1: "Romeo and Juliet"
+            node2: "The Most Excellent and Lamentable Tragedy of Romeo and Juliet"
+            type: "Alias"
+  extract_entity:
+    description: |
+      Process the key information extraction task as follows:
+      1. Analyze the core logical relationships in the text.
+      2. Extract and classify the key entities without adding outside information.
+      3. Order entities by relevance to the central topic.
+    examples:
+      - text: "'Romeo and Juliet' is a tragedy written by William Shakespeare early in his career."
+        node:
+          - name: "Romeo and Juliet"
+          - name: "William Shakespeare"
+  fabri_text:
+    with_tag: |
+      Please randomly generate a text related to %s, with a word count between [50-200], and try to include some professional terms or typical elements related to these tags to make the text more targeted and relevant.
+    with_no_tag: |
+      Please randomly generate a text with freely chosen content, with a word count between [50-200].
+
+tenant:
+  enable_cross_tenant_access: false

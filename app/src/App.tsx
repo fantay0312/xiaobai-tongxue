@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigationType } from 'react-router';
 import { AppShell } from './components/shell/AppShell';
 import { RequireAuth } from './components/shell/RequireAuth';
@@ -8,6 +8,7 @@ import {
   AUTH_EXPIRED_EVENT, EMAIL_BINDING_REQUIRED_EVENT, PHONE_BINDING_REQUIRED_EVENT,
 } from './lib/api';
 import { subscribeAuthChanges } from './lib/authChannel';
+import { useAppStore } from './store/appStore';
 
 const LandingPage = lazy(() => import('./pages/landing'));
 const HomePage = lazy(() => import('./pages/home'));
@@ -18,6 +19,7 @@ const ReviewPage = lazy(() => import('./pages/review'));
 const GrowthPage = lazy(() => import('./pages/growth'));
 const TeacherPage = lazy(() => import('./pages/teacher'));
 const LoginPage = lazy(() => import('./pages/login'));
+const CustomContentPage = lazy(() => import('./pages/custom-content'));
 
 function decodeAnchorId(hash: string): string | null {
   try {
@@ -77,7 +79,11 @@ export default function App() {
   const initAuth = useAuthStore((s) => s.init);
   const refreshSession = useAuthStore((s) => s.refreshSession);
   const authStatus = useAuthStore((s) => s.status);
+  const authUser = useAuthStore((s) => s.user);
   const phoneBindingRequired = useAuthStore((s) => s.phoneBindingRequired);
+  const loadCustomTopics = useAppStore((s) => s.loadCustomTopics);
+  const clearCustomTopics = useAppStore((s) => s.clearCustomTopics);
+  const customTopicUserRef = useRef<string | null>(null);
   const businessPath = pathname !== '/' && pathname !== '/login';
   const resolvingBusinessAccess = authStatus === 'unknown' && businessPath;
   const forcePhoneBinding = authStatus === 'authed' && phoneBindingRequired && businessPath;
@@ -119,6 +125,20 @@ export default function App() {
     };
   }, [refreshSession]);
 
+  useEffect(() => {
+    if (authStatus === 'authed' && authUser) {
+      const switchedAccount = customTopicUserRef.current !== authUser;
+      if (switchedAccount && customTopicUserRef.current !== null) clearCustomTopics();
+      customTopicUserRef.current = authUser;
+      void loadCustomTopics(switchedAccount);
+      return;
+    }
+    if (authStatus !== 'unknown' && customTopicUserRef.current !== null) {
+      customTopicUserRef.current = null;
+      clearCustomTopics();
+    }
+  }, [authStatus, authUser, clearCustomTopics, loadCustomTopics]);
+
   return (
     <AppShell>
       <RouteScrollManager />
@@ -134,6 +154,7 @@ export default function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/study" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/custom-content" element={<RequireAuth><CustomContentPage /></RequireAuth>} />
           {/* 使用类页面(备课/讲解)须登录;查看类页面(赴考/复盘/成长/看板)不设门槛 */}
           <Route path="/prep/:topicId" element={<RequireAuth><PrepPage /></RequireAuth>} />
           <Route path="/teach/:topicId" element={<RequireAuth><ClassroomPage /></RequireAuth>} />

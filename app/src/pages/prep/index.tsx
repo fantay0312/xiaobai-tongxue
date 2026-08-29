@@ -15,7 +15,11 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useAppStore } from '../../store/appStore';
-import { getTopic, TOPICS } from '../../data';
+import { useAuthStore } from '../../store/authStore';
+import { getTopic } from '../../data';
+import { hydrateTeacherRuntimeTopic } from '../../data/runtimeTopics';
+import { currentAuthEpoch } from '../../lib/api';
+import { getTeacherCustomTopic } from '../../lib/customContent';
 // 记忆回执:engine/recall 纯派生(不进 barrel),按路径直连
 import { deriveTopicRecall, type TopicRecall } from '../../engine/recall';
 import type { PrepContext } from '../../engine/coach';
@@ -28,6 +32,7 @@ import { Tour, type TourStep } from '../../components/tour/Tour';
 import { Icon } from '../../components/ui/Icon';
 import type { Misconception, PrepReference, QuestionLevel, XiaobaiMood } from '../../types';
 import { useDocTitle } from '../../hooks/useDocTitle';
+import { useAllTopics } from '../../hooks/useAllTopics';
 import { deriveTeachingFlow } from './flow';
 import paper from '../../styles/paper.module.css';
 import s from './prep.module.css';
@@ -275,6 +280,7 @@ const REACT_BAD: PupilState[] = [
   { mood: 'shy', line: '先生别急,这个坑我课上八成也会掉。' },
   { mood: 'confused', line: '那……到底是哪儿不对呀?' },
 ];
+const TEACHER_TOPIC_RETRY_MS = [750, 1_500] as const;
 
 export default function PrepPage() {
   const { topicId = '' } = useParams();
@@ -285,16 +291,66 @@ export default function PrepPage() {
 
 function PrepRoom({ topicId }: { topicId: string }) {
   const navigate = useNavigate();
-  const topic = getTopic(topicId);
+  const studentTopic = getTopic(topicId);
+  const customTopic = topicId.startsWith('custom-');
+  const authUser = useAuthStore((state) => state.user);
+  const teacherRequestKey = `${authUser ?? ''}:${topicId}`;
+  const [teacherTopicState, setTeacherTopicState] = useState<{
+    key: string;
+    status: 'idle' | 'loading' | 'ready' | 'error';
+    topic: typeof studentTopic;
+  }>({ key: '', status: 'idle', topic: undefined });
+  useEffect(() => {
+    if (!customTopic) {
+      setTeacherTopicState({ key: '', status: 'idle', topic: undefined });
+      return undefined;
+    }
+    if (!authUser) {
+      setTeacherTopicState({ key: teacherRequestKey, status: 'loading', topic: undefined });
+      return undefined;
+    }
+    const controller = new AbortController();
+    const requestEpoch = currentAuthEpoch();
+    setTeacherTopicState({ key: teacherRequestKey, status: 'loading', topic: undefined });
+    void (async () => {
+      for (let attempt = 0; attempt <= TEACHER_TOPIC_RETRY_MS.length; attempt += 1) {
+        try {
+          const record = await getTeacherCustomTopic(topicId, controller.signal);
+          if (controller.signal.aborted || requestEpoch !== currentAuthEpoch()) return;
+          const hydrated = record.topicId === topicId && record.payload?.topicId === topicId
+            ? hydrateTeacherRuntimeTopic(record.payload)
+            : null;
+          if (!hydrated || hydrated.topicId !== topicId) throw new Error('teacher-topic-invalid');
+          setTeacherTopicState({ key: teacherRequestKey, status: 'ready', topic: hydrated });
+          return;
+        } catch {
+          if (controller.signal.aborted || requestEpoch !== currentAuthEpoch()) return;
+          const delay = TEACHER_TOPIC_RETRY_MS[attempt];
+          if (delay === undefined) break;
+          await new Promise((resolve) => window.setTimeout(resolve, delay));
+        }
+      }
+      if (!controller.signal.aborted && requestEpoch === currentAuthEpoch()) {
+        setTeacherTopicState({ key: teacherRequestKey, status: 'error', topic: undefined });
+      }
+    })();
+    return () => controller.abort();
+  }, [authUser, customTopic, teacherRequestKey, topicId]);
+  const currentTeacherTopicState = teacherTopicState.key === teacherRequestKey
+    ? teacherTopicState
+    : { key: teacherRequestKey, status: 'loading' as const, topic: undefined };
+  const topic = customTopic ? currentTeacherTopicState.topic : studentTopic;
   useDocTitle(topic ? `灯下温书 · ${topic.title}` : undefined);
   const usable = !!topic && !topic.locked;
   const completePrep = useAppStore((st) => st.completePrep);
   const prepDone = useAppStore((st) => st.topicStates[topicId]?.prepDone ?? false);
   const level = useAppStore((st) => st.global.learningLevel);
+  const customTopicsStatus = useAppStore((st) => st.customTopicsStatus);
   // 记忆回执数据源:事件流 / 报告 / 主题状态(备课页原本不订阅,此处按需取,不改 store)
   const events = useAppStore((st) => st.events);
   const reports = useAppStore((st) => st.reports);
   const topicStates = useAppStore((st) => st.topicStates);
+  const allTopics = useAllTopics();
 
   /** 摸底第一波(判断题):已作答的选择(true=判"对",false=判"错") */
   const [answers, setAnswers] = useState<boolean[]>([]);
@@ -320,8 +376,8 @@ function PrepRoom({ topicId }: { topicId: string }) {
   /* 派生态提前算(hooks 必须在提前 return 之前):不可用主题一律给空 */
   // 记忆回执:首学该课(零事件)deriveTopicRecall 返回 null → 顶部纸条完全不渲染
   const recall = useMemo(
-    () => (usable ? deriveTopicRecall({ topicId, events, reports, topicStates, topics: TOPICS }) : null),
-    [usable, topicId, events, reports, topicStates],
+    () => (usable ? deriveTopicRecall({ topicId, events, reports, topicStates, topics: allTopics }) : null),
+    [usable, topicId, events, reports, topicStates, allTopics],
   );
   const probes = usable ? topic!.misconceptions.slice(0, 3) : [];
   const selfTest = usable ? getSelfTest(topicId) : [];
@@ -398,14 +454,25 @@ function PrepRoom({ topicId }: { topicId: string }) {
   }, []);
 
   if (!topic || topic.locked) {
+    const teacherLoadFailed = customTopic && currentTeacherTopicState.status === 'error';
+    const loadingCustom = customTopic && !teacherLoadFailed && (
+      currentTeacherTopicState.status === 'idle'
+      || currentTeacherTopicState.status === 'loading'
+      || customTopicsStatus === 'idle'
+      || customTopicsStatus === 'loading'
+    );
     return (
       <div className={s.page}>
         <div className={s.notFound}>
-          <h1 className={s.notFoundTitle}>这个知识点还没有开放</h1>
+          <h1 className={s.notFoundTitle}>{loadingCustom ? '正在从自选课架取讲义' : teacherLoadFailed ? '完整备课稿没有取回' : '这个知识点还没有开放'}</h1>
           <p className={s.notFoundText}>
-            书架上还有已开放的课在等你,先回书斋挑一本,回头再来看它。
+            {loadingCustom
+              ? '稍等片刻，备课材料正在归案。'
+              : teacherLoadFailed
+                ? '为避免用到缺少评估依据的学生稿，本次没有打开备课台；请稍后重试。'
+              : '书架上还有已开放的课在等你,先回书斋挑一本,回头再来看它。'}
           </p>
-          <Link to="/study" className={s.primaryBtn}>回书斋门厅</Link>
+          {!loadingCustom ? <Link to="/study" className={s.primaryBtn}>回书斋门厅</Link> : null}
         </div>
       </div>
     );

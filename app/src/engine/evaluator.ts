@@ -7,6 +7,7 @@
 import type { EvalResult, LlmSettings, Topic, TopicState } from '../types';
 import { llmCall } from './llm';
 import type { LlmPayload } from './llm';
+import { evaluateCustomTopicSemantic } from '../lib/customContent';
 
 export interface EvaluateInput {
   utterance: string;
@@ -160,12 +161,31 @@ export function hasWhySignal(text: string): boolean {
 
 export async function evaluate(input: EvaluateInput): Promise<EvalResult> {
   const base = ruleEvaluate(input);
+  const customTopic = input.topic.topicId.startsWith('custom-');
   // api 与 proxy 都走 LLM 语义评估;仅 mock 纯规则
-  if (input.settings.mode === 'mock') return base;
+  // 自定义课即使选了演示模式也不能用公开关键词推进掌握，仍走 BFF 完整 rubric；失败则下方 fail-closed。
+  if (input.settings.mode === 'mock' && !customTopic) return base;
   try {
-    const raw = await llmCall('evaluator', buildEvalPrompt(input), input.settings);
-    return mergeEval(base, parseLlmEval(raw), input);
+    const semantic = customTopic
+      ? await evaluateCustomTopicSemantic({
+        topicId: input.topic.topicId,
+        utterance: input.utterance,
+        lastXiaobaiText: input.lastXiaobaiText,
+        hitChecklist: input.state.hitChecklist,
+        pendingMcId: input.pendingMcId,
+      })
+      : parseLlmEval(await llmCall('evaluator', buildEvalPrompt(input), input.settings));
+    return mergeEval(base, semantic, input);
   } catch {
+    if (customTopic) {
+      return {
+        ...base,
+        checklistHits: [],
+        mcEvent: base.mcEvent ? { ...base.mcEvent, result: 'pending' } : null,
+        goldenAnalogy: null,
+        reasoning: '自定义课完整评估依据暂不可用，本轮不推进掌握状态',
+      };
+    }
     return base; // API 失败静默降级规则评估
   }
 }
@@ -203,7 +223,7 @@ function normForQuote(s: string): string {
  * - 误区判定:规则关键词明确命中(corrected/adopted)时以规则为准;规则拿不准(pending)才采信 LLM
  * - 卡壳/偏题:合并后重算 informative 守卫,有实质内容一律不算
  */
-function mergeEval(
+export function mergeEval(
   base: EvalResult, llm: LlmEval, input: EvaluateInput,
 ): EvalResult {
   const { topic, state, pendingMcId, utterance } = input;
@@ -221,7 +241,20 @@ function mergeEval(
       return id;
     })
     .filter((id): id is string => id !== null && validIds.has(id) && !state.hitChecklist.includes(id));
-  const checklistHits = [...new Set([...base.checklistHits, ...llmHits])];
+  const accuracyFlags = (Array.isArray(llm.accuracyFlags) ? llm.accuracyFlags : [])
+    .filter((f): f is { checklistId: string; note: string } =>
+      typeof f === 'object' && f !== null &&
+      typeof (f as { checklistId?: unknown }).checklistId === 'string' &&
+      validIds.has((f as { checklistId: string }).checklistId) &&
+      typeof (f as { note?: unknown }).note === 'string' &&
+      (f as { note: string }).note.length > 0)
+    .slice(0, 3);
+  const flaggedIds = new Set(accuracyFlags.map((flag) => flag.checklistId));
+  // 自定义课的完整 rubric 只在 BFF：服务端语义结果成功返回时以它为准，
+  // 不让浏览器关键词规则把“提到术语但讲反了”仍算作掌握。
+  const checklistHits = input.topic.topicId.startsWith('custom-')
+    ? [...new Set(llmHits.filter((id) => !flaggedIds.has(id)))]
+    : [...new Set([...base.checklistHits, ...llmHits])];
 
   // 误区判定:api 模式下语义判定优先 —— 规则关键词是子串匹配,分不清"一样"和"不一样",
   // 自由表述下会把正确反驳误判成被带偏(或反向);LLM 给出合法判定时采信 LLM,
@@ -251,15 +284,6 @@ function mergeEval(
     (informative && llmGoldenRaw && llmGoldenNorm.length >= 8 && uttNorm.includes(llmGoldenNorm)
       ? llmGoldenRaw
       : null);
-
-  const accuracyFlags = (Array.isArray(llm.accuracyFlags) ? llm.accuracyFlags : [])
-    .filter((f): f is { checklistId: string; note: string } =>
-      typeof f === 'object' && f !== null &&
-      typeof (f as { checklistId?: unknown }).checklistId === 'string' &&
-      validIds.has((f as { checklistId: string }).checklistId) &&
-      typeof (f as { note?: unknown }).note === 'string' &&
-      (f as { note: string }).note.length > 0)
-    .slice(0, 3);
 
   const reasoning =
     typeof llm.reasoning === 'string' && llm.reasoning
@@ -301,7 +325,14 @@ function buildEvalPrompt(input: EvaluateInput): LlmPayload {
     已讲清的要点: state.hitChecklist.map(
       (id) => topic.checklist.find((c) => c.id === id)?.point ?? id,
     ),
-    当前误区: mc ? { 错误认知: mc.belief, 纠正标准: mc.correctionCriteria } : null,
+    当前误区: mc ? {
+      错误认知: mc.belief,
+      // 自定义课的学生视图会物理剥离 correctionCriteria；此时用已下发的规则命中词
+      // 作为语义评估兜底，不向浏览器恢复完整教师标准。
+      纠正标准: mc.correctionCriteria.length > 0
+        ? mc.correctionCriteria
+        : mc.correctionKeywords.map((group) => group.join('、')),
+    } : null,
   });
   return { system, user, json: true };
 }

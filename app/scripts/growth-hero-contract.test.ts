@@ -289,10 +289,14 @@ assert.match(seaFieldSource, /<StarSkyCanvas compact=\{compact\}/, '星图必须
 assert.match(seaSkySource, /<canvas[\s\S]*?aria-hidden="true"/, '装饰星空画布必须对读屏隐藏');
 assert.match(classRule(seaStyle, 'sky'), /pointer-events:\s*none/, '装饰星空不得拦截星宿点击');
 assert.match(classRule(seaStyle, 'field'), /touch-action:\s*pan-y/, '星海竖滑仍交给页面,横滑才转镜头');
+assert.match(classRule(seaStyle, 'field'), /pinch-zoom/, '星海不得禁用页面双指缩放');
 assert.match(seaSkySource, /addEventListener\('touchmove'/, '星空必须监听原生 touchmove,不能只靠 pointermove');
 assert.match(seaSkySource, /passive:\s*false/, '横滑转镜头的 touchmove 必须非被动才能 preventDefault');
 assert.match(seaSkySource, /event\.preventDefault\(\)/, '锁定为横滑后必须 preventDefault,否则 iOS 仍把手势当滚动');
 assert.match(seaSkySource, /hover: none/, '无悬停设备必须用滚动位置驱动俯仰,保留鼠标路径不变');
+assert.match(seaSkySource, /touchDrag\?\.axis === 'x'/, '只有锁定横滑时才暂停滚动俯仰更新');
+assert.match(seaSkySource, /touchDrag = null;\s*onScroll\(\)/, '触摸结束必须补算最终滚动俯仰');
+assert.match(seaSkySource, /event\.touches\.length > 1/, '多指手势必须退出单指镜头拖动');
 assert.match(seaSkySource, /if \(!hoverInput\(event\)\) return;/, '触摸离开不得把镜头弹回原点(否则松手即失效)');
 assert.match(seaSkySource, /useReducedMotion/, '星空 3D 动画必须读取减少动态偏好');
 assert.match(seaSkySource, /IntersectionObserver/, '星空离开视口必须停画,避免后台空转');

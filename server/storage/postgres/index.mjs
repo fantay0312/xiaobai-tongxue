@@ -5,6 +5,7 @@ import { createCatalogRepository } from './catalog.mjs';
 import { createCdkRepository } from './cdk.mjs';
 import { createAuthAuditRepository, createInboundEmailRepository } from './messaging.mjs';
 import { createLearningStateRepository, createUserFileRepository } from './content.mjs';
+import { createCustomContentRepository } from './custom-content.mjs';
 import { createFeatureRepository } from './features.mjs';
 import { createPointRepository } from './points.mjs';
 import { createSubscriptionRepository } from './subscriptions.mjs';
@@ -32,6 +33,7 @@ function dataLayer(queryable, options) {
     points: createPointRepository(queryable, options),
     subscriptions: createSubscriptionRepository(queryable, options),
     userAccess: createUserAccessRepository(queryable, options),
+    customContent: createCustomContentRepository(queryable, options),
   });
 }
 

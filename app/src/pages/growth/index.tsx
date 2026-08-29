@@ -13,7 +13,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import type { LearnEvent, LearnEventType, Persona, SessionMode, SessionReport, XiaobaiMood } from '../../types';
 import { useAppStore } from '../../store/appStore';
-import { getTopic, TOPICS } from '../../data';
+import { getTopic } from '../../data';
 import { STAR_LINKS } from '../../data/starLinks';
 import { deriveAchievements, deriveTeacherRank } from '../../engine/achievements';
 import { nextStep } from '../../engine/journey';
@@ -29,6 +29,7 @@ import { XiaobaiLetter } from '../../components/story/XiaobaiLetter';
 import { MemoryPanorama } from '../../components/story/MemoryPanorama';
 import { Icon } from '../../components/ui/Icon';
 import { useDocTitle } from '../../hooks/useDocTitle';
+import { useAllTopics } from '../../hooks/useAllTopics';
 import { KnowledgeMap, type MapNode, type NodeStatus } from './KnowledgeMap';
 import { AchievementWall } from './AchievementWall';
 import { PersonaPicker } from './PersonaPicker';
@@ -195,6 +196,7 @@ export default function GrowthPage() {
   const topicStateOf = useAppStore((st) => st.topicState);
   const setPersona = useAppStore((st) => st.setPersona);
   const startReview = useAppStore((st) => st.startReview);
+  const allTopics = useAllTopics();
 
   const [selected, setSelected] = useState<string | null>(null);
   const [statusFocus, setStatusFocus] = useState<NodeStatus | null>(null);
@@ -203,24 +205,24 @@ export default function GrowthPage() {
 
   // 印章 / 师道称号 / 下一步 / 编年史:全部由事件流等真实数据纯函数派生
   const deriveInput = useMemo(
-    () => ({ events, reports, global, topicStates, topics: TOPICS }),
-    [events, reports, global, topicStates],
+    () => ({ events, reports, global, topicStates, topics: allTopics }),
+    [events, reports, global, topicStates, allTopics],
   );
   const achievements = useMemo(() => deriveAchievements(deriveInput), [deriveInput]);
   const rank = useMemo(() => deriveTeacherRank(deriveInput), [deriveInput]);
   const step = useMemo(
-    () => nextStep({ events, reports, topicStates, topics: TOPICS }),
-    [events, reports, topicStates],
+    () => nextStep({ events, reports, topicStates, topics: allTopics }),
+    [events, reports, topicStates, allTopics],
   );
   const chronicle = useMemo(() => buildChronicle(events, reports), [events, reports]);
   // 双轨成长(纯派生,不新增事件):学识经验轨(进阶)+ 五阶科名轨(进化),均从 events 重算
   const wisdom = useMemo(() => deriveWisdom(events), [events]);
-  const evolution = useMemo(() => deriveEvolution(events, TOPICS), [events]);
+  const evolution = useMemo(() => deriveEvolution(events, allTopics), [events, allTopics]);
   const next = evolution.next;
   // 卷五·四层记忆匣 + 卷尾·印象句:engine/recall 纯派生,每句都带可复算的出处
   const panorama = useMemo(
-    () => deriveMemoryPanorama({ events, reports, topicStates, topics: TOPICS, global, live }),
-    [events, reports, topicStates, global, live],
+    () => deriveMemoryPanorama({ events, reports, topicStates, topics: allTopics, global, live }),
+    [events, reports, topicStates, allTopics, global, live],
   );
   const bondLines = useMemo(
     () => deriveRelationshipLines({ events, reports, global }),
@@ -239,7 +241,7 @@ export default function GrowthPage() {
     : 0;
   const shownChronicle = oldPages ? chronicle : chronicle.slice(0, 6);
 
-  const nodes: MapNode[] = useMemo(() => TOPICS.map((t) => {
+  const nodes: MapNode[] = useMemo(() => allTopics.map((t) => {
     if (t.locked) return { topic: t, state: null, status: 'locked' as const };
     const st = topicStates[t.topicId] ?? topicStateOf(t.topicId);
     const touched =
@@ -253,7 +255,7 @@ export default function GrowthPage() {
           ? ('learning' as const)
           : ('unlearned' as const);
     return { topic: t, state: st, status };
-  }), [events, topicStateOf, topicStates]);
+  }), [allTopics, events, topicStateOf, topicStates]);
 
   const selNode = nodes.find((n) => n.topic.topicId === selected) ?? null;
   const evidencePanelRef = useRef<HTMLElement | null>(null);
@@ -277,9 +279,9 @@ export default function GrowthPage() {
   const shownRecallId = shownNode?.topic.topicId ?? null;
   const recall = useMemo(
     () => (shownRecallId
-      ? deriveTopicRecall({ topicId: shownRecallId, events, reports, topicStates, topics: TOPICS })
+      ? deriveTopicRecall({ topicId: shownRecallId, events, reports, topicStates, topics: allTopics })
       : null),
-    [shownRecallId, events, reports, topicStates],
+    [shownRecallId, events, reports, topicStates, allTopics],
   );
 
   // 巡天筛选器的实时计数:每一态多少颗星,直接从 nodes 数,不新造状态
