@@ -6,7 +6,6 @@ import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { useAppStore } from '../../store/appStore';
 import type { XiaobaiQuizResult } from '../../types';
 import { useDocTitle } from '../../hooks/useDocTitle';
-import { RoundStamp } from '../../components/ui/RoundStamp';
 import { ExamQuestion } from './ExamQuestion';
 import {
   BEAT_INDEX, EXAM_BEATS, deriveUnderstanding, examWhisper, thinkingDuration, type ExamBeat,
@@ -137,9 +136,6 @@ export default function ExamPage() {
         <section className={s.sendoff} aria-labelledby="exam-title">
           <div className={s.avatarSide}>
             <span className={s.gateMark} aria-hidden="true"><Icon name="school" size={23} /></span>
-            <div className={s.examStamp}>
-              <RoundStamp text="准考验讫 · 考场之内先生不得代答 · " size={82} dur={56} />
-            </div>
             <XiaobaiAvatar mood="shy" level={level} variant="paper" size={190} />
             <span className={s.satchel}>小书箱已背好</span>
             <div className={`${s.ticket} ${paper.texture}`} aria-label="小白的准考证">

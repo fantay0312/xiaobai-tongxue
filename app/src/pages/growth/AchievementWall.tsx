@@ -12,7 +12,7 @@ import { getTopic } from '../../data';
 import { Icon } from '../../components/ui/Icon';
 import s from './AchievementWall.module.css';
 import motion from './AchievementSealMotion.module.css';
-import { useSealCeremony } from './useSealCeremony';
+import { sealButtonId, useSealCeremony } from './useSealCeremony';
 
 const SEALS_PER_PAGE = 4;
 const PAGES_PER_SPREAD = 2;
@@ -45,7 +45,6 @@ interface DetailPosition {
 
 type DetailStyle = CSSProperties & { '--detail-pointer-x'?: string };
 
-const sealButtonId = (id: string): string => `achievement-seal-${id}`;
 const sealDetailId = (id: string): string => `achievement-detail-${id}`;
 const sealDetailTitleId = (id: string): string => `achievement-detail-title-${id}`;
 

@@ -893,6 +893,14 @@ export default function CustomContentPage() {
   const workspaceMatchesOwner = workspaceOwner === authUser;
   const visibleService = workspaceMatchesOwner ? service : 'checking';
   const visibleNotice = workspaceMatchesOwner ? notice : '';
+  const focusNewCourse = () => document.getElementById('new-course')?.focus();
+
+  // 三步流程票签的活态:资料入库 → 编成课题 → 校订发布,按当前工作台状态点亮
+  const hasReadyAssets = assets.some((asset) => asset.parseStatus === 'completed');
+  const step1: 'done' | 'now' | 'todo' = hasReadyAssets ? 'done' : 'now';
+  const compiledOnce = Boolean(draftRecord) || job?.status === 'done' || job?.status === 'needs_review';
+  const step2: 'done' | 'now' | 'todo' = compiledOnce ? 'done' : hasReadyAssets ? 'now' : 'todo';
+  const step3: 'done' | 'now' | 'todo' = publishedTopicId ? 'done' : draftRecord ? 'now' : 'todo';
 
   return (
     <div className={s.page}>
@@ -903,9 +911,9 @@ export default function CustomContentPage() {
           <p>上传课件后，WeKnora 只负责拆页、分块与找出处；小白仍按原来的备课、追问、误区与赴考流程上课。</p>
         </div>
         <ol className={s.routeTicket} aria-label="自定义课程三步流程">
-          <li><span>壹</span><p><strong>资料入库</strong>PDF · PPT · Markdown</p></li>
-          <li><span>贰</span><p><strong>编成课题</strong>要点 · 误区 · 备课包</p></li>
-          <li><span>叁</span><p><strong>校订发布</strong>回到原书斋开讲</p></li>
+          <li data-state={step1}><span>壹</span><p><strong>资料入库</strong>PDF · PPT · Markdown</p></li>
+          <li data-state={step2}><span>贰</span><p><strong>编成课题</strong>要点 · 误区 · 备课包</p></li>
+          <li data-state={step3}><span>叁</span><p><strong>校订发布</strong>回到原书斋开讲</p></li>
         </ol>
       </section>
 
@@ -994,7 +1002,16 @@ export default function CustomContentPage() {
                     {assets.length === 0 ? <div className={s.emptyAssets}><Icon name="library" size={22} /><p><strong>资料桌还是空的</strong>先放一份讲义，小白才知道这门课要讲什么。</p></div> : null}
                   </div>
                 </>
-              ) : <p className={s.emptyDesk}>在左侧写下课程名，系统会为它建一函独立资料库。</p>}
+              ) : (
+                <div className={s.emptyDesk}>
+                  <span className={s.emptyCase} aria-hidden="true"><i>虚位以待</i></span>
+                  <div>
+                    <strong>书架上还没有一函自选课</strong>
+                    <p>先给这门课起个名字，系统会为它建一函独立的资料库；讲义、课件、大纲都装进这一函里。</p>
+                    <button type="button" onClick={focusNewCourse}>去写课程名 <Icon name="arrow-left" size={15} /></button>
+                  </div>
+                </div>
+              )}
             </section>
 
             <section id="custom-compiler" className={s.deskSection}>
@@ -1002,11 +1019,15 @@ export default function CustomContentPage() {
                 <div><span>TOPIC COMPILER</span><h2>课题编译台</h2></div>
                 <p>每条要点都必须能指回本课资料</p>
               </header>
-              <div className={s.compileStarter}>
-                <label>课题名（可留空让小砚拟题）<input value={topicTitle} maxLength={160} onChange={(event) => setTopicTitle(event.target.value)} placeholder="例如：栈与函数调用" /></label>
-                <p>已选 <strong>{selectedReadyAssets.length}</strong> 份已入库资料</p>
-                <button type="button" onClick={() => void beginCompile()} disabled={!courseId || recoveringJob || selectedReadyAssets.length === 0 || job?.status === 'queued' || job?.status === 'running' || job?.status === 'needs_review'}><Icon name="presentation" size={17} />{recoveringJob ? '正在找回草稿…' : '生成课题草稿'}</button>
-              </div>
+              {selectedCourse ? (
+                <div className={s.compileStarter}>
+                  <label>课题名（可留空让小砚拟题）<input value={topicTitle} maxLength={160} onChange={(event) => setTopicTitle(event.target.value)} placeholder="例如：栈与函数调用" /></label>
+                  <p>已选 <strong>{selectedReadyAssets.length}</strong> 份已入库资料{!hasReadyAssets ? ' · 先在资料桌勾选已入库的讲义' : ''}</p>
+                  <button type="button" onClick={() => void beginCompile()} disabled={!courseId || recoveringJob || selectedReadyAssets.length === 0 || job?.status === 'queued' || job?.status === 'running' || job?.status === 'needs_review'}><Icon name="presentation" size={17} />{recoveringJob ? '正在找回草稿…' : '生成课题草稿'}</button>
+                </div>
+              ) : (
+                <p className={s.lockedNote}><Icon name="lamp" size={16} />编译台要等资料入库后才亮灯——先建一门课程，再放一份讲义。</p>
+              )}
 
               {job ? (
                 <div className={`${s.jobStrip} ${job.status === 'failed' ? s.jobFailed : ''}`} role="status">

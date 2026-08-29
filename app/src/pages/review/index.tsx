@@ -16,7 +16,6 @@ import { HonorRoll } from '../../components/story/HonorRoll';
 import { MasteryCertificate } from '../../components/story/MasteryCertificate';
 import { XiaobaiDiary } from '../../components/story/XiaobaiDiary';
 import { Icon } from '../../components/ui/Icon';
-import { RoundStamp } from '../../components/ui/RoundStamp';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { useAllTopics } from '../../hooks/useAllTopics';
 import { Radar } from './Radar';
@@ -137,19 +136,31 @@ export default function ReviewPage() {
 
   return (
     <div className={s.page}>
+      {/* 卷首:左题名,右一张档案卡(卷宗索引卡制式)——旋转邮戳已退役,题头右侧不再放转字 */}
       <header className={`${s.head} ${s.rise}`} style={rise(0)}>
-        <div className={s.headStamp}>
-          <RoundStamp text="灯下批注 · 教然后知困 · " size={92} dur={54} />
+        <div className={s.headMain}>
+          <p className={s.chapterKicker}>第四章 · 灯下批注</p>
+          <p className={s.crumb}><Link to="/study">书斋门厅</Link> / 教学档案</p>
+          <h1 className={s.title}>{topic?.title ?? report.topicId}</h1>
+          <p className={s.subTitle}>一次讲解的完整复盘 —— 教然后知困</p>
         </div>
-        <p className={s.chapterKicker}>第四章 · 灯下批注</p>
-        <p className={s.crumb}><Link to="/study">书斋门厅</Link> / 教学档案</p>
-        <h1 className={s.title}>{topic?.title ?? report.topicId}</h1>
-        <p className={s.subTitle}>一次讲解的完整复盘 —— 教然后知困</p>
-        <p className={s.meta}>
-          {MODE_LABEL[report.mode]} · {fmtDate(report.startedAt)} · 共 {report.turnCount} 轮讲解
-          <span className={s.fileNo}>档案号 {report.sessionId}</span>
-          {report.masteredNow && <span className={s.masteredBadge}>本次出师</span>}
-        </p>
+        <aside className={`${s.fileCard} ${paper.texture}`} aria-label="教学档案卡">
+          <p className={s.fileCardHead}>
+            <span className={paper.typeLabel}>DOSSIER · 教学档案</span>
+            {report.masteredNow && <span className={s.masteredBadge}>本次出师</span>}
+          </p>
+          <dl className={s.fileRows}>
+            <div><dt>档案号</dt><dd className={s.fileNo}>{report.sessionId}</dd></div>
+            <div><dt>课型</dt><dd>{MODE_LABEL[report.mode]}</dd></div>
+            <div><dt>开讲</dt><dd>{fmtDate(report.startedAt)}</dd></div>
+            <div><dt>讲解</dt><dd>共 {report.turnCount} 轮</dd></div>
+            <div><dt>批阅</dt><dd>{report.highlights.length} 处高光 · {report.blindSpots.length} 处盲区</dd></div>
+          </dl>
+          <p className={`${paper.perfLine} ${s.fileFoot}`} aria-hidden="true">
+            <span className={paper.perfNote}>灯下批注 · 教然后知困</span>
+            <span className={paper.perfNote}>FILE COPY</span>
+          </p>
+        </aside>
       </header>
 
       {/* 出师那一课:结业证书顶格,先于一切分栏(doc §7 仪式资产) */}
