@@ -22,6 +22,8 @@ import { currentAuthEpoch } from '../../lib/api';
 import { getTeacherCustomTopic } from '../../lib/customContent';
 // 记忆回执:engine/recall 纯派生(不进 barrel),按路径直连
 import { deriveTopicRecall, type TopicRecall } from '../../engine/recall';
+// 学伴记忆:课级长短板与讲课习惯,≤2 行进记忆回执(不进 barrel,按路径直连)
+import { retrieveMemories } from '../../engine/learnerMemory';
 import type { PrepContext } from '../../engine/coach';
 import { getSelfTest } from '../../data/selfTest';
 import { getFigures } from '../../components/diagrams';
@@ -152,13 +154,14 @@ function Collapse({ title, tag, tagTone, defaultOpen, onOpen, children }: {
  * 展示项对齐工单:上次日期 / 结局句 / 记得的要点 / 裱起来的金句 / 清掉的心魔 / 保持度。
  * 评估隐身:仅要点名(prep 页路线图本已展示)、金句原文、心魔策展名与真实衰减数。
  */
-function RecallCard({ recall }: { recall: TopicRecall }) {
+function RecallCard({ recall, memoryLines }: { recall: TopicRecall; memoryLines: string[] }) {
   const hasContent =
     !!recall.lastOutcome ||
     recall.rememberedPoints.length > 0 ||
     recall.goldenQuotes.length > 0 ||
     recall.clearedDemons.length > 0 ||
-    recall.retention != null;
+    recall.retention != null ||
+    memoryLines.length > 0;
   if (!hasContent) return null;
 
   const daysAgo =
@@ -176,6 +179,15 @@ function RecallCard({ recall }: { recall: TopicRecall }) {
         {whenLabel && <span className={s.recallWhen}>上次温书 · {whenLabel}</span>}
       </div>
       {recall.lastOutcome && <p className={s.recallOutcome}>{recall.lastOutcome}</p>}
+
+      {memoryLines.length > 0 && (
+        <div className={s.recallField}>
+          <span className={s.recallFieldLabel}>小白记得</span>
+          <ul className={s.recallMemory}>
+            {memoryLines.map((l, i) => <li key={i}>{l}</li>)}
+          </ul>
+        </div>
+      )}
 
       {recall.rememberedPoints.length > 0 && (
         <div className={s.recallField}>
@@ -350,6 +362,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
   const events = useAppStore((st) => st.events);
   const reports = useAppStore((st) => st.reports);
   const topicStates = useAppStore((st) => st.topicStates);
+  const memory = useAppStore((st) => st.memory);
   const allTopics = useAllTopics();
 
   /** 摸底第一波(判断题):已作答的选择(true=判"对",false=判"错") */
@@ -378,6 +391,16 @@ function PrepRoom({ topicId }: { topicId: string }) {
   const recall = useMemo(
     () => (usable ? deriveTopicRecall({ topicId, events, reports, topicStates, topics: allTopics }) : null),
     [usable, topicId, events, reports, topicStates, allTopics],
+  );
+  // 小白记得:本课长短板与讲课习惯 ≤2 行;暂停记忆或没记下什么时不露面
+  const memoryLines = useMemo(
+    () => (usable && !memory.paused
+      ? retrieveMemories({
+        items: memory.items, topicId, kinds: ['weakness', 'strength', 'habit'], limit: 2,
+        now: new Date().toISOString(),
+      }).map((it) => it.text)
+      : []),
+    [usable, topicId, memory],
   );
   const probes = usable ? topic!.misconceptions.slice(0, 3) : [];
   const selfTest = usable ? getSelfTest(topicId) : [];
@@ -661,7 +684,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
       <div className={s.layout}>
         <main className={s.main}>
           {/* ── 记忆回执:接着上次讲(首学该课不渲染) ── */}
-          {recall && <RecallCard recall={recall} />}
+          {recall && <RecallCard recall={recall} memoryLines={memoryLines} />}
 
           {/* ── 壹 · 摸底快测 ── */}
           <section

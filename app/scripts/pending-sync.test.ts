@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import {
-  applySyncDelta, canClaimLocalHistory, claimLocalHistoryOwner,
-  diffSyncPayload, sanitizeSyncPayload,
+  applyMemoryDelta, applySyncDelta, canClaimLocalHistory, claimLocalHistoryOwner,
+  diffSyncPayload, mergeSyncPayloads, sanitizeSyncPayload,
   type SyncPayload, type SyncStorage,
 } from '../src/store/pendingSync';
 import { createPendingSyncQueue } from '../src/store/pendingSyncQueue';
+import { EMPTY_MEMORY } from '../src/engine/learnerMemory';
+import type { MemoryItem, MemoryState } from '../src/types';
 
 function payload(topicsMastered: number, eventIds: string[] = []): SyncPayload {
   return {
@@ -172,4 +174,70 @@ assert.equal(afterRetry.global.topicsMastered, 9, '已含本地变更的远端�
 assert.deepEqual(firstDelta && applySyncDelta(afterRetry, firstDelta), afterRetry,
   '同一操作在丢失响应后重放必须幂等');
 
-console.log('pending sync operation log: 41 assertions passed');
+// ── 学伴记忆切片:补丁保留、新者胜合并、净化、坏补丁拦截、重放幂等 ──
+const T0 = '2026-08-10T00:00:00.000Z';
+const T1 = '2026-08-12T00:00:00.000Z';
+const memItem = (over: Partial<MemoryItem> = {}): MemoryItem => ({
+  id: 'mem-analogy', kind: 'habit', scope: {}, text: '先生讲课爱打比方', source: 'observed', dedupeKey: 'analogy',
+  confidence: 0.8, evidence: ['e1'], createdAt: T0, updatedAt: T0, lastSeenAt: T0, seenCount: 1,
+  pinned: false, muted: false, ...over,
+});
+const memState = (items: MemoryItem[], paused = false): MemoryState => ({ items, profile: null, paused, version: 1 });
+const withMemory = { ...payload(0), memory: memState([memItem()]) };
+const memoryPatch = diffSyncPayload(payload(0), withMemory);
+assert.ok(memoryPatch && memoryPatch.kind === 'patch' && memoryPatch.memory?.items?.upsert.length === 1,
+  '记忆切片变化必须进入补丁');
+const patched = applySyncDelta(payload(0), memoryPatch);
+assert.deepEqual(patched.memory, withMemory.memory, '补丁应用后必须保留记忆切片');
+assert.deepEqual(applySyncDelta(patched, memoryPatch), patched, '记忆补丁重放必须幂等');
+assert.equal('memory' in applySyncDelta(payload(0), diffSyncPayload(payload(0), payload(1, ['x']))!), false,
+  '无记忆基线与无记忆补丁不得凭空补键');
+const staleMuted = { ...payload(0), memory: memState([memItem({ muted: true, updatedAt: T0 })]) };
+const freshUnmuted = { ...payload(0), memory: memState([memItem({ muted: false, updatedAt: T1 })]) };
+const mergedMemory = mergeSyncPayloads(freshUnmuted, staleMuted).memory;
+assert.ok(mergedMemory && mergedMemory.items[0].muted === false && mergedMemory.items[0].updatedAt === T1,
+  '合并按 updatedAt 新者胜:本地取消隐藏必须压过远端旧的隐藏');
+const tiePinned = mergeSyncPayloads(
+  { ...payload(0), memory: memState([memItem({ pinned: false })]) },
+  { ...payload(0), memory: memState([memItem({ pinned: true })]) },
+).memory;
+assert.ok(tiePinned && tiePinned.items[0].pinned === true, '同时间平手取固定者');
+const unmuteDelta = diffSyncPayload(staleMuted, freshUnmuted);
+assert.ok(unmuteDelta && unmuteDelta.kind === 'patch' && unmuteDelta.memory?.items?.upsert[0]?.muted === false,
+  '取消隐藏(同 id 换 updatedAt)必须作为 upsert 进入补丁');
+assert.equal(applySyncDelta(applySyncDelta(payload(0), memoryPatch), unmuteDelta).memory?.items[0].muted, false,
+  '较新的 upsert 必须覆盖旧条目');
+assert.equal(applySyncDelta(freshUnmuted, diffSyncPayload(payload(0), staleMuted)!).memory?.items[0].muted, false,
+  '较旧的 upsert 不得覆盖新条目');
+const sanitizedMemory = sanitizeSyncPayload({
+  ...payload(0), memory: { items: [{}], paused: 'x' },
+} as unknown as Partial<SyncPayload>, payload(0).global);
+assert.deepEqual(sanitizedMemory.memory, EMPTY_MEMORY, '条目畸形但切片成形的远端记忆:丢条目、归安全值');
+assert.equal(sanitizeSyncPayload({ ...payload(0), memory: 'x' } as unknown as Partial<SyncPayload>, payload(0).global).memory,
+  undefined, '整体畸形的远端记忆键视同缺失(交给拉档方从事件流回填),不得落成空切片盖掉本地');
+// 先生固定+隐藏(T1) vs 另一台设备后台「又见到一次」(updatedAt 不变、lastSeenAt 更新):意图字段不得丢
+const T2 = '2026-08-14T00:00:00.000Z';
+const pinnedLocal = memItem({ pinned: true, muted: true, updatedAt: T1 });
+const seenRemote = memItem({ lastSeenAt: T2, seenCount: 2, confidence: 0.95, evidence: ['e1', 'e2'] });
+const replayed = applyMemoryDelta(memState([seenRemote]), { items: { upsert: [pinnedLocal], remove: [] } }).items[0];
+assert.ok(replayed.pinned && replayed.muted && replayed.lastSeenAt === T2 && replayed.seenCount === 2
+  && replayed.confidence === 0.95 && replayed.evidence.length === 2,
+  '补丁重放:固定/隐藏取 updatedAt 新者,观察字段两边取大');
+const mergedIntent = mergeSyncPayloads(
+  { ...payload(0), memory: memState([seenRemote]) }, { ...payload(0), memory: memState([pinnedLocal]) },
+).memory!.items[0];
+assert.ok(mergedIntent.pinned && mergedIntent.muted && mergedIntent.lastSeenAt === T2, '409 合并同样不丢固定/隐藏');
+assert.equal('memory' in sanitizeSyncPayload(payload(0), payload(0).global), false,
+  '远端没有记忆键时净化不得补键(留给拉档方回填)');
+const badMemory = memoryStorage();
+const badMemoryWriter = createPendingSyncQueue(badMemory.storage);
+badMemoryWriter.capture('BadMemory', payload(0), withMemory);
+const [badKey, badRaw] = [...badMemory.values.entries()][0];
+const corruptMemory = JSON.parse(badRaw) as { delta: { memory: { items: { upsert: unknown[] } } } };
+corruptMemory.delta.memory.items.upsert = [{ id: 'x', kind: 'alien' }];
+badMemory.values.set(badKey, JSON.stringify(corruptMemory));
+assert.deepEqual(createPendingSyncQueue(badMemory.storage).list('BadMemory'), [],
+  '畸形记忆补丁不得从本地队列回流');
+assert.equal(badMemory.values.size, 0);
+
+console.log('pending sync operation log: 57 assertions passed');

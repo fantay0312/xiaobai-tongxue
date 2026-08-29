@@ -2,6 +2,8 @@ import {
   diffSyncPayload,
   isSyncAnalogy,
   isSyncEvent,
+  isSyncLearnerProfile,
+  isSyncMemoryItem,
   isSyncPayload,
   isSyncReport,
   type PendingSyncOperation,
@@ -37,12 +39,22 @@ function validGlobalPatch(global: Record<string, unknown>): boolean {
   return global.goldenAnalogies === undefined || isCollection(global.goldenAnalogies, isSyncAnalogy);
 }
 
+/** 记忆补丁的严格闸门:从 localStorage 重读的操作不经 sanitizeSyncPayload,坏切片只能在此拦下 */
+function validMemoryPatch(memory: unknown): boolean {
+  if (memory === undefined) return true;
+  if (!object(memory)) return false;
+  return (memory.items === null || isCollection(memory.items, isSyncMemoryItem))
+    && (memory.paused === undefined || typeof memory.paused === 'boolean')
+    && (memory.profile === undefined || memory.profile === null || isSyncLearnerProfile(memory.profile));
+}
+
 function isDelta(value: unknown): value is SyncPayloadDelta {
   if (!object(value)) return false;
   if (value.kind === 'replace' || value.kind === 'merge') return isSyncPayload(value.state);
   if (value.kind !== 'patch' || !object(value.global) || !validGlobalPatch(value.global)) return false;
   return (value.events === null || isCollection(value.events, isSyncEvent))
-    && (value.reports === null || isCollection(value.reports, isSyncReport));
+    && (value.reports === null || isCollection(value.reports, isSyncReport))
+    && validMemoryPatch(value.memory);
 }
 
 function parseOperation(raw: string | null, expectedId: string): PendingSyncOperation | null {

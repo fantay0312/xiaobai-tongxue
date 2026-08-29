@@ -16,6 +16,7 @@
     "test:feedback": "tsx scripts/ui-feedback-contract.test.ts",
     "test:landing-data": "tsx scripts/landing-data.test.ts",
     "test:landing-motion": "tsx scripts/landing-motion-contract.test.ts",
+    "test:memory": "tsx scripts/learner-memory.test.ts",
     "test:qa-evidence": "tsx scripts/qa-evidence.test.ts",
     "test:sync": "tsx scripts/pending-sync.test.ts",
     "test:theme": "tsx scripts/theme-contract.test.ts",

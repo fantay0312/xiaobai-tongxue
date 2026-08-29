@@ -6,8 +6,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type {
-  AsrSettings, ChatMessage, EvalResult, LearnEvent, LiveSession, LlmSettings, Persona,
-  SessionMode, SessionReport, Topic, TopicState, XiaobaiGlobal,
+  AsrSettings, ChatMessage, EvalResult, LearnEvent, LiveSession, LlmSettings, MemoryItem, MemoryState,
+  Persona, SessionMode, SessionReport, Topic, TopicState, TurnTrace, XiaobaiGlobal,
 } from '../types';
 import { getAllTopics, getTopic, TOPICS } from '../data';
 import { XIAOBAI_EXAM_READY_LINE } from '../data/xiaobaiLines';
@@ -24,6 +24,13 @@ import { recallGreetingLine } from '../engine/recall';
 import { deriveEvolution } from '../engine/evolution';
 // 语音转写默认配置:同为浏览器专用模块,不走 barrel
 import { DEFAULT_ASR } from '../engine/asr';
+// 学伴记忆:纯引擎按路径直连(不进 barrel);LLM 润色在独立 sidecar,只在非 mock 模式后台调用
+import {
+  EMPTY_MEMORY, composeLearnerProfile, explicitMemory, extractSessionMemories, memoryHintsForXiaobai,
+  rebuildMemoryFromHistory, reconcileMemories, sanitizeMemoryState, scrubQuote,
+} from '../engine/learnerMemory';
+import type { MemoryDraft } from '../engine/learnerMemory';
+import { synthesizeProfileWithLlm } from '../engine/learnerMemoryLlm';
 import type { PreparedImageAttachment } from '../lib/imageAttachment';
 import { describeTeachingImage } from '../lib/vision';
 import { listPublishedCustomTopics } from '../lib/customContent';
@@ -33,6 +40,14 @@ const uid = () => (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(3
 const now = () => new Date().toISOString();
 let customTopicsLoadSequence = 0;
 const CUSTOM_TOPICS_RETRY_MS = [750, 1_500] as const;
+
+/** 记忆引文里要剔除的用户资料(用户名等);由 sync 层注入 authStore 读数,appStore 不直接依赖 authStore */
+let memoryPiiProvider: () => string[] = () => [];
+export function setMemoryPiiProvider(provider: () => string[]): void {
+  memoryPiiProvider = provider;
+}
+/** 课堂里「小白翻了翻小本子」的系统旁注前缀(mock 模式下记忆影响的可见证据,一场只出一次) */
+const MEMORY_NOTE_PREFIX = '小白翻了翻小本子：';
 
 /** 导出给 sync 拉档时兜底:远端 global 缺字段(或被手工改坏)不得让页面派生层崩掉 */
 export const DEFAULT_GLOBAL: XiaobaiGlobal = {
@@ -123,6 +138,8 @@ export interface AppState {
   asrSettings: AsrSettings;
   customTopics: Topic[];
   customTopicsStatus: 'idle' | 'loading' | 'ready' | 'error';
+  /** 学伴记忆:条目 + 画像 + 暂停开关;随账号同步,退出登录即清 */
+  memory: MemoryState;
 
   topicState: (topicId: string) => TopicState;
   appendEvents: (drafts: EventDraft[], sessionId: string | null) => LearnEvent[];
@@ -144,6 +161,44 @@ export interface AppState {
   setSettings: (s: Partial<LlmSettings>) => void;
   setAsrSettings: (s: Partial<AsrSettings>) => void;
   resetAll: () => void;
+
+  /** 一堂课结束(或中途离开且讲过至少一轮):抽取 → 归并 → 合成画像;paused 时空操作 */
+  memorizeSession: (input: {
+    sessionId: string; topicId: string; messages: ChatMessage[]; traces: TurnTrace[]; report: SessionReport | null;
+  }) => void;
+  /** 边讲边记:金句一出即归并一条「爱打比方」习惯,不等下课 */
+  memorizeGoldenAnalogy: (input: { topicId: string; eventId: string; quote: string }) => void;
+  pinMemory: (id: string, pinned: boolean) => void;
+  muteMemory: (id: string, muted: boolean) => void;
+  editMemory: (id: string, text: string) => void;
+  deleteMemory: (id: string) => void;
+  addExplicitMemory: (text: string, scope: MemoryItem['scope']) => void;
+  setMemoryPaused: (paused: boolean) => void;
+  recomposeProfile: () => void;
+  resetMemory: () => void;
+}
+
+/** 归并草稿并重合成画像(同步、确定性);非 mock 且条目 ≥6 时后台请 LLM 润色,画像没被别处改动才落地 */
+function applyDrafts(
+  get: () => AppState, set: (partial: Partial<AppState>) => void, drafts: MemoryDraft[], at: string,
+): void {
+  const memory = get().memory;
+  const { items } = reconcileMemories(memory.items, drafts, at);
+  const profile = composeLearnerProfile({ items, events: get().events, now: at });
+  const next: MemoryState = { ...memory, items, profile };
+  set({ memory: next });
+  const settings = get().settings;
+  if (settings.mode === 'mock' || items.length < 6) return;
+  void synthesizeProfileWithLlm(next, settings).then((polished) => {
+    if (!polished) return;
+    const current = get().memory;
+    if (current.profile?.updatedAt !== profile.updatedAt) return;
+    set({ memory: { ...current, profile: { ...polished, updatedAt: now() } } });
+  });
+}
+
+function touchItem(items: MemoryItem[], id: string, patch: (item: MemoryItem) => MemoryItem): MemoryItem[] {
+  return items.map((item) => (item.id === id ? patch(item) : item));
 }
 
 export const useAppStore = create<AppState>()(
@@ -158,6 +213,7 @@ export const useAppStore = create<AppState>()(
       asrSettings: DEFAULT_ASR,
       customTopics: [],
       customTopicsStatus: 'idle',
+      memory: EMPTY_MEMORY,
 
       topicState: (topicId) => {
         const cached = get().topicStates[topicId];
@@ -277,8 +333,13 @@ export const useAppStore = create<AppState>()(
         const recall = mode === 'teach'
           ? recallGreetingLine({ topic, events: get().events, reports: get().reports, excludeSessionId: sessionId })
           : null;
+        // 学伴记忆提示同样在 await 前取材:长渲染期间记忆可能被清空/暂停
+        const memoryHints = get().memory.paused ? [] : memoryHintsForXiaobai({
+          items: get().memory.items, topicId, course: topic.course, topic,
+          hitChecklist: state.hitChecklist, now: now(),
+        });
         const speak = await speakXiaobai({
-          card: opening.card, topic, state, recentMessages: [], settings: get().settings, seed: 0,
+          card: opening.card, topic, state, recentMessages: [], settings: get().settings, seed: 0, memoryHints,
         });
         // api 模式下渲染可能耗时数秒,期间用户可能已退出/切换会话 —— 续体只允许写回本会话
         if (get().live?.sessionId !== sessionId) return;
@@ -453,10 +514,21 @@ export const useAppStore = create<AppState>()(
               : decision.card.paraphraseSource,
             recentTeacherTerms: extractTeacherTerms(privateMessages, topic),
           };
+          // 金句一出即边讲边记(事件已 append):本轮的「爱打比方」习惯就能进这一轮的提示
+          const golden = stamped.find((e) => e.type === 'golden_analogy_saved');
+          if (golden) {
+            get().memorizeGoldenAnalogy({
+              topicId: topic.topicId, eventId: golden.id, quote: String(golden.payload.text ?? ''),
+            });
+          }
+          const memoryHints = get().memory.paused ? [] : memoryHintsForXiaobai({
+            items: get().memory.items, topicId: topic.topicId, course: topic.course, topic,
+            hitChecklist: stateAfter.hitChecklist, now: now(),
+          });
           const speak = await speakXiaobai({
             card: privateCard, topic, state: stateAfter,
             recentMessages: privateMessages,
-            settings, seed: live.traces.length + 1,
+            settings, seed: live.traces.length + 1, memoryHints,
           });
           if (get().live?.sessionId !== sessionId) return { accepted: true };
 
@@ -468,6 +540,13 @@ export const useAppStore = create<AppState>()(
             newMessages.push(msg('xiaobai', XIAOBAI_EXAM_READY_LINE, { mood: 'happy' }));
           }
           if (decision.systemNote) newMessages.push(msg('system', decision.systemNote));
+          // mock 模式看不见提示词:开窍复述那一轮补一条旁注,让记忆的影响在课堂上可见(一场只一次)
+          if (
+            memoryHints.length > 0 && decision.action === 'express_understanding' && decision.card.paraphraseSource
+            && !live.messages.some((m) => m.role === 'system' && m.text.startsWith(MEMORY_NOTE_PREFIX))
+          ) {
+            newMessages.push(msg('system', `${MEMORY_NOTE_PREFIX}${memoryHints[0]}`));
+          }
 
           set((s) => s.live && s.live.sessionId === sessionId ? {
             live: {
@@ -490,8 +569,7 @@ export const useAppStore = create<AppState>()(
             },
           } : {});
 
-          // 金句/关系记忆 → 全局层
-          const golden = stamped.find((e) => e.type === 'golden_analogy_saved');
+          // 金句 → 全局层(关系印象改由学伴记忆承担,不再往 relationshipMemory 写死字符串)
           if (golden) {
             set((s) => ({
               global: {
@@ -500,9 +578,6 @@ export const useAppStore = create<AppState>()(
                   id: golden.id, topicId: topic.topicId,
                   text: String(golden.payload.text ?? ''), t: golden.t,
                 }],
-                relationshipMemory: s.global.relationshipMemory.includes('老师爱打比方,一举例我就懂')
-                  ? s.global.relationshipMemory
-                  : [...s.global.relationshipMemory, '老师爱打比方,一举例我就懂'].slice(-5),
               },
             }));
           }
@@ -577,6 +652,10 @@ export const useAppStore = create<AppState>()(
           payload: { turns: live.traces.length },
           evidence: `会话结束,共 ${live.traces.length} 轮讲解`,
         }], live.sessionId);
+        // 下课即记:须在 live 置空前取对话与判定
+        get().memorizeSession({
+          sessionId: live.sessionId, topicId: topic.topicId, messages: live.messages, traces: live.traces, report,
+        });
 
         set((s) => ({ reports: [...s.reports, report], live: null }));
         revokeLiveImages(live);
@@ -592,6 +671,12 @@ export const useAppStore = create<AppState>()(
             payload: { turns: live.traces.length, abandoned: true },
             evidence: `中途离开教室(第 ${live.traces.length} 轮),悬置误区退回待注入`,
           }], live.sessionId);
+          if (live.traces.length >= 1) {
+            get().memorizeSession({
+              sessionId: live.sessionId, topicId: live.topicId, messages: live.messages, traces: live.traces,
+              report: null,
+            });
+          }
         }
         set({ live: null });
         revokeLiveImages(live);
@@ -628,21 +713,82 @@ export const useAppStore = create<AppState>()(
       resetAll: () => {
         revokeLiveImages(get().live);
         set({
-          global: DEFAULT_GLOBAL, events: [], reports: [], topicStates: {}, live: null,
+          global: DEFAULT_GLOBAL, events: [], reports: [], topicStates: {}, live: null, memory: EMPTY_MEMORY,
         });
       },
+
+      memorizeSession: ({ sessionId, topicId, messages, traces, report }) => {
+        if (get().memory.paused) return;
+        const topic = getTopic(topicId);
+        if (!topic) return;
+        const at = now();
+        const drafts = extractSessionMemories({
+          sessionId, events: get().events.filter((e) => e.sessionId === sessionId), report, topic,
+          messages, traces, existing: get().memory.items, piiTerms: memoryPiiProvider(), now: at,
+        });
+        applyDrafts(get, set, drafts, at);
+      },
+
+      memorizeGoldenAnalogy: ({ topicId, eventId, quote }) => {
+        if (get().memory.paused || !getTopic(topicId)) return;
+        const at = now();
+        const memory = get().memory;
+        // 引文与抽取器同一道闸:含号码/邮箱/联系方式/用户名整条丢弃(留事件 id),其余截 20 字
+        const q = scrubQuote(quote, memoryPiiProvider());
+        const { items } = reconcileMemories(memory.items, [{
+          kind: 'habit', scope: {}, dedupeKey: 'analogy', text: '先生讲课爱打比方', confidence: 0.8,
+          evidence: [eventId, ...(q ? [q] : [])],
+        }], at);
+        set({ memory: { ...memory, items } });
+      },
+
+      pinMemory: (id, pinned) => set((s) => ({
+        memory: { ...s.memory, items: touchItem(s.memory.items, id, (it) => ({ ...it, pinned, updatedAt: now() })) },
+      })),
+      muteMemory: (id, muted) => set((s) => ({
+        memory: { ...s.memory, items: touchItem(s.memory.items, id, (it) => ({ ...it, muted, updatedAt: now() })) },
+      })),
+      editMemory: (id, text) => {
+        const clean = text.replace(/\s+/g, ' ').trim().slice(0, 60);
+        if (!clean) return;
+        set((s) => ({
+          memory: {
+            ...s.memory,
+            items: touchItem(s.memory.items, id, (it) => ({
+              ...it, text: clean, source: 'explicit', pinned: true, confidence: 1, updatedAt: now(),
+            })),
+          },
+        }));
+      },
+      deleteMemory: (id) => set((s) => ({
+        memory: { ...s.memory, items: s.memory.items.filter((it) => it.id !== id) },
+      })),
+      addExplicitMemory: (text, scope) => {
+        const item = explicitMemory(text, scope, now());
+        if (!item) return;
+        set((s) => ({
+          memory: { ...s.memory, items: [...s.memory.items.filter((it) => it.id !== item.id), item] },
+        }));
+      },
+      setMemoryPaused: (paused) => set((s) => ({ memory: { ...s.memory, paused } })),
+      recomposeProfile: () => {
+        const { memory, events } = get();
+        set({ memory: { ...memory, profile: composeLearnerProfile({ items: memory.items, events, now: now() }) } });
+      },
+      resetMemory: () => set({ memory: EMPTY_MEMORY }),
     }),
     {
       name: 'xiaobai-store-v1',
-      version: 4,
+      version: 5,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         global: s.global, events: s.events, reports: s.reports,
-        settings: s.settings, asrSettings: s.asrSettings,
+        settings: s.settings, asrSettings: s.asrSettings, memory: s.memory,
       }),
       // v3 修正旧存档的跳级值,让五阶成长从既有出师数重新连续派生
       // v4 进化新规则(跨课程广度)重算:从事件流按 deriveEvolution 复算 learningLevel
       //    —— 深耕单课程的旧档会诚实降阶,属新规则下的确定性重算,接受
+      // v5 学伴记忆:从事件流+报告回填 memory(对话不持久化,说话风格类条目回填中天然缺席)
       migrate: (persisted, version) => {
         const state = persisted as Partial<AppState>;
         if (version < 3 && state.global) {
@@ -659,6 +805,12 @@ export const useAppStore = create<AppState>()(
             learningLevel: deriveEvolution(state.events, TOPICS).stage,
           };
         }
+        if (version < 5 && Array.isArray(state.events)) {
+          state.memory = rebuildMemoryFromHistory({
+            events: state.events, reports: Array.isArray(state.reports) ? state.reports : [],
+            topics: TOPICS, now: new Date().toISOString(),
+          });
+        }
         return state;
       },
       // 构建期注入了 LLM 凭据、而存档从未配置过 key 时,以注入配置为准;
@@ -669,6 +821,8 @@ export const useAppStore = create<AppState>()(
         if (ENV_LLM_DEFAULT && !merged.settings?.apiKey) {
           merged.settings = { ...ENV_LLM_DEFAULT, temperature: merged.settings?.temperature ?? 0.8 };
         }
+        // 记忆切片每次加载都过校验:手工改坏/损坏的存档不得让记忆匣白屏
+        merged.memory = sanitizeMemoryState(merged.memory) ?? EMPTY_MEMORY;
         return merged;
       },
       onRehydrateStorage: () => (state) => {
