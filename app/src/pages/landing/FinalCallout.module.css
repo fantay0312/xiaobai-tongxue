@@ -2,10 +2,8 @@
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 1.15fr 0.75fr;
-  align-items: end;
-  gap: clamp(2rem, 7vw, 6rem);
-  margin: clamp(4rem, 9vw, 7rem) 0 1.25rem;
+  gap: var(--gap);
+  margin: clamp(3rem, 7vw, 5rem) 0 0;
   padding: clamp(2.2rem, 6vw, 4.5rem);
   border: 1px solid var(--inkstone-line);
   border-radius: var(--radius-l);
@@ -34,16 +32,18 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 0.85rem;
+  max-width: 38rem;
 }
 
 .title {
-  font-size: clamp(2rem, 4.2vw, 3.5rem);
+  font-size: clamp(2rem, 4.2vw, 3.2rem);
   font-weight: 600;
   color: var(--moon-on-ink);
 }
 
 .note {
   color: var(--moonsoft-on-ink);
+  line-height: 1.8;
 }
 
 .action {
@@ -52,41 +52,23 @@
   gap: 0.55rem;
   margin-top: 0.55rem;
   min-height: 2.9rem;
-  padding: 0.68rem 1.25rem;
+  padding: 0.7rem 1.35rem;
   border-radius: var(--radius-s);
-  background: var(--azure);
-  color: var(--paper);
+  background: var(--mustard);
+  color: var(--ink);
   font-weight: 700;
   letter-spacing: 0.08em;
-  transition: transform var(--t-fast) var(--ease-out);
+  transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
 }
 
 .action:hover {
   transform: translateY(-2px);
-  background: var(--terra-deep);
+  background: var(--chalk-amber);
 }
 
-.list {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  gap: 0.7rem;
-  margin: 0;
-  padding: 0 0 1rem;
-  list-style: none;
-  color: var(--moonsoft-on-ink);
-}
-
-.list li {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  font-size: var(--fs-small);
-  letter-spacing: 0.05em;
-}
-
-.list svg {
-  color: var(--chalk-amber);
+.action:focus-visible {
+  outline: 2px solid var(--moon-on-ink);
+  outline-offset: 3px;
 }
 
 .sign {
@@ -103,8 +85,7 @@
   color: var(--moonsoft-on-ink);
 }
 
-/* 砚墨底上的落款章:章身是靛蓝实心,直接压深色底会糊掉,
-   垫一方月白纸底圆角(与页签图标、夜自习壳内同一处理) */
+/* 砚墨底上的落款章:章身实心压深色底会糊,垫一方月白纸底 */
 .seal {
   width: 1.8rem;
   height: 1.8rem;
@@ -114,14 +95,7 @@
 }
 
 @media (max-width: 45rem) {
-  .wrap {
-    grid-template-columns: 1fr;
-    align-items: start;
-  }
-
-  .list {
-    padding-bottom: 2.4rem;
-  }
+  .copy { padding-bottom: 2.2rem; }
 
   .sign {
     left: clamp(2.2rem, 6vw, 4.5rem);
@@ -135,12 +109,12 @@
   }
 }
 
-/* ── 日系动漫主题:终幕行动键 ──
-   渐变+彩色光晕换成平涂藍块 + 线稿边 + 硬边落影;按下时影子被压进纸里。 */
+/* ── 日系动漫主题:终幕行动键平涂 + 线稿边 + 硬边落影 ── */
 :global(html[data-theme='anime']) .action {
   border: 1.5px solid var(--terra-deep);
   border-radius: var(--radius-s);
   background: var(--terra-ink);
+  color: var(--paper);
   box-shadow: 0 3px 0 var(--terra-deep);
   transition:
     transform var(--t-fast) var(--ease-out),

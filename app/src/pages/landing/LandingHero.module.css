@@ -1,48 +1,25 @@
 .hero {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(19rem, 0.72fr);
-  align-items: center;
-  gap: clamp(2.5rem, 7vw, 7rem);
-  min-height: min(47rem, calc(100dvh - var(--header-h)));
-  padding: clamp(3.5rem, 9vw, 7rem) 2.5rem clamp(4rem, 8vw, 6.5rem) 0;
-}
-
-.hero [data-xiaobai-level-mark] { display: none; }
-
-.hero::after {
-  content: '';
-  position: absolute;
-  inset: auto 0 0;
-  height: 1px;
-  background: var(--paper-edge);
-}
-
-.copy {
-  position: relative;
-  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 1.25rem;
+  gap: 1.35rem;
+  max-width: 52rem;
+  padding: clamp(4rem, 9vw, 7.5rem) 0 clamp(2.5rem, 5vw, 4rem);
 }
 
 .enter {
   animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 
-.eyebrow {
-  color: var(--azure);
-}
-
 .title {
-  max-width: none;
-  margin-left: -0.045em;
-  font-size: clamp(3rem, 5.5vw, 4.75rem);
+  margin-left: -0.04em;
+  font-size: clamp(2.2rem, 4.6vw, 3.7rem);
   font-weight: 600;
-  line-height: 1.12;
-  letter-spacing: 0.015em;
+  line-height: 1.22;
+  letter-spacing: 0.01em;
   color: var(--ink);
+  text-wrap: balance;
 }
 
 .title em {
@@ -51,9 +28,9 @@
 }
 
 .lede {
-  max-width: 37rem;
-  font-size: clamp(1rem, 1.6vw, 1.2rem);
-  line-height: 2;
+  max-width: 40rem;
+  font-size: clamp(1rem, 1.5vw, 1.15rem);
+  line-height: 1.9;
   color: var(--ink-soft);
 }
 
@@ -62,7 +39,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.75rem 1.75rem;
-  margin-top: 0.4rem;
+  margin-top: 0.5rem;
 }
 
 .primary,
@@ -72,13 +49,13 @@
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
-  transition: transform var(--t-fast) var(--ease-out);
+  transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
 }
 
 .primary {
-  padding: 0.68rem 1.25rem;
+  padding: 0.7rem 1.35rem;
   border-radius: var(--radius-s);
-  background: var(--azure);
+  background: var(--ink);
   color: var(--paper);
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -87,7 +64,13 @@
 
 .primary:hover {
   transform: translateY(-2px);
-  background: var(--terra-deep);
+  background: var(--inkstone);
+}
+
+.primary:focus-visible,
+.secondary:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: 3px;
 }
 
 .secondary {
@@ -101,334 +84,28 @@
   color: var(--ink);
 }
 
-.proofLine {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem 1rem;
-  padding-top: 0.85rem;
-  border-top: 1px solid var(--paper-edge);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.08em;
-  color: var(--ink-faint);
-}
-
-.proofLine span + span::before {
-  content: '·';
-  margin-right: 1rem;
-  color: var(--terra);
-}
-
-/* 登机牌/听课证外壳:叠卡阵 + 挂孔 + 相片窗 + 撕票咬口。
-   入场动画落在 wrap 上,斜置落在票面,避免 rise 的 transform:none 压死倾角。 */
-.ticketWrap {
-  position: relative;
-  isolation: isolate;
-  z-index: 1;
-  align-self: center;
-  justify-self: end;
-  width: min(100%, 23.5rem);
-}
-
-.ticketWrap::before,
-.ticketWrap::after {
-  content: '';
-  position: absolute;
-  z-index: 0;
-  border-radius: var(--radius-s);
-  box-shadow: var(--shadow-paper);
-  pointer-events: none;
-}
-
-.ticketWrap::before {
-  top: 16%;
-  right: -0.55rem;
-  bottom: -0.4rem;
-  left: 22%;
-  background: var(--terra);
-  border: 1px solid color-mix(in oklch, var(--terra) 55%, var(--ink));
-  transform: rotate(-2.5deg);
-}
-
-.ticketWrap::after {
-  top: 18%;
-  right: 18%;
-  bottom: -0.5rem;
-  left: -0.5rem;
-  background: var(--paper-shade);
-  border: 1px solid var(--line-strong);
-  transform: rotate(2.8deg);
-}
-
-.ticket {
-  --ticket-face: color-mix(in oklch, var(--mustard) 28%, var(--paper-warm));
-  position: relative;
-  z-index: 1;
-  overflow: hidden;
-  padding: 1.7rem 1.45rem 1.2rem;
-  border: 1px solid color-mix(in oklch, var(--ink) 16%, var(--ticket-face));
-  border-radius: var(--radius-s);
-  background: var(--ticket-face);
-  box-shadow:
-    var(--shadow-paper),
-    inset 0 1px 0 color-mix(in oklch, var(--paper) 55%, transparent);
-  transform: rotate(1.6deg);
-  transition:
-    transform var(--t-med) var(--ease-out),
-    box-shadow var(--t-med) var(--ease-out);
-}
-
-.ticketWrap:hover .ticket {
-  transform: rotate(0.5deg) translateY(-3px);
-  box-shadow: var(--shadow-lift);
-}
-
-.punch {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  z-index: 2;
-  width: 2.6rem;
-  height: 1.15rem;
-  transform: translateX(-50%);
-  background: var(--paper);
-  border: 1px solid color-mix(in oklch, var(--ink) 14%, var(--ticket-face));
-  border-top: 0;
-  border-radius: 0 0 50% 50%;
-  box-shadow: inset 0 -1px 3px var(--ink-wash);
-  pointer-events: none;
-}
-
-.ticketHead,
-.ticketFoot,
-.pupil {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.ticketKicker {
-  color: var(--ink-soft);
-}
-
-.ticketTitle {
-  margin-top: 0.2rem;
-  font-size: clamp(1.7rem, 3vw, 2.2rem);
-}
-
-.seal {
-  width: 2.2rem;
-  height: 2.2rem;
-  flex: none;
-}
-
-.pupil {
-  justify-content: flex-start;
-  gap: 0.7rem;
-  margin: 1.05rem 0 0;
-  padding: 0.55rem 0.7rem;
-  border: 1px solid color-mix(in oklch, var(--ink) 12%, var(--paper-edge));
-  border-radius: var(--radius-tag);
-  background: var(--paper);
-  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--paper) 80%, transparent);
-}
-
-.pupilName {
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.pupilRole {
-  margin-top: 0.15rem;
-  font-size: var(--fs-small);
-  color: var(--ink-soft);
-}
-
-.pupilCopy {
-  min-width: 0;
-}
-
-.stageName {
-  white-space: nowrap;
-}
-
-.tear {
-  position: relative;
-  margin: 1rem -1.45rem;
-}
-
-.tear::before,
-.tear::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  width: 1.15rem;
-  height: 1.15rem;
-  border-radius: 50%;
-  background: var(--paper);
-  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ink) 10%, var(--ticket-face));
-}
-
-.tear::before {
-  left: 0;
-  transform: translate(-50%, -50%);
-}
-
-.tear::after {
-  right: 0;
-  transform: translate(50%, -50%);
-}
-
-.ticketMeta {
-  display: grid;
-  gap: 0;
-  margin: 0;
-}
-
-.ticketMeta div {
-  display: grid;
-  grid-template-columns: 5rem 1fr;
-  align-items: baseline;
-  gap: 0.75rem;
-  padding: 0.48rem 0;
-}
-
-.ticketMeta div + div {
-  border-top: 1px solid color-mix(in oklab, var(--ink) 10%, transparent);
-}
-
-.ticketMeta dt {
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.1em;
-  color: var(--ink-soft);
-}
-
-.ticketMeta dd {
-  margin: 0;
-  font-family: var(--font-display);
-  color: var(--ink);
-}
-
-.ticketFoot {
-  margin-top: 0.85rem;
-  padding-top: 0.8rem;
-  border-top: 1px solid color-mix(in oklab, var(--ink) 16%, transparent);
-}
-
-.ticketFoot a {
-  display: grid;
-  place-items: center;
-  width: 2.6rem;
-  height: 2.6rem;
-  border-radius: 50%;
-  background: var(--inkstone);
-  color: var(--mustard);
-  transition: scale 150ms var(--ease-out);
-}
-
-.ticketFoot a:active {
-  scale: 0.96;
-}
-
-.ticketFoot a:focus-visible {
-  outline: 2px solid var(--azure);
-  outline-offset: 3px;
-}
-
-.marginalia {
-  position: absolute;
-  top: 5rem;
-  right: -0.15rem;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  gap: 0.35rem;
-}
-
-.marginalia > p,
-.marginalia > cite {
-  font-size: var(--fs-tiny);
-  font-weight: 400;
-  line-height: 1.5;
-  color: color-mix(in oklab, var(--terra) 22%, transparent);
-}
-
-@media (max-width: 60rem) {
-  .hero {
-    grid-template-columns: 1fr;
-    min-height: 0;
-    padding-right: 0;
-  }
-
-  .ticketWrap {
-    justify-self: center;
-    width: min(100%, 30rem);
-  }
-
-  .marginalia {
-    display: none;
-  }
-}
-
 @media (max-width: 35rem) {
   .hero {
     padding-top: 2.75rem;
+    gap: 1.1rem;
   }
 
   .title {
-    font-size: clamp(2.55rem, 11.3vw, 2.9rem);
-  }
-
-  .ticket {
-    padding: 1.25rem 1.15rem 1.05rem;
-  }
-
-  .tear {
-    margin: 0.85rem -1.15rem;
-  }
-
-  .proofLine {
-    display: grid;
-  }
-
-  .proofLine span + span::before {
-    margin-right: 0.55rem;
+    font-size: clamp(1.9rem, 8.6vw, 2.4rem);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ticketWrap:hover .ticket,
-  .primary:hover,
-  .ticketFoot a:hover,
-  .ticketFoot a:active {
+  .primary:hover {
     transform: none;
-    scale: 1;
   }
 }
 
-/* 动漫主题:Hero 做成角色操作数字世界的现代构图 */
-/* ── 日系动漫主题 ──
-   基础态的模糊色团在这里直接收掉:主视觉右侧已经有斜贴票卡当视觉重心,
-   再加一枚装饰天体只会和票卡打架。留白比多一个元素强。 */
-:global(html[data-theme='anime']) .hero::before {
-  display: none;
-}
-
-/* 分区底线保留,只换成线稿色 */
-:global(html[data-theme='anime']) .hero::after {
-  background: var(--line-strong);
-}
-
-/* 题头点睛:斜体是本站的手写签名位,动漫态改用藍色描重而非取消斜体 */
+/* ── 日系动漫主题:平涂墨块 + 线稿边 + 硬边落影,按下去影子压进纸里 ── */
 :global(html[data-theme='anime']) .title em {
   color: var(--terra-ink);
 }
 
-/* 主行动:平涂藍块 + 深藍线稿边 + 硬边落影;按下去影子被压掉,像真的按进纸里 */
 :global(html[data-theme='anime']) .primary {
   border: 1.5px solid var(--terra-deep);
   border-radius: var(--radius-s);
@@ -449,100 +126,21 @@
   box-shadow: 0 1px 0 var(--terra-deep);
 }
 
-/* 次行动保持"下划线"制式,只把线换成藍 */
 :global(html[data-theme='anime']) .secondary {
   border-bottom-color: color-mix(in oklch, var(--terra) 50%, transparent);
   color: var(--terra-ink);
 }
 
-/* 主票卡:保留斜贴(这是全站招牌构图),把柔投影换成硬边落影 */
-:global(html[data-theme='anime']) .ticket {
-  border: 1.5px solid color-mix(in oklch, var(--ink) 28%, var(--ticket-face));
-  border-radius: var(--radius-s);
-  background: var(--ticket-face);
-  box-shadow: 5px 5px 0 color-mix(in oklch, var(--terra-deep) 20%, transparent);
-}
-
-:global(html[data-theme='anime']) .ticketWrap:hover .ticket {
-  transform: rotate(0.4deg) translateY(-3px);
-  box-shadow: 7px 7px 0 color-mix(in oklch, var(--terra-deep) 24%, transparent);
-}
-
-:global(html[data-theme='anime']) .ticketWrap::before {
-  box-shadow: 4px 4px 0 color-mix(in oklch, var(--terra-deep) 18%, transparent);
-}
-
-:global(html[data-theme='anime']) .ticketWrap::after {
-  box-shadow: 4px 4px 0 color-mix(in oklch, var(--ink) 10%, transparent);
-}
-
-:global(html[data-theme='anime']) .punch {
-  border: 1.5px solid color-mix(in oklch, var(--ink) 22%, var(--ticket-face));
-  box-shadow: none;
-}
-
-:global(html[data-theme='anime']) .pupil {
-  border: 1.5px solid color-mix(in oklch, var(--ink) 18%, var(--paper-edge));
-  box-shadow: 2px 2px 0 color-mix(in oklch, var(--terra-deep) 14%, transparent);
-}
-
-:global(html[data-theme='anime']) .tear::before,
-:global(html[data-theme='anime']) .tear::after {
-  box-shadow: none;
-  border: 1.5px solid color-mix(in oklch, var(--ink) 16%, var(--ticket-face));
-}
-
-/* 夜景板:mustard×paper-warm 会混成浊紫,票面改走夜青(和頁底同相、略提亮)。
-   叠卡也收进同一路藍夜,不再用月光藍垫在浊紫底下。 */
-:global(html[data-theme='anime'][data-tone='night']) .ticket {
-  --ticket-face: color-mix(in oklch, var(--paper-warm) 68%, var(--paper-edge));
-  border-color: color-mix(in oklch, var(--terra-deep) 36%, var(--ticket-face));
-  box-shadow: 5px 5px 0 oklch(0.140 0.024 260 / 0.42);
-}
-
-:global(html[data-theme='anime'][data-tone='night']) .ticketWrap:hover .ticket {
-  box-shadow: 7px 7px 0 oklch(0.140 0.024 260 / 0.5);
-}
-
-:global(html[data-theme='anime'][data-tone='night']) .ticketWrap::before {
-  background: color-mix(in oklch, var(--terra-deep) 58%, var(--paper-warm));
-  border-color: color-mix(in oklch, var(--terra-deep) 46%, var(--paper-edge));
-}
-
-:global(html[data-theme='anime'][data-tone='night']) .ticketWrap::after {
-  background: color-mix(in oklch, var(--paper-shade) 72%, var(--paper-warm));
-}
-
-:global(html[data-theme='anime'][data-tone='night']) .pupil {
-  background: color-mix(in oklch, var(--paper) 82%, var(--paper-warm));
-  border-color: var(--paper-edge);
-}
-
-/* 演示票右上角:夜景票面是藍夜,源图深底会糊。
-   Seal 已换奶白纸底图,再垫月白细环才落得住 */
-:global(html[data-theme='anime'][data-tone='night']) .seal {
-  border-radius: 22%;
-  object-fit: contain;
-  background: var(--moon-on-ink);
-  box-shadow:
-    0 0 0 1.5px color-mix(in oklch, var(--ink) 22%, transparent),
-    0 0 0 3px color-mix(in oklch, var(--moon-on-ink) 78%, var(--paper-edge));
-}
-
 @media (prefers-reduced-motion: reduce) {
-  :global(html[data-theme='anime']) .ticketWrap:hover .ticket,
   :global(html[data-theme='anime']) .primary:hover,
   :global(html[data-theme='anime']) .primary:active {
     transform: none;
   }
 }
 
-:global(html[data-theme='tech']) .hero::after {
-  background: color-mix(in oklch, var(--terra) 42%, transparent);
-}
-
+/* ── 科技霓虹主题 ── */
 :global(html[data-theme='tech']) .title {
-  font-size: 36px;
+  font-size: 34px;
   font-weight: 400;
   -webkit-font-smoothing: none;
   font-smooth: never;
@@ -566,43 +164,13 @@
   box-shadow: 0 0 22px color-mix(in oklch, var(--terra) 40%, transparent);
 }
 
-:global(html[data-theme='tech']) .primary:active {
-  transform: translateY(1px);
-}
-
 :global(html[data-theme='tech']) .secondary {
   border-bottom-color: color-mix(in oklch, var(--terra) 50%, transparent);
   color: var(--terra-ink);
 }
 
-:global(html[data-theme='tech']) .ticket {
-  border: 1px solid color-mix(in oklch, var(--terra) 36%, var(--ticket-face));
-  background: color-mix(in oklch, var(--paper-warm) 70%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 0 18px color-mix(in oklch, var(--terra) 16%, transparent);
-}
-
-/* 演示票右上角:源图是深色实底,贴在暗票面上会糊。
-   Seal 在科技主题已换奶白纸底图,再加一圈电青细环才落得住 */
-:global(html[data-theme='tech']) .seal {
-  border-radius: 22%;
-  object-fit: contain;
-  background: var(--moon-on-ink);
-  box-shadow:
-    0 0 0 1.5px color-mix(in oklch, var(--terra) 40%, transparent),
-    0 0 0 3px color-mix(in oklch, var(--moon-on-ink) 70%, var(--paper-edge));
-}
-
-:global(html[data-theme='tech']) .ticketWrap:hover .ticket {
-  transform: rotate(0.4deg) translateY(-3px);
-  box-shadow: 0 0 26px color-mix(in oklch, var(--terra) 26%, transparent);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  :global(html[data-theme='tech']) .ticketWrap:hover .ticket,
-  :global(html[data-theme='tech']) .primary:hover,
-  :global(html[data-theme='tech']) .primary:active {
+  :global(html[data-theme='tech']) .primary:hover {
     transform: none;
   }
 }

@@ -1,11 +1,10 @@
 /**
  * 宣传页轻量数据快照。
  *
- * 首屏只复用离线报告；课程与课堂内容使用受测试保护的轻量快照，
+ * 课程与课堂内容使用受测试保护的轻量快照，
  * 避免宣传页下载完整课程注册表。scripts/landing-data.test.ts 会把快照
  * 与完整数据源交叉校验，数据变更时显式提醒更新。
  */
-import leakageReport from '../../data/leakageReport.json';
 
 export interface LearningStage {
   readonly id: 'prep' | 'teach' | 'exam' | 'review' | 'remedy' | 'reteach';
@@ -94,8 +93,6 @@ export const DEMO = {
   prepResult: '第二波自检：先看“词表从哪里来”和“常见词为什么切得更整”。',
   taskCard:
     '等会儿小白会问：“一句话有多少个字，是不是就有多少个 Token？”先想好拿什么例子讲清楚。',
-  branchNotice:
-    '自动先走一次错误分支，也可随时接管。本页用三个课程分支在本地复现真实节奏；任意自由问答和学习档案仅在完整讲解舱中启用。',
   teachLine:
     '训练开始之前，先拿海量的语料做统计，把经常一起出现的字符一步步合并成更大的块，最后得到一张固定的词表——就像搭积木之前，先开好一份积木块清单，往后切哪句话，都照这份清单来。',
   tokenExamples: [
@@ -148,56 +145,15 @@ export const DEMO = {
 } as const;
 
 export interface LandingMetric {
-  readonly id: 'courses' | 'teachable-topics' | 'adversarial-samples' | 'leakage-rate';
+  readonly id: 'courses' | 'teachable-topics';
   readonly value: string;
   readonly unit: string;
   readonly label: string;
-  readonly note: string;
-  readonly from?: string;
-  readonly to?: string;
-  readonly sampleSize?: number;
 }
-
-function formatRate(rate: number): string {
-  return `${(rate <= 1 ? rate * 100 : rate).toFixed(1)}%`;
-}
-
-const guardedLeakRate = formatRate(leakageReport.guardedLeakRate);
-const naiveLeakRate = formatRate(leakageReport.naiveLeakRate);
 
 export const LANDING_METRICS: readonly LandingMetric[] = [
-  {
-    id: 'courses',
-    value: '3',
-    unit: '门',
-    label: '课程',
-    note: '大模型训练、操作系统原理、Python 程序设计',
-  },
-  {
-    id: 'teachable-topics',
-    value: '38',
-    unit: '个',
-    label: '已开放知识点',
-    note: '可以直接进入备课和讲解',
-  },
-  {
-    id: 'adversarial-samples',
-    value: String(leakageReport.totalSamples),
-    unit: '条',
-    label: '防剧透测试',
-    note: '故意诱导小白说出未教内容的离线测试台词',
-    sampleSize: leakageReport.totalSamples,
-  },
-  {
-    id: 'leakage-rate',
-    value: guardedLeakRate.slice(0, -1),
-    unit: '%',
-    label: '提前剧透率',
-    note: `同一批 ${leakageReport.totalSamples} 条离线台词，加入知识白名单守门前后对比；样本有限`,
-    from: naiveLeakRate,
-    to: guardedLeakRate,
-    sampleSize: leakageReport.totalSamples,
-  },
+  { id: 'courses', value: '3', unit: '门', label: '课程' },
+  { id: 'teachable-topics', value: '38', unit: '个', label: '已开放知识点' },
 ];
 
 export interface CourseSummary {

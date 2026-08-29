@@ -1,168 +1,123 @@
-import { Icon, type IconName } from '../../components/ui/Icon';
-import { DEMO, EVIDENCE_STEPS, LANDING_METRICS } from './landingData';
+import { Icon } from '../../components/ui/Icon';
+import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
+import { DEMO, EVIDENCE_STEPS } from './landingData';
+import landing from './landing.module.css';
 import s from './EvidenceArchive.module.css';
-
-const EVIDENCE_ICONS: readonly IconName[] = [
-  'book-open',
-  'swords',
-  'route',
-  'lamp',
-  'notebook',
-];
 
 const FIVE_DIMENSIONS = ['覆盖度', '准确度', '逻辑结构', '深度', '纠错力'] as const;
 
-type LandingMetric = (typeof LANDING_METRICS)[number];
-
-function MetricValue({ metric }: { metric: LandingMetric }) {
-  if (metric.from && metric.to) {
-    return (
-      <p className={`${s.metricValue} ${s.metricPair}`}>
-        <s>{metric.from}</s>
-        <Icon name="arrow-right" size={18} />
-        <strong>{metric.to}</strong>
-      </p>
-    );
-  }
-
-  return (
-    <p className={s.metricValue}>
-      <strong>{metric.value}</strong>
-      {metric.unit ? <em>{metric.unit}</em> : null}
-    </p>
-  );
-}
-
-/** 宣传页的课后记录段：只写当前产品会长期保留的内容。 */
+/** 课后记录：三段「画面 + 一句话」，全部内容来自同一堂 Token 课的真实数据快照。 */
 export function EvidenceArchive() {
   return (
     <section className={s.section} aria-labelledby="evidence-archive-title">
-      <header className={s.heading}>
-        <div data-landing-reveal data-reveal-order="0">
-          <h2 id="evidence-archive-title">课后记录</h2>
-        </div>
+      <header className={landing.sectionHead} data-landing-reveal>
+        <h2 id="evidence-archive-title" className={landing.sectionTitle}>
+          一堂课上完，留下什么
+        </h2>
+        <ul className={s.steps} aria-label="课后记录的五个部分">
+          {EVIDENCE_STEPS.map((step) => (
+            <li key={step.id}>{step.title}</li>
+          ))}
+        </ul>
       </header>
 
-      <div className={s.bridge} aria-label="一堂课的五类课后记录">
-        {EVIDENCE_STEPS.map((item, index) => (
-          <div
-            className={s.bridgeItem}
-            key={item.id}
-            data-landing-reveal
-            data-reveal-order={index}
-          >
-            <div className={s.bridgeEvidence}>
-              <span className={s.bridgeIcon} aria-hidden="true">
-                <Icon name={EVIDENCE_ICONS[index] ?? 'file'} size={23} />
-              </span>
-              <p className={s.bridgeTitle}>{item.title}</p>
+      <div className={s.rows}>
+        {/* 讲解记录 */}
+        <article className={s.row} data-landing-reveal>
+          <div className={s.stage}>
+            <div className={s.window}>
+              <header className={s.windowBar}>
+                <span>课堂记录</span>
+                <strong>{DEMO.title}</strong>
+              </header>
+              <div className={s.windowBody}>
+                <p className={s.label}>关键原话 · 你</p>
+                <blockquote className={s.quote}>{DEMO.teachLine}</blockquote>
+                <p className={s.event}>
+                  <Icon name="circle-check" size={15} />
+                  命中“模型读的不是字”和“积木块清单哪里来”两个要点
+                </p>
+                <div className={s.pupilLine}>
+                  <XiaobaiAvatar variant="paper" mood="confused" level={1} size={44} />
+                  <p>{DEMO.misconceptionLine}</p>
+                </div>
+                <p className={`${s.event} ${s.eventWarn}`}>
+                  <Icon name="swords" size={15} />
+                  老师认同了这句话 · 结果：被带偏
+                </p>
+              </div>
             </div>
-            {index < EVIDENCE_STEPS.length - 1 ? (
-              <Icon className={s.bridgeArrow} name="arrow-right" size={19} />
-            ) : null}
           </div>
-        ))}
+          <div className={s.copy}>
+            <h3>每句关键的话都留下来</h3>
+            <p>
+              你的原话、命中的要点、课堂里冒出来的误区，以及你当时是纠正了还是认同了。
+            </p>
+          </div>
+        </article>
+
+        {/* 随堂测验 */}
+        <article className={`${s.row} ${s.rowFlip}`} data-landing-reveal>
+          <div className={s.stage}>
+            <div className={s.window}>
+              <header className={s.windowBar}>
+                <span>随堂测验</span>
+                <strong>小白独立作答 · {DEMO.examScore} 分</strong>
+              </header>
+              <div className={s.windowBody}>
+                <p className={s.label}>第 3 题</p>
+                <p className={s.question}>{DEMO.examQuestion}</p>
+                <p className={s.whisper}>{DEMO.examWhisper}</p>
+                <p className={`${s.event} ${s.eventWarn}`}>
+                  <Icon name="circle-x" size={15} />
+                  还没答稳 · 对应“哪些词切得整，哪些词切得碎”
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className={s.copy}>
+            <h3>小白独自作答</h3>
+            <p>考试时不再接收提示。逐题显示答稳或没答稳，每道题都对应回讲解要点。</p>
+          </div>
+        </article>
+
+        {/* 五维批注 */}
+        <article className={s.row} data-landing-reveal>
+          <div className={s.stage}>
+            <div className={s.window}>
+              <header className={s.windowBar}>
+                <span>课后批注</span>
+                <strong>先补一个盲区</strong>
+              </header>
+              <div className={s.windowBody}>
+                <ul className={s.dimensions} aria-label="五维讲解画像">
+                  {DEMO.reviewRadar.map(([dimension, score]) => (
+                    <li key={dimension}>
+                      <span>{dimension}</span>
+                      <span className={s.bar} aria-hidden="true">
+                        <i style={{ width: `${score}%` }} />
+                      </span>
+                      <strong>{score}</strong>
+                    </li>
+                  ))}
+                </ul>
+                <p className={s.label}>盲区</p>
+                <p className={s.blindSpot}>{DEMO.blindSpot}</p>
+                <p className={s.next}>
+                  <Icon name="sprout" size={15} />
+                  补学：{DEMO.remedyTitle}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className={s.copy}>
+            <h3>哪里没讲明白，一眼看清</h3>
+            <p>
+              {FIVE_DIMENSIONS.join('、')}。先补一个盲区，再回讲台重讲；纠正后的结果继续写进成长册。
+            </p>
+          </div>
+        </article>
       </div>
-
-      <ol className={s.archives}>
-        <li className={s.archive} data-landing-reveal>
-          <header className={s.archiveStub}>
-            <span className={s.archiveNo}>摘录卷</span>
-            <h3>讲解摘录<br />与误区记录</h3>
-            <span className={s.fileTag}>Token 与分词 · 课堂记录</span>
-          </header>
-          <div className={s.archiveContent}>
-            <article className={s.transcript}>
-              <p className={s.recordLabel}>关键原话摘录 · 你</p>
-              <blockquote>{DEMO.teachLine}</blockquote>
-              <p className={s.response}>
-                <span>教学事件</span>
-                命中“模型读的不是字”和“积木块清单哪里来”两个要点。
-              </p>
-            </article>
-            <article className={s.misconception}>
-              <p className={s.recordLabel}>课堂中出现的常见误区</p>
-              <p className={s.triggerLine}>{DEMO.misconceptionLine}</p>
-              <p className={s.warning}>
-                <Icon name="swords" size={16} />
-                老师认同后，结果：被带偏
-              </p>
-            </article>
-          </div>
-        </li>
-
-        <li className={s.archive} data-landing-reveal>
-          <header className={s.archiveStub}>
-            <span className={s.archiveNo}>判定卷</span>
-            <h3>逐题判定<br />与对应要点</h3>
-            <span className={s.fileTag}>随堂测验 · 带偏分支 20 分</span>
-          </header>
-          <div className={s.archiveContent}>
-            <article className={s.exam}>
-              <p className={s.recordLabel}>第 3 题 · 小白独立作答</p>
-              <p className={s.question}>{DEMO.examQuestion}</p>
-              <p className={s.examRule}>
-                <Icon name="route" size={16} />
-                还没答稳 · 对应“哪些词切得整，哪些词切得碎”
-              </p>
-            </article>
-            <article className={s.sources}>
-              <p className={s.recordLabel}>会留下</p>
-              <ul>
-                <li>教学事件</li>
-                <li>误区结果</li>
-                <li>逐题判定</li>
-              </ul>
-            </article>
-          </div>
-        </li>
-
-        <li className={s.archive} data-landing-reveal>
-          <header className={s.archiveStub}>
-            <span className={s.archiveNo}>批注卷</span>
-            <h3>五维批注<br />与补学入口</h3>
-            <span className={s.fileTag}>灯下批注 · 下一步该补哪里</span>
-          </header>
-          <div className={s.archiveContent}>
-            <article className={s.annotation}>
-              <p className={s.recordLabel}>这次先补一个盲区</p>
-              <blockquote>
-                小白把“一个字就是一个 Token”当成了正确答案。先补这一点，再回讲解舱重讲。
-              </blockquote>
-              <p className={s.signature}>—— Token 与分词 · 带偏分支</p>
-            </article>
-            <article className={s.dimensions}>
-              <p className={s.recordLabel}>五维讲解画像</p>
-              <ul aria-label="五维反馈维度">
-                {FIVE_DIMENSIONS.map((dimension) => (
-                  <li key={dimension}>
-                    <Icon name="circle-check" size={16} />
-                    <span>{dimension}</span>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          </div>
-        </li>
-      </ol>
-
-      <aside className={s.metrics} aria-label="课程与离线测试">
-        <dl className={s.metricList}>
-          {LANDING_METRICS.map((metric, index) => (
-            <div
-              className={s.metric}
-              key={metric.id}
-              data-landing-reveal
-              data-reveal-order={index + 1}
-            >
-              <dt>{metric.label}</dt>
-              <dd>
-                <MetricValue metric={metric} />
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </aside>
     </section>
   );
 }

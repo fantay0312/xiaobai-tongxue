@@ -1,9 +1,12 @@
 import { useLayoutEffect, useRef, type MouseEvent, type RefObject } from 'react';
+import { Link } from 'react-router';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { Seal } from '../../components/shell/Seal';
 import { CourseArchive } from './CourseArchive';
 import { EvidenceArchive } from './EvidenceArchive';
 import { FinalCallout } from './FinalCallout';
+import { Highlights } from './Highlights';
 import { LandingHero } from './LandingHero';
 import { LearningWorkspace } from './LearningWorkspace';
 import styles from './landing.module.css';
@@ -57,9 +60,9 @@ export default function LandingPage() {
   const reducedMotion = useReducedMotion();
   useScrollReveal(pageRef, reducedMotion);
 
-  const scrollToFlow = (event: MouseEvent<HTMLAnchorElement>) => {
+  const scrollToProduct = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
-    document.getElementById('full-flow')?.scrollIntoView({
+    document.getElementById('product')?.scrollIntoView({
       behavior: reducedMotion ? 'auto' : 'smooth',
       block: 'start',
     });
@@ -67,42 +70,30 @@ export default function LandingPage() {
 
   return (
     <div className={styles.page} ref={pageRef}>
-      <LandingHero onFlowClick={scrollToFlow} />
+      <LandingHero onFlowClick={scrollToProduct} />
 
-      <section
-        className={styles.flow}
-        id="full-flow"
-        aria-labelledby="full-flow-title"
-      >
-        <header className={styles.sectionHead}>
-          <p className={styles.kicker} data-landing-reveal data-reveal-order="0">
-            演示课
-          </p>
-          <h2
-            id="full-flow-title"
-            className={styles.sectionTitle}
-            data-landing-reveal
-            data-reveal-order="1"
-          >
-            Token 与分词
-          </h2>
-        </header>
-        <div className={styles.workspaceReveal} data-landing-reveal data-reveal-order="0">
+      <section className={styles.product} id="product" aria-label="一堂课的六个步骤">
+        <div className={styles.productFrame}>
           <LearningWorkspace />
         </div>
       </section>
 
-      <div className={styles.archiveReveal}>
-        <EvidenceArchive />
-      </div>
+      <Highlights />
+      <EvidenceArchive />
+      <CourseArchive />
+      <FinalCallout />
 
-      <div className={styles.archiveReveal}>
-        <CourseArchive />
-      </div>
-
-      <div className={styles.archiveReveal}>
-        <FinalCallout />
-      </div>
+      <footer className={styles.footer}>
+        <div className={styles.footerBrand}>
+          <Seal className={styles.footerSeal} />
+          <span>小白同学</span>
+          <span className={styles.footerMotto}>教然后知困</span>
+        </div>
+        <nav className={styles.footerNav} aria-label="页脚">
+          <Link to="/study">课程书架</Link>
+          <Link to="/login">登录</Link>
+        </nav>
+      </footer>
     </div>
   );
 }
