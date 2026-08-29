@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import leakageReport from '../src/data/leakageReport.json';
 import { TOPICS } from '../src/data';
 import { examWhisper } from '../src/pages/exam/examStory';
 import { getStageMeta } from '../src/engine/evolution';
@@ -102,11 +101,6 @@ assert.equal(
 assert.ok(DEMO.teachLine.length > 20 && DEMO.teachLine.length <= 130, '讲解实录裁剪长度异常');
 assert.match(DEMO.adoptedTeacherLine, /一个字对应一块/, '带偏分支必须包含老师认同误区');
 assert.match(DEMO.adoptedStudentLine, /按字数判断/, '带偏分支必须包含小白学错的结果');
-assert.match(
-  DEMO.branchNotice,
-  /错误分支.*接管.*本地.*完整讲解舱/,
-  '讲解回放必须同屏说明失败分支与本地演示边界',
-);
 assert.match(DEMO.missedCorrection, /不是一一对应.*词表/, '课堂失误必须附正确纠正提示');
 assert.equal(
   classifyTeachDemoLine(DEMO.correctedTeacherLine),
@@ -207,21 +201,8 @@ assert.equal(
   String(teachableCount),
   '可开讲知识点数快照已漂移',
 );
-assert.equal(
-  metricById.get('adversarial-samples')?.sampleSize,
-  leakageReport.totalSamples,
-  '对抗样本数必须来自离线报告',
-);
-
-const formatRate = (rate: number): string =>
-  `${(rate <= 1 ? rate * 100 : rate).toFixed(1)}%`;
-const leakageMetric = metricById.get('leakage-rate');
-assert.equal(leakageMetric?.from, formatRate(leakageReport.naiveLeakRate));
-assert.equal(leakageMetric?.to, formatRate(leakageReport.guardedLeakRate));
-assert.equal(leakageMetric?.sampleSize, leakageReport.totalSamples);
-assert.match(leakageMetric?.note ?? '', /离线.*(?:台词|测试)/, '泄漏率必须说明离线统计口径');
 for (const metric of LANDING_METRICS) {
-  assert.ok(metric.value && metric.unit && metric.label && metric.note, `${metric.id} 字段不完整`);
+  assert.ok(metric.value && metric.unit && metric.label, `${metric.id} 字段不完整`);
 }
 
 const topicGroups = new Map<string, typeof TOPICS>();

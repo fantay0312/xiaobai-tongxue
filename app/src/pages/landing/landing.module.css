@@ -16,44 +16,43 @@
   width: 38rem;
   height: 30rem;
   border-radius: 48%;
-  background: color-mix(in oklch, var(--terra-wash) 72%, transparent);
+  background: color-mix(in oklch, var(--terra-wash) 55%, transparent);
   filter: blur(3rem);
   pointer-events: none;
 }
 
-.flow {
-  padding: clamp(4.5rem, 10vw, 8.5rem) 0 clamp(4rem, 9vw, 7rem);
-  scroll-margin-top: 1.25rem;
+/* 产品画面容器:灰底圆角台面,课堂窗口落在上面(参照 Cursor 首屏的画面框) */
+.product {
+  padding: clamp(1rem, 2.6vw, 2rem);
+  border-radius: var(--radius-l);
+  background: var(--paper-shade);
+  scroll-margin-top: calc(var(--header-h) + 1rem);
 }
 
+.productFrame {
+  position: relative;
+  min-width: 0;
+}
+
+/* 通用分节题头:短标题 + 一句话,左对齐 */
 .sectionHead {
   display: grid;
-  gap: 0.55rem;
-  margin-bottom: clamp(1.6rem, 4vw, 2.75rem);
-}
-
-.kicker {
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-small);
-  letter-spacing: var(--track-label);
-  color: var(--terra-ink);
+  gap: 0.75rem;
+  max-width: 40rem;
+  margin-bottom: clamp(1.6rem, 4vw, 2.5rem);
 }
 
 .sectionTitle {
-  margin-left: -0.035em;
-  font-size: clamp(2.1rem, 4.4vw, 3.6rem);
+  margin-left: -0.02em;
+  font-size: clamp(1.7rem, 3.2vw, 2.5rem);
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.25;
   letter-spacing: 0.015em;
 }
 
 .sectionTitle em {
   font-style: italic;
   color: var(--terra);
-}
-
-.workspaceReveal {
-  position: relative;
 }
 
 .page [data-landing-reveal] {
@@ -86,13 +85,66 @@
   transition-delay: 0ms;
 }
 
-.archiveReveal {
-  min-width: 0;
+/* 页脚:一行品牌落款 + 两个入口 */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  margin-top: clamp(2rem, 5vw, 3.5rem);
+  padding-top: var(--gap);
+  border-top: 1px solid var(--paper-edge);
+  color: var(--ink-soft);
+  font-size: var(--fs-small);
 }
 
+.footerBrand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.footerSeal {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.footerMotto {
+  padding-left: 0.6rem;
+  border-left: 1px solid var(--paper-edge);
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  color: var(--ink-soft);
+}
+
+.footerNav {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.footerNav a {
+  color: var(--ink-soft);
+  transition: color var(--t-fast) var(--ease-out);
+}
+
+.footerNav a:hover { color: var(--ink); }
+.footerNav a:focus-visible { outline: 2px solid var(--azure); outline-offset: 3px; }
+
 @media (max-width: 45rem) {
-  .sectionHead {
-    grid-template-columns: 1fr;
+  .product {
+    margin-inline: calc(clamp(var(--gap), 4vw, var(--gap-loose)) * -1);
+    padding: 0.6rem;
+    border-radius: 0;
+  }
+
+  .footer {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 
@@ -112,31 +164,21 @@
   }
 }
 
-/* ── 日系动漫主题 ──
-   高斯色团换成平涂色面;打字机小签与衬线斜体一概保留(那是全站骨架,不是票据风专属)。 */
-/* 页角环境光:一块极淡的浅葱色面。
-   底色走浅葱(hue 208)而不是主藍 —— 蓝压在奶油纸上会发灰,浅葱才读得出"天"。
-   保留基础态的柔化,硬边会在页角凭空冒出一个形状,比色团更碍眼。 */
+/* ── 日系动漫主题:高斯色团换平涂色面,画面台面加线稿边 ── */
 :global(html[data-theme='anime']) .page::before {
   background: color-mix(in oklch, var(--reed) 16%, transparent);
 }
 
-/* 题头斜体点睛:保留斜体(本站的手写签名位),只改色 */
 :global(html[data-theme='anime']) .sectionTitle em {
   color: var(--terra-ink);
 }
 
-/* 流程带:平涂面 + 线稿收边,不靠阴影堆卡 */
-:global(html[data-theme='anime']) .flow {
-  margin-top: 1rem;
-  padding-inline: clamp(1.1rem, 3vw, 2rem);
+:global(html[data-theme='anime']) .product {
   border: 1.5px solid var(--paper-edge);
-  border-radius: var(--radius-l);
   background: color-mix(in oklch, var(--paper-blush) 62%, var(--paper));
 }
 
-/* 夜景板:blush×paper 会混成浊绛,流程带改走夜青,和票卡同一路藍夜。 */
-:global(html[data-theme='anime'][data-tone='night']) .flow {
+:global(html[data-theme='anime'][data-tone='night']) .product {
   background: color-mix(in oklch, var(--paper-warm) 80%, var(--paper));
   border-color: color-mix(in oklch, var(--paper-edge) 78%, var(--terra-deep));
 }
@@ -158,11 +200,8 @@
   text-shadow: 0 0 12px color-mix(in oklch, var(--terra) 36%, transparent);
 }
 
-:global(html[data-theme='tech']) .flow {
-  margin-top: 1rem;
-  padding-inline: clamp(1.1rem, 3vw, 2rem);
+:global(html[data-theme='tech']) .product {
   border: 1px solid color-mix(in oklch, var(--terra) 32%, transparent);
-  border-radius: var(--radius-l);
   background: color-mix(in oklch, var(--paper-warm) 58%, transparent);
   box-shadow: 0 0 28px color-mix(in oklch, var(--terra) 10%, transparent);
 }

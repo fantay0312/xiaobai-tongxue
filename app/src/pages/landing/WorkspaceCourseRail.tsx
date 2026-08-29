@@ -43,7 +43,7 @@ export function WorkspaceCourseRail(props: WorkspaceCourseRailProps) {
   return (
     <aside className={s.courseRail} aria-label="课程和步骤">
       <div className={s.courseTicket}>
-        <span>演示课程</span>
+        <span>课程</span>
         <strong>{DEMO.course}</strong>
         <small>{DEMO.title}</small>
       </div>

@@ -14,16 +14,16 @@ interface PlaybackHeaderProps {
 
 export function PlaybackHeader(props: PlaybackHeaderProps) {
   const label = props.reducedMotion
-    ? '已按系统设置暂停动态演示'
+    ? '已按系统设置暂停自动播放'
     : props.finished
-    ? '重新播放六阶段演示'
-    : props.intent === 'playing' ? '暂停六阶段演示' : '继续六阶段演示';
+    ? '重新播放六个步骤'
+    : props.intent === 'playing' ? '暂停自动播放' : '继续自动播放';
   const atLastStage = props.stage.id === 'reteach';
-  const nextLabel = atLastStage ? '从头查看演示' : '查看下一阶段';
+  const nextLabel = atLastStage ? '从头再看' : '查看下一步';
   return (
     <header className={s.demoHeader}>
       <div>
-        <span>《Token 与分词》演示回放</span>
+        <span>《Token 与分词》示例课</span>
         <strong>{props.stage.step} / 06 · {props.stage.title}</strong>
       </div>
       <div className={s.playbackControls}>

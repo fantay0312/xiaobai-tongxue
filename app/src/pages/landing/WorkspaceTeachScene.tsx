@@ -220,15 +220,15 @@ export function TeachScene({
         <div><span>讲解舱</span><h3>你正在讲：{DEMO.title}</h3></div>
         <p>可随时接管</p>
       </header>
-      <aside className={base.branchNotice} aria-label="本次互动演示说明">
-        <span>不留档演示</span>
+      <aside className={base.branchNotice} aria-label="试讲说明">
+        <span>试讲不留档</span>
       </aside>
       <div className={base.classroom}>
         <aside className={base.pupilStage}>
           <XiaobaiAvatar mood={mood} level={1} size={118} variant="board" speaking={speaking} />
           <div className={base.pupilIdentity}><strong>小白</strong><small>好奇型 · 已讲 {turnRef.current} 轮</small></div>
           <div className={base.branchStatus} aria-live="polite">
-            <span>演示</span><strong>{status}</strong>{statusDetail ? <small>{statusDetail}</small> : null}
+            <span>状态</span><strong>{status}</strong>{statusDetail ? <small>{statusDetail}</small> : null}
           </div>
         </aside>
         <div className={s.liveLesson}>

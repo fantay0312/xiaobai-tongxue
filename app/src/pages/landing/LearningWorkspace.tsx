@@ -41,7 +41,7 @@ export function LearningWorkspace() {
     <section
       className={s.workspace}
       ref={workspaceRef}
-      aria-label="一堂课演示"
+      aria-label="一堂课的六个步骤"
       data-motion={playback.motionMode}
     >
       <PlaybackHeader

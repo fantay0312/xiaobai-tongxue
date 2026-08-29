@@ -1,108 +1,34 @@
 import type { MouseEventHandler } from 'react';
 import { Link } from 'react-router';
-import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { Icon } from '../../components/ui/Icon';
-import { Seal } from '../../components/shell/Seal';
-import { getStageMeta } from '../../engine/evolution';
-import anchor from '../../styles/anchor.module.css';
-import paper from '../../styles/paper.module.css';
 import styles from './LandingHero.module.css';
-
-const DEMO_STAGE = getStageMeta(2);
 
 interface LandingHeroProps {
   onFlowClick: MouseEventHandler<HTMLAnchorElement>;
 }
 
+/** 首屏：一句话说清产品，一个主动作，画面交给下方的课堂窗口。 */
 export function LandingHero({ onFlowClick }: LandingHeroProps) {
   return (
     <section className={styles.hero} aria-labelledby="landing-title">
-      <div className={styles.copy}>
-        <p className={`${paper.typeLabel} ${styles.eyebrow} ${styles.enter}`}>
-          小白同学 · 教然后知困
-        </p>
-        <h1
-          id="landing-title"
-          className={`${styles.title} ${styles.enter}`}
-          style={{ animationDelay: '70ms' }}
-        >
-          你来当老师，
-          <br />
-          把知识<em>讲明白</em>
-        </h1>
-        <div
-          className={`${styles.actions} ${styles.enter}`}
-          style={{ animationDelay: '140ms' }}
-        >
-          <Link className={styles.primary} to="/study">
-            去课程书架
-            <Icon name="arrow-right" size={17} />
-          </Link>
-          <a className={styles.secondary} href="#full-flow" onClick={onFlowClick}>
-            看演示
-            <Icon name="chevron-down" size={15} />
-          </a>
-        </div>
+      <h1 id="landing-title" className={`${styles.title} ${styles.enter}`}>
+        你来当老师，把知识<em>讲明白</em>。
+      </h1>
+      <p className={`${styles.lede} ${styles.enter}`} style={{ animationDelay: '70ms' }}>
+        小白同学是一个会追问的学生。你备课、讲解、纠错，它独自去考试。
+        <br />
+        哪里没讲明白，课后一页看清。
+      </p>
+      <div className={`${styles.actions} ${styles.enter}`} style={{ animationDelay: '140ms' }}>
+        <Link className={styles.primary} to="/study">
+          开始讲课
+          <Icon name="arrow-right" size={17} />
+        </Link>
+        <a className={styles.secondary} href="#product" onClick={onFlowClick}>
+          看一堂课怎么上
+          <Icon name="chevron-down" size={15} />
+        </a>
       </div>
-
-      <div
-        className={`${styles.ticketWrap} ${styles.enter}`}
-        style={{ animationDelay: '120ms' }}
-      >
-        <article
-          className={`${styles.ticket} ${paper.texture}`}
-          aria-label="Token 与分词演示课"
-        >
-          <span className={styles.punch} aria-hidden="true" />
-          <header className={styles.ticketHead}>
-            <div>
-              <p className={`${paper.typeLabel} ${styles.ticketKicker}`}>本次演示</p>
-              <h2 className={styles.ticketTitle}>Token 与分词</h2>
-            </div>
-            <Seal className={styles.seal} />
-          </header>
-          <div className={styles.pupil}>
-            <XiaobaiAvatar variant="paper" mood="curious" level={2} size={106} />
-            <div className={styles.pupilCopy}>
-              <p className={styles.pupilName}>
-                小白 · {DEMO_STAGE.name} ·{' '}
-                <span className={styles.stageName}>{DEMO_STAGE.description}</span>
-              </p>
-              <p className={styles.pupilRole}>等你来教</p>
-            </div>
-          </div>
-          <div className={`${paper.perfLine} ${styles.tear}`} aria-hidden="true" />
-          <dl className={styles.ticketMeta}>
-            <div>
-              <dt>所属课程</dt>
-              <dd>大模型训练</dd>
-            </div>
-            <div>
-              <dt>你要完成</dt>
-              <dd>备课 · 讲解 · 纠错</dd>
-            </div>
-            <div>
-              <dt>课后可看</dt>
-              <dd>随堂测验 · 五维批注</dd>
-            </div>
-          </dl>
-          <footer className={styles.ticketFoot}>
-            <span className={paper.typeLabel}>演示课 · TOKENIZATION</span>
-            <Link to="/study" aria-label="进入书斋体验 Token 与分词">
-              <Icon name="arrow-right" size={18} />
-            </Link>
-          </footer>
-        </article>
-      </div>
-
-      <blockquote className={`${anchor.quote} ${styles.marginalia}`}>
-        <p className={anchor.quoteText}>
-          教然后知困，
-          <br />
-          知困然后能自强
-        </p>
-        <cite className={anchor.quoteFrom}>《礼记 · 学记》</cite>
-      </blockquote>
     </section>
   );
 }
