@@ -40,15 +40,21 @@ function spineStatus(topic: Topic, st: TopicState | undefined): SpineStatus {
 }
 
 /** 按 course 分组,保持 TOPICS 数组顺序(首次出现的课程排前) */
-function groupByCourse(topics: Topic[]): { key: string; course: string; topics: Topic[] }[] {
-  const groups: { key: string; course: string; topics: Topic[] }[] = [];
+function groupByCourse(topics: Topic[]): { key: string; course: string; label: string; topics: Topic[] }[] {
+  const groups: { key: string; course: string; label: string; topics: Topic[] }[] = [];
   for (const t of topics) {
     const key = topicCourseKey(t);
     const g = groups.find((group) => group.key === key);
     if (g) g.topics.push(t);
-    else groups.push({ key, course: t.course, topics: [t] });
+    else groups.push({ key, course: t.course, label: t.course, topics: [t] });
   }
-  return groups;
+  return groups.map((group) => {
+    const sameTitle = groups.filter((candidate) => candidate.course === group.course);
+    if (sameTitle.length <= 1) return group;
+    if (!group.key.startsWith('custom:')) return { ...group, label: `${group.course} · 内置` };
+    const customIndex = sameTitle.filter((candidate) => candidate.key.startsWith('custom:')).findIndex((candidate) => candidate.key === group.key) + 1;
+    return { ...group, label: `${group.course} · 自选 ${customIndex}` };
+  });
 }
 
 /** 一层搁板最多摆几本;超出按层数均分(30 讲 = 15+15, 层层齐整),窄屏单层横滚兜底 */
@@ -120,7 +126,7 @@ export function Bookshelf() {
       {/* ── 函套排架:一门课一函,函厚随讲数 ── */}
       <div className={styles.caseUnit}>
         <div className={styles.caseRow}>
-          {courses.map(({ key, course, topics }, i) => {
+          {courses.map(({ key, course, label, topics }, i) => {
             const open = key === current.key;
             const mastered = masteredOf(topics);
             const cover = COURSE_COVERS[course];
@@ -152,7 +158,7 @@ export function Bookshelf() {
                 )}
                 <span className={styles.volMark} aria-hidden="true">读</span>
                 <span className={`${styles.volSlip} ${course.length > 6 ? styles.volSlipLong : ''}`}>
-                  {course}
+                  {label}
                 </span>
                 <span className={styles.volMeta}>
                   {cnCount(topics.length)} 讲{mastered > 0 ? ` · 出师 ${mastered}` : ''}
@@ -175,10 +181,10 @@ export function Bookshelf() {
       {/* ── 翻开的函:当前课程的章节书脊(key 重挂载,换函重演入场) ── */}
       <div
         id="shelf-open"
-        key={current.course}
+        key={current.key}
         className={styles.openCase}
         role="region"
-        aria-label={`《${current.course}》章节`}
+        aria-label={`《${current.label}》章节`}
       >
         <div className={styles.openHead}>
           {currentCover && (
@@ -198,7 +204,7 @@ export function Bookshelf() {
           <div className={styles.openHeadCopy}>
             {currentCover && <p className={styles.coverEyebrow}>{currentCover.eyebrow}</p>}
             <div className={styles.openTitleRow}>
-              <h3 className={styles.openName}>《{current.course}》</h3>
+              <h3 className={styles.openName}>《{current.label}》</h3>
               <span className={styles.courseNote}>
                 出师 {masteredOf(current.topics)}/{current.topics.length}
               </span>

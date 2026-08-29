@@ -9,7 +9,8 @@ import {
 } from '../src/data/runtimeTopics';
 import { getTopic, TOPICS } from '../src/data';
 import { mergeEval, type EvaluateInput } from '../src/engine/evaluator';
-import type { EvalResult, TopicState } from '../src/types';
+import { deriveEvolution } from '../src/engine/evolution';
+import type { EvalResult, LearnEvent, TopicState } from '../src/types';
 
 const raw = {
   customCourseId: '12345678-1234-4234-8234-123456789012',
@@ -68,6 +69,18 @@ const sameTitleOtherCourse = hydrateRuntimeTopic({
 assert.ok(sameTitleOtherCourse);
 registerRuntimeTopics([hydrated, sameTitleOtherCourse]);
 assert.notEqual(topicCourseKey(hydrated), topicCourseKey(sameTitleOtherCourse));
+const masteryEvents: LearnEvent[] = [hydrated, sameTitleOtherCourse].map((topic, index) => ({
+  id: `mastery-${index}`,
+  t: `2026-08-29T00:00:0${index}Z`,
+  type: 'topic_mastered',
+  topicId: topic.topicId,
+  sessionId: null,
+  payload: {},
+  evidence: 'test',
+}));
+const duplicateTitleEvolution = deriveEvolution(masteryEvents, [hydrated, sameTitleOtherCourse]);
+assert.equal(duplicateTitleEvolution.coursesTouched.length, 2);
+assert.notEqual(duplicateTitleEvolution.coursesTouched[0], duplicateTitleEvolution.coursesTouched[1]);
 registerRuntimeTopics([]);
 
 const teacherRaw = structuredClone(raw) as typeof raw & {
@@ -147,4 +160,4 @@ assert.match(prepSource, /TEACHER_TOPIC_RETRY_MS\[attempt\]/);
 assert.match(shellCss, /@media \(max-width: 520px\)[\s\S]*navGroup:has\(\.linkActive\) \.menuButton/);
 assert.doesNotMatch(apiSource, /X-API-Key|WK_API_KEY|WeKnora.*key/i, '浏览器 API 层不得持有 WeKnora 凭据');
 
-console.log('custom content contract: 41 assertions passed');
+console.log('custom content contract: 43 assertions passed');

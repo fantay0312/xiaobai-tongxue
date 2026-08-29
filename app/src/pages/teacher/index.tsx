@@ -75,10 +75,17 @@ type TopicRow = {
 
 /** 学情表的课程筛选是界面态,不写入学习档案。点标签只显示该课,长表关在原区域内竖滚。 */
 function TopicProgressTable({ topicRows }: { topicRows: TopicRow[] }) {
-  const courses = [...new Map(topicRows.map((row) => [
+  const courseIdentities = [...new Map(topicRows.map((row) => [
     topicCourseKey(row.topic),
     { key: topicCourseKey(row.topic), label: row.topic.course },
   ])).values()];
+  const courses = courseIdentities.map((course) => {
+    const sameTitle = courseIdentities.filter((candidate) => candidate.label === course.label);
+    if (sameTitle.length <= 1) return course;
+    if (!course.key.startsWith('custom:')) return { ...course, label: `${course.label} · 内置` };
+    const index = sameTitle.filter((candidate) => candidate.key.startsWith('custom:')).findIndex((candidate) => candidate.key === course.key) + 1;
+    return { ...course, label: `${course.label} · 自选 ${index}` };
+  });
   const [selected, setSelected] = useState(courses[0]?.key ?? '');
   const visibleRows = topicRows.filter((row) => topicCourseKey(row.topic) === selected);
 

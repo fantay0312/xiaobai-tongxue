@@ -134,15 +134,26 @@ function openCoursesInOrder(topics: Topic[]): { key: string; label: string }[] {
     const key = topicCourseKey(t);
     if (!seen.has(key)) { seen.add(key); out.push({ key, label: t.course }); }
   }
-  return out;
+  return out.map((course) => {
+    const sameTitle = out.filter((candidate) => candidate.label === course.label);
+    if (sameTitle.length <= 1) return course;
+    if (!course.key.startsWith('custom:')) return { ...course, label: `${course.label} · 内置` };
+    const index = sameTitle.filter((candidate) => candidate.key.startsWith('custom:')).findIndex((candidate) => candidate.key === course.key) + 1;
+    return { ...course, label: `${course.label} · 自选 ${index}` };
+  });
 }
 
 export function deriveEvolution(events: LearnEvent[], topics: Topic[]): EvolutionStatus {
   const evs = chronological(events);
+  const openCourses = openCoursesInOrder(topics);
+  const courseLabels = new Map(openCourses.map((course) => [course.key, course.label]));
   const courseOf = new Map<string, { key: string; label: string }>();
-  for (const t of topics) courseOf.set(t.topicId, { key: topicCourseKey(t), label: t.course });
+  for (const t of topics) {
+    const key = topicCourseKey(t);
+    courseOf.set(t.topicId, { key, label: courseLabels.get(key) ?? t.course });
+  }
   // 课程要求上限用「规则值 ∩ 开放课程数」兜底(万一将来只剩一门课不至永远卡死),下限见 effCourses
-  const distinctOpen = openCoursesInOrder(topics).length;
+  const distinctOpen = openCourses.length;
 
   let masteries = 0;
   const coursesTouched: string[] = [];
@@ -176,7 +187,7 @@ export function deriveEvolution(events: LearnEvent[], topics: Topic[]): Evolutio
         needCourses: effCourses(nextRule.courses),
         haveCourses,
         breadthBlocked: masteries >= nextRule.masteries && haveCourses < effCourses(nextRule.courses),
-        suggestedCourses: openCoursesInOrder(topics)
+        suggestedCourses: openCourses
           .filter((course) => !touched.has(course.key))
           .map((course) => course.label),
       }

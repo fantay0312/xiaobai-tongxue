@@ -68,7 +68,13 @@ export function groupByCourse(nodes: MapNode[]): CourseRealm[] {
     realmByCourse.set(key, realm);
     realms.push(realm);
   }
-  return realms;
+  return realms.map((realm) => {
+    const sameTitle = realms.filter((candidate) => candidate.course === realm.course);
+    if (sameTitle.length <= 1) return realm;
+    if (!realm.key.startsWith('custom:')) return { ...realm, course: `${realm.course} · 内置` };
+    const index = sameTitle.filter((candidate) => candidate.key.startsWith('custom:')).findIndex((candidate) => candidate.key === realm.key) + 1;
+    return { ...realm, course: `${realm.course} · 自选 ${index}` };
+  });
 }
 
 function columnsFor(nodeCount: number, focused: boolean, compact: boolean): number {
