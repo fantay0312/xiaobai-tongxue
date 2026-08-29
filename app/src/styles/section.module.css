@@ -1,0 +1,63 @@
+/* 分节题头公共件(2026-08-29 极简制式,与宣传页同源)
+   短标题 + 一句话,左对齐;不带打字机眉批、界栏 hairline 与 2px 墨骨。
+   页面 import 后与自家类并用:className={`${sec.head}`}。只放题头与台面,不放布局。 */
+
+.head {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 42rem;
+  margin-bottom: clamp(1.4rem, 3vw, 2rem);
+}
+
+/* 题头一行制:标题在左、动作/图例在右 */
+.headRow {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--gap);
+  max-width: none;
+}
+
+.title {
+  margin-left: -0.02em;
+  font-family: var(--font-serif);
+  font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.015em;
+  color: var(--ink);
+}
+
+.titleLg {
+  font-size: clamp(1.7rem, 3.2vw, 2.5rem);
+}
+
+.note {
+  color: var(--ink-soft);
+  font-size: var(--fs-body);
+  line-height: 1.8;
+}
+
+/* 灰底台面:内容窗口落在上面(宣传页 .product 同款) */
+.stage {
+  padding: clamp(1rem, 2.6vw, 2rem);
+  border-radius: var(--radius-l);
+  background: var(--paper-shade);
+}
+
+/* 空态:一句话落在浅台面上,不画虚线框、不盖虚印 */
+.empty {
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border-radius: var(--radius);
+  background: var(--paper-shade);
+  color: var(--ink-soft);
+  font-size: var(--fs-body);
+  line-height: 1.8;
+}
+
+@media (max-width: 45rem) {
+  .headRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

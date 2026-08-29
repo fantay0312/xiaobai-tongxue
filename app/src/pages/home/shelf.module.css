@@ -12,24 +12,12 @@
 
 /* 题头:打字机眉批小签 + 衬线大题,收在暖灰 hairline 上(叠 2px 墨短线作骨) */
 .head {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-hair);
-  margin-bottom: var(--gap-loose);
-  padding-bottom: var(--gap-tight);
-  border-bottom: 1px solid var(--paper-edge);
+  display: grid;
+  gap: 0.6rem;
+  max-width: 42rem;
+  margin-bottom: clamp(1.4rem, 3vw, 2rem);
 }
 
-.head::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  width: 2.5rem;
-  height: 2px;
-  background: var(--ink);
-}
 
 .eyebrow {
   font-family: var(--font-typewriter);
@@ -47,13 +35,17 @@
 }
 
 .title {
-  font-size: var(--fs-title);
+  margin-left: -0.02em;
+  font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+  line-height: 1.25;
+  letter-spacing: 0.015em;
   color: var(--ink);
 }
 
 .sub {
-  font-size: var(--fs-small);
-  color: var(--ink-faint);
+  font-size: var(--fs-body);
+  line-height: 1.8;
+  color: var(--ink-soft);
 }
 
 /* ── 函套排架 ── */
@@ -293,16 +285,6 @@
   padding-bottom: var(--gap-tight);
   margin-bottom: var(--gap);
   border-bottom: 1px solid var(--paper-edge);
-}
-
-.openHead::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  width: 2.5rem;
-  height: 2px;
-  background: var(--ink);
 }
 
 .openName {

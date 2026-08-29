@@ -1,12 +1,12 @@
-/* 首页 —— 书斋门厅:左对齐大留白,内容列 + 竖排引文眉批列 */
+/* 首页 —— 书斋门厅:左对齐大留白,主张列 + 小白列;题头制式见 styles/section.module.css */
 
 .page {
   position: relative;
   isolation: isolate;
-  max-width: 72rem;
+  max-width: var(--page-max);
   margin: 0 auto;
   width: 100%;
-  padding: 0 clamp(var(--gap), 4vw, var(--gap-loose)) var(--gap-loose);
+  padding: 0 clamp(var(--gap), 4vw, var(--gap-loose)) var(--gap-section);
 }
 
 /* ── 入场编排:一次 stagger,之后克制 ── */
@@ -16,42 +16,9 @@
   animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
-}
-
-.mottoChar {
-  display: inline-block;
-  animation: motto-ink 440ms var(--ease-out) backwards;
-  animation-delay: calc(420ms + var(--char-index) * 78ms);
-}
-
-@keyframes motto-ink {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 0.28em, 0);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .enter {
     animation-delay: 0ms !important;
-  }
-
-  .mottoChar {
-    animation: none;
   }
 }
 
@@ -60,31 +27,16 @@
 .hero {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: clamp(var(--gap), 5vw, var(--gap-section));
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: clamp(var(--gap), 6vw, var(--gap-section));
   align-items: center;
-  padding: var(--gap-section) 0 var(--gap-loose);
+  padding: clamp(3rem, 7vw, 5.5rem) 0 clamp(2.5rem, 5vw, 4rem);
 }
 
 .hero,
 .loop {
   scroll-margin-top: calc(var(--header-h) + var(--gap-tight));
 }
-
-.hero::before {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  inset: 10% -8% 4% 42%;
-  border-radius: 54% 46% 42% 58%;
-  background:
-    radial-gradient(ellipse at 42% 36%, color-mix(in oklch, var(--terra) 10%, transparent), transparent 60%),
-    radial-gradient(ellipse at 70% 70%, color-mix(in oklch, var(--reed) 10%, transparent), transparent 65%);
-  transform: rotate(-5deg);
-  pointer-events: none;
-}
-
-/* 首屏底温 —— 极淡暖纸渍(材质档,非发光渐变):赭陶/橄榄各压 10% 当纸上一片旧影 */
 
 /* 有履历时压矮门厅,让选课书架尽快进入首屏,精神锚点与主张仍在。 */
 .heroCompact {
@@ -109,19 +61,12 @@
   gap: var(--gap);
 }
 
-.kicker {
-  /* 眉批标签改铅字打字机小签制式:大写+宽字距(全站分区眉批统一档) */
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  text-transform: uppercase;
-  letter-spacing: var(--track-label);
-  color: var(--ink-faint);
-}
 
 .claim {
   /* 题头走衬线(全局 h1 已 serif 600),此处只定字阶/字距/色 */
-  font-size: var(--fs-hero);
-  letter-spacing: 0.04em;
+  font-size: clamp(2.2rem, 4.6vw, 3.7rem);
+  line-height: 1.22;
+  letter-spacing: 0.01em;
   color: var(--ink);
 }
 
@@ -133,22 +78,22 @@
 }
 
 .intro {
-  max-width: 24em;
-  font-size: var(--fs-sub);
-  line-height: 2;
+  max-width: 26em;
+  font-size: clamp(1rem, 1.5vw, 1.15rem);
+  line-height: 1.9;
   color: var(--ink-soft);
 }
 
-/* 主动作按钮:实赭陶票据钮,悬停沉一档并微抬,按压回落 */
+/* 主动作按钮:墨底纸字(与宣传页「开始讲课」同款),悬停微抬 */
 .cta {
   display: inline-block;
   margin-top: var(--gap-tight);
-  padding: var(--gap-tight) calc(var(--gap) * 1.75);
-  background: var(--azure);
+  padding: 0.7rem 1.35rem;
+  background: var(--ink);
   color: var(--paper);
   font-family: var(--font-body);
-  font-size: var(--fs-sub);
-  font-weight: 600;
+  font-size: var(--fs-body);
+  font-weight: 700;
   letter-spacing: 0.08em;
   border-radius: var(--radius-s);
   box-shadow: var(--shadow-paper);
@@ -157,7 +102,7 @@
 }
 
 .cta:hover {
-  background: var(--azure-deep);
+  background: var(--inkstone);
   transform: translateY(-2px);
   box-shadow: var(--shadow-lift);
 }
@@ -179,7 +124,7 @@
   padding: var(--gap-tight) var(--gap);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius) var(--radius) var(--radius) 2px;
-  background: linear-gradient(145deg, var(--paper), var(--paper-warm));
+  background: var(--paper-warm);
   color: var(--ink-soft);
   font-family: var(--font-display);
   font-size: var(--fs-small);
@@ -211,110 +156,12 @@
   margin-bottom: 0.15rem;
 }
 
-/* 书斋灯下:小白身后一枚极淡的暖灯光晕。
-   暖色取木色系 --wood-sheen(材质色),不动藤黄(--amber 是"衰减"语义色) */
-.lampNest {
-  position: relative;
-}
+/* 小白蹲侧 → styles/anchor.module.css(heroAvatar / avatarCaption) */
 
-.lampNest::before {
-  content: '';
-  position: absolute;
-  top: 4.5rem;
-  left: 50%;
-  width: 17rem;
-  height: 17rem;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: radial-gradient(
-    closest-side,
-    color-mix(in oklab, var(--wood-sheen) 36%, transparent),
-    transparent 72%
-  );
-  pointer-events: none;
-  z-index: -1;
-}
-
-/* 小白蹲侧 + 《学记》引文 + 参赛信息位 → 收拢进 styles/anchor.module.css(与宣传页共用) */
-
-/* ── 一课的走法:墨线路线图 ──
-   R5 去卡改线:不再是 paper-shade 圆角描边卡,整段直接落纸面,坐在旅程带与书架之间。
-   题头(bookplate 制式)+ 一条细墨线穿七个句读节点;≥960 七等分摊满版心不滚,
-   窄屏一条横滚线沿用边缘渐隐(mask 只落在滚动条上,外面不再裹框)。 */
+/* ── 一课的走法:题头(section.module.css)+ 一条细墨线穿七个句读节点 ── */
 
 .loop {
-  margin-bottom: var(--gap-section);
-}
-
-/* 题头:打字机眉批小签 + 衬线大题,收在暖灰 hairline 上;右端一枚慢转官戳 */
-.loopHead {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--gap);
-  margin-bottom: var(--gap-loose);
-  padding-bottom: var(--gap-tight);
-  border-bottom: 1px solid var(--paper-edge);
-}
-
-.loopHead::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  width: 2.5rem;
-  height: 2px;
-  background: var(--ink);
-}
-
-.loopHeadText {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-hair);
-}
-
-.loopEyebrow {
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  text-transform: uppercase;
-  letter-spacing: var(--track-label);
-  color: var(--ink-faint);
-}
-
-.loopTitleRow {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--gap);
-}
-
-.loopTitle {
-  font-family: var(--font-serif);
-  font-size: var(--fs-title);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--ink);
-}
-
-.loopNote {
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-small);
-  letter-spacing: 0.1em;
-  color: var(--ink-faint);
-}
-
-/* 眉批处的慢转墨线邮戳(全页唯一一枚转戳),推到题头右端 */
-.loopStamp {
-  margin-left: auto;
-  flex: none;
-  color: var(--ink-soft);
-  opacity: 0.7;
-}
-
-@media (max-width: 560px) {
-  .loopStamp {
-    display: none;
-  }
+  margin: clamp(2.5rem, 6vw, 4.5rem) 0 var(--gap-section);
 }
 
 /* 路线:窄屏一条横滚线(边缘渐隐,#000 是 mask 通道不是配色) */
@@ -466,10 +313,5 @@
     grid-template-columns: 1fr;
     align-items: start;
     padding-top: var(--gap-loose);
-  }
-
-  /* 窄屏小白改左对齐(anchor 侧),灯晕跟着对到头像中心(头像 192px 宽) */
-  .lampNest::before {
-    left: 6rem;
   }
 }

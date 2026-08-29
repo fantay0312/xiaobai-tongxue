@@ -51,14 +51,11 @@ assert.match(
   '讲解舱暂离后必须回到当前知识点的备课页',
 );
 
-assert.match(home, /MOTTO_LINES[\s\S]*?Array\.from\(line\)/, '精神锚点必须按 Unicode 字符逐字落墨');
-assert.match(home, /className=\{styles\.srOnly\}/, '逐字视觉层必须保留读屏全文');
 assert.ok(
   home.indexOf('<blockquote className={styles.dreamQuote}') < home.indexOf('<XiaobaiAvatar'),
   '小白气泡必须位于头像上方',
 );
 assert.match(homeStyles, /\.dreamQuote::before[\s\S]*?bottom:\s*-0\.42rem[\s\S]*?rotate\(45deg\)/, '气泡尾必须向下指向头像');
-assert.match(homeStyles, /prefers-reduced-motion:\s*reduce[\s\S]*?\.mottoChar[\s\S]*?animation:\s*none/, '逐字动效必须尊重减少动画');
 
 assert.match(trail, /setTimeout\(\(\) => setCollapsed\(true\), 5000\)/, '篇章栏必须在 5 秒后收起');
 assert.match(trail, /data-collapsed=\{collapsed \|\| undefined\}/, '篇章栏必须暴露折叠态');
