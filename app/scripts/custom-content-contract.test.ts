@@ -124,14 +124,16 @@ assert.match(pageSource, /考小白的随堂题/);
 assert.match(pageSource, /重编题号/);
 assert.match(pageSource, /查找课件出处/);
 assert.match(pageSource, /放弃这份草稿/);
+assert.match(pageSource, /重新连接资料服务/);
 assert.match(pageSource, /listCourseAssets[\s\S]{0,700}retryDelay\(failures\)/);
 assert.match(pageSource, /getCourseCompileJob[\s\S]{0,900}retryDelay\(failures\)/);
 assert.match(evaluatorSource, /evaluateCustomTopicSemantic/);
-assert.match(evaluatorSource, /startsWith\('custom-'\)\s*\? await evaluateCustomTopicSemantic/);
+assert.match(evaluatorSource, /const semantic = customTopic\s*\? await evaluateCustomTopicSemantic/);
+assert.match(evaluatorSource, /mode === 'mock' && !customTopic/);
 assert.match(storeSource, /learningLevel:\s*deriveEvolution\(state\.events, getAllTopics\(\)\)\.stage/);
 assert.match(storeSource, /CUSTOM_TOPICS_RETRY_MS\[attempt\]/);
 assert.match(prepSource, /TEACHER_TOPIC_RETRY_MS\[attempt\]/);
 assert.match(shellCss, /@media \(max-width: 520px\)[\s\S]*navGroup:has\(\.linkActive\) \.menuButton/);
 assert.doesNotMatch(apiSource, /X-API-Key|WK_API_KEY|WeKnora.*key/i, '浏览器 API 层不得持有 WeKnora 凭据');
 
-console.log('custom content contract: 36 assertions passed');
+console.log('custom content contract: 38 assertions passed');

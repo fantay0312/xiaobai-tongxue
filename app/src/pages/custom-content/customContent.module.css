@@ -372,6 +372,7 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .unavailable { margin-top: 2rem; padding: clamp(1.5rem, 4vw, 3rem); border: 1px solid var(--line-strong); background: var(--paper-warm); }
 .unavailable h2 { margin-top: 0.3rem; font-family: var(--font-serif); font-size: clamp(1.7rem, 4vw, 2.6rem); }
 .unavailable p { margin-top: 0.7rem; color: var(--ink-soft); }
+.unavailable button { margin-top: 1rem; min-height: 2.5rem; padding: 0.5rem 0.85rem; border: 1px solid var(--line-strong); background: transparent; color: var(--azure); font-weight: 700; }
 
 @media (max-width: 960px) {
   .hero { grid-template-columns: 1fr; }

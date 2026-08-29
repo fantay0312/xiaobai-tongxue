@@ -161,10 +161,12 @@ export function hasWhySignal(text: string): boolean {
 
 export async function evaluate(input: EvaluateInput): Promise<EvalResult> {
   const base = ruleEvaluate(input);
+  const customTopic = input.topic.topicId.startsWith('custom-');
   // api 与 proxy 都走 LLM 语义评估;仅 mock 纯规则
-  if (input.settings.mode === 'mock') return base;
+  // 自定义课即使选了演示模式也不能用公开关键词推进掌握，仍走 BFF 完整 rubric；失败则下方 fail-closed。
+  if (input.settings.mode === 'mock' && !customTopic) return base;
   try {
-    const semantic = input.topic.topicId.startsWith('custom-')
+    const semantic = customTopic
       ? await evaluateCustomTopicSemantic({
         topicId: input.topic.topicId,
         utterance: input.utterance,
@@ -175,7 +177,7 @@ export async function evaluate(input: EvaluateInput): Promise<EvalResult> {
       : parseLlmEval(await llmCall('evaluator', buildEvalPrompt(input), input.settings));
     return mergeEval(base, semantic, input);
   } catch {
-    if (input.topic.topicId.startsWith('custom-')) {
+    if (customTopic) {
       return {
         ...base,
         checklistHits: [],

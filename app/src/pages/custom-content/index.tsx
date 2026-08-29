@@ -41,6 +41,7 @@ import s from './customContent.module.css';
 
 const ACCEPT = '.pdf,.ppt,.pptx,.docx,.md,.txt';
 const MAX_BYTES = 80 * 1024 * 1024;
+const CUSTOM_BOOTSTRAP_RETRY_MS = [1_000, 2_000] as const;
 const ROLE_LABEL: Record<AssetRole, string> = {
   lecture: '讲座课件', lab: '实验材料', syllabus: '课程大纲', reading: '补充读物',
 };
@@ -423,6 +424,7 @@ export default function CustomContentPage() {
   useDocTitle('自选讲义');
   const refreshRuntimeTopics = useAppStore((state) => state.loadCustomTopics);
   const [service, setService] = useState<'checking' | 'ready' | 'unhealthy' | 'unavailable'>('checking');
+  const [bootstrapToken, setBootstrapToken] = useState(0);
   const [courses, setCourses] = useState<CustomCourse[]>([]);
   const [courseId, setCourseId] = useState('');
   const [assets, setAssets] = useState<CustomAsset[]>([]);
@@ -462,18 +464,33 @@ export default function CustomContentPage() {
 
   useEffect(() => {
     let active = true;
-    void Promise.all([customContentStatus(), listCustomCourses()]).then(([status, nextCourses]) => {
-      if (!active) return;
-      setService(status.healthy ? 'ready' : 'unhealthy');
-      setCourses(nextCourses);
-      setCourseId(nextCourses[0]?.id ?? '');
-    }).catch((error) => {
-      if (!active) return;
-      setService(error instanceof CustomContentError && error.status === 503 ? 'unavailable' : 'unhealthy');
-      setNotice(errorHint(error));
-    });
+    setService('checking');
+    void (async () => {
+      let finalState: 'unhealthy' | 'unavailable' = 'unhealthy';
+      for (let attempt = 0; attempt <= CUSTOM_BOOTSTRAP_RETRY_MS.length; attempt += 1) {
+        try {
+          const [status, nextCourses] = await Promise.all([customContentStatus(), listCustomCourses()]);
+          if (!active) return;
+          if (status.healthy) {
+            setService('ready');
+            setCourses(nextCourses);
+            setCourseId(nextCourses[0]?.id ?? '');
+            return;
+          }
+          finalState = 'unhealthy';
+        } catch (error) {
+          if (!active) return;
+          finalState = error instanceof CustomContentError && error.status === 503 ? 'unavailable' : 'unhealthy';
+          setNotice(errorHint(error));
+        }
+        const delay = CUSTOM_BOOTSTRAP_RETRY_MS[attempt];
+        if (delay === undefined) break;
+        await new Promise((resolve) => window.setTimeout(resolve, delay));
+      }
+      if (active) setService(finalState);
+    })();
     return () => { active = false; };
-  }, []);
+  }, [bootstrapToken]);
 
   useEffect(() => {
     if (!courseId) {
@@ -711,6 +728,7 @@ export default function CustomContentPage() {
           <span>{service === 'checking' ? 'CHECKING' : 'SIDE-CAR'}</span>
           <h2>{service === 'checking' ? '正在翻检资料服务…' : '资料服务暂时没有应答'}</h2>
           <p>{service === 'unavailable' ? '服务器尚未启用自定义课程 sidecar。现有课程与学习记录不受影响。' : '可以稍后重试；现有课程仍可照常学习。'}</p>
+          {service !== 'checking' ? <button type="button" onClick={() => setBootstrapToken((value) => value + 1)}>重新连接资料服务</button> : null}
         </section>
       ) : (
         <div className={s.workspace}>
