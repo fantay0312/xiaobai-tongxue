@@ -296,6 +296,10 @@ export function StarSkyCanvas({
     const onTouchStart = (event: TouchEvent) => {
       const target = event.target;
       if (target instanceof Element && target.closest('button, a')) return;
+      if (event.touches.length > 1) {
+        touchDrag = null;
+        return;
+      }
       if (touchDrag) return;
       const point = event.changedTouches[0];
       if (!point) return;
@@ -304,6 +308,10 @@ export function StarSkyCanvas({
 
     const onTouchMove = (event: TouchEvent) => {
       if (!touchDrag) return;
+      if (event.touches.length > 1) {
+        touchDrag = null;
+        return;
+      }
       const point = touchById(event, touchDrag.id);
       if (!point) return;
       const dx = point.clientX - touchDrag.x;
@@ -318,17 +326,25 @@ export function StarSkyCanvas({
 
     const onTouchEnd = (event: TouchEvent) => {
       if (!touchDrag) return;
-      const point = touchById(event, touchDrag.id);
+      let point: Touch | undefined;
+      for (let i = 0; i < event.changedTouches.length; i += 1) {
+        if (event.changedTouches[i].identifier === touchDrag.id) {
+          point = event.changedTouches[i];
+          break;
+        }
+      }
+      if (!point && event.type !== 'touchcancel') return;
       if (point && touchDrag.axis === null) {
         const dx = point.clientX - touchDrag.x;
         const dy = point.clientY - touchDrag.y;
         if (dx * dx + dy * dy < 100) applyLook(point.clientX, point.clientY);
       }
       touchDrag = null;
+      onScroll();
     };
 
     const onScroll = () => {
-      if (!coarseHover.matches || touchDrag) return;
+      if (!coarseHover.matches || touchDrag?.axis === 'x') return;
       const box = host.getBoundingClientRect();
       const viewH = window.innerHeight || 1;
       const center = (box.top + box.bottom) / 2 / viewH;
