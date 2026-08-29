@@ -42,11 +42,12 @@ import s from './customContent.module.css';
 
 const ACCEPT = '.pdf,.ppt,.pptx,.docx,.md,.txt';
 const CUSTOM_BOOTSTRAP_RETRY_MS = [1_000, 2_000] as const;
+const DELETE_POLL_TIMEOUT_MS = 120_000;
 const ROLE_LABEL: Record<AssetRole, string> = {
   lecture: '讲座课件', lab: '实验材料', syllabus: '课程大纲', reading: '补充读物',
 };
 const STATUS_LABEL: Record<CustomAsset['parseStatus'], string> = {
-  pending: '候解析', processing: '拆页中', finalizing: '编索引', completed: '已入库', failed: '解析失败', cancelled: '已取消',
+  pending: '候解析', processing: '拆页中', finalizing: '编索引', completed: '已入库', failed: '解析失败', deleting: '删除中', cancelled: '已取消',
 };
 const JOB_LABEL: Record<CompileJob['status'], string> = {
   queued: '已排入编译队列', running: '小砚正在编讲稿', needs_review: '草稿待校订', done: '课题已发布', failed: '编译未完成',
@@ -76,6 +77,7 @@ function errorHint(error: unknown, maximumBytes = 0): string {
     'asset-storage-failed': '原文件没有完整写入私有 COS，本次上传已撤销。',
     'asset-storage-missing': 'COS 原件校验失败，请重新上传这份资料。',
     'asset-storage-delete-failed': 'COS 原件尚未删除，本次删除已停止。',
+    'asset-delete-finalize-failed': '资料删除登记尚未收尾，请再次点击删除重试。',
     'upload-busy': '上一份资料还在上传，请等它交卷。',
     'rate-limited': '今天这类操作已经较多，请按提示稍后再试。',
     'rate-limit-unavailable': '上传用量校验暂不可用，请稍后再试。',
@@ -597,6 +599,8 @@ export default function CustomContentPage() {
     let active = true;
     let timer = 0;
     let failures = 0;
+    let deletingSince = 0;
+    let deletingPolls = 0;
     const refresh = async () => {
       try {
         const next = await listCourseAssets(courseId);
@@ -604,8 +608,25 @@ export default function CustomContentPage() {
         failures = 0;
         setAssets(next);
         setSelectedAssetIds((current) => new Set([...current].filter((id) => next.some((asset) => asset.id === id && asset.parseStatus === 'completed'))));
-        if (next.some((asset) => asset.parseStatus === 'pending' || asset.parseStatus === 'processing' || asset.parseStatus === 'finalizing')) {
+        const parsing = next.some((asset) => (
+          asset.parseStatus === 'pending'
+          || asset.parseStatus === 'processing'
+          || asset.parseStatus === 'finalizing'
+        ));
+        const deleting = next.some((asset) => asset.parseStatus === 'deleting');
+        if (deleting) {
+          deletingSince ||= Date.now();
+          deletingPolls += 1;
+        } else {
+          deletingSince = 0;
+          deletingPolls = 0;
+        }
+        if (parsing) {
           timer = window.setTimeout(() => void refresh(), 2_000);
+        } else if (deleting && Date.now() - deletingSince < DELETE_POLL_TIMEOUT_MS) {
+          timer = window.setTimeout(() => void refresh(), retryDelay(deletingPolls));
+        } else if (deleting) {
+          setNotice('资料删除收尾超过预期，请稍后点击删除图标重试。');
         }
       } catch (error) {
         if (active) {

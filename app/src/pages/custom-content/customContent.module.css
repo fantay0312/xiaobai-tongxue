@@ -252,7 +252,7 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .assetStatus { padding: 0.25rem 0.45rem; border: 1px solid var(--paper-edge); color: var(--ink-soft); font: var(--fs-tiny) var(--font-typewriter); letter-spacing: 0.08em; }
 .status_completed { border-color: color-mix(in oklab, var(--jade) 55%, var(--paper-edge)); color: var(--jade); }
 .status_failed, .status_cancelled { border-color: color-mix(in oklab, var(--cinnabar) 55%, var(--paper-edge)); color: var(--cinnabar); }
-.status_processing, .status_finalizing { color: var(--azure); }
+.status_processing, .status_finalizing, .status_deleting { color: var(--azure); }
 .assetRow > button { border: 0; background: transparent; color: var(--azure); font-size: var(--fs-small); }
 .iconButton { display: grid; place-items: center; width: 2rem; height: 2rem; color: var(--ink-faint) !important; }
 .iconButton:hover, .iconButton:focus-visible { color: var(--cinnabar) !important; }

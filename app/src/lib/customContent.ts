@@ -5,7 +5,7 @@ const ROOT = `${API_BASE}/xb`;
 const ABSOLUTE_MAX_FILE_BYTES = 80 * 1024 * 1024;
 
 export type AssetRole = 'lecture' | 'lab' | 'syllabus' | 'reading';
-export type AssetParseStatus = 'pending' | 'processing' | 'finalizing' | 'completed' | 'failed' | 'cancelled';
+export type AssetParseStatus = 'pending' | 'processing' | 'finalizing' | 'completed' | 'failed' | 'deleting' | 'cancelled';
 
 export interface CustomCourse {
   id: string;

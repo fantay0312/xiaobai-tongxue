@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { appendFileSync } from 'node:fs';
-import { copyFile, cp, readFile, readdir, writeFile } from 'node:fs/promises';
+import { copyFile, cp, readFile, readdir, symlink, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -167,6 +167,7 @@ export async function copyRuntimeModules(root) {
     path.join(root, directory),
     { recursive: true },
   )));
+  await symlink(path.join(SERVER_DIR, 'node_modules'), path.join(root, 'node_modules'), 'dir');
 }
 
 export async function openPort() {

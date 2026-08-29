@@ -1,5 +1,8 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
+import { TextDecoder } from 'node:util';
+import { inflateRawSync } from 'node:zlib';
+import { SaxesParser } from 'saxes';
 import {
   hasBlockingIssues,
   normalizeTopicDraft,
@@ -25,6 +28,26 @@ const FILE_TYPES = Object.freeze({
   '.md': 'text/markdown',
   '.txt': 'text/plain',
 });
+const OOXML_CONTENT_TYPES_NS = 'http://schemas.openxmlformats.org/package/2006/content-types';
+const OOXML_RELATIONSHIPS_NS = 'http://schemas.openxmlformats.org/package/2006/relationships';
+const OOXML_OFFICE_RELATIONSHIP_TYPES = new Set([
+  'http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument',
+  'http://purl.oclc.org/ooxml/officeDocument/relationships/officeDocument',
+]);
+
+const CRC32_TABLE = Uint32Array.from({ length: 256 }, (_, value) => {
+  let crc = value;
+  for (let bit = 0; bit < 8; bit += 1) crc = (crc & 1) ? (crc >>> 1) ^ 0xedb88320 : crc >>> 1;
+  return crc >>> 0;
+});
+
+function zipCrc32(bytes) {
+  let crc = 0xffffffff;
+  for (let index = 0; index < bytes.length; index += 1) {
+    crc = CRC32_TABLE[(crc ^ bytes[index]) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
 
 function publicError(code, status = 400) {
   const error = new Error(code);
@@ -59,12 +82,119 @@ function isZip(bytes) {
     && ((bytes[2] === 0x03 && bytes[3] === 0x04) || (bytes[2] === 0x05 && bytes[3] === 0x06));
 }
 
+function asciiFold(value) {
+  return value.replace(/[A-Z]/g, (character) => character.toLowerCase());
+}
+
+function xmlAttribute(tag, localName) {
+  return Object.values(tag.attributes ?? {}).find((attribute) => (
+    attribute.local === localName && !attribute.uri
+  ))?.value ?? '';
+}
+
+function looksLikeXml(bytes) {
+  if (bytes.length < 2) return false;
+  if ((bytes[0] === 0xff && bytes[1] === 0xfe) || (bytes[0] === 0xfe && bytes[1] === 0xff)) return true;
+  if ((bytes[0] === 0x3c && bytes[1] === 0x00) || (bytes[0] === 0x00 && bytes[1] === 0x3c)) return true;
+  let offset = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf ? 3 : 0;
+  while (offset < Math.min(bytes.length, 256) && [0x09, 0x0a, 0x0d, 0x20].includes(bytes[offset])) offset += 1;
+  return bytes[offset] === 0x3c;
+}
+
+function ooxmlXmlInfo(bytes) {
+  let encoding = 'utf-8';
+  if ((bytes[0] === 0xff && bytes[1] === 0xfe) || (bytes[0] === 0x3c && bytes[1] === 0x00)) {
+    encoding = 'utf-16le';
+  } else if ((bytes[0] === 0xfe && bytes[1] === 0xff) || (bytes[0] === 0x00 && bytes[1] === 0x3c)) {
+    encoding = 'utf-16be';
+  }
+  let invalid = false;
+  let depth = 0;
+  let tags = 0;
+  let root = '';
+  let rootUri = '';
+  let declaredEncoding = '';
+  const defaults = [];
+  const overrides = [];
+  const relationships = [];
+  try {
+    const parser = new SaxesParser({ xmlns: true });
+    parser.on('error', () => { invalid = true; });
+    parser.on('doctype', () => { invalid = true; });
+    parser.on('xmldecl', (declaration) => {
+      declaredEncoding = String(declaration.encoding ?? '').trim().toLowerCase().replaceAll('_', '-');
+      if (declaredEncoding === 'utf8') declaredEncoding = 'utf-8';
+      if (declaredEncoding === 'utf16') declaredEncoding = 'utf-16';
+    });
+    parser.on('opentag', (tag) => {
+      depth += 1;
+      tags += 1;
+      if (depth === 1) {
+        root = tag.local;
+        rootUri = tag.uri;
+      }
+      if (tag.local === 'Override' && tag.uri === OOXML_CONTENT_TYPES_NS) {
+        overrides.push({
+          partName: xmlAttribute(tag, 'PartName'),
+          contentType: xmlAttribute(tag, 'ContentType'),
+        });
+      }
+      if (tag.local === 'Default' && tag.uri === OOXML_CONTENT_TYPES_NS) {
+        defaults.push({
+          extension: xmlAttribute(tag, 'Extension').toLowerCase(),
+          contentType: xmlAttribute(tag, 'ContentType'),
+        });
+      }
+      if (tag.local === 'Relationship' && tag.uri === OOXML_RELATIONSHIPS_NS) {
+        relationships.push({
+          target: xmlAttribute(tag, 'Target'),
+          type: xmlAttribute(tag, 'Type'),
+          targetMode: xmlAttribute(tag, 'TargetMode'),
+        });
+      }
+      if (depth > 256 || tags > 2_000_000) invalid = true;
+    });
+    parser.on('closetag', () => { depth -= 1; });
+    const decoder = new TextDecoder(encoding, { fatal: true });
+    for (let offset = 0; offset < bytes.length; offset += 64 * 1024) {
+      parser.write(decoder.decode(bytes.subarray(offset, offset + 64 * 1024), { stream: true }));
+      if (invalid) return { valid: false };
+    }
+    parser.write(decoder.decode()).close();
+  } catch {
+    return { valid: false };
+  }
+  const declaredMatches = !declaredEncoding
+    || declaredEncoding === encoding
+    || (declaredEncoding === 'utf-16' && encoding.startsWith('utf-16'));
+  const valid = !invalid
+    && depth === 0
+    && tags > 0
+    && declaredMatches;
+  return { valid, root, rootUri, defaults, overrides, relationships };
+}
+
+function packagePartName(value) {
+  if (typeof value !== 'string' || !value || /[?#]/.test(value)) return '';
+  let decoded;
+  try {
+    decoded = decodeURIComponent(value).replaceAll('\\', '/').replace(/^\/+/, '');
+  } catch {
+    return '';
+  }
+  const parts = decoded.split('/');
+  if (parts.some((part) => part === '..')) return '';
+  return parts.filter((part) => part && part !== '.').join('/');
+}
+
 function zipDirectory(bytes) {
   const minimumEocd = 22;
   const searchStart = Math.max(0, bytes.length - 65_557);
   let eocd = -1;
   for (let offset = bytes.length - minimumEocd; offset >= searchStart; offset -= 1) {
-    if (bytes.readUInt32LE(offset) === 0x06054b50) {
+    if (bytes.readUInt32LE(offset) === 0x06054b50
+      && offset + minimumEocd <= bytes.length
+      && offset + minimumEocd + bytes.readUInt16LE(offset + 20) === bytes.length) {
       eocd = offset;
       break;
     }
@@ -94,6 +224,7 @@ function zipDirectory(bytes) {
     }
     const flags = bytes.readUInt16LE(offset + 8);
     const method = bytes.readUInt16LE(offset + 10);
+    const expectedCrc = bytes.readUInt32LE(offset + 16);
     const compressedSize = bytes.readUInt32LE(offset + 20);
     const expandedSize = bytes.readUInt32LE(offset + 24);
     const nameLength = bytes.readUInt16LE(offset + 28);
@@ -110,26 +241,72 @@ function zipDirectory(bytes) {
     }
     const name = bytes.subarray(offset + 46, offset + 46 + nameLength).toString('utf8');
     const normalizedName = name.replaceAll('\\', '/');
+    const canonicalName = asciiFold(normalizedName);
     if (!normalizedName || normalizedName.startsWith('/') || /^[a-z]:/i.test(normalizedName)
-      || normalizedName.split('/').some((part) => part === '..') || names.has(normalizedName)) {
+      || normalizedName.split('/').some((part) => part === '..') || names.has(canonicalName)) {
       throw publicError('file-content-mismatch', 415);
     }
-    names.add(normalizedName);
+    names.add(canonicalName);
     const localFlags = bytes.readUInt16LE(localOffset + 6);
     const localMethod = bytes.readUInt16LE(localOffset + 8);
+    const localCrc = bytes.readUInt32LE(localOffset + 14);
+    const localCompressedSize = bytes.readUInt32LE(localOffset + 18);
+    const localExpandedSize = bytes.readUInt32LE(localOffset + 22);
     const localNameLength = bytes.readUInt16LE(localOffset + 26);
     const localExtraLength = bytes.readUInt16LE(localOffset + 28);
     const dataOffset = localOffset + 30 + localNameLength + localExtraLength;
     const localName = bytes.subarray(localOffset + 30, localOffset + 30 + localNameLength)
       .toString('utf8').replaceAll('\\', '/');
     if (localFlags !== flags || localMethod !== method || localName !== normalizedName
-      || dataOffset + compressedSize > directoryOffset) throw publicError('file-content-mismatch', 415);
+      || dataOffset + compressedSize > directoryOffset
+      || ((flags & 0x08) === 0 && (
+        localCrc !== expectedCrc
+        || localCompressedSize !== compressedSize
+        || localExpandedSize !== expandedSize
+      ))) throw publicError('file-content-mismatch', 415);
     expandedBytes += expandedSize;
     compressedBytes += compressedSize;
-    if (expandedSize > 128 * 1024 * 1024 || expandedBytes > 256 * 1024 * 1024) {
+    if (expandedSize > 128 * 1024 * 1024
+      || expandedBytes > 256 * 1024 * 1024
+      || expandedSize > Math.max(1, compressedSize) * 200
+      || expandedBytes > Math.max(1, compressedBytes) * 200) {
       throw publicError('file-archive-too-large', 413);
     }
-    entries.push({ name: normalizedName, expandedSize });
+    if ((flags & 0x08) !== 0) {
+      const descriptorOffset = dataOffset + compressedSize;
+      const descriptorMatches = (at) => at + 12 <= directoryOffset
+        && bytes.readUInt32LE(at) === expectedCrc
+        && bytes.readUInt32LE(at + 4) === compressedSize
+        && bytes.readUInt32LE(at + 8) === expandedSize;
+      const signedDescriptor = descriptorOffset + 4 <= directoryOffset
+        && bytes.readUInt32LE(descriptorOffset) === 0x08074b50
+        && descriptorMatches(descriptorOffset + 4);
+      if (!descriptorMatches(descriptorOffset) && !signedDescriptor) {
+        throw publicError('file-content-mismatch', 415);
+      }
+    }
+    const compressed = bytes.subarray(dataOffset, dataOffset + compressedSize);
+    let expanded;
+    try {
+      if (method === 0) expanded = compressed;
+      else {
+        const result = inflateRawSync(compressed, {
+          info: true,
+          maxOutputLength: Math.max(1, expandedSize + 1),
+        });
+        if (result.engine.bytesWritten !== compressed.length) throw new Error('zip-trailing-compressed-data');
+        expanded = result.buffer;
+      }
+    } catch {
+      throw publicError('file-content-mismatch', 415);
+    }
+    if (expanded.length !== expandedSize || zipCrc32(expanded) !== expectedCrc) {
+      throw publicError('file-content-mismatch', 415);
+    }
+    const xmlInfo = expandedSize > 0 && looksLikeXml(expanded)
+      ? ooxmlXmlInfo(expanded)
+      : null;
+    entries.push({ name: normalizedName, expandedSize, xmlInfo });
     offset = next;
   }
   if (offset !== directoryOffset + directorySize
@@ -141,11 +318,56 @@ function zipDirectory(bytes) {
 
 function validOoxml(bytes, extension) {
   if (!isZip(bytes)) return false;
+  const isDocument = extension === '.docx';
+  const expectedContentType = isDocument
+    ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml'
+    : 'application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml';
+  const expectedMainUris = isDocument
+    ? [
+      'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+      'http://purl.oclc.org/ooxml/wordprocessingml/main',
+    ]
+    : [
+      'http://schemas.openxmlformats.org/presentationml/2006/main',
+      'http://purl.oclc.org/ooxml/presentationml/main',
+    ];
   const entries = zipDirectory(bytes);
-  const required = extension === '.docx'
-    ? ['[Content_Types].xml', '_rels/.rels', 'word/document.xml']
-    : ['[Content_Types].xml', '_rels/.rels', 'ppt/presentation.xml'];
-  return required.every((name) => entries.some((entry) => entry.name === name && entry.expandedSize > 0));
+  const entryByName = new Map(entries.map((entry) => [asciiFold(entry.name), entry]));
+  const contentTypes = entryByName.get('[content_types].xml')?.xmlInfo;
+  const rootRelationships = entryByName.get('_rels/.rels')?.xmlInfo;
+  if (!contentTypes?.valid
+    || contentTypes.root !== 'Types'
+    || contentTypes.rootUri !== OOXML_CONTENT_TYPES_NS
+    || !rootRelationships?.valid
+    || rootRelationships.root !== 'Relationships'
+    || rootRelationships.rootUri !== OOXML_RELATIONSHIPS_NS) return false;
+  const officeRelationships = rootRelationships.relationships.filter((relationship) => (
+    OOXML_OFFICE_RELATIONSHIP_TYPES.has(relationship.type)
+  ));
+  if (officeRelationships.length !== 1
+    || officeRelationships[0].targetMode.toLowerCase() === 'external') return false;
+  const mainPart = packagePartName(officeRelationships[0].target);
+  const mainPartKey = asciiFold(mainPart);
+  const main = entryByName.get(mainPartKey)?.xmlInfo;
+  if (!mainPart
+    || !main?.valid
+    || main.root !== (isDocument ? 'document' : 'presentation')
+    || !expectedMainUris.includes(main.rootUri)) return false;
+
+  const overrideMatches = contentTypes.overrides.filter((mapping) => (
+    asciiFold(packagePartName(mapping.partName)) === mainPartKey
+  ));
+  let effectiveContentType = '';
+  if (overrideMatches.length > 0) {
+    if (overrideMatches.length !== 1) return false;
+    effectiveContentType = overrideMatches[0].contentType;
+  } else {
+    const extensionName = path.extname(mainPart).slice(1).toLowerCase();
+    const defaultMatches = contentTypes.defaults.filter((mapping) => mapping.extension === extensionName);
+    if (defaultMatches.length !== 1) return false;
+    effectiveContentType = defaultMatches[0].contentType;
+  }
+  return effectiveContentType === expectedContentType;
 }
 
 function isOle(bytes) {
@@ -757,6 +979,45 @@ export function createCustomContentService({
     return false;
   }
 
+  async function markAssetDeleteFailed(assetId, message, diagnostic) {
+    try {
+      await repository.assets.markDeleteFailed(assetId, message);
+    } catch {
+      logger.error?.(`[custom-content] ${diagnostic}`);
+    }
+  }
+
+  async function finishAssetDeletion(asset, ownerId, requestId) {
+    let knowledgeDeleted = false;
+    try {
+      await weknora.deleteKnowledge(asset.wkKnowledgeId, requestId).catch((error) => {
+        if (!String(error?.message).startsWith('weknora-not-found')) throw error;
+      });
+      knowledgeDeleted = true;
+      await cos.delete({ userId: ownerId, key: asset.cosKey });
+    } catch {
+      await markAssetDeleteFailed(
+        asset.id,
+        knowledgeDeleted
+          ? 'COS 原件删除未完成，可再次删除重试'
+          : '解析副本删除未完成，可再次删除重试',
+        'failed to persist delete failure state',
+      );
+      throw publicError(knowledgeDeleted ? 'asset-storage-delete-failed' : 'asset-delete-upstream-failed', 502);
+    }
+    try {
+      await repository.assets.remove(asset.id);
+    } catch {
+      await markAssetDeleteFailed(
+        asset.id,
+        '删除登记未完成，可再次删除重试',
+        'failed to persist delete finalize failure state',
+      );
+      throw publicError('asset-delete-finalize-failed', 502);
+    }
+    return true;
+  }
+
   async function loadOwnedTopic(ownerId, id) {
     const topic = await repository.topics.findOwned(ownerId, id).catch(() => null);
     if (!topic) throw publicError('topic-not-found', 404);
@@ -1161,26 +1422,7 @@ export function createCustomContentService({
       if (!asset) throw publicError('asset-not-found', 404);
       const claimed = await repository.assets.claimDelete(owner.id, asset.id);
       if (!claimed) throw publicError('asset-in-use', 409);
-      let knowledgeDeleted = false;
-      try {
-        await weknora.deleteKnowledge(asset.wkKnowledgeId, requestId).catch((error) => {
-          if (!String(error?.message).startsWith('weknora-not-found')) throw error;
-        });
-        knowledgeDeleted = true;
-        await cos.delete({ userId: owner.id, key: asset.cosKey });
-      } catch {
-        await repository.assets.updateStatus(asset.id, knowledgeDeleted ? {
-          parseStatus: 'failed',
-          enableStatus: 'disabled',
-          errorMessage: '资料删除未完成，可再次删除重试',
-        } : {
-          parseStatus: asset.parseStatus,
-          enableStatus: asset.enableStatus,
-          errorMessage: asset.errorMessage,
-        }).catch(() => {});
-        throw publicError(knowledgeDeleted ? 'asset-storage-delete-failed' : 'asset-delete-upstream-failed', 502);
-      }
-      await repository.assets.remove(asset.id);
+      await finishAssetDeletion(claimed, owner.id, requestId);
       return { ok: true };
     },
 
@@ -1230,6 +1472,23 @@ export function createCustomContentService({
     async reconcileCourseCreationIntents() {
       const intents = await repository.courses.claimStaleCreationIntents();
       return reconcileClaimedIntents(intents, reconcileCourseCreationIntent);
+    },
+
+    async reconcileDeletingAssets() {
+      const assets = await repository.assets.claimStaleDeletingAssets();
+      return reconcileClaimedIntents(assets, async (asset) => {
+        try {
+          await finishAssetDeletion(
+            asset,
+            asset.ownerId,
+            `xb-delete-reconcile-${asset.id}`,
+          );
+          return true;
+        } catch {
+          logger.error?.('[custom-content] stale deleting asset reconciliation failed');
+          return false;
+        }
+      });
     },
 
     async findSourceCandidates(owner, id, input, requestId) {

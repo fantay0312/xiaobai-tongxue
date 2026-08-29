@@ -345,6 +345,7 @@ async function runCustomContentMaintenance() {
     const operations = await Promise.allSettled([
       customContentService.reconcileUploadIntents(),
       customContentService.reconcileCourseCreationIntents(),
+      customContentService.reconcileDeletingAssets(),
       customContentService.resumePendingJobs(),
     ]);
     for (const result of operations) {
@@ -2861,7 +2862,7 @@ server.listen(PORT, '127.0.0.1', () => {
   console.log(`小白同学网关已启动: http://127.0.0.1:${PORT} (dist: ${DIST}, model: ${MODEL}, coach: ${MODEL_COACH}, vision: ${VISION_KEY ? MODEL_VISION : '关闭'}, asr: ${ASR_KEY ? ASR_MODEL : '关闭'}, 腾讯验证码: ${captchaService.available ? '开启' : '关闭'}, 邮箱验证: ${emailAuth ? '开启' : '关闭'}, 手机验证: ${phoneAuth ? '开启' : '关闭'}, 注册: ${registration})`);
   if (customContentService && !customCleanupTimer) {
     void runCustomContentMaintenance();
-    customCleanupTimer = setInterval(() => { void runCustomContentMaintenance(); }, 15 * 60_000);
+    customCleanupTimer = setInterval(() => { void runCustomContentMaintenance(); }, 2 * 60_000);
     customCleanupTimer.unref?.();
   }
 });

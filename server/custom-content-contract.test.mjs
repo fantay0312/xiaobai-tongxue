@@ -225,6 +225,7 @@ test('custom maintenance starts after listen and shares the COS upload ceiling',
   const serviceSource = await readFile(new URL('./custom-content/service.mjs', import.meta.url), 'utf8');
   const routerSource = await readFile(new URL('./custom-content/router.mjs', import.meta.url), 'utf8');
   const weknoraSource = await readFile(new URL('./custom-content/weknora-client.mjs', import.meta.url), 'utf8');
+  const repositorySource = await readFile(new URL('./storage/postgres/custom-content.mjs', import.meta.url), 'utf8');
   const cosSource = await readFile(new URL('./storage/cos-store.mjs', import.meta.url), 'utf8');
   const configuredBlock = indexSource.slice(
     indexSource.indexOf('if (WK_CONFIGURED)'),
@@ -233,6 +234,7 @@ test('custom maintenance starts after listen and shares the COS upload ceiling',
   const listenBlock = indexSource.slice(indexSource.indexOf("server.listen(PORT"));
   assert.doesNotMatch(configuredBlock, /await customContentService\.(?:reconcile|resumePendingJobs)/);
   assert.match(indexSource, /Promise\.allSettled\(\[\s*customContentService\.reconcileUploadIntents\(\)/);
+  assert.match(indexSource, /customContentService\.reconcileDeletingAssets\(\)/);
   assert.match(indexSource, /customMaintenanceRunning/);
   assert.match(listenBlock, /void runCustomContentMaintenance\(\)/);
   assert.match(serviceSource, /reconcileClaimedIntents\(intents, reconcileUploadIntent\)/);
@@ -251,4 +253,14 @@ test('custom maintenance starts after listen and shares the COS upload ceiling',
   assert.match(routerSource, /json-object-required/);
   assert.match(indexSource, /const refreshIdleTimer = \(\) =>/);
   assert.match(serviceSource, /healthy: await weknora\.healthCheck\(\), maxFileBytes/);
+  assert.match(serviceSource, /inflateRawSync\(compressed/);
+  assert.match(serviceSource, /zipCrc32\(expanded\)/);
+  assert.match(serviceSource, /ooxmlXmlInfo\(expanded\)/);
+  assert.match(serviceSource, /officeRelationships\.length !== 1/);
+  assert.match(serviceSource, /if \(overrideMatches\.length > 0\)/);
+  assert.match(serviceSource, /names\.has\(canonicalName\)/);
+  assert.match(serviceSource, /asciiFold\(packagePartName\(mapping\.partName\)\)/);
+  assert.match(repositorySource, /WHERE id = \$1 AND parse_status = 'deleting'/);
+  assert.match(repositorySource, /claimStaleDeletingAssets/);
+  assert.match(serviceSource, /asset-delete-finalize-failed/);
 });

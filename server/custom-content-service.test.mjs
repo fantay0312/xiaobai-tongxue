@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setImmediate as waitTurn } from 'node:timers/promises';
+import { crc32, deflateRawSync } from 'node:zlib';
 import { createCustomContentService } from './custom-content/service.mjs';
 import { normalizeTopicDraft } from './custom-content/topic-contract.mjs';
 
@@ -114,6 +115,20 @@ function repositoryFixture() {
         assets.set(id, row);
         return row;
       },
+      async markDeleteFailed(id, errorMessage) {
+        const current = assets.get(id);
+        if (!current || current.parseStatus !== 'deleting') return null;
+        const row = {
+          ...current,
+          parseStatus: 'failed',
+          enableStatus: 'disabled',
+          errorMessage,
+          updatedAt: new Date().toISOString(),
+        };
+        assets.set(id, row);
+        return row;
+      },
+      async claimStaleDeletingAssets() { return []; },
       async remove(id) { return assets.delete(id); },
       async claimDelete(ownerId, id) {
         const asset = await this.findOwned(ownerId, id);
@@ -319,20 +334,22 @@ function cosFixture() {
   };
 }
 
-function storedZip(files) {
+function storedZip(files, archiveComment = Buffer.alloc(0)) {
   const localParts = [];
   const centralParts = [];
   let localOffset = 0;
   for (const file of files) {
     const name = Buffer.from(file.name, 'utf8');
-    const data = Buffer.from(file.body ?? 'x');
-    const expandedSize = file.expandedSize ?? data.length;
+    const expanded = Buffer.from(file.body ?? 'x');
+    const data = file.method === 8 ? deflateRawSync(expanded) : expanded;
+    const expandedSize = file.expandedSize ?? expanded.length;
+    const checksum = file.crc ?? (crc32(expanded) >>> 0);
     const local = Buffer.alloc(30);
     local.writeUInt32LE(0x04034b50, 0);
     local.writeUInt16LE(20, 4);
     local.writeUInt16LE(0, 6);
-    local.writeUInt16LE(0, 8);
-    local.writeUInt32LE(0, 14);
+    local.writeUInt16LE(file.method ?? 0, 8);
+    local.writeUInt32LE(checksum, 14);
     local.writeUInt32LE(data.length, 18);
     local.writeUInt32LE(expandedSize, 22);
     local.writeUInt16LE(name.length, 26);
@@ -344,8 +361,8 @@ function storedZip(files) {
     central.writeUInt16LE(20, 4);
     central.writeUInt16LE(20, 6);
     central.writeUInt16LE(0, 8);
-    central.writeUInt16LE(0, 10);
-    central.writeUInt32LE(0, 16);
+    central.writeUInt16LE(file.method ?? 0, 10);
+    central.writeUInt32LE(checksum, 16);
     central.writeUInt32LE(data.length, 20);
     central.writeUInt32LE(expandedSize, 24);
     central.writeUInt16LE(name.length, 28);
@@ -363,8 +380,24 @@ function storedZip(files) {
   eocd.writeUInt16LE(files.length, 10);
   eocd.writeUInt32LE(directory.length, 12);
   eocd.writeUInt32LE(localOffset, 16);
-  return Buffer.concat([...localParts, directory, eocd]);
+  eocd.writeUInt16LE(archiveComment.length, 20);
+  return Buffer.concat([...localParts, directory, eocd, archiveComment]);
 }
+
+const CONTENT_TYPES_NS = 'http://schemas.openxmlformats.org/package/2006/content-types';
+const RELATIONSHIPS_NS = 'http://schemas.openxmlformats.org/package/2006/relationships';
+const OFFICE_RELATIONSHIP = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument';
+const WORD_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const PRESENTATION_NS = 'http://schemas.openxmlformats.org/presentationml/2006/main';
+const DOCX_CONTENT_TYPES = `<Types xmlns="${CONTENT_TYPES_NS}"><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`;
+const DOCX_RELATIONSHIPS = `<Relationships xmlns="${RELATIONSHIPS_NS}"><Relationship Id="rId1" Type="${OFFICE_RELATIONSHIP}" Target="word/document.xml"/></Relationships>`;
+const DOCX_DOCUMENT = `<w:document xmlns:w="${WORD_NS}"><w:body/></w:document>`;
+const ROOT_DOCX_CONTENT_TYPES = `<Types xmlns="${CONTENT_TYPES_NS}"><Override PartName="/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`;
+const ROOT_DOCX_RELATIONSHIPS = `<Relationships xmlns="${RELATIONSHIPS_NS}"><Relationship Id="rId1" Type="${OFFICE_RELATIONSHIP}" Target="document.xml"/></Relationships>`;
+const PPTX_CONTENT_TYPES = `<Types xmlns="${CONTENT_TYPES_NS}"><Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/></Types>`;
+const PPTX_DEFAULT_CONTENT_TYPES = `<Types xmlns="${CONTENT_TYPES_NS}"><Default Extension="xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/></Types>`;
+const PPTX_RELATIONSHIPS = `<Relationships xmlns="${RELATIONSHIPS_NS}"><Relationship Id="rId1" Type="${OFFICE_RELATIONSHIP}" Target="ppt/presentation.xml"/></Relationships>`;
+const PPTX_PRESENTATION = `<p:presentation xmlns:p="${PRESENTATION_NS}"/>`;
 
 function minimalPowerPointCfb() {
   const sectorSize = 512;
@@ -727,14 +760,60 @@ test('OOXML uploads require bounded DOCX/PPTX archive structure', async () => {
   const owner = { id: IDS[22], name: 'Owner' };
   const course = await service.createCourse(owner, 'OOXML 测试');
   const validDocx = storedZip([
-    { name: '[Content_Types].xml', body: '<Types />' },
-    { name: '_rels/.rels', body: '<Relationships />' },
-    { name: 'word/document.xml', body: '<document />' },
+    { name: '[Content_Types].xml', body: DOCX_CONTENT_TYPES },
+    { name: '_rels/.rels', body: DOCX_RELATIONSHIPS },
+    { name: 'word/document.xml', body: DOCX_DOCUMENT, method: 8 },
   ]);
   const uploaded = await service.uploadAsset(owner, course.id, {
     bytes: validDocx, filename: 'lesson.docx', assetRole: 'lecture', requestId: 'docx-valid',
   });
   assert.equal(uploaded.parseStatus, 'completed');
+  const defaultMappedPptx = await service.uploadAsset(owner, course.id, {
+    bytes: storedZip([
+      { name: '[Content_Types].xml', body: PPTX_DEFAULT_CONTENT_TYPES },
+      { name: '_rels/.rels', body: PPTX_RELATIONSHIPS },
+      { name: 'ppt/presentation.xml', body: PPTX_PRESENTATION, method: 8 },
+    ]),
+    filename: 'default-mapped.pptx', assetRole: 'lecture', requestId: 'pptx-default',
+  });
+  assert.equal(defaultMappedPptx.parseStatus, 'completed');
+  const rootPartDocx = await service.uploadAsset(owner, course.id, {
+    bytes: storedZip([
+      { name: '[Content_Types].xml', body: ROOT_DOCX_CONTENT_TYPES },
+      { name: '_rels/.rels', body: ROOT_DOCX_RELATIONSHIPS },
+      { name: 'document.xml', body: DOCX_DOCUMENT, method: 8 },
+    ]),
+    filename: 'root-part.docx', assetRole: 'lecture', requestId: 'docx-root-part',
+  });
+  assert.equal(rootPartDocx.parseStatus, 'completed');
+  const caseFoldedDocx = await service.uploadAsset(owner, course.id, {
+    bytes: storedZip([
+      {
+        name: '[Content_Types].xml',
+        body: DOCX_CONTENT_TYPES.replace('/word/document.xml', '/WORD/DOCUMENT.XML'),
+      },
+      {
+        name: '_rels/.rels',
+        body: DOCX_RELATIONSHIPS.replace('word/document.xml', 'WORD/DOCUMENT.XML'),
+      },
+      { name: 'word/document.xml', body: DOCX_DOCUMENT },
+    ]),
+    filename: 'case-folded.docx', assetRole: 'lecture', requestId: 'docx-case-folded',
+  });
+  assert.equal(caseFoldedDocx.parseStatus, 'completed');
+  const commentedDocx = await service.uploadAsset(owner, course.id, {
+    bytes: storedZip([
+      { name: '[Content_Types].xml', body: DOCX_CONTENT_TYPES },
+      { name: '_rels/.rels', body: DOCX_RELATIONSHIPS },
+      { name: 'word/document.xml', body: DOCX_DOCUMENT },
+    ], Buffer.concat([
+      Buffer.from('legal archive comment '),
+      Buffer.from([0x50, 0x4b, 0x05, 0x06]),
+      Buffer.from(' after fake EOCD'),
+    ])),
+    filename: 'commented.docx', assetRole: 'lecture', requestId: 'docx-commented',
+  });
+  assert.equal(commentedDocx.parseStatus, 'completed');
   const legacy = await service.uploadAsset(owner, course.id, {
     bytes: minimalPowerPointCfb(), filename: 'legacy.ppt', assetRole: 'lecture', requestId: 'ppt-valid',
   });
@@ -750,6 +829,46 @@ test('OOXML uploads require bounded DOCX/PPTX archive structure', async () => {
     service.uploadAsset(owner, course.id, {
       bytes: Buffer.concat([Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]), Buffer.alloc(1024)]),
       filename: 'renamed.ppt', assetRole: 'lecture', requestId: 'ppt-invalid',
+    }),
+    /file-content-mismatch/,
+  );
+  await assert.rejects(
+    service.uploadAsset(owner, course.id, {
+      bytes: storedZip([
+        { name: '[Content_Types].xml', body: DOCX_CONTENT_TYPES },
+        { name: '_rels/.rels', body: DOCX_RELATIONSHIPS },
+        { name: 'word/document.xml', body: DOCX_DOCUMENT },
+        { name: 'WORD/DOCUMENT.XML', body: DOCX_DOCUMENT },
+      ]),
+      filename: 'case-alias.docx', assetRole: 'lecture', requestId: 'docx-case-alias',
+    }),
+    /file-content-mismatch/,
+  );
+  await assert.rejects(
+    service.uploadAsset(owner, course.id, {
+      bytes: storedZip([
+        {
+          name: '[Content_Types].xml',
+          body: `<Types xmlns="${CONTENT_TYPES_NS}"><Default Extension="xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/document.xml" ContentType="application/octet-stream"/></Types>`,
+        },
+        { name: '_rels/.rels', body: DOCX_RELATIONSHIPS },
+        { name: 'word/document.xml', body: DOCX_DOCUMENT },
+      ]),
+      filename: 'override-conflict.docx', assetRole: 'lecture', requestId: 'docx-override-conflict',
+    }),
+    /file-content-mismatch/,
+  );
+  await assert.rejects(
+    service.uploadAsset(owner, course.id, {
+      bytes: storedZip([
+        { name: '[Content_Types].xml', body: DOCX_CONTENT_TYPES },
+        {
+          name: '_rels/.rels',
+          body: `<Relationships xmlns="${RELATIONSHIPS_NS}"><Relationship Id="rId1" Type="${OFFICE_RELATIONSHIP}" Target="word/document.xml"/><Relationship Id="rId2" Type="${OFFICE_RELATIONSHIP}" Target="https://example.com/document.xml" TargetMode="External"/></Relationships>`,
+        },
+        { name: 'word/document.xml', body: DOCX_DOCUMENT },
+      ]),
+      filename: 'relationship-conflict.docx', assetRole: 'lecture', requestId: 'docx-relationship-conflict',
     }),
     /file-content-mismatch/,
   );
@@ -779,15 +898,89 @@ test('OOXML uploads require bounded DOCX/PPTX archive structure', async () => {
   await assert.rejects(
     service.uploadAsset(owner, course.id, {
       bytes: storedZip([
-        { name: '[Content_Types].xml', body: 'x' },
-        { name: '_rels/.rels', body: 'x' },
-        { name: 'ppt/presentation.xml', body: 'x', expandedSize: 300 * 1024 * 1024 },
+        { name: '[Content_Types].xml', body: `<Types xmlns="${CONTENT_TYPES_NS}"><broken></Types>` },
+        { name: '_rels/.rels', body: DOCX_RELATIONSHIPS },
+        { name: 'word/document.xml', body: DOCX_DOCUMENT },
+      ]),
+      filename: 'malformed.docx', assetRole: 'lecture', requestId: 'docx-malformed',
+    }),
+    /file-content-mismatch/,
+  );
+  await assert.rejects(
+    service.uploadAsset(owner, course.id, {
+      bytes: storedZip([
+        { name: '[Content_Types].xml', body: '<evil:Types xmlns:evil="urn:evil" />' },
+        { name: '_rels/.rels', body: DOCX_RELATIONSHIPS },
+        { name: 'word/document.xml', body: DOCX_DOCUMENT },
+      ]),
+      filename: 'wrong-namespace.docx', assetRole: 'lecture', requestId: 'docx-namespace',
+    }),
+    /file-content-mismatch/,
+  );
+  await assert.rejects(
+    service.uploadAsset(owner, course.id, {
+      bytes: storedZip([
+        {
+          name: '[Content_Types].xml',
+          body: `<?xml version="1.0" encoding="UTF-16"?>${DOCX_CONTENT_TYPES}`,
+        },
+        { name: '_rels/.rels', body: DOCX_RELATIONSHIPS },
+        { name: 'word/document.xml', body: DOCX_DOCUMENT },
+      ]),
+      filename: 'wrong-encoding.docx', assetRole: 'lecture', requestId: 'docx-encoding',
+    }),
+    /file-content-mismatch/,
+  );
+  await assert.rejects(
+    service.uploadAsset(owner, course.id, {
+      bytes: storedZip([
+        { name: '[Content_Types].xml', body: `<Types xmlns="${CONTENT_TYPES_NS}" />` },
+        { name: '_rels/.rels', body: `<Relationships xmlns="${RELATIONSHIPS_NS}" />` },
+        { name: 'word/document.xml', body: DOCX_DOCUMENT },
+      ]),
+      filename: 'unlinked-main.docx', assetRole: 'lecture', requestId: 'docx-unlinked',
+    }),
+    /file-content-mismatch/,
+  );
+  await assert.rejects(
+    service.uploadAsset(owner, course.id, {
+      bytes: storedZip([
+        { name: '[Content_Types].xml', body: DOCX_CONTENT_TYPES, crc: 1 },
+        { name: '_rels/.rels', body: DOCX_RELATIONSHIPS },
+        { name: 'word/document.xml', body: DOCX_DOCUMENT },
+      ]),
+      filename: 'bad-crc.docx', assetRole: 'lecture', requestId: 'docx-crc',
+    }),
+    /file-content-mismatch/,
+  );
+  await assert.rejects(
+    service.uploadAsset(owner, course.id, {
+      bytes: storedZip([
+        { name: '[Content_Types].xml', body: DOCX_CONTENT_TYPES },
+        { name: '_rels/.rels', body: DOCX_RELATIONSHIPS },
+        {
+          name: 'word/document.xml',
+          body: `<w:document xmlns:w="${WORD_NS}">${'x'.repeat(200_000)}</w:document>`,
+          method: 8,
+          expandedSize: 32,
+        },
+      ]),
+      filename: 'false-size.docx', assetRole: 'lecture', requestId: 'docx-false-size',
+    }),
+    /file-content-mismatch/,
+  );
+  await assert.rejects(
+    service.uploadAsset(owner, course.id, {
+      bytes: storedZip([
+        { name: '[Content_Types].xml', body: PPTX_CONTENT_TYPES },
+        { name: '_rels/.rels', body: PPTX_RELATIONSHIPS },
+        { name: 'ppt/presentation.xml', body: PPTX_PRESENTATION, expandedSize: 300 * 1024 * 1024 },
       ]),
       filename: 'bomb.pptx', assetRole: 'lecture', requestId: 'pptx-bomb',
     }),
     /file-archive-too-large/,
   );
-  assert.equal(uploads, 3);
+  assert.equal(uploads, 7);
 });
 
 test('failed WeKnora ingestion compensates the already written COS original', async () => {
@@ -886,10 +1079,42 @@ test('asset deletion resumes idempotently from a persisted deleting state', asyn
   const asset = await service.uploadAsset(owner, course.id, {
     bytes: Buffer.from('%PDF-1.7\nresume\n%%EOF'), filename: 'resume.pdf', assetRole: 'lecture', requestId: 'upload',
   });
-  await assert.rejects(service.deleteAsset(owner, asset.id, 'delete-first'), /simulated-db-delete-failure/);
+  await assert.rejects(service.deleteAsset(owner, asset.id, 'delete-first'), /asset-delete-finalize-failed/);
   const stranded = await repository.assets.findOwned(owner.id, asset.id);
-  assert.equal(stranded.parseStatus, 'deleting');
+  assert.equal(stranded.parseStatus, 'failed');
+  assert.match(stranded.errorMessage, /删除登记未完成/);
   await service.deleteAsset(owner, asset.id, 'delete-retry');
+  assert.equal(await repository.assets.findOwned(owner.id, asset.id), null);
+  assert.equal(cos.objects.size, 0);
+});
+
+test('background maintenance removes stale deleting assets after a crashed request', async () => {
+  const repository = repositoryFixture();
+  const cos = cosFixture();
+  const weknora = {
+    async healthCheck() { return true; },
+    async createKnowledgeBase(input) { return { id: input.id }; },
+    async deleteKnowledgeBase() {},
+    async uploadFile() { return { id: 'wk-stale-delete', parse_status: 'completed', enable_status: 'enabled' }; },
+    async findKnowledgeByMetadata() { return null; },
+    async deleteKnowledge() {},
+    isTerminalParseStatus(status) { return status === 'completed'; },
+  };
+  const service = createCustomContentService({
+    repository, weknora, cos,
+    compiler: { async compile() {} }, embeddingModelId: 'embed-1',
+  });
+  const owner = { id: IDS[16], name: 'Owner' };
+  const course = await service.createCourse(owner, '崩溃删除续作');
+  const asset = await service.uploadAsset(owner, course.id, {
+    bytes: Buffer.from('%PDF-1.7\nstale-delete\n%%EOF'),
+    filename: 'stale-delete.pdf',
+    assetRole: 'lecture',
+    requestId: 'upload-stale-delete',
+  });
+  const deleting = await repository.assets.claimDelete(owner.id, asset.id);
+  repository.assets.claimStaleDeletingAssets = async () => [{ ...deleting, ownerId: owner.id }];
+  assert.deepEqual(await service.reconcileDeletingAssets(), { scanned: 1, cleaned: 1 });
   assert.equal(await repository.assets.findOwned(owner.id, asset.id), null);
   assert.equal(cos.objects.size, 0);
 });

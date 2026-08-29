@@ -438,6 +438,45 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       return assetRow(result.rows[0]);
     },
 
+    async markDeleteFailed(id, errorMessage) {
+      assertUuid(id);
+      const result = await queryable.query(
+        `UPDATE custom_assets
+            SET parse_status = 'failed',
+                enable_status = 'disabled',
+                error_message = $2,
+                updated_at = NOW()
+          WHERE id = $1 AND parse_status = 'deleting'
+          RETURNING *`,
+        [id, String(errorMessage ?? '').slice(0, 2_000) || '资料删除未完成，可再次删除重试'],
+      );
+      return assetRow(result.rows[0]);
+    },
+
+    async claimStaleDeletingAssets() {
+      const result = await queryable.query(
+        `WITH candidates AS (
+           SELECT id
+             FROM custom_assets
+            WHERE parse_status = 'deleting'
+              AND updated_at <= NOW() - INTERVAL '2 minutes'
+            ORDER BY updated_at
+            FOR UPDATE SKIP LOCKED
+            LIMIT 25
+         ), claimed AS (
+           UPDATE custom_assets a
+              SET updated_at = NOW()
+             FROM candidates c
+            WHERE a.id = c.id
+            RETURNING a.*
+         )
+         SELECT a.*, c.owner_id
+           FROM claimed a
+           JOIN custom_courses c ON c.id = a.course_id`,
+      );
+      return result.rows.map((row) => ({ ...assetRow(row), ownerId: row.owner_id }));
+    },
+
     async remove(id) {
       assertUuid(id);
       const result = await queryable.query('DELETE FROM custom_assets WHERE id = $1', [id]);
