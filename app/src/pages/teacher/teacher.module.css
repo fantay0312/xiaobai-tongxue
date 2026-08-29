@@ -1,15 +1,13 @@
 /* ─────────────────────────────────────────────
-   教师看板 —— 单学生真实教务档案,做成一册「教务卷宗」。
-   题头双线书版式(hairline + 2px 墨骨短线) + 编号白文小印(壹贰叁肆伍)分节;
-   案头小印卡/册页学情表/心魔台账/泄漏对比台沿用内衬双框裱纸制式(与成长册同源),
-   台账与会话卡走「浅卡深底」:paper 卡 + line-strong 框落在 warm/shade 分区带上。
-   报表节奏:节间距 2rem 定值,数据密度优先,疏朗留给列缝。
+   教师看板 —— 单学生真实教务档案,做成一册「教务登记簿」。
+   题头极简制式(短标题 + 一句话)+ 右侧学籍卡;统计是一条登记簿数字带(hairline 分格,不堆卡片);
+   盲区榜是行式墨条;学情表与误区台账通栏;近期会话是雷达在左的档案条。
+   报表节奏:数据密度优先,疏朗留给列缝与节距。
    朱砂只落在盲区/被带偏(语义法则),掌握归黛绿,悬置归藤黄,虚位归灰。
    ───────────────────────────────────────────── */
 
 .page {
-  /* width 必须显式给满:外壳 .main 纵向 flex 下,margin:auto 子项不再被 stretch 拉伸,
-     会 shrink-to-fit 压瘦整页(prep.module.css .page 同注) */
+  /* width 必须显式给满:外壳 .main 纵向 flex 下,margin:auto 子项不再被 stretch 拉伸 */
   width: 100%;
   max-width: var(--page-max);
   margin: 0 auto;
@@ -19,15 +17,19 @@
 /* backwards 而非 both:to 帧不驻留,不压死后代 hover 过渡 */
 .rise { animation: global(rise) var(--t-med) var(--ease-out) backwards; }
 
-/* ── 卷宗题头:双细线收边,楷体眉批在上 ── */
+/* ── 题头:左题名一句话,右学籍卡 ── */
 
 .head {
   display: grid;
-  gap: 0.6rem;
-  max-width: 42rem;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
+  align-items: end;
+  column-gap: clamp(var(--gap-loose), 5vw, 5rem);
+  row-gap: var(--gap);
   margin-bottom: clamp(2rem, 4vw, 3rem);
   scroll-margin-top: calc(var(--header-h) + var(--gap-tight));
 }
+
+.headMain { display: grid; gap: 0.6rem; max-width: 42rem; }
 
 .title {
   margin-left: -0.02em;
@@ -45,67 +47,105 @@
   color: var(--ink-soft);
 }
 
-/* ── ① 档案总览带:案头小印卡 ── */
-
-.statBand {
+/* 学籍卡:登记簿式四行,铅字小签作栏名,值走正文;上下两道线收边,不加框不加影 */
+.roster {
+  margin: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 0.45rem;
+  padding: var(--gap-tight) 0;
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--paper-edge);
+}
+
+.roster > div {
+  display: grid;
+  grid-template-columns: 3.2em minmax(0, 1fr);
   gap: var(--gap-tight);
-  margin-bottom: calc(var(--gap) + var(--gap-tight));
+  align-items: baseline;
 }
 
-/* 裱纸制式:paper-warm 底 + 内衬双框(与成长册画像/师道卡同源);外框升强边档(R3) */
-.statCard {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  background: var(--paper-warm);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-s);
-  box-shadow: inset 0 0 0 3px var(--paper-warm), inset 0 0 0 4px var(--paper-edge);
-  padding: var(--gap-tight);
-}
-
-.statValue { display: flex; align-items: baseline; gap: 0.25rem; }
-
-.statNum {
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-stat);
-  line-height: 1;
-  color: var(--ink);
-  letter-spacing: 0.01em;
-}
-
-.statJade { color: var(--jade); }
-.statCinnabar { color: var(--cinnabar); }
-
-.statUnit { font-size: var(--fs-tiny); color: var(--ink-faint); }
-
-.statLabel {
-  display: block;
-  margin-top: var(--gap-hair);
+.roster dt {
   font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
-  text-transform: uppercase;
-  letter-spacing: var(--track-label);
+  letter-spacing: 0.14em;
   color: var(--ink-faint);
 }
 
-/* 出师小印:钤在卡角,压住内衬框才像盖上去的(掌握语义归黛绿,非印泥朱) */
-.statSeal {
+.roster dd {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5em;
+  font-size: var(--fs-body);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.roster dd small { font-size: var(--fs-tiny); color: var(--ink-faint); }
+
+/* ── ① 档案总览:登记簿数字带 ── */
+
+.ledger {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: var(--gap-tight) 0;
+  margin-bottom: clamp(2.5rem, 5vw, 4rem);
+  padding: var(--gap) 0;
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.cell {
+  position: relative;
+  display: grid;
+  gap: 0.35rem;
+  padding: 0 var(--gap) 0 var(--gap);
+  border-left: 1px solid var(--paper-edge);
+}
+
+.cell:first-child { padding-left: 0; border-left: 0; }
+
+.cellLabel {
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.cellValue { display: flex; align-items: baseline; gap: 0.3rem; }
+
+.cellValue b {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: clamp(1.9rem, 2.6vw, 2.4rem);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.cellValue small { font-size: var(--fs-small); color: var(--ink-faint); }
+
+.statJade { color: var(--jade-ink) !important; }
+.statCinnabar { color: var(--cinnabar) !important; }
+
+/* 出师小印:钤在格角(掌握语义归黛绿,非印泥朱) */
+.cellSeal {
   position: absolute;
-  top: 0.35rem;
-  right: 0.45rem;
+  top: -0.2rem;
+  right: var(--gap);
   font-family: var(--font-display);
   font-size: var(--fs-tiny);
   color: var(--jade-ink);
   border: 1.5px solid var(--jade-ink);
-  border-radius: var(--radius-s);
+  border-radius: var(--radius-tag);
   padding: 0 0.3rem;
   letter-spacing: 0.14em;
   text-indent: 0.14em;
   line-height: 1.5;
-  transform: rotate(5deg);
+  transform: rotate(6deg);
 }
 
 /* ── 零数据:一句话落在浅台面上 ── */
@@ -122,7 +162,6 @@
 
 .emptyLead { max-width: 36em; font-size: var(--fs-body); line-height: 1.8; color: var(--ink-soft); }
 
-/* 空态 CTA:主动作实底按钮制式(solid --azure,悬停加深并微抬,按压回落) */
 .btnGhost {
   display: inline-flex;
   align-items: center;
@@ -147,26 +186,20 @@
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  /* 列缝保持疏朗(眉批位),行缝收紧——单栏收拢后节与节之间靠 .section 自己的下距 */
-  gap: var(--gap-loose) var(--gap-loose);
+  gap: 0 clamp(var(--gap-loose), 5vw, 5rem);
   align-items: start;
 }
 
-/* 双栏收拢统一走 960px 档(tokens.css 断点约定) */
 @media (max-width: 960px) {
   .grid { grid-template-columns: 1fr; }
 }
 
-.mainCol, .sideCol { min-width: 0; }
-
-/* 节与节之间给足呼吸 */
 .section {
   min-width: 0;
   margin-bottom: clamp(2.5rem, 5vw, 4rem);
   scroll-margin-top: calc(var(--header-h) + var(--gap-tight));
 }
 
-/* 分节题:短标题 + 一句话(section.module.css 同制式) */
 .secHead {
   display: grid;
   gap: 0.4rem;
@@ -189,7 +222,6 @@
   color: var(--ink-soft);
 }
 
-/* 每节空态:一句话落在浅台面上 */
 .emptyNote {
   padding: var(--gap) calc(var(--gap) + 0.25rem);
   border-radius: var(--radius);
@@ -199,84 +231,121 @@
   line-height: 1.8;
 }
 
-/* ── ② 盲区榜墨条横图 ── */
+/* ── ② 盲区榜:行式墨条 ── */
 
-.barWrap { overflow-x: auto; }
-.barWrap:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
-
-.barSvg {
-  min-width: 640px; width: 100%; height: auto; display: block; }
-
-.barLabel { font-family: var(--font-typewriter); font-size: 14px; letter-spacing: 0.02em; fill: var(--ink); }
-
-.barTopic { font-family: var(--font-typewriter); font-size: 11px; letter-spacing: 0.04em; fill: var(--ink-faint); }
-
-/* 淡点栅线:刻度背景,比轴线更虚一档 */
-.barGrid { stroke: var(--dust); stroke-width: 1; stroke-dasharray: 2 5; opacity: 0.55; }
-
-/* 墨条:圆头如研开的一笔;宽度从 0 研出,阶梯延迟走内联 style */
-.barRect { animation: barGrow var(--t-slow) var(--ease-out) backwards; }
-
-@keyframes barGrow {
-  from { width: 0; }
+.blindList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
 }
 
-/* 全局 reduced-motion 已压零时长;此处再显式断掉,不留 0.01ms 的闪帧 */
-@media (prefers-reduced-motion: reduce) {
-  .barRect { animation: none; }
+.blindRow {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: var(--gap-tight);
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--paper-edge);
+  animation: global(rise) var(--t-med) var(--ease-out) backwards;
 }
 
-.barInk { fill: var(--ink); opacity: 0.82; }
+.blindRow:first-child { border-top: 0; }
 
-.barHigh { fill: var(--cinnabar); }
+.blindRank {
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
 
-.barCount { font-family: var(--font-typewriter); font-size: 12px; font-weight: 600; letter-spacing: 0.02em; fill: var(--ink-soft); }
+.blindMain { min-width: 0; display: grid; gap: 0.35rem; }
 
-/* 程度小签:铅字撑字距,贴在计数后作 chip 状短注 */
-.barSev { font-family: var(--font-typewriter); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; fill: var(--ink-faint); }
+.blindLabel {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 0;
+}
 
-.barSevHigh { font-family: var(--font-typewriter); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; fill: var(--cinnabar); }
+.blindPoint { font-family: var(--font-display); font-size: var(--fs-body); color: var(--ink); }
 
-.barAxis { stroke: var(--paper-edge); stroke-width: 1; }
+.blindTopic { font-size: var(--fs-tiny); color: var(--ink-faint); }
 
-.chartFoot { font-size: var(--fs-tiny); color: var(--ink-faint); margin-top: var(--gap-hair); }
+.blindTrack {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ink-wash);
+  overflow: hidden;
+}
+
+/* 墨条从左研出;高危处落朱砂 */
+.blindBar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ink-soft);
+  transform-origin: left center;
+  animation: blindGrow var(--t-slow) var(--ease-out) backwards;
+  animation-delay: var(--d, 0s);
+}
+
+.blindBarHigh { background: var(--cinnabar); }
+
+@keyframes blindGrow {
+  from { transform: scaleX(0); }
+}
+
+.blindCount {
+  font-family: var(--font-typewriter);
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.blindCount b { font-family: var(--font-serif); font-weight: 600; font-size: var(--fs-sub); color: var(--ink); }
+
+.chartFoot { font-size: var(--fs-tiny); color: var(--ink-faint); margin-top: var(--gap-tight); line-height: 1.7; }
 
 .chartFoot .youMark { color: var(--cinnabar); }
 
-/* ── ③ 知识点学情:卷宗册页表 ── */
+/* ── ③ 知识点学情:通栏册页表 ── */
 
+/* 课程页签:下划线分段,当前课压墨线 */
 .tagBar {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--gap-hair);
-  margin-bottom: var(--gap-tight);
+  gap: 0 1.5rem;
+  margin-bottom: var(--gap);
+  border-bottom: 1px solid var(--line-strong);
 }
 
 .tagBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-  cursor: pointer;
   appearance: none;
+  cursor: pointer;
+  margin-bottom: -1px;
+  padding: 0.45rem 0.1rem;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
   font: inherit;
-  transition:
-    background var(--t-fast) var(--ease-out),
-    opacity var(--t-fast) var(--ease-out),
-    border-color var(--t-fast) var(--ease-out);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  color: var(--ink-soft);
+  transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
 
-.tagBtn:focus-visible {
-  outline: 2px solid var(--azure);
-  outline-offset: 2px;
-}
+.tagBtn:hover { color: var(--ink); }
+.tagBtn:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
+.tagOn { color: var(--ink); border-bottom-color: var(--ink); }
 
 /* 原区域内竖滚+横滚;滚动条默认隐藏,悬停或聚焦才露出 */
-.tableWrap {
-  overflow: auto;
-}
+.tableWrap { overflow: auto; }
 
 .tableScroll {
-  max-height: 24rem;
+  max-height: 28rem;
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius-s);
   background: var(--paper);
@@ -290,31 +359,20 @@
   scrollbar-color: color-mix(in oklch, var(--ink) 32%, transparent) transparent;
 }
 
-.tableScroll::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
+.tableScroll::-webkit-scrollbar { width: 0; height: 0; }
 
 .tableScroll:hover::-webkit-scrollbar,
 .tableScroll:focus-visible::-webkit-scrollbar,
-.tableScroll:focus-within::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+.tableScroll:focus-within::-webkit-scrollbar { width: 8px; height: 8px; }
 
 .tableScroll::-webkit-scrollbar-thumb {
   background: color-mix(in oklch, var(--ink) 28%, transparent);
   border-radius: var(--radius-tag);
 }
 
-.tableScroll::-webkit-scrollbar-track {
-  background: transparent;
-}
+.tableScroll::-webkit-scrollbar-track { background: transparent; }
 
-.tableScroll:focus-visible {
-  outline: 2px solid var(--azure);
-  outline-offset: 2px;
-}
+.tableScroll:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
 
 .table {
   width: 100%;
@@ -322,7 +380,6 @@
   font-size: var(--fs-small);
 }
 
-/* 表头压 paper-shade 横带 + 强边线收底,铅字小签大写撑字距 —— 栏目题签要「框得住」数据区(R2/R3) */
 .table th {
   position: sticky;
   top: 0;
@@ -330,90 +387,52 @@
   text-align: left;
   font-family: var(--font-typewriter);
   font-size: var(--fs-tiny);
+  font-weight: 400;
   text-transform: uppercase;
   letter-spacing: var(--track-label);
   color: var(--ink-soft);
   background: var(--paper-shade);
   border-bottom: 1px solid var(--line-strong);
-  padding: 0.4rem 0.6rem 0.4rem 0.5rem;
+  padding: 0.5rem 0.8rem;
   white-space: nowrap;
 }
 
 .table td {
   border-bottom: 1px solid var(--paper-edge);
-  /* 与 th 同一竖向节奏 */
-  padding: 0.4rem 0.6rem 0.4rem 0.5rem;
+  padding: 0.55rem 0.8rem;
   color: var(--ink);
   white-space: nowrap;
 }
 
-/* 登记簿斑马纹:偶行落麦色纸,给密表一道可循的横向节拍(R;悬停/被带偏行按下方叠序覆盖) */
-.table tbody tr:nth-child(even) td { background: var(--paper-warm); }
+.table tbody tr:last-child td { border-bottom: 0; }
 
-/* 行悬停一层淡墨(晕染而非高亮);置于斑马纹后以同特指度胜出 */
+/* 行悬停一层淡墨(晕染而非高亮) */
 .table tbody tr:hover td { background: var(--ink-wash); }
 
 .numCell { font-family: var(--font-typewriter); color: var(--ink-soft); }
 
 .numInline { font-family: var(--font-typewriter); }
 
-.courseCell { font-size: var(--fs-tiny); color: var(--ink-faint); }
+.titleCell { font-family: var(--font-display); font-size: var(--fs-body); }
 
-/* 课程书脊小签:左沿加厚如书脊,铅字小签制式 */
-.courseChip {
-  display: inline-block;
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  background: var(--paper);
-  border: 1px solid var(--paper-edge);
-  border-left: 3px solid var(--azure);
-  border-radius: 2px var(--radius-tag) var(--radius-tag) 2px;
-  padding: 0 0.45rem;
-  letter-spacing: 0.08em;
-  line-height: 1.7;
-  white-space: nowrap;
-}
-
-.tagBar .tagBtn {
-  display: inline-flex;
-  padding: 0.12rem 0.7rem;
-}
-
-.tagBar .tagOn {
-  background: color-mix(in oklch, var(--azure) 22%, var(--paper-warm));
-  border-color: color-mix(in oklch, var(--azure) 55%, var(--paper-edge));
-  border-left-color: var(--azure);
-  color: var(--azure-deep);
-}
-
-.tagBar .tagOff {
-  background: color-mix(in oklch, var(--azure) 10%, var(--paper-shade));
-  border-color: color-mix(in oklch, var(--azure) 28%, var(--paper-edge));
-  border-left-color: var(--azure);
-  color: var(--azure);
-}
-
-.titleCell { font-family: var(--font-display); }
-
-/* 被带偏还没纠正的行:朱砂弱底,提示先补学;表内特指度提到 tr.rowAdopted 档,
-   压过斑马纹与悬停(含悬停时的三类联合),语义色不许被盖 */
+/* 被带偏还没纠正的行:朱砂弱底,提示先补学;语义色不许被悬停盖掉 */
 .table tbody tr.rowAdopted td,
 .table tbody tr.rowAdopted:hover td { background: var(--cinnabar-wash); }
 
-.masteryCell { display: inline-flex; align-items: center; gap: var(--gap-hair); }
+.masteryCell { display: inline-flex; align-items: center; gap: var(--gap-tight); }
+
+.masteryCell .numInline { min-width: 2ch; text-align: right; }
 
 .masteryTrack {
   flex: none;
-  width: 56px;
-  height: 7px;
-  border-radius: 999px;
+  width: 7rem;
+  height: 6px;
+  border-radius: 3px;
   background: var(--ink-wash);
   overflow: hidden;
 }
 
-/* 掌握度墨条:由墨入翠,如笔锋渐润——掌握语义归黛绿(题头色律),不得借青 */
+/* 掌握度墨条:由墨入翠——掌握语义归黛绿 */
 .masteryFill {
   display: block;
   height: 100%;
@@ -426,11 +445,10 @@
 
 .mcAdopted { color: var(--cinnabar); }
 
-.tableFoot { font-size: var(--fs-tiny); color: var(--ink-faint); margin-top: var(--gap-hair); }
+.tableFoot { font-size: var(--fs-tiny); color: var(--ink-faint); margin-top: var(--gap-tight); }
 
-/* ── 状态 chip:细边小胶囊,wash 底上小字用 *-ink 变体保对比度 ── */
+/* ── 状态票签:铅字小签制式,wash 底上小字走 *-ink 变体保对比度 ── */
 
-/* 状态票签:铅字小签制式(大写+宽字距+锐角),wash 底上小字走 *-ink 变体保对比度 */
 .chip {
   display: inline-block;
   padding: 0.08rem 0.5rem;
@@ -450,27 +468,22 @@
 .chipDust { color: var(--ink-faint); border-color: var(--dust); background: var(--ink-wash); }
 .chipAzure { color: var(--azure); border-color: var(--azure); background: var(--azure-wash); }
 
-/* ── ④ 心魔台账 ── */
+/* ── ④ 误区台账:通栏两列 ── */
 
-/* 台账落在 paper-warm 分区带上,条目翻成「浅卡深底」(R2/R3) */
 .mcList {
   list-style: none;
   margin: 0;
-  padding: var(--gap-tight);
+  padding: 0;
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr));
   gap: var(--gap-tight);
-  background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius);
 }
 
-/* 强边线框身 + 状态色左脊(朱砂仍只落「被带偏」,语义法则不动) */
 .mcItem {
   background: var(--paper);
   border: 1px solid var(--line-strong);
   border-left: 3px solid var(--dust);
   border-radius: var(--radius-s);
-  box-shadow: var(--shadow-paper);
   padding: var(--gap-tight) var(--gap);
 }
 
@@ -486,8 +499,7 @@
   flex-wrap: wrap;
 }
 
-/* 心魔名小印:楷体方章制式(与复盘页心魔战报同族),微旋示钤印;
-   wash 底上的小字走 *-ink 变体,朱砂无 -ink 档沿用原档(既有对比度口径) */
+/* 心魔名小印:楷体方章制式(与复盘页心魔战报同族) */
 .demonChip {
   flex: none;
   display: inline-block;
@@ -516,17 +528,11 @@
 
 .mcFrom { margin-left: var(--gap-tight); color: var(--ink-faint); }
 
-/* ── ⑤ 近期会话卡:雷达居左、会话档案居右的横排档案条 ──
-   诊断:紧凑雷达挤左、右侧大片空白 → grid-template-areas 重排(DOM 顺序不动,读屏仍先听主题)。
-   列表落 paper-shade 分区带,卡片翻「浅卡深底」+ 强边线裱纸框(R2/R3)。 */
+/* ── ⑤ 近期会话:雷达在左的档案条,hairline 分隔,不叠框不加影 ── */
 
 .sessionList {
   display: grid;
-  gap: var(--gap-tight);
-  background: var(--paper-shade);
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius);
-  padding: var(--gap-tight);
+  border-top: 1px solid var(--line-strong);
 }
 
 .sessionCard {
@@ -535,31 +541,25 @@
     'radar head'
     'radar meta'
     'radar link';
-  grid-template-columns: minmax(0, 8.25rem) minmax(0, 1fr);
+  grid-template-columns: 7rem minmax(0, 1fr);
   grid-template-rows: auto auto 1fr;
   column-gap: var(--gap);
   align-items: start;
-  background: var(--paper);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-s);
-  box-shadow: inset 0 0 0 3px var(--paper), inset 0 0 0 4px var(--paper-edge), var(--shadow-paper);
-  padding: var(--gap-tight) var(--gap);
+  padding: var(--gap-tight) 0;
+  border-bottom: 1px solid var(--paper-edge);
 }
 
 .sessionHead {
   grid-area: head;
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: var(--gap-tight);
+  gap: var(--gap-hair);
   flex-wrap: wrap;
 }
 
-.sessionTopic { font-family: var(--font-display); font-size: var(--fs-body); color: var(--ink); }
+.sessionTopic { margin-right: 0.25rem; font-family: var(--font-display); font-size: var(--fs-body); color: var(--ink); }
 
-.sessionMeta { grid-area: meta; margin-top: var(--gap-hair); font-size: var(--fs-tiny); color: var(--ink-faint); }
-
-.sessionMeta .chip { margin-left: var(--gap-hair); }
+.sessionMeta { grid-area: meta; margin-top: var(--gap-hair); font-size: var(--fs-tiny); color: var(--ink-faint); line-height: 1.7; }
 
 .miniRadar { grid-area: radar; align-self: center; min-width: 0; }
 
@@ -584,12 +584,18 @@
 
 /* ── 窄屏 ── */
 
-@media (max-width: 560px) {
-  .head { flex-direction: column; }
-  .seal { align-self: flex-end; }
-  .statBand { grid-template-columns: repeat(auto-fit, minmax(124px, 1fr)); }
+@media (max-width: 720px) {
+  .head { grid-template-columns: 1fr; }
+  .roster { max-width: 26rem; }
+}
 
-  /* 会话卡收回纵排:雷达让出横排位,居中缩略 */
+@media (max-width: 560px) {
+  .ledger { grid-template-columns: repeat(2, 1fr); gap: var(--gap) 0; }
+  .cell:nth-child(odd) { padding-left: 0; border-left: 0; }
+  .cell { padding-right: var(--gap-tight); }
+  .blindRow { grid-template-columns: 1.4rem minmax(0, 1fr); row-gap: 0.3rem; }
+  .blindCount, .blindRow .chip { grid-column: 2; justify-self: start; }
+  .tagBar { gap: 0 1rem; }
   .sessionCard {
     grid-template-areas:
       'head'
@@ -599,6 +605,9 @@
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto;
   }
-
   .miniRadar { max-width: 240px; width: 100%; justify-self: center; margin-top: var(--gap-hair); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blindBar { animation: none; }
 }

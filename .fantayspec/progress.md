@@ -81,3 +81,10 @@
 - DESIGN.md:转戳 RoundStamp 标记全站退役(组件保留,不得挂回)。
 - 门禁:tsc/lint(仅 fsImpl 旧警告)/test:feedback/test:growth/test:theme/test:custom-content/test:qa-evidence/test:landing-motion 全绿;Chrome 1440 实拍讲解舱(空板/满板)/送考/作答四拍/放榜/批注/成长册落印翻页/自选课空态与有课态。窄屏未真机(窗口最小宽受限)。
 
+## 2026-08-30 凌晨 教师看板重做(分支 feat/teacher-board-polish)
+- 题头右侧加「学籍卡」`.roster`(先生=authStore.user / 师道=deriveTeacherRank 称号+距下一称号差分 / 小白=getStageMeta 科名 / 最近=末条事件时间),登记簿式四行,上下两线收边。
+- 六张双框统计卡 → 一条登记簿数字带 `.ledger`(hairline 分格、衬线大数字、单位小字、出师小印钤格角)。
+- 盲区榜 SVG → HTML 行式墨条 `.blindList/.blindRow`(序号/知识点+出处/墨条 scaleX 研出(延迟经 --d 自定义属性继承)/次数/程度签),不再横滚。
+- 版式:3:2 栅格只放盲区榜+近期会话;学情表与误区台账改通栏(原先 9 列表被压进 3/5 宽靠横滚看不全)。学情表删重复的「课程」列,课程筛选改下划线页签,去斑马纹,掌握度条 7rem。误区台账两列自适应卡,去阴影。近期会话改 hairline 分隔的档案条(雷达在左),meta 加高光/盲区计数。
+- 五个锚点 id 不变(ui-feedback-contract 锁);门禁 tsc/lint/test:feedback/theme/growth/qa-evidence/build 全绿;Chrome 1440 实拍。
+
