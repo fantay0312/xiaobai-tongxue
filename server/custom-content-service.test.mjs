@@ -9,6 +9,7 @@ const IDS = Array.from({ length: 30 }, (_, index) => `00000000-0000-4000-8000-${
 function repositoryFixture() {
   let sequence = 0;
   const courses = new Map();
+  const courseIntents = new Map();
   const assets = new Map();
   const uploadIntents = new Map();
   const topics = new Map();
@@ -16,11 +17,29 @@ function repositoryFixture() {
   const nextId = () => IDS[sequence++];
   return {
     courses: {
-      async create(input) {
-        const row = { id: nextId(), ...input, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-        courses.set(row.id, row);
+      async createCreationIntent(input) {
+        const row = { id: nextId(), ...input, createdAt: new Date().toISOString() };
+        courseIntents.set(row.id, row);
         return row;
       },
+      async finalizeCreationIntent(ownerId, intentId) {
+        const intent = courseIntents.get(intentId);
+        if (!intent || intent.ownerId !== ownerId) return null;
+        const row = {
+          id: nextId(), ownerId, title: intent.title,
+          wkDocKbId: intent.wkDocKbId, wkFaqKbId: intent.wkFaqKbId,
+          createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+        };
+        courses.set(row.id, row);
+        courseIntents.delete(intentId);
+        return row;
+      },
+      async removeCreationIntent(ownerId, intentId) {
+        const intent = courseIntents.get(intentId);
+        if (!intent || intent.ownerId !== ownerId) return false;
+        return courseIntents.delete(intentId);
+      },
+      async listStaleCreationIntents() { return []; },
       async listByOwner(ownerId) {
         return [...courses.values()].filter((course) => course.ownerId === ownerId).map((course) => ({
           ...course,
@@ -287,6 +306,53 @@ function cosFixture() {
   };
 }
 
+function storedZip(files) {
+  const localParts = [];
+  const centralParts = [];
+  let localOffset = 0;
+  for (const file of files) {
+    const name = Buffer.from(file.name, 'utf8');
+    const data = Buffer.from(file.body ?? 'x');
+    const expandedSize = file.expandedSize ?? data.length;
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(0, 6);
+    local.writeUInt16LE(0, 8);
+    local.writeUInt32LE(0, 14);
+    local.writeUInt32LE(data.length, 18);
+    local.writeUInt32LE(expandedSize, 22);
+    local.writeUInt16LE(name.length, 26);
+    local.writeUInt16LE(0, 28);
+    localParts.push(local, name, data);
+
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(20, 4);
+    central.writeUInt16LE(20, 6);
+    central.writeUInt16LE(0, 8);
+    central.writeUInt16LE(0, 10);
+    central.writeUInt32LE(0, 16);
+    central.writeUInt32LE(data.length, 20);
+    central.writeUInt32LE(expandedSize, 24);
+    central.writeUInt16LE(name.length, 28);
+    central.writeUInt16LE(0, 30);
+    central.writeUInt16LE(0, 32);
+    central.writeUInt16LE(0, 34);
+    central.writeUInt32LE(localOffset, 42);
+    centralParts.push(central, name);
+    localOffset += local.length + name.length + data.length;
+  }
+  const directory = Buffer.concat(centralParts);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(files.length, 8);
+  eocd.writeUInt16LE(files.length, 10);
+  eocd.writeUInt32LE(directory.length, 12);
+  eocd.writeUInt32LE(localOffset, 16);
+  return Buffer.concat([...localParts, directory, eocd]);
+}
+
 test('custom content service runs create, upload, compile, review, publish and student-view flow', async () => {
   const repository = repositoryFixture();
   const calls = { faq: null, deleted: [], evaluation: null };
@@ -295,7 +361,7 @@ test('custom content service runs create, upload, compile, review, publish and s
   let knowledge = 0;
   const weknora = {
     async healthCheck() { return true; },
-    async createKnowledgeBase() { return { id: `wk-kb-${++kb}` }; },
+    async createKnowledgeBase(input) { kb += 1; return { id: input.id }; },
     async deleteKnowledgeBase(id) { calls.deleted.push(id); },
     async uploadFile() { return { id: `wk-knowledge-${++knowledge}`, parse_status: 'completed', enable_status: 'enabled' }; },
     async findKnowledgeByMetadata() { return null; },
@@ -451,7 +517,7 @@ test('teacher-added checklist item is grounded against owned course chunks on sa
   let knowledge = 0;
   const weknora = {
     async healthCheck() { return true; },
-    async createKnowledgeBase() { return { id: `wk-kb-${++kb}` }; },
+    async createKnowledgeBase(input) { kb += 1; return { id: input.id }; },
     async deleteKnowledgeBase() {},
     async uploadFile() { return { id: `wk-knowledge-${++knowledge}`, parse_status: 'completed', enable_status: 'enabled' }; },
     async findKnowledgeByMetadata() { return null; },
@@ -521,7 +587,7 @@ test('custom content service rejects disguised and oversized files before WeKnor
   let uploadCalls = 0;
   const weknora = {
     async healthCheck() { return true; },
-    async createKnowledgeBase() { return { id: `wk-${Math.random()}` }; },
+    async createKnowledgeBase(input) { return { id: input.id }; },
     async deleteKnowledgeBase() {},
     async uploadFile() { uploadCalls += 1; },
     async findKnowledgeByMetadata() { return null; },
@@ -549,12 +615,59 @@ test('custom content service rejects disguised and oversized files before WeKnor
   assert.equal(uploadCalls, 0);
 });
 
+test('OOXML uploads require bounded DOCX/PPTX archive structure', async () => {
+  const repository = repositoryFixture();
+  let uploads = 0;
+  const weknora = {
+    async healthCheck() { return true; },
+    async createKnowledgeBase(input) { return { id: input.id }; },
+    async deleteKnowledgeBase() {},
+    async uploadFile() { uploads += 1; return { id: `wk-ooxml-${uploads}`, parse_status: 'completed', enable_status: 'enabled' }; },
+    async findKnowledgeByMetadata() { return null; },
+    isTerminalParseStatus(status) { return status === 'completed'; },
+  };
+  const service = createCustomContentService({
+    repository, weknora, cos: cosFixture(), compiler: { async compile() {} },
+    embeddingModelId: 'embed-1', maxFileBytes: 1024 * 1024, uuid: () => IDS[23],
+  });
+  const owner = { id: IDS[22], name: 'Owner' };
+  const course = await service.createCourse(owner, 'OOXML 测试');
+  const validDocx = storedZip([
+    { name: '[Content_Types].xml', body: '<Types />' },
+    { name: '_rels/.rels', body: '<Relationships />' },
+    { name: 'word/document.xml', body: '<document />' },
+  ]);
+  const uploaded = await service.uploadAsset(owner, course.id, {
+    bytes: validDocx, filename: 'lesson.docx', assetRole: 'lecture', requestId: 'docx-valid',
+  });
+  assert.equal(uploaded.parseStatus, 'completed');
+  await assert.rejects(
+    service.uploadAsset(owner, course.id, {
+      bytes: storedZip([{ name: 'random.txt', body: 'not OOXML' }]),
+      filename: 'renamed.docx', assetRole: 'lecture', requestId: 'docx-invalid',
+    }),
+    /file-content-mismatch/,
+  );
+  await assert.rejects(
+    service.uploadAsset(owner, course.id, {
+      bytes: storedZip([
+        { name: '[Content_Types].xml', body: 'x' },
+        { name: '_rels/.rels', body: 'x' },
+        { name: 'ppt/presentation.xml', body: 'x', expandedSize: 300 * 1024 * 1024 },
+      ]),
+      filename: 'bomb.pptx', assetRole: 'lecture', requestId: 'pptx-bomb',
+    }),
+    /file-archive-too-large/,
+  );
+  assert.equal(uploads, 1);
+});
+
 test('failed WeKnora ingestion compensates the already written COS original', async () => {
   const repository = repositoryFixture();
   const cos = cosFixture();
   const weknora = {
     async healthCheck() { return true; },
-    async createKnowledgeBase() { return { id: `wk-${Math.random()}` }; },
+    async createKnowledgeBase(input) { return { id: input.id }; },
     async deleteKnowledgeBase() {},
     async uploadFile() { throw new Error('weknora-upstream-failed'); },
     async findKnowledgeByMetadata() { return null; },
@@ -595,7 +708,7 @@ test('asset deletion resumes idempotently from a persisted deleting state', asyn
   };
   const weknora = {
     async healthCheck() { return true; },
-    async createKnowledgeBase() { return { id: `wk-${Math.random()}` }; },
+    async createKnowledgeBase(input) { return { id: input.id }; },
     async deleteKnowledgeBase() {},
     async uploadFile() { return { id: 'wk-delete-resume', parse_status: 'completed', enable_status: 'enabled' }; },
     async findKnowledgeByMetadata() { return null; },

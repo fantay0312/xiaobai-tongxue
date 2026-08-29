@@ -59,6 +59,95 @@ function isZip(bytes) {
     && ((bytes[2] === 0x03 && bytes[3] === 0x04) || (bytes[2] === 0x05 && bytes[3] === 0x06));
 }
 
+function zipDirectory(bytes) {
+  const minimumEocd = 22;
+  const searchStart = Math.max(0, bytes.length - 65_557);
+  let eocd = -1;
+  for (let offset = bytes.length - minimumEocd; offset >= searchStart; offset -= 1) {
+    if (bytes.readUInt32LE(offset) === 0x06054b50) {
+      eocd = offset;
+      break;
+    }
+  }
+  if (eocd < 0 || eocd + minimumEocd > bytes.length) throw publicError('file-content-mismatch', 415);
+  const disk = bytes.readUInt16LE(eocd + 4);
+  const directoryDisk = bytes.readUInt16LE(eocd + 6);
+  const entriesOnDisk = bytes.readUInt16LE(eocd + 8);
+  const entryCount = bytes.readUInt16LE(eocd + 10);
+  const directorySize = bytes.readUInt32LE(eocd + 12);
+  const directoryOffset = bytes.readUInt32LE(eocd + 16);
+  const commentLength = bytes.readUInt16LE(eocd + 20);
+  if (disk !== 0 || directoryDisk !== 0 || entriesOnDisk !== entryCount
+    || entryCount < 1 || entryCount > 5_000
+    || directoryOffset + directorySize > eocd
+    || eocd + minimumEocd + commentLength !== bytes.length) {
+    throw publicError('file-content-mismatch', 415);
+  }
+  const entries = [];
+  const names = new Set();
+  let offset = directoryOffset;
+  let expandedBytes = 0;
+  let compressedBytes = 0;
+  for (let index = 0; index < entryCount; index += 1) {
+    if (offset + 46 > eocd || bytes.readUInt32LE(offset) !== 0x02014b50) {
+      throw publicError('file-content-mismatch', 415);
+    }
+    const flags = bytes.readUInt16LE(offset + 8);
+    const method = bytes.readUInt16LE(offset + 10);
+    const compressedSize = bytes.readUInt32LE(offset + 20);
+    const expandedSize = bytes.readUInt32LE(offset + 24);
+    const nameLength = bytes.readUInt16LE(offset + 28);
+    const extraLength = bytes.readUInt16LE(offset + 30);
+    const entryCommentLength = bytes.readUInt16LE(offset + 32);
+    const entryDisk = bytes.readUInt16LE(offset + 34);
+    const localOffset = bytes.readUInt32LE(offset + 42);
+    const next = offset + 46 + nameLength + extraLength + entryCommentLength;
+    if ((flags & 1) !== 0 || (method !== 0 && method !== 8) || entryDisk !== 0
+      || compressedSize === 0xffffffff || expandedSize === 0xffffffff
+      || nameLength < 1 || nameLength > 512 || next > eocd
+      || localOffset + 30 > directoryOffset || bytes.readUInt32LE(localOffset) !== 0x04034b50) {
+      throw publicError('file-content-mismatch', 415);
+    }
+    const name = bytes.subarray(offset + 46, offset + 46 + nameLength).toString('utf8');
+    const normalizedName = name.replaceAll('\\', '/');
+    if (!normalizedName || normalizedName.startsWith('/') || /^[a-z]:/i.test(normalizedName)
+      || normalizedName.split('/').some((part) => part === '..') || names.has(normalizedName)) {
+      throw publicError('file-content-mismatch', 415);
+    }
+    names.add(normalizedName);
+    const localFlags = bytes.readUInt16LE(localOffset + 6);
+    const localMethod = bytes.readUInt16LE(localOffset + 8);
+    const localNameLength = bytes.readUInt16LE(localOffset + 26);
+    const localExtraLength = bytes.readUInt16LE(localOffset + 28);
+    const dataOffset = localOffset + 30 + localNameLength + localExtraLength;
+    const localName = bytes.subarray(localOffset + 30, localOffset + 30 + localNameLength)
+      .toString('utf8').replaceAll('\\', '/');
+    if (localFlags !== flags || localMethod !== method || localName !== normalizedName
+      || dataOffset + compressedSize > directoryOffset) throw publicError('file-content-mismatch', 415);
+    expandedBytes += expandedSize;
+    compressedBytes += compressedSize;
+    if (expandedSize > 128 * 1024 * 1024 || expandedBytes > 256 * 1024 * 1024) {
+      throw publicError('file-archive-too-large', 413);
+    }
+    entries.push({ name: normalizedName, expandedSize });
+    offset = next;
+  }
+  if (offset !== directoryOffset + directorySize
+    || expandedBytes > Math.max(1, compressedBytes) * 200) {
+    throw publicError('file-archive-too-large', 413);
+  }
+  return entries;
+}
+
+function validOoxml(bytes, extension) {
+  if (!isZip(bytes)) return false;
+  const entries = zipDirectory(bytes);
+  const required = extension === '.docx'
+    ? ['[Content_Types].xml', '_rels/.rels', 'word/document.xml']
+    : ['[Content_Types].xml', '_rels/.rels', 'ppt/presentation.xml'];
+  return required.every((name) => entries.some((entry) => entry.name === name && entry.expandedSize > 0));
+}
+
 function isOle(bytes) {
   const signature = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
   return bytes.length >= signature.length && signature.every((value, index) => bytes[index] === value);
@@ -85,7 +174,7 @@ function validateFile(bytes, filename, maximum) {
     : extension === '.ppt'
       ? isOle(bytes)
       : extension === '.pptx' || extension === '.docx'
-        ? isZip(bytes)
+        ? validOoxml(bytes, extension)
         : validUtf8Text(bytes);
   if (!valid) throw publicError('file-content-mismatch', 415);
   return { extension, contentType };
@@ -248,7 +337,6 @@ export function createCustomContentService({
   embeddingModelId,
   summaryModelId,
   maxFileBytes = DEFAULT_MAX_FILE_BYTES,
-  uuid = crypto.randomUUID,
   logger = console,
 } = {}) {
   if (!repository?.courses || !repository?.assets || !repository?.topics || !repository?.jobs) {
@@ -315,6 +403,24 @@ export function createCustomContentService({
     return !lastFailed;
   }
 
+  async function compensateKnowledgeBase(id, requestId, { repeat = false } = {}) {
+    if (!id) return true;
+    const attempts = repeat ? 2 : 1;
+    let lastFailed = false;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 1_500));
+      try {
+        await weknora.deleteKnowledgeBase(id, requestId).catch((error) => {
+          if (!String(error?.message).startsWith('weknora-not-found')) throw error;
+        });
+        lastFailed = false;
+      } catch {
+        lastFailed = true;
+      }
+    }
+    return !lastFailed;
+  }
+
   async function refreshAsset(asset, requestId) {
     if (weknora.isTerminalParseStatus(asset.parseStatus)) return asset;
     try {
@@ -360,6 +466,20 @@ export function createCustomContentService({
       logger.error?.('[custom-content] stale upload intent reconciliation failed');
       return false;
     }
+  }
+
+  async function reconcileCourseCreationIntent(intent) {
+    const requestId = `xb-course-reconcile-${intent.id}`;
+    const results = await Promise.all([
+      compensateKnowledgeBase(intent.wkDocKbId, requestId),
+      compensateKnowledgeBase(intent.wkFaqKbId, requestId),
+    ]);
+    if (results.every(Boolean)) {
+      await repository.courses.removeCreationIntent(intent.ownerId, intent.id);
+      return true;
+    }
+    logger.error?.('[custom-content] stale course creation intent reconciliation failed');
+    return false;
   }
 
   async function loadOwnedTopic(ownerId, id) {
@@ -525,39 +645,44 @@ export function createCustomContentService({
     async createCourse(owner, titleValue, requestId) {
       const title = cleanText(titleValue, COURSE_TITLE_MAX);
       if (title.length < 2) throw publicError('course-title-invalid');
-      const suffix = uuid().slice(0, 8);
+      const docId = crypto.randomUUID();
+      const faqId = crypto.randomUUID();
+      const intent = await repository.courses.createCreationIntent({
+        ownerId: owner.id,
+        title,
+        wkDocKbId: docId,
+        wkFaqKbId: faqId,
+      });
+      if (!intent) throw publicError('course-create-upstream-failed', 502);
+      const suffix = intent.id.slice(0, 8);
       const [docResult, faqResult] = await Promise.allSettled([
-        weknora.createKnowledgeBase(kbBase(`小白·${title}·资料·${suffix}`, 'document'), requestId),
-        weknora.createKnowledgeBase(kbBase(`小白·${title}·误区·${suffix}`, 'faq'), requestId),
+        weknora.createKnowledgeBase({ id: docId, ...kbBase(`小白·${title}·资料·${suffix}`, 'document') }, requestId),
+        weknora.createKnowledgeBase({ id: faqId, ...kbBase(`小白·${title}·误区·${suffix}`, 'faq') }, requestId),
       ]);
       if (docResult.status !== 'fulfilled' || faqResult.status !== 'fulfilled') {
-        await Promise.allSettled([
-          docResult.status === 'fulfilled' && docResult.value?.id
-            ? weknora.deleteKnowledgeBase(docResult.value.id, requestId)
-            : Promise.resolve(),
-          faqResult.status === 'fulfilled' && faqResult.value?.id
-            ? weknora.deleteKnowledgeBase(faqResult.value.id, requestId)
-            : Promise.resolve(),
+        await Promise.all([
+          compensateKnowledgeBase(docId, requestId, { repeat: true }),
+          compensateKnowledgeBase(faqId, requestId, { repeat: true }),
         ]);
         throw publicError('course-create-upstream-failed', 502);
       }
-      const docId = String(docResult.value?.id ?? '').trim();
-      const faqId = String(faqResult.value?.id ?? '').trim();
-      if (!docId || !faqId) {
-        await Promise.allSettled([
-          docId ? weknora.deleteKnowledgeBase(docId, requestId) : Promise.resolve(),
-          faqId ? weknora.deleteKnowledgeBase(faqId, requestId) : Promise.resolve(),
+      const returnedDocId = String(docResult.value?.id ?? '').trim();
+      const returnedFaqId = String(faqResult.value?.id ?? '').trim();
+      if (returnedDocId !== docId || returnedFaqId !== faqId) {
+        await Promise.all([
+          compensateKnowledgeBase(returnedDocId || docId, requestId, { repeat: true }),
+          compensateKnowledgeBase(returnedFaqId || faqId, requestId, { repeat: true }),
         ]);
         throw publicError('course-create-upstream-failed', 502);
       }
       try {
-        return publicCourse(await repository.courses.create({
-          ownerId: owner.id, title, wkDocKbId: docId, wkFaqKbId: faqId,
-        }));
+        const course = await repository.courses.finalizeCreationIntent(owner.id, intent.id);
+        if (!course) throw new Error('course-create-intent-missing');
+        return publicCourse(course);
       } catch (error) {
-        await Promise.allSettled([
-          weknora.deleteKnowledgeBase(docId, requestId),
-          weknora.deleteKnowledgeBase(faqId, requestId),
+        await Promise.all([
+          compensateKnowledgeBase(docId, requestId, { repeat: true }),
+          compensateKnowledgeBase(faqId, requestId, { repeat: true }),
         ]);
         throw error;
       }
@@ -791,6 +916,13 @@ export function createCustomContentService({
       const intents = await repository.assets.listStaleUploadIntents();
       let cleaned = 0;
       for (const intent of intents) if (await reconcileUploadIntent(intent)) cleaned += 1;
+      return { scanned: intents.length, cleaned };
+    },
+
+    async reconcileCourseCreationIntents() {
+      const intents = await repository.courses.listStaleCreationIntents();
+      let cleaned = 0;
+      for (const intent of intents) if (await reconcileCourseCreationIntent(intent)) cleaned += 1;
       return { scanned: intents.length, cleaned };
     },
 

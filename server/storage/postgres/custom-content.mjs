@@ -19,6 +19,18 @@ function courseRow(row) {
   };
 }
 
+function courseIntentRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    title: row.title,
+    wkDocKbId: row.wk_doc_kb_id,
+    wkFaqKbId: row.wk_faq_kb_id,
+    createdAt: iso(row.created_at),
+  };
+}
+
 function assetRow(row) {
   if (!row) return null;
   return {
@@ -107,18 +119,66 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
   }
 
   const courses = Object.freeze({
-    async create({ ownerId, title, wkDocKbId, wkFaqKbId }) {
+    async createCreationIntent({ ownerId, title, wkDocKbId, wkFaqKbId }) {
       const id = uuid();
-      assertUuid(ownerId);
       assertUuid(id);
+      assertUuid(ownerId);
+      assertUuid(wkDocKbId);
+      assertUuid(wkFaqKbId);
       const result = await queryable.query(
-        `INSERT INTO custom_courses
+        `INSERT INTO custom_course_create_intents
            (id, owner_id, title, wk_doc_kb_id, wk_faq_kb_id)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
-        [id, ownerId, title, wkDocKbId, wkFaqKbId ?? null],
+        [id, ownerId, title, wkDocKbId, wkFaqKbId],
       );
-      return courseRow(result.rows[0]);
+      return courseIntentRow(result.rows[0]);
+    },
+
+    async finalizeCreationIntent(ownerId, intentId) {
+      const courseId = uuid();
+      assertUuid(courseId);
+      assertUuid(ownerId);
+      assertUuid(intentId);
+      return withTransaction(async (client) => {
+        const locked = await client.query(
+          `SELECT * FROM custom_course_create_intents
+            WHERE id = $1 AND owner_id = $2
+            FOR UPDATE`,
+          [intentId, ownerId],
+        );
+        const intent = locked.rows[0];
+        if (!intent) return null;
+        const result = await client.query(
+          `INSERT INTO custom_courses
+             (id, owner_id, title, wk_doc_kb_id, wk_faq_kb_id)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING *`,
+          [courseId, ownerId, intent.title, intent.wk_doc_kb_id, intent.wk_faq_kb_id],
+        );
+        await client.query('DELETE FROM custom_course_create_intents WHERE id = $1', [intentId]);
+        return courseRow(result.rows[0]);
+      });
+    },
+
+    async removeCreationIntent(ownerId, intentId) {
+      assertUuid(ownerId);
+      assertUuid(intentId);
+      const result = await queryable.query(
+        'DELETE FROM custom_course_create_intents WHERE id = $1 AND owner_id = $2',
+        [intentId, ownerId],
+      );
+      return result.rowCount > 0;
+    },
+
+    async listStaleCreationIntents() {
+      const result = await queryable.query(
+        `SELECT * FROM custom_course_create_intents
+          WHERE created_at <= NOW() - INTERVAL '10 minutes'
+          ORDER BY created_at
+          LIMIT 100`,
+      );
+      return result.rows.map(courseIntentRow);
     },
 
     async listByOwner(ownerId) {

@@ -47,6 +47,21 @@ test('WeKnora client sends API key, request id and exact hybrid query_text contr
   assert.deepEqual(payload.knowledge_ids, ['knowledge-1']);
 });
 
+test('WeKnora knowledge-base creation preserves the caller-supplied id', async () => {
+  const id = '88888888-8888-4888-8888-888888888888';
+  let payload = null;
+  await withServer(async (req, res) => {
+    payload = JSON.parse((await body(req)).toString('utf8'));
+    res.writeHead(201, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true, data: payload }));
+  }, async (baseUrl) => {
+    const client = createWeKnoraClient({ baseUrl, apiKey: 'wk-test-key' });
+    const created = await client.createKnowledgeBase({ id, name: 'idempotent-kb', type: 'document' }, 'kb-create');
+    assert.equal(created.id, id);
+  });
+  assert.equal(payload.id, id);
+});
+
 test('WeKnora upload uses multipart file and process_config without exposing key in body', async () => {
   let captured;
   await withServer(async (req, res) => {

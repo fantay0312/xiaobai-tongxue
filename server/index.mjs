@@ -325,10 +325,16 @@ if (WK_CONFIGURED) {
       summaryModelId: WK_SUMMARY_MODEL_ID,
       maxFileBytes: maxFileMb * 1024 * 1024,
     });
-    await customContentService.reconcileUploadIntents();
+    await Promise.all([
+      customContentService.reconcileUploadIntents(),
+      customContentService.reconcileCourseCreationIntents(),
+    ]);
     await customContentService.resumePendingJobs();
     const customCleanupTimer = setInterval(() => {
-      void customContentService.reconcileUploadIntents().catch((error) => {
+      void Promise.all([
+        customContentService.reconcileUploadIntents(),
+        customContentService.reconcileCourseCreationIntents(),
+      ]).catch((error) => {
         console.error('[custom-content] cleanup sweep failed:', safeDiagnosticMessage(error?.message));
       });
     }, 15 * 60_000);

@@ -207,6 +207,7 @@ test('custom content migration anchors COS ownership and active compile uniquene
   const openJobSql = await readFile(new URL('./storage/postgres/migrations/005_custom_compile_open_job.sql', import.meta.url), 'utf8');
   const leaseSql = await readFile(new URL('./storage/postgres/migrations/006_custom_compile_leases.sql', import.meta.url), 'utf8');
   const uploadIntentSql = await readFile(new URL('./storage/postgres/migrations/007_custom_upload_cleanup_intents.sql', import.meta.url), 'utf8');
+  const courseIntentSql = await readFile(new URL('./storage/postgres/migrations/008_custom_course_create_intents.sql', import.meta.url), 'utf8');
   assert.match(sql, /owner_id UUID NOT NULL REFERENCES users\(id\) ON DELETE CASCADE/);
   assert.match(sql, /cos_key TEXT NOT NULL UNIQUE/);
   assert.match(openJobSql, /custom_compile_jobs_one_active_per_course_idx/);
@@ -215,4 +216,6 @@ test('custom content migration anchors COS ownership and active compile uniquene
   assert.match(leaseSql, /lease_expires_at TIMESTAMPTZ/);
   assert.match(uploadIntentSql, /custom_asset_upload_intents/);
   assert.match(uploadIntentSql, /cos_key TEXT NOT NULL UNIQUE/);
+  assert.match(courseIntentSql, /custom_course_create_intents/);
+  assert.match(courseIntentSql, /wk_doc_kb_id UUID NOT NULL UNIQUE/);
 });
