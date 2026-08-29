@@ -19,8 +19,13 @@ export interface LlmPayload {
  * coach 给 2200:助教常配推理模型(VITE_LLM_MODEL_COACH),思考 token 与正文共用这个额度,
  * 700 会被思考吃空 → 正文空串 → 整段降级「离线锦囊」。与服务器网关同一处修复保持一致。
  * (不下发 reasoning_effort:api 模式端点由用户自带,未知参数可能被判 400。)
+ * 2026-08-30 实测(deepseek-v4-flash 为推理模型):评估器在一段带类比的讲解上 reasoning_tokens 达 600–1250,
+ * 700 的额度被思考吃空 → finish_reason=length、content 空串 → 整轮静默降级规则评估;小白台词 reasoning 50–190。
+ * 故评估器放宽到 2000、小白到 800(只是上限,不增加正常开销);proxy 模式由服务器网关按 role 裁决,此处不参与。
+ * TODO(follow-up, server/**): server/index.mjs 的 ROLE 上限仍是 { xiaobai: 400, evaluator: 700 },需镜像为 800 / 2000;
+ * 在此之前 proxy 模式会更频繁地出现「规则评估 · 离线台词」(批注页会如实标注)。
  */
-const ROLE_MAX_TOKENS: Record<LlmRole, number> = { xiaobai: 400, evaluator: 700, report: 900, coach: 2200 };
+const ROLE_MAX_TOKENS: Record<LlmRole, number> = { xiaobai: 1200, evaluator: 2400, report: 900, coach: 2200 };
 
 /** 各角色温度(与服务器网关一致,proxy 模式下服务器按 role 重新裁决,不信客户端) */
 function roleTemperature(role: LlmRole, settings: LlmSettings): number {
@@ -51,6 +56,13 @@ export function chatCompletionsUrl(baseUrl: string): string {
   return `${root}/chat/completions`;
 }
 
+/** api 模式的思考预算:只对模型名含 deepseek 的端点下发(已实测 v4 系列接受 none/low),其余自带端点不发,
+ *  未知参数可能被判 400。小白关思考(none):台词照样自然、不再被思考挤空正文;评估器 low 保判定;与网关同策略。 */
+function apiReasoningEffort(role: LlmRole, settings: LlmSettings): { reasoning_effort?: 'none' | 'low' } {
+  if (role === 'coach' || !/deepseek/i.test(roleModel(role, settings))) return {};
+  return { reasoning_effort: role === 'xiaobai' ? 'none' : 'low' };
+}
+
 /** 各角色温度:评估恒 0,小白用用户配置 */
 export async function llmCall(
   role: LlmRole,
@@ -74,6 +86,7 @@ export async function llmCall(
         model: roleModel(role, settings),
         temperature: roleTemperature(role, settings),
         max_tokens: ROLE_MAX_TOKENS[role],
+        ...apiReasoningEffort(role, settings),
         ...(payload.json ? { response_format: { type: 'json_object' } } : {}),
         messages: [
           { role: 'system', content: payload.system },

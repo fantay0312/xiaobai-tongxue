@@ -158,6 +158,6 @@ globalThis.fetch = async (input, init) => {
   const classroom = await upstreamCalls(upstreamLog);
   assert.equal(classroom.length, 1, '主模型答得出来就不该有第二次调用');
   assert.equal(classroom[0].model, MODEL_MAIN);
-  assert.equal(classroom[0].max_tokens, 400);
-  assert.equal(Object.hasOwn(classroom[0], 'reasoning_effort'), false);
+  assert.equal(classroom[0].max_tokens, 1200);
+  assert.equal(classroom[0].reasoning_effort, 'none', '课堂小白关思考:台词不撞上限、首字更快');
 });

@@ -978,6 +978,9 @@
 
 .traceAction { font-family: var(--font-code); font-size: var(--fs-tiny); color: var(--ink-faint); }
 
+/* 诚实降级小签(非 mock 模式下台词落到离线模板 / 评估落到规则时才出现):打字机小字贴行尾,无框无底 */
+.traceNote { flex: none; margin-left: auto; font-family: var(--font-typewriter); font-size: var(--fs-tiny); letter-spacing: var(--track-label); color: var(--ink-faint); }
+
 /* ── 空态 ── */
 
 .empty { max-width: 32rem; padding-top: var(--gap-section); }

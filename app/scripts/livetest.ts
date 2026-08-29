@@ -13,8 +13,9 @@ import {
   applyEvent, decide, evaluate, extractTeacherTerms, initialTopicState,
   isValidAction, matchKeywordGroups, speakXiaobai, FALLBACK_LINE,
 } from '../src/engine';
+import { deriveSessionBrief } from '../src/engine/sessionBrief';
 import type {
-  ChatMessage, EvalResult, LearnEvent, LlmSettings, Topic, TopicState, XiaobaiGlobal,
+  ChatMessage, EvalResult, LearnEvent, LlmSettings, Topic, TopicState, XiaobaiGlobal, XiaobaiMood,
 } from '../src/types';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -81,7 +82,11 @@ const now = () => new Date().toISOString();
 interface TurnOut {
   action: string;
   evalResult: EvalResult;
+  evalSource: string | undefined;
   xiaobaiText: string;
+  mood: XiaobaiMood;
+  moodSource: 'model' | 'table';
+  source: 'api' | 'mock';
   leakageRetries: number;
   leaked: string[];
   pendingMcAfter: string | null;
@@ -93,13 +98,23 @@ async function teachTurn(sim: Sim, text: string): Promise<TurnOut> {
   const t0 = Date.now();
   const lastXiaobaiText = [...sim.messages].reverse()
     .find((message) => message.role === 'xiaobai')?.text ?? null;
-  const evalResult = await evaluate({
+  const teacherMsg: ChatMessage = { id: uid(), role: 'teacher', text, t: now() };
+  // 镜像 store:术语与小本本在评估前各算一次
+  const recentTeacherTerms = extractTeacherTerms([...sim.messages, teacherMsg], topic);
+  // livetest 不存 traces,轮次用自己的计数器覆盖
+  const sessionBrief = {
+    ...deriveSessionBrief({
+      topic, state: sim.state, messages: [...sim.messages, teacherMsg], traces: [], pendingMcId: sim.pendingMcId,
+    }),
+    turn: sim.turn + 1,
+  };
+  const { evalSource, ...evalResult } = await evaluate({
     utterance: text, lastXiaobaiText, topic, state: sim.state,
-    pendingMcId: sim.pendingMcId, settings: SETTINGS,
+    pendingMcId: sim.pendingMcId, settings: SETTINGS, sessionBrief,
   });
   const decision = decide({
     evalResult, topic, state: sim.state, global: sim.global, mode: 'teach',
-    pendingMcId: sim.pendingMcId, turn: sim.turn, utterance: text,
+    pendingMcId: sim.pendingMcId, utterance: text, recentTeacherTerms,
   });
   if (!isValidAction(decision.action)) throw new Error(`非法动作:${decision.action}`);
 
@@ -111,14 +126,10 @@ async function teachTurn(sim: Sim, text: string): Promise<TurnOut> {
   st = { ...st, ...decision.stateDelta, mcStates: { ...st.mcStates, ...(decision.stateDelta.mcStates ?? {}) } };
   sim.state = st;
 
-  const teacherMsg: ChatMessage = { id: uid(), role: 'teacher', text, t: now() };
-  const card = {
-    ...decision.card,
-    recentTeacherTerms: extractTeacherTerms([...sim.messages, teacherMsg], topic),
-  };
+  const card = decision.card;
   const speak = await speakXiaobai({
     card, topic, state: sim.state, recentMessages: [...sim.messages, teacherMsg],
-    settings: SETTINGS, seed: sim.turn + 1,
+    settings: SETTINGS, seed: sim.turn + 1, sessionBrief,
   });
   const ms = Date.now() - t0;
 
@@ -134,10 +145,11 @@ async function teachTurn(sim: Sim, text: string): Promise<TurnOut> {
   console.log(`   依据:${evalResult.reasoning}`);
   console.log(`   导演:${decision.action}`);
   console.log(`   小白:${speak.text}`);
-  console.log(`   (mood=${speak.mood} 泄漏重试=${speak.leakageRetries} 本轮耗时=${(ms / 1000).toFixed(1)}s)`);
+  console.log(`   (mood=${speak.mood}/${speak.moodSource} 台词=${speak.source} 评估=${evalSource ?? '?'} 泄漏重试=${speak.leakageRetries} 本轮耗时=${(ms / 1000).toFixed(1)}s)`);
 
   return {
-    action: decision.action, evalResult, xiaobaiText: speak.text,
+    action: decision.action, evalResult, evalSource, xiaobaiText: speak.text,
+    mood: speak.mood, moodSource: speak.moodSource, source: speak.source,
     leakageRetries: speak.leakageRetries, leaked: speak.leaked,
     pendingMcAfter: decision.pendingMcAfter, ms,
   };
@@ -219,6 +231,17 @@ async function main(): Promise<void> {
     if (t.xiaobaiText === FALLBACK_LINE) warn(`轮${i + 1}台词落到兜底话术(泄漏重试耗尽),质量待观察`);
     if (t.leakageRetries > 0) warn(`轮${i + 1}泄漏重试 ${t.leakageRetries} 次`);
   }
+  // 心情标签契约:进 UI/消息的台词不得残留任何形式的标签;mood 必须是合法枚举;至少一轮真走了 API
+  const MOODS: readonly string[] = ['idle', 'curious', 'confused', 'thinking', 'aha', 'happy', 'proud', 'shy'];
+  check('小白台词无心情标签残留', turns.every((t) => !/心情\s*[：:]/.test(t.xiaobaiText) && !/[〔［【]/.test(t.xiaobaiText)),
+    turns.map((t, i) => (/心情\s*[：:]|[〔［【]/.test(t.xiaobaiText) ? `轮${i + 1}:${t.xiaobaiText}` : '')).filter(Boolean).join(' | '));
+  check('mood 为合法 XiaobaiMood', turns.every((t) => MOODS.includes(t.mood)),
+    turns.map((t) => t.mood).join(','));
+  check('至少一轮台词来自真实 API(source=api)', turns.some((t) => t.source === 'api'),
+    turns.map((t) => t.source).join(','));
+  check('至少一轮心情由模型标签给出(moodSource=model,证明标签规则真被遵守)', turns.some((t) => t.moodSource === 'model'),
+    turns.map((t) => `${t.mood}/${t.moodSource}`).join(','));
+  if (!turns.every((t) => t.evalSource === 'llm')) warn(`有轮次评估降级为规则:${turns.map((t) => t.evalSource ?? '?').join(',')}`);
   const total = turns.reduce((s, t) => s + t.ms, 0);
   const avg = total / turns.length;
   console.log(`\n  耗时:总 ${(total / 1000).toFixed(1)}s,单轮均值 ${(avg / 1000).toFixed(1)}s(评估+渲染两跳)`);

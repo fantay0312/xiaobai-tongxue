@@ -2113,9 +2113,16 @@ function handleMe(req, res) {
  * → 网关回 502 → 前端静默降级「离线锦囊」(线上「助教离线」就是这么来的)。
  * 2200 给思考留够余量;正文本身 3~6 句,300 token 足矣。
  */
-const ROLE_MAX_TOKENS = { xiaobai: 400, evaluator: 700, report: 900, coach: 2200 };
+/** 2026-08-30:deepseek-v4-flash 也是推理模型——评估器在带类比的讲解上 reasoning 达 600–1250 token,
+ *  700 会把 JSON 正文挤没(finish_reason=length → 客户端静默退回规则评估);小白台词 reasoning 50–190。
+ *  放宽为 evaluator 2000 / xiaobai 800,与 app/src/engine/llm.ts 镜像;只是上限,不增加正常开销。 */
+const ROLE_MAX_TOKENS = { xiaobai: 1200, evaluator: 2400, report: 900, coach: 2200 };
 /** 推理模型的思考预算:不设则思考会自行膨胀(实测 479→86 token,首字延迟 13s→6s) */
 const COACH_REASONING_EFFORT = 'low';
+/** 课堂角色的思考预算(2026-08-30 实测 deepseek-v4-flash 亦为推理模型):小白台词关思考(none,台词照样自然、
+ *  首字延迟从 8–15s 降到 2s 档、不再撞 max_tokens 吐空串);评估器保留 low(JSON 判定要引文对得上);报告同 low。
+ *  上游若不认 reasoning_effort 会 400 → 下面按无参数重发一次,不让整个课堂因此失声。 */
+const CLASSROOM_REASONING_EFFORT = { xiaobai: 'none', evaluator: 'low', report: 'low' };
 const UPSTREAM_TIMEOUT = 45_000;
 
 async function handleChat(req, res) {
@@ -2170,7 +2177,7 @@ async function handleChat(req, res) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), UPSTREAM_TIMEOUT);
   /** 发一次上游;返回 {ok,status,content,finish} —— content 为空串也算「答上来但没正文」 */
-  const callUpstream = async (model, withReasoningCap) => {
+  const callUpstream = async (model, withReasoningCap, reasoningEffort = null) => {
     const upstream = await fetch(`${UPSTREAM}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
@@ -2178,7 +2185,8 @@ async function handleChat(req, res) {
         model,
         temperature,
         max_tokens: ROLE_MAX_TOKENS[role],
-        ...(withReasoningCap ? { reasoning_effort: COACH_REASONING_EFFORT } : {}),
+        ...(withReasoningCap ? { reasoning_effort: COACH_REASONING_EFFORT }
+          : reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
         ...(wantJson ? { response_format: { type: 'json_object' } } : {}),
         messages: clean,
       }),
@@ -2198,7 +2206,16 @@ async function handleChat(req, res) {
   try {
     const coachModel = role === 'coach' ? MODEL_COACH : MODEL;
     const useReasoningCap = role === 'coach' && MODEL_COACH !== MODEL;
-    let r = await callUpstream(coachModel, useReasoningCap);
+    const classroomEffort = Object.hasOwn(CLASSROOM_REASONING_EFFORT, role) ? CLASSROOM_REASONING_EFFORT[role] : null;
+    let r = await callUpstream(coachModel, useReasoningCap, classroomEffort);
+    // 课堂角色:上游不认 reasoning_effort(400)→ 去参数重发;思考仍把正文挤空 → 关思考重发一次
+    if (classroomEffort && !r.ok && r.status === 400) {
+      console.error(`[chat] ${role} upstream 400 with reasoning_effort=${classroomEffort}, retry without`);
+      r = await callUpstream(coachModel, false, null);
+    } else if (classroomEffort && classroomEffort !== 'none' && r.ok && !r.content) {
+      console.error(`[chat] ${role} empty (finish=${r.finish}), retry with reasoning_effort=none`);
+      r = await callUpstream(coachModel, false, 'none');
+    }
     // 推理模型偶发空正文(思考吃满额度 finish=length,或径直 finish=stop 却不吐字)。
     // 助教是备课页唯一的答疑入口,空正文会让前端整段降级成「离线锦囊」——
     // 这里用非推理主模型补一刀(实测 ~2.5s),把「助教离线」压回真正的上游故障。

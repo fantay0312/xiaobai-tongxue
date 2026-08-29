@@ -229,6 +229,8 @@ export interface ChatMessage {
   action?: DirectorAction;
   mood?: XiaobaiMood;
   t: string;
+  /** 入口守门拦截的老师发言(套答案/角色反转):留在对话里展示,但不进评估、小本本与术语提取 */
+  blocked?: true;
 }
 
 /** 评估结果(单轮) */
@@ -270,6 +272,14 @@ export interface TurnTrace {
   xiaobaiText: string;
   leakageRetries: number;
   t: string;
+  /** 诚实降级记录(2026-08-30 追加,可选):台词来自真实 API 还是离线模板 */
+  renderSource?: 'api' | 'mock';
+  /** 评估来自 LLM 语义 / 规则关键词 / 自定义课 BFF */
+  evalSource?: 'llm' | 'rules' | 'bff';
+  /** 心情由模型自选(标签)还是查表 */
+  moodSource?: 'model' | 'table';
+  /** 本轮跑在哪种模式下(批注页据此判断 mock/rules 是否算降级;mock 模式本来就是模板+规则) */
+  llmMode?: 'mock' | 'api' | 'proxy';
 }
 
 /** 五维雷达 */

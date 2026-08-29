@@ -4,7 +4,7 @@
  */
 import type {
   BlindSpot, RadarScores, SessionMode, SessionReport, Topic, TopicState,
-  TurnTrace, XiaobaiGlobal, XiaobaiQuizResult,
+  TurnTrace, XiaobaiQuizResult,
 } from '../types';
 import { hasWhySignal } from './evaluator';
 
@@ -71,7 +71,6 @@ export function buildReport(input: {
   state: TopicState;         // 会话结束时点状态
   quiz: XiaobaiQuizResult | null;
   prevRadar: RadarScores | null;
-  global: XiaobaiGlobal;
 }): SessionReport {
   const { sessionId, topic, mode, startedAt, endedAt, traces, state, quiz, prevRadar } = input;
   const radar = computeRadar(traces, topic, state, quiz);
