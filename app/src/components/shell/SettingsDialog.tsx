@@ -9,9 +9,11 @@ import {
   useEffect, useId, useRef, useState,
   type ComponentProps, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode,
 } from 'react';
+import { useNavigate } from 'react-router';
 import { useAppStore } from '../../store/appStore';
 import { UI_TONES, useThemeStore, type UiTheme, type UiTone } from '../../store/themeStore';
 import { llmCall } from '../../engine';
+import { relDay } from '../../lib/relDay';
 import { Icon, type IconName } from '../ui/Icon';
 import { isTourDone, resetTours, type TourKey } from '../tour/tourState';
 import styles from './SettingsDialog.module.css';
@@ -22,13 +24,14 @@ type TestState =
   | { status: 'ok'; detail: string }
   | { status: 'fail'; detail: string };
 
-type TabId = 'look' | 'engine' | 'voice' | 'temper' | 'tour';
+type TabId = 'look' | 'engine' | 'voice' | 'temper' | 'memory' | 'tour';
 
 const TABS: { id: TabId; label: string; icon: IconName }[] = [
   { id: 'look', label: '外观', icon: 'lamp' },
   { id: 'engine', label: '台词引擎', icon: 'pen' },
   { id: 'voice', label: '语音输入', icon: 'mic' },
   { id: 'temper', label: '台词性情', icon: 'sprout' },
+  { id: 'memory', label: '记忆', icon: 'book-open' },
   { id: 'tour', label: '新手引路', icon: 'route' },
 ];
 
@@ -86,6 +89,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   const setSettings = useAppStore((s) => s.setSettings);
   const asr = useAppStore((s) => s.asrSettings);
   const setAsrSettings = useAppStore((s) => s.setAsrSettings);
+  const memory = useAppStore((s) => s.memory);
+  const setMemoryPaused = useAppStore((s) => s.setMemoryPaused);
+  const navigate = useNavigate();
   const theme = useThemeStore((s) => s.theme);
   const setTheme = useThemeStore((s) => s.setTheme);
   const tone = useThemeStore((s) => s.tone);
@@ -233,6 +239,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   const engineMode = ENGINE_MODES.find((m) => m.id === settings.mode) ?? ENGINE_MODES[0];
   const asrMode = ASR_MODES.find((m) => m.id === asr.mode) ?? ASR_MODES[0];
   const apiReady = Boolean(settings.baseUrl && settings.apiKey && settings.model);
+  const memoryCount = memory.items.filter((it) => !it.muted).length;
+  const memoryProfile = memory.profile;
 
   return (
     <div
@@ -441,6 +449,32 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 </span>
               </Row>
               <p className={styles.foot}>只影响小白说话的活泼程度；讲解评估恒用 temperature 0，判定不受影响。</p>
+            </div>
+          )}
+
+          {active === 'memory' && (
+            <div className={styles.rows}>
+              <Row label="记忆" note="关掉后上课不再记新的，已记的照旧">
+                <Switch label="记忆" checked={!memory.paused} onChange={() => setMemoryPaused(!memory.paused)} />
+              </Row>
+              <Row label="已记住">
+                <span className={styles.stateTodo}>{memoryCount > 0 ? `${memoryCount} 条` : '还没有'}</span>
+              </Row>
+              <Row
+                label="画像"
+                note={memoryProfile
+                  ? `整理于 ${relDay(memoryProfile.updatedAt)} · 凭 ${memoryProfile.basis.sessionCount} 堂课`
+                  : '讲完一课后自动整理'}
+              >
+                <button
+                  type="button"
+                  className={styles.btn}
+                  onClick={() => { onClose(); navigate('/growth#memory-ledger'); }}
+                >
+                  去记忆匣整理
+                </button>
+              </Row>
+              <p className={styles.foot}>只记先生的讲法与习惯，不记用户名、邮箱与手机号。</p>
             </div>
           )}
 

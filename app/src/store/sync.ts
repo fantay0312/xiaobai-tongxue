@@ -1,5 +1,5 @@
 /** 按账号拉/推学习档；变更以独立操作持久化，密钥与课堂态永不入档。 */
-import { DEFAULT_GLOBAL, revokeLiveImages, useAppStore } from './appStore';
+import { DEFAULT_GLOBAL, revokeLiveImages, setMemoryPiiProvider, useAppStore } from './appStore';
 import { useAuthStore } from './authStore';
 import {
   applySyncDelta, claimLocalHistoryOwner, rememberLocalHistoryOwner, sanitizeSyncPayload,
@@ -9,6 +9,7 @@ import { pendingSyncQueue } from './pendingSyncQueue';
 import { API_BASE, gatewayFetch } from '../lib/api';
 import { getAllTopics } from '../data';
 import { deriveEvolution } from '../engine/evolution';
+import { EMPTY_MEMORY, rebuildMemoryFromHistory } from '../engine/learnerMemory';
 
 const LAST_USER_KEY = 'xiaobai-sync-user';
 const OWNER_MARKER_KEY = 'xiaobai-sync-owner-initialized';
@@ -27,6 +28,8 @@ let serverState: SyncPayload | null = null;
 let pushPromise: Promise<void> | null = null;
 let remoteRefreshEpoch = 0;
 let appliedRefreshEpoch = 0;
+/** 上一次观察到的登录态:authed → anon 才清本地记忆(初载/checking 不清,匿名演示者保留本地记忆) */
+let previousStatus: string | null = null;
 
 function syncIsCurrent(generation: number, user: string): boolean {
   const auth = useAuthStore.getState();
@@ -36,13 +39,13 @@ function syncIsCurrent(generation: number, user: string): boolean {
 
 function snapshot(): SyncPayload {
   const state = useAppStore.getState();
-  return { global: state.global, events: state.events, reports: state.reports };
+  return { global: state.global, events: state.events, reports: state.reports, memory: state.memory };
 }
 
 function emptyState(): SyncPayload {
   return {
     global: { ...DEFAULT_GLOBAL, relationshipMemory: [], goldenAnalogies: [] },
-    events: [], reports: [],
+    events: [], reports: [], memory: EMPTY_MEMORY,
   };
 }
 
@@ -50,7 +53,8 @@ function replaceLocal(state: SyncPayload): void {
   applyingRemote = true;
   try {
     revokeLiveImages(useAppStore.getState().live);
-    useAppStore.setState({ ...state, topicStates: {}, live: null });
+    // 切换账号时上一位的记忆不得留在本地:远端没有就置空
+    useAppStore.setState({ ...state, memory: state.memory ?? EMPTY_MEMORY, topicStates: {}, live: null });
     useAppStore.getState().rebuildStates();
   } finally { applyingRemote = false; }
 }
@@ -63,14 +67,21 @@ function commitMerged(state: SyncPayload): void {
       reports: state.reports,
       topicStates: {},
       global: { ...state.global, learningLevel: deriveEvolution(state.events, getAllTopics()).stage },
+      memory: state.memory ?? useAppStore.getState().memory,
     });
     useAppStore.getState().rebuildStates();
   } finally { applyingRemote = false; }
 }
 
+/** 拉档净化;旧远端没有记忆切片时就地从事件流回填一次(随下一次操作体一并推上去,不单独排队) */
 function sanitize(remote: Partial<SyncPayload>): SyncPayload {
   const state = sanitizeSyncPayload(remote, DEFAULT_GLOBAL);
   state.global.learningLevel = deriveEvolution(state.events, getAllTopics()).stage;
+  if (!state.memory) {
+    state.memory = rebuildMemoryFromHistory({
+      events: state.events, reports: state.reports, topics: getAllTopics(), now: new Date().toISOString(),
+    });
+  }
   return state;
 }
 
@@ -236,6 +247,11 @@ async function adopt(user: string, generation: number): Promise<boolean> {
 export function initStateSync(): void {
   if (started) return;
   started = true;
+  // 记忆引文里剔除用户名:由此处注入,appStore 不直接依赖 authStore
+  setMemoryPiiProvider(() => {
+    const user = useAuthStore.getState().user;
+    return user ? [user] : [];
+  });
   let adoptRetryTimer = 0;
   const onAuth = (
     status: string,
@@ -247,6 +263,12 @@ export function initStateSync(): void {
     const authKey = `${status}\0${user ?? ''}\0${restricted ? 'restricted' : 'ready'}`;
     if (authKey === observedAuthKey) return;
     observedAuthKey = authKey;
+    // 退出登录:记忆随账号走,本地切片清空(不经 authStore,免得它牵入 appStore)
+    if (previousStatus === 'authed' && status === 'anon') {
+      applyingRemote = true;
+      try { useAppStore.getState().resetMemory(); } finally { applyingRemote = false; }
+    }
+    previousStatus = status;
     syncGeneration += 1;
     window.clearTimeout(pushTimer);
     window.clearTimeout(adoptRetryTimer);
@@ -288,10 +310,13 @@ export function initStateSync(): void {
     if (currentAuth.status !== 'authed' || currentAuth.emailBindingRequired
       || currentAuth.phoneBindingRequired || !currentAuth.user) return;
     if (state.global === previous.global && state.events === previous.events
-      && state.reports === previous.reports) return;
-    const before = { global: previous.global, events: previous.events, reports: previous.reports };
-    const after = { global: state.global, events: state.events, reports: state.reports };
-    const reset = state.global === DEFAULT_GLOBAL && !state.events.length && !state.reports.length;
+      && state.reports === previous.reports && state.memory === previous.memory) return;
+    const before = {
+      global: previous.global, events: previous.events, reports: previous.reports, memory: previous.memory,
+    };
+    const after = { global: state.global, events: state.events, reports: state.reports, memory: state.memory };
+    const reset = state.global === DEFAULT_GLOBAL && !state.events.length && !state.reports.length
+      && state.memory === EMPTY_MEMORY;
     if (!pendingSyncQueue.capture(currentAuth.user, before, after, reset)) return;
     if (syncedUser === currentAuth.user && serverState) schedulePush();
   });

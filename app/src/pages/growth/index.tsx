@@ -27,6 +27,7 @@ import { computeMasteryBreakdown } from '../../engine/memory';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { XiaobaiLetter } from '../../components/story/XiaobaiLetter';
 import { MemoryPanorama } from '../../components/story/MemoryPanorama';
+import { MemoryLedger } from './MemoryLedger';
 import { Icon } from '../../components/ui/Icon';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { useAllTopics } from '../../hooks/useAllTopics';
@@ -224,8 +225,9 @@ export default function GrowthPage() {
     () => deriveMemoryPanorama({ events, reports, topicStates, topics: allTopics, global, live }),
     [events, reports, topicStates, allTopics, global, live],
   );
+  // 印象句只从真实事件派生:存量 relationshipMemory 字符串已停写(关系记忆改由学伴记忆承担),不再回灌
   const bondLines = useMemo(
-    () => deriveRelationshipLines({ events, reports, global }),
+    () => deriveRelationshipLines({ events, reports, global: { ...global, relationshipMemory: [] } }),
     [events, reports, global],
   );
 
@@ -1017,6 +1019,7 @@ export default function GrowthPage() {
           <small>从一堂课的余温，到师徒间的长久记得</small>
         </h2>
         <MemoryPanorama layers={panorama} />
+        <MemoryLedger />
       </section>
 
       {/* ── 卷尾·小白眼里的你:印象句由 deriveRelationshipLines 派生,每句带可复算出处 ── */}

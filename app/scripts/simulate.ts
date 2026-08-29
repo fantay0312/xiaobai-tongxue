@@ -23,6 +23,7 @@ import {
   STAGE_META, STAGE_RULES, XP_RULES, deriveEvolution, deriveWisdom, getStageMeta,
 } from '../src/engine/evolution';
 import { deriveSessionHonors } from '../src/engine/honors';
+import { rebuildMemoryFromHistory } from '../src/engine/learnerMemory';
 import type {
   ChatMessage, DemoLine, LearnEvent, LearnEventType, LlmSettings, Topic, TopicState,
   TurnTrace, XiaobaiGlobal,
@@ -685,6 +686,15 @@ function runGrowthDualTrack(): void {
     honors!.xpGained > 0 && honors!.xpLevelAfter >= honors!.xpLevelBefore
     && honors!.xpLevelUp === (honors!.xpLevelAfter > honors!.xpLevelBefore),
     `xpGained=${honors?.xpGained} ${honors?.xpLevelBefore}→${honors?.xpLevelAfter}`);
+
+  // (e) 学伴记忆回填:同一事件流两次重建逐字一致(持久化迁移与拉档回填共用这条纯函数)
+  const FIXED_NOW = '2026-08-30T00:00:00.000Z';
+  const rebuildA = rebuildMemoryFromHistory({ events: honorEvents, reports: [], topics: TOPICS, now: FIXED_NOW });
+  const rebuildB = rebuildMemoryFromHistory({ events: honorEvents, reports: [], topics: TOPICS, now: FIXED_NOW });
+  check('学伴记忆回填幂等', JSON.stringify(rebuildA) === JSON.stringify(rebuildB));
+  check('回填含出师里程碑与爱打比方习惯',
+    rebuildA.items.some((it) => it.kind === 'milestone') && rebuildA.items.some((it) => it.dedupeKey === 'analogy'),
+    rebuildA.items.map((it) => it.dedupeKey).join(','));
 }
 
 /** 学识第 n 阶累计门槛(镜像 evolution.cumThreshold,仅供本节 intoLevel 自洽校验) */

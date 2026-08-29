@@ -233,6 +233,19 @@
   flex-direction: column;
   gap: var(--gap-hair);
 }
+/* 小白记得:学伴记忆的课级长短板/习惯,楷体、无左沿(丁香细线只留给逐字引文) */
+.recallMemory {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  line-height: 1.9;
+  color: var(--ink);
+}
 /* 裱起来的金句:楷体,左沿丁香细线(引文语义) */
 .recallQuote {
   font-family: var(--font-display);

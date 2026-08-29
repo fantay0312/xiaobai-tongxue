@@ -1,14 +1,29 @@
-import type { GoldenAnalogy, LearnEvent, SessionReport, XiaobaiGlobal } from '../types';
+import type {
+  GoldenAnalogy, LearnEvent, LearnerProfile, MemoryItem, MemoryState, SessionReport, XiaobaiGlobal,
+} from '../types';
+import {
+  EMPTY_MEMORY, capMemoryItems, isLearnerProfile, isMemoryItem, isMemoryState, mergeMemoryStates,
+  newerItem, sanitizeMemoryState,
+} from '../engine/learnerMemory';
 
 export interface SyncPayload {
   global: XiaobaiGlobal;
   events: LearnEvent[];
   reports: SessionReport[];
+  /** 学伴记忆切片(2026-08-30 追加);旧远端没有此键 → 拉档方按事件流回填 */
+  memory?: MemoryState;
 }
 
 interface CollectionDelta<T> {
   upsert: T[];
   remove: string[];
+}
+
+/** 记忆补丁:条目按 id 增删(updatedAt 新者胜),画像整份,paused 标量 */
+export interface SyncMemoryDelta {
+  items: CollectionDelta<MemoryItem> | null;
+  profile?: LearnerProfile | null;
+  paused?: boolean;
 }
 
 interface SyncGlobalDelta {
@@ -28,6 +43,7 @@ export type SyncPayloadDelta =
       global: SyncGlobalDelta;
       events: CollectionDelta<LearnEvent> | null;
       reports: CollectionDelta<SessionReport> | null;
+      memory?: SyncMemoryDelta;
     };
 
 export interface PendingSyncOperation {
@@ -141,8 +157,13 @@ export function isSyncReport(value: unknown): value is SessionReport {
     && typeof value.masteredNow === 'boolean';
 }
 
+export const isSyncMemoryItem = (value: unknown): value is MemoryItem => isMemoryItem(value);
+export const isSyncMemoryState = (value: unknown): value is MemoryState => isMemoryState(value);
+export const isSyncLearnerProfile = (value: unknown): value is LearnerProfile => isLearnerProfile(value);
+
 export function isSyncPayload(value: unknown): value is SyncPayload {
   if (!object(value) || !object(value.global)) return false;
+  if (value.memory !== undefined && !isSyncMemoryState(value.memory)) return false;
   const global = value.global;
   return PERSONAS.has(String(global.persona))
     && Number.isInteger(global.learningLevel) && Number(global.learningLevel) >= 1
@@ -176,7 +197,16 @@ export function sanitizeSyncPayload(
     },
     events: Array.isArray(remote.events) ? remote.events.filter(isSyncEvent) : [],
     reports: Array.isArray(remote.reports) ? remote.reports.filter(isSyncReport) : [],
+    // 远端没有 memory 键、或该键整体畸形时都不补键:sync 层据此判断「旧档」并从事件流回填一次,
+    // 不能落成空切片——那会盖掉本地好好的记忆并在下次推送时把空档写回服务器
+    ...(memoryFromRemote(remote.memory)),
   };
+}
+
+function memoryFromRemote(value: unknown): { memory?: MemoryState } {
+  if (value === undefined) return {};
+  const memory = sanitizeMemoryState(value);
+  return memory ? { memory } : {};
 }
 
 function betterRecord(current: string | null, candidate: string | null): string | null {
@@ -199,6 +229,7 @@ export function mergeSyncPayloads(...states: SyncPayload[]): SyncPayload {
   const analogies = new Map(states.flatMap((state) => state.global.goldenAnalogies)
     .map((analogy) => [analogy.id, analogy]));
   const eventList = [...events.values()].sort((a, b) => a.t.localeCompare(b.t));
+  const memory = mergeMemoryStates(states.map((state) => state.memory).filter((m): m is MemoryState => !!m));
   return {
     global: {
       ...latest.global,
@@ -215,6 +246,7 @@ export function mergeSyncPayloads(...states: SyncPayload[]): SyncPayload {
     },
     events: eventList,
     reports: [...reports.values()].sort((a, b) => a.startedAt.localeCompare(b.startedAt)),
+    ...(memory ? { memory } : {}),
   };
 }
 
@@ -247,9 +279,51 @@ export function diffSyncPayload(
   if (before.global.bestRecord !== after.global.bestRecord) global.bestRecord = after.global.bestRecord;
   const events = collectionDelta(before.events, after.events, (event) => event.id);
   const reports = collectionDelta(before.reports, after.reports, (report) => report.sessionId);
-  return Object.keys(global).length || events || reports
-    ? { kind: 'patch', global, events, reports }
+  const memory = memoryDelta(before.memory, after.memory);
+  return Object.keys(global).length || events || reports || memory
+    ? { kind: 'patch', global, events, reports, ...(memory ? { memory } : {}) }
     : null;
+}
+
+/** 条目以「id@内容」判变:固定/隐藏/改写都会换 updatedAt,整条随 upsert 走;删除按 id */
+function memoryDelta(before: MemoryState | undefined, after: MemoryState | undefined): SyncMemoryDelta | null {
+  if (!after || before === after) return null;
+  const base = before ?? EMPTY_MEMORY;
+  const previous = new Map(base.items.map((item) => [item.id, JSON.stringify(item)]));
+  const next = new Set(after.items.map((item) => item.id));
+  const upsert = after.items.filter((item) => previous.get(item.id) !== JSON.stringify(item));
+  const remove = base.items.map((item) => item.id).filter((id) => !next.has(id));
+  const delta: SyncMemoryDelta = { items: upsert.length || remove.length ? { upsert, remove } : null };
+  if (JSON.stringify(base.profile) !== JSON.stringify(after.profile)) delta.profile = after.profile;
+  if (base.paused !== after.paused) delta.paused = after.paused;
+  return delta.items || delta.profile !== undefined || delta.paused !== undefined ? delta : null;
+}
+
+/** 应用记忆补丁:删除无条件;新增按 updatedAt 新者胜(重放幂等);画像取新;末尾封顶 80 */
+export function applyMemoryDelta(base: MemoryState | undefined, delta: SyncMemoryDelta): MemoryState {
+  const current = base ?? EMPTY_MEMORY;
+  const values = new Map(current.items.map((item) => [item.id, item]));
+  if (delta.items) {
+    for (const id of delta.items.remove) values.delete(id);
+    for (const item of delta.items.upsert) {
+      const existing = values.get(item.id);
+      values.set(item.id, existing ? newerItem(existing, item) : item);
+    }
+  }
+  const items = [...values.values()];
+  const latest = items.reduce<string | null>((max, it) => (max === null || it.updatedAt > max ? it.updatedAt : max), null);
+  let profile = current.profile;
+  if (delta.profile !== undefined) {
+    profile = delta.profile === null
+      ? null
+      : (!profile || delta.profile.updatedAt >= profile.updatedAt ? delta.profile : profile);
+  }
+  return {
+    items: capMemoryItems(items, latest ?? '1970-01-01T00:00:00.000Z'),
+    profile,
+    paused: delta.paused ?? current.paused,
+    version: 1,
+  };
 }
 
 function applyCollection<T>(
@@ -291,5 +365,7 @@ export function applySyncDelta(base: SyncPayload, delta: SyncPayloadDelta): Sync
     global.topicsMastered,
     events.filter((event) => event.type === 'topic_mastered').length,
   );
-  return { global, events, reports };
+  // 无记忆补丁时原样带过基线的切片;基线也没有则不补键(旧测试断言载荷形状逐字相等)
+  const memory = delta.memory ? applyMemoryDelta(base.memory, delta.memory) : base.memory;
+  return { global, events, reports, ...(memory ? { memory } : {}) };
 }

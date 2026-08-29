@@ -368,3 +368,48 @@ export interface DemoLine {
   text: string;         // 填入输入框的完整讲解
   note: string;         // 预期效果说明,如 "命中 c1,小白将追问例子"
 }
+
+// ───────────────────────── 学伴记忆(2026-08-30 追加,新形状只增不改) ─────────────────────────
+
+/** 记忆条目种类:偏好/习惯/长处/短板/里程碑/情分/笔记 */
+export type MemoryKind = 'preference' | 'habit' | 'strength' | 'weakness' | 'milestone' | 'bond' | 'note';
+/** 来源:observed=规则从事件与对话抽取;explicit=先生亲笔(或改过);synthesized=后台合成 */
+export type MemorySource = 'observed' | 'explicit' | 'synthesized';
+
+export interface MemoryItem {
+  /** 稳定 id:`mem-${fnv1a(kind|scopeKey|dedupeKey)}`,同一事实永远映射同一 id(幂等回填 + 按 id 合并) */
+  id: string;
+  kind: MemoryKind;
+  /** {} = 全局;topicId 为课级;course 为课程级 */
+  scope: { topicId?: string; course?: string };
+  /** ≤60 字,第三人称写先生:「先生讲课爱打比方」——不写小白第一人称,不写任何用户资料 */
+  text: string;
+  source: MemorySource;
+  /** 去重键(与 kind、scope 三元组决定 id);提示词表 HINT_BY_KEY 也按它取词 */
+  dedupeKey: string;
+  /** 矛盾键:同键的长处/短板互斥,新者胜(Mem0 式 DELETE) */
+  contradictionKey?: string;
+  confidence: number;          // 0..1
+  evidence: string[];          // 事件 id / ≤20 字引文,≤5 条,新者在后
+  createdAt: string; updatedAt: string; lastSeenAt: string;   // ISO
+  seenCount: number;
+  pinned: boolean;             // 先生固定 → 永不自动删除,排在前
+  muted: boolean;              // 先生隐藏 → 不进提示词,仍列出(灰)以便取消隐藏
+}
+
+export interface LearnerProfile {
+  version: 1;
+  updatedAt: string;
+  /** 2-3 句册页语域(「先生」),≤120 字 */
+  summary: string;
+  /** 各 ≤80 字,未知为 '' */
+  sections: { style: string; strengths: string; weaknesses: string; pace: string; bond: string };
+  basis: { itemCount: number; sessionCount: number; lastSessionAt: string | null };
+}
+
+export interface MemoryState {
+  items: MemoryItem[];
+  profile: LearnerProfile | null;
+  paused: boolean;
+  version: 1;
+}
