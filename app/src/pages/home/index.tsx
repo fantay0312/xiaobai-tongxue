@@ -1,19 +1,19 @@
 /**
  * 首页 —— 书斋门厅。
- * 大字楷体主张 + 《学记》竖排引文(全站精神锚点)+ 故事层 + 学习闭环横带 + 知识点书架。
+ * 主张 + 小白 + 故事层 + 一课的走法 + 知识点书架;题头走 styles/section.module.css 的极简制式。
  * 故事层二选一:零履历给「拜师帖」(书信体世界观),有履历给「旅程带」(称号印 + 当下一步)。
  */
-import { type CSSProperties, type MouseEvent } from 'react';
+import { type MouseEvent } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { MentorLetter } from '../../components/story/MentorLetter';
 import { JourneyRibbon } from '../../components/story/JourneyRibbon';
 import { Tour, type TourStep } from '../../components/tour/Tour';
-import { RoundStamp } from '../../components/ui/RoundStamp';
 import { Bookshelf } from './Bookshelf';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import styles from './home.module.css';
 import anchor from '../../styles/anchor.module.css';
+import sec from '../../styles/section.module.css';
 
 /** 门厅引路(小白口吻,册页语境称「先生」):指路条 → 闭环 → 书架 → 成长册,自上而下不折返。
     第一步按履历分两套话:零履历时案头是拜师帖信封条,有履历才是指路的旅程带——话要对得上东西 */
@@ -57,38 +57,6 @@ const LOOP_STEPS: { num: string; name: string; desc: string }[] = [
   { num: '陆', name: '再讲', desc: '重讲验证,纠正误区' },
 ];
 
-const MOTTO_LINES = ['教然后知困，', '知困然后能自强'] as const;
-
-/** 精神锚点逐字落墨；视觉层拆字，读屏仍一次读完整句。 */
-function AnimatedMotto() {
-  let charIndex = 0;
-  return (
-    <>
-      <span aria-hidden="true">
-        {MOTTO_LINES.map((line, lineIndex) => (
-          <span key={line}>
-            {Array.from(line).map((char) => {
-              const index = charIndex;
-              charIndex += 1;
-              return (
-                <span
-                  key={`${lineIndex}-${index}`}
-                  className={styles.mottoChar}
-                  style={{ '--char-index': index } as CSSProperties}
-                >
-                  {char}
-                </span>
-              );
-            })}
-            {lineIndex < MOTTO_LINES.length - 1 ? <br /> : null}
-          </span>
-        ))}
-      </span>
-      <span className={styles.srOnly}>{MOTTO_LINES.join('')}</span>
-    </>
-  );
-}
-
 export default function HomePage() {
   useDocTitle('书斋门厅');
   const level = useAppStore((s) => s.global.learningLevel);
@@ -101,13 +69,12 @@ export default function HomePage() {
 
   return (
     <div className={styles.page}>
-      {/* ── 首屏:主张 + 小白 + 竖排引文 ── */}
+      {/* ── 首屏:主张 + 小白 ── */}
       <section
         id="study-overview"
         className={`${styles.hero}${hasStory ? ` ${styles.heroCompact}` : ''}`}
       >
         <div className={styles.heroMain}>
-          <p className={`${styles.kicker} ${styles.enter}`}>费曼学习法 · 反转式学习智能体</p>
           <h1 className={`${styles.claim} ${styles.enter}`} style={{ animationDelay: '70ms' }}>
             不是 AI 教你,
             <br />
@@ -137,17 +104,12 @@ export default function HomePage() {
           <XiaobaiAvatar variant="paper" mood="curious" level={level} size={hasStory ? 148 : 192} />
           <p className={anchor.avatarCaption}>你的 AI 学生 · 小白</p>
         </div>
-
-        <blockquote className={`${anchor.quote} ${styles.enter}`} style={{ animationDelay: '120ms' }}>
-          <p className={anchor.quoteText}><AnimatedMotto /></p>
-          <cite className={anchor.quoteFrom}>《礼记 · 学记》</cite>
-        </blockquote>
       </section>
 
       {/* ── 故事层:拜师帖(零履历) / 旅程带(有履历) ── */}
       {hasStory ? <JourneyRibbon /> : <MentorLetter />}
 
-      {/* ── 一课的走法:墨线路线图(题头 + 一线穿七节点,不裹卡) ── */}
+      {/* ── 一课的走法:题头 + 一线穿七节点,不裹卡 ── */}
       <section
         id="lesson-loop"
         className={`${styles.loop} ${styles.enter}`}
@@ -155,20 +117,9 @@ export default function HomePage() {
         aria-label="学习闭环:备课、讲解、赴考、批注、补学、再讲"
         data-tour="loop"
       >
-        <header className={styles.loopHead}>
-          <div className={styles.loopHeadText}>
-            <p className={styles.loopEyebrow}>THE LESSON LOOP · 一课六步</p>
-            <div className={styles.loopTitleRow}>
-              <h2 className={styles.loopTitle}>一课的走法</h2>
-              <p className={styles.loopNote}>六步一环，教到出师为止</p>
-            </div>
-          </div>
-          <RoundStamp
-            className={styles.loopStamp}
-            text="小白同学 · 教然后知困 · "
-            size={78}
-            dur={60}
-          />
+        <header className={sec.head}>
+          <h2 className={sec.title}>一课的走法</h2>
+          <p className={sec.note}>六步一环，教到出师为止。</p>
         </header>
         <div className={styles.route}>
           {LOOP_STEPS.map((step) => (

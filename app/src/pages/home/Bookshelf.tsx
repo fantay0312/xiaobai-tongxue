@@ -104,11 +104,8 @@ export function Bookshelf() {
   return (
     <section id="shelf" className={styles.shelf} aria-label="知识点书架">
       <header className={styles.head}>
-        <p className={styles.eyebrow}>藏书阁 · THE STACKS</p>
-        <div className={styles.headRow}>
-          <h2 className={styles.title}>知识点书架</h2>
-          <p className={styles.sub}>取一函,挑一讲,讲给小白听</p>
-        </div>
+        <h2 className={styles.title}>知识点书架</h2>
+        <p className={styles.sub}>取一函，挑一讲，讲给小白听。</p>
       </header>
 
       {/* ── 函套排架:一门课一函,函厚随讲数 ── */}

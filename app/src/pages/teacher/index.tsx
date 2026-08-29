@@ -3,7 +3,6 @@
  * 每一个数字都从本机事件流(events)/复盘报告(reports)/重放态(topicStates)实时派生,
  * 页面自身不写任何状态:总览带数事件、盲区榜聚合全部报告、学情表逐主题重放、
  * 误区台账数 misconception_* 事件(不用快照,快照会吃掉历史次数)。
- * 泄漏率实测卡读 src/data/leakageReport.json(import.meta.glob,缺文件优雅降级)——本就是真实测得数据。
  * 语言纪律:盲区永远说「小白还没懂」,不说「你错了」;朱砂只落在盲区/被带偏。
  */
 import { useState } from 'react';
@@ -17,7 +16,6 @@ import { demonName } from '../../engine/story';
 import { Radar } from '../review/Radar';
 import { Icon } from '../../components/ui/Icon';
 import { useDocTitle } from '../../hooks/useDocTitle';
-import paper from '../../styles/paper.module.css';
 import s from './teacher.module.css';
 
 // ── 展示词表(与复盘页同一套口径,评价语言不允许分叉) ──
@@ -42,39 +40,6 @@ const MC_DEMON: Record<McState, string> = {
   待注入: 'demonDust', 已注入: 'demonAmber', 已纠正: 'demonJade', 被带偏: 'demonCinnabar',
 };
 
-// ── 泄漏率实测(文件由离线模拟脚本生成;缺失时优雅降级) ──
-
-const leakModules = import.meta.glob('../../data/leakageReport.json', { eager: true }) as
-  Record<string, { default: unknown }>;
-const leakRaw = Object.values(leakModules)[0]?.default;
-
-function pickRate(v: unknown): number | null {
-  if (typeof v === 'number') return v;
-  if (v && typeof v === 'object') {
-    const o = v as Record<string, unknown>;
-    for (const k of ['rate', 'leakRate', 'leakage', 'percent', 'value']) {
-      if (typeof o[k] === 'number') return o[k] as number;
-    }
-  }
-  return null;
-}
-
-function readLeakage(raw: unknown): { naive: number | null; guarded: number | null; method: string | null; sessions: number | null } {
-  if (!raw || typeof raw !== 'object') return { naive: null, guarded: null, method: null, sessions: null };
-  const o = raw as Record<string, unknown>;
-  const naive = pickRate(o.naiveLeakRate ?? o.naive ?? o.naiveRate ?? o.baseline ?? o.bare);
-  const guarded = pickRate(o.guardedLeakRate ?? o.guarded ?? o.guardedRate ?? o.protected ?? o.pipeline);
-  const method = typeof o.method === 'string' ? o.method : null;
-  const sessionsRaw = o.totalSamples ?? o.sessions ?? o.samples ?? o.runs;
-  const sessions = typeof sessionsRaw === 'number' ? sessionsRaw : null;
-  return { naive, guarded, method, sessions };
-}
-
-const fmtRate = (v: number | null) => {
-  if (v === null) return '待测';
-  const p = v <= 1 ? v * 100 : v;
-  return `${Math.round(p * 10) / 10}%`;
-};
 
 // ── 小工具 ──
 
@@ -286,24 +251,13 @@ export default function TeacherPage() {
   // ── ⑤ 近期会话:最近 4 份报告,雷达组件与复盘页共用同一份 SVG ──
   const recentReports = reports.slice(-4).reverse();
 
-  const leak = readLeakage(leakRaw);
-  const hasLeak = leak.naive !== null || leak.guarded !== null;
-
   return (
     <div className={s.page}>
       <header id="teacher-overview" className={`${s.head} ${s.rise}`} style={rise(0)}>
-        <div>
-          <p className={s.headKicker}>教务卷宗 · 弟子一名,逐课立档</p>
-          <h1 className={s.title}>教务看板 · {[...new Set(TOPICS.map((t) => t.course))].join(' / ')}</h1>
-          <p className={s.demoNote}>
-            全部数据来自<strong>本机真实学习记录</strong>,由事件流实时派生,无一处模拟。
-          </p>
-        </div>
-        <div className={s.seal} aria-hidden="true">
-          <span className={`${paper.stamp} ${s.deptStamp}`}>
-            <span className={paper.stampInner}>教务处 · 实录 · OFFICIAL</span>
-          </span>
-        </div>
+        <h1 className={s.title}>教师看板</h1>
+        <p className={s.demoNote}>
+          {[...new Set(TOPICS.map((t) => t.course))].join(' · ')}。数据来自你的学习记录，每上完一课自动更新。
+        </p>
       </header>
 
       {/* ① 档案总览带 */}
@@ -322,9 +276,8 @@ export default function TeacherPage() {
         </section>
       ) : (
         <section className={`${s.emptyHero} ${s.rise}`} style={rise(1)}>
-          <span className={s.emptySeal}>档案待建</span>
           <p className={s.emptyLead}>
-            教务档案从第一课开始记。去书斋给小白开讲,这里的每一个数字都会自己长出来。
+            还没有记录。去书斋给小白开讲，这里的每一个数字都会随课堂长出来。
           </p>
           <Link to="/study" className={s.btnGhost}>去书斋开讲 <Icon name="arrow-right" size={16} /></Link>
         </section>
@@ -334,9 +287,9 @@ export default function TeacherPage() {
         <div className={s.mainCol}>
           {/* ② 「讲不清」盲区榜 */}
           <section id="blind-spots" className={`${s.section} ${s.rise}`} style={rise(2)}>
-            <h2 className={s.h2}><span className={s.secNo}>壹</span>「讲不清」盲区榜<small>全部复盘档案里小白还没懂的地方,按次计频</small></h2>
+            <header className={s.secHead}><h2 className={s.h2}>「讲不清」盲区榜</h2><p className={s.secNote}>复盘里小白还没听懂的地方，按出现次数排。</p></header>
             {blindRows.length === 0 ? (
-              <p className={s.emptyNote}>尚无盲区记录——开讲之后,这里会记下小白没听懂的地方。</p>
+              <p className={s.emptyNote}>还没有盲区记录。开讲之后，这里会记下小白没听懂的地方。</p>
             ) : (
               <>
                 {/* 横滚壳 + min-width:窄屏滚动看全,不整图缩小(11px 标注缩到 8px 就废了);
@@ -394,18 +347,18 @@ export default function TeacherPage() {
 
           {/* ③ 知识点学情表 */}
           <section id="topic-progress" className={`${s.section} ${s.rise}`} style={rise(3)}>
-            <h2 className={s.h2}><span className={s.secNo}>贰</span>知识点学情<small>每一行都由该主题的事件流重放得出</small></h2>
+            <header className={s.secHead}><h2 className={s.h2}>知识点学情</h2><p className={s.secNote}>每一行都由该知识点的课堂记录得出。</p></header>
             <TopicProgressTable topicRows={topicRows} />
             <p className={s.tableFoot}>
-              朱砂晕染的行还留着没纠正回来的被带偏误区——先补学,再回讲台重讲验证。
+              标红的行还留着没纠正回来的误区，先补学，再回讲台重讲。
             </p>
           </section>
 
           {/* ④ 心魔台账 —— 事后揭示面,可以点心魔名、引 belief 与注入台词 */}
           <section id="misconceptions" className={`${s.section} ${s.rise}`} style={rise(4)}>
-            <h2 className={s.h2}><span className={s.secNo}>叁</span>心魔台账<small>每一条误区都是系统故意让小白说的,考的是你的纠错力</small></h2>
+            <header className={s.secHead}><h2 className={s.h2}>误区台账</h2><p className={s.secNote}>小白在课堂上说出的每一条误区，以及你当时纠正了还是认同了。</p></header>
             {mcRows.length === 0 ? (
-              <p className={s.emptyNote}>台账还空着——要点讲到位后,小白才会开始拿错误说法试探你。</p>
+              <p className={s.emptyNote}>台账还空着。要点讲到位后，小白才会开始拿错误说法试探你。</p>
             ) : (
               <ul className={s.mcList}>
                 {mcRows.map((r) => (
@@ -435,9 +388,9 @@ export default function TeacherPage() {
         <aside className={s.sideCol}>
           {/* ⑤ 近期会话 */}
           <section id="recent-sessions" className={`${s.section} ${s.rise}`} style={rise(2)}>
-            <h2 className={s.h2}><span className={s.secNo}>肆</span>近期会话</h2>
+            <header className={s.secHead}><h2 className={s.h2}>近期会话</h2></header>
             {recentReports.length === 0 ? (
-              <p className={s.emptyNote}>还没有会话档案——第一课下课后,这里会替你收好每一份复盘。</p>
+              <p className={s.emptyNote}>还没有会话记录。第一课下课后，这里会收好每一份复盘。</p>
             ) : (
               <div className={s.sessionList}>
                 {recentReports.map((r) => (
@@ -461,39 +414,6 @@ export default function TeacherPage() {
             )}
           </section>
 
-          {/* ⑥ 泄漏率实测卡 —— 答辩收尾页 */}
-          <section className={`${s.section} ${s.rise}`} style={rise(3)}>
-            <div className={s.leakCard}>
-              <h2 className={s.leakTitle}><span className={s.secNo}>伍</span>知识泄漏率实测</h2>
-              <div className={s.leakRow}>
-                <div className={s.leakSide}>
-                  {/* 只有真测出数字才划掉:「待测」不能被提前宣判 */}
-                  <span className={`${s.leakNum} ${s.leakNaive} ${leak.naive !== null ? s.leakStruck : ''}`}>
-                    {fmtRate(leak.naive)}
-                  </span>
-                  <span className={s.leakLabel}>裸 prompt(只嘱咐「请假装不懂」)</span>
-                </div>
-                <div className={s.leakVs}>
-                  <span className={s.leakArrow}>→</span>
-                  <span className={s.leakPlaque}>六层防线</span>
-                  <span className={s.leakArrow}>→</span>
-                </div>
-                <div className={s.leakSide}>
-                  <span className={`${s.leakNum} ${s.leakGuarded}`}>{fmtRate(leak.guarded)}</span>
-                  <span className={s.leakLabel}>白名单 + 物理隔离 + 出口守门</span>
-                </div>
-              </div>
-              <p className={s.leakMethod}>
-                {leak.method ??
-                  '方法:同一批教学话术分别打向裸 prompt 与六层防线流水线,出口守门扫描白名单外的 checklist 术语,统计越权台词占比。'}
-              </p>
-              <p className={s.leakFoot}>
-                {hasLeak
-                  ? `数据来源:data/leakageReport.json${leak.sessions ? ` · ${leak.sessions} 组模拟会话` : ''} · 小白的「不懂」是架构保证的,不是演出来的。`
-                  : '实测数据尚未生成:离线模拟脚本跑完后写入 src/data/leakageReport.json,本卡自动更新。'}
-              </p>
-            </div>
-          </section>
         </aside>
       </div>
     </div>

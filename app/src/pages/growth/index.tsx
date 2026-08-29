@@ -403,7 +403,6 @@ export default function GrowthPage() {
       >
         <section className={s.profileColumn} aria-labelledby="growth-title">
           <div className={s.profileHeading}>
-            <p className={s.volMark}>卷首 · 师徒</p>
             <h1 id="growth-title" className={s.heroTitle}>
               <span>小白的</span>
               <span>成长册</span>
@@ -420,12 +419,6 @@ export default function GrowthPage() {
               <span className={s.portraitName}>弟子 · 小白</span>
               <span className={s.portraitSeal}>白</span>
             </figcaption>
-            <span className={`${paper.stamp} ${s.profileStageTicket}`}>
-              <span className={`${paper.stampInner} ${s.profileStageInner}`}>
-                <strong>{currentStage.name}</strong>
-                <small>{currentStage.description}</small>
-              </span>
-            </span>
           </figure>
 
           <dl className={s.profileFacts} aria-label="小白档案">
@@ -574,11 +567,10 @@ export default function GrowthPage() {
         </aside>
       </header>
 
-      {/* ── 卷一·印章册:成就分叶装订,实印/虚印,点一枚预览来历 ──
-          分区带节奏(R2):卷一 warm / 卷二 paper / 卷三 shade / 卷四 warm / 卷五 paper / 卷尾 shade */}
-      <section className={`${s.section} ${s.band} ${s.bandWarm} ${s.rise}`} style={rise(1)}>
+      {/* ── 卷一·印章册:成就分叶装订,实印/虚印,点一枚预览来历 ── */}
+      <section className={`${s.section} ${s.rise}`} style={rise(1)}>
         <h2 className={s.h2}>
-          <span className={s.volNo}>卷一</span>印章册
+          印章册
           <small>{earnedCount}/{achievements.length} 枚实印 · 课堂有迹，落印有据</small>
         </h2>
         <AchievementWall achievements={achievements} litStars={statusCounts.mastered} />
@@ -592,7 +584,7 @@ export default function GrowthPage() {
         aria-labelledby="chronicle-title"
       >
         <h2 className={s.h2} id="chronicle-title">
-          <span className={s.volNo}>卷二</span>教学编年史
+          教学编年史
           <small>每一课都记在案,自新往旧翻</small>
         </h2>
         <dl className={s.ledgerMeta} aria-label="编年史摘要">
@@ -675,9 +667,9 @@ export default function GrowthPage() {
       </section>
 
       {/* ── 卷三·学问星海:单一星海 + 证据链 + 遗忘复习入口 ── */}
-      <section id="map" className={`${s.section} ${s.band} ${s.bandShade} ${s.rise}`} style={rise(3)}>
+      <section id="map" className={`${s.section} ${s.rise}`} style={rise(3)}>
         <h2 className={s.h2}>
-          <span className={s.volNo}>卷三</span>学问星海
+          学问星海
           <small>
             {forgottenNodes.length > 0
               ? '小白来信了——雾气漫上来的地方'
@@ -972,12 +964,12 @@ export default function GrowthPage() {
 
       {/* ── 卷四·金句画廊:goldenAnalogies 不对称引文档案墙 + 来源时间签 ── */}
       <section
-        className={`${s.section} ${s.band} ${s.bandWarm} ${s.rise}`}
+        className={`${s.section} ${s.rise}`}
         style={rise(4)}
         aria-labelledby="gallery-title"
       >
         <h2 className={s.h2} id="gallery-title">
-          <span className={s.volNo}>卷四</span>金句画廊
+          金句画廊
           <small>你打过的好比方,小白替你裱起来了</small>
         </h2>
         {global.goldenAnalogies.length === 0 ? (
@@ -1019,16 +1011,16 @@ export default function GrowthPage() {
         aria-labelledby="memory-title"
       >
         <h2 className={s.h2} id="memory-title">
-          <span className={s.volNo}>卷五</span>小白的记忆
+          小白的记忆
           <small>从一堂课的余温，到师徒间的长久记得</small>
         </h2>
         <MemoryPanorama layers={panorama} />
       </section>
 
       {/* ── 卷尾·小白眼里的你:印象句由 deriveRelationshipLines 派生,每句带可复算出处 ── */}
-      <section id="bond" className={`${s.section} ${s.band} ${s.bandShade} ${s.rise}`} style={rise(6)}>
+      <section id="bond" className={`${s.section} ${s.rise}`} style={rise(6)}>
         <h2 className={s.h2}>
-          <span className={s.volNo}>卷尾</span>小白眼里的你
+          小白眼里的你
           <small>它记得的,是你教书的样子</small>
         </h2>
         {bondLines.length === 0 ? (
