@@ -932,7 +932,7 @@ export function createCustomContentService({
     maxFileBytes,
 
     async status() {
-      return { configured: true, healthy: await weknora.healthCheck() };
+      return { configured: true, healthy: await weknora.healthCheck(), maxFileBytes };
     },
 
     async createCourse(owner, titleValue, requestId) {

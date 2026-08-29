@@ -926,15 +926,19 @@ if (cfg.testMediaBodyTimeoutMs !== undefined) {
   MEDIA_BODY_TIMEOUT = cfg.testMediaBodyTimeoutMs;
 }
 
-function readRaw(req, limit, timeoutMs = 0) {
+function readRaw(req, limit, timeout = 0) {
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks = [];
     let settled = false;
-    let timer;
+    let totalTimer;
+    let idleTimer;
+    const totalTimeoutMs = typeof timeout === 'number' ? timeout : Number(timeout?.totalTimeoutMs ?? 0);
+    const idleTimeoutMs = typeof timeout === 'number' ? 0 : Number(timeout?.idleTimeoutMs ?? 0);
 
     const cleanup = () => {
-      if (timer) clearTimeout(timer);
+      if (totalTimer) clearTimeout(totalTimer);
+      if (idleTimer) clearTimeout(idleTimer);
       req.off('data', onData);
       req.off('end', onEnd);
       req.off('error', onError);
@@ -951,7 +955,15 @@ function readRaw(req, limit, timeoutMs = 0) {
       }
       reject(error);
     };
+    const refreshIdleTimer = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      if (idleTimeoutMs > 0) {
+        idleTimer = setTimeout(() => fail(new Error('body-timeout'), true), idleTimeoutMs);
+        idleTimer.unref();
+      }
+    };
     const onData = (c) => {
+      refreshIdleTimer();
       size += c.length;
       if (size > limit) { fail(new Error('body-too-large'), true); return; }
       chunks.push(c);
@@ -967,9 +979,10 @@ function readRaw(req, limit, timeoutMs = 0) {
     req.on('data', onData);
     req.on('end', onEnd);
     req.on('error', onError);
-    if (timeoutMs > 0) {
-      timer = setTimeout(() => fail(new Error('body-timeout'), true), timeoutMs);
-      timer.unref();
+    refreshIdleTimer();
+    if (totalTimeoutMs > 0) {
+      totalTimer = setTimeout(() => fail(new Error('body-timeout'), true), totalTimeoutMs);
+      totalTimer.unref();
     }
   });
 }

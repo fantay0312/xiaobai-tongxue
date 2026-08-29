@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto';
 
 const JSON_LIMIT = 2 * 1024 * 1024;
 const MULTIPART_OVERHEAD = 2 * 1024 * 1024;
+const UPLOAD_IDLE_TIMEOUT_MS = 120_000;
+const MIN_UPLOAD_BYTES_PER_SECOND = 64 * 1024;
+const MIN_UPLOAD_TOTAL_TIMEOUT_MS = 10 * 60_000;
 
 function requestId(req) {
   const supplied = req.headers['x-request-id'];
@@ -11,6 +14,8 @@ function requestId(req) {
 }
 
 function errorStatus(error) {
+  if (error?.message === 'body-too-large') return 413;
+  if (error?.message === 'body-timeout') return 408;
   return Number.isInteger(error?.status) && error.status >= 400 && error.status <= 599
     ? error.status
     : 500;
@@ -28,7 +33,14 @@ async function multipartUpload(req, readRaw, limit) {
     error.status = 415;
     throw error;
   }
-  const body = await readRaw(req, limit + MULTIPART_OVERHEAD, 120_000);
+  const bodyLimit = limit + MULTIPART_OVERHEAD;
+  const body = await readRaw(req, bodyLimit, {
+    idleTimeoutMs: UPLOAD_IDLE_TIMEOUT_MS,
+    totalTimeoutMs: Math.max(
+      MIN_UPLOAD_TOTAL_TIMEOUT_MS,
+      Math.ceil(bodyLimit / MIN_UPLOAD_BYTES_PER_SECOND) * 1_000,
+    ),
+  });
   const parsed = await new Request('http://localhost/upload', {
     method: 'POST',
     headers: { 'Content-Type': contentType },

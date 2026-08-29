@@ -504,6 +504,11 @@ test('custom content service runs create, upload, compile, review, publish and s
     repository, weknora, cos, compiler, embeddingModelId: 'embed-1', summaryModelId: 'chat-1',
     uuid: () => ids.shift(), logger: { error() {} },
   });
+  assert.deepEqual(await service.status(), {
+    configured: true,
+    healthy: true,
+    maxFileBytes: 80 * 1024 * 1024,
+  });
   const alice = { id: IDS[19], name: 'Alice' };
   const bob = { id: IDS[18], name: 'Bob' };
 

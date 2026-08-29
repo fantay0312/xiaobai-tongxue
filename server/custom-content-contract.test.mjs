@@ -241,4 +241,8 @@ test('custom maintenance starts after listen and shares the COS upload ceiling',
   assert.match(indexSource, /protectedUser\(req, res, 'all'\)/);
   assert.doesNotMatch(indexSource, /protectedUser\(req, res, operation\)/);
   assert.match(routerSource, /custom-content-auth-unavailable/);
+  assert.match(routerSource, /idleTimeoutMs: UPLOAD_IDLE_TIMEOUT_MS/);
+  assert.match(routerSource, /MIN_UPLOAD_BYTES_PER_SECOND/);
+  assert.match(indexSource, /const refreshIdleTimer = \(\) =>/);
+  assert.match(serviceSource, /healthy: await weknora\.healthCheck\(\), maxFileBytes/);
 });

@@ -41,7 +41,6 @@ import type { Misconception, PredictionQuizItem } from '../../types';
 import s from './customContent.module.css';
 
 const ACCEPT = '.pdf,.ppt,.pptx,.docx,.md,.txt';
-const MAX_BYTES = 80 * 1024 * 1024;
 const CUSTOM_BOOTSTRAP_RETRY_MS = [1_000, 2_000] as const;
 const ROLE_LABEL: Record<AssetRole, string> = {
   lecture: '讲座课件', lab: '实验材料', syllabus: '课程大纲', reading: '补充读物',
@@ -58,13 +57,18 @@ function fileSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(bytes >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
 }
 
-function errorHint(error: unknown): string {
+function errorHint(error: unknown, maximumBytes = 0): string {
   const code = error instanceof Error ? error.message : '';
+  if (code === 'file-too-large') {
+    return maximumBytes > 0
+      ? `单份资料不能超过 ${fileSize(maximumBytes)}。`
+      : '资料超过了服务器允许的单文件上限。';
+  }
   const hints: Record<string, string> = {
     'custom-content-unavailable': '资料服务尚未启用，请稍后再试。',
     'course-title-invalid': '课程名至少写两个字。',
     'course-create-upstream-failed': '知识库没有建成，请稍后重试。',
-    'file-too-large': '单份资料不能超过 80 MB。',
+    'body-timeout': '上传连接长时间没有新数据，请检查网络后重试。',
     'file-type-unsupported': '目前支持 PDF、PPT/PPTX、DOCX、Markdown 与 TXT。',
     'file-content-mismatch': '文件内容与扩展名不一致，请确认文件没有损坏。',
     'asset-duplicate': '这份资料已经入过库了。',
@@ -472,6 +476,7 @@ export default function CustomContentPage() {
   const authUser = useAuthStore((state) => state.user);
   const refreshRuntimeTopics = useAppStore((state) => state.loadCustomTopics);
   const [service, setService] = useState<'checking' | 'ready' | 'unhealthy' | 'unavailable'>('checking');
+  const [maxFileBytes, setMaxFileBytes] = useState(0);
   const [workspaceOwner, setWorkspaceOwner] = useState<string | null>(null);
   const [bootstrapToken, setBootstrapToken] = useState(0);
   const [courses, setCourses] = useState<CustomCourse[]>([]);
@@ -532,6 +537,7 @@ export default function CustomContentPage() {
   useEffect(() => {
     let active = true;
     setWorkspaceOwner(null);
+    setMaxFileBytes(0);
     setCourses([]);
     setCourseId('');
     setAssets([]);
@@ -559,6 +565,7 @@ export default function CustomContentPage() {
           if (!active || authUserRef.current !== authUser) return;
           if (status.healthy) {
             setService('ready');
+            setMaxFileBytes(status.maxFileBytes);
             setCourses(nextCourses);
             setCourseId(nextCourses[0]?.id ?? '');
             setWorkspaceOwner(authUser);
@@ -698,12 +705,14 @@ export default function CustomContentPage() {
   };
 
   const uploadFiles = async (files: File[]) => {
-    if (!courseId || files.length === 0 || uploading) return;
-    const usable = files.filter((file) => file.size > 0 && file.size <= MAX_BYTES);
+    if (!courseId || maxFileBytes < 1 || files.length === 0 || uploading) return;
+    const usable = files.filter((file) => file.size > 0 && file.size <= maxFileBytes);
     const ownerAtRequest = authUser;
     const generationAtRequest = workspaceGenerationRef.current;
     const courseAtRequest = courseId;
-    if (usable.length !== files.length) setNotice('已跳过空文件或超过 80 MB 的资料。');
+    if (usable.length !== files.length) {
+      setNotice(`已跳过空文件或超过 ${fileSize(maxFileBytes)} 的资料。`);
+    }
     for (const [index, file] of usable.entries()) {
       setUploading({ name: file.name, index: index + 1, total: usable.length });
       try {
@@ -712,7 +721,7 @@ export default function CustomContentPage() {
         setAssets((current) => [asset, ...current.filter((item) => item.id !== asset.id)]);
       } catch (error) {
         if (!workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) break;
-        setNotice(`${file.name}：${errorHint(error)}`);
+        setNotice(`${file.name}：${errorHint(error, maxFileBytes)}`);
       }
     }
     if (!workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) return;
@@ -912,7 +921,7 @@ export default function CustomContentPage() {
             <section id="custom-assets" className={s.deskSection}>
               <header className={s.sectionHead}>
                 <div><span>MATERIAL DESK</span><h2>{selectedCourse ? `《${selectedCourse.title}》资料桌` : '先新建一门课程'}</h2></div>
-                <p>单份不超过 80 MB · 原文件加密存入私有 COS</p>
+                <p>单份不超过 {fileSize(maxFileBytes)} · 原文件加密存入私有 COS</p>
               </header>
               {selectedCourse ? (
                 <>
@@ -928,7 +937,7 @@ export default function CustomContentPage() {
                   >
                     <Icon name="upload" size={24} />
                     <div><strong>{uploading ? `${uploading.index}/${uploading.total} 正在上传 ${uploading.name}` : '把讲义放到这里'}</strong><span>支持 PDF、PPT/PPTX、DOCX、MD、TXT；也可以一次选多份</span></div>
-                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={Boolean(uploading)}>选择资料</button>
+                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={Boolean(uploading) || maxFileBytes < 1}>选择资料</button>
                     <input ref={fileInputRef} type="file" accept={ACCEPT} multiple onChange={onFiles} tabIndex={-1} aria-hidden="true" />
                   </div>
 

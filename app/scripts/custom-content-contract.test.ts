@@ -155,6 +155,9 @@ assert.match(pageSource, /useAuthStore\(\(state\) => state\.user\)/);
 assert.match(pageSource, /!active \|\| authUserRef\.current !== authUser/);
 assert.match(pageSource, /workspaceGenerationRef\.current/);
 assert.match(pageSource, /workspaceOwner === authUser/);
+assert.match(pageSource, /setMaxFileBytes\(status\.maxFileBytes\)/);
+assert.doesNotMatch(pageSource, /const MAX_BYTES/);
+assert.match(apiSource, /maxFileBytes: number/);
 assert.match(pageSource, /listCourseAssets[\s\S]{0,700}retryDelay\(failures\)/);
 assert.match(pageSource, /getCourseCompileJob[\s\S]{0,900}retryDelay\(failures\)/);
 assert.match(evaluatorSource, /evaluateCustomTopicSemantic/);
@@ -166,4 +169,4 @@ assert.match(prepSource, /TEACHER_TOPIC_RETRY_MS\[attempt\]/);
 assert.match(shellCss, /@media \(max-width: 520px\)[\s\S]*navGroup:has\(\.linkActive\) \.menuButton/);
 assert.doesNotMatch(apiSource, /X-API-Key|WK_API_KEY|WeKnora.*key/i, '浏览器 API 层不得持有 WeKnora 凭据');
 
-console.log('custom content contract: 49 assertions passed');
+console.log('custom content contract: 52 assertions passed');

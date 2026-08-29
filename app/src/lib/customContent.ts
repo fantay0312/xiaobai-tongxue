@@ -2,6 +2,7 @@ import type { ChecklistItem, Misconception, Topic } from '../types';
 import { API_BASE, gatewayFetch } from './api';
 
 const ROOT = `${API_BASE}/xb`;
+const ABSOLUTE_MAX_FILE_BYTES = 80 * 1024 * 1024;
 
 export type AssetRole = 'lecture' | 'lab' | 'syllabus' | 'reading';
 export type AssetParseStatus = 'pending' | 'processing' | 'finalizing' | 'completed' | 'failed' | 'cancelled';
@@ -121,8 +122,14 @@ function json(method: string, body?: unknown): RequestInit {
   };
 }
 
-export async function customContentStatus(): Promise<{ configured: boolean; healthy: boolean }> {
-  return request('/status');
+export async function customContentStatus(): Promise<{ configured: boolean; healthy: boolean; maxFileBytes: number }> {
+  const status = await request<{ configured: boolean; healthy: boolean; maxFileBytes: number }>('/status');
+  if (!Number.isSafeInteger(status.maxFileBytes)
+    || status.maxFileBytes < 1
+    || status.maxFileBytes > ABSOLUTE_MAX_FILE_BYTES) {
+    throw new CustomContentError('custom-content-contract-invalid', 502);
+  }
+  return status;
 }
 
 export async function listCustomCourses(): Promise<CustomCourse[]> {
