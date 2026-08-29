@@ -38,6 +38,7 @@ import {
 import { useAppStore } from '../../store/appStore';
 import { useAuthStore } from '../../store/authStore';
 import type { Misconception, PredictionQuizItem } from '../../types';
+import sec from '../../styles/section.module.css';
 import s from './customContent.module.css';
 
 const ACCEPT = '.pdf,.ppt,.pptx,.docx,.md,.txt';
@@ -155,13 +156,13 @@ function starterMisconception(topicId: string, mcId: string, checklistId: string
 
 function Issues({ issues }: { issues: QualityIssue[] }) {
   if (issues.length === 0) {
-    return <p className={s.gateClear}><Icon name="circle-check" size={16} /> 所有发布闸门已通过</p>;
+    return <p className={s.gateClear}><Icon name="circle-check" size={16} /> 校验已全部通过，可以发布</p>;
   }
   return (
     <ol className={s.issueList}>
       {issues.map((item, index) => (
         <li key={`${item.code}-${item.path}-${index}`}>
-          <span>{String(index + 1).padStart(2, '0')}</span>
+          <span>{index + 1}</span>
           <p><strong>{item.message}</strong><small>{item.path}</small></p>
         </li>
       ))}
@@ -202,21 +203,21 @@ function QuizEditor({
   const maximum = exactCount ?? 8;
   const minimum = exactCount ?? 3;
   return (
-    <section className={s.quizGroup}>
-      <header>
-        <div><span>QUIZ</span><h4>{title}</h4><small>{exactCount ? `须恰好 ${exactCount} 题` : '可编 3–8 题'}；正确答案按选项顺序选择</small></div>
+    <section className={s.quiz}>
+      <header className={s.quizHead}>
+        <div><h4>{title}</h4><small>{exactCount ? `恰好 ${exactCount} 题` : '3 到 8 题'}，正确答案按选项顺序选</small></div>
         <div className={s.quizActions}>
-          <button type="button" onClick={renumberItems}>重编题号</button>
-          <button type="button" onClick={addItem} disabled={items.length >= maximum}>＋ 添一题</button>
+          <button className={`${s.btnText} ${s.btnQuiet}`} type="button" onClick={renumberItems}>重编题号</button>
+          <button className={s.btnText} type="button" onClick={addItem} disabled={items.length >= maximum}>添一题</button>
         </div>
       </header>
       <div className={s.quizList}>
         {items.map((item, index) => (
           <article className={s.quizCard} key={`${item.id}-${index}`}>
-            <span className={s.quizNo}>Q{String(index + 1).padStart(2, '0')}</span>
+            <span className={s.quizNo}>{index + 1}</span>
             <div className={s.quizBody}>
               <label>题干<input value={item.question} placeholder="写一道能检验理解的题" onChange={(event) => patchItem(index, { question: event.target.value })} /></label>
-              <div className={s.inlineFields}>
+              <div className={s.inline}>
                 <label>选项<small>一行一个选项</small><textarea rows={3} value={item.options.join('\n')} onChange={(event) => {
                   // 保留正在输入的空行，否则受控 textarea 会吞掉 Enter，无法补第二个选项。
                   const options = event.target.value.replace(/\r/g, '').split('\n').slice(0, 6);
@@ -229,12 +230,12 @@ function QuizEditor({
                   {item.options.map((option, optionIndex) => <option key={`${option}-${optionIndex}`} value={optionIndex}>{optionIndex + 1} · {option || '空选项'}</option>)}
                 </select></label>
               </div>
-              <div className={s.inlineFields}>
+              <div className={s.inline}>
                 <label>关联要点<select value={item.checklistRef} onChange={(event) => patchItem(index, { checklistRef: event.target.value })}>{checklist.map((check) => <option key={check.id} value={check.id}>{check.id} · {check.point}</option>)}</select></label>
                 <label>课件依据<input value={item.explanation} placeholder="解释正确答案为什么成立" onChange={(event) => patchItem(index, { explanation: event.target.value })} /></label>
               </div>
               <label>关联误区<select value={item.mcRef ?? ''} onChange={(event) => patchItem(index, { mcRef: event.target.value || null })}><option value="">不关联误区</option>{(fixedMcRef ? misconceptions.filter((mc) => mc.mcId === fixedMcRef) : misconceptions).map((mc) => <option key={mc.mcId} value={mc.mcId}>{mc.mcId} · {mc.belief || '未命名误区'}</option>)}</select></label>
-              <button className={s.removeLine} type="button" onClick={() => onChange(items.filter((_, at) => at !== index))} disabled={items.length <= minimum}>删去此题</button>
+              <button className={`${s.btnText} ${s.btnDanger}`} style={{ justifySelf: 'end' }} type="button" onClick={() => onChange(items.filter((_, at) => at !== index))} disabled={items.length <= minimum}>删去此题</button>
             </div>
           </article>
         ))}
@@ -364,68 +365,76 @@ function DraftEditor({
   };
 
   return (
-    <div className={`${s.draftEditor}${disabled ? ` ${s.draftEditorBusy}` : ''}`} inert={disabled} aria-busy={disabled}>
-      <fieldset className={s.identityFields}>
-        <legend>课题题签</legend>
+    <div className={`${s.draft}${disabled ? ` ${s.draftBusy}` : ''}`} inert={disabled} aria-busy={disabled}>
+      <fieldset className={s.identity}>
+        <legend>题名与引子</legend>
         <label>课题名<input value={draft.title} maxLength={160} onChange={(event) => patchTop({ title: event.target.value })} /></label>
         <label>一句引子<input value={draft.tagline} maxLength={240} onChange={(event) => patchTop({ tagline: event.target.value })} /></label>
         <label>迁移场景<input value={draft.transferHint} maxLength={240} onChange={(event) => patchTop({ transferHint: event.target.value })} /></label>
       </fieldset>
 
-      <section className={s.editorSection}>
-        <header><div><span>CHECKLIST</span><h3>讲解要点</h3></div><div className={s.editorActions}><button type="button" onClick={renumberChecklist}>重编要点编号</button><button type="button" onClick={addChecklist} disabled={draft.checklist.length >= 7}>＋ 添一条</button></div></header>
-        <div className={s.ledgerRows}>
+      <section className={s.block}>
+        <header className={s.blockHead}>
+          <div><h3>讲解要点</h3><small>{draft.checklist.length} 条，3 到 7 条为宜；每条都要能指回课件</small></div>
+          <div className={s.blockActions}><button className={`${s.btnText} ${s.btnQuiet}`} type="button" onClick={renumberChecklist}>重编要点编号</button><button className={s.btnText} type="button" onClick={addChecklist} disabled={draft.checklist.length >= 7}>添一条</button></div>
+        </header>
+        <div className={s.rows}>
           {draft.checklist.map((item, index) => (
-            <article className={s.ledgerRow} key={`${item.id}-${index}`}>
-              <div className={s.rowIndex}>C{String(index + 1).padStart(2, '0')}</div>
+            <article className={s.row} key={`${item.id}-${index}`} style={{ animationDelay: `${Math.min(index * 45, 300)}ms` }}>
+              <div className={s.rowNo}>{index + 1}</div>
               <div className={s.rowBody}>
-                <div className={s.inlineFields}>
+                <div className={s.inline}>
                   <label>要点名<input value={item.point} placeholder="例如：递归终止条件" onChange={(event) => patchChecklist(index, { point: event.target.value })} /></label>
                   <label>追问层级<select value={item.level} onChange={(event) => patchChecklist(index, { level: event.target.value as typeof item.level })}><option>L1</option><option>L2</option><option>L3</option><option>L5</option></select></label>
                 </div>
                 <label>评估依据<textarea rows={2} value={item.groundTruth} placeholder="写下课件明确支持的判断依据" onChange={(event) => patchChecklist(index, { groundTruth: event.target.value })} /></label>
-                <div className={s.inlineFields}>
+                <div className={s.inline}>
                   <label>命中词组<small>每行一组，组内用顿号</small><textarea rows={3} value={groupsText(item.keywords)} onChange={(event) => patchChecklist(index, { keywords: parseGroups(event.target.value) })} /></label>
                   <label>术语<small>用顿号分开</small><textarea rows={3} value={item.terms.join('、')} onChange={(event) => patchChecklist(index, { terms: event.target.value.split(/[、,，]+/).map((term) => term.trim()).filter(Boolean) })} /></label>
                 </div>
                 <label>小白追问<input value={item.probeLine} onChange={(event) => patchChecklist(index, { probeLine: event.target.value })} /></label>
                 <label>一起查书卡<textarea rows={2} value={item.lookupCard} onChange={(event) => patchChecklist(index, { lookupCard: event.target.value })} /></label>
-                <blockquote className={s.sourceProof}>{item.sourceExcerpt || '保存时将重新核验课件出处'}</blockquote>
-                <button className={s.sourceButton} type="button" onClick={() => void findSources(item)} disabled={findingSourceId !== null || item.point.trim().length < 2 || item.groundTruth.trim().length < 4}>{findingSourceId === item.id ? '正在翻检课件…' : item.sourceChunkIds.length > 0 ? '更换课件出处' : '查找课件出处'}</button>
+                <blockquote className={s.proof}>{item.sourceExcerpt || '保存时会重新核对这一条的课件出处。'}</blockquote>
                 {Object.hasOwn(sourceChoices, item.id) ? (
-                  sourceChoices[item.id].length > 0 ? <div className={s.sourceCandidates} role="radiogroup" aria-label={`${item.point || item.id}的课件出处`}>
+                  sourceChoices[item.id].length > 0 ? <div className={s.candidates} role="radiogroup" aria-label={`${item.point || item.id}的课件出处`}>
                     {sourceChoices[item.id].map((candidate) => <label key={candidate.chunkId}><input type="radio" name={`source-${item.id}`} checked={item.sourceChunkIds[0] === candidate.chunkId} onChange={() => patchChecklist(index, { sourceChunkIds: [candidate.chunkId], sourceExcerpt: candidate.excerpt })} /><span><strong>{candidate.filename}</strong>{candidate.excerpt}</span></label>)}
-                  </div> : <p className={s.sourceEmpty}>没有找到足够相关的片段，请把要点名和评估依据写得更贴近课件原文。</p>
+                  </div> : <p className={s.candidateEmpty}>没有找到足够相关的片段，把要点名和评估依据写得更贴近课件原文再试。</p>
                 ) : null}
-                <button className={s.removeLine} type="button" title={checklistReferenced(item.id) ? '请先改掉误区或题目中的关联' : undefined} onClick={() => removeChecklist(index)} disabled={draft.checklist.length <= 3 || checklistReferenced(item.id)}>删去此条</button>
+                <div className={s.rowFoot}>
+                  <button className={s.btnText} type="button" onClick={() => void findSources(item)} disabled={findingSourceId !== null || item.point.trim().length < 2 || item.groundTruth.trim().length < 4}>{findingSourceId === item.id ? '正在查找…' : item.sourceChunkIds.length > 0 ? '更换课件出处' : '查找课件出处'}</button>
+                  <button className={`${s.btnText} ${s.btnDanger}`} type="button" title={checklistReferenced(item.id) ? '请先改掉误区或题目中的关联' : undefined} onClick={() => removeChecklist(index)} disabled={draft.checklist.length <= 3 || checklistReferenced(item.id)}>删去此条</button>
+                </div>
               </div>
             </article>
           ))}
         </div>
       </section>
 
-      <section className={s.editorSection}>
-        <header><div><span>MISCONCEPTION</span><h3>小白会想岔的地方</h3></div><div className={s.editorActions}><button type="button" onClick={renumberMisconceptions}>重编误区编号</button><button type="button" onClick={addMc} disabled={draft.misconceptions.length >= 5}>＋ 添一处</button></div></header>
-        <div className={s.ledgerRows}>
+      <section className={s.block}>
+        <header className={s.blockHead}>
+          <div><h3>小白会想岔的地方</h3><small>{draft.misconceptions.length} 处，2 到 5 处；每处配一段补学与三道预测题</small></div>
+          <div className={s.blockActions}><button className={`${s.btnText} ${s.btnQuiet}`} type="button" onClick={renumberMisconceptions}>重编误区编号</button><button className={s.btnText} type="button" onClick={addMc} disabled={draft.misconceptions.length >= 5}>添一处</button></div>
+        </header>
+        <div className={s.rows}>
           {draft.misconceptions.map((item, index) => (
-            <article className={s.ledgerRow} key={`${item.mcId}-${index}`}>
-              <div className={`${s.rowIndex} ${s.mcIndex}`}>M{String(index + 1).padStart(2, '0')}</div>
+            <article className={s.row} key={`${item.mcId}-${index}`} style={{ animationDelay: `${Math.min(index * 45, 300)}ms` }}>
+              <div className={`${s.rowNo} ${s.rowNoWarn}`}>{index + 1}</div>
               <div className={s.rowBody}>
                 <label>错误认知<input value={item.belief} placeholder="写出一个真实常见的误解" onChange={(event) => patchMc(index, { belief: event.target.value })} /></label>
                 <label>小白注入台词<input value={item.triggerLine} placeholder="用学生口吻写成问句" onChange={(event) => patchMc(index, { triggerLine: event.target.value })} /></label>
-                <div className={s.inlineFields}>
+                <div className={s.inline}>
                   <label>纠正标准<small>一行一条</small><textarea rows={3} value={item.correctionCriteria.join('\n')} onChange={(event) => patchMc(index, { correctionCriteria: lines(event.target.value) })} /></label>
                   <label>挂在哪个要点之后<select value={item.injectAfterChecklist[0] ?? ''} onChange={(event) => patchMc(index, { injectAfterChecklist: [event.target.value] })}>{draft.checklist.map((check) => <option key={check.id} value={check.id}>{check.id} · {check.point}</option>)}</select></label>
                 </div>
-                <div className={s.inlineFields}>
+                <div className={s.inline}>
                   <label>纠正命中词<textarea rows={2} value={groupsText(item.correctionKeywords)} onChange={(event) => patchMc(index, { correctionKeywords: parseGroups(event.target.value) })} /></label>
                   <label>认同错误词<textarea rows={2} value={groupsText(item.adoptionKeywords)} onChange={(event) => patchMc(index, { adoptionKeywords: parseGroups(event.target.value) })} /></label>
                 </div>
-                <div className={s.inlineFields}>
+                <div className={s.inline}>
                   <label>摸底判断题<input value={item.probe.statement} placeholder="写一条判断题" onChange={(event) => patchMc(index, { probe: { ...item.probe, statement: event.target.value } })} /></label>
                   <label>错误解释<input value={item.probe.explanation} placeholder="依据课件解释为什么错" onChange={(event) => patchMc(index, { probe: { ...item.probe, explanation: event.target.value } })} /></label>
                 </div>
-                <div className={s.inlineFields}>
+                <div className={s.inline}>
                   <label>补学小笺标题<input value={item.remedy.microLesson.title} placeholder="给补学内容起个短标题" onChange={(event) => patchMc(index, { remedy: { ...item.remedy, microLesson: { ...item.remedy.microLesson, title: event.target.value } } })} /></label>
                   <label>回问一句<input value={item.remedy.microLesson.askBack} placeholder="下次再遇到时该怎么解释？" onChange={(event) => patchMc(index, { remedy: { ...item.remedy, microLesson: { ...item.remedy.microLesson, askBack: event.target.value } } })} /></label>
                 </div>
@@ -442,15 +451,15 @@ function DraftEditor({
                     remedy: { ...item.remedy, predictionQuiz },
                   })}
                 />
-                <button className={s.removeLine} type="button" onClick={() => patchTop({ misconceptions: draft.misconceptions.filter((_, at) => at !== index) })} disabled={draft.misconceptions.length <= 2}>删去此条</button>
+                <button className={`${s.btnText} ${s.btnDanger}`} style={{ justifySelf: 'end' }} type="button" onClick={() => patchTop({ misconceptions: draft.misconceptions.filter((_, at) => at !== index) })} disabled={draft.misconceptions.length <= 2}>删去此条</button>
               </div>
             </article>
           ))}
         </div>
       </section>
 
-      <section className={s.editorSection}>
-        <header><div><span>QUIZ BANK</span><h3>考小白的随堂题</h3></div></header>
+      <section className={s.block}>
+        <header className={s.blockHead}><div><h3>考小白的随堂题</h3><small>下课后小白要答的题，考的是小白有没有听懂</small></div></header>
         <QuizEditor
           title="课题总题库"
           items={draft.quizBank}
@@ -461,8 +470,8 @@ function DraftEditor({
         />
       </section>
 
-      <section className={s.editorSection}>
-        <header><div><span>PREP PACK</span><h3>备课材料包</h3></div></header>
+      <section className={s.block}>
+        <header className={s.blockHead}><div><h3>备课材料包</h3><small>开讲前给老师看的：任务卡、微课与自检</small></div></header>
         <div className={s.prepFields}>
           <label>教学任务卡<textarea rows={2} value={draft.prep.taskCard} onChange={(event) => patchTop({ prep: { ...draft.prep, taskCard: event.target.value } })} /></label>
           <label>微课正文<textarea rows={7} value={draft.prep.microLecture.body} onChange={(event) => patchTop({ prep: { ...draft.prep, microLecture: { ...draft.prep.microLecture, body: event.target.value } } })} /></label>
@@ -904,160 +913,156 @@ export default function CustomContentPage() {
 
   return (
     <div className={s.page}>
-      <section id="custom-overview" className={s.hero}>
-        <div className={s.heroCopy}>
-          <p className={s.eyebrow}>PERSONAL SYLLABUS · 自选课</p>
-          <h1>把自己的讲义，<br />装进小白的书架</h1>
-          <p>上传课件后，WeKnora 只负责拆页、分块与找出处；小白仍按原来的备课、追问、误区与赴考流程上课。</p>
-        </div>
-        <ol className={s.routeTicket} aria-label="自定义课程三步流程">
-          <li data-state={step1}><span>壹</span><p><strong>资料入库</strong>PDF · PPT · Markdown</p></li>
-          <li data-state={step2}><span>贰</span><p><strong>编成课题</strong>要点 · 误区 · 备课包</p></li>
-          <li data-state={step3}><span>叁</span><p><strong>校订发布</strong>回到原书斋开讲</p></li>
+      <header id="custom-overview" className={`${s.head} ${s.rise}`}>
+        <h1 className={sec.titleLg}>自选课</h1>
+        <p className={sec.note}>把自己的讲义交给小白：上传课件，编出要点、误区与备课包，校订后就能在书斋里开讲。课件只用来拆页、分块与找出处，小白照旧按备课、追问、误区与赴考的流程上课。</p>
+        <ol className={s.steps} aria-label="自定义课程三步流程">
+          <li data-state={step1}>资料入库<small>PDF、PPT 或 Markdown</small></li>
+          <li data-state={step2}>编成课题<small>要点、误区、备课包</small></li>
+          <li data-state={step3}>校订发布<small>回到书斋开讲</small></li>
         </ol>
-      </section>
+      </header>
 
       {visibleNotice ? <p className={s.notice} role="status"><Icon name="circle-help" size={16} />{visibleNotice}</p> : null}
       {visibleService !== 'ready' ? (
-        <section className={s.unavailable} role="status">
-          <span>{visibleService === 'checking' ? 'CHECKING' : 'SIDE-CAR'}</span>
-          <h2>{visibleService === 'checking' ? '正在翻检资料服务…' : '资料服务暂时没有应答'}</h2>
-          <p>{visibleService === 'unavailable' ? '服务器尚未启用自定义课程 sidecar。现有课程与学习记录不受影响。' : '可以稍后重试；现有课程仍可照常学习。'}</p>
-          {visibleService !== 'checking' ? <button type="button" onClick={() => setBootstrapToken((value) => value + 1)}>重新连接资料服务</button> : null}
+        <section className={`${s.unavailable} ${s.rise}`} role="status" style={{ animationDelay: '90ms' }}>
+          <h2>{visibleService === 'checking' ? '正在连接资料服务…' : '资料服务暂时没有应答'}</h2>
+          <p>{visibleService === 'unavailable' ? '服务器还没有启用自定义课程服务。现有课程与学习记录不受影响。' : '可以稍后再试；现有课程仍可照常学习。'}</p>
+          {visibleService !== 'checking' ? <button className={s.btnGhost} type="button" onClick={() => setBootstrapToken((value) => value + 1)}>重新连接资料服务</button> : null}
         </section>
       ) : (
-        <div className={s.workspace}>
-          <aside className={s.courseIndex} aria-label="自定义课程">
-            <header><span>COURSE FILE</span><h2>自选课程</h2></header>
+        <div className={`${s.workspace} ${s.rise}`} style={{ animationDelay: '90ms' }}>
+          <aside className={s.aside} aria-label="自定义课程">
+            <h2 className={s.asideTitle}>课程</h2>
             <div className={s.courseList}>
-              {courses.map((course, index) => (
-                <button key={course.id} type="button" className={course.id === courseId ? s.courseActive : ''} disabled={Boolean(uploading) || creatingCourse || saving || publishing || discarding} onClick={() => { setCourseId(course.id); setAssets([]); setSelectedAssetIds(new Set()); setDeleteArmedId(null); setJob(null); setDraftRecord(null); setPublishedTopicId(null); setDiscardArmed(false); }}>
-                  <span>{String(index + 1).padStart(2, '0')}</span>
+              {courses.map((course) => (
+                <button key={course.id} type="button" className={`${s.courseRow}${course.id === courseId ? ` ${s.courseActive}` : ''}`} aria-current={course.id === courseId ? 'true' : undefined} disabled={Boolean(uploading) || creatingCourse || saving || publishing || discarding} onClick={() => { setCourseId(course.id); setAssets([]); setSelectedAssetIds(new Set()); setDeleteArmedId(null); setJob(null); setDraftRecord(null); setPublishedTopicId(null); setDiscardArmed(false); }}>
                   <p><strong>{course.title}</strong><small>{course.assetCount} 份资料 · {course.topicCount} 个课题</small></p>
                   <Icon name="chevron-right" size={15} />
                 </button>
               ))}
-              {courses.length === 0 ? <p className={s.emptyIndex}>先在下面写下一门课程。</p> : null}
+              {courses.length === 0 ? <p className={s.emptyIndex}>还没有课程，先在下面写一个课程名。</p> : null}
             </div>
             <form className={s.newCourse} onSubmit={(event) => { event.preventDefault(); void makeCourse(); }}>
-              <label htmlFor="new-course">新课程题签</label>
-              <input id="new-course" value={newCourseTitle} maxLength={120} onChange={(event) => setNewCourseTitle(event.target.value)} placeholder="例如：数据结构" />
-              <button type="submit" disabled={creatingCourse || newCourseTitle.trim().length < 2}>{creatingCourse ? '建函中…' : '新建一函'}</button>
+              <label htmlFor="new-course">新课程</label>
+              <input id="new-course" className={s.field} value={newCourseTitle} maxLength={120} onChange={(event) => setNewCourseTitle(event.target.value)} placeholder="课程名，例如：数据结构" />
+              <button className={s.btnGhost} type="submit" disabled={creatingCourse || newCourseTitle.trim().length < 2}>{creatingCourse ? '新建中…' : '新建课程'}</button>
             </form>
           </aside>
 
-          <main className={s.mainDesk}>
-            <section id="custom-assets" className={s.deskSection}>
-              <header className={s.sectionHead}>
-                <div><span>MATERIAL DESK</span><h2>{selectedCourse ? `《${selectedCourse.title}》资料桌` : '先新建一门课程'}</h2></div>
-                <p>单份不超过 {fileSize(maxFileBytes)} · 原文件加密存入私有 COS</p>
+          <main className={s.main}>
+            <section id="custom-assets" className={s.section}>
+              <header className={sec.head}>
+                <h2 className={sec.title}>{selectedCourse ? `《${selectedCourse.title}》的资料` : '资料'}</h2>
+                <p className={sec.note}>{selectedCourse ? `讲义、课件、大纲都收在这门课里；单份不超过 ${fileSize(maxFileBytes)}，原文件加密保存。` : '每门课有自己的资料库，讲义、课件与大纲都收在一起。'}</p>
               </header>
               {selectedCourse ? (
                 <>
-                  <div className={s.uploadControls}>
-                    <label>资料角色<select value={assetRole} onChange={(event) => setAssetRole(event.target.value as AssetRole)}>{Object.entries(ROLE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-                  </div>
                   <div
-                    className={`${s.dropZone}${dragging ? ` ${s.dropZoneActive}` : ''}`}
+                    className={`${s.stage} ${s.drop}${dragging ? ` ${s.dropActive}` : ''}`}
                     onDragEnter={(event) => { event.preventDefault(); setDragging(true); }}
                     onDragOver={(event) => event.preventDefault()}
                     onDragLeave={(event) => { if (event.currentTarget === event.target) setDragging(false); }}
                     onDrop={onDrop}
                   >
-                    <Icon name="upload" size={24} />
-                    <div><strong>{uploading ? `${uploading.index}/${uploading.total} 正在上传 ${uploading.name}` : '把讲义放到这里'}</strong><span>支持 PDF、PPT/PPTX、DOCX、MD、TXT；也可以一次选多份</span></div>
-                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={Boolean(uploading) || maxFileBytes < 1}>选择资料</button>
+                    <div>
+                      <strong>{uploading ? `正在上传 ${uploading.name}（${uploading.index}/${uploading.total}）` : '把讲义拖到这里，或选择文件'}</strong>
+                      <span>支持 PDF、PPT、DOCX、Markdown 与 TXT，一次可以选多份。</span>
+                    </div>
+                    <div className={s.dropActions}>
+                      <label className={s.roleSelect}>作为<select value={assetRole} onChange={(event) => setAssetRole(event.target.value as AssetRole)}>{Object.entries(ROLE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                      <button className={s.btn} type="button" onClick={() => fileInputRef.current?.click()} disabled={Boolean(uploading) || maxFileBytes < 1}>选择文件</button>
+                    </div>
                     <input ref={fileInputRef} type="file" accept={ACCEPT} multiple onChange={onFiles} tabIndex={-1} aria-hidden="true" />
                   </div>
 
-                  <div className={s.assetLedger} aria-live="polite">
-                    {assets.map((asset) => {
-                      const ready = asset.parseStatus === 'completed';
-                      const lockedByJob = Boolean(
-                        job
-                        && (job.status === 'queued' || job.status === 'running' || job.status === 'needs_review')
-                        && job.assetIds.includes(asset.id),
-                      );
-                      return (
-                        <article key={asset.id} className={s.assetRow}>
-                          <label className={s.assetPick}>
-                            <input type="checkbox" checked={selectedAssetIds.has(asset.id)} disabled={!ready} onChange={() => toggleAsset(asset.id)} />
-                            <span aria-hidden="true">{selectedAssetIds.has(asset.id) ? <Icon name="check" size={14} /> : null}</span>
-                          </label>
-                          <Icon name="file" size={18} />
-                          <div className={s.assetName}><strong>{asset.filename}</strong><small>{ROLE_LABEL[asset.assetRole]} · {fileSize(asset.byteSize)}</small></div>
-                          <span className={`${s.assetStatus} ${s[`status_${asset.parseStatus}`]}`}>{STATUS_LABEL[asset.parseStatus]}</span>
-                          {asset.parseStatus === 'failed' || asset.parseStatus === 'cancelled' ? <button type="button" onClick={() => void reparseAsset(asset.id)}>重新解析</button> : null}
-                          {deleteArmedId === asset.id && !lockedByJob ? (
-                            <span className={s.deleteConfirm}>
-                              <button type="button" onClick={() => void removeAsset(asset.id)}>确认删除</button>
-                              <button type="button" onClick={() => setDeleteArmedId(null)}>保留</button>
+                  {assets.length > 0 ? (
+                    <div className={s.assetList} aria-live="polite">
+                      {assets.map((asset, index) => {
+                        const ready = asset.parseStatus === 'completed';
+                        const lockedByJob = Boolean(
+                          job
+                          && (job.status === 'queued' || job.status === 'running' || job.status === 'needs_review')
+                          && job.assetIds.includes(asset.id),
+                        );
+                        return (
+                          <article key={asset.id} className={s.assetRow} style={{ animationDelay: `${Math.min(index * 45, 300)}ms` }}>
+                            <label className={s.assetPick}>
+                              <input type="checkbox" checked={selectedAssetIds.has(asset.id)} disabled={!ready} onChange={() => toggleAsset(asset.id)} aria-label={`选用 ${asset.filename}`} />
+                              <span aria-hidden="true">{selectedAssetIds.has(asset.id) ? <Icon name="check" size={13} /> : null}</span>
+                            </label>
+                            <div className={s.assetName}><strong>{asset.filename}</strong><small>{ROLE_LABEL[asset.assetRole]} · {fileSize(asset.byteSize)}</small></div>
+                            <span className={s.assetStatus} data-state={asset.parseStatus}>{STATUS_LABEL[asset.parseStatus]}</span>
+                            <span className={s.assetActions}>
+                              {asset.parseStatus === 'failed' || asset.parseStatus === 'cancelled' ? <button className={s.btnText} type="button" onClick={() => void reparseAsset(asset.id)}>重新解析</button> : null}
+                              {deleteArmedId === asset.id && !lockedByJob ? (
+                                <span className={s.confirmPair}>
+                                  <button className={`${s.btnText} ${s.btnDanger}`} type="button" onClick={() => void removeAsset(asset.id)}>确认删除</button>
+                                  <button className={`${s.btnText} ${s.btnQuiet}`} type="button" onClick={() => setDeleteArmedId(null)}>保留</button>
+                                </span>
+                              ) : (
+                                <button className={`${s.btnText} ${s.btnQuiet}`} type="button" title={lockedByJob ? '这份资料正在被未完成的草稿使用' : undefined} disabled={lockedByJob} onClick={() => setDeleteArmedId(asset.id)}>删除</button>
+                              )}
                             </span>
-                          ) : (
-                            <button className={s.iconButton} type="button" aria-label={`准备删除 ${asset.filename}`} title={lockedByJob ? '这份资料正在被未完成讲稿使用' : undefined} disabled={lockedByJob} onClick={() => setDeleteArmedId(asset.id)}><Icon name="trash" size={15} /></button>
-                          )}
-                        </article>
-                      );
-                    })}
-                    {assets.length === 0 ? <div className={s.emptyAssets}><Icon name="library" size={22} /><p><strong>资料桌还是空的</strong>先放一份讲义，小白才知道这门课要讲什么。</p></div> : null}
-                  </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className={s.emptyText}>资料还是空的。先放一份讲义，小白才知道这门课要讲什么。</p>
+                  )}
                 </>
               ) : (
-                <div className={s.emptyDesk}>
-                  <span className={s.emptyCase} aria-hidden="true"><i>虚位以待</i></span>
-                  <div>
-                    <strong>书架上还没有一函自选课</strong>
-                    <p>先给这门课起个名字，系统会为它建一函独立的资料库；讲义、课件、大纲都装进这一函里。</p>
-                    <button type="button" onClick={focusNewCourse}>去写课程名 <Icon name="arrow-left" size={15} /></button>
-                  </div>
+                <div className={s.noCourse}>
+                  <strong>书架上还没有自选课</strong>
+                  <p>先在左侧写下课程名，讲义、课件与大纲都会收进同一门课里。</p>
+                  <button className={s.btnGhost} type="button" onClick={focusNewCourse}>去写课程名</button>
                 </div>
               )}
             </section>
 
-            <section id="custom-compiler" className={s.deskSection}>
-              <header className={s.sectionHead}>
-                <div><span>TOPIC COMPILER</span><h2>课题编译台</h2></div>
-                <p>每条要点都必须能指回本课资料</p>
+            <section id="custom-compiler" className={s.section}>
+              <header className={sec.head}>
+                <h2 className={sec.title}>课题</h2>
+                <p className={sec.note}>小砚会从勾选的资料里编出讲解要点、小白会想岔的地方、随堂题与备课包，每一条都指回课件出处；编好的草稿要经你校订才发布。</p>
               </header>
               {selectedCourse ? (
-                <div className={s.compileStarter}>
-                  <label>课题名（可留空让小砚拟题）<input value={topicTitle} maxLength={160} onChange={(event) => setTopicTitle(event.target.value)} placeholder="例如：栈与函数调用" /></label>
-                  <p>已选 <strong>{selectedReadyAssets.length}</strong> 份已入库资料{!hasReadyAssets ? ' · 先在资料桌勾选已入库的讲义' : ''}</p>
-                  <button type="button" onClick={() => void beginCompile()} disabled={!courseId || recoveringJob || selectedReadyAssets.length === 0 || job?.status === 'queued' || job?.status === 'running' || job?.status === 'needs_review'}><Icon name="presentation" size={17} />{recoveringJob ? '正在找回草稿…' : '生成课题草稿'}</button>
+                <div className={s.compileRow}>
+                  <label><span>课题名<small>　可留空，由小砚拟题</small></span><input className={s.field} value={topicTitle} maxLength={160} onChange={(event) => setTopicTitle(event.target.value)} placeholder="例如：栈与函数调用" /></label>
+                  <button className={s.btn} type="button" onClick={() => void beginCompile()} disabled={!courseId || recoveringJob || selectedReadyAssets.length === 0 || job?.status === 'queued' || job?.status === 'running' || job?.status === 'needs_review'}>{recoveringJob ? '正在找回草稿…' : '生成课题草稿'}</button>
+                  <p className={s.compileMeta}>已选 <strong>{selectedReadyAssets.length}</strong> 份已入库的资料{!hasReadyAssets ? '，先在上面勾选已入库的讲义' : ''}</p>
                 </div>
               ) : (
-                <p className={s.lockedNote}><Icon name="lamp" size={16} />编译台要等资料入库后才亮灯——先建一门课程，再放一份讲义。</p>
+                <p className={s.emptyLine}>先建一门课程、放一份讲义，这里才会亮起来。</p>
               )}
 
               {job ? (
-                <div className={`${s.jobStrip} ${job.status === 'failed' ? s.jobFailed : ''}`} role="status">
-                  <span>{job.status === 'running' || job.status === 'queued' ? <span className={s.workingDot} /> : <Icon name={job.status === 'failed' ? 'circle-x' : 'circle-check'} size={17} />}</span>
-                  <p><strong>{JOB_LABEL[job.status]}</strong><small>{job.status === 'running' ? '正在读取分块、生成要点并逐条核对出处' : job.status === 'failed' ? errorHint(new Error(job.errorCode ?? '')) : '编译产物不会自动发布，须由你校订'}</small></p>
+                <div className={`${s.jobRow}${job.status === 'failed' ? ` ${s.jobFailed}` : ''}`} role="status">
+                  <span>{job.status === 'running' || job.status === 'queued' ? <span className={s.jobDot} /> : <Icon name={job.status === 'failed' ? 'circle-x' : 'circle-check'} size={17} />}</span>
+                  <p><strong>{JOB_LABEL[job.status]}</strong><small>{job.status === 'running' ? '正在读取分块、生成要点并逐条核对出处。' : job.status === 'failed' ? errorHint(new Error(job.errorCode ?? '')) : '草稿不会自动发布，要经你校订。'}</small></p>
                 </div>
               ) : null}
 
               {draftRecord ? (
-                <div className={s.reviewLayout}>
+                <div className={s.review}>
+                  <aside className={s.gate} aria-label="发布前校验">
+                    <div className={s.gateHead}><h3>发布前校验</h3><p className={s.gateNote}>保存时会重新读取课件分块核对出处，不能在浏览器里伪造。</p></div>
+                    <Issues issues={draftRecord.qualityIssues} />
+                  </aside>
                   <div className={s.reviewMain}>
                     <DraftEditor disabled={saving || publishing || discarding} record={draftRecord} onError={(error) => setNotice(errorHint(error))} onChange={(payload) => setDraftRecord((current) => current ? { ...current, payload } : current)} />
-                    <footer className={s.reviewActions}>
+                    <footer className={s.actions}>
                       {draftRecord.status === 'draft' ? discardArmed ? (
-                        <span className={s.discardConfirm}>
-                          <button type="button" onClick={() => void discardDraft()} disabled={saving || publishing || discarding}>{discarding ? '正在放弃…' : '确认放弃'}</button>
-                          <button type="button" onClick={() => setDiscardArmed(false)} disabled={discarding}>保留草稿</button>
+                        <span className={s.actionsLead}>
+                          <button className={`${s.btnText} ${s.btnDanger}`} type="button" onClick={() => void discardDraft()} disabled={saving || publishing || discarding}>{discarding ? '正在放弃…' : '确认放弃'}</button>
+                          <button className={`${s.btnText} ${s.btnQuiet}`} type="button" onClick={() => setDiscardArmed(false)} disabled={discarding}>保留草稿</button>
                         </span>
-                      ) : <button type="button" className={s.discardButton} onClick={() => setDiscardArmed(true)} disabled={saving || publishing}>放弃这份草稿</button> : null}
-                      <button type="button" className={s.saveButton} onClick={() => void saveDraft()} disabled={saving || publishing || draftRecord.status !== 'draft'}>{saving ? '正在核验出处…' : '保存校订'}</button>
-                      <button type="button" className={s.publishButton} onClick={() => void publish()} disabled={saving || publishing || draftRecord.status !== 'draft'}>{publishing ? '盖印发布中…' : '发布到书架'} <Icon name="arrow-right" size={16} /></button>
+                      ) : <span className={s.actionsLead}><button className={`${s.btnText} ${s.btnDanger}`} type="button" onClick={() => setDiscardArmed(true)} disabled={saving || publishing}>放弃这份草稿</button></span> : null}
+                      <button className={s.btnGhost} type="button" onClick={() => void saveDraft()} disabled={saving || publishing || draftRecord.status !== 'draft'}>{saving ? '正在核对出处…' : '保存校订'}</button>
+                      <button className={s.btn} type="button" onClick={() => void publish()} disabled={saving || publishing || draftRecord.status !== 'draft'}>{publishing ? '发布中…' : '发布到书架'} <Icon name="arrow-right" size={16} /></button>
                     </footer>
-                    {publishedTopicId ? <p className={s.published}><Icon name="circle-check" size={17} />课题已经归架。<Link to={`/prep/${publishedTopicId}`}>去备这门新课 <Icon name="arrow-right" size={15} /></Link></p> : null}
+                    {publishedTopicId ? <p className={s.published}><Icon name="circle-check" size={17} />课题已经上架。<Link to={`/prep/${publishedTopicId}`}>去备这门新课 <Icon name="arrow-right" size={15} /></Link></p> : null}
                   </div>
-                  <aside className={s.gatePanel}>
-                    <span>QUALITY GATE</span>
-                    <h3>发布前校验</h3>
-                    <Issues issues={draftRecord.qualityIssues} />
-                    <p className={s.gateNote}>保存时会重新读取 WeKnora 分块，客户端不能伪造出处。</p>
-                  </aside>
                 </div>
               ) : null}
             </section>
