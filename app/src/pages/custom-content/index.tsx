@@ -240,10 +240,12 @@ function DraftEditor({
   record,
   onChange,
   onError,
+  disabled,
 }: {
   record: CustomTopicRecord;
   onChange: (next: CustomTopicPayload) => void;
   onError: (error: unknown) => void;
+  disabled: boolean;
 }) {
   const draft = record.payload;
   const [sourceChoices, setSourceChoices] = useState<Record<string, SourceCandidate[]>>({});
@@ -311,7 +313,7 @@ function DraftEditor({
   };
 
   return (
-    <div className={s.draftEditor}>
+    <div className={`${s.draftEditor}${disabled ? ` ${s.draftEditorBusy}` : ''}`} inert={disabled} aria-busy={disabled}>
       <fieldset className={s.identityFields}>
         <legend>课题题签</legend>
         <label>课题名<input value={draft.title} maxLength={160} onChange={(event) => patchTop({ title: event.target.value })} /></label>
@@ -831,7 +833,7 @@ export default function CustomContentPage() {
               {draftRecord ? (
                 <div className={s.reviewLayout}>
                   <div className={s.reviewMain}>
-                    <DraftEditor record={draftRecord} onError={(error) => setNotice(errorHint(error))} onChange={(payload) => setDraftRecord((current) => current ? { ...current, payload } : current)} />
+                    <DraftEditor disabled={saving || publishing || discarding} record={draftRecord} onError={(error) => setNotice(errorHint(error))} onChange={(payload) => setDraftRecord((current) => current ? { ...current, payload } : current)} />
                     <footer className={s.reviewActions}>
                       {draftRecord.status === 'draft' ? discardArmed ? (
                         <span className={s.discardConfirm}>

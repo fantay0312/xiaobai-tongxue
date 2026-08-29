@@ -12,6 +12,7 @@ import type {
 } from '../../types';
 import { useAppStore } from '../../store/appStore';
 import { getTopic } from '../../data';
+import { topicCourseKey } from '../../data/runtimeTopics';
 import { demonName } from '../../engine/story';
 import { Radar } from '../review/Radar';
 import { Icon } from '../../components/ui/Icon';
@@ -74,25 +75,28 @@ type TopicRow = {
 
 /** 学情表的课程筛选是界面态,不写入学习档案。点标签只显示该课,长表关在原区域内竖滚。 */
 function TopicProgressTable({ topicRows }: { topicRows: TopicRow[] }) {
-  const courses = [...new Set(topicRows.map((row) => row.topic.course))];
-  const [selected, setSelected] = useState(courses[0] ?? '');
-  const visibleRows = topicRows.filter((row) => row.topic.course === selected);
+  const courses = [...new Map(topicRows.map((row) => [
+    topicCourseKey(row.topic),
+    { key: topicCourseKey(row.topic), label: row.topic.course },
+  ])).values()];
+  const [selected, setSelected] = useState(courses[0]?.key ?? '');
+  const visibleRows = topicRows.filter((row) => topicCourseKey(row.topic) === selected);
 
   return (
     <>
       <div className={s.tagBar} role="toolbar" aria-label="按课程筛选知识点学情">
         {courses.map((course) => {
-          const on = course === selected;
+          const on = course.key === selected;
           return (
             <button
-              key={course}
+              key={course.key}
               type="button"
               className={`${s.courseChip} ${s.tagBtn} ${on ? s.tagOn : s.tagOff}`}
               aria-pressed={on}
               aria-controls="topic-progress-table"
-              onClick={() => setSelected(course)}
+              onClick={() => setSelected(course.key)}
             >
-              {course}
+              {course.label}
             </button>
           );
         })}

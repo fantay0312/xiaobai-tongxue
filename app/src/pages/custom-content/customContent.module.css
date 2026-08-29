@@ -314,6 +314,7 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .gateNote { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--paper-edge); color: var(--ink-faint); font-size: var(--fs-tiny); line-height: 1.7; }
 
 .draftEditor { display: grid; gap: 2rem; }
+.draftEditorBusy { pointer-events: none; opacity: 0.72; }
 .identityFields { display: grid; gap: 0.8rem; padding: 1rem; border: 1px solid var(--line-strong); }
 .identityFields legend { padding-inline: 0.45rem; font: var(--fs-tiny) var(--font-typewriter); letter-spacing: var(--track-label); color: var(--ink-faint); }
 .identityFields label,

@@ -1,6 +1,8 @@
 import type { ChecklistItem, Topic } from '../types';
 
 const runtimeTopics = new Map<string, Topic>();
+const runtimeCourseKeys = new Map<string, string>();
+const hydratedCourseKeys = new WeakMap<Topic, string>();
 
 function nonEmpty(value: unknown, maximum: number): string {
   return typeof value === 'string' ? value.trim().slice(0, maximum) : '';
@@ -104,6 +106,10 @@ function hydrateTopic(value: unknown, teacherView: boolean): Topic | null {
     topic.checklist.some((item) => !item.groundTruth)
     || topic.misconceptions.some((item) => item.correctionCriteria.length === 0 || !item.probe.explanation)
   )) return null;
+  const customCourseId = nonEmpty(raw.customCourseId, 80);
+  if (/^[0-9a-f-]{36}$/i.test(customCourseId)) {
+    hydratedCourseKeys.set(topic, `custom:${customCourseId}`);
+  }
   return topic;
 }
 
@@ -120,7 +126,12 @@ export function hydrateTeacherRuntimeTopic(value: unknown): Topic | null {
 
 export function registerRuntimeTopics(topics: Topic[]): void {
   runtimeTopics.clear();
-  for (const topic of topics) runtimeTopics.set(topic.topicId, topic);
+  runtimeCourseKeys.clear();
+  for (const topic of topics) {
+    runtimeTopics.set(topic.topicId, topic);
+    const key = hydratedCourseKeys.get(topic);
+    if (key) runtimeCourseKeys.set(topic.topicId, key);
+  }
 }
 
 export function runtimeTopic(topicId: string): Topic | undefined {
@@ -129,4 +140,9 @@ export function runtimeTopic(topicId: string): Topic | undefined {
 
 export function runtimeTopicList(): Topic[] {
   return [...runtimeTopics.values()];
+}
+
+/** 展示名可以重复；分组与成长广度必须使用稳定课程身份。 */
+export function topicCourseKey(topic: Topic): string {
+  return runtimeCourseKeys.get(topic.topicId) ?? `builtin:${topic.course}`;
 }

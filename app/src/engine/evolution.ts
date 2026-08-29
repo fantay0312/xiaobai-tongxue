@@ -8,6 +8,7 @@
  * 且不得 re-export 进 engine/index barrel —— simulate 在 Node 直接加载 barrel。
  */
 import type { LearnEvent, LearnEventType, Topic, XiaobaiGlobal } from '../types';
+import { topicCourseKey } from '../data/runtimeTopics';
 
 /** payload 数值闸口:坏档(手改 localStorage)里的非数值不许污染 reduce——与 achievements.ts 同口径 */
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
@@ -125,20 +126,21 @@ export interface EvolutionStatus {
 }
 
 /** 开放(非 locked)主题的去重课程名,按 TOPICS 书架序 */
-function openCoursesInOrder(topics: Topic[]): string[] {
-  const out: string[] = [];
+function openCoursesInOrder(topics: Topic[]): { key: string; label: string }[] {
+  const out: { key: string; label: string }[] = [];
   const seen = new Set<string>();
   for (const t of topics) {
     if (t.locked) continue;
-    if (!seen.has(t.course)) { seen.add(t.course); out.push(t.course); }
+    const key = topicCourseKey(t);
+    if (!seen.has(key)) { seen.add(key); out.push({ key, label: t.course }); }
   }
   return out;
 }
 
 export function deriveEvolution(events: LearnEvent[], topics: Topic[]): EvolutionStatus {
   const evs = chronological(events);
-  const courseOf = new Map<string, string>();
-  for (const t of topics) courseOf.set(t.topicId, t.course);
+  const courseOf = new Map<string, { key: string; label: string }>();
+  for (const t of topics) courseOf.set(t.topicId, { key: topicCourseKey(t), label: t.course });
   // 课程要求上限用「规则值 ∩ 开放课程数」兜底(万一将来只剩一门课不至永远卡死),下限见 effCourses
   const distinctOpen = openCoursesInOrder(topics).length;
 
@@ -149,9 +151,9 @@ export function deriveEvolution(events: LearnEvent[], topics: Topic[]): Evolutio
     if (e.type !== 'topic_mastered') continue;
     masteries += 1;                                   // 深度:不去重
     const course = courseOf.get(e.topicId);           // 未知 topicId → undefined,不计广度
-    if (course !== undefined && !touched.has(course)) {
-      touched.add(course);
-      coursesTouched.push(course);                    // 广度:首次出师序去重
+    if (course !== undefined && !touched.has(course.key)) {
+      touched.add(course.key);
+      coursesTouched.push(course.label);              // 展示名可重复，广度按稳定 key 去重
     }
   }
   const haveCourses = coursesTouched.length;
@@ -174,7 +176,9 @@ export function deriveEvolution(events: LearnEvent[], topics: Topic[]): Evolutio
         needCourses: effCourses(nextRule.courses),
         haveCourses,
         breadthBlocked: masteries >= nextRule.masteries && haveCourses < effCourses(nextRule.courses),
-        suggestedCourses: openCoursesInOrder(topics).filter((c) => !touched.has(c)),
+        suggestedCourses: openCoursesInOrder(topics)
+          .filter((course) => !touched.has(course.key))
+          .map((course) => course.label),
       }
     : null;
 

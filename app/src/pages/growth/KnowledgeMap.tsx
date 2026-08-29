@@ -8,6 +8,7 @@ import type { Topic, TopicState } from '../../types';
 import { KnowledgeSeaField } from './KnowledgeSeaField';
 import { KnowledgeSeaList } from './KnowledgeSeaList';
 import { groupByCourse, layoutSea, pickDockCorner } from './knowledgeSeaGeometry';
+import { topicCourseKey } from '../../data/runtimeTopics';
 import s from './KnowledgeSeaFrame.module.css';
 
 export type NodeStatus = 'locked' | 'unlearned' | 'learning' | 'forgotten' | 'mastered';
@@ -55,18 +56,18 @@ export function KnowledgeMap({
   }, []);
 
   useEffect(() => {
-    if (compact && courseFocus === null && realms[0]) setCourseFocus(realms[0].course);
+    if (compact && courseFocus === null && realms[0]) setCourseFocus(realms[0].key);
   }, [compact, courseFocus, realms]);
 
   useEffect(() => {
     if (!compact || !selectedId) return;
     const selected = nodes.find((node) => node.topic.topicId === selectedId);
-    if (selected) setCourseFocus(selected.topic.course);
+    if (selected) setCourseFocus(topicCourseKey(selected.topic));
   }, [compact, nodes, selectedId]);
 
   const visibleNodes = useMemo(
     () => (courseFocus
-      ? nodes.filter((node) => node.topic.course === courseFocus)
+      ? nodes.filter((node) => topicCourseKey(node.topic) === courseFocus)
       : nodes),
     [courseFocus, nodes],
   );
@@ -96,11 +97,11 @@ export function KnowledgeMap({
             </button>
             {realms.map((realm) => (
               <button
-                key={realm.course}
+                key={realm.key}
                 type="button"
-                aria-pressed={courseFocus === realm.course}
+                aria-pressed={courseFocus === realm.key}
                 onClick={() => {
-                  setCourseFocus(realm.course);
+                  setCourseFocus(realm.key);
                   const firstAvailable = realm.nodes.find((node) => node.status !== 'locked');
                   if (firstAvailable && firstAvailable.topic.topicId !== selectedId) {
                     onSelect(firstAvailable.topic.topicId);

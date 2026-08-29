@@ -1069,13 +1069,16 @@ export function createCustomContentService({
     },
 
     async listPublishedTopics(owner) {
-      return (await repository.topics.listReadyByOwner(owner.id)).map((topic) => studentTopicView(topic.payload));
+      return (await repository.topics.listReadyByOwner(owner.id)).map((topic) => ({
+        ...studentTopicView(topic.payload),
+        customCourseId: topic.courseId,
+      }));
     },
 
     async getPublishedTopic(owner, topicId) {
       const topic = await repository.topics.findReadyOwnedByTopicId(owner.id, topicId);
       if (!topic) throw publicError('topic-not-found', 404);
-      return studentTopicView(topic.payload);
+      return { ...studentTopicView(topic.payload), customCourseId: topic.courseId };
     },
 
     async getTeacherTopic(owner, topicId) {

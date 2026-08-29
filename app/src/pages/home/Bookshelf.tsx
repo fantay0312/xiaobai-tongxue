@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { TOPICS } from '../../data';
+import { topicCourseKey } from '../../data/runtimeTopics';
 import { COURSE_COVERS } from '../../data/courseCovers';
 import { useAppStore } from '../../store/appStore';
 import type { Topic, TopicState } from '../../types';
@@ -39,12 +40,13 @@ function spineStatus(topic: Topic, st: TopicState | undefined): SpineStatus {
 }
 
 /** 按 course 分组,保持 TOPICS 数组顺序(首次出现的课程排前) */
-function groupByCourse(topics: Topic[]): { course: string; topics: Topic[] }[] {
-  const groups: { course: string; topics: Topic[] }[] = [];
+function groupByCourse(topics: Topic[]): { key: string; course: string; topics: Topic[] }[] {
+  const groups: { key: string; course: string; topics: Topic[] }[] = [];
   for (const t of topics) {
-    const g = groups.find((x) => x.course === t.course);
+    const key = topicCourseKey(t);
+    const g = groups.find((group) => group.key === key);
     if (g) g.topics.push(t);
-    else groups.push({ course: t.course, topics: [t] });
+    else groups.push({ key, course: t.course, topics: [t] });
   }
   return groups;
 }
@@ -88,8 +90,8 @@ export function Bookshelf() {
   const customTopics = useAppStore((s) => s.customTopics);
 
   const courses = groupByCourse([...TOPICS, ...customTopics]);
-  const [openCourse, setOpenCourse] = useState(courses[0]?.course ?? '');
-  const current = courses.find((c) => c.course === openCourse) ?? courses[0];
+  const [openCourse, setOpenCourse] = useState(courses[0]?.key ?? '');
+  const current = courses.find((course) => course.key === openCourse) ?? courses[0];
   const currentCover = COURSE_COVERS[current.course];
 
   const openTopic = (topic: Topic) => {
@@ -118,13 +120,13 @@ export function Bookshelf() {
       {/* ── 函套排架:一门课一函,函厚随讲数 ── */}
       <div className={styles.caseUnit}>
         <div className={styles.caseRow}>
-          {courses.map(({ course, topics }, i) => {
-            const open = course === current.course;
+          {courses.map(({ key, course, topics }, i) => {
+            const open = key === current.key;
             const mastered = masteredOf(topics);
             const cover = COURSE_COVERS[course];
             return (
               <button
-                key={course}
+                key={key}
                 type="button"
                 className={`${styles.vol} ${styles[`volTone${i % 3}`]} ${open ? styles.volOpen : ''}`}
                 style={{
@@ -133,7 +135,7 @@ export function Bookshelf() {
                 }}
                 aria-expanded={open}
                 aria-controls="shelf-open"
-                onClick={() => setOpenCourse(course)}
+                onClick={() => setOpenCourse(key)}
               >
                 {cover && (
                   <img

@@ -496,6 +496,7 @@ test('custom content service runs create, upload, compile, review, publish and s
 
   const student = await service.listPublishedTopics(alice);
   assert.equal(student.length, 1);
+  assert.equal(student[0].customCourseId, course.id);
   assert.equal(Object.hasOwn(student[0].checklist[0], 'groundTruth'), false);
   assert.equal(Object.hasOwn(student[0].misconceptions[0], 'correctionCriteria'), false);
   assert.equal(Object.hasOwn(student[0], 'sources'), false);

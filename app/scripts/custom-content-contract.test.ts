@@ -5,12 +5,14 @@ import {
   hydrateTeacherRuntimeTopic,
   registerRuntimeTopics,
   runtimeTopic,
+  topicCourseKey,
 } from '../src/data/runtimeTopics';
 import { getTopic, TOPICS } from '../src/data';
 import { mergeEval, type EvaluateInput } from '../src/engine/evaluator';
 import type { EvalResult, TopicState } from '../src/types';
 
 const raw = {
+  customCourseId: '12345678-1234-4234-8234-123456789012',
   topicId: 'custom-12345678-abcdef12',
   title: '栈与函数调用',
   course: '数据结构',
@@ -57,6 +59,15 @@ registerRuntimeTopics([hydrated]);
 assert.equal(runtimeTopic(hydrated.topicId)?.title, hydrated.title);
 assert.equal(getTopic(hydrated.topicId)?.course, '数据结构');
 assert.equal(TOPICS.some((topic) => topic.topicId === hydrated.topicId), false, '运行时课题不得改写预埋课程数组');
+assert.equal(topicCourseKey(hydrated), 'custom:12345678-1234-4234-8234-123456789012');
+const sameTitleOtherCourse = hydrateRuntimeTopic({
+  ...raw,
+  topicId: 'custom-87654321-fedcba98',
+  customCourseId: '87654321-4321-4321-8321-210987654321',
+});
+assert.ok(sameTitleOtherCourse);
+registerRuntimeTopics([hydrated, sameTitleOtherCourse]);
+assert.notEqual(topicCourseKey(hydrated), topicCourseKey(sameTitleOtherCourse));
 registerRuntimeTopics([]);
 
 const teacherRaw = structuredClone(raw) as typeof raw & {
@@ -136,4 +147,4 @@ assert.match(prepSource, /TEACHER_TOPIC_RETRY_MS\[attempt\]/);
 assert.match(shellCss, /@media \(max-width: 520px\)[\s\S]*navGroup:has\(\.linkActive\) \.menuButton/);
 assert.doesNotMatch(apiSource, /X-API-Key|WK_API_KEY|WeKnora.*key/i, '浏览器 API 层不得持有 WeKnora 凭据');
 
-console.log('custom content contract: 38 assertions passed');
+console.log('custom content contract: 41 assertions passed');
