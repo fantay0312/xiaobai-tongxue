@@ -1,3 +1,12 @@
+# verify (2026-08-29 书斋/教师看板/成长册极简制式 PR #44)
+
+- 功能 ✓ 登录态公网实测：`/study` h1「不是 AI 教你，是你教会一个 AI」、h2「一课的走法 / 知识点书架」，页面无 `svg textPath` 转戳、无「知困然后能自强」引文；`/teacher` h1「教师看板」，h2「「讲不清」盲区榜 / 知识点学情 / 误区台账 / 近期会话」，正文不含「教务处」「泄漏率」；`/growth` h2 序列「童生 / 印章册 / 教学编年史 / 学问星海 / 金句画廊 / 小白的记忆 / 小白眼里的你」，无「卷X」章号。
+- 浏览器 ✓ 1440 桌面与 390 内嵌视口：三页根级横向溢出 0；题头 h1/h2 计算字体为 Cormorant Garamond/Songti 衬线。
+- 代码门禁 ✓ squash `c81a69a`；lint 仅既有 `fsImpl.ts:542` 两条 warning；tsc -b 通过；feedback / growth-hero / memory-panorama / landing-data / landing-motion / theme 契约通过。
+- 秘密/发布树 ✓ dist=提交树（`git diff d2af072 HEAD` 0 行）；精确密钥 0、`sk-` 0；tar SHA-256 `5b3807f30b26bba43667c092cd013ad872b924e595589512a611943da66b1ce7`，候选 226/226 一致。
+- 发布/回滚 ✓ release `20260829T062431Z-c81a69a-pr44-pages-minimal`；备份 `/var/backups/xiaobai/20260829T062431Z-c81a69a-pr44-pages-minimal`；回滚 `/opt/xiaobai/dist.prev-20260829T062431Z-c81a69a-pr44-pages-minimal`；仅切前端，`NRestarts=0`。
+- CDN/公网 ✓ `index.html` no-cache Cache Miss 引 `index-DbzUdZG4.js`；index/CSS/home/teacher/growth/landing 分包 SHA 与本地一致；`/api/me` 200，未登录 `/api/chat` 401。
+
 # verify (2026-08-29 宣传页产品页版式 PR #42)
 
 - 功能 ✓ 公网首页 h1「你来当老师，把知识讲明白。」，h2 序列「它会追问 / 考试不带提示 / 课后一页看清 / 一堂课上完，留下什么 / 3 门课程，38 个知识点 / 挑一课，开讲吧」；`body.innerText` 不含「演示」；主动作「开始讲课」→ `/study`，次动作平滑滚到 `#product`。
