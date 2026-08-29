@@ -25,7 +25,7 @@ export interface LlmPayload {
  * TODO(follow-up, server/**): server/index.mjs 的 ROLE 上限仍是 { xiaobai: 400, evaluator: 700 },需镜像为 800 / 2000;
  * 在此之前 proxy 模式会更频繁地出现「规则评估 · 离线台词」(批注页会如实标注)。
  */
-const ROLE_MAX_TOKENS: Record<LlmRole, number> = { xiaobai: 800, evaluator: 2000, report: 900, coach: 2200 };
+const ROLE_MAX_TOKENS: Record<LlmRole, number> = { xiaobai: 1200, evaluator: 2400, report: 900, coach: 2200 };
 
 /** 各角色温度(与服务器网关一致,proxy 模式下服务器按 role 重新裁决,不信客户端) */
 function roleTemperature(role: LlmRole, settings: LlmSettings): number {
@@ -56,6 +56,13 @@ export function chatCompletionsUrl(baseUrl: string): string {
   return `${root}/chat/completions`;
 }
 
+/** api 模式的思考预算:只对模型名含 deepseek 的端点下发(已实测 v4 系列接受 none/low),其余自带端点不发,
+ *  未知参数可能被判 400。小白关思考(none):台词照样自然、不再被思考挤空正文;评估器 low 保判定;与网关同策略。 */
+function apiReasoningEffort(role: LlmRole, settings: LlmSettings): { reasoning_effort?: 'none' | 'low' } {
+  if (role === 'coach' || !/deepseek/i.test(roleModel(role, settings))) return {};
+  return { reasoning_effort: role === 'xiaobai' ? 'none' : 'low' };
+}
+
 /** 各角色温度:评估恒 0,小白用用户配置 */
 export async function llmCall(
   role: LlmRole,
@@ -79,6 +86,7 @@ export async function llmCall(
         model: roleModel(role, settings),
         temperature: roleTemperature(role, settings),
         max_tokens: ROLE_MAX_TOKENS[role],
+        ...apiReasoningEffort(role, settings),
         ...(payload.json ? { response_format: { type: 'json_object' } } : {}),
         messages: [
           { role: 'system', content: payload.system },
