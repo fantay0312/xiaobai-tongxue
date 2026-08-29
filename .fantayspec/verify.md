@@ -1,3 +1,21 @@
+# verify (2026-08-29 宣传页产品页版式 PR #42)
+
+- 功能 ✓ 公网首页 h1「你来当老师，把知识讲明白。」，h2 序列「它会追问 / 考试不带提示 / 课后一页看清 / 一堂课上完，留下什么 / 3 门课程，38 个知识点 / 挑一课，开讲吧」；`body.innerText` 不含「演示」；主动作「开始讲课」→ `/study`，次动作平滑滚到 `#product`。
+- 浏览器 ✓ 1440 桌面与 390 内嵌视口：根级横向溢出 0；三要点卡、课后记录三行、课程三卡在窄屏降为单列；console 零 error。课堂窗口在后台标签页下中央为空属既有「不可见即暂停」设计。
+- 代码门禁 ✓ squash `76fff48`；lint 仅既有两条 warning；tsc -b 通过；landing-data / landing-motion / theme 契约通过；simulate 1565 全绿。
+- 秘密/发布树 ✓ dist=提交树（llm.ts/index.mjs 未提交改动已 stash 隔离构建）；精确密钥 0、`sk-` 长模式 0；tar SHA-256 `7dc4414350bc4575526bd1c34c8c3a061abc102a5c470cd0e628aaa15d7f5a3f`，候选目录 226/226 一致。
+- 发布/回滚 ✓ release `20260829T054039Z-76fff48-pr42-landing-product`；备份 `/var/backups/xiaobai/20260829T054039Z-76fff48-pr42-landing-product`；回滚 `/opt/xiaobai/dist.prev-20260829T054039Z-76fff48-pr42-landing-product`；仅切前端，`NRestarts=0`。
+- CDN/公网 ✓ `index.html` no-cache Cache Miss 引 `index-8Dtfs_FW.js`；index/主 JS/CSS/landing 分包 SHA 与本地一致；`/api/me` 200，未登录 `/api/chat` 401，HTTP→HTTPS 308。
+
+# verify (2026-08-28 PR #41 宣传页去说明)
+
+- 功能 ✓ 公网宣传页新标题「课后记录 / 课程 / 一课之后 / Token 与分词」；旧文案「3 门课程，38 个知识点已经开放」「看一次讲岔」不在页面。演示工作区可点「下一步」从备课切到讲解。
+- 浏览器 ✓ 桌面约 1291×862 与窄屏 390×844：`/`、`#/login`、`#/study`、`#/growth` 根级横向溢出 0；`#/teacher` 与 `/admin/#/login` 桌面正常。产品 console 无 error/warn（Playwright evaluate 触发的 CSP inline 不计）。
+- 代码门禁 ✓ squash `e78010a`；App lint 仅既有 `fsImpl.ts:542` 两条 warning；landing-data/landing-motion/feedback/conversation/growth/theme 契约通过；simulate 1565 全绿；无密钥 Vite 构建 229 文件。
+- 秘密/发布树 ✓ 精确密钥值 0 命中，`sk-` 长模式 0；tar SHA-256 `4e3e0b692edde504ea4a86900b05bef16d3e40144080c788a0f2ed8fe35edac4`，源站 229/229 清单一致。解包时 Debian tar 忽略 macOS `com.apple.provenance` 扩展头，文件内容哈希未受影响。
+- 发布/回滚 ✓ release `20260828T103341Z-e78010a-pr41-landing`；备份 `/var/backups/xiaobai/20260828T103341Z-e78010a-pr41-landing`；回滚 `/opt/xiaobai/dist.prev-20260828T103341Z-e78010a-pr41-landing`。仅切前端，服务未重启，`NRestarts=0`。
+- CDN/公网 ✓ 未刷目录。`index.html` no-cache Cache Miss，公网 index/主 JS/CSS/landing/home/login/growth 与本地逐字节一致。`/api/me` 200 no-store，`/api/chat` 未登录 401，HTTP→HTTPS 308，绕过 CDN 直连源站 403。
+
 # verify (2026-07-30 学问星海小星精修)
 - 视觉/功能 ✓ 突出知识星由 29px 空心轮廓改为 13px 实心四芒星，选中/焦点最大 13.78px；普通节点为 3px 实心光点、锁定节点 2px。桌面继续保留 6 突出 + 28 装饰星，手机 4 + 14；装饰星实测 3.17–7.95px、最高透明度 0.177。点击热区仍为 44×44px，Token 星选择、2 个语义邻星、证据面板、方向键焦点与状态筛选均正常。
 - 设计/浏览器 ✓ 原始四芒星参考与 625×656 星海区域经等比归一后放进同一张 1262×640 对照图；两轮修复把 18px 空心菱形继续收敛为 13px 实心光点。线上 1440×1000 与 390×844 均无根级横向溢出；30 星手机课程最小中心距 52.65px，浏览器 console 无 error/warning。`design-qa.md` 最终为 passed。
