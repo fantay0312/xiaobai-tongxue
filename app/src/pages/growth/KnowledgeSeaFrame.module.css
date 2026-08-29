@@ -1,7 +1,11 @@
+/* 学问星海外框:一块圆角深空,顶部课程页签 + 视图切换,底部一行计数与提示。
+   不再在框内重复页面题头,也不铺双线装裱。 */
+
 .atlas {
   overflow: clip;
-  border-radius: var(--radius);
+  border-radius: var(--radius-l);
 }
+
 .chart {
   --sky-deep: var(--star-sky-deep);
   --sky-moon: var(--star-sky-moon);
@@ -9,144 +13,123 @@
   --sky-blue: var(--star-sky-blue);
   position: relative;
   isolation: isolate;
-  padding: clamp(1rem, 2.2vw, 1.65rem);
-  border: 1px solid color-mix(in oklch, var(--sky-moon) 30%, transparent);
-  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid color-mix(in oklch, var(--sky-moon) 12%, transparent);
+  border-radius: var(--radius-l);
   background: var(--sky-deep);
-  box-shadow:
-    inset 0 0 0 5px var(--sky-deep),
-    inset 0 0 0 6px color-mix(in oklch, var(--sky-moon) 16%, transparent),
-    var(--shadow-paper);
-  color: var(--sky-moon);
-}
-.masthead {
-  display: grid;
-  grid-template-columns: auto minmax(12rem, 1fr) auto;
-  align-items: end;
-  gap: var(--gap);
-  padding: 0.1rem 0 var(--gap-tight);
-  border-bottom: 1px solid color-mix(in oklch, var(--sky-moon) 22%, transparent);
-}
-.kicker {
-  font-family: var(--font-typewriter);
-  font-size: 0.58rem;
-  letter-spacing: 0.17em;
-  color: var(--sky-muted);
-}
-
-.masthead h3 {
-  margin-top: 0.1rem;
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-  letter-spacing: 0.18em;
+  box-shadow: var(--shadow-paper);
   color: var(--sky-moon);
 }
 
-.masthead > p {
-  max-width: 28rem;
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  line-height: 1.65;
-  color: var(--sky-muted);
-}
-
-.masthead > span {
-  font-family: var(--font-code);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.08em;
-  color: var(--sky-muted);
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
   white-space: nowrap;
+  border: 0;
 }
 
-.survey {
+/* ── 顶部工具行 ── */
+
+.toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--gap);
-  padding: var(--gap-tight) 0 var(--gap-hair);
-  color: var(--sky-muted);
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-}
-
-.survey b {
-  color: var(--sky-moon);
-  font-family: var(--font-code);
-}
-
-.viewSwitch {
-  display: flex;
-  flex: none;
-  padding: 2px;
-  border: 1px solid color-mix(in oklch, var(--sky-moon) 22%, transparent);
-  border-radius: var(--radius-tag);
-}
-
-.viewSwitch button,
-.courseNav button {
-  border: 0;
-  background: transparent;
-  color: var(--sky-muted);
-  font-family: var(--font-display);
-  cursor: pointer;
-}
-
-.viewSwitch button {
-  min-width: 3rem;
-  min-height: 1.8rem;
-  padding: 0.1rem 0.5rem;
-  border-radius: var(--radius-tag);
-  font-size: var(--fs-tiny);
-}
-
-.viewSwitch button[aria-pressed='true'] {
-  background: color-mix(in oklch, var(--sky-moon) 12%, transparent);
-  color: var(--sky-moon);
+  padding: 0.7rem 1.1rem 0.7rem 1.25rem;
+  border-bottom: 1px solid color-mix(in oklch, var(--sky-moon) 9%, transparent);
 }
 
 .courseNav {
   display: flex;
   align-items: center;
-  gap: 0.15rem var(--gap);
+  gap: 0.2rem;
   min-width: 0;
-  padding: var(--gap-hair) 0 var(--gap-tight);
   overflow-x: auto;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+}
+
+.courseNav::-webkit-scrollbar {
+  display: none;
+}
+
+.courseNav button,
+.viewSwitch button {
+  border: 0;
+  background: transparent;
+  color: var(--sky-muted);
+  font-family: var(--font-body);
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .courseNav button {
-  position: relative;
+  display: inline-flex;
   flex: none;
-  min-height: 2.5rem;
-  padding: 0.3rem 0;
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.04em;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.1rem;
+  padding: 0 0.7rem;
+  border-radius: var(--radius);
+  font-size: var(--fs-small);
+  transition:
+    color var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out);
 }
 
-.courseNav button::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  bottom: 0.12rem;
-  left: 0;
-  height: 1px;
-  background: currentColor;
-  opacity: 0;
+.courseNav button:hover {
+  color: var(--sky-moon);
+  background: color-mix(in oklch, var(--sky-moon) 6%, transparent);
 }
 
 .courseNav button[aria-pressed='true'] {
   color: var(--sky-moon);
-}
-
-.courseNav button[aria-pressed='true']::after {
-  opacity: 0.8;
+  background: color-mix(in oklch, var(--sky-moon) 11%, transparent);
 }
 
 .courseNav small {
-  margin-left: 0.35rem;
   font-family: var(--font-code);
-  opacity: 0.72;
+  font-size: 0.7rem;
+  opacity: 0.6;
 }
+
+.courseNav button[aria-pressed='true'] small {
+  opacity: 0.8;
+}
+
+.viewSwitch {
+  display: inline-flex;
+  flex: none;
+  padding: 2px;
+  border-radius: var(--radius);
+  background: color-mix(in oklch, var(--sky-moon) 7%, transparent);
+}
+
+.viewSwitch button {
+  min-width: 3rem;
+  min-height: 1.75rem;
+  padding: 0 0.6rem;
+  border-radius: calc(var(--radius) - 2px);
+  font-size: var(--fs-tiny);
+  transition:
+    color var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out);
+}
+
+.viewSwitch button:hover {
+  color: var(--sky-moon);
+}
+
+.viewSwitch button[aria-pressed='true'] {
+  background: color-mix(in oklch, var(--sky-moon) 16%, transparent);
+  color: var(--sky-moon);
+}
+
+/* ── 星空舞台 ── */
 
 .skyStage {
   position: relative;
@@ -154,23 +137,42 @@
   min-width: 0;
 }
 
-.liveAnnouncement {
-  margin: 0 0 var(--gap-hair);
-  color: var(--sky-blue);
+/* ── 底部计数与提示 ── */
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding: 0.65rem 1.25rem;
+  border-top: 1px solid color-mix(in oklch, var(--sky-moon) 9%, transparent);
+  color: var(--sky-muted);
   font-size: var(--fs-tiny);
 }
 
+.survey {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.survey b {
+  color: var(--sky-moon);
+  font-family: var(--font-code);
+  font-weight: 500;
+}
+
 .hint {
-  margin-top: var(--gap-tight);
-  color: var(--sky-muted);
-  font-size: var(--fs-tiny);
+  margin: 0;
+  color: color-mix(in oklch, var(--sky-muted) 75%, transparent);
   text-align: right;
 }
+
+/* ── 名录视图 ── */
 
 .seaList {
   display: grid;
   gap: var(--gap-loose);
-  padding: var(--gap) 0;
+  padding: var(--gap) 1.25rem;
 }
 
 .listRealm header {
@@ -178,13 +180,14 @@
   justify-content: space-between;
   gap: var(--gap);
   padding-bottom: var(--gap-hair);
-  border-bottom: 1px solid color-mix(in oklch, var(--sky-moon) 18%, transparent);
+  border-bottom: 1px solid color-mix(in oklch, var(--sky-moon) 12%, transparent);
 }
 
 .listRealm h4 {
   color: var(--sky-moon);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: var(--fs-small);
+  font-weight: 600;
 }
 
 .listRealm header span {
@@ -196,7 +199,7 @@
 .listRealm ul {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.35rem var(--gap);
+  gap: 0.25rem var(--gap);
   margin: var(--gap-tight) 0 0;
   padding: 0;
   list-style: none;
@@ -207,12 +210,14 @@
   align-items: center;
   width: 100%;
   gap: var(--gap-tight);
-  padding: 0.45rem;
-  border: 1px solid transparent;
-  border-radius: var(--radius-s);
+  padding: 0.5rem 0.6rem;
+  border: 0;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--sky-muted);
+  font-family: var(--font-body);
   text-align: left;
+  transition: background var(--t-fast) var(--ease-out);
 }
 
 .listRealm button:not(:disabled) {
@@ -221,8 +226,7 @@
 
 .listRealm button:hover:not(:disabled),
 .listRealm button[aria-pressed='true'] {
-  border-color: color-mix(in oklch, var(--sky-moon) 25%, transparent);
-  background: color-mix(in oklch, var(--sky-moon) 6%, transparent);
+  background: color-mix(in oklch, var(--sky-moon) 8%, transparent);
 }
 
 .listRealm button:disabled {
@@ -243,63 +247,49 @@
   flex: none;
   width: 6px;
   height: 6px;
-  border: 1px solid currentColor;
   border-radius: 50%;
+  background: currentColor;
+  opacity: 0.7;
 }
 
 .listRealm b {
   display: block;
   color: var(--sky-moon);
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
+  font-size: var(--fs-small);
+  font-weight: 500;
 }
 
 .listRealm small {
   display: block;
   margin-top: 0.1rem;
-  font-size: 0.62rem;
-}
-
-@media (max-width: 960px) {
-  .masthead {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .masthead > p {
-    display: none;
-  }
+  font-size: 0.68rem;
 }
 
 @media (max-width: 720px) {
-  .chart {
-    padding: var(--gap-tight);
-  }
-
-  .masthead > span {
-    display: none;
-  }
-
-  .survey {
-    align-items: flex-start;
-  }
-
-  .survey > p {
-    max-width: 15rem;
+  .toolbar {
+    padding-inline: 0.75rem;
   }
 
   .allSea {
     display: none;
   }
 
-  .courseNav {
-    gap: var(--gap);
-  }
-
-  .listRealm ul {
-    grid-template-columns: 1fr;
+  .foot {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    padding-inline: 0.9rem;
   }
 
   .hint {
     text-align: left;
+  }
+
+  .seaList {
+    padding-inline: 0.9rem;
+  }
+
+  .listRealm ul {
+    grid-template-columns: 1fr;
   }
 }

@@ -1797,15 +1797,14 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4em;
-  padding: 0.24rem 0.6rem;
+  min-height: 2rem;
+  padding: 0 0.7rem;
   border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-tag);
+  border-radius: var(--radius);
   background: none;
   color: var(--ink-soft);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-family: var(--font-body);
+  font-size: var(--fs-small);
   cursor: pointer;
   touch-action: manipulation;
   transition:
@@ -1818,21 +1817,25 @@
 .filterChip::after {
   content: '';
   position: absolute;
-  inset: -0.5rem;
+  inset: -0.35rem;
 }
 
-.filterChip:hover { border-color: var(--azure); color: var(--azure); }
+.filterChip:hover { border-color: var(--line-strong); color: var(--ink); }
 
 .filterChip[aria-pressed='true'] {
-  border-color: var(--azure);
-  background: var(--azure-wash);
-  color: var(--azure);
+  border-color: transparent;
+  background: var(--ink-wash);
+  color: var(--ink);
 }
 
 .filterCount {
+  color: var(--ink-faint);
   font-family: var(--font-code);
-  font-weight: 700;
+  font-size: var(--fs-tiny);
+  font-weight: 500;
 }
+
+.filterChip[aria-pressed='true'] .filterCount { color: var(--ink-soft); }
 
 .swatch {
   display: inline-block;

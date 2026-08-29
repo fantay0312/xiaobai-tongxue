@@ -149,7 +149,7 @@ export function StarSkyCanvas({
 
       ctx.lineWidth = 0.7;
       ctx.strokeStyle = palette.moon;
-      ctx.globalAlpha = 0.055;
+      ctx.globalAlpha = 0.035;
       const meridians = compact ? 4 : 6;
       const steps = compact ? 24 : 32;
       for (let meridian = 0; meridian < meridians; meridian += 1) {

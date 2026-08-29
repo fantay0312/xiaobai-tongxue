@@ -1,6 +1,7 @@
 /**
  * 学问星海：所有课程共用一片连续深空。知识点仍一讲一星，但只让少量主星
  * 常显星芒与题名；其余节点收成可交互星核，选中时才展开真实语义星链。
+ * 框内不重复页面题头:顶部只留课程页签与视图切换,底部一行计数与操作提示。
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Topic, TopicState } from '../../types';
@@ -83,58 +84,42 @@ export function KnowledgeMap({
   return (
     <div className={s.atlas}>
       <div className={s.chart} role="group" aria-label="学问星海，一讲一星">
-        <header className={s.masthead}>
-          <div>
-            <p className={s.kicker}>CELESTIAL LEARNING ARCHIVE</p>
-            <h3>学问星海</h3>
-          </div>
-          <p>一片星海，照见每一讲的掌握证据。</p>
-          <span>观测纪元 · {new Date().getFullYear()}</span>
-        </header>
-
-        <div className={s.survey}>
-          <p>
-            全海 <b>{nodes.length}</b> 题 · 已明 <b>{litStars}</b> · 雾中 <b>{fogStars}</b>
-            {bridge ? (
-              <> · {bridge.toFull > 0 ? <>距《全谱》还差 <b>{bridge.toFull}</b> 星</> : '《全谱》已成'} · 已落印 <b>{bridge.seals}</b> 枚</>
-            ) : null}
-          </p>
+        <div className={s.toolbar}>
+          <nav className={s.courseNav} aria-label="按课程巡览星海">
+            <button
+              type="button"
+              className={s.allSea}
+              aria-pressed={courseFocus === null}
+              onClick={() => setCourseFocus(null)}
+            >
+              全部
+            </button>
+            {realms.map((realm) => (
+              <button
+                key={realm.course}
+                type="button"
+                aria-pressed={courseFocus === realm.course}
+                onClick={() => {
+                  setCourseFocus(realm.course);
+                  const firstAvailable = realm.nodes.find((node) => node.status !== 'locked');
+                  if (firstAvailable && firstAvailable.topic.topicId !== selectedId) {
+                    onSelect(firstAvailable.topic.topicId);
+                  }
+                }}
+              >
+                {realm.course}
+                <small>{realm.nodes.filter((node) => node.status === 'mastered').length}/{realm.nodes.length}</small>
+              </button>
+            ))}
+          </nav>
           <div className={s.viewSwitch} role="group" aria-label="星海视图">
             <button type="button" aria-pressed={viewMode === 'chart'} onClick={() => setViewMode('chart')}>星图</button>
             <button type="button" aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')}>名录</button>
           </div>
         </div>
 
-        <nav className={s.courseNav} aria-label="按课程巡览星海">
-          <button
-            type="button"
-            className={s.allSea}
-            aria-pressed={courseFocus === null}
-            onClick={() => setCourseFocus(null)}
-          >
-            全海
-          </button>
-          {realms.map((realm) => (
-            <button
-              key={realm.course}
-              type="button"
-              aria-pressed={courseFocus === realm.course}
-              onClick={() => {
-                setCourseFocus(realm.course);
-                const firstAvailable = realm.nodes.find((node) => node.status !== 'locked');
-                if (firstAvailable && firstAvailable.topic.topicId !== selectedId) {
-                  onSelect(firstAvailable.topic.topicId);
-                }
-              }}
-            >
-              《{realm.course}》
-              <small>{realm.nodes.filter((node) => node.status === 'mastered').length}/{realm.nodes.length}</small>
-            </button>
-          ))}
-        </nav>
-
         {selectedNode ? (
-          <p className={s.liveAnnouncement} role="status">
+          <p className={s.srOnly} role="status">
             正在观测《{selectedNode.topic.title}》 · {STATUS_TEXT[selectedNode.status]}
           </p>
         ) : null}
@@ -161,9 +146,17 @@ export function KnowledgeMap({
           {children}
         </div>
 
-        <p className={s.hint}>
-          {compact ? '先选课程，再点星观测；可切到名录查找。' : '方向键巡星，回车展开证据；点课程可收拢星区。'}
-        </p>
+        <div className={s.foot}>
+          <p className={s.survey}>
+            已明 <b>{litStars}</b> · 雾中 <b>{fogStars}</b> · 共 <b>{nodes.length}</b> 讲
+            {bridge ? (
+              <> · {bridge.toFull > 0 ? <>距全谱 <b>{bridge.toFull}</b> 星</> : '全谱已成'}</>
+            ) : null}
+          </p>
+          <p className={s.hint}>
+            {compact ? '先选课程，再点星查看；可切到名录查找。' : '方向键巡星，回车展开证据。'}
+          </p>
+        </div>
       </div>
     </div>
   );

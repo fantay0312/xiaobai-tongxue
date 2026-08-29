@@ -1,5 +1,5 @@
-/** 个人中心：桌面双栏设置页，保留 native dialog 的焦点、Escape 与滚动纪律。 */
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+/** 个人中心:桌面双栏设置页(左目录 + 右一列设置行),保留 native dialog 的焦点、Escape 与滚动纪律。 */
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
@@ -29,15 +29,13 @@ const PROFILE_SECTIONS = [
     id: 'overview',
     label: '个人资料',
     icon: 'school',
-    kicker: '书斋名帖',
-    title: '个人中心',
-    description: '管理头像，查看学习身份、账号状态与常用入口。',
+    title: '个人资料',
+    description: '头像、学习身份、账号状态与常用入口。',
   },
   {
     id: 'commerce',
     label: '订阅与用量',
     icon: 'ticket',
-    kicker: '用量账簿',
     title: '订阅与用量',
     description: '查看套餐、有效权益、用量积分并兑换 CDK。',
   },
@@ -45,7 +43,6 @@ const PROFILE_SECTIONS = [
     id: 'security',
     label: '账号与安全',
     icon: 'phone',
-    kicker: '凭证簿',
     title: '账号与安全',
     description: '管理手机号、邮箱与登录密码。',
   },
@@ -53,7 +50,6 @@ const PROFILE_SECTIONS = [
     id: 'records',
     label: '成绩单与数据',
     icon: 'file',
-    kicker: '档案袋',
     title: '成绩单与数据',
     description: '上传、预览、替换或下载你的成绩单。',
   },
@@ -61,7 +57,6 @@ const PROFILE_SECTIONS = [
     id: 'preferences',
     label: '偏好设置',
     icon: 'settings',
-    kicker: '书斋陈设',
     title: '偏好设置',
     description: '调整台词、语音与学习引路方式。',
   },
@@ -70,26 +65,10 @@ const PROFILE_SECTIONS = [
 type ProfileSection = (typeof PROFILE_SECTIONS)[number]['id'];
 type SecurityFlow = 'phone' | 'email' | 'password';
 
-const SECURITY_FLOW_META: Record<SecurityFlow, {
-  kicker: string;
-  title: string;
-  description: string;
-}> = {
-  phone: {
-    kicker: '安全核验',
-    title: '更换手机号',
-    description: '先验证当前身份，再设置并验证新的手机号。',
-  },
-  email: {
-    kicker: '安全核验',
-    title: '更换邮箱',
-    description: '先验证当前身份，再设置并验证新的邮箱。',
-  },
-  password: {
-    kicker: '安全核验',
-    title: '修改登录密码',
-    description: '先验证当前身份，再设置新的登录密码。',
-  },
+const SECURITY_FLOW_META: Record<SecurityFlow, { title: string; description: string }> = {
+  phone: { title: '更换手机号', description: '先验证当前身份，再设置并验证新的手机号。' },
+  email: { title: '更换邮箱', description: '先验证当前身份，再设置并验证新的邮箱。' },
+  password: { title: '修改登录密码', description: '先验证当前身份，再设置新的登录密码。' },
 };
 
 export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogProps) {
@@ -248,12 +227,9 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
       onClick={handleBackdropClick}
     >
       <aside className={styles.rail} aria-label="个人中心导航">
-        <div className={styles.railTop}>
-          <button ref={closeRef} type="button" className={styles.closeBtn} onClick={onClose} aria-label="关闭个人中心">
-            <Icon name="x" size={19} />
-          </button>
-          <span className={styles.railBrand}>学伴书斋</span>
-        </div>
+        <button ref={closeRef} type="button" className={styles.closeBtn} onClick={onClose} aria-label="关闭个人中心">
+          <Icon name="x" size={18} />
+        </button>
 
         <div className={styles.railIdentity}>
           <ProfileAvatar name={user} src={avatar} size="rail" />
@@ -273,7 +249,7 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
               aria-current={activeSection === section.id ? 'page' : undefined}
               onClick={() => selectSection(section.id)}
             >
-              <Icon name={section.icon} size={18} />
+              <Icon name={section.icon} size={17} className={styles.navIcon} />
               <span>{section.label}</span>
             </button>
           ))}
@@ -282,181 +258,124 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
         <div className={styles.railFoot}>
           {logoutIssue ? <p className={styles.logoutIssue} role="alert">{logoutIssue}</p> : null}
           <button className={styles.logoutBtn} type="button" disabled={logoutBusy} onClick={() => void handleLogout()}>
-            <Icon name="logout" size={17} />
-            <span>{logoutBusy ? '正在退出…' : '退出当前账号'}</span>
+            <Icon name="logout" size={16} className={styles.navIcon} />
+            <span>{logoutBusy ? '正在退出…' : '退出登录'}</span>
           </button>
         </div>
       </aside>
 
       <main className={styles.main}>
         <header className={styles.contentHead}>
-          <div>
-            <p className={styles.eyebrow}>{activeMeta.kicker}</p>
-            <h2 className={styles.title} id="profile-title">{activeMeta.title}</h2>
-            <p className={styles.description} id="profile-description">{activeMeta.description}</p>
-          </div>
-          <span className={styles.sectionIndex} aria-hidden="true">
-            {String(PROFILE_SECTIONS.findIndex((section) => section.id === activeSection) + 1).padStart(2, '0')}
-          </span>
+          <h2 className={styles.title} id="profile-title">{activeMeta.title}</h2>
+          <p className={styles.srOnly} id="profile-description">{activeMeta.description}</p>
         </header>
 
         <div ref={scrollRef} className={styles.scroll}>
           {activeSection === 'overview' ? (
             <>
-              <article
-                className={styles.identity}
-                aria-label={`${accountName} · 师道${rank.title} · 小白科名${stageMeta.name}·${stageMeta.description} · 学识第 ${wisdom.level} 阶`}
-              >
-                <div className={styles.identityHead}>
-                  <ProfileAvatarEditor account={accountName}>
-                    <p className={styles.accountKind}>授课账号 · 个人名帖</p>
-                    <p className={styles.userName}>{accountName}</p>
-                  </ProfileAvatarEditor>
-                  <Link
-                    className={styles.identityArrow}
-                    to="/growth"
-                    onClick={onClose}
-                    aria-label="翻开成长册"
-                  >
-                    <Icon name="chevron-right" size={18} />
+              <div className={styles.rows}>
+                <ProfileAvatarEditor account={accountName}>头像</ProfileAvatarEditor>
+                <Row label="用户名">
+                  <span className={styles.value}>{accountName}</span>
+                </Row>
+                <Row label="学习身份" note={`${rank.title} · ${stageMeta.name}，${stageMeta.description}`}>
+                  <span className={styles.value}>学识第 {wisdom.level} 阶</span>
+                  <Link className={styles.rowLink} to="/growth" onClick={onClose}>
+                    成长册 <Icon name="arrow-right" size={14} />
                   </Link>
-                </div>
-                <div className={styles.creds}>
-                  <span className={styles.rankChip}>{rank.title}</span>
-                  <span className={styles.credChip}>科名 · {stageMeta.name} · {stageMeta.description}</span>
-                  <span className={styles.credChip}>学识第 {wisdom.level} 阶</span>
-                </div>
-                <div className={styles.credentialGrid}>
-                  <p>
-                    <Icon name="phone" size={15} />
-                    <span>{phoneSummary}</span>
-                    <small data-pending={phoneBindingRequired || undefined}>
-                      {phoneBindingRequired ? '待绑定' : '已验证'}
-                    </small>
-                  </p>
-                  <p>
-                    <Icon name="mail" size={15} />
-                    <span>{emailSummary}</span>
-                    <small data-pending={emailBindingRequired || undefined}>
-                      {emailBindingRequired ? '待补录' : '已验证'}
-                    </small>
-                  </p>
-                </div>
-                <Link className={styles.identityHint} to="/growth" onClick={onClose}>
-                  翻开成长册，查看完整学习轨迹 <Icon name="arrow-right" size={14} />
-                </Link>
-              </article>
+                </Row>
+                <Row label="手机">
+                  <span className={styles.value}>{phoneSummary}</span>
+                  <span className={styles.state} data-pending={phoneBindingRequired || undefined}>
+                    {phoneBindingRequired ? '待绑定' : '已验证'}
+                  </span>
+                </Row>
+                <Row label="邮箱">
+                  <span className={styles.value}>{emailSummary}</span>
+                  <span className={styles.state} data-pending={emailBindingRequired || undefined}>
+                    {emailBindingRequired ? '待补录' : '已验证'}
+                  </span>
+                </Row>
+              </div>
 
-              <section className={styles.section} aria-labelledby="quick-entry-title">
-                <div className={styles.sectionLead}>
-                  <div>
-                    <h3 id="quick-entry-title">常用入口</h3>
-                    <p>从这里继续学习，或回看小白的成长。</p>
-                  </div>
-                </div>
-                <nav className={styles.entries} aria-label="学习入口">
-                  <Link className={styles.entry} to="/study" onClick={onClose}>
-                    <span className={styles.entryTile}><Icon name="book-open" size={18} /></span>
-                    <span className={styles.entryCopy}><strong>回到书斋</strong><small>继续选择课程与知识点</small></span>
-                    <Icon name="chevron-right" size={16} className={styles.entryChevron} />
-                  </Link>
-                  <Link className={styles.entry} to="/growth" onClick={onClose}>
-                    <span className={styles.entryTile}><Icon name="graduation" size={18} /></span>
-                    <span className={styles.entryCopy}><strong>查看成长册</strong><small>回看教学轨迹与小白成长</small></span>
-                    <Icon name="chevron-right" size={16} className={styles.entryChevron} />
-                  </Link>
-                </nav>
-              </section>
+              <h3 className={styles.groupTitle} id="quick-entry-title">常用入口</h3>
+              <nav className={styles.rows} aria-labelledby="quick-entry-title">
+                <Link className={styles.entry} to="/study" onClick={onClose}>
+                  <span className={styles.entryCopy}><span>回到书斋</span><small>继续选择课程与知识点</small></span>
+                  <Icon name="chevron-right" size={16} className={styles.entryChevron} />
+                </Link>
+                <Link className={styles.entry} to="/growth" onClick={onClose}>
+                  <span className={styles.entryCopy}><span>查看成长册</span><small>回看教学轨迹与小白成长</small></span>
+                  <Icon name="chevron-right" size={16} className={styles.entryChevron} />
+                </Link>
+              </nav>
             </>
           ) : null}
 
           {activeSection === 'security' && !securityFlow ? (
             <>
-              <section className={styles.section} aria-labelledby="security-title">
-                <div className={styles.sectionLead}>
-                  <div>
-                    <h3 id="security-title">登录凭证</h3>
-                    <p>已验证的凭证可用于登录与找回账号。</p>
-                  </div>
-                  <span className={allCredentialsReady ? styles.readyBadge : styles.todoBadge}>
-                    {allCredentialsReady ? '凭证齐备' : '仍需补全'}
-                  </span>
-                </div>
-                <div className={styles.statusList}>
-                  <div className={styles.statusRow}>
-                    <span className={styles.statusTile}><Icon name="phone" size={18} /></span>
-                    <div><strong>手机凭证</strong><span>{phoneSummary}</span></div>
-                    {phoneBindingRequired ? <small data-pending="true">待验证</small> : (
-                      <button
-                        ref={phoneToggleRef}
-                        className={styles.statusAction}
-                        type="button"
-                        onClick={() => openSecurityFlow('phone')}
-                      >
-                        <span>更换手机号</span>
-                        <Icon name="chevron-right" size={15} />
-                      </button>
-                    )}
-                  </div>
-                  <div className={styles.statusRow}>
-                    <span className={styles.statusTile}><Icon name="mail" size={18} /></span>
-                    <div><strong>邮箱凭证</strong><span>{emailSummary}</span></div>
-                    {emailBindingRequired ? <small data-pending="true">待验证</small> : (
-                      <button
-                        ref={emailToggleRef}
-                        className={styles.statusAction}
-                        type="button"
-                        onClick={() => openSecurityFlow('email')}
-                      >
-                        <span>更换邮箱</span>
-                        <Icon name="chevron-right" size={15} />
-                      </button>
-                    )}
-                  </div>
-                  <div className={styles.statusRow}>
-                    <span className={styles.statusTile} data-secure="true">
-                      <Icon name="circle-check" size={18} />
-                    </span>
-                    <div><strong>登录密码</strong><span>用于邮箱或账号 + 密码登录</span></div>
+              <div className={styles.groupHead}>
+                <h3 className={styles.groupTitle} id="security-title">登录凭证</h3>
+                <span className={styles.state} data-pending={!allCredentialsReady || undefined}>
+                  {allCredentialsReady ? '凭证齐备' : '仍需补全'}
+                </span>
+              </div>
+              <div className={styles.rows} aria-labelledby="security-title">
+                <Row label="手机号" note={phoneSummary}>
+                  {phoneBindingRequired ? <span className={styles.state} data-pending="true">待验证</span> : (
                     <button
-                      ref={passwordToggleRef}
-                      className={styles.statusAction}
+                      ref={phoneToggleRef}
+                      className={styles.btn}
                       type="button"
-                      onClick={() => openSecurityFlow('password')}
+                      onClick={() => openSecurityFlow('phone')}
                     >
-                      <span>修改密码</span>
-                      <Icon name="chevron-right" size={15} />
+                      更换
                     </button>
-                  </div>
-                </div>
-                {securityNotice ? <p className={styles.notice} role="status">{securityNotice}</p> : null}
-              </section>
+                  )}
+                </Row>
+                <Row label="邮箱" note={emailSummary}>
+                  {emailBindingRequired ? <span className={styles.state} data-pending="true">待验证</span> : (
+                    <button
+                      ref={emailToggleRef}
+                      className={styles.btn}
+                      type="button"
+                      onClick={() => openSecurityFlow('email')}
+                    >
+                      更换
+                    </button>
+                  )}
+                </Row>
+                <Row label="登录密码" note="用于邮箱或账号 + 密码登录">
+                  <button
+                    ref={passwordToggleRef}
+                    className={styles.btn}
+                    type="button"
+                    onClick={() => openSecurityFlow('password')}
+                  >
+                    修改
+                  </button>
+                </Row>
+              </div>
+              {securityNotice ? <p className={styles.notice} role="status">{securityNotice}</p> : null}
 
               {emailBindingRequired || phoneBindingRequired ? (
-                <section className={styles.section} aria-labelledby="binding-title">
-                  <div className={styles.sectionLead}>
-                    <div>
-                      <h3 id="binding-title">补全账号</h3>
-                      <p>完成所缺凭证后，即可解锁完整业务页面。</p>
-                    </div>
-                  </div>
-                  <nav className={styles.entries} aria-label="账号补全入口">
+                <>
+                  <h3 className={styles.groupTitle} id="binding-title">补全账号</h3>
+                  <nav className={styles.rows} aria-labelledby="binding-title">
                     {emailBindingRequired ? (
                       <Link className={styles.entry} to="/login?next=%2Fstudy" onClick={onClose}>
-                        <span className={styles.entryTile}><Icon name="mail" size={18} /></span>
-                        <span className={styles.entryCopy}><strong>补录验证邮箱</strong><small>完成验证后解锁备课与讲解</small></span>
+                        <span className={styles.entryCopy}><span>补录验证邮箱</span><small>完成验证后解锁备课与讲解</small></span>
                         <Icon name="chevron-right" size={16} className={styles.entryChevron} />
                       </Link>
                     ) : null}
                     {phoneBindingRequired ? (
                       <Link className={styles.entry} to="/login?next=%2Fstudy" onClick={onClose}>
-                        <span className={styles.entryTile}><Icon name="phone" size={18} /></span>
-                        <span className={styles.entryCopy}><strong>绑定验证手机号</strong><small>完成验证后解锁全部业务页面</small></span>
+                        <span className={styles.entryCopy}><span>绑定验证手机号</span><small>完成验证后解锁全部业务页面</small></span>
                         <Icon name="chevron-right" size={16} className={styles.entryChevron} />
                       </Link>
                     ) : null}
                   </nav>
-                </section>
+                </>
               ) : null}
             </>
           ) : null}
@@ -497,41 +416,39 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
           {activeSection === 'commerce' ? <ProfileCommerce /> : null}
 
           {activeSection === 'records' ? (
-            <section className={styles.section} aria-labelledby="transcript-title">
-              <div className={styles.sectionLead}>
-                <div>
-                  <h3 id="transcript-title">我的成绩单</h3>
-                  <p>支持 PDF 与常见图片格式，上传后可随时预览、下载或替换。</p>
-                </div>
+            <>
+              <div className={styles.groupHead}>
+                <h3 className={styles.groupTitle} id="transcript-title">我的成绩单</h3>
+                <span className={styles.groupNote}>PDF 或常见图片，可随时预览、下载或替换</span>
               </div>
               <TranscriptUpload enabled={allCredentialsReady} />
-            </section>
+            </>
           ) : null}
 
           {activeSection === 'preferences' ? (
-            <section className={styles.section} aria-labelledby="preferences-title">
-              <div className={styles.sectionLead}>
-                <div>
-                  <h3 id="preferences-title">学习体验</h3>
-                  <p>偏好设置会在独立面板中打开，便于专心调整。</p>
-                </div>
-              </div>
-              <button className={styles.preferenceEntry} type="button" onClick={onOpenSettings}>
-                <span className={styles.preferenceIcon}><Icon name="settings" size={22} /></span>
-                <span>
-                  <strong>打开偏好设置</strong>
-                  <small>调整台词、语音与引路方式</small>
-                </span>
-                <Icon name="chevron-right" size={17} className={styles.entryChevron} />
-              </button>
-              <div className={styles.preferenceNote}>
-                <Icon name="sparkles" size={18} />
-                <p><strong>一处调整，贯穿书斋</strong><span>修改后，相关学习页面会采用新的体验偏好。</span></p>
-              </div>
-            </section>
+            <div className={styles.rows}>
+              <Row label="偏好设置" note="外观、台词引擎、语音输入与新手引路">
+                <button className={styles.btn} type="button" onClick={onOpenSettings}>
+                  打开
+                </button>
+              </Row>
+            </div>
           ) : null}
         </div>
       </main>
     </dialog>
+  );
+}
+
+/** 设置行:左标签(可带一行注),右侧值或动作 */
+function Row({ label, note, children }: { label: string; note?: string; children: ReactNode }) {
+  return (
+    <div className={styles.row}>
+      <div className={styles.rowCopy}>
+        <span className={styles.rowLabel}>{label}</span>
+        {note ? <span className={styles.rowNote}>{note}</span> : null}
+      </div>
+      <div className={styles.rowControl}>{children}</div>
+    </div>
   );
 }
