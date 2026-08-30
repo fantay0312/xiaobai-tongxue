@@ -416,9 +416,19 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 .issueList { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 0.35rem var(--gap-loose); margin: 0; padding: 0; list-style: none; }
 .issueList li { display: grid; grid-template-columns: 1.4rem minmax(0, 1fr); gap: 0.4rem; padding: 0.45rem 0; border-top: 1px solid var(--paper-edge); }
 .issueList li > span { font-size: var(--fs-tiny); color: var(--cinnabar); font-variant-numeric: tabular-nums; }
-.issueList p { display: grid; gap: 0.15rem; min-width: 0; }
-.issueList strong { font-size: var(--fs-small); font-weight: 600; color: var(--ink); line-height: 1.5; }
+.issueJump { display: grid; gap: 0.15rem; min-width: 0; margin: 0; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; border-radius: 4px; }
+.issueJump:hover strong { color: var(--cinnabar); }
+.issueJump:focus-visible { outline: 2px solid var(--cinnabar); outline-offset: 3px; }
+.issueList strong { font-size: var(--fs-small); font-weight: 600; color: var(--ink); line-height: 1.5; transition: color 160ms ease; }
 .issueList small { color: var(--ink-faint); font-size: var(--fs-tiny); overflow-wrap: anywhere; }
+.issueWarn { display: inline-block; margin-left: 0.4rem; padding: 0 0.35rem; border: 1px solid var(--paper-edge); border-radius: 999px; color: var(--ink-faint); font-size: var(--fs-tiny); font-style: normal; font-weight: 500; vertical-align: 0.1em; }
+
+/* 校验条一键跳转落点:闪一下告诉老师「就是这里」 */
+.flash { animation: draftFlash 1.6s ease-out; border-radius: 6px; }
+@keyframes draftFlash {
+  0% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--cinnabar) 55%, transparent); background-color: color-mix(in srgb, var(--cinnabar) 9%, transparent); }
+  100% { box-shadow: 0 0 0 3px transparent; background-color: transparent; }
+}
 
 /* ── 校订台(草稿编辑) ── */
 
