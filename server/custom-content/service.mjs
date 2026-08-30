@@ -752,7 +752,7 @@ function stableCompilerError(error) {
   const code = String(error?.message ?? 'compile-failed').split(':', 1)[0];
   const allowed = new Set([
     'compiler-no-chunks', 'compiler-invalid-json', 'compiler-timeout', 'compiler-rate-limited',
-    'compiler-upstream-failed', 'compiler-empty', 'weknora-timeout', 'weknora-unreachable',
+    'compiler-upstream-failed', 'compiler-empty', 'compiler-truncated', 'weknora-timeout', 'weknora-unreachable',
     'weknora-upstream-failed',
   ]);
   return allowed.has(code) ? code : 'compile-failed';
@@ -1145,7 +1145,7 @@ export function createCustomContentService({
         });
         if (!attached) throw new Error('compile-attach-failed');
       } catch (error) {
-        logger.error?.('[custom-content] compile failed:', stableCompilerError(error));
+        logger.error?.('[custom-content] compile failed:', stableCompilerError(error), String(error?.message ?? '').slice(0, 160));
         await repository.jobs.transitionClaimed(job.id, leaseToken, {
           status: 'failed',
           errorCode: stableCompilerError(error),
