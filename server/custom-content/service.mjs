@@ -1632,7 +1632,8 @@ export function createCustomContentService({
           const task = await weknora.upsertFaqEntries(course.wkFaqKbId, faqEntries, requestId);
           if (!task?.task_id) throw new Error('faq-task-missing');
           await weknora.waitForFaqImport(task.task_id, requestId);
-        })().catch(() => {
+        })().catch((error) => {
+          logger.error?.('[custom-content] faq sync failed:', String(error?.message ?? '').split(':', 1)[0]);
           throw publicError('faq-sync-failed', 502);
         });
       }

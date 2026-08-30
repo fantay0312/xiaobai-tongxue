@@ -911,6 +911,16 @@ export default function CustomContentPage() {
   const workspaceMatchesOwner = workspaceOwner === authUser;
   const visibleService = workspaceMatchesOwner ? service : 'checking';
   const visibleNotice = workspaceMatchesOwner ? notice : '';
+  // 提示条在页首、发布钮在页尾:失败提示若落在视口外,老师只看到按钮「没反应」——不在视口内就滚到眼前
+  const noticeRef = useRef<HTMLParagraphElement | null>(null);
+  useEffect(() => {
+    const el = noticeRef.current;
+    if (!visibleNotice || !el) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.top >= 0 && rect.bottom <= window.innerHeight) return;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
+  }, [visibleNotice]);
   const focusNewCourse = () => document.getElementById('new-course')?.focus();
 
   // 三步流程票签的活态:资料入库 → 编成课题 → 校订发布,按当前工作台状态点亮
@@ -932,7 +942,7 @@ export default function CustomContentPage() {
         </ol>
       </header>
 
-      {visibleNotice ? <p className={s.notice} role="status"><Icon name="circle-help" size={16} />{visibleNotice}</p> : null}
+      {visibleNotice ? <p ref={noticeRef} className={s.notice} role="status"><Icon name="circle-help" size={16} />{visibleNotice}</p> : null}
       {visibleService !== 'ready' ? (
         <section className={`${s.unavailable} ${s.rise}`} role="status" style={{ animationDelay: '90ms' }}>
           <h2>{visibleService === 'checking' ? '正在连接资料服务…' : '资料服务暂时没有应答'}</h2>

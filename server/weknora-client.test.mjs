@@ -134,3 +134,21 @@ test('WeKnora client accepts only an explicit api/v1 base and private HTTP trans
     /weknora-base-url-insecure/,
   );
 });
+
+test('WeKnora FAQ import wait accepts underscored task ids and resolves on completed', async () => {
+  // 线上 task_id 形如 faq_import_10000_1788102686874_bc594e7e_1f07dec6e6e;旧正则不含 "_" 会把成功导入判成 invalid
+  const polls = [];
+  await withServer(async (req, res) => {
+    polls.push(req.url);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true, data: { status: polls.length === 1 ? 'processing' : 'completed', added_count: 3 } }));
+  }, async (baseUrl) => {
+    const client = createWeKnoraClient({ baseUrl, apiKey: 'wk-test-key' });
+    const done = await client.waitForFaqImport('faq_import_10000_1788102686874_bc594e7e_1f07dec6e6e', 'trace-faq');
+    assert.equal(done.added_count, 3);
+    await assert.rejects(client.waitForFaqImport('bad task/id', 'trace-faq'), /weknora-faq-task-invalid/);
+  });
+  assert.equal(polls.length, 2);
+  assert.equal(polls[0], '/api/v1/faq/import/progress/faq_import_10000_1788102686874_bc594e7e_1f07dec6e6e');
+});
+
