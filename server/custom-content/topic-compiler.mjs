@@ -5,7 +5,12 @@ const MAX_SOURCE_CHARS = 72_000;
 
 function parseJsonObject(raw) {
   const clean = String(raw ?? '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  const parsed = JSON.parse(clean);
+  let parsed;
+  try {
+    parsed = JSON.parse(clean);
+  } catch {
+    throw new Error('compiler-invalid-json');
+  }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('compiler-invalid-json');
   return parsed;
 }
@@ -160,55 +165,96 @@ function evaluationPrompt({ topic, utterance, lastXiaobaiText, hitChecklist, pen
   return { system, user };
 }
 
+/** 2026-08-30 线上「编译未完成」根因:deepseek-v4-pro/flash 都是推理模型,不带 reasoning_effort 时思考会把
+ *  8000 max_tokens 整个吃光(实测 reasoning_tokens=8000、finish=length、正文 0 字 → compiler-empty)。
+ *  默认 low:24k 字课件 reasoning ≈2k token、65s 出 6k 字 JSON;72k 字满量 reasoning 2.7–4.3k token,
+ *  8000 仍会把正文截成断尾 JSON(finish=length),故 max_tokens 提到 16000(官方 v4 输出上限 384K,只是上限不加开销)。
+ *  上游不认该参数 400 → 去参数重发;正文为空或 finish=length → 关思考(none,满量实测 39s)再试一次。
+ *  与 index.mjs 的课堂角色策略镜像。 */
+export const COMPILER_REASONING_EFFORT = 'low';
+export const COMPILER_MAX_TOKENS = 16_000;
+
 export function createJsonLlmClient({
   baseUrl,
   apiKey,
   model,
   fetchImpl = globalThis.fetch,
-  timeoutMs = 120_000,
+  timeoutMs = 180_000,
+  reasoningEffort = COMPILER_REASONING_EFFORT,
+  maxTokens = COMPILER_MAX_TOKENS,
+  logger = console,
 } = {}) {
   const root = String(baseUrl ?? '').replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
   if (!/^https:\/\//i.test(root)) throw new Error('compiler-base-url-invalid');
   if (!apiKey) throw new Error('compiler-api-key-required');
   if (!model) throw new Error('compiler-model-required');
 
+  /** 发一次上游;每次尝试各自计时。返回 {status, content, finish},content 为空串 = 答上来但没正文。 */
+  async function attempt({ system, user, requestId, effort }) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    timer.unref?.();
+    try {
+      const response = await fetchImpl(`${root}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          ...(requestId ? { 'X-Request-ID': requestId } : {}),
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: system },
+            { role: 'user', content: user },
+          ],
+          temperature: 0,
+          max_tokens: maxTokens,
+          ...(effort ? { reasoning_effort: effort } : {}),
+          response_format: { type: 'json_object' },
+        }),
+        signal: controller.signal,
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) return { status: response.status, content: '', finish: null };
+      const choice = payload?.choices?.[0];
+      const content = choice?.message?.content;
+      return {
+        status: response.status,
+        content: typeof content === 'string' ? content.trim() : '',
+        finish: typeof choice?.finish_reason === 'string' ? choice.finish_reason : null,
+      };
+    } catch (error) {
+      if (error?.name === 'AbortError') throw new Error('compiler-timeout');
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   return Object.freeze({
     model,
     async generate({ system, user, requestId }) {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
-      timer.unref?.();
-      try {
-        const response = await fetchImpl(`${root}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            ...(requestId ? { 'X-Request-ID': requestId } : {}),
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: 'system', content: system },
-              { role: 'user', content: user },
-            ],
-            temperature: 0,
-            max_tokens: 8_000,
-            response_format: { type: 'json_object' },
-          }),
-          signal: controller.signal,
-        });
-        const payload = await response.json().catch(() => null);
-        if (!response.ok) throw new Error(response.status === 429 ? 'compiler-rate-limited' : 'compiler-upstream-failed');
-        const content = payload?.choices?.[0]?.message?.content;
-        if (typeof content !== 'string' || !content.trim()) throw new Error('compiler-empty');
-        return content;
-      } catch (error) {
-        if (error?.name === 'AbortError') throw new Error('compiler-timeout');
-        throw error;
-      } finally {
-        clearTimeout(timer);
+      let effort = reasoningEffort || null;
+      let result = await attempt({ system, user, requestId, effort });
+      if (effort && result.status === 400) {
+        logger.error?.(`[custom-content] compiler upstream 400 with reasoning_effort=${effort}, retry without`);
+        effort = null;
+        result = await attempt({ system, user, requestId, effort: null });
       }
+      if (result.status === 429) throw new Error('compiler-rate-limited');
+      if (result.status < 200 || result.status >= 300) throw new Error(`compiler-upstream-failed:${result.status}`);
+      // 正文为空(思考吃光额度)或 finish=length(正文被截成断尾 JSON)都算没答上来 → 关思考重发一次
+      const incomplete = (r) => !r.content || r.finish === 'length';
+      if (incomplete(result) && effort !== 'none') {
+        logger.error?.(`[custom-content] compiler ${result.content ? 'truncated' : 'empty'} (finish=${result.finish}, effort=${effort ?? 'default'}), retry with reasoning_effort=none`);
+        result = await attempt({ system, user, requestId, effort: 'none' });
+        if (result.status === 429) throw new Error('compiler-rate-limited');
+        if (result.status < 200 || result.status >= 300) throw new Error(`compiler-upstream-failed:${result.status}`);
+      }
+      if (!result.content) throw new Error(`compiler-empty:finish=${result.finish}`);
+      if (result.finish === 'length') throw new Error(`compiler-truncated:chars=${result.content.length}`);
+      return result.content;
     },
   });
 }

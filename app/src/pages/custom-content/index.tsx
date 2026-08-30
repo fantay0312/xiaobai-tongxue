@@ -90,6 +90,15 @@ function errorHint(error: unknown, maximumBytes = 0): string {
     'faq-sync-failed': '误区备份没有同步完成，本次没有发布。',
     'compiler-timeout': '课题编译超时，可稍后重新发起。',
     'compiler-no-chunks': '课件没有解析出可用正文，请先重新解析资料。',
+    'compiler-empty': '小砚这次没有写出讲稿正文，请重新生成一次。',
+    'compiler-invalid-json': '小砚写出的草稿格式不完整，请重新生成一次。',
+    'compiler-truncated': '这次讲稿写到一半被截断了，请重新生成一次。',
+    'compiler-rate-limited': '编译服务当前请求过多，请稍等一两分钟再生成。',
+    'compiler-upstream-failed': '编译服务暂时没有响应，请稍后重新生成。',
+    'compile-failed': '课题编译中途出错，请重新生成一次；若反复出现请联系我们。',
+    'weknora-timeout': '读取课件分块超时，请稍后重新生成。',
+    'weknora-unreachable': '课件解析服务暂时联系不上，请稍后重新生成。',
+    'weknora-upstream-failed': '课件解析服务返回了错误，请稍后重新生成。',
   };
   return hints[code] ?? '这一步没有完成，请稍后再试。';
 }
