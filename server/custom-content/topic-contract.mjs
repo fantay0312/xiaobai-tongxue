@@ -5,20 +5,54 @@ function text(value, maximum = MAX_TEXT) {
   return typeof value === 'string' ? value.trim().slice(0, maximum) : '';
 }
 
+/** 模型常把「字符串数组」写成一整段文字(用换行或分号隔开):拆成条目,而不是整段丢弃。 */
+function splitLines(value) {
+  return String(value ?? '').split(/\r?\n|；|;/).map((item) => item.trim()).filter(Boolean);
+}
+
+function listOf(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') return splitLines(value);
+  return [];
+}
+
 function stringList(value, maximum = 12, itemMaximum = 500) {
-  if (!Array.isArray(value)) return [];
-  return value
+  return listOf(value)
     .map((item) => text(item, itemMaximum))
     .filter(Boolean)
     .slice(0, maximum);
 }
 
+/** 命中词组是二维数组(任一组全命中);模型常写成一维 ["a","b"] 或字符串——一维时每个词自成一组。 */
 function keywordGroups(value) {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((group) => stringList(group, 8, 60))
+  return listOf(value)
+    .map((group) => (Array.isArray(group) ? stringList(group, 8, 60) : stringList([group], 1, 60)))
     .filter((group) => group.length > 0)
     .slice(0, 8);
+}
+
+/** 小白台词:去掉模型爱加的「小白：」说话人前缀与外层引号。 */
+const SPEAKER_PREFIX = /^\s*[「“"']?\s*小白(?:同学)?\s*[：:]\s*/;
+function studentLine(value, maximum) {
+  return text(value, maximum)
+    .replace(SPEAKER_PREFIX, '')
+    .replace(/^[「“"']+|[」”"']+$/g, '')
+    .trim();
+}
+
+/** 把模型写的编号对回已有编号:逐字 → 不分大小写 → 拆 "C1-C2"/"C1 与 C2" 取第一个能对上的。对不上返回空串。 */
+function matchId(value, ids) {
+  const raw = text(value, 200);
+  if (!raw) return '';
+  if (ids.includes(raw)) return raw;
+  const lower = new Map(ids.map((id) => [id.toLowerCase(), id]));
+  const direct = lower.get(raw.toLowerCase());
+  if (direct) return direct;
+  for (const token of raw.split(/[^a-zA-Z0-9_]+/)) {
+    const hit = token && lower.get(token.toLowerCase());
+    if (hit) return hit;
+  }
+  return '';
 }
 
 function quizOptions(value) {
@@ -36,9 +70,10 @@ function cleanId(value, fallback, maximum = 80) {
   return `${candidate.slice(0, maximum - suffixLength - 1)}-${candidate.slice(-suffixLength)}`;
 }
 
-function normalizeQuiz(item, index) {
+function normalizeQuiz(item, index, { checklistIds = [], misconceptionIds = [] } = {}) {
   // 题目选项保留空槽交给质量闸门；删除空槽会令 answerIndex 静默指向另一项。
   const options = quizOptions(item?.options);
+  const rawMcRef = item?.mcRef === null || item?.mcRef === undefined ? '' : text(item?.mcRef, 80);
   return {
     id: cleanId(item?.id, `q${index + 1}`, 60),
     ...(text(item?.code, 4_000) ? { code: text(item.code, 4_000) } : {}),
@@ -46,21 +81,44 @@ function normalizeQuiz(item, index) {
     options,
     answerIndex: Number.isInteger(item?.answerIndex) ? item.answerIndex : -1,
     explanation: text(item?.explanation, 1_500),
-    checklistRef: cleanId(item?.checklistRef, '', 40),
-    mcRef: item?.mcRef === null ? null : text(item?.mcRef, 80) || null,
+    checklistRef: matchId(item?.checklistRef, checklistIds) || cleanId(item?.checklistRef, '', 40),
+    mcRef: rawMcRef ? (matchId(rawMcRef, misconceptionIds) || rawMcRef) : null,
   };
 }
 
-function normalizeRemedy(value) {
+/** 摸底判断题:模型常直接写成一句话;缺题干时以错误认知本身作判断题(isTrue 恒为 false),缺解释时取第一条纠正标准。 */
+function normalizeProbe(value, { belief = '', correctionCriteria = [] } = {}) {
+  const statement = typeof value === 'string'
+    ? text(value, 600)
+    : text(value?.statement ?? value?.question ?? value?.text, 600);
+  const explanation = typeof value === 'string' ? '' : text(value?.explanation ?? value?.reason, 1_200);
+  return {
+    statement: statement || text(belief, 600),
+    isTrue: false,
+    explanation: explanation || (correctionCriteria[0] ?? ''),
+  };
+}
+
+function normalizeRemedy(value, refs) {
+  // 模型常把 remedy 写成一段话,或把 microLesson 的字段平铺在 remedy 上
+  const lesson = typeof value === 'string'
+    ? { body: value }
+    : (value?.microLesson && typeof value.microLesson === 'object')
+      ? value.microLesson
+      : typeof value?.microLesson === 'string'
+        ? { body: value.microLesson }
+        : value;
+  const quiz = Array.isArray(value?.predictionQuiz) ? value.predictionQuiz
+    : Array.isArray(value?.quiz) ? value.quiz : [];
   return {
     microLesson: {
-      title: text(value?.microLesson?.title, 160),
-      body: text(value?.microLesson?.body, 5_000),
-      askBack: text(value?.microLesson?.askBack, 500),
+      title: text(lesson?.title, 160),
+      body: text(lesson?.body ?? lesson?.content, 5_000),
+      askBack: text(lesson?.askBack ?? lesson?.question, 500),
     },
-    predictionQuiz: (Array.isArray(value?.predictionQuiz) ? value.predictionQuiz : [])
+    predictionQuiz: quiz
       .slice(0, 5)
-      .map((item, index) => normalizeQuiz(item, index)),
+      .map((item, index) => normalizeQuiz(item, index, refs)),
   };
 }
 
@@ -82,33 +140,36 @@ export function normalizeTopicDraft(raw, {
       terms: stringList(item?.terms, 20, 80),
       level: LEVELS.has(item?.level) ? item.level : index === 0 ? 'L1' : index === 1 ? 'L2' : index === 2 ? 'L3' : 'L5',
       lookupCard: text(item?.lookupCard, 2_000),
-      probeLine: text(item?.probeLine, 500),
+      probeLine: studentLine(item?.probeLine, 500),
       sourceChunkIds: stringList(item?.sourceChunkIds, 8, 100),
       sourceExcerpt: text(item?.sourceExcerpt, 800),
     }));
-  const checklistIds = new Set(checklist.map((item) => item.id));
-  const misconceptions = (Array.isArray(value.misconceptions) ? value.misconceptions : [])
-    .slice(0, 8)
-    .map((item, index) => ({
-      mcId: cleanId(item?.mcId, `${topicId || 'custom'}_M${index + 1}`, 100),
-      topicId,
-      belief: text(item?.belief, 800),
-      triggerLine: text(item?.triggerLine, 600),
-      correctionCriteria: stringList(item?.correctionCriteria, 8, 600),
-      correctionKeywords: keywordGroups(item?.correctionKeywords),
-      adoptionKeywords: keywordGroups(item?.adoptionKeywords),
-      injectAfterChecklist: stringList(item?.injectAfterChecklist, 8, 40)
-        .filter((id) => checklistIds.has(id)),
-      probe: {
-        statement: text(item?.probe?.statement, 600),
-        isTrue: false,
-        explanation: text(item?.probe?.explanation, 1_200),
-      },
-      remedy: normalizeRemedy(item?.remedy),
-    }));
+  const checklistIds = checklist.map((item) => item.id);
+  const rawMisconceptions = (Array.isArray(value.misconceptions) ? value.misconceptions : []).slice(0, 8);
+  const misconceptionIds = rawMisconceptions
+    .map((item, index) => cleanId(item?.mcId, `${topicId || 'custom'}_M${index + 1}`, 100));
+  const refs = { checklistIds, misconceptionIds };
+  const misconceptions = rawMisconceptions
+    .map((item, index) => {
+      const correctionCriteria = stringList(item?.correctionCriteria, 8, 600);
+      return {
+        mcId: misconceptionIds[index],
+        topicId,
+        belief: text(item?.belief, 800),
+        triggerLine: studentLine(item?.triggerLine, 600),
+        correctionCriteria,
+        correctionKeywords: keywordGroups(item?.correctionKeywords),
+        adoptionKeywords: keywordGroups(item?.adoptionKeywords),
+        injectAfterChecklist: [...new Set(
+          stringList(item?.injectAfterChecklist, 8, 200).map((id) => matchId(id, checklistIds)).filter(Boolean),
+        )],
+        probe: normalizeProbe(item?.probe, { belief: item?.belief, correctionCriteria }),
+        remedy: normalizeRemedy(item?.remedy, refs),
+      };
+    });
   const quizBank = (Array.isArray(value.quizBank) ? value.quizBank : [])
     .slice(0, 8)
-    .map((item, index) => normalizeQuiz(item, index));
+    .map((item, index) => normalizeQuiz(item, index, refs));
 
   return {
     topicId,
@@ -121,7 +182,9 @@ export function normalizeTopicDraft(raw, {
     prep: {
       microLecture: {
         title: text(value.prep?.microLecture?.title, 160),
-        body: text(value.prep?.microLecture?.body, 8_000),
+        body: typeof value.prep?.microLecture === 'string'
+          ? text(value.prep.microLecture, 8_000)
+          : text(value.prep?.microLecture?.body ?? value.prep?.microLecture?.content, 8_000),
       },
       examples: (Array.isArray(value.prep?.examples) ? value.prep.examples : [])
         .slice(0, 5)
@@ -131,7 +194,9 @@ export function normalizeTopicDraft(raw, {
           walkthrough: text(example?.walkthrough, 2_500),
         })),
       selfCheck: stringList(value.prep?.selfCheck, 10, 500),
-      taskCard: text(value.prep?.taskCard, 1_000),
+      taskCard: typeof value.prep?.taskCard === 'string'
+        ? text(value.prep.taskCard, 1_000)
+        : text(value.prep?.taskCard?.body ?? value.prep?.taskCard?.text, 1_000),
     },
     transferHint: text(value.transferHint, 240),
     sources: sourceAssets.map((asset) => ({
