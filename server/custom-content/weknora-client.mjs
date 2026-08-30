@@ -351,7 +351,9 @@ export function createWeKnoraClient({
     },
 
     async waitForFaqImport(taskId, requestId, maximumWaitMs = 60_000) {
-      if (typeof taskId !== 'string' || !/^[A-Za-z0-9-]{1,100}$/.test(taskId)) {
+      // 2026-08-30 线上发布 502 根因:WeKnora 的 task_id 形如 faq_import_10000_1788102686874_bc594e7e_…(带下划线),
+      // 旧正则不含 "_",导入其实已成功却在这里被判 invalid → faq-sync-failed。
+      if (typeof taskId !== 'string' || !/^[A-Za-z0-9_-]{1,120}$/.test(taskId)) {
         throw new Error('weknora-faq-task-invalid');
       }
       const deadline = Date.now() + maximumWaitMs;
