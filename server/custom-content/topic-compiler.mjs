@@ -174,9 +174,11 @@ export function createJsonLlmClient({
 
   return Object.freeze({
     model,
-    async generate({ system, user, requestId }) {
+    async generate({ system, user, requestId, maxTokens = 8_000, requestTimeoutMs = timeoutMs }) {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      const boundedMaxTokens = Math.max(1, Math.min(8_000, Math.trunc(maxTokens)));
+      const boundedTimeoutMs = Math.max(1, Math.min(timeoutMs, Math.trunc(requestTimeoutMs)));
+      const timer = setTimeout(() => controller.abort(), boundedTimeoutMs);
       timer.unref?.();
       try {
         const response = await fetchImpl(`${root}/chat/completions`, {
@@ -193,7 +195,7 @@ export function createJsonLlmClient({
               { role: 'user', content: user },
             ],
             temperature: 0,
-            max_tokens: 8_000,
+            max_tokens: boundedMaxTokens,
             response_format: { type: 'json_object' },
           }),
           signal: controller.signal,
@@ -314,7 +316,12 @@ export function createTopicCompiler({ weknora, llm } = {}) {
         hitChecklist,
         pendingMcId,
       });
-      return parseJsonObject(await llm.generate({ ...prompt, requestId }));
+      return parseJsonObject(await llm.generate({
+        ...prompt,
+        requestId,
+        maxTokens: 700,
+        requestTimeoutMs: 30_000,
+      }));
     },
   });
 }
