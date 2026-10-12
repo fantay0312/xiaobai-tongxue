@@ -25,6 +25,25 @@
 
 ## 发布状态
 
-GitHub 上传、生产候选检查与空 C++ 清理结果在发布完成后追加。
+已推送分支 `codex/fix-1012-orbit-classroom`，PR：<https://github.com/fantay0312/xiaobai-tongxue/pull/63>（Open，未合并）。运行时代码为 `ea4f5815a2aa48ef6bfd6f0becaf730dadeaf77e`。
+
+- 生产 release：`20261012-fix1012-b7b768`。
+- 完整运行包 SHA-256：`cc12322ad1bd737f26d51119657f59fad07dbc334d469d77af3ffa198126468a`。
+- 已完整备份运行包、兼容状态、nginx、环境文件及 PostgreSQL。使用 PostgreSQL 18 客户端导出，在隔离临时 PostgreSQL 18 恢复成功，核对 9 个迁移、40 张业务表。
+- 候选服务验证 PostgreSQL/Redis/COS、主站/后台静态索引精确匹配、`/api/me` 与套餐目录 200、后台匿名 401 后，整体切换运行包；未修改 DNS/CDN 拓扑。
+- 生产 `xiaobai.service` 为 active；主站/后台/身份/套餐入口正常，后台仍要求独立认证。
+- <https://xiaobai.tokentosea.com/> 返回 200，公开首页与本地新构建逐字节相同，Cache-Control 为 `no-cache`，入口静态资源全为 200；不需要刷新 CDN。
+- 空 C++ 课程清理前重新加行锁核对：资料、课题、编译任务、上传补偿任务均为 0，两个 WeKnora 知识库 total 均为 0。保存课程及知识库元数据后，删除 1 门课程和 2 个空知识库，确认课程剩余记录为 0。
+- GitHub 初次上传后的 CodeRabbit 与 GitGuardian 检查为 Success。
+
+受限备份目录：`/var/backups/xiaobai/20261012-fix1012-b7b768`。`runtime-before-switch` 是切换前完整服务目录；`runtime-state-config.tgz` 包含兼容状态与配置；`production.dump` 为数据库备份；`empty-cpp-course.json` 为清理前课程/知识库元数据；候选、上线和清理检查分别保存为 JSON。数据库清理独立于运行包更新，恢复旧运行包不会自动恢复删除的课程。
+
+## 页面截图
+
+![满幅课堂](desktop-classroom.png)
+![成长册与性情菜单](desktop-growth.png)
+![环轨星海](desktop-orbit.png)
+![手机课堂](mobile-classroom.png)
+![研读材料初始折叠](desktop-prep.png)
 
 生产备份与回滚资料保留在服务器受限备份目录，不上传凭据、用户资料或数据库备份到 GitHub。
