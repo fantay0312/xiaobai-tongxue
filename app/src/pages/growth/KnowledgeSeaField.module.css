@@ -89,7 +89,36 @@
   position: absolute;
   transform: translate(-50%, -50%);
   pointer-events: auto;
+  transition: left 700ms var(--ease-out), top 700ms var(--ease-out);
 }
+.orbitScene { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.orbitRings { position: absolute; width: 100%; height: 100%; }
+.orbitRings path { fill: none; stroke: var(--sky-muted); stroke-width: 0.8; opacity: 0.45; vector-effect: non-scaling-stroke; }
+.planet {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: clamp(7rem, 16vw, 12rem);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 32% 30%, var(--sky-blue), var(--sky-ink) 66%, var(--sky-deep));
+  box-shadow: 0 2px 22px color-mix(in oklch, var(--sky-blue) 23%, transparent);
+  transition: transform 700ms var(--ease-out);
+}
+.planet canvas { display: block; width: 100%; height: 100%; }
+.planet::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset -12px -8px 30px color-mix(in oklch, var(--sky-deep) 72%, transparent); }
+.orbitScene[data-observing] .planet {
+  top: 75%;
+  transform: translate(-50%, 0) scale(10);
+  transform-origin: 50% 0;
+  background: radial-gradient(circle, var(--sky-deep) 82%, var(--sky-ink) 96%, var(--sky-blue) 100%);
+}
+.orbitScene[data-observing] .planet canvas { opacity: 0; }
+.orbitScene[data-observing] .planet::after { background: linear-gradient(to bottom, transparent, var(--sky-deep) 30%); }
+.orbitScene[data-observing] .orbitRings { opacity: 0.18; }
+.field[data-observing] .node:not([data-selected]):not([data-linked]) { opacity: 0.3; }
 
 .node {
   position: relative;
@@ -415,6 +444,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .nodeSlot, .planet { transition: none; }
   .node[data-featured='true'] .core img {
     animation: none;
   }

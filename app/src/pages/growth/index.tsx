@@ -15,11 +15,11 @@ import type { LearnEvent, LearnEventType, Persona, SessionMode, SessionReport, X
 import { useAppStore } from '../../store/appStore';
 import { getTopic } from '../../data';
 import { STAR_LINKS } from '../../data/starLinks';
-import { deriveAchievements, deriveTeacherRank } from '../../engine/achievements';
+import { TEACHER_RANKS, deriveAchievements, deriveTeacherRank } from '../../engine/achievements';
 import { nextStep } from '../../engine/journey';
 // 双轨成长引擎:同 achievements/journey 惯例按路径直接 import,不进 engine barrel
 import {
-  STAGE_META, STAGE_RULES, deriveWisdom, deriveEvolution, getStageMeta,
+  STAGE_META, STAGE_RULES, deriveWisdom, deriveEvolution, getStageMeta, wisdomThreshold,
 } from '../../engine/evolution';
 import { deriveXiaobaiLetter } from '../../engine/story';
 import { deriveMemoryPanorama, deriveRelationshipLines, deriveTopicRecall } from '../../engine/recall';
@@ -202,6 +202,7 @@ export default function GrowthPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [statusFocus, setStatusFocus] = useState<NodeStatus | null>(null);
   const [oldPages, setOldPages] = useState(false);
+  const [previewStage, setPreviewStage] = useState<number | null>(null);
   const [reviewBusy, setReviewBusy] = useState(false);
 
   // 印章 / 师道称号 / 下一步 / 编年史:全部由事件流等真实数据纯函数派生
@@ -305,6 +306,7 @@ export default function GrowthPage() {
   const mood: XiaobaiMood =
     global.learningLevel >= 5 ? 'proud' : global.topicsMastered > 0 ? 'happy' : PERSONA_MOOD[global.persona];
   const currentStage = getStageMeta(global.learningLevel);
+  const expandedStage = previewStage ?? global.learningLevel;
 
   const goReview = async (topicId: string) => {
     if (reviewBusy) return;
@@ -445,6 +447,9 @@ export default function GrowthPage() {
                 const stageRule = STAGE_RULES.find((rule) => rule.stage === stageMeta.stage);
                 const isCurrent = stageMeta.stage === global.learningLevel;
                 const isPast = stageMeta.stage < global.learningLevel;
+                const isExpanded = expandedStage === stageMeta.stage;
+                const previewTarget = wisdomThreshold(stageMeta.stage + 1);
+                const togglePreview = () => setPreviewStage(isExpanded ? 0 : stageMeta.stage);
                 const stateLabel = isPast ? '已完成' : isCurrent ? '当前阶段' : '未达到';
                 return (
                   <li
@@ -460,7 +465,11 @@ export default function GrowthPage() {
                   >
                     {isCurrent ? (
                       <section className={s.currentChapter} aria-label={`当前科名：${currentStage.name}，${currentStage.description}`}>
-                        <span className={s.currentMarker} aria-hidden="true" />
+                        <button type="button" className={s.stageToggle} onClick={togglePreview}
+                          aria-label={`${isExpanded ? '收起' : '展开'}${stageMeta.name}学识进度`}
+                          aria-expanded={isExpanded} aria-controls={`stage-wisdom-${stageMeta.stage}`}>
+                          <span className={s.currentMarker} aria-hidden="true" />
+                        </button>
                         <p className={s.currentTicket}>当前阶段</p>
                         <div className={s.currentHeading}>
                           <h2>{currentStage.name}</h2>
@@ -468,7 +477,7 @@ export default function GrowthPage() {
                         </div>
 
                         {/* 学识经验与科名是两条独立成长轨；无上限学识只称“第 N 阶”。 */}
-                        <div className={s.wisdom}>
+                        <div id={`stage-wisdom-${stageMeta.stage}`} className={s.wisdom} hidden={!isExpanded}>
                           <div className={s.wisdomHead}>
                             <span className={s.wisdomLabel}>学识 · 第 {wisdom.level} 阶</span>
                             <span className={s.wisdomGap}>距进阶还差 <b className={s.num}>{wisdomLeft}</b> 点</span>
@@ -509,7 +518,11 @@ export default function GrowthPage() {
                       </section>
                     ) : (
                       <>
-                        <span className={s.rungMarker} aria-hidden="true" />
+                        <button type="button" className={s.stageToggle} onClick={togglePreview}
+                          aria-label={`${isExpanded ? '收起' : '展开'}${stageMeta.name}学识进度`}
+                          aria-expanded={isExpanded} aria-controls={`stage-wisdom-${stageMeta.stage}`}>
+                          <span className={s.rungMarker} aria-hidden="true" />
+                        </button>
                         <span className={s.srOnly}>{stateLabel}</span>
                         <span className={s.rungSign}>{stageMeta.name}</span>
                         <span className={s.rungDesc}>{stageMeta.description}</span>
@@ -531,6 +544,17 @@ export default function GrowthPage() {
                           </span>
                         )}
                         <span className={s.rungState} aria-hidden="true">{stateLabel}</span>
+                        <div id={`stage-wisdom-${stageMeta.stage}`} className={s.stagePreview} hidden={!isExpanded}>
+                          <div className={s.wisdomHead}>
+                            <span className={s.wisdomLabel}>学识进阶参考</span>
+                            <span className={s.wisdomGap}>{wisdom.xp} / {previewTarget} 点</span>
+                          </div>
+                          <div className={s.wisdomTrack} role="progressbar" aria-label={`${stageMeta.name}学识点数参考`}
+                            aria-valuemin={0} aria-valuemax={previewTarget} aria-valuenow={Math.min(wisdom.xp, previewTarget)}
+                            aria-valuetext={`已积 ${wisdom.xp} 点，参考目标 ${previewTarget} 点；科名仍按出师与课程条件达成`}>
+                            <span className={s.wisdomFill} style={{ width: `${Math.min(100, wisdom.xp / previewTarget * 100)}%` }} />
+                          </div>
+                        </div>
                       </>
                     )}
                   </li>
@@ -556,8 +580,20 @@ export default function GrowthPage() {
               <p className={s.rankNext}>
                 {rank.nextTitle && rank.nextAt !== null
                   ? <>距「{rank.nextTitle}」还差 <b className={s.num}>{rank.nextAt - rank.score}</b> 分。</>
-                  : '已至宗师，桃李成蹊。'}
+                  : '已至夫子，桃李成蹊。'}
               </p>
+              <ol className={s.teacherRanks} aria-label="先生称号达成条件">
+                {TEACHER_RANKS.map((tier) => (
+                  <li key={tier.title} aria-current={tier.title === rank.title ? 'step' : undefined}>
+                    <span>{tier.title}<small>{tier.at === 0 ? '初始称号' : `履历 ${tier.at} 分`}</small></span>
+                    <progress max={Math.max(1, tier.at)} value={tier.at === 0 ? 1 : Math.min(rank.score, tier.at)}
+                      aria-label={`${tier.title}达成进度`} />
+                    <small>{tier.at === 0 || rank.score >= tier.at ? '已达成' : `${rank.score}/${tier.at}`}</small>
+                  </li>
+                ))}
+              </ol>
+              <p className={s.rankNext}>讲解要点、纠正误区、备课、复习与出师都会积累履历分。</p>
+              <Link to="/growth#memory" className={s.memoryEntry}><Icon name="notebook" size={18} />查看小白的记忆</Link>
             </div>
           </section>
 

@@ -1308,6 +1308,16 @@
   flex-direction: column;
   gap: 2px;
 }
+.stepList > li { position: relative; }
+.stepList > li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: calc(50% + 4px);
+  bottom: calc(-50% + 2px);
+  left: calc(0.55rem + 3.5px);
+  border-left: 1px dashed var(--line-strong);
+  pointer-events: none;
+}
 /* 五步条目:既是进度指示,也是锚点跳转按钮 */
 .step {
   display: flex;
@@ -1331,6 +1341,8 @@ button.step:hover { color: var(--ink); background: var(--ink-wash); }
 .stepLocked { cursor: default; }
 .stepLocked .stepDot { opacity: 0.5; }
 .stepDot {
+  position: relative;
+  z-index: 1;
   width: 8px;
   height: 8px;
   border-radius: 50%;

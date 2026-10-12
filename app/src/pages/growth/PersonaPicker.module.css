@@ -25,7 +25,9 @@
 .triggerCopy {
   display: grid;
   min-width: 0;
-  gap: 0.08rem;
+  flex: 1;
+  gap: 0.4rem;
+  text-align: center;
 }
 
 .triggerLabel,
@@ -120,7 +122,8 @@
 .optionHead {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  position: relative;
+  justify-content: center;
   gap: var(--gap-hair);
 }
 
@@ -134,6 +137,8 @@
 .optionSelected .optionHead strong { color: var(--azure-deep); }
 
 .currentMark {
+  position: absolute;
+  right: 0;
   flex: none;
   padding: 0 0.3rem;
   border: 1px solid var(--azure-deep);
@@ -203,15 +208,18 @@
   .triggerLine { display: block; }
 
   .menu {
-    top: -0.45rem;
+    top: 50%;
+    transform: translateY(-50%);
     left: calc(100% + var(--gap-tight));
     width: clamp(17rem, 22vw, 20rem);
   }
+  .menuLabel { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
 
   .option {
     min-height: 5.2rem;
     padding: 0.78rem 0.85rem;
   }
+  .optionLine { text-align: center; line-height: 1.8; letter-spacing: 0.04em; }
 
   .optionHead strong { font-size: 1.28rem; }
   .optionLine { font-size: 1rem; }

@@ -1,7 +1,6 @@
 /**
- * 讲解舱 /teach/:topicId?mode=teach|reteach|review —— 亮书斋教室 + 木框黑板。
- * 房间是纸色的(与全站同一世界),黑板是挂在教室里的一件家具(--board 系只住在板内);
- * 左 1/3 讲台(暖光晕下的小白 + 木桌牌),右 2/3 木框黑板上的对话流,板下讲桌是输入区。
+ * 讲解舱 /teach/:topicId?mode=teach|reteach|review —— 满幅黑板。
+ * 左下头像展开小白简介，对话流独立滚动，居中输入框内放媒体与发送工具。
  * 挂载契约:store.live 存在且 topicId 吻合则直接接管,否则 startSession(topicId, mode)。
  * 下课:endSession() → /exam/:sessionId → /review/:sessionId;R4 退回备课:abandonSession() → /prep/:topicId。
  */
@@ -12,7 +11,6 @@ import {
   useState,
   type ChangeEvent,
   type KeyboardEvent,
-  type PointerEvent,
 } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useAppStore } from '../../store/appStore';
@@ -35,6 +33,7 @@ import {
 } from '../../lib/imageAttachment';
 import { visionErrorHint } from '../../lib/vision';
 import { getStageMeta } from '../../engine/evolution';
+import { VideoFramePicker } from './VideoFramePicker';
 import s from './classroom.module.css';
 
 // 讲课进行中「不给学生看牌」:导演动作(误区注入/开窍复述/救援层级)一律不在现场显示——
@@ -189,11 +188,14 @@ function MicButton({ disabled, onText }: { disabled: boolean; onText: (t: string
   const disposedRef = useRef(false);
 
   // 卸载(下课/暂离)时回收麦克风,别让采音红点挂在标签页上
-  useEffect(() => () => {
-    disposedRef.current = true;
-    recRef.current?.cancel();
-    recRef.current = null;
-    window.clearTimeout(hintTimerRef.current);
+  useEffect(() => {
+    disposedRef.current = false;
+    return () => {
+      disposedRef.current = true;
+      recRef.current?.cancel();
+      recRef.current = null;
+      window.clearTimeout(hintTimerRef.current);
+    };
   }, []);
 
   const showHint = useCallback((m: string) => {
@@ -360,6 +362,8 @@ export default function ClassroomPage() {
   const [typingNow, setTypingNow] = useState(false);
   const [tapMood, setTapMood] = useState<XiaobaiMood | null>(null);
   const [tapReactionId, setTapReactionId] = useState(0);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
   const [reducedMotion] = useState(
     () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
   );
@@ -376,6 +380,11 @@ export default function ClassroomPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const avatarRef = useRef<HTMLButtonElement>(null);
+  const profileRef = useRef<HTMLElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
+  const dockRef = useRef<HTMLDivElement>(null);
   const pendingImageRef = useRef<PreparedImageAttachment | null>(null);
   const imageTaskRef = useRef(0);
   const imageTopicRef = useRef(topicId);
@@ -383,6 +392,29 @@ export default function ClassroomPage() {
   const sendingRef = useRef(false);
   const sendGenerationRef = useRef(0);
   const tapTimerRef = useRef(0);
+
+  useEffect(() => {
+    const dock = dockRef.current;
+    if (!dock) return;
+    const sync = () => mainRef.current?.style.setProperty('--composer-height', `${dock.offsetHeight}px`);
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(dock);
+    return () => observer.disconnect();
+  }, [live?.sessionId]);
+  useEffect(() => {
+    if (!profileOpen) return;
+    const dismiss = (event: globalThis.PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && !profileRef.current?.contains(target) && !avatarRef.current?.contains(target)) setProfileOpen(false);
+    };
+    const escape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') { setProfileOpen(false); avatarRef.current?.focus(); }
+    };
+    document.addEventListener('pointerdown', dismiss);
+    document.addEventListener('keydown', escape);
+    return () => { document.removeEventListener('pointerdown', dismiss); document.removeEventListener('keydown', escape); };
+  }, [profileOpen]);
 
   useEffect(() => {
     // React StrictMode 会在开发环境执行 setup→cleanup→setup，每次 setup 都要恢复挂载态。
@@ -565,17 +597,6 @@ export default function ClassroomPage() {
       setTapMood(null);
     }, 900);
   };
-  const onXiaobaiPointerDown = (e: PointerEvent<HTMLDivElement>) => {
-    if (!e.isPrimary || e.button !== 0 || live.busy) return;
-    const bounds = e.currentTarget.getBoundingClientRect();
-    const pointerY = (e.clientY - bounds.top) / bounds.height;
-    triggerTapReaction(pointerY < 0.38 ? 'confused' : 'happy');
-  };
-  const onXiaobaiKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.repeat || (e.key !== 'Enter' && e.key !== ' ')) return;
-    e.preventDefault();
-    triggerTapReaction('happy');
-  };
 
   const quit = () => {
     abandonSession();
@@ -653,28 +674,29 @@ export default function ClassroomPage() {
         </div>
       )}
 
-      <div className={s.main}>
+      <div className={s.main} ref={mainRef}>
         {/* ── 左 1/3:讲台(暖光晕下的小白) ── */}
         <aside className={s.stage} data-tour="stage">
-          <div
+          <button
+            ref={avatarRef}
+            type="button"
             className={s.boardFrame}
-            role="button"
-            tabIndex={0}
-            aria-label="逗逗小白"
-            aria-disabled={live.busy}
+            aria-label="查看小白简介"
+            aria-expanded={profileOpen}
+            aria-controls="classroom-xiaobai-profile"
             aria-live="off"
-            onPointerDown={onXiaobaiPointerDown}
-            onKeyDown={onXiaobaiKeyDown}
+            onClick={() => { setProfileOpen((open) => !open); triggerTapReaction('happy'); }}
           >
             <XiaobaiAvatar
               mood={displayedMood}
               level={g.learningLevel}
               speaking={typingNow}
-              size={170}
+              size={96}
               variant="board"
             />
             {tapMood ? <span key={tapReactionId} className={s.tapBlush} aria-hidden="true" /> : null}
-          </div>
+          </button>
+          <section id="classroom-xiaobai-profile" ref={profileRef} className={s.profilePopover} hidden={!profileOpen} aria-label="小白简介">
           <div className={s.plate}>
             <div className={s.plateName}>小白</div>
             <div className={s.plateRow}>{stageMeta.name} · {stageMeta.description} · {g.persona}</div>
@@ -691,6 +713,7 @@ export default function ClassroomPage() {
           <p className={s.stageHint}>
             把知识讲给小白听——它没读过标准答案,你的话就是它的全部教材。
           </p>
+          </section>
         </aside>
 
         {/* ── 右 2/3:木框黑板(对话流写在板上,板下粉笔槽) ── */}
@@ -753,7 +776,7 @@ export default function ClassroomPage() {
           </div>
 
           {/* ── 底部讲桌:结束面板 或 演示助手 + 输入区 ── */}
-          <div className={s.dock}>
+          <div className={s.dock} ref={dockRef}>
             {live.ended ? (
               <div className={s.endedPanel}>
                 <p className={s.endedTitle}>本轮讲解已结束</p>
@@ -808,6 +831,7 @@ export default function ClassroomPage() {
                 )}
                 <div className={s.inputBar} data-tour="input" aria-busy={live.busy || imagePreparing}>
                   <div className={s.inputCompose}>
+                    {videoFile && <VideoFramePicker file={videoFile} onClose={() => setVideoFile(null)} onFrame={chooseImage} />}
                     {pendingImage ? (
                       <div className={s.imageDraft} role="group" aria-label="待发送的辅助讲图">
                         <img
@@ -840,7 +864,7 @@ export default function ClassroomPage() {
                       className={s.input}
                       value={draft}
                       rows={3}
-                      placeholder="把知识点讲给小白听，也可附图或拍照……"
+                      placeholder="把知识点讲给小白听，也可附上图片或视频画面……"
                       onChange={(e) => setDraft(e.target.value)}
                       onKeyDown={onKey}
                       disabled={live.busy}
@@ -857,6 +881,24 @@ export default function ClassroomPage() {
                       {imagePreparing ? '图片处理中…' : `${draft.length} 字${pendingImage ? ' · 1 图' : ''}`}
                     </span>
                     <div className={s.sideBtns}>
+                      <input
+                        ref={videoInputRef}
+                        className={s.fileInput}
+                        type="file"
+                        accept="video/mp4,video/webm,video/quicktime"
+                        tabIndex={-1}
+                        onChange={(event) => {
+                          const file = event.currentTarget.files?.[0];
+                          event.currentTarget.value = '';
+                          if (!file) return;
+                          if (file.size > 80 * 1024 * 1024) { setImageHint('视频超过 80MB，请先截短或压缩后再选。'); return; }
+                          setVideoFile(file);
+                        }}
+                      />
+                      <button type="button" className={s.mediaBtn} disabled={live.busy || imagePreparing || videoFile !== null}
+                        title="从视频中选取一帧辅助讲图" onClick={() => videoInputRef.current?.click()}>
+                        <Icon name="play" size={15} />视频
+                      </button>
                       <input
                         ref={galleryInputRef}
                         className={s.fileInput}

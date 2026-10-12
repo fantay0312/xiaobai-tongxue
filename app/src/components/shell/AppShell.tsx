@@ -148,7 +148,7 @@ function SettingsGear({
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   // 讲解舱已改「亮书斋 + 木框黑板物件」,全暗外壳退役(board 变体样式保留备用)
-  const boardMode = false;
+  const boardMode = pathname.startsWith('/teach/');
   // 宣传页场景:头部吸顶,品牌落款回首页
   const landingMode = pathname === '/';
   // 注意精确到 '/teach/':裸 startsWith('/teach') 会把 /teacher 教师看板一并锁死(2026-07-16 生产 bug)
