@@ -167,6 +167,8 @@ test('custom semantic evaluation keeps the full rubric inside the server compile
   assert.match(captured.user, /课件明确说明要点1的原理/);
   assert.match(captured.user, /明确否定/);
   assert.match(captured.system, /不可信原文/);
+  assert.equal(captured.maxTokens, 700);
+  assert.equal(captured.requestTimeoutMs, 30_000);
 });
 
 test('topic compiler retrieves a requested title before applying the source budget', async () => {

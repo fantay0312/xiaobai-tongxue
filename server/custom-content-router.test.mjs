@@ -132,3 +132,58 @@ test('custom owner and global quotas use one atomic reservation', async () => {
     body: { course: { id: 'course-id', title: '原子配额' } },
   }]);
 });
+
+test('semantic evaluation has atomic burst limits and an owner inflight gate', async () => {
+  const responses = [];
+  const reservations = [];
+  let releaseEvaluations;
+  const evaluationsPending = new Promise((resolve) => { releaseEvaluations = resolve; });
+  const router = createCustomContentRouter({
+    service: {
+      maxFileBytes: 80 * 1024 * 1024,
+      async evaluateTopic() {
+        await evaluationsPending;
+        return { reasoning: 'ok' };
+      },
+    },
+    async resolveOwner() { return { id: 'owner-id', name: 'Owner' }; },
+    send(_res, status, body, headers) { responses.push({ status, body, headers }); },
+    async readJson() { return { utterance: '讲解' }; },
+    async readRaw() { return Buffer.alloc(0); },
+    async rateLimitMany(inputs) {
+      reservations.push(inputs);
+      return { allowed: true, retryAfterSeconds: 0 };
+    },
+    clientIp: () => '198.51.100.7',
+  });
+  const request = () => router.handle(
+    { method: 'POST', headers: {}, resume() {} },
+    { headersSent: false },
+    '/api/xb/topics/topic-id/evaluate',
+  );
+
+  const first = request();
+  const second = request();
+  await new Promise((resolve) => setImmediate(resolve));
+  await request();
+
+  assert.equal(reservations.length, 3);
+  assert.deepEqual(reservations[0].map(({ subject, limit, windowSeconds }) => (
+    { subject, limit, windowSeconds }
+  )), [
+    { subject: 'owner-id', limit: 12, windowSeconds: 60 },
+    { subject: '198.51.100.7', limit: 30, windowSeconds: 60 },
+    { subject: 'global', limit: 120, windowSeconds: 60 },
+    { subject: 'owner-id', limit: 2_000, windowSeconds: 86_400 },
+    { subject: 'global', limit: 20_000, windowSeconds: 86_400 },
+  ]);
+  assert.deepEqual(responses, [{
+    status: 429,
+    body: { error: 'evaluator-busy', retryAfter: 1 },
+    headers: { 'Retry-After': '1' },
+  }]);
+
+  releaseEvaluations();
+  await Promise.all([first, second]);
+  assert.equal(responses.filter(({ status }) => status === 200).length, 2);
+});

@@ -8,6 +8,8 @@ const MIN_UPLOAD_TOTAL_TIMEOUT_MS = 10 * 60_000;
 const MULTIPART_MAX_PARTS = 8;
 const MULTIPART_MAX_HEADER_BYTES = 16 * 1024;
 const MULTIPART_MAX_FIELD_BYTES = 4 * 1024;
+const EVALUATOR_OWNER_MAX_INFLIGHT = 2;
+const EVALUATOR_GLOBAL_MAX_INFLIGHT = 8;
 
 function requestId(req) {
   const supplied = req.headers['x-request-id'];
@@ -126,6 +128,7 @@ export function createCustomContentRouter({
   hasJsonContentType,
   rateLimit = null,
   rateLimitMany = null,
+  clientIp = (req) => req?.socket?.remoteAddress ?? 'unknown',
   logger = console,
 } = {}) {
   if (!service || !resolveOwner || !send || !readJson || !readRaw) {
@@ -133,6 +136,8 @@ export function createCustomContentRouter({
   }
   let uploadInflight = 0;
   const uploadOwners = new Set();
+  let evaluatorInflight = 0;
+  const evaluatorOwners = new Map();
 
   async function admit(owner, res, scope, limit, windowSeconds, globalLimit = null) {
     if (!rateLimit && !rateLimitMany) return true;
@@ -165,6 +170,48 @@ export function createCustomContentRouter({
       send(res, 503, { error: 'rate-limit-unavailable' });
       return false;
     }
+  }
+
+  async function admitEvaluator(req, owner, res) {
+    if (!rateLimitMany) {
+      send(res, 503, { error: 'rate-limit-unavailable' });
+      return false;
+    }
+    try {
+      const decision = await rateLimitMany([
+        { scope: 'custom-content-semantic-evaluate-minute', subject: owner.id, limit: 12, windowSeconds: 60 },
+        { scope: 'custom-content-semantic-evaluate-ip-minute', subject: clientIp(req), limit: 30, windowSeconds: 60 },
+        { scope: 'custom-content-semantic-evaluate-global-minute', subject: 'global', limit: 120, windowSeconds: 60 },
+        { scope: 'custom-content-semantic-evaluate', subject: owner.id, limit: 2_000, windowSeconds: 86_400 },
+        { scope: 'custom-content-semantic-evaluate-global', subject: 'global', limit: 20_000, windowSeconds: 86_400 },
+      ]);
+      if (!decision) throw new Error('atomic-rate-limit-required');
+      if (!decision.allowed) {
+        const retryAfter = Math.max(1, decision.retryAfterSeconds || 1);
+        send(res, 429, { error: 'rate-limited', retryAfter }, { 'Retry-After': String(retryAfter) });
+        return false;
+      }
+      return true;
+    } catch {
+      send(res, 503, { error: 'rate-limit-unavailable' });
+      return false;
+    }
+  }
+
+  function acquireEvaluator(owner, res) {
+    const ownerInflight = evaluatorOwners.get(owner.id) ?? 0;
+    if (evaluatorInflight >= EVALUATOR_GLOBAL_MAX_INFLIGHT || ownerInflight >= EVALUATOR_OWNER_MAX_INFLIGHT) {
+      send(res, 429, { error: 'evaluator-busy', retryAfter: 1 }, { 'Retry-After': '1' });
+      return null;
+    }
+    evaluatorInflight += 1;
+    evaluatorOwners.set(owner.id, ownerInflight + 1);
+    return () => {
+      evaluatorInflight -= 1;
+      const remaining = (evaluatorOwners.get(owner.id) ?? 1) - 1;
+      if (remaining > 0) evaluatorOwners.set(owner.id, remaining);
+      else evaluatorOwners.delete(owner.id);
+    };
   }
 
   async function withOwner(req, res, operation, task) {
@@ -348,15 +395,21 @@ export function createCustomContentRouter({
       const evaluateTopicMatch = /^\/api\/xb\/topics\/([^/]+)\/evaluate$/.exec(pathname);
       if (evaluateTopicMatch && req.method === 'POST') {
         return withOwnerJson(req, res, 'custom-topic-evaluate', async (owner, traceId, body) => {
-          if (!await admit(owner, res, 'semantic-evaluate', 2_000, 86_400, 20_000)) return;
-          return send(res, 200, {
-            evaluation: await service.evaluateTopic(
-              owner,
-              decodeURIComponent(evaluateTopicMatch[1]),
-              body,
-              traceId,
-            ),
-          });
+          if (!await admitEvaluator(req, owner, res)) return;
+          const release = acquireEvaluator(owner, res);
+          if (!release) return;
+          try {
+            return send(res, 200, {
+              evaluation: await service.evaluateTopic(
+                owner,
+                decodeURIComponent(evaluateTopicMatch[1]),
+                body,
+                traceId,
+              ),
+            });
+          } finally {
+            release();
+          }
         });
       }
 
