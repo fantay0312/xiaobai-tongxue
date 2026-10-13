@@ -1,5 +1,12 @@
 import assert from 'node:assert/strict';
 import { libraryPath, visibleLibraryEntries, type LibraryEntry } from '../src/lib/fileLibrary';
+import { advanceAuthEpoch, isCurrentAccount } from '../src/lib/api';
+assert.equal(isCurrentAccount('alice', {user:'alice',status:'authed'}, true), true);
+advanceAuthEpoch();
+assert.equal(isCurrentAccount('alice', {user:'alice',status:'authed'}, true), true, 'returning to a tab must not strand an in-flight library operation for the same account');
+assert.equal(isCurrentAccount('alice', {user:'bob',status:'authed'}, true), false, 'a different account must never receive the previous library result');
+assert.equal(isCurrentAccount('alice', {user:null,status:'anon'}, true), false);
+assert.equal(isCurrentAccount('alice', {user:'alice',status:'authed'}, false), false, 'an unmounted session cannot write back');
 const base = { phase: 'ready' as const, createdAt: '', updatedAt: '', deletedAt: null, favorite: false };
 const entries: LibraryEntry[] = [
   { ...base, id: 'f', kind: 'folder', name: '数学', parentId: null },

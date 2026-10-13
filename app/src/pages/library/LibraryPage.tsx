@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Icon } from '../../components/ui/Icon';
 import { useAuthStore } from '../../store/authStore';
-import { currentAuthEpoch } from '../../lib/api';
+import { isCurrentAccount } from '../../lib/api';
 import { createFolder, downloadLibraryFile, importLibraryFile, parseLibraryFile, detachLibraryCourse, purgeLibraryEntry, libraryPath, listLibrary, updateLibraryEntry, uploadLibraryFile, visibleLibraryEntries, type LibraryEntry, type LibrarySnapshot } from '../../lib/fileLibrary';
 import { createCustomCourse, listCustomCourses, type AssetRole, type CustomCourse } from '../../lib/customContent';
 import { saveBlob } from '../../lib/notebookMedia';
@@ -14,10 +14,10 @@ const formatDate = (iso: string) => Number.isFinite(Date.parse(iso)) ? new Intl.
 
 export default function LibraryPage({ onLeaveGuardChange, onUseInConversation }: { onLeaveGuardChange?: (value: boolean) => void; onUseInConversation?: (ids: string[]) => Promise<void> }) {
   const owner = useAuthStore((state) => state.user);
-  return <LibrarySession key={owner ?? 'anonymous'} onLeaveGuardChange={onLeaveGuardChange} onUseInConversation={onUseInConversation} />;
+  return <LibrarySession key={owner ?? 'anonymous'} owner={owner} onLeaveGuardChange={onLeaveGuardChange} onUseInConversation={onUseInConversation} />;
 }
 
-function LibrarySession({ onLeaveGuardChange, onUseInConversation }: { onLeaveGuardChange?: (value: boolean) => void; onUseInConversation?: (ids: string[]) => Promise<void> }) {
+function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation }: { owner: string | null; onLeaveGuardChange?: (value: boolean) => void; onUseInConversation?: (ids: string[]) => Promise<void> }) {
   const [snapshot, setSnapshot] = useState<LibrarySnapshot | null>(null); const [notice, setNotice] = useState(''); const [busy, setBusy] = useState(false);
   const [folderId, setFolderId] = useState<string | null>(null); const [filter, setFilter] = useState<Filter>('all'); const [query, setQuery] = useState(''); const [sort, setSort] = useState<'updated' | 'name'>('updated'); const [layout, setLayout] = useState<'list' | 'grid'>('list');
   const [selected, setSelected] = useState<string[]>([]); const [previewId, setPreviewId] = useState<string | null>(null); const [previewText, setPreviewText] = useState('');
@@ -26,10 +26,10 @@ function LibrarySession({ onLeaveGuardChange, onUseInConversation }: { onLeaveGu
   const [courseBlocked, setCourseBlocked] = useState(false); const [dragging, setDragging] = useState(false);
   const [role, setRole] = useState<AssetRole>('lecture'); const [newCourseTitle, setNewCourseTitle] = useState('');
   const busyRef = useRef(false);
-  const inputRef = useRef<HTMLInputElement>(null); const requestRef = useRef<AbortController | null>(null); const alive = useRef(true); const epoch = useRef(currentAuthEpoch());
-  const valid = () => alive.current && epoch.current === currentAuthEpoch();
+  const inputRef = useRef<HTMLInputElement>(null); const requestRef = useRef<AbortController | null>(null); const alive = useRef(true);
+  const valid = () => isCurrentAccount(owner, useAuthStore.getState(), alive.current);
   const reload = async () => { const next = await listLibrary(requestRef.current?.signal); if (valid()) setSnapshot(next); };
-  useEffect(() => { alive.current = true; epoch.current = currentAuthEpoch(); const controller = new AbortController(); requestRef.current = controller; void listCustomCourses(controller.signal).then((next) => { if (valid()) setCourses(next); }).catch(() => {}); void reload().catch((error) => { if (valid() && !controller.signal.aborted) setNotice(error.message); }); return () => { alive.current = false; controller.abort(); }; }, []);
+  useEffect(() => { alive.current = true; const controller = new AbortController(); requestRef.current = controller; void listCustomCourses(controller.signal).then((next) => { if (valid()) setCourses(next); }).catch(() => {}); void reload().catch((error) => { if (valid() && !controller.signal.aborted) setNotice(error.message); }); return () => { alive.current = false; controller.abort(); }; }, []);
   useEffect(() => { onLeaveGuardChange?.(busy || courseBlocked); return () => onLeaveGuardChange?.(false); }, [busy, courseBlocked, onLeaveGuardChange]);
   const entries = snapshot?.entries ?? []; const folders = entries.filter((entry) => entry.kind === 'folder' && !entry.deletedAt);
   const path = libraryPath(entries, folderId); const preview = entries.find((entry) => entry.id === previewId) ?? null;

@@ -26,6 +26,11 @@ export function currentAuthEpoch(): number {
   return authEpoch;
 }
 
+/** Revalidation of the same signed-in account does not invalidate its mounted workspace. */
+export function isCurrentAccount(owner: string | null, auth: { user: string | null; status: string }, alive = true): boolean {
+  return alive && auth.user === owner && (auth.status === 'authed' || auth.status === 'standalone');
+}
+
 /** 仅保存在当前标签页内，用于阻止共享 Cookie 切号后把旧标签页数据写给新账号。 */
 export function setGatewayIdentity(user: string | null): void {
   gatewayIdentity = user;
