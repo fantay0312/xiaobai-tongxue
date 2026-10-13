@@ -8,7 +8,7 @@ import {
   type ComponentType, type FormEvent, type LazyExoticComponent, type ReactNode,
 } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { ArrowLeft, ArrowRight, Download, FileText, Info, Library, TriangleAlert, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Download, FileText, Forward, Info, Library, TriangleAlert, X } from 'lucide-react';
 import { useAllTopics } from '../../hooks/useAllTopics';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { useAuthStore } from '../../store/authStore';
@@ -19,7 +19,6 @@ import { getTopic } from '../../data';
 import { hydrateTeacherRuntimeTopic, topicCourseKey } from '../../data/runtimeTopics';
 import { isCurrentAccount } from '../../lib/api';
 import { saveBlob } from '../../lib/notebookMedia';
-import { LibraryPicker } from '../library/LibraryPicker';
 import { prepareLibrarySources, readLibrarySources, downloadLibraryFile } from '../../lib/fileLibrary';
 import { getTeacherCustomTopic, listStudyMaterials } from '../../lib/customContent';
 import { askDeepStudyTutor, getStudyTutorStatus } from '../../lib/studyTutor';
@@ -27,18 +26,29 @@ import { learningAnswerAvailable, streamLearningAnswer, type LearningEvent, type
 import { ModelUnavailableError, streamModel } from '../../lib/modelGateway';
 import { Button, Empty, IconButton, Sheet, Spinner, Tabs, Textarea } from '../../components/ui';
 import { CoachMarkdown } from '../../components/coach/CoachMarkdown';
+import { AttachPicker, type AttachTab } from '../../components/handoff/AttachPicker';
+import { artifactSourceId, artifactSources, isArtifactSourceId, type AttachSelection } from '../../components/handoff/materials';
+import { SendTo } from '../../components/handoff/SendTo';
+import { targetPath, useOpenTarget } from '../../components/handoff/useOpenTarget';
 import { RequireAuth } from '../../components/shell/RequireAuth';
 import { useShellActions } from '../../components/shell/ShellActions';
 import { loadLearningIdentity, saveLearningIdentity, type LearningIdentity } from '../../engine/learningIdentity';
+import { logActivity } from '../../engine/activityLog';
 import {
-  askStudyTutor, downloadStudyFile, loadWorkspace, prepareStudySources, saveWorkspace, studyId,
+  askStudyTutor, downloadStudyFile, lectureSections, loadWorkspace, prepareStudySources, saveWorkspace, studyId,
   type StudyConversation, type StudyMessage, type StudyMode, type StudySource, type StudyWorkspace,
 } from '../../engine/studyWorkspace';
-import { restoreGuidedProgress, sceneQuestionContext, studyScenes } from '../../engine/guidedStudy';
+import { restoreGuidedProgress, sceneQuestionContext, studyScenes, type GuidedProgress } from '../../engine/guidedStudy';
 import { courseSources, notebookScopeKey, selectNotebookSources, sourceEvidence, sourceScopedTopic, type NotebookSource } from '../../engine/notebookSources';
-import { createStudyArtifact, enrichStudyArtifact, type StudioKind, type StudyArtifact } from '../../engine/studyStudio';
+import { artifactMarkdown, createStudyArtifact, enrichStudyArtifact, type StudioKind, type StudyArtifact } from '../../engine/studyStudio';
 import { recordTutorTurn, tutorMemoryHints } from '../../engine/tutorMemory';
 import { startAgentScheduler } from '../../engine/agent/scheduler';
+import { useArtifacts, type Artifact } from '../../lib/artifacts';
+// 各板块的成果在终端加载时登记：对话产物、AI 课、助理成果
+import { chatWorkspaceChanged, listConversations, touchConversation, type ConversationBrief } from '../../lib/artifactProviders/chat';
+import '../../lib/artifactProviders/lesson';
+import '../../lib/artifactProviders/agent';
+import '../../lib/artifactProviders/studyData';
 import type { LearningInteraction } from '../../../../server/shared/learning-ui.mjs';
 import type { Topic } from '../../types';
 import { CardsPanel, PracticePanel, ReadingPanel } from './StudyPanels';
@@ -49,6 +59,7 @@ import { SourcesPanel, StudioPanel, type StudioToolId } from './NotebookPanels';
 import { ArtifactPanel } from './ArtifactPanel';
 import { ChatFeed } from './chat/ChatFeed';
 import { Composer } from './chat/Composer';
+import type { ChatHandoff } from './chat/types';
 import type { TerminalViewProps } from './views/types';
 import { CommandPalette } from './shell/CommandPalette';
 import { Inspector } from './shell/Inspector';
@@ -63,6 +74,9 @@ import { useKeyboardViewport } from './shell/useKeyboardViewport';
 import t from './terminal.module.css';
 import { IconSpark } from '../../components/ui/icons';
 
+// 科研台的文件登记放在后面慢慢加载；加载不成不影响终端
+void import('../../lib/artifactProviders/research').catch(() => { /* 科研台没准备好时不登记 */ });
+
 const PrepPage = lazy(() => import('../prep'));
 const LibraryPage = lazy(() => import('../library/LibraryPage'));
 const TOOL_COMPONENTS: Record<ToolView, LazyExoticComponent<ComponentType<TerminalViewProps>>> = {
@@ -71,6 +85,7 @@ const TOOL_COMPONENTS: Record<ToolView, LazyExoticComponent<ComponentType<Termin
   classroom: lazy(() => import('./views/CourseStudioView')),
   agent: lazy(() => import('./views/AgentView')),
   memory: lazy(() => import('./views/MemoryView')),
+  research: lazy(() => import('./views/ResearchView')),
 };
 
 /** 这些视图下方保留输入框，随时可以向小砚提问 */
@@ -103,6 +118,27 @@ function useStudyTopic(topicId: string, owner: string | null) {
     return () => controller.abort();
   }, [custom, topicId, owner, retry]);
   return { topic: custom ? state.topic : getTopic(topicId), loading: custom && !state.topic && !state.error, error: state.error, retry: () => setRetry((value) => value + 1) };
+}
+
+/** 学习者在说「我卡住了」的说法 */
+const STUCK = /没懂|不懂|看不懂|听不懂|不明白|没明白|没理解|不理解|还是不|不会做|卡住|卡在|搞不清|分不清|弄不清|糊涂|太难|再讲一遍|再解释|再说一遍|confus|stuck|don'?t understand/i;
+const bigrams = (text: string) => {
+  const clean = text.toLowerCase().replace(/[\s\p{P}]/gu, '');
+  const set = new Set<string>();
+  for (let index = 0; index < clean.length - 1; index += 1) set.add(clean.slice(index, index + 2));
+  return set;
+};
+/** 这句提问和之前问过的某一句是不是在问同一件事（二字片段重合过半） */
+function askedBefore(question: string, earlier: string[]): boolean {
+  const current = bigrams(question);
+  if (current.size < 4) return false;
+  return earlier.some((text) => {
+    const other = bigrams(text);
+    if (other.size < 4) return false;
+    let shared = 0;
+    current.forEach((piece) => { if (other.has(piece)) shared += 1; });
+    return shared / Math.min(current.size, other.size) >= 0.6;
+  });
 }
 
 /** 给一条助手消息的进度追加或更新一步 */
@@ -177,7 +213,10 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
   const [navSheetOpen, setNavSheetOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [inspectorPanel, setInspectorPanel] = useState<InspectorPanel | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  /** 附加选择器：打开在哪个页签；null 为关闭 */
+  const [picker, setPicker] = useState<AttachTab | null>(null);
+  const allArtifacts = useArtifacts(owner);
+  const openTarget = useOpenTarget();
   const [librarySources, setLibrarySources] = useState<NotebookSource[]>([]);
   const materialsRequest = useRef<AbortController | null>(null);
   const [materialsBusy, setMaterialsBusy] = useState(false);
@@ -208,7 +247,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
   const sources = useMemo(() => [
     ...(topic ? courseSources(topic) : []),
     ...remoteSources,
-    ...(workspace.textSources ?? []),
+    ...(workspace.textSources ?? []).filter((source) => !isArtifactSourceId(source.id) || (conversation.selectedSourceIds ?? []).includes(source.id)),
     ...librarySources.filter((source) => (conversation.libraryFileIds ?? []).includes(source.libraryFileId ?? '')),
   ], [topic, remoteSources, workspace.textSources, librarySources, conversation.libraryFileIds]);
   const selectedSources = useMemo(
@@ -216,6 +255,12 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
     [sources, conversation.selectedSourceIds, workspace.selectedSourceIds],
   );
   const scopeKey = notebookScopeKey(selectedSources);
+  /** 从「我的内容」带进这段对话的成果（以文本来源的形式存在工作区里） */
+  const attachedArtifactSources = useMemo(() => sources.filter((source) => isArtifactSourceId(source.id)), [sources]);
+  const attachedArtifactKeys = useMemo(() => {
+    const ids = new Set(attachedArtifactSources.map((source) => source.id));
+    return ids.size ? allArtifacts.filter((item) => ids.has(artifactSourceId(item.key))).map((item) => item.key) : [];
+  }, [attachedArtifactSources, allArtifacts]);
   const scopedTopic = sourceScopedTopic(studyTopic, selectedSources);
   const includesLecture = selectedSources.some((source) => source.id === `lecture:${topicId}`);
   const scenes = scopedTopic ? studyScenes(scopedTopic, includesLecture) : [];
@@ -302,6 +347,25 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
     if (node && pinnedRef.current) node.scrollTop = node.scrollHeight;
   }, [conversation.messages.length, latestMessageText, busy]);
   useEffect(() => { setSourcePreview(null); }, [workspace.activeId]);
+  // 产物、对话名单变了：让成果登记处和「全部对话」目录重新读
+  const conversationIndex = workspace.conversations.map((chat) => `${chat.id}:${chat.title}:${chat.messages.length ? 1 : 0}`).join('|');
+  useEffect(() => { chatWorkspaceChanged(); }, [workspace.artifacts, conversationIndex]);
+  // 从别处跳回来：?chat=<对话> 直接打开那段对话；?artifact=<产物> 属于另一段对话时先切过去
+  const chatParam = params.get('chat');
+  const artifactParam = params.get('artifact');
+  useEffect(() => {
+    const current = workspaceRef.current;
+    const owning = artifactParam ? (current.artifacts ?? []).find((item) => item.id === artifactParam)?.conversationId : undefined;
+    const wanted = chatParam ?? owning;
+    if (wanted && wanted !== current.activeId && current.conversations.some((chat) => chat.id === wanted)) {
+      updateWorkspace((state) => ({ ...state, activeId: wanted }));
+    }
+    if (chatParam) {
+      const next = new URLSearchParams(params);
+      next.delete('chat');
+      setParams(next, { replace: true });
+    }
+  }, [chatParam, artifactParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const groups = useMemo<CourseGroup[]>(() => {
     const result = new Map<string, { title: string; items: Topic[] }>();
@@ -357,7 +421,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
     const id = studyId();
     updateWorkspace((current) => ({
       ...current,
-      conversations: [...current.conversations.slice(-23), { id, title: '新的学习对话', messages: [], libraryFileIds: [], selectedSourceIds: sources.filter((source) => source.kind !== 'library').map((source) => source.id) }],
+      conversations: [...current.conversations.slice(-23), { id, title: '新的学习对话', messages: [], libraryFileIds: [], selectedSourceIds: sources.filter((source) => source.kind !== 'library' && !isArtifactSourceId(source.id)).map((source) => source.id) }],
       activeId: id,
     }));
     setInput('');
@@ -405,6 +469,17 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
   const updateInteraction = (messageId: string, id: string, state: LearningInteraction[string]) => patchMessage(
     conversation.id, messageId, (message) => ({ ...message, interaction: { ...message.interaction, [id]: state } }),
   );
+  /** 一次提问完成：记进学习行为日志。说自己卡住了，或又问了一遍同一件事，记为「卡住」 */
+  const logQuestion = (question: string, earlier: string[]) => {
+    const asked = question.split('\n\n')[0].trim();
+    const struggling = STUCK.test(asked) || askedBefore(asked, earlier.map((text) => text.split('\n\n')[0]));
+    logActivity(owner, {
+      source: 'chat', summary: asked.replace(/\s+/g, ' ').slice(0, 120), signal: struggling ? 'struggle' : 'neutral',
+      ...(topic ? { topicId: topic.topicId, topicTitle: topic.title } : {}),
+      ...(struggling || asked.length > 120 ? { detail: asked } : {}),
+      ref: { kind: 'conversation', id: conversation.id, title: conversation.title },
+    });
+  };
   const remember = (question: string, answer: string) => {
     try { recordTutorTurn(owner, { topicId: topicId || undefined, topicTitle: topic?.title, question, answer }); } catch { /* 记忆提炼失败不影响答疑 */ }
   };
@@ -430,6 +505,10 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
     const currentRequest = () => serial === requestSerial.current && !controller.signal.aborted && isCurrentAccount(owner, useAuthStore.getState());
     const kept = dropFrom === undefined ? conversation.messages : conversation.messages.slice(0, dropFrom);
     const history = kept.filter((message) => message.scopeKey === scopeKey);
+    // 只算得到过回答的提问：上一次没答成、原样重试的不算「又问了一遍」
+    const askedEarlier = kept.filter((message, index) => message.role === 'user' && kept[index + 1]?.role === 'assistant').slice(-12).map((message) => message.text);
+    let answered = false;
+    touchConversation(owner, workspaceKeyId, chatId);
     const prefs = useModelPrefs.getState();
     const stamp = { ...(prefs.model ? { model: prefs.model } : {}), effort: prefs.effort };
     mapChat(chatId, (chat) => ({
@@ -454,6 +533,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
       if (!sources.length) {
         if (settings.mode === 'mock') {
           appendMessage(chatId, { id: studyId(), role: 'assistant', local: true, sources: [], scopeKey, text: '当前是本地演示，没有连接模型。打开一门课或添加资料后再问我，我会把相关原文找出来给你对照。' });
+          answered = true;
           return;
         }
         const { messageId, startedAt } = openAnswer(stamp, [{ id: 'model', label: '小砚正在思考', status: 'running', at: Date.now() }]);
@@ -485,6 +565,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
           }));
           activeStream.current = null;
           remember(question, result.text);
+          answered = true;
         } catch (reason) {
           if (!(reason instanceof ModelUnavailableError) || !currentRequest()) throw reason;
           // 没有可用模型：明确说明，而不是留下一条失败的空回答
@@ -492,6 +573,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
           patchMessage(chatId, messageId, ({ run: _run, model: _model, effort: _effort, ...message }) => ({
             ...message, local: true, text: '现在没有可用的模型。打开一门课或添加资料后，我可以先把相关原文摘出来给你对照。',
           }));
+          answered = true;
         }
         return;
       }
@@ -507,7 +589,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
             if (event.type === 'text') return { ...message, text: event.text };
             return { ...message, text: event.text, ui: event.ui, interaction: {}, sources: prepareStudySources(event.sources, 900, 8), run: { ...message.run!, status: 'complete', elapsedMs: Date.now() - startedAt } };
           });
-          if (event.type === 'done') remember(question, event.text);
+          if (event.type === 'done') { remember(question, event.text); answered = true; }
         };
         const request = {
           question, topicId: topicId || 'library', sources: selectedSources, history, mode, format: workspace.answerFormat ?? 'auto',
@@ -547,6 +629,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
         activeStream.current = null;
         if (reply.sourceNote) setNotice(reply.sourceNote);
         remember(question, reply.content);
+        answered = true;
         return;
       }
 
@@ -563,6 +646,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
       if (!currentRequest()) return;
       appendMessage(chatId, { id: studyId(), role: 'assistant', text: reply, sources: evidence, local, scopeKey });
       remember(question, reply);
+      answered = true;
     } catch {
       if (currentRequest()) {
         const stream = activeStream.current;
@@ -572,6 +656,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
         setNotice('本次回答未完成，问题已放回输入框。请重试；已经显示的内容已保留。');
       }
     } finally {
+      if (answered) logQuestion(question, askedEarlier);
       if (currentRequest()) { setBusy(false); setPhase(''); }
     }
   };
@@ -616,13 +701,74 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
       ...chat, libraryFileIds: unique,
       selectedSourceIds: [...selectedSources.filter((source) => !source.libraryFileId).map((source) => source.id), ...unique.map((id) => `library:${id}`)],
     }));
-    setPickerOpen(false);
+    setPicker(null);
     switchView('ask');
   };
   const addFiles = (ids: string[]) => {
     const merged = [...new Set([...(conversation.libraryFileIds ?? []), ...ids])];
     if (merged.length > 12) { setNotice('当前对话最多使用 12 份文件，请先移除不需要的文件。'); return; }
     attachFiles(merged);
+  };
+  /**
+   * 把「我的内容」里的成果设为这段对话的来源：正文取一份快照，作为文本来源存进工作区，
+   * 只在附加了它的对话里生效。keys 是这段对话要带的全部成果。
+   */
+  const setConversationArtifacts = async (keys: string[]) => {
+    const chatId = conversation.id;
+    const wanted = [...new Set(keys)].slice(0, 8);
+    const { sources: found, missing } = await artifactSources(owner, wanted);
+    if (!isCurrentAccount(owner, useAuthStore.getState())) return;
+    if (busy) stop();
+    let dropped = 0;
+    updateWorkspace((current) => {
+      const chat = current.conversations.find((item) => item.id === chatId);
+      if (!chat) return current;
+      // 别的对话还在用的成果来源留着，其余没人用的顺手清掉
+      const usedElsewhere = new Set(current.conversations.filter((item) => item.id !== chatId).flatMap((item) => (item.selectedSourceIds ?? []).filter(isArtifactSourceId)));
+      const others = (current.textSources ?? []).filter((source) => (!isArtifactSourceId(source.id) || usedElsewhere.has(source.id)) && !found.some((item) => item.id === source.id));
+      const room = Math.max(0, 16 - others.length);
+      dropped = Math.max(0, found.length - room);
+      const added = found.slice(0, room);
+      const base = chat.selectedSourceIds ?? selectedSources.map((source) => source.id);
+      return {
+        ...current,
+        textSources: [...others, ...added],
+        conversations: current.conversations.map((item) => (item.id === chatId
+          ? { ...item, selectedSourceIds: [...base.filter((id) => !isArtifactSourceId(id)), ...added.map((source) => source.id)] }
+          : item)),
+      };
+    });
+    if (dropped) setNotice('每课最多保存 16 份补充文本，有几份内容没能带进来，请先整理已有资料。');
+    else if (missing) setNotice(`有 ${missing} 份内容已经找不到了，其余已带进这段对话。`);
+    else if (found.length) setNotice(`已把 ${found.length} 份内容带进这段对话，小砚会依据它们回答。`);
+  };
+  /** 在已带的成果之外再加几份（资料库「用于对话」走这里） */
+  const addArtifacts = async (keys: string[]) => {
+    if (libraryBlocked) { setNotice('请先保存校订或等待当前提交完成，再把内容带进对话。'); return; }
+    switchView('ask');
+    await setConversationArtifacts([...attachedArtifactKeys, ...keys]);
+    focusComposer();
+  };
+  const detachArtifactSource = (id: string) => {
+    if (busy) stop();
+    updateWorkspace((current) => {
+      const usedElsewhere = current.conversations.some((chat) => chat.id !== conversation.id && (chat.selectedSourceIds ?? []).includes(id));
+      return {
+        ...current,
+        textSources: usedElsewhere ? current.textSources : (current.textSources ?? []).filter((source) => source.id !== id),
+        conversations: current.conversations.map((chat) => (chat.id === conversation.id
+          ? { ...chat, selectedSourceIds: (chat.selectedSourceIds ?? selectedSources.map((source) => source.id)).filter((sourceId) => sourceId !== id) }
+          : chat)),
+      };
+    });
+  };
+  /** 附加选择器确认：文件和成果各自只在变了的时候更新 */
+  const confirmAttach = (selection: AttachSelection) => {
+    const sameFiles = selection.fileIds.join(',') === (conversation.libraryFileIds ?? []).join(',');
+    const sameArtifacts = [...selection.artifactKeys].sort().join(',') === [...attachedArtifactKeys].sort().join(',');
+    if (!sameFiles) attachFiles(selection.fileIds);
+    else { setPicker(null); switchView('ask'); }
+    if (!sameArtifacts) void setConversationArtifacts(selection.artifactKeys);
   };
   const addTextSource = (title: string, content: string) => {
     if ((workspace.textSources?.length ?? 0) >= 16) { setNotice('每课最多保存 16 份补充文本，请先整理已有资料。'); return; }
@@ -721,7 +867,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
   const undo = () => { undoRef.current?.(); undoRef.current = null; setUndoLabel(''); setNotice('已恢复。'); };
 
   /* ── 版面 ── */
-  const welcomeState = !topic && !topicUnavailable && !attachmentKey && !conversation.messages.length && view === 'ask';
+  const welcomeState = !topic && !topicUnavailable && !attachmentKey && !attachedArtifactSources.length && !conversation.messages.length && view === 'ask';
   const showComposer = Boolean(owner || topic) && COMPOSER_VIEWS.includes(view) && !topicUnavailable;
   const showPanels = view !== 'library' && view !== 'prepare';
   const showTabs = Boolean(topic) && !isToolView(view) && view !== 'library' && view !== 'journey';
@@ -734,6 +880,47 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
     onOpenTopic: openTopic,
     onView: (next, extra) => switchView(isView(next) ? next : 'ask', extra),
     onNotice: setNotice,
+  };
+  const chatHandoff = useMemo<ChatHandoff>(() => ({
+    owner,
+    ...(topic ? { topicId: topic.topicId, topicTitle: topic.title, teachTopicId: topic.topicId } : {}),
+  }), [owner, topic]);
+  /** 当前账号在所有课程里的对话；开始页的「最近」和命令面板用 */
+  const allConversations = useMemo(
+    () => (welcomeState || paletteOpen ? listConversations(owner) : []),
+    [welcomeState, paletteOpen, owner, conversationIndex], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const openConversation = (chat: ConversationBrief) => {
+    if (chat.workspace === workspaceKeyId) { selectChat(chat.id); return; }
+    if (libraryBlocked) { setNotice('请先保存校订或等待当前提交完成，再打开别的对话。'); return; }
+    navigate(targetPath({ view: 'ask', params: { chat: chat.id }, ...(chat.topicId ? { topicId: chat.topicId } : {}) }, '/learn'));
+  };
+  const openArtifactItem = (item: Artifact) => {
+    if (libraryBlocked) { setNotice('请先保存校订或等待当前提交完成，再打开别的内容。'); return; }
+    setNavSheetOpen(false);
+    setNotice('');
+    openTarget(item.open);
+  };
+  /* ── 学习行为日志：读讲义、带我学、练一练、闪卡 ── */
+  const topicRef = topic ? { topicId: topic.topicId, topicTitle: topic.title } : {};
+  const logGuided = (next: GuidedProgress) => {
+    const before = guided;
+    for (const scene of scenes) {
+      if (scene.kind === 'quiz' && next.answers[scene.id] !== undefined && before.answers[scene.id] === undefined) {
+        const correct = next.answers[scene.id] === scene.answer;
+        logActivity(owner, {
+          source: 'guided', signal: correct ? 'success' : 'struggle', ...topicRef,
+          summary: `带我学「${studyTopic.title}」自检题${correct ? '答对' : '答错'}：${scene.title}`.slice(0, 150),
+          detail: `${scene.body}\n选了：${scene.options[next.answers[scene.id]] ?? ''}；正确：${scene.options[scene.answer] ?? ''}`,
+        });
+      } else if (next.completed.includes(scene.id) && !before.completed.includes(scene.id)) {
+        logActivity(owner, {
+          source: 'guided', ...topicRef,
+          summary: scene.kind === 'reflect' ? `带我学「${studyTopic.title}」写下了自己的解释` : `带我学「${studyTopic.title}」完成一步：${scene.title}`.slice(0, 150),
+          ...(scene.kind === 'reflect' && next.reflection.trim() ? { detail: next.reflection.trim() } : {}),
+        });
+      }
+    }
   };
   const sidebarProps = {
     view, topicId, hasTopic: Boolean(topic), groups, conversations: workspace.conversations, activeChatId: workspace.activeId,
@@ -761,7 +948,12 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
       <div className={t.fill}>
         <Suspense fallback={<ViewLoading label="正在打开资料库…" />}>
           <RequireAuth>
-            <LibraryPage onLeaveGuardChange={setLibraryBlocked} onUseInConversation={async (ids) => { addFiles(ids); }} />
+            <LibraryPage
+              onLeaveGuardChange={setLibraryBlocked}
+              onUseInConversation={async (ids) => { addFiles(ids); }}
+              onUseArtifacts={(keys) => { void addArtifacts(keys); }}
+              onView={(next, extra) => switchView(isView(next) ? next : 'ask', extra)}
+            />
           </RequireAuth>
         </Suspense>
       </div>
@@ -807,7 +999,12 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
           identity={identity}
           onAccept={acceptLetter}
           onSelectCourse={chooseCourse}
-          onUpload={() => setPickerOpen(true)}
+          onUpload={() => setPicker('files')}
+          owner={owner}
+          conversations={allConversations}
+          onOpenConversation={openConversation}
+          onOpenArtifact={openArtifactItem}
+          onSearchAll={() => setPaletteOpen(true)}
           onTeach={() => switchView('feynman')}
           onClassroom={() => switchView('classroom')}
           onJourney={() => switchView('journey')}
@@ -845,6 +1042,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
             onSaveNote={saveNote}
             onInteraction={updateInteraction}
             onRegenerate={regenerate}
+            handoff={chatHandoff}
           />
         </div>
       </>
@@ -891,7 +1089,29 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
           </div>
         )}
         {view === 'studio' && (artifact ? (
-          <ArtifactPanel key={artifact.id + artifact.kind} artifact={artifact} onUpdate={updateArtifact} onEnhance={() => void enhanceArtifact()} busy={busy} saveFailed={saveFailed} onSource={openSource} />
+          <ArtifactPanel
+            key={artifact.id + artifact.kind}
+            artifact={artifact}
+            onUpdate={updateArtifact}
+            onEnhance={() => void enhanceArtifact()}
+            busy={busy}
+            saveFailed={saveFailed}
+            onSource={openSource}
+            sendTo={(
+              <SendTo
+                owner={owner}
+                text={() => artifactMarkdown(artifact)}
+                title={artifact.title}
+                topicId={chatHandoff.topicId}
+                topicTitle={chatHandoff.topicTitle}
+                teachTopicId={chatHandoff.teachTopicId}
+                routes={['agent', 'lesson', 'teach']}
+                origin={{ section: 'chat', label: `对话产物：${artifact.title}`, open: { view: 'studio', params: { artifact: artifact.id }, ...(chatHandoff.topicId ? { topicId: chatHandoff.topicId } : {}) } }}
+              >
+                <button type="button"><Forward size={15} strokeWidth={1.75} />发送到</button>
+              </SendTo>
+            )}
+          />
         ) : (
           <Empty
             icon={<IconSpark size={22} />}
@@ -909,10 +1129,27 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
           />
         ) : scopedTopic && (
           <>
-            {view === 'read' && <ReadingPanel key={scopeKey} topic={scopedTopic} readSections={workspace.readSections} onRead={(index) => updateWorkspace((current) => ({ ...current, readSections: [...new Set([...current.readSections, index])] }))} onAsk={askAbout} />}
-            {view === 'guided' && <GuidedStudyPanel key={scopeKey} topic={scopedTopic} includeSelfTests={includesLecture} saved={workspace.guided} onSave={(next) => updateWorkspace((current) => ({ ...current, guided: next }))} onAsk={askAbout} />}
-            {view === 'practice' && <PracticePanel key={scopeKey} topic={scopedTopic} selfChecks={customCards} answers={workspace.practiceAnswers} onAnswers={(practiceAnswers) => updateWorkspace((current) => ({ ...current, practiceAnswers }))} onAsk={askAbout} />}
-            {view === 'cards' && <CardsPanel key={scopeKey} topic={scopedTopic} sourceCards={customCards} ratings={workspace.ratings} onRate={(id, value) => updateWorkspace((current) => ({ ...current, ratings: { ...current.ratings, [id]: value } }))} />}
+            {view === 'read' && <ReadingPanel key={scopeKey} topic={scopedTopic} readSections={workspace.readSections} onRead={(index) => {
+              updateWorkspace((current) => ({ ...current, readSections: [...new Set([...current.readSections, index])] }));
+              const sections = lectureSections(scopedTopic);
+              logActivity(owner, { source: 'reading', ...topicRef, summary: `读讲义「${studyTopic.title}」第 ${index + 1}/${sections.length} 段：${sections[index]?.title ?? ''}`.slice(0, 150) });
+            }} onAsk={askAbout} />}
+            {view === 'guided' && <GuidedStudyPanel key={scopeKey} topic={scopedTopic} includeSelfTests={includesLecture} saved={workspace.guided} onSave={(next) => { logGuided(next); updateWorkspace((current) => ({ ...current, guided: next })); }} onAsk={askAbout} />}
+            {view === 'practice' && <PracticePanel key={scopeKey} topic={scopedTopic} selfChecks={customCards} answers={workspace.practiceAnswers} onAnswers={(practiceAnswers) => updateWorkspace((current) => ({ ...current, practiceAnswers }))}
+              onResult={(result) => logActivity(owner, {
+                source: 'practice', signal: result.correct ? 'success' : 'struggle', ...topicRef,
+                summary: `练一练「${studyTopic.title}」${result.selfRated ? (result.correct ? '自评能解释' : '自评还要复习') : (result.correct ? '答对' : '答错')}：${result.stem.replace(/\s+/g, ' ').slice(0, 60)}`,
+                detail: result.stem,
+              })}
+              onAsk={askAbout} />}
+            {view === 'cards' && <CardsPanel key={scopeKey} topic={scopedTopic} sourceCards={customCards} ratings={workspace.ratings} onRate={(id, value, front) => {
+              updateWorkspace((current) => ({ ...current, ratings: { ...current.ratings, [id]: value } }));
+              logActivity(owner, {
+                source: 'flashcards', signal: value === 'know' ? 'success' : 'struggle', ...topicRef,
+                summary: `闪卡「${studyTopic.title}」${value === 'know' ? '记住了' : '还要复习'}：${(front ?? '').replace(/\s+/g, ' ').slice(0, 60)}`,
+                ...(front ? { detail: front } : {}),
+              });
+            }} />}
           </>
         )}
         {view === 'prepare' && (topic ? (
@@ -1047,9 +1284,13 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
                   demo={settings.mode === 'mock'}
                   sourceCount={selectedSources.length}
                   freeChat={sources.length === 0}
-                  attachments={(conversation.libraryFileIds ?? []).map((id) => ({ id, title: librarySources.find((source) => source.libraryFileId === id)?.title ?? '资料文件' }))}
-                  onRemoveAttachment={(id) => attachFiles((conversation.libraryFileIds ?? []).filter((fileId) => fileId !== id))}
-                  onAttach={() => setPickerOpen(true)}
+                  attachments={[
+                    ...attachedArtifactSources.map((source) => ({ id: source.id, title: source.title, kind: 'artifact' as const })),
+                    ...(conversation.libraryFileIds ?? []).map((id) => ({ id, title: librarySources.find((source) => source.libraryFileId === id)?.title ?? '资料文件', kind: 'file' as const })),
+                  ]}
+                  onRemoveAttachment={(id) => (isArtifactSourceId(id) ? detachArtifactSource(id) : attachFiles((conversation.libraryFileIds ?? []).filter((fileId) => fileId !== id)))}
+                  onAttach={() => setPicker('files')}
+                  onAttachContent={() => setPicker('artifacts')}
                   onOpenSources={() => setInspectorPanel('sources')}
                   placeholder={isMobile && view !== 'ask' ? '哪里没懂，问小砚…' : topic ? `向小砚提问「${topic.title}」…` : sources.length ? '依据所选资料向小砚提问…' : '想学什么，直接问小砚…'}
                 />
@@ -1067,7 +1308,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
                   onPreview={(source) => openSource({ id: source.id, title: source.title, excerpt: source.content })}
                   onAdd={addTextSource}
                   onDelete={removeSource}
-                  onPickLibrary={() => setPickerOpen(true)}
+                  onPickLibrary={() => setPicker('files')}
                   onLibrary={() => switchView('library')}
                 />
               ) : (
@@ -1105,20 +1346,29 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
         onSelectChat={selectChat}
         onView={(next) => switchView(next)}
         onNewChat={newChat}
-        onAttach={() => setPickerOpen(true)}
+        onAttach={() => setPicker('files')}
         onTeach={() => { if (topic && !libraryBlocked) navigate(`/teach/${encodeURIComponent(topic.topicId)}`); }}
         onSettings={shellActions.openSettings}
         onNavigate={(to) => navigate(to)}
+        owner={owner}
+        workspace={workspaceKeyId}
+        allConversations={allConversations}
+        onOpenConversation={openConversation}
+        onOpenArtifact={openArtifactItem}
       />
 
-      {pickerOpen && (
-        <LibraryPicker
-          selected={conversation.libraryFileIds ?? []}
-          onClose={() => setPickerOpen(false)}
-          onConfirm={attachFiles}
-          onManage={() => { setPickerOpen(false); switchView('library'); }}
-        />
-      )}
+      <AttachPicker
+        open={picker !== null}
+        onOpenChange={(open) => { if (!open) setPicker(null); }}
+        owner={owner}
+        initialTab={picker ?? 'files'}
+        selected={{ fileIds: conversation.libraryFileIds ?? [], artifactKeys: attachedArtifactKeys }}
+        title="带进这段对话"
+        description="资料库里的文件，和你做出来的笔记、导图、题目、AI 课、助理成果，都可以作为小砚回答的依据。"
+        confirmLabel="用于当前对话"
+        onConfirm={confirmAttach}
+        onManage={() => { setPicker(null); switchView('library'); }}
+      />
 
       {companionVisible && (
         <StudyCompanion

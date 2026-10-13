@@ -3,10 +3,13 @@
  * 一次「推进」= 一轮主循环；目标模式下步数用完会暂停，可手动或自动续跑下一轮。
  */
 import { getTopic } from '../../data';
+import type { ArtifactOrigin } from '../../lib/artifacts';
 import { ModelUnavailableError, type ChatMessage, type ToolCall } from '../../lib/modelGateway';
+import { setItemOrigin } from '../../pages/learn/views/workbench/origins';
 import { agentStore } from '../../store/agentStore';
 import { newId } from '../../store/studyData';
 import type { Topic } from '../../types';
+import { logActivity } from '../activityLog';
 import type { NotebookSource } from '../notebookSources';
 import { buildDemoPlan, runDemo, runDemoSubAgents, type DemoPlan } from './demo';
 import { clipArguments, compactTranscript, fitTranscript, isAbortError, repairTranscript, runLoop, sleep, type LoopResult } from './loop';
@@ -14,7 +17,7 @@ import { continueInstruction, goalMessage, systemPrompt } from './prompt';
 import { collectMaterials } from './retrieval';
 import { runSubAgents } from './subagents';
 import { executeTool, mainToolNames, toolSpecs, type ToolContext, type ToolOutcome } from './tools';
-import type { AgentEvent, AgentRun, RunOptions } from './types';
+import type { AgentEvent, AgentRun, ProducedItem, RunOptions } from './types';
 
 export interface RunContext {
   topic?: Topic;
@@ -33,6 +36,9 @@ export interface StartInput {
 
 export const DEFAULT_RUN_OPTIONS: RunOptions = { goalMode: false, subagents: true, stepBudget: 12, autoContinue: true, maxRounds: 3 };
 export const STEP_BUDGETS = [8, 12, 20] as const;
+
+/** 工作台工具页签 → 成果登记键的种类前缀 */
+const PRODUCED_KIND: Partial<Record<ProducedItem['kind'], string>> = { notes: 'note', mindmap: 'mindmap', quiz: 'quiz', flashcards: 'deck', todos: 'todo', writing: 'writing' };
 
 /** 正在执行的运行（仅本页内存） */
 const active = new Map<string, AbortController>();
@@ -225,7 +231,9 @@ async function drive(owner: string | null, runId: string, instruction?: string) 
   const planOf = () => (demoPlan ??= buildDemoPlan(run.goal, context.topic, materials));
 
   const allowed = new Set(mainToolNames(options));
-  const ctx: ToolContext = { owner, topic: context.topic, materials, signal };
+  // 这次任务写进工作台的每样东西，来源都指回这次任务
+  const origin: ArtifactOrigin = { section: 'agent', label: `助理任务：${run.title}`, open: { view: 'agent', params: { run: runId } } };
+  const ctx: ToolContext = { owner, topic: context.topic, materials, signal, origin };
   if (options.goalMode) {
     ctx.goal = {
       read: () => agentStore.getRun(owner, runId)?.checklist ?? [],
@@ -262,7 +270,13 @@ async function drive(owner: string | null, runId: string, instruction?: string) 
         ...(outcome.produced ? { produced: outcome.produced } : {}),
       });
     }
-    if (outcome.produced?.length) agentStore.addProduced(owner, runId, outcome.produced);
+    if (outcome.produced?.length) {
+      agentStore.addProduced(owner, runId, outcome.produced);
+      for (const item of outcome.produced) {
+        const kind = PRODUCED_KIND[item.kind];
+        if (kind) setItemOrigin(owner, `${kind}:${item.id}`, origin);
+      }
+    }
     if (outcome.finish !== undefined) agentStore.appendEvent(owner, runId, { type: 'summary', text: outcome.finish });
   };
   const execute = (call: ToolCall) => executeTool(call, ctx, allowed, (lanes) => {
@@ -377,6 +391,17 @@ function settle(owner: string | null, runId: string, result: LoopResult) {
   if (finished) {
     transcripts.delete(runId);
     agentStore.patchRun(owner, runId, { status: 'done', summary: result.summary, finishedAt: now(), messages: undefined });
+    // 交办的目标本身就是学习者的打算：任务办完时记进学习行为日志，记忆从这里学到「他想做成什么」
+    const made = run.produced.map((item) => `《${item.title}》`).join('、');
+    logActivity(owner, {
+      source: 'agent',
+      signal: 'goal',
+      summary: `交给助理并办完：${run.goal.split('\n')[0].replace(/\s+/g, ' ')}`.slice(0, 150),
+      detail: [made ? `写进工作台：${made}` : '', result.summary ? `小结：${result.summary.replace(/\s+/g, ' ')}` : ''].filter(Boolean).join('。'),
+      ...(run.topicId ? { topicId: run.topicId } : {}),
+      ...(run.topicTitle ? { topicTitle: run.topicTitle } : {}),
+      ref: { kind: 'agent-output', id: run.id, title: run.title },
+    });
     return;
   }
 

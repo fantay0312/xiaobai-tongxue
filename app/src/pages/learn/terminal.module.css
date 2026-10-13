@@ -101,18 +101,6 @@
   color: var(--text);
 }
 
-/* 当前项左侧的一道强调线 */
-.railItem[aria-current='page']::before {
-  content: '';
-  position: absolute;
-  top: 9px;
-  bottom: 9px;
-  left: -8px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--accent);
-}
-
 .railLabel,
 .railMore {
   display: none;
@@ -936,10 +924,6 @@ button.crumb:hover {
   .railItem[data-active] > svg {
     background: var(--accent-soft);
     color: var(--accent);
-  }
-
-  .railItem[aria-current='page']::before {
-    display: none;
   }
 
   .railLabel {

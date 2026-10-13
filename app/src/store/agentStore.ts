@@ -115,6 +115,8 @@ function mutateRun(owner: string | null, runId: string, update: (run: AgentRun) 
 
 /** 读写接口（非 Hook）：Agent 运行器、调度器与界面事件处理里直接调用。 */
 export const agentStore = {
+  /** 任务数据有变化时回调（非 Hook），返回取消订阅。运行中变化很频繁，订阅方自己比对关心的部分 */
+  subscribe: (listener: () => void): (() => void) => useStore.subscribe(listener),
   get: (owner: string | null): AgentData => useStore.getState().byOwner[ownerKey(owner)] ?? EMPTY,
   getRun: (owner: string | null, runId: string): AgentRun | undefined => agentStore.get(owner).runs.find((run) => run.id === runId),
 

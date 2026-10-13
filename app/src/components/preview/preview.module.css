@@ -17,6 +17,12 @@
 .typeIcon[data-tone='code'] { --tone: var(--text-2); }
 .typeIcon[data-tone='archive'] { --tone: color-mix(in oklab, var(--warn) 55%, var(--text-3)); }
 .typeIcon[data-tone='folder'] { --tone: color-mix(in oklab, var(--warn) 70%, var(--text-2)); }
+/* 生成的内容：圆角更大一点，和上传的文件一眼分得开 */
+.typeIcon[data-made] { --tone: var(--accent); border-radius: var(--r-full); }
+.typeIcon[data-tone='made-mindmap'], .typeIcon[data-tone='made-lesson'] { --tone: color-mix(in oklab, var(--ok) 65%, var(--accent)); }
+.typeIcon[data-tone='made-quiz'], .typeIcon[data-tone='made-todo-list'] { --tone: color-mix(in oklab, var(--warn) 80%, var(--text-2)); }
+.typeIcon[data-tone='made-deck'], .typeIcon[data-tone='made-agent-output'] { --tone: color-mix(in oklab, var(--accent) 50%, var(--bad)); }
+.typeIcon[data-tone='made-writing'], .typeIcon[data-tone='made-research-file'] { --tone: color-mix(in oklab, var(--bad) 55%, var(--warn)); }
 
 /* ── 浮层 ── */
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
@@ -35,12 +41,17 @@
 .headText { flex: 1; min-width: 0; }
 .title { margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 600 var(--fz-lg)/1.35 var(--ui-font); letter-spacing: -0.005em; color: var(--text); }
 .meta { display: flex; align-items: center; gap: 8px; margin: 2px 0 0; color: var(--text-3); font-size: var(--fz-xs); line-height: 1.5; white-space: nowrap; }
+.meta > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.meta > :not(:first-child) { flex: none; }
 .headActions { display: flex; align-items: center; gap: 6px; flex: none; }
 .pager { display: flex; align-items: center; gap: 2px; margin-right: 6px; padding: 3px; border-radius: var(--r-md); background: var(--inset); }
 .pagerText { min-width: 46px; text-align: center; color: var(--text-3); font-size: var(--fz-xs); font-variant-numeric: tabular-nums; }
 .paneBar { display: flex; padding: 8px 20px; border-bottom: 1px solid var(--border); background: var(--surface); }
 /* 只在手机上出现的按钮：返回、更多、笔记抽屉的开合 */
 .head .headBack, .head .headMore, .notesHead .notesToggle { display: none; }
+/* 调用方给了额外菜单项时，桌面也显示「更多」 */
+.head .headMore[data-extra] { display: inline-grid; }
+.headIconSlot { display: inline-flex; flex: none; }
 .touchOnly { display: none; }
 
 .stage { flex: 1; min-height: 0; display: flex; background: var(--sidebar); }
@@ -190,7 +201,7 @@
   .head { gap: 4px; padding: calc(6px + env(safe-area-inset-top)) 6px 6px 6px; }
   .head .headBack, .head .headMore { display: inline-grid; flex: none; }
   .head .headClose, .head .pager, .head .headButton { display: none; }
-  .headIcon { display: none; }
+  .headIcon, .headIconSlot { display: none; }
   .headText { padding-left: 2px; }
   .headActions { gap: 2px; }
   .paneBar { padding: 6px 12px; }

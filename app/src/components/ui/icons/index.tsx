@@ -7,7 +7,7 @@
 export type { XbIconProps, XbIconType } from './base';
 
 /* 一级板块 */
-export { IconChat, IconWorkbench, IconTeach, IconClassroom, IconAgent, IconMemory, IconLibrary, IconGrowth } from './sections';
+export { IconChat, IconWorkbench, IconTeach, IconClassroom, IconAgent, IconMemory, IconLibrary, IconGrowth, IconResearch } from './sections';
 
 /* 工作台工具 */
 export { IconNote, IconMindmap, IconQuiz, IconFlashcard, IconTodo, IconWriting } from './tools';

@@ -358,6 +358,9 @@
   /* 触屏没有悬停，操作条常显，按钮放大到手指好点 */
   .actions, .userTools { opacity: 1; }
   .actions > button, .userTools > button { width: 36px; height: 36px; }
+  /* 带文字的「收进工作台」不是图标钮：保留自己的宽度，只把高度抬到一致 */
+  .actions > button[data-wide] { width: auto; flex: none; }
+  .actions { flex-wrap: wrap; row-gap: 4px; }
   .linkButton { min-height: 36px; padding: 4px 10px; font-size: var(--fz-sm); }
   .sourceChip, .sourceMore { height: 32px; }
   .runState { padding: 10px 10px 10px 12px; }

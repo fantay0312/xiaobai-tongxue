@@ -1024,6 +1024,569 @@
   color: var(--ok);
 }
 
+/* ── 模型：自定义接口 ── */
+
+/* 协议：桌面是分段，手机换成下拉（四个协议名排不下一行） */
+.protoSelect {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  height: var(--ctl-md);
+  padding: 0 12px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+  font: 500 var(--fz-md) / 1 var(--ui-font);
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+
+.protoSelect svg {
+  flex: none;
+  color: var(--text-3);
+}
+
+.protoSelect:hover {
+  background: color-mix(in srgb, var(--surface), var(--text) 4%);
+}
+
+.protoSelect:focus-visible,
+.protoSelect[data-state='open'] {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.rowWide .rowControl > .rowFixed {
+  flex: none;
+}
+
+/* 「填入默认地址」的提议：贴在接口地址那一行下面 */
+.offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin: -2px 0 12px;
+  padding: 8px 8px 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--accent-softer);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.5;
+}
+
+.offer code {
+  color: var(--text);
+  font: 0.94em var(--ui-mono);
+  overflow-wrap: anywhere;
+}
+
+.models {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+
+.modelsHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 20px;
+}
+
+.fetchIssue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 8px 8px 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--bad-soft);
+  color: var(--bad);
+  font-size: var(--fz-sm);
+  line-height: 1.5;
+}
+
+.fetchIssue > span {
+  flex: 1 1 200px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* 勾选清单：工具条 + 自带滚动的列表 */
+.checklist {
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--sidebar);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.checkBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 8px 8px 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.checkSearch {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.checkCount {
+  color: var(--text-3);
+  font: var(--fz-xs) / 1.4 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.checkActions {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.checkList {
+  max-height: 264px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-2) transparent;
+}
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding-right: 4px;
+  border-radius: var(--r-sm);
+  transition: background var(--dur-1) var(--ease);
+}
+
+.checkRow:hover {
+  background: var(--hover);
+}
+
+.checkLabel {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 7px 4px 7px 8px;
+  cursor: pointer;
+}
+
+.checkInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  opacity: 0;
+}
+
+.checkBox {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  place-items: center;
+  border-radius: var(--r-xs);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px var(--border-2);
+  color: transparent;
+  transition: background var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+
+.checkLabel:active .checkBox {
+  transform: scale(0.9);
+}
+
+.checkInput:checked + .checkBox {
+  background: var(--accent);
+  box-shadow: none;
+  color: var(--on-accent);
+}
+
+.checkInput:focus-visible + .checkBox {
+  box-shadow: inset 0 0 0 1.5px var(--accent), 0 0 0 3px var(--ring);
+}
+
+.checkText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  min-width: 0;
+}
+
+.checkText code {
+  color: var(--text-2);
+  font: var(--fz-sm) / 1.45 var(--ui-mono);
+  overflow-wrap: anywhere;
+}
+
+.checkRow[data-checked] .checkText code {
+  color: var(--text);
+}
+
+.checkText small {
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.4;
+}
+
+.star {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-4);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+
+.star:hover {
+  background: var(--active);
+  color: var(--text-2);
+}
+
+.star:active {
+  transform: scale(0.9);
+}
+
+.star:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.star[aria-pressed='true'] {
+  color: var(--warn);
+}
+
+.checkEmpty {
+  padding: 18px 12px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  text-align: center;
+}
+
+.modelAdd {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+/* ── 小白：预设 / 角色卡 / 活泼程度 / 试听 ── */
+
+.presetBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0 14px;
+}
+
+.presetBlock .legend {
+  margin: 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px 0 16px;
+}
+
+.cardChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.cardChipsLabel {
+  margin-right: 2px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  white-space: nowrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  height: 28px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font: 500 var(--fz-xs) / 1 var(--ui-font);
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+
+.chip:hover {
+  background: var(--active);
+  color: var(--text);
+}
+
+.chip:active {
+  transform: scale(0.96);
+}
+
+.chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.chip[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* 叠一层类名，压过 kit 文本框自带的行高与最小高度 */
+.cardText.cardText {
+  min-height: 148px;
+  line-height: 1.7;
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 18px;
+  margin-top: -4px;
+  color: var(--text-3);
+  font: var(--fz-xs) / 1.4 var(--ui-font);
+}
+
+.cardSaved {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color var(--dur-2) var(--ease);
+}
+
+.cardSaved[data-on] {
+  color: var(--ok);
+}
+
+.cardCount {
+  font-variant-numeric: tabular-nums;
+}
+
+.cardCount[data-full] {
+  color: var(--warn);
+}
+
+.cardHint {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.5;
+}
+
+.cardAddress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 20px;
+  padding-top: 4px;
+}
+
+.cardAddressControl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.cardAddressInput {
+  width: 116px;
+}
+
+.cardNote {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+
+.lively {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+
+.livelyHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.livelyNow {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.livelyNow strong {
+  color: var(--accent);
+  font: 600 var(--fz-md) / 1.4 var(--ui-font);
+}
+
+.livelyNow small {
+  color: var(--text-4);
+  font: var(--fz-xs) / 1 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+}
+
+.livelyRange {
+  display: block;
+  width: 100%;
+  flex: none;
+}
+
+/* 五档名对齐滑杆的 0 / 25 / 50 / 75 / 100%：两端半格、中间整格 */
+.livelyStops {
+  display: grid;
+  grid-template-columns: 1fr 2fr 2fr 2fr 1fr;
+  margin-top: -2px;
+}
+
+.livelyStop {
+  min-width: 0;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-3);
+  font: 500 var(--fz-xs) / 1 var(--ui-font);
+  text-align: center;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+
+.livelyStop:first-child {
+  text-align: left;
+}
+
+.livelyStop:last-child {
+  text-align: right;
+}
+
+.livelyStop:hover {
+  color: var(--text);
+}
+
+.livelyStop:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.livelyStop[aria-pressed='true'] {
+  color: var(--accent);
+}
+
+.livelyLine {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.55;
+}
+
+.voice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0 6px;
+  border-top: 1px solid var(--border);
+}
+
+.voiceFace {
+  flex: none;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.voiceBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.voiceHint,
+.voiceTeacher {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.55;
+}
+
+.voiceTeacher {
+  font-size: var(--fz-xs);
+}
+
+.voiceBubble {
+  position: relative;
+  min-height: 34px;
+  margin: 0;
+  padding: 7px 12px;
+  border-radius: var(--r-lg);
+  border-top-left-radius: var(--r-xs);
+  background: var(--inset);
+  color: var(--text);
+  font-size: var(--fz-md);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  animation: pop var(--dur-2) var(--ease);
+}
+
+.voiceBubble[data-state='fail'] {
+  background: transparent;
+  padding-inline: 0;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
+
 /* ── 关于 ── */
 
 .about {
@@ -1363,6 +1926,121 @@
   .confirmField.confirmField input {
     font-size: 16px;
   }
+
+  /* 协议：分段收起，换成下拉 */
+  .rowControl > .protoSeg.protoSeg {
+    display: none;
+  }
+
+  .protoSelect {
+    display: flex;
+  }
+
+  .rowWide .rowControl > .rowFixed {
+    flex: none;
+  }
+
+  .modelsHead > button {
+    flex: 1 1 100%;
+  }
+
+  .checkBar {
+    padding: 10px;
+  }
+
+  .checkSearch {
+    flex-basis: 100%;
+  }
+
+  .checkList {
+    max-height: 300px;
+  }
+
+  .checkRow {
+    min-height: 46px;
+  }
+
+  .checkLabel {
+    padding-block: 11px;
+  }
+
+  .checkBox {
+    width: 22px;
+    height: 22px;
+  }
+
+  .star {
+    width: 42px;
+    height: 42px;
+  }
+
+  .modelAdd {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 清单与角色卡里的输入同样不小于 16px，iOS 聚焦不放大 */
+  .models input,
+  .card input,
+  .cardText.cardText {
+    font-size: 16px;
+  }
+
+  /* 模板与称呼的小签：一行横滑，不折行 */
+  .cardChips,
+  .cardAddressControl {
+    flex-wrap: nowrap;
+    /* 出血量与内容栏的左右内边距（12px）一致，多了会把面板撑出横向滚动 */
+    margin-inline: -12px;
+    padding: 2px 12px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cardChips::-webkit-scrollbar,
+  .cardAddressControl::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chip {
+    height: 36px;
+    padding: 0 14px;
+    font-size: var(--fz-sm);
+  }
+
+  .cardAddress {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* 竖排时 rowCopy 的 180px 基准会变成高度，这里收回 */
+  .cardAddress > .rowCopy {
+    flex: none;
+  }
+
+  .cardAddressControl {
+    justify-content: flex-start;
+  }
+
+  .cardAddressInput {
+    flex: none;
+    width: 132px;
+  }
+
+  .livelyStop {
+    height: 36px;
+    font-size: var(--fz-sm);
+  }
+
+  .voice {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .voice > button {
+    grid-column: 1 / -1;
+  }
 }
 
 /* 底部面板的左右内边距在 640 以下是 16px：目录的出血跟着改，否则会把面板撑出横向滚动 */
@@ -1391,6 +2069,10 @@
 
 /* 触屏没有悬停：点过之后不留下悬停态 */
 @media (hover: none) {
+  .checkRow:hover {
+    background: transparent;
+  }
+
   .skinCard:hover:not([aria-pressed='true']),
   .wallTile:hover:not(:disabled):not([aria-pressed='true']) {
     background: transparent;
@@ -1406,8 +2088,16 @@
 
 @media (prefers-reduced-motion: reduce) {
   .skinCheck,
-  .pvCompanion {
+  .pvCompanion,
+  .voiceBubble {
     animation: none;
+  }
+
+  .chip,
+  .star,
+  .checkBox,
+  .livelyStop {
+    transition: none;
   }
 
   .skinCard,

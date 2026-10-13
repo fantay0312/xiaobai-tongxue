@@ -32,6 +32,8 @@ export interface ToolProps extends TerminalViewProps {
   /** 终端侧栏有挂载位：工具切换与条目列表都在侧栏，主区只放编辑器 */
   sideNav: boolean;
   onGenerate: (kind: GenKind) => void;
+  /** 打开工作台里的「问小砚」面板；带一句话就直接问出去。面板知道此刻打开的是哪个条目 */
+  askHere: (question?: string) => void;
   /** 待办的输入框，侧栏「新建待办」用它聚焦 */
   todoInputRef?: RefObject<HTMLInputElement | null>;
 }

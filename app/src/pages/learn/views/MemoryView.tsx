@@ -1,134 +1,232 @@
 /**
- * 记忆 —— 产品里的两份记忆放在同一处，分开讲清楚：
- *   小砚的记忆：你在学习终端提问时，小砚记下的「你」（engine/tutorMemory，存在当前浏览器）；
- *   小白的记忆：你给小白讲课时，小白记住的课和先生（appStore.memory + 事件流）。
- * 导航在终端侧栏里（SidebarPortal）：选哪份记忆、看哪一类，都写进 ?view=memory&tab=…&kind=…。
- * 侧栏收起或手机上没有挂载位时，主区退回两个页签。
+ * 记忆 —— 两个记忆库的浏览器：
+ *   小砚的记忆库：她记得的你。来源是整个学习过程（提问、做题、闪卡、笔记、AI 课堂、资料、任务……），不只是对话；
+ *   小白的记忆库：你教过他的课。课堂数据只读对账进来，加上他自己的梦。
+ * 每个库是一棵 Markdown 文件树：MEMORY.md 是每次都带上的入口，其余文件按需取用；每次写入都是一次提交，可看差异、可撤销。
+ * 导航在终端侧栏里（SidebarPortal）：选哪个库、哪个文件、梦境或变更历史，都写进 ?view=memory&repo=…&file=…。
+ * 侧栏收起或手机上没有挂载位时，主区用分段切换 + 一排文件签，完整文件树在底部抽屉里。
  */
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
+import { Dialog as RDialog } from 'radix-ui';
 import {
-  BadgeCheck, GraduationCap, HeartHandshake, IdCard, LayoutList, MoonStar, NotebookPen, Pin, Plus, Quote, Repeat, SlidersHorizontal,
-  Target, TriangleAlert,
+  Archive, BadgeCheck, Ban, BookOpen, FileText, FolderOpen, HeartHandshake, History, IdCard, Library, ListTree, MessageCircleQuestion, MoonStar,
+  Plus, Repeat, SlidersHorizontal, Target, TriangleAlert,
 } from 'lucide-react';
-import { Badge, Segmented, Switch, Tabs, TabPanel } from '../../../components/ui';
+import { Badge, Segmented, Switch } from '../../../components/ui';
 import { IconMemory } from '../../../components/ui/icons';
 import { XiaoyanPet } from '../../../components/coach/XiaoyanPet';
 import { XiaobaiAvatar } from '../../../components/xiaobai/XiaobaiAvatar';
+import { useActivities } from '../../../engine/activityLog';
 import { useDreams } from '../../../engine/dreams';
-import { TUTOR_MEMORY_KINDS, tutorMemory, useTutorMemory } from '../../../engine/tutorMemory';
-import type { TutorMemoryKind } from '../../../engine/tutorMemory';
+import { syncXiaobaiRepo } from '../../../engine/memory-repo/xiaobai';
+import { REPO_NAMES, fileInfo, folderLabel, listFiles, repoOps, useRepo } from '../../../engine/memoryRepo';
+import type { EntrySource, RepoId, RepoState } from '../../../engine/memoryRepo';
+import { syncTutorRepo } from '../../../engine/tutorMemory';
 import { useAppStore } from '../../../store/appStore';
 import { SideAction, SideGroup, SideNavItem, SidePanel, SidebarPortal, useSidebarSlot } from '../shell/sidebarSlot';
 import { useMediaQuery } from '../shell/views';
 import { DreamPanel } from './memory/DreamPanel';
-import { TutorMemoryTab } from './memory/TutorMemoryTab';
-import type { TutorSlice } from './memory/TutorMemoryTab';
-import { XiaobaiMemoryTab } from './memory/XiaobaiMemoryTab';
-import { XIAOBAI_SLICES, useXiaobaiMemory } from './memory/useXiaobaiMemory';
-import type { XiaobaiSlice } from './memory/useXiaobaiMemory';
+import { RepoFileView } from './memory/RepoFileView';
+import { RepoHistory } from './memory/RepoHistory';
+import { RepoHome } from './memory/RepoHome';
 import type { TerminalViewProps } from './types';
 import s from './memory/memory.module.css';
+import r from './memory/repo.module.css';
 
-type MemoryTab = 'xiaoyan' | 'xiaobai';
-
+const DREAMS = '@dreams';
+const HISTORY = '@history';
 const ICON = { size: 16, strokeWidth: 1.75 } as const;
-const KIND_ICON: Record<TutorMemoryKind, ReactNode> = {
-  preference: <SlidersHorizontal {...ICON} />,
-  goal: <Target {...ICON} />,
-  weakness: <TriangleAlert {...ICON} />,
-  strength: <BadgeCheck {...ICON} />,
-  habit: <Repeat {...ICON} />,
-  fact: <IdCard {...ICON} />,
+const FILE_ICON: Record<string, ReactNode> = {
+  'MEMORY.md': <IconMemory size={16} />,
+  'preferences.md': <SlidersHorizontal {...ICON} />,
+  'goals.md': <Target {...ICON} />,
+  'weak-points.md': <TriangleAlert {...ICON} />,
+  'mastered.md': <BadgeCheck {...ICON} />,
+  'habits.md': <Repeat {...ICON} />,
+  'materials.md': <Library {...ICON} />,
+  'profile.md': <IdCard {...ICON} />,
+  'ruled-out.md': <Ban {...ICON} />,
+  'archive.md': <Archive {...ICON} />,
+  'teacher.md': <HeartHandshake {...ICON} />,
+  'questions.md': <MessageCircleQuestion {...ICON} />,
 };
-const KIND_INTRO: Record<TutorMemoryKind, string> = {
-  preference: '你喜欢怎样的讲法。小砚回答时会照着来。',
-  goal: '你在为什么而学：考试、升学，或想学会的东西。',
-  weakness: '反复问到，或自己说过搞不清的地方。',
-  strength: '已经弄懂、不用再从头讲的内容。',
-  habit: '你平时怎么学、什么时候学。',
-  fact: '专业、年级这类背景。',
+const fileIcon = (path: string, folder?: string) => FILE_ICON[path] ?? (folder === 'courses' || folder === 'lessons' ? <BookOpen {...ICON} /> : <FileText {...ICON} />);
+const DREAM_NAME: Record<RepoId, string> = { xiaoyan: '小砚的梦', xiaobai: '小白的梦' };
+const DREAM_INTRO: Record<RepoId, string> = {
+  xiaoyan: '空闲时，小砚把记忆库重新整理一遍，留下的记录。',
+  xiaobai: '空闲时，小白把你教过的课在梦里回放一遍，留下的记录。',
 };
-const XIAOBAI_INTRO: Record<XiaobaiSlice, { title: string; intro: string }> = {
-  all: { title: '小白记得的课', intro: '你给小白讲课时，小白记住的课，和他眼里的先生。' },
-  lessons: { title: '教过的课', intro: '每门课小白学到多少，隔了几天还记得多少。出师的课不复习会慢慢起雾。' },
-  quotes: { title: '金句与心魔', intro: '你打过的比方，和讲课时帮小白清掉的错误想法。' },
-  profile: { title: '小白眼里的先生', intro: '小白根据上过的课，对你讲课方式的归纳。' },
-  items: { title: '小白记得的事', intro: '上课时一条一条记下的。写得不对可以改，不想让他用可以隐藏。' },
-};
+/** 工作台里各工具的地址名 */
+const WORKBENCH_TOOL: Record<string, string> = { note: 'notes', mindmap: 'mindmap', quiz: 'quiz', flashcards: 'flashcards', todo: 'todos', writing: 'writing' };
+const noop = () => undefined;
 
-const isTutorSlice = (value: string): value is TutorSlice =>
-  value === 'all' || value === 'pinned' || TUTOR_MEMORY_KINDS.some((entry) => entry.kind === value);
-const isXiaobaiSlice = (value: string): value is XiaobaiSlice => XIAOBAI_SLICES.includes(value as XiaobaiSlice);
-
-export default function MemoryView({ owner, topic, topics, onAsk, onOpenTopic, onView }: TerminalViewProps) {
+export default function MemoryView({ owner, topic, onOpenTopic, onView }: TerminalViewProps) {
   const slot = useSidebarSlot();
-  // 手机：两份记忆用分段切换，分类是一排横向滑动的签，「添一条」吸在底部
   const phone = useMediaQuery('(max-width: 760px)') && !slot;
   const [params] = useSearchParams();
-  const tab: MemoryTab = params.get('tab') === 'xiaobai' ? 'xiaobai' : 'xiaoyan';
-  const requested = params.get('kind') ?? 'all';
-  // kind=dreams：看这份记忆的梦境（离线整理记录），有没有侧栏都认
-  const dreaming = requested === 'dreams';
-  // 侧栏收起（桌面）时主区只有两个页签，不分切片；手机上用分类签切片
-  const sliced = !!slot || phone;
-  const tutorSlice: TutorSlice = sliced && tab === 'xiaoyan' && isTutorSlice(requested) ? requested : 'all';
-  const xiaobaiSlice: XiaobaiSlice = sliced && tab === 'xiaobai' && isXiaobaiSlice(requested) ? requested : 'all';
+  // 旧地址 tab=xiaobai / kind=dreams 仍然认
+  const repo: RepoId = params.get('repo') === 'xiaobai' || params.get('tab') === 'xiaobai' ? 'xiaobai' : 'xiaoyan';
+  const requested = params.get('file') ?? (params.get('kind') === 'dreams' ? DREAMS : 'MEMORY.md');
   const [addSignal, setAddSignal] = useState(0);
+  const [treeOpen, setTreeOpen] = useState(false);
 
-  const tutorState = useTutorMemory(owner);
-  const xiaobai = useXiaobaiMemory(topics);
+  const xiaoyan = useRepo(owner, 'xiaoyan');
+  const xiaobai = useRepo(owner, 'xiaobai');
+  const state = repo === 'xiaoyan' ? xiaoyan : xiaobai;
   const dreams = useDreams(owner);
-  const dreamCount = (who: MemoryTab) => dreams.filter((dream) => dream.who === who).length;
-  const dreamIntro = tab === 'xiaoyan'
-    ? '空闲时，小砚把记着的你重新整理一遍，留下的记录。'
-    : '空闲时，小白把你教过的课在梦里回放一遍，留下的记录。';
+  const activities = useActivities(owner);
+  const events = useAppStore((st) => st.events);
+  const classroom = useAppStore((st) => st.memory);
   const level = useAppStore((st) => st.global.learningLevel);
-  const setXiaobaiPaused = useAppStore((st) => st.setMemoryPaused);
+  const setClassroomPaused = useAppStore((st) => st.setMemoryPaused);
 
-  const go = (nextTab: MemoryTab, kind: string = 'all') => onView('memory', { tab: nextTab, ...(kind === 'all' ? {} : { kind }) });
-  const countOf = (kind: TutorMemoryKind) => tutorState.items.filter((item) => item.kind === kind).length;
-  const pinnedCount = tutorState.items.filter((item) => item.pinned).length;
+  // 让两个记忆库跟上：读入新的学习行为（不只是对话），对账课堂记录
+  useEffect(() => { syncTutorRepo(owner); }, [owner, activities]);
+  useEffect(() => { syncXiaobaiRepo(owner); }, [owner, events, classroom]);
 
-  // 「添加一条记忆」跟着当前看的那份记忆走：切到有输入框的切片，再把光标放进去
+  const files = listFiles(state);
+  const file = requested === DREAMS || requested === HISTORY || files.some((entry) => entry.path === requested) || (state.files[requested]?.length ?? 0) > 0
+    ? requested
+    : 'MEMORY.md';
+  const go = (nextRepo: RepoId, nextFile: string = 'MEMORY.md') => {
+    setTreeOpen(false);
+    onView('memory', { repo: nextRepo, ...(nextFile === 'MEMORY.md' ? {} : { file: nextFile }) });
+  };
+  const paused = repo === 'xiaoyan' ? xiaoyan.paused : classroom.paused;
+  const setPaused = (next: boolean) => (repo === 'xiaoyan' ? repoOps.setPaused(owner, 'xiaoyan', next) : setClassroomPaused(next));
+  const dreamCount = (who: RepoId) => dreams.filter((dream) => dream.who === who).length;
+
+  // 「添加一条记忆」：梦境和历史页没有输入框，先回到入口文件
   const startAdd = () => {
-    if (dreaming) {
-      go(tab, tab === 'xiaobai' ? 'items' : 'all');
-    } else if (tab === 'xiaobai') {
-      if (xiaobaiSlice !== 'all' && xiaobaiSlice !== 'items') go('xiaobai', 'items');
-    } else if (tutorSlice === 'pinned') {
-      go('xiaoyan');
-    }
-    setAddSignal((value) => value + 1);
+    if (file === DREAMS || file === HISTORY) go(repo);
+    setAddSignal(Date.now());
   };
 
-  const tutorContent = (
-    <TutorMemoryTab
-      owner={owner}
-      topic={topic}
-      state={tutorState}
-      slice={tutorSlice}
-      inlinePause={!slot}
-      addSignal={addSignal}
-      onAsk={onAsk}
-      onOpenTopic={onOpenTopic}
-      dock={phone}
-    />
-  );
-  const xiaobaiContent = (
-    <XiaobaiMemoryTab
-      data={xiaobai}
-      slice={xiaobaiSlice}
-      topic={topic}
-      inlinePause={!slot}
-      addSignal={addSignal}
-      onOpenTopic={onOpenTopic}
-      onView={onView}
-      dock={phone}
-    />
+  /** 出处 → 回到它被记下的地方。我写的、做梦整理的没有可回的地方 */
+  const jump = (source: EntrySource): (() => void) | null => {
+    const tool = WORKBENCH_TOOL[source.type];
+    if (tool) return () => onView('workbench', { tool, ...(source.ref && source.ref.kind !== 'topic' ? { id: source.ref.id } : {}) });
+    if (source.type === 'lesson') return () => onView('classroom');
+    if (source.type === 'agent') return () => onView('agent');
+    if (source.type === 'research') return () => onView('research');
+    if (source.type === 'library') return () => onView('library');
+    const topicId = source.topicId;
+    if (source.type === 'teach' || source.type === 'exam') return topicId ? () => onOpenTopic(topicId) : () => onView('feynman');
+    if (topicId) return () => onOpenTopic(topicId);
+    if (source.type === 'chat') return () => onView('ask');
+    return null;
+  };
+
+  const info = file === DREAMS || file === HISTORY ? null : fileInfo(repo, file, state.titles);
+  const heading = file === DREAMS
+    ? { title: DREAM_NAME[repo], intro: DREAM_INTRO[repo] }
+    : file === HISTORY
+      ? { title: '变更历史', intro: '记忆库的每一次写入：是自动记下的、你亲手改的，还是做梦整理的，改了哪几行。可以逐次撤销。' }
+      : { title: info?.folder ? `${folderLabel(info.folder)} · ${info.title}` : info?.title ?? '', intro: info?.hint ?? '' };
+  const pausedNote = repo === 'xiaoyan'
+    ? '记忆已暂停：不再记入新的学习行为，回答时也不带记忆。'
+    : '记忆已暂停：这段时间上的课，小白不会再记。';
+
+  const content = file === DREAMS ? (
+    <DreamPanel owner={owner} who={repo} />
+  ) : file === HISTORY ? (
+    <RepoHistory owner={owner} repo={repo} state={state} onOpenFile={(path) => go(repo, path)} />
+  ) : (
+    <>
+      {repo === 'xiaobai' && file === 'MEMORY.md' && (
+        <section className={s.storyCard} data-story aria-label="小白的话">
+          <XiaobaiAvatar mood={files.some((entry) => entry.folder === 'lessons') ? 'happy' : 'curious'} level={level} size={72} />
+          <div>
+            <p className={s.storyQuote}>
+              {files.some((entry) => entry.folder === 'lessons')
+                ? '先生教过我的课、打过的比方、我想通和没想通的地方，都记在这个小本子里。'
+                : '先生还没给我讲过课。讲完第一课，这个小本子里就有东西了。'}
+            </p>
+            <p className={s.storySign}>—— 小白</p>
+          </div>
+        </section>
+      )}
+      <RepoFileView
+        owner={owner}
+        repo={repo}
+        state={state}
+        path={file}
+        dock={phone}
+        addSignal={addSignal}
+        onOpenFile={(path) => go(repo, path)}
+        jump={jump}
+      />
+      {file === 'MEMORY.md' && <RepoHome owner={owner} repo={repo} state={state} paused={paused} topic={topic} />}
+    </>
   );
 
-  const dreamContent = <DreamPanel owner={owner} who={tab} />;
+  const figure = repo === 'xiaoyan' ? (
+    <XiaoyanPet state="listening" suppressReply title="回到小砚记忆库的入口" aria-label="回到小砚记忆库的入口" onClick={() => go('xiaoyan')} />
+  ) : (
+    <button type="button" className={s.whoAvatar} aria-label="回到小白记忆库的入口" title="回到小白记忆库的入口" onClick={() => go('xiaobai')}>
+      <XiaobaiAvatar mood="happy" level={level} size={52} />
+    </button>
+  );
+  const pauseSwitch = (
+    <div className={s.sectionSide}>
+      <label htmlFor="memory-pause">暂停记忆</label>
+      <Switch id="memory-pause" checked={paused} onCheckedChange={setPaused} label={repo === 'xiaoyan' ? '暂停小砚的记忆' : '暂停小白的记忆'} />
+    </div>
+  );
+
+  /** 一个库的文件树：顶层文件、文件夹里的文件、梦境、变更历史 */
+  const tree = (id: RepoId, repoState: RepoState) => {
+    const list = listFiles(repoState);
+    const folders = [...new Set(list.flatMap((entry) => (entry.folder ? [entry.folder] : [])))];
+    const active = (target: string) => repo === id && file === target;
+    return (
+      <SideGroup label={REPO_NAMES[id]}>
+        {list.filter((entry) => !entry.folder).map((entry) => (
+          <SideNavItem
+            key={entry.path}
+            icon={fileIcon(entry.path)}
+            label={entry.title}
+            sub={entry.path === 'MEMORY.md' ? (id === 'xiaoyan' ? '每次回答都带上的要点' : '小白心里的先生') : undefined}
+            title={entry.path}
+            meta={entry.count || undefined}
+            active={active(entry.path)}
+            onClick={() => go(id, entry.path)}
+          />
+        ))}
+        {folders.map((folder) => [
+          <SideNavItem key={folder} icon={<FolderOpen {...ICON} />} label={folderLabel(folder)} disabled onClick={noop} />,
+          ...list.filter((entry) => entry.folder === folder).map((entry) => (
+            <SideNavItem
+              key={entry.path}
+              indent={1}
+              label={entry.title}
+              title={entry.path}
+              meta={entry.count || undefined}
+              active={active(entry.path)}
+              onClick={() => go(id, entry.path)}
+            />
+          )),
+        ])}
+        <SideNavItem
+          icon={<MoonStar {...ICON} />}
+          label={DREAM_NAME[id]}
+          title="空闲时把记忆库重新整理一遍"
+          meta={dreamCount(id) || undefined}
+          active={active(DREAMS)}
+          onClick={() => go(id, DREAMS)}
+        />
+        <SideNavItem
+          icon={<History {...ICON} />}
+          label="变更历史"
+          title="每一次写入：谁写的、改了哪几行"
+          meta={repoState.commits.length || undefined}
+          active={active(HISTORY)}
+          onClick={() => go(id, HISTORY)}
+        />
+      </SideGroup>
+    );
+  };
 
   const sidebar = (
     <SidebarPortal>
@@ -137,268 +235,109 @@ export default function MemoryView({ owner, topic, topics, onAsk, onOpenTopic, o
         action={<SideAction icon={<Plus {...ICON} />} onClick={startAdd}>添加一条记忆</SideAction>}
         footer="保存在这个浏览器，按账号分开"
       >
-        <SideGroup label="小砚记得的你">
-          <SideNavItem
-            icon={<IconMemory size={16} />}
-            label="全部"
-            sub="在学习终端提问时记下的"
-            meta={tutorState.items.length || undefined}
-            active={tab === 'xiaoyan' && tutorSlice === 'all' && !dreaming}
-            onClick={() => go('xiaoyan')}
-          />
-          {(pinnedCount > 0 || tutorSlice === 'pinned') && (
-            <SideNavItem
-              icon={<Pin {...ICON} />}
-              label="置顶"
-              meta={pinnedCount || undefined}
-              active={tab === 'xiaoyan' && tutorSlice === 'pinned'}
-              onClick={() => go('xiaoyan', 'pinned')}
-            />
-          )}
-          {TUTOR_MEMORY_KINDS.map((entry) => (
-            <SideNavItem
-              key={entry.kind}
-              icon={KIND_ICON[entry.kind]}
-              label={entry.label}
-              title={entry.hint}
-              meta={countOf(entry.kind) || undefined}
-              active={tab === 'xiaoyan' && tutorSlice === entry.kind}
-              onClick={() => go('xiaoyan', entry.kind)}
-            />
-          ))}
-          <SideNavItem
-            icon={<MoonStar {...ICON} />}
-            label="小砚的梦"
-            title="空闲时把记下的重新整理一遍"
-            meta={dreamCount('xiaoyan') || undefined}
-            active={tab === 'xiaoyan' && dreaming}
-            onClick={() => go('xiaoyan', 'dreams')}
-          />
-        </SideGroup>
-        <SideGroup label="小白记得的课">
-          <SideNavItem
-            icon={<LayoutList {...ICON} />}
-            label="总览"
-            sub="给小白讲课时他记住的"
-            active={tab === 'xiaobai' && xiaobaiSlice === 'all' && !dreaming}
-            onClick={() => go('xiaobai')}
-          />
-          <SideNavItem
-            icon={<GraduationCap {...ICON} />}
-            label="教过的课"
-            meta={xiaobai.lessons.length || undefined}
-            active={tab === 'xiaobai' && xiaobaiSlice === 'lessons'}
-            onClick={() => go('xiaobai', 'lessons')}
-          />
-          <SideNavItem
-            icon={<Quote {...ICON} />}
-            label="金句与心魔"
-            meta={xiaobai.quotes.length + xiaobai.demonCount || undefined}
-            active={tab === 'xiaobai' && xiaobaiSlice === 'quotes'}
-            onClick={() => go('xiaobai', 'quotes')}
-          />
-          <SideNavItem
-            icon={<HeartHandshake {...ICON} />}
-            label="小白眼里的先生"
-            active={tab === 'xiaobai' && xiaobaiSlice === 'profile'}
-            onClick={() => go('xiaobai', 'profile')}
-          />
-          <SideNavItem
-            icon={<NotebookPen {...ICON} />}
-            label="小白记得的事"
-            meta={xiaobai.listed || undefined}
-            active={tab === 'xiaobai' && xiaobaiSlice === 'items'}
-            onClick={() => go('xiaobai', 'items')}
-          />
-          <SideNavItem
-            icon={<MoonStar {...ICON} />}
-            label="小白的梦"
-            title="梦里回放你教过他的课"
-            meta={dreamCount('xiaobai') || undefined}
-            active={tab === 'xiaobai' && dreaming}
-            onClick={() => go('xiaobai', 'dreams')}
-          />
-        </SideGroup>
+        {tree('xiaoyan', xiaoyan)}
+        {tree('xiaobai', xiaobai)}
       </SidePanel>
     </SidebarPortal>
   );
 
-  /* ── 有侧栏：主区只放当前切片，页头说明是哪份记忆 ── */
+  /* ── 有侧栏：主区只放选中的文件，页头说明是哪个库、哪个文件 ── */
   if (slot) {
-    const isTutor = tab === 'xiaoyan';
-    const paused = isTutor ? tutorState.paused : xiaobai.paused;
-    const heading = dreaming
-      ? { title: isTutor ? '小砚的梦' : '小白的梦', intro: dreamIntro }
-      : isTutor
-      ? tutorSlice === 'all'
-        ? { title: '小砚记得的你', intro: '你在学习终端提问时，小砚记下的你：目标、偏好、薄弱点。回答时会参考。' }
-        : tutorSlice === 'pinned'
-          ? { title: '置顶', intro: '置顶的几条，每次提问都会优先交给小砚。' }
-          : { title: TUTOR_MEMORY_KINDS.find((entry) => entry.kind === tutorSlice)?.label ?? '', intro: KIND_INTRO[tutorSlice] }
-      : XIAOBAI_INTRO[xiaobaiSlice];
-    const pausedNote = isTutor
-      ? '记忆已暂停：小砚不再自动记下新内容，回答时也不参考这些记忆。'
-      : '记忆已暂停：这段时间上的课，小白不会再记。';
-
     return (
       <div className={s.root}>
         {sidebar}
         <header className={s.sliceHead}>
-          <span className={s.whoFigure}>
-            {isTutor ? (
-              <XiaoyanPet state="listening" suppressReply title="小砚记得的全部" aria-label="看小砚记得的全部" onClick={() => go('xiaoyan')} />
-            ) : (
-              <button type="button" className={s.whoAvatar} aria-label="看小白记忆的总览" title="小白记忆的总览" onClick={() => go('xiaobai')}>
-                <XiaobaiAvatar mood="happy" level={level} size={52} />
-              </button>
-            )}
-          </span>
+          <span className={s.whoFigure}>{figure}</span>
           <div className={s.sliceCopy}>
-            <p className={s.sliceMark}><IconMemory size={14} />{isTutor ? '小砚的记忆' : '小白的记忆'}</p>
+            <p className={s.sliceMark}><IconMemory size={14} />{REPO_NAMES[repo]}</p>
             <h1>{heading.title}{paused && <Badge tone="warn">已暂停</Badge>}</h1>
             <p>{paused ? pausedNote : heading.intro}</p>
           </div>
-          <div className={s.sectionSide}>
-            <label htmlFor="memory-pause">暂停记忆</label>
-            <Switch
-              id="memory-pause"
-              checked={paused}
-              onCheckedChange={(next) => (isTutor ? tutorMemory.setPaused(owner, next) : setXiaobaiPaused(next))}
-              label={isTutor ? '暂停小砚的记忆' : '暂停小白的记忆'}
-            />
-          </div>
+          {pauseSwitch}
         </header>
-        <div className={s.slice}>{dreaming ? dreamContent : isTutor ? tutorContent : xiaobaiContent}</div>
+        <div className={s.slice}>{content}</div>
       </div>
     );
   }
 
-  /* ── 手机：分段切换 + 分类签 + 当前切片，添加条吸底 ── */
-  if (phone) {
-    const isTutor = tab === 'xiaoyan';
-    const chips: { key: string; label: string; count?: number }[] = isTutor
-      ? [
-        { key: 'all', label: '全部', count: tutorState.items.length },
-        { key: 'dreams', label: '小砚的梦', count: dreamCount('xiaoyan') },
-        ...(pinnedCount > 0 || tutorSlice === 'pinned' ? [{ key: 'pinned', label: '置顶', count: pinnedCount }] : []),
-        ...TUTOR_MEMORY_KINDS.map((entry) => ({ key: entry.kind, label: entry.label, count: countOf(entry.kind) })),
-      ]
-      : [
-        { key: 'all', label: '总览' },
-        { key: 'dreams', label: '小白的梦', count: dreamCount('xiaobai') },
-        { key: 'lessons', label: '教过的课', count: xiaobai.lessons.length },
-        { key: 'quotes', label: '金句与心魔', count: xiaobai.quotes.length + xiaobai.demonCount },
-        { key: 'profile', label: '小白眼里的先生' },
-        { key: 'items', label: '小白记得的事', count: xiaobai.listed },
-      ];
-    const activeKey = dreaming ? 'dreams' : isTutor ? tutorSlice : xiaobaiSlice;
-    const intro = dreaming ? dreamIntro : isTutor
-      ? tutorSlice === 'all'
-        ? '你在学习终端提问时，小砚记下的你：目标、偏好、薄弱点。回答时会参考。'
-        : tutorSlice === 'pinned' ? '置顶的几条，每次提问都会优先交给小砚。' : KIND_INTRO[tutorSlice]
-      : XIAOBAI_INTRO[xiaobaiSlice].intro;
-
-    return (
-      <div className={s.root} data-phone>
-        <header className={s.head}>
+  /* ── 没有侧栏（手机、侧栏收起）：分段切换两个库 + 一排文件签；完整文件树在底部抽屉里 ── */
+  const chips = [
+    ...files.filter((entry) => !entry.folder).map((entry) => ({ key: entry.path, label: entry.title, count: entry.count })),
+    { key: DREAMS, label: DREAM_NAME[repo], count: dreamCount(repo) },
+    { key: HISTORY, label: '变更历史', count: state.commits.length },
+  ];
+  const inFolder = files.filter((entry) => entry.folder);
+  return (
+    <div className={s.root} data-phone={phone || undefined}>
+      {sidebar}
+      <header className={`${s.head} ${s.sectionHead}`}>
+        <div>
           <h1>记忆</h1>
-          <p>两份记忆分开保存，互不混写。</p>
-        </header>
-        <Segmented
-          block
-          label="两份记忆"
-          value={tab}
-          onChange={(value) => go(value)}
-          options={[
-            { value: 'xiaoyan', label: '小砚的记忆' },
-            { value: 'xiaobai', label: '小白的记忆' },
-          ]}
-        />
-        <nav className={s.kindChips} aria-label={isTutor ? '小砚的记忆分类' : '小白的记忆分类'}>
-          {chips.map((chip) => (
-            <button
-              key={chip.key}
-              type="button"
-              className={s.kindChip}
-              aria-pressed={chip.key === activeKey}
-              onClick={() => go(tab, chip.key)}
-            >
-              {chip.label}
-              {!!chip.count && <span>{chip.count}</span>}
-            </button>
-          ))}
-        </nav>
-        <p className={s.sliceNote}>{intro}</p>
-        <div className={s.phoneBody}>{dreaming ? dreamContent : isTutor ? tutorContent : xiaobaiContent}</div>
-      </div>
-    );
-  }
-
-  /* ── 没有侧栏（侧栏收起）：两张说明卡 + 两个页签，页签里再分「记忆 / 梦境」 ── */
-  const modeSwitch = (
-    <div>
+          <p>两个记忆库分开保存，互不混写。</p>
+        </div>
+        {pauseSwitch}
+      </header>
       <Segmented
-        size="sm"
-        label="看记忆还是梦境"
-        value={dreaming ? 'dreams' : 'memory'}
-        onChange={(value) => go(tab, value === 'dreams' ? 'dreams' : 'all')}
+        block
+        label="两个记忆库"
+        value={repo}
+        onChange={(value) => go(value)}
         options={[
-          { value: 'memory', label: '记忆' },
-          { value: 'dreams', label: tab === 'xiaoyan' ? '小砚的梦' : '小白的梦', icon: <MoonStar size={14} strokeWidth={1.75} /> },
+          { value: 'xiaoyan', label: REPO_NAMES.xiaoyan },
+          { value: 'xiaobai', label: REPO_NAMES.xiaobai },
         ]}
       />
-    </div>
-  );
-  return (
-    <div className={s.root}>
-      {sidebar}
-      <header className={s.head}>
-        <h1>记忆</h1>
-        <p>这里有两份记忆，分开保存，互不混写。</p>
-      </header>
+      <nav className={s.kindChips} aria-label={`${REPO_NAMES[repo]}的文件`}>
+        {inFolder.length > 0 && (
+          <button type="button" className={s.kindChip} aria-pressed={inFolder.some((entry) => entry.path === file)} onClick={() => setTreeOpen(true)}>
+            <ListTree size={15} strokeWidth={1.75} />
+            全部文件
+            <span>{files.length}</span>
+          </button>
+        )}
+        {chips.map((chip) => (
+          <button key={chip.key} type="button" className={s.kindChip} aria-pressed={chip.key === file} onClick={() => go(repo, chip.key)}>
+            {chip.label}
+            {!!chip.count && <span>{chip.count}</span>}
+          </button>
+        ))}
+      </nav>
+      <p className={s.sliceNote}>
+        {info?.folder ? <strong>{folderLabel(info.folder)} · {info.title}　</strong> : null}
+        {paused ? pausedNote : heading.intro}
+      </p>
+      <div className={s.phoneBody}>{content}</div>
 
-      <div className={s.duo}>
-        <div className={s.who} data-active={tab === 'xiaoyan' || undefined}>
-          <span className={s.whoFigure}>
-            <XiaoyanPet
-              state={tab === 'xiaoyan' ? 'listening' : 'idle'}
-              suppressReply
-              title="看小砚的记忆"
-              aria-label="看小砚的记忆"
-              onClick={() => go('xiaoyan')}
-            />
-          </span>
-          <div className={s.whoCopy}>
-            <strong>小砚的记忆</strong>
-            <span>你在学习终端提问时，小砚记下的你：目标、偏好、薄弱点。</span>
-          </div>
-        </div>
-        <div className={s.who} data-active={tab === 'xiaobai' || undefined}>
-          <span className={s.whoFigure}>
-            <button type="button" className={s.whoAvatar} aria-label="看小白的记忆" title="看小白的记忆" onClick={() => go('xiaobai')}>
-              <XiaobaiAvatar mood={tab === 'xiaobai' ? 'happy' : 'idle'} level={level} size={52} />
-            </button>
-          </span>
-          <div className={s.whoCopy}>
-            <strong>小白的记忆</strong>
-            <span>你给小白讲课时，小白记住的课，和他眼里的先生。</span>
-          </div>
-        </div>
-      </div>
-
-      <Tabs
-        value={tab}
-        onValueChange={(value) => go(value === 'xiaobai' ? 'xiaobai' : 'xiaoyan')}
-        variant="pill"
-        label="两份记忆"
-        items={[
-          { value: 'xiaoyan', label: '小砚记得的你', count: tutorState.items.length },
-          { value: 'xiaobai', label: '小白记得的课', count: xiaobai.listed },
-        ]}
-      >
-        <TabPanel value="xiaoyan" className={s.panel}>{modeSwitch}{dreaming ? dreamContent : tutorContent}</TabPanel>
-        <TabPanel value="xiaobai" className={s.panel}>{modeSwitch}{dreaming ? dreamContent : xiaobaiContent}</TabPanel>
-      </Tabs>
+      <RDialog.Root open={treeOpen} onOpenChange={setTreeOpen}>
+        <RDialog.Portal>
+          <RDialog.Overlay className={r.sheetOverlay} />
+          <RDialog.Content className={r.sheet} aria-describedby={undefined}>
+            <span className={r.sheetGrip} aria-hidden="true" />
+            <RDialog.Title className={r.sheetTitle}>{REPO_NAMES[repo]}</RDialog.Title>
+            <div className={r.sheetBody}>
+              {files.filter((entry) => !entry.folder).map((entry) => (
+                <button key={entry.path} type="button" className={r.sheetItem} aria-current={entry.path === file ? 'page' : undefined} onClick={() => go(repo, entry.path)}>
+                  {fileIcon(entry.path)}
+                  <span>{entry.title}</span>
+                  {!!entry.count && <em>{entry.count}</em>}
+                </button>
+              ))}
+              {[...new Set(inFolder.map((entry) => entry.folder!))].map((folder) => (
+                <div key={folder}>
+                  <p className={r.sheetFolder}>{folderLabel(folder)}</p>
+                  {inFolder.filter((entry) => entry.folder === folder).map((entry) => (
+                    <button key={entry.path} type="button" className={r.sheetItem} data-indent aria-current={entry.path === file ? 'page' : undefined} onClick={() => go(repo, entry.path)}>
+                      {fileIcon(entry.path, folder)}
+                      <span>{entry.title}</span>
+                      {!!entry.count && <em>{entry.count}</em>}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </RDialog.Content>
+        </RDialog.Portal>
+      </RDialog.Root>
     </div>
   );
 }

@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, Plus, Search, Trash2 } from 'lucide-react';
 import { Button, Empty, IconButton, Input, Popover, PopoverContent, PopoverTrigger, Progress, Segmented, toast } from '../../../../components/ui';
+import { logActivity, recentActivities } from '../../../../engine/activityLog';
 import { studyData, useStudyData, type Todo } from '../../../../store/studyData';
-import { ICON_SM, OriginBadge, TOOLS, ToolHead, type ToolProps } from './shared';
+import { AiBlock, ItemOrigin, useAiRun } from './AiKit';
+import { useAiFocus } from './AskPanel';
+import { breakdownTodo, parseSteps, planToday, prettySteps } from './ai';
+import { ICON_SM, TOOLS, ToolHead, type ToolProps } from './shared';
 import { addDays, clip, dayDiff, dayKey, dayLabel, dueDay, matches, useNarrow } from './util';
 import s from './workbench.module.css';
 import t from './todos.module.css';
@@ -88,8 +92,57 @@ function DueChip({ value, done, onChange }: { value: string | null; done?: boole
 }
 
 export default function TodosTool(props: ToolProps) {
-  const { owner, topic, topics, onOpenTopic, activeId, sideNav, onGenerate, todoInputRef } = props;
-  const { todos } = useStudyData(owner);
+  const { owner, topic, topics, onOpenTopic, activeId, sideNav, onGenerate, askHere, todoInputRef } = props;
+  const data = useStudyData(owner);
+  const { todos } = data;
+  /* ── AI：拆解一条待办、排今天的计划。先列出来，确认了才加进清单 ── */
+  const ai = useAiRun();
+  const [task, setTask] = useState<{ kind: 'plan' } | { kind: 'split'; todo: Todo } | null>(null);
+  const todosRef = useRef(todos);
+  useEffect(() => { todosRef.current = todos; });
+  useAiFocus({
+    kind: 'todo-list',
+    id: 'all',
+    label: '待办',
+    title: '我的待办',
+    getText: () => todosRef.current.filter((todo) => !todo.done).slice(0, 40).map((todo) => `- ${todo.text}${dueDay(todo.due) ? `（${dueDay(todo.due)}）` : ''}`).join('\n'),
+  });
+  const closeTask = () => { ai.reset(); setTask(null); };
+  const split = (todo: Todo) => {
+    const course = todo.topicId ? topics.find((item) => item.topicId === todo.topicId) : topic;
+    setTask({ kind: 'split', todo });
+    void ai.start((call) => breakdownTodo(todo, { ...(course ? { topic: course } : {}) }, call));
+  };
+  const plan = () => {
+    setTask({ kind: 'plan' });
+    void ai.start((call) => planToday({ data: studyData.get(owner), activities: recentActivities(owner, { limit: 40 }), ...(topic ? { topic } : {}) }, call));
+  };
+  /** 把列出来的步骤加进清单；已经有的同名待办不重复加 */
+  const acceptSteps = () => {
+    if (!task) return;
+    const have = new Set(todosRef.current.filter((todo) => !todo.done).map((todo) => todo.text));
+    const steps = parseSteps(ai.state.text).filter((step) => !have.has(step.text));
+    if (!steps.length) { toast('没有读出新的待办，可以重试一次'); return; }
+    const topicId = task.kind === 'split' ? task.todo.topicId : topic?.topicId;
+    const today = dayKey();
+    // addTodo 每次插到最前，倒着加才能保持原顺序
+    const added = [...steps].reverse().map((step) => studyData.addTodo(owner, { text: step.text, due: step.due ?? (task.kind === 'plan' ? today : undefined), ...(topicId ? { topicId } : {}) }));
+    closeTask();
+    toast.success(`已加入 ${added.length} 条待办`, { action: { label: '撤销', onClick: () => added.forEach((todo) => studyData.removeTodo(owner, todo.id)) } });
+  };
+  const stepCount = ai.state.status === 'done' ? parseSteps(ai.state.text).length : 0;
+  const taskBlock = task && (
+    <AiBlock
+      state={ai.state}
+      title={task.kind === 'plan' ? '今天的学习计划' : `拆解 · ${clip(task.todo.text, 16)}`}
+      doing={task.kind === 'plan' ? '正在看最近的学习记录、到期的闪卡和错题' : '正在拆成小步骤'}
+      format={prettySteps}
+      actions={stepCount ? [{ label: `加为 ${stepCount} 条待办`, primary: true, onClick: acceptSteps }] : []}
+      onRetry={() => void ai.retry()}
+      onStop={ai.stop}
+      onDiscard={closeTask}
+    />
+  );
   // 侧栏里点「今天 / 接下来 / 已完成」时只看这一组
   const only = activeId === 'today' || activeId === 'upcoming' || activeId === 'done' ? activeId : null;
   const [text, setText] = useState('');
@@ -143,6 +196,14 @@ export default function TodosTool(props: ToolProps) {
     setClosing((current) => [...current, todo.id]);
     timers.current.set(todo.id, setTimeout(() => {
       studyData.updateTodo(owner, todo.id, { done: true });
+      const course = todo.topicId ? topics.find((item) => item.topicId === todo.topicId) : undefined;
+      logActivity(owner, {
+        source: 'todo',
+        summary: `完成待办：${clip(todo.text, 60)}`,
+        signal: 'success',
+        ...(course ? { topicId: course.topicId, topicTitle: course.title } : {}),
+        ref: { kind: 'todo', id: todo.id, title: clip(todo.text, 40) },
+      });
       setClosing((current) => current.filter((id) => id !== todo.id));
       timers.current.delete(todo.id);
     }, 460));
@@ -166,13 +227,14 @@ export default function TodosTool(props: ToolProps) {
     const checked = todo.done || closing.includes(todo.id);
     const dueChip = <DueChip value={dueDay(todo.due)} done={todo.done} onChange={(value) => studyData.updateTodo(owner, todo.id, { due: value ?? undefined })} />;
     return (
-      <li key={todo.id} className={t.row} data-done={checked} data-closing={closing.includes(todo.id)}>
+      <li key={todo.id} className={t.item}>
+      <div className={t.row} data-done={checked} data-closing={closing.includes(todo.id)}>
         <button type="button" className={t.check} role="checkbox" aria-checked={checked} aria-label={checked ? '标为未完成' : '标为完成'} onClick={() => toggle(todo)}>
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.4l3 3 6-6.6" /></svg>
         </button>
         <div className={t.main}>
           <TodoText key={todo.text} text={todo.text} onChange={(value) => studyData.updateTodo(owner, todo.id, { text: value })} />
-          {(narrow || course || todo.origin !== 'user') && (
+          {(
             <div className={t.tags}>
               {narrow && dueChip}
               {course && (
@@ -180,14 +242,17 @@ export default function TodosTool(props: ToolProps) {
                   <BookOpen size={12} strokeWidth={1.75} />{clip(course.title, 14)}
                 </button>
               )}
-              <OriginBadge origin={todo.origin} />
+              <ItemOrigin owner={owner} kind="todo-list" id={todo.id} origin={todo.origin} originKey={`todo:${todo.id}`} />
             </div>
           )}
         </div>
         {!narrow && dueChip}
         <span className={t.del}>
+          {!todo.done && <IconButton label="帮我拆解" size="sm" onClick={() => split(todo)}><IconSpark size={16} /></IconButton>}
           <IconButton label="删除" size="sm" tip={false} onClick={() => remove(todo)}><Trash2 {...ICON_SM} /></IconButton>
         </span>
+      </div>
+      {task?.kind === 'split' && task.todo.id === todo.id && <div className={t.rowAi}>{taskBlock}</div>}
       </li>
     );
   };
@@ -204,7 +269,8 @@ export default function TodosTool(props: ToolProps) {
     <>
       {!sideNav && (
         <ToolHead tool="todos">
-          <Button variant="soft" icon={<IconSpark />} onClick={() => onGenerate('todos')}>AI 生成</Button>
+          <Button variant="soft" icon={<IconSpark />} onClick={plan}>排今天的计划</Button>
+          <Button variant="ghost" icon={<IconSpark />} onClick={() => onGenerate('todos')}>按本课生成</Button>
         </ToolHead>
       )}
 
@@ -245,9 +311,20 @@ export default function TodosTool(props: ToolProps) {
                 </>
               )}
             />
+            {task?.kind === 'plan' ? <div style={{ marginTop: 12 }}>{taskBlock}</div> : (
+              <div className={t.aiBar} style={{ justifyContent: 'center', marginTop: 4 }}>
+                <Button variant="ghost" size="sm" icon={<IconSpark size={16} />} onClick={plan}>根据最近的学习排今天的计划</Button>
+              </div>
+            )}
           </div>
         ) : (
           <>
+            {task?.kind === 'plan' ? taskBlock : (
+              <div className={t.aiBar}>
+                <Button variant="ghost" size="sm" icon={<IconSpark size={16} />} onClick={plan}>根据最近的学习排今天的计划</Button>
+                <Button variant="ghost" size="sm" onClick={() => askHere()}>问小砚</Button>
+              </div>
+            )}
             <div className={t.bar}>
               <div className={t.dayProgress}>
                 <span>今天 <b>{doneToday}</b> / {dayTotal} 项完成</span>

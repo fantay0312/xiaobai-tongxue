@@ -3,6 +3,8 @@
  */
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { BookOpen, Check, FileUp, Paperclip, X } from 'lucide-react';
+import { AttachBar, NO_ATTACHMENTS, type Attachments } from '../../../../components/handoff/AttachBar';
+import { resolveAttachments } from '../../../../components/handoff/materials';
 import { Badge, Button, Progress, Segmented, Shimmer, Spinner, cx, toast } from '../../../../components/ui';
 import {
   LENGTH_LABELS, LENGTH_SCENES, LEVEL_LABELS, LessonInputError, SCENE_LABELS, SCENE_TYPES, buildLocalLesson, describeModelError, generateLesson,
@@ -28,10 +30,26 @@ interface ComposerProps extends Pick<TerminalViewProps, 'owner' | 'topic' | 'sel
   onProgress?: (progress: GenerateProgress | null) => void;
   /** 手机版式：选项一行一项，分段控件拉满宽度 */
   compact?: boolean;
+  /** 从别的板块带过来的材料（地址里的 from / handoff）；变了就换成新的这份 */
+  preload?: { key: string; attachments: Attachments; prompt?: string } | null;
+  /** 去资料库上传或整理 */
+  onManageLibrary?: () => void;
 }
 
-export function LessonComposer({ owner, topic, selectedSources, onCreated, onProgress, compact = false }: ComposerProps) {
-  const [prompt, setPrompt] = useState('');
+export function LessonComposer({ owner, topic, selectedSources, onCreated, onProgress, compact = false, preload, onManageLibrary }: ComposerProps) {
+  const [prompt, setPrompt] = useState(() => preload?.prompt ?? '');
+  /** 通过选择器附加的资料库文件与「我的内容」，以及别处直接带来的一段内容 */
+  const [attachments, setAttachments] = useState<Attachments>(() => preload?.attachments ?? NO_ATTACHMENTS);
+  /** 最近一次生成时读出来的附加材料：模型失败改走本地演示时接着用 */
+  const resolvedRef = useRef<NotebookSource[]>([]);
+  const preloadKey = preload?.key;
+  const seenPreload = useRef(preloadKey);
+  useEffect(() => {
+    if (!preload || seenPreload.current === preload.key) return;
+    seenPreload.current = preload.key;
+    setAttachments(preload.attachments);
+    if (preload.prompt) setPrompt(preload.prompt);
+  }, [preloadKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const [useTopic, setUseTopic] = useState(true);
   const [useSources, setUseSources] = useState(true);
   const [uploads, setUploads] = useState<NotebookSource[]>([]);
@@ -54,16 +72,19 @@ export function LessonComposer({ owner, topic, selectedSources, onCreated, onPro
     onProgress?.(progress);
   }, [progress, onProgress]);
 
-  const material: NotebookSource[] = [...(useSources ? selectedSources : []), ...uploads];
+  const material: NotebookSource[] = [...(useSources ? selectedSources : []), ...uploads, ...attachments.carried];
+  const picked = attachments.selection.fileIds.length + attachments.selection.artifactKeys.length;
   const activeTopic = useTopic ? topic : undefined;
-  const canSubmit = !!prompt.trim() || !!activeTopic || material.length > 0;
+  const canSubmit = !!prompt.trim() || !!activeTopic || material.length > 0 || picked > 0;
   const generating = progress !== null;
   const input: GenerateInput = { prompt, topic: activeTopic, sources: material, level, length, types };
-  const hasLocalMaterial = !!activeTopic || material.some((source) => source.content.trim().length > 40);
+  const hasLocalMaterial = !!activeTopic || material.some((source) => source.content.trim().length > 40) || picked > 0;
 
   const finish = (lesson: Lesson) => {
     lessonStore.save(owner, lesson);
     setPrompt('');
+    setAttachments(NO_ATTACHMENTS);
+    resolvedRef.current = [];
     setError(null);
     onCreated(lesson);
   };
@@ -104,7 +125,14 @@ export function LessonComposer({ owner, topic, selectedSources, onCreated, onPro
     abortRef.current = controller;
     setProgress({ stage: 'outline', scenes: [] });
     try {
-      const lesson = await generateLesson(input, { signal: controller.signal, onProgress: setProgress });
+      // 附加的资料库文件和「我的内容」先读成正文，和其余材料一起交给生成
+      resolvedRef.current = [];
+      if (picked) {
+        const extra = await resolveAttachments(owner, attachments.selection, controller.signal);
+        extra.problems.forEach((message) => toast(message));
+        resolvedRef.current = extra.sources;
+      }
+      const lesson = await generateLesson({ ...input, sources: [...material, ...resolvedRef.current] }, { signal: controller.signal, onProgress: setProgress });
       const patched = lesson.scenes.filter((scene) => scene.origin === 'local').length;
       if (lesson.origin === 'local') toast('没有接通模型，这堂课由课程讲义、例题和题库拼成，标为「本地演示」。');
       else if (patched) toast(`有 ${patched} 幕没生成出来，先用课程内容补上了，可以在课堂里重新生成。`);
@@ -123,7 +151,7 @@ export function LessonComposer({ owner, topic, selectedSources, onCreated, onPro
   /** 模型出问题时的退路：直接用课程讲义、例题和题库拼一堂本地演示课 */
   const runLocal = () => {
     try {
-      finish(buildLocalLesson(input));
+      finish(buildLocalLesson({ ...input, sources: [...material, ...resolvedRef.current] }));
     } catch (cause) {
       setError({ message: cause instanceof LessonInputError ? cause.message : '本地演示也没拼出来，请换一门课试试。', canLocal: false });
     }
@@ -168,9 +196,10 @@ export function LessonComposer({ owner, topic, selectedSources, onCreated, onPro
             <button type="button" aria-label={`移除 ${source.title}`} disabled={generating} onClick={() => setUploads((current) => current.filter((item) => item.id !== source.id))}><X size={13} strokeWidth={2} /></button>
           </span>
         ))}
+        <AttachBar owner={owner} value={attachments} onChange={setAttachments} disabled={generating} onManage={onManageLibrary} addLabel="资料库与我的内容" />
         <button type="button" className={cx(st.chip, st.chipGhost)} disabled={generating || uploads.length >= 4} onClick={() => fileRef.current?.click()}>
           <FileUp size={14} strokeWidth={1.75} />
-          <span>上传资料</span>
+          <span>上传文本</span>
         </button>
         <input ref={fileRef} type="file" hidden multiple accept=".txt,.md,.markdown,.csv,.json,.tex,text/*" onChange={onFiles} />
         {!topic && !prompt && !generating && SUGGESTIONS.map((text) => (
@@ -240,7 +269,7 @@ export function LessonComposer({ owner, topic, selectedSources, onCreated, onPro
           <footer className={st.composerFoot}>
             <p className={st.hint}>
               {modelReady === false
-                ? <><Badge tone="warn">本地演示</Badge>现在没有接通模型：{topic || material.length ? '会用课程讲义、例题和题库拼一堂课。' : '需要先打开一门课或上传资料。'}</>
+                ? <><Badge tone="warn">本地演示</Badge>现在没有接通模型：{topic || material.length || picked ? '会用课程讲义、例题和你带来的内容拼一堂课。' : '需要先打开一门课，或带上资料、笔记等内容。'}</>
                 : '先出大纲，再逐幕生成，通常一两分钟。'}
             </p>
             <Button variant="solid" size="lg" icon={<IconSpark size={17} />} disabled={!canSubmit} onClick={() => void run()}>生成课程</Button>

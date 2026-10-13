@@ -170,7 +170,12 @@
 .course:hover { background: var(--accent-soft); }
 .course:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 .row > .due { margin-top: 1px; }
-.del { flex: none; opacity: 0; transition: opacity var(--dur-1) var(--ease); }
+.item { display: grid; min-width: 0; }
+.tags:empty { display: none; }
+.rowAi { min-width: 0; margin: 2px 6px 10px 40px; }
+.aiBar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: -8px 0; }
+.aiBar svg { color: var(--accent); }
+.del { flex: none; display: flex; opacity: 0; transition: opacity var(--dur-1) var(--ease); }
 .row:hover .del,
 .row:focus-within .del { opacity: 1; }
 @media (hover: none) { .del { opacity: 1; } }
@@ -244,6 +249,9 @@
 }
 @media (hover: none) {
   .row:hover { background: none; }
+}
+@media (max-width: 760px) {
+  .rowAi { margin-left: 6px; }
 }
 @media (pointer: coarse) {
   .filters [role='radio'] { min-height: 34px; padding-inline: 12px; font-size: var(--fz-sm); }

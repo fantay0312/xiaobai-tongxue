@@ -34,6 +34,18 @@ export interface FilePreviewProps {
   status?: ReactNode;
   /** 时间点笔记保存到谁名下 */
   noteOwner?: string | null;
+  /** 标题；不给就用文件名。生成的内容用它自己的标题 */
+  title?: string;
+  /** 标题下的说明；不给就是「类型 · 大小」 */
+  subtitle?: string;
+  /** 替换文件类型图标 */
+  icon?: ReactNode;
+  /** 头部主动作，如「打开」跳到它所在的板块 */
+  primaryAction?: { label: string; icon?: ReactNode; onClick: () => void };
+  /** 追加到「更多」菜单里的项（MenuItem） */
+  menuItems?: ReactNode;
+  /** 下载按钮的说法；生成的内容叫「导出」 */
+  downloadLabel?: string;
 }
 
 type Pane = 'preview' | 'parsed' | 'details';
@@ -68,7 +80,10 @@ export function FilePreview(props: FilePreviewProps) {
   );
 }
 
-function PreviewSession({ file, load, onClose, onPrev, onNext, position, onUseInConversation, loadParsedText, details, status, noteOwner = null }: FilePreviewProps) {
+function PreviewSession({
+  file, load, onClose, onPrev, onNext, position, onUseInConversation, loadParsedText, details, status, noteOwner = null,
+  title, subtitle, icon, primaryAction, menuItems, downloadLabel = '下载',
+}: FilePreviewProps) {
   const kind = fileKind(file.name, file.mimeType);
   const limit = AUTO_LIMIT[kind];
   const renderable = limit !== undefined;
@@ -121,6 +136,10 @@ function PreviewSession({ file, load, onClose, onPrev, onNext, position, onUseIn
   ];
   const activePane = panes.some((item) => item.value === pane) ? pane : 'preview';
   const sizeText = file.size === undefined ? '' : formatSize(file.size);
+  const heading = title ?? file.name;
+  const metaText = subtitle ?? [kindLabel(file.name, file.mimeType), sizeText].filter(Boolean).join(' · ');
+  // 手机上头部按钮都收进「更多」；桌面只在调用方追加了菜单项时才出现，且不重复头部已有的按钮
+  const narrow = typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches;
 
   const renderPreview = () => {
     if (!renderable) {
@@ -175,11 +194,11 @@ function PreviewSession({ file, load, onClose, onPrev, onNext, position, onUseIn
       <header className={s.head}>
         {/* 手机上预览铺满全屏：左上角返回，其余操作收进「更多」 */}
         <IconButton label="返回" tip={false} className={s.headBack} onClick={onClose}><ArrowLeft size={18} /></IconButton>
-        <FileTypeIcon name={file.name} mimeType={file.mimeType} size={36} className={s.headIcon} />
+        {icon ? <span className={s.headIconSlot}>{icon}</span> : <FileTypeIcon name={file.name} mimeType={file.mimeType} size={36} className={s.headIcon} />}
         <div className={s.headText}>
-          <RDialog.Title className={s.title} title={file.name}>{file.name}</RDialog.Title>
+          <RDialog.Title className={s.title} title={heading}>{heading}</RDialog.Title>
           <p className={s.meta}>
-            <span>{[kindLabel(file.name, file.mimeType), sizeText].filter(Boolean).join(' · ')}</span>
+            <span>{metaText}</span>
             {status}
           </p>
         </div>
@@ -191,25 +210,35 @@ function PreviewSession({ file, load, onClose, onPrev, onNext, position, onUseIn
               <IconButton label="下一份" shortcut="→" size="sm" tip="bottom" disabled={!onNext} onClick={onNext}><ChevronRight size={16} /></IconButton>
             </div>
           )}
+          {primaryAction && (
+            <Button variant="solid" className={s.headButton} icon={primaryAction.icon} aria-label={primaryAction.label} onClick={primaryAction.onClick}><span>{primaryAction.label}</span></Button>
+          )}
           {onUseInConversation && (
             <Button variant="soft" className={s.headButton} icon={<MessageSquarePlus size={15} />} aria-label="用于对话" onClick={onUseInConversation}><span>用于对话</span></Button>
           )}
-          <Button variant="outline" className={s.headButton} icon={<Download size={15} />} aria-label="下载" loading={saving} onClick={download}><span>下载</span></Button>
+          <Button variant="outline" className={s.headButton} icon={<Download size={15} />} aria-label={downloadLabel} loading={saving} onClick={download}><span>{downloadLabel}</span></Button>
           <Menu modal={false}>
             <MenuTrigger asChild>
-              <IconButton label="更多操作" tip={false} className={s.headMore}><Ellipsis size={18} /></IconButton>
+              <IconButton label="更多操作" tip={false} className={s.headMore} data-extra={menuItems ? '' : undefined}><Ellipsis size={18} /></IconButton>
             </MenuTrigger>
             <MenuContent align="end">
-              {position && <MenuLabel>第 {position.index + 1} 份，共 {position.total} 份</MenuLabel>}
-              {(onPrev || onNext) && (
+              {narrow && (
                 <>
-                  <MenuItem icon={<ChevronLeft size={15} />} disabled={!onPrev} onSelect={() => onPrev?.()}>上一份</MenuItem>
-                  <MenuItem icon={<ChevronRight size={15} />} disabled={!onNext} onSelect={() => onNext?.()}>下一份</MenuItem>
-                  <MenuSeparator />
+                  {position && <MenuLabel>第 {position.index + 1} 份，共 {position.total} 份</MenuLabel>}
+                  {(onPrev || onNext) && (
+                    <>
+                      <MenuItem icon={<ChevronLeft size={15} />} disabled={!onPrev} onSelect={() => onPrev?.()}>上一份</MenuItem>
+                      <MenuItem icon={<ChevronRight size={15} />} disabled={!onNext} onSelect={() => onNext?.()}>下一份</MenuItem>
+                      <MenuSeparator />
+                    </>
+                  )}
+                  {primaryAction && <MenuItem icon={primaryAction.icon} onSelect={primaryAction.onClick}>{primaryAction.label}</MenuItem>}
+                  {onUseInConversation && <MenuItem icon={<MessageSquarePlus size={15} />} onSelect={onUseInConversation}>用于对话</MenuItem>}
+                  <MenuItem icon={<Download size={15} />} disabled={saving} onSelect={download}>{downloadLabel === '下载' ? '下载原件' : downloadLabel}</MenuItem>
+                  {menuItems && <MenuSeparator />}
                 </>
               )}
-              {onUseInConversation && <MenuItem icon={<MessageSquarePlus size={15} />} onSelect={onUseInConversation}>用于对话</MenuItem>}
-              <MenuItem icon={<Download size={15} />} disabled={saving} onSelect={download}>下载原件</MenuItem>
+              {menuItems}
             </MenuContent>
           </Menu>
           <IconButton label="关闭预览" shortcut="Esc" tip="bottom" className={s.headClose} onClick={onClose}><X size={18} /></IconButton>

@@ -49,6 +49,8 @@ function mutate(owner: string | null, update: (lessons: Lesson[]) => Lesson[]) {
 }
 
 export const lessonStore = {
+  /** 课程库有变化时回调（非 Hook），返回取消订阅 */
+  subscribe: (listener: () => void): (() => void) => useStore.subscribe(listener),
   list: (owner: string | null): Lesson[] => useStore.getState().byOwner[ownerKey(owner)] ?? [],
   get: (owner: string | null, id: string): Lesson | undefined => lessonStore.list(owner).find((lesson) => lesson.id === id),
   /** 新课放到最前；同 id 的原地更新 */

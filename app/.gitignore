@@ -25,3 +25,6 @@ dist-ssr
 
 # 本地手机预览工具
 mobile-harness.html
+
+# 浏览器内 Python 运行环境，由 scripts/fetch-pyodide.mjs 重建
+public/pyodide/

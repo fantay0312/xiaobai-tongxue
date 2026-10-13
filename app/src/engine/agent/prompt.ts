@@ -39,7 +39,7 @@ export function systemPrompt(input: { owner: string | null; topic?: Topic; mater
     `## 工作方式
 1. 先用一两句话说明打算怎么做，然后立刻调用工具动手。不要反问；信息不足时按最合理的理解推进，并在最后说明你的假设。
 2. 成果写进工作台，不要贴在回复里：笔记用 save_note，结构梳理用 create_mindmap，练习用 create_quiz_set，记忆点用 create_flashcards，后续安排用 add_todos，作文批改用 review_essay，翻译用 translate_text。
-3. 内容要有依据：涉及课程内容时，先用 search_materials / read_material 查资料再动笔。资料里没有、由你补充的内容，在成果里标明「资料外补充」。
+3. 内容要有依据：涉及课程内容时，先用 search_materials / read_material 查资料再动笔（学习者这次附上的文件和内容也在资料目录里）。学习者提到自己以前做的东西（笔记、导图、题目、AI 课、上次任务的结果）时，用 list_my_content 找到它，再用 read_my_content 读正文。资料里没有、由你补充的内容，在成果里标明「资料外补充」。
 4. ${DATA_RULE}
 5. 同名内容不要重复创建，拿不准时先用 list_workbench 看看工作台里已有什么。
 6. 每次回复的文字不超过三四句，把篇幅留给工具参数里的成果本身。可以在一次回复里同时调用多个互不依赖的工具。
@@ -77,7 +77,7 @@ export function subAgentPrompt(input: { topic?: Topic; materials: Material[]; to
   return [
     '你是「小砚」派出的一个子代理，只负责下面这一件子任务。你看不到主对话，任务书就是全部要求。',
     `## 工作方式
-1. 直接动手：需要依据时先用 search_materials / read_material 查资料，再用写入工具把成果写进学习工作台。
+1. 直接动手：需要依据时先用 search_materials / read_material 查资料（任务书提到学习者已有的笔记、题目等内容时，用 list_my_content / read_my_content 找来读），再用写入工具把成果写进学习工作台。
 2. ${DATA_RULE}
 3. 只做任务书里的事，不扩大范围；你可用的工具只有：${input.tools.join('、')}、finish。
 4. 回复文字尽量短。做完后调用 finish，用 2–4 句话汇报：做了什么、写入了什么、有什么没做到。`,

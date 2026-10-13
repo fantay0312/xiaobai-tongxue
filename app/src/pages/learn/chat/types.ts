@@ -2,6 +2,15 @@ import type { FormEvent, ReactNode, RefObject } from 'react';
 import type { StudyConversation, StudyMode, StudySource } from '../../../engine/studyWorkspace';
 import type { LearningInteraction } from '../../../../../server/shared/learning-ui.mjs';
 
+/** 把回答交给别的板块时要带上的上下文：谁的、哪门课、能不能讲给小白 */
+export interface ChatHandoff {
+  owner: string | null;
+  topicId?: string;
+  topicTitle?: string;
+  /** 这门课可以讲给小白时给出课程 id */
+  teachTopicId?: string;
+}
+
 /** 对话流：终端外壳（index.tsx）传入，chat/ChatFeed.tsx 实现。 */
 export interface ChatFeedProps {
   conversation: StudyConversation;
@@ -19,9 +28,12 @@ export interface ChatFeedProps {
   onInteraction: (messageId: string, blockId: string, state: LearningInteraction[string]) => void;
   /** 重新生成这条助手回答 */
   onRegenerate: (messageId: string) => void;
+  /** 给了才显示「发送到」和「收进工作台」 */
+  handoff?: ChatHandoff;
 }
 
-export interface ComposerAttachment { id: string; title: string }
+/** kind=artifact 是从「我的内容」带进来的成果，其余是资料库文件 */
+export interface ComposerAttachment { id: string; title: string; kind?: 'file' | 'artifact' }
 
 /** 输入框：chat/Composer.tsx 实现。模型与思考强度由 Composer 自己读写 store/modelPrefs。 */
 export interface ComposerProps {
@@ -46,6 +58,8 @@ export interface ComposerProps {
   onRemoveAttachment: (id: string) => void;
   /** 打开资料库选择文件 */
   onAttach: () => void;
+  /** 打开「我的内容」挑一份生成的成果（笔记、导图、题目……）；输入 @ 也走这里 */
+  onAttachContent?: () => void;
   /** 打开本课资料侧面板 */
   onOpenSources: () => void;
   placeholder?: string;

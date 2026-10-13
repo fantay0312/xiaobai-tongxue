@@ -121,6 +121,7 @@
 .back .faceText { font-size: var(--fz-lg); text-align: left; }
 .back .faceText p { text-align: left; }
 .faceHint { align-self: center; color: var(--text-4); font-size: var(--fz-xs); }
+.aid { width: min(100%, 620px); margin: 0 auto; padding: 4px 22px 8px; }
 .rFoot { display: grid; justify-items: center; padding: 8px 22px 22px; min-height: 96px; align-content: start; }
 .show { min-width: 220px; }
 .show kbd { margin-left: 4px; background: color-mix(in srgb, var(--on-solid) 16%, transparent); box-shadow: none; color: var(--on-solid); }

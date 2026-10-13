@@ -1,14 +1,19 @@
 /** 对话流里的三种行：我的提问、小砚的回答、等待中的占位。 */
 import { memo, useEffect, useRef, useState } from 'react';
-import { BookmarkPlus, Check, CircleSlash, Copy, RotateCcw, Square, TriangleAlert, Volume2 } from 'lucide-react';
+import { Check, CircleSlash, Copy, FolderInput, Forward, RotateCcw, Square, TriangleAlert, Volume2 } from 'lucide-react';
 import { CoachMarkdown } from '../../../components/coach/CoachMarkdown';
+import { SendTo } from '../../../components/handoff/SendTo';
+import { useOpenTarget } from '../../../components/handoff/useOpenTarget';
+import h from '../../../components/handoff/handoff.module.css';
 import { Button, IconButton, Shimmer, ThinkingDots, toast } from '../../../components/ui';
 import type { StudyMessage, StudySource } from '../../../engine/studyWorkspace';
+import type { ArtifactOrigin } from '../../../lib/artifacts';
 import { EFFORT_LABELS, type Effort } from '../../../store/modelPrefs';
 import { IntelligentAnswer } from '../IntelligentAnswer';
 import { LearningActivity } from '../LearningActivity';
+import { keepStructured, keepableSummary } from './keep';
 import { speechSupported, toggleSpeak } from './speech';
-import type { ChatFeedProps } from './types';
+import type { ChatFeedProps, ChatHandoff } from './types';
 import { XiaoyanAvatar } from './XiaoyanAvatar';
 import s from './feed.module.css';
 
@@ -108,7 +113,7 @@ function metaLabel(message: StudyMessage, modelLabel?: string): string {
 }
 
 /* ── 小砚的回答 ── */
-export const AssistantMessage = memo(function AssistantMessage({ message, streaming, last, busy, speaking, modelLabel, handlers }: {
+export const AssistantMessage = memo(function AssistantMessage({ message, streaming, last, busy, speaking, modelLabel, handlers, handoff, origin, asked }: {
   message: StudyMessage;
   streaming: boolean;
   /** 对话里的最后一条：操作条常显 */
@@ -117,10 +122,17 @@ export const AssistantMessage = memo(function AssistantMessage({ message, stream
   speaking: boolean;
   modelLabel?: string;
   handlers: FeedHandlers;
+  /** 交给别的板块时带的上下文；不给就不显示「发送到」 */
+  handoff?: ChatHandoff;
+  /** 这条回答的来源：哪段对话 */
+  origin?: ArtifactOrigin;
+  /** 这条回答对应的提问，用来给存下来的东西起名 */
+  asked?: string;
 }) {
   const [copied, flashCopied] = useFlash();
-  const [saved, flashSaved] = useFlash();
+  const [kept, flashKept] = useFlash(2400);
   const seenAt = useRef(Date.now());
+  const openTarget = useOpenTarget();
 
   const hasBody = Boolean(message.ui) || message.text.trim().length > 0;
   const status = message.run?.status;
@@ -129,7 +141,16 @@ export const AssistantMessage = memo(function AssistantMessage({ message, stream
   const showProcess = Boolean(message.run) || thought || (message.thinkingMs ?? 0) >= 1000 || (live && !hasBody);
   const meta = metaLabel(message, modelLabel);
 
-  const save = () => { handlers.onSaveNote(message.text, message.sources); flashSaved(); };
+  const sendTitle = (asked ?? '').split('\n')[0].trim().slice(0, 28) || undefined;
+  // 回答里已经是结构化的小测验、闪卡、计划、导图：可以原样收下
+  const keepable = handoff && message.ui ? keepableSummary(message.ui) : '';
+  const keep = () => {
+    if (!handoff || !message.ui) return;
+    const items = keepStructured(handoff.owner, message.ui, { title: sendTitle ?? handoff.topicTitle ?? '对话里的内容', topicId: handoff.topicId, origin });
+    if (!items.length) return;
+    flashKept();
+    toast.success(`已收进工作台：${items.map((item) => item.label).join('、')}`, { action: { label: '打开', onClick: () => openTarget(items[0].open) } });
+  };
 
   return (
     <article className={s.assistant} aria-label="小砚的回答" aria-busy={live || undefined}>
@@ -201,9 +222,27 @@ export const AssistantMessage = memo(function AssistantMessage({ message, stream
               <IconButton size="sm" label={copied ? '已复制' : '复制'} onClick={() => void copyWithToast(message.text, flashCopied)}>
                 {copied ? <Check {...ICON} /> : <Copy {...ICON} />}
               </IconButton>
-              <IconButton size="sm" label={saved ? '已存入笔记' : '存入笔记'} onClick={save}>
-                {saved ? <Check {...ICON} /> : <BookmarkPlus {...ICON} />}
-              </IconButton>
+              {handoff && origin && (
+                <SendTo
+                  owner={handoff.owner}
+                  text={message.text}
+                  title={sendTitle}
+                  topicId={handoff.topicId}
+                  topicTitle={handoff.topicTitle}
+                  teachTopicId={handoff.teachTopicId}
+                  routes={['agent', 'lesson', 'teach']}
+                  origin={origin}
+                  side="top"
+                >
+                  <IconButton size="sm" label="发送到：笔记、闪卡、导图、题目、待办…"><Forward {...ICON} /></IconButton>
+                </SendTo>
+              )}
+              {keepable && (
+                <button type="button" className={h.trigger} data-wide data-tone={kept ? undefined : 'accent'} title={`原样存进工作台：${keepable}`} onClick={keep}>
+                  {kept ? <Check size={14} strokeWidth={2} /> : <FolderInput size={14} strokeWidth={1.75} />}
+                  {kept ? '已收进工作台' : '收进工作台'}
+                </button>
+              )}
             </>
           )}
           {!busy && (

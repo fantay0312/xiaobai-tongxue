@@ -1,12 +1,21 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CircleCheck, Pencil, Play, Plus, Search, Trash2, X } from 'lucide-react';
 import { CoachMarkdown } from '../../../../components/coach/CoachMarkdown';
 import { Button, Dialog, Field, IconButton, Input, Kbd, Progress, Segmented, Textarea, toast } from '../../../../components/ui';
+import { IconSpark } from '../../../../components/ui/icons';
+import { logActivity } from '../../../../engine/activityLog';
 import { dueCards, newCard, scheduleCard, studyData, useStudyData, type CardRating, type Deck, type Flashcard } from '../../../../store/studyData';
-import { DetailHead, ICON_SM, OriginBadge, ToolFrame, type ToolProps } from './shared';
-import { addDays, clip, dayKey, dayLabel, matches, spanLabel, useAutosave, useHotkeys, weekday } from './util';
+import { AiBlock, ItemOrigin, SendMenu, useAiRun, type AiBlockAction } from './AiKit';
+import { useAiFocus } from './AskPanel';
+import { CARD_ACTIONS, runCardAction, weakCards, weakNote, type CardAction } from './ai';
+import { itemKey, setItemOrigin } from './origins';
+import { DetailHead, ICON_SM, ToolFrame, type ToolProps } from './shared';
+import { addDays, clip, dayKey, dayLabel, matches, spanLabel, useAutosave, useHotkeys, useWorkbenchNav, weekday } from './util';
 import s from './workbench.module.css';
 import f from './flashcards.module.css';
+import a from './ai.module.css';
+
+const deckMarkdown = (deck: Deck) => deck.cards.map((card, index) => `${index + 1}. 问：${card.front}\n   答：${card.back}`).join('\n\n');
 
 const RATINGS: { value: CardRating; label: string; tone: 'bad' | 'warn' | 'accent' | 'ok'; key: string }[] = [
   { value: 'again', label: '重来', tone: 'bad', key: '1' },
@@ -63,14 +72,35 @@ export default function FlashcardsTool(props: ToolProps) {
     >
       {(id) => {
         const deck = decks.find((item) => item.id === id);
-        return deck ? <DeckDetail key={deck.id} deck={deck} owner={owner} /> : null;
+        return deck ? <DeckDetail key={deck.id} deck={deck} view={props} /> : null;
       }}
     </ToolFrame>
   );
 }
 
-function DeckDetail({ deck, owner }: { deck: Deck; owner: string | null }) {
+function DeckDetail({ deck, view }: { deck: Deck; view: ToolProps }) {
+  const { owner, topic, topics, askHere } = view;
+  const { go } = useWorkbenchNav();
   const [title, setTitle] = useState(deck.title);
+  const deckRef = useRef(deck);
+  useEffect(() => { deckRef.current = deck; });
+  const course = deck.topicId ? topics.find((item) => item.topicId === deck.topicId) ?? topic : topic;
+  /* ── 把薄弱卡整理成笔记 ── */
+  const noteAi = useAiRun();
+  const [noteOpen, setNoteOpen] = useState(false);
+  const weak = weakCards(deck);
+  const writeWeakNote = () => {
+    setNoteOpen(true);
+    void noteAi.start((call) => weakNote(deckRef.current, weakCards(deckRef.current), { ...(course ? { topic: course } : {}) }, call));
+  };
+  const saveWeakNote = () => {
+    const name = `${deck.title || '未命名卡组'} · 薄弱点`;
+    const saved = studyData.saveNote(owner, { title: name, body: noteAi.state.text, tags: ['薄弱点'], ...(deck.topicId ? { topicId: deck.topicId } : {}) });
+    setItemOrigin(owner, itemKey('note', saved.id), { section: 'workbench', label: `闪卡：${clip(deck.title || '未命名卡组', 24)}`, open: { view: 'workbench', params: { tool: 'flashcards', id: deck.id } } });
+    noteAi.reset();
+    setNoteOpen(false);
+    toast.success(`已存为笔记《${clip(name, 18)}》`, { action: { label: '打开', onClick: () => go('notes', saved.id) } });
+  };
   const [dirty, setDirty] = useState(false);
   const [tab, setTab] = useState<'overview' | 'cards'>(deck.cards.length ? 'overview' : 'cards');
   const [session, setSession] = useState<{ ids: string[]; key: number } | null>(null);
@@ -96,10 +126,20 @@ function DeckDetail({ deck, owner }: { deck: Deck; owner: string | null }) {
   const saveCards = (cards: Flashcard[]) => studyData.saveDeck(owner, { ...deck, title, cards });
   const start = (cards: Flashcard[]) => setSession({ ids: cards.map((card) => card.id), key: Date.now() });
 
+  // 复习时由复习界面报告正在看的那张卡
+  useAiFocus(session ? null : {
+    kind: 'deck',
+    id: deck.id,
+    label: '闪卡',
+    title,
+    ...(deck.topicId ? { topicId: deck.topicId } : {}),
+    getText: () => deckMarkdown(deckRef.current),
+  });
+
   if (session) {
     return (
       <div className={s.card}>
-        <Review key={session.key} deck={deck} ids={session.ids} owner={owner} onExit={() => setSession(null)} />
+        <Review key={session.key} deck={deck} ids={session.ids} view={view} onExit={() => setSession(null)} />
       </div>
     );
   }
@@ -108,7 +148,7 @@ function DeckDetail({ deck, owner }: { deck: Deck; owner: string | null }) {
 
   return (
     <div className={s.card}>
-      <DetailHead title={title} onTitle={(value) => { setTitle(value); setDirty(true); }} badges={<OriginBadge origin={deck.origin} />}>
+      <DetailHead title={title} onTitle={(value) => { setTitle(value); setDirty(true); }} badges={<ItemOrigin owner={owner} kind="deck" id={deck.id} origin={deck.origin} />}>
         <Segmented
           size="sm"
           label="卡组视图"
@@ -116,6 +156,8 @@ function DeckDetail({ deck, owner }: { deck: Deck; owner: string | null }) {
           onChange={setTab}
           options={[{ value: 'overview', label: '复习' }, { value: 'cards', label: `卡片 ${deck.cards.length}` }]}
         />
+        <IconButton label="问小砚" size="sm" onClick={() => askHere()}><IconSpark size={16} /></IconButton>
+        <SendMenu view={view} item={{ kind: 'deck', id: deck.id, label: '闪卡', title, ...(deck.topicId ? { topicId: deck.topicId } : {}), text: () => deckMarkdown(deckRef.current) }} />
       </DetailHead>
 
       {tab === 'overview' ? (
@@ -145,6 +187,25 @@ function DeckDetail({ deck, owner }: { deck: Deck; owner: string | null }) {
               {deck.cards.length === 0 && <Button variant="solid" size="lg" icon={<Plus {...ICON_SM} />} onClick={() => { setTab('cards'); setEditing('new'); }}>添加卡片</Button>}
             </div>
           </div>
+
+          {weak.length > 0 && !noteOpen && (
+            <div className={a.aiRow}>
+              <span>有 {weak.length} 张卡反复记不住</span>
+              <Button variant="ghost" size="sm" icon={<IconSpark size={16} />} onClick={writeWeakNote}>把薄弱卡整理成笔记</Button>
+              <Button variant="ghost" size="sm" onClick={() => start(weak)}>只复习这几张</Button>
+            </div>
+          )}
+          {noteOpen && (
+            <AiBlock
+              state={noteAi.state}
+              title="薄弱卡复习笔记"
+              doing={`正在看这 ${weak.length} 张卡`}
+              actions={[{ label: '存为笔记', primary: true, onClick: saveWeakNote }]}
+              onRetry={() => void noteAi.retry()}
+              onStop={noteAi.stop}
+              onDiscard={() => { noteAi.reset(); setNoteOpen(false); }}
+            />
+          )}
 
           <div className={s.stats}>
             <div className={s.stat}><b>{deck.cards.length}</b><span>全部卡片</span></div>
@@ -257,7 +318,13 @@ function CardDialog({ card, onSave, onClose }: { card: Flashcard | null; onSave:
 }
 
 /* ── 复习 ── */
-function Review({ deck, ids, owner, onExit }: { deck: Deck; ids: string[]; owner: string | null; onExit: () => void }) {
+function Review({ deck, ids, view, onExit }: { deck: Deck; ids: string[]; view: ToolProps; onExit: () => void }) {
+  const { owner, topic, topics } = view;
+  const course = deck.topicId ? topics.find((item) => item.topicId === deck.topicId) ?? topic : topic;
+  const ai = useAiRun();
+  const [helper, setHelper] = useState<CardAction | null>(null);
+  const lapsed = useRef<string[]>([]);
+  const logged = useRef(false);
   const [queue, setQueue] = useState(ids);
   const [at, setAt] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -272,8 +339,53 @@ function Review({ deck, ids, owner, onExit }: { deck: Deck; ids: string[]; owner
     if (!done && !card) setAt((value) => value + 1);
   }, [done, card]);
 
+  const closeHelper = () => { ai.reset(); setHelper(null); };
+  const runHelper = (action: CardAction) => {
+    if (!card) return;
+    setHelper(action);
+    void ai.start((call) => runCardAction(action, card, { ...(course ? { topic: course } : {}) }, call));
+  };
+  /** 采纳 AI 的结果：换掉正面的问法，或者把讲解补到背面 */
+  const patchCard = (patch: Partial<Pick<Flashcard, 'front' | 'back'>>, done: string) => {
+    if (!card) return;
+    const current = studyData.get(owner).decks.find((item) => item.id === deck.id);
+    if (!current) return;
+    const before = current.cards;
+    studyData.saveDeck(owner, { ...current, cards: before.map((item) => (item.id === card.id ? { ...item, ...patch } : item)) });
+    closeHelper();
+    toast(done, { action: { label: '撤销', onClick: () => { const now = studyData.get(owner).decks.find((item) => item.id === deck.id); if (now) studyData.saveDeck(owner, { ...now, cards: before }); } } });
+  };
+
+  useAiFocus(done || !card ? null : {
+    kind: 'deck',
+    id: deck.id,
+    label: '闪卡',
+    title: deck.title,
+    detail: clip(card.front.replace(/\s+/g, ' '), 80),
+    ...(deck.topicId ? { topicId: deck.topicId } : {}),
+    getText: () => (flipped ? `正在复习的卡：\n问：${card.front}\n答：${card.back}` : `正在复习的卡：\n问：${card.front}\n（还没有翻面。不要直接说出答案，给提示。答案是：${card.back}）`),
+  });
+
+  // 一轮复习结束：记一条学习行为，选过「重来」的卡算卡住的地方
+  useEffect(() => {
+    const reviewed = tally.again + tally.hard + tally.good + tally.easy;
+    if (!done || logged.current || !reviewed) return;
+    logged.current = true;
+    logActivity(owner, {
+      source: 'flashcards',
+      summary: `闪卡《${clip(deck.title || '未命名卡组', 24)}》复习 ${ids.length} 张：重来 ${tally.again}、困难 ${tally.hard}、良好 ${tally.good}、简单 ${tally.easy}`,
+      signal: tally.again > 0 ? 'struggle' : 'success',
+      ...(lapsed.current.length ? { detail: `选了重来的卡：${[...new Set(lapsed.current)].map((front) => clip(front.replace(/\s+/g, ' '), 30)).join('；')}` } : {}),
+      ...(course ? { topicId: course.topicId, topicTitle: course.title } : {}),
+      ref: { kind: 'deck', id: deck.id, title: deck.title },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done]);
+
   const rate = (rating: CardRating) => {
     if (!card || !flipped) return;
+    closeHelper();
+    if (rating === 'again') lapsed.current.push(card.front);
     studyData.reviewCard(owner, deck.id, card.id, rating);
     setTally((current) => ({ ...current, [rating]: current[rating] + 1 }));
     // 「重来」的卡排到本轮末尾再过一遍
@@ -340,6 +452,30 @@ function Review({ deck, ids, owner, onExit }: { deck: Deck; ids: string[]; owner
             <div className={f.faceText}><CoachMarkdown text={card.back} /></div>
           </div>
         </div>
+      </div>
+
+      <div className={f.aid}>
+        {helper ? (
+          <AiBlock
+            state={ai.state}
+            title={CARD_ACTIONS[helper].label}
+            doing={CARD_ACTIONS[helper].doing}
+            actions={((): AiBlockAction[] => {
+              if (helper === 'rephrase') return [{ label: '用这个问法', primary: true, onClick: () => patchCard({ front: ai.state.text }, '已换成新的问法') }];
+              if (helper === 'explain' && !ai.state.local) return [{ label: '补到答案后面', onClick: () => patchCard({ back: `${card.back.trim()}\n\n${ai.state.text}` }, '已补到这张卡的答案后面') }];
+              return [];
+            })()}
+            onRetry={() => void ai.retry()}
+            onStop={ai.stop}
+            onDiscard={closeHelper}
+          />
+        ) : (
+          <div className={a.aiRow} style={{ justifyContent: 'center' }}>
+            {!flipped && <Button variant="ghost" size="sm" icon={<IconSpark size={16} />} onClick={() => runHelper('hint')}>给个提示</Button>}
+            <Button variant="ghost" size="sm" icon={<IconSpark size={16} />} onClick={() => runHelper('rephrase')}>换个问法</Button>
+            {flipped && <Button variant="ghost" size="sm" icon={<IconSpark size={16} />} onClick={() => runHelper('explain')}>讲透这张卡</Button>}
+          </div>
+        )}
       </div>
 
       <div className={f.rFoot}>

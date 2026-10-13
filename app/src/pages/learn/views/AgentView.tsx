@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ChevronRight, CircleAlert, CircleCheck, CirclePause, CircleStop } from 'lucide-react';
-import { Badge, Empty, Spinner, TabPanel, Tabs, Tip, toast } from '../../../components/ui';
+import { useSearchParams } from 'react-router';
+import { ArrowLeft, ChevronRight, CircleAlert, CircleCheck, CirclePause, CircleStop, Forward } from 'lucide-react';
+import { AttachBar, NO_ATTACHMENTS, attachmentCount, type Attachments } from '../../../components/handoff/AttachBar';
+import { handoffSource, resolveAttachments } from '../../../components/handoff/materials';
+import { SendTo } from '../../../components/handoff/SendTo';
+import { Badge, Empty, IconButton, Spinner, TabPanel, Tabs, Tip, toast } from '../../../components/ui';
 import { IconAgent, IconSpark } from '../../../components/ui/icons';
 import {
   DEFAULT_RUN_OPTIONS,
@@ -18,6 +22,7 @@ import {
   type RunOptions,
   type RunStatus,
 } from '../../../engine/agent';
+import { useArtifacts } from '../../../lib/artifacts';
 import { loadModelCatalog } from '../../../lib/modelGateway';
 import { useAgentData } from '../../../store/agentStore';
 import { SidebarPortal, useSidebarSlot } from '../shell/sidebarSlot';
@@ -69,8 +74,36 @@ export default function AgentView({ owner, topic, selectedSources, onView }: Ter
   const hasSidebar = useSidebarSlot() !== null;
   // 手机：任务列表与运行详情分成两屏，详情带返回
   const phone = useMediaQuery('(max-width: 760px)') && !hasSidebar;
-  const [selection, setSelection] = useState<AgentSelection>({ kind: 'new' });
-  const [draft, setDraft] = useState('');
+  // 别处带着目标或内容过来：?goal=<目标> 预填，?handoff=<短号> / ?from=<成果登记键> 作为附加内容，?run=<任务> 直接打开那次任务
+  const [searchParams] = useSearchParams();
+  const goalParam = searchParams.get('goal');
+  const handoffParam = searchParams.get('handoff');
+  const fromParam = searchParams.get('from');
+  const runParam = searchParams.get('run');
+  const artifacts = useArtifacts(owner);
+  const fromKey = fromParam ? artifacts.find((item) => item.key === fromParam)?.key : undefined;
+  const [selection, setSelection] = useState<AgentSelection>(() => (runParam && !goalParam ? { kind: 'run', id: runParam } : { kind: 'new' }));
+  const [draft, setDraft] = useState(() => goalParam?.slice(0, 6000) ?? '');
+  const [attachments, setAttachments] = useState<Attachments>(NO_ATTACHMENTS);
+  const [starting, setStarting] = useState(false);
+  useEffect(() => {
+    if (goalParam) { setDraft(goalParam.slice(0, 6000)); setSelection({ kind: 'new' }); }
+  }, [goalParam]);
+  useEffect(() => {
+    const carried = handoffSource(handoffParam);
+    if (!carried && !fromKey) return;
+    setAttachments((current) => ({
+      ...current,
+      carried: carried && !current.carried.some((item) => item.id === carried.id) ? [...current.carried, carried] : current.carried,
+      selection: fromKey && !current.selection.artifactKeys.includes(fromKey)
+        ? { ...current.selection, artifactKeys: [...current.selection.artifactKeys, fromKey] }
+        : current.selection,
+    }));
+    setSelection({ kind: 'new' });
+  }, [handoffParam, fromKey]);
+  useEffect(() => {
+    if (runParam && !goalParam) setSelection({ kind: 'run', id: runParam });
+  }, [runParam, goalParam]);
   const [options, setOptions] = useState<RunOptions>(loadOptions);
   const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraft | null>(null);
   const [modelReady, setModelReady] = useState<boolean | null>(null);
@@ -102,12 +135,25 @@ export default function AgentView({ owner, topic, selectedSources, onView }: Ter
   const contextFor = (run: AgentRun) => ((run.topicId ?? null) === (topic?.topicId ?? null) ? liveContext : undefined);
   const topicRef = topic ? { topicId: topic.topicId, title: topic.title } : undefined;
 
-  const start = () => {
+  const start = async () => {
     const goal = draft.trim();
-    if (!goal) return;
-    const runId = startRun(owner, { goal, options, context: liveContext });
-    setDraft('');
-    setSelection({ kind: 'run', id: runId });
+    if (!goal || starting) return;
+    setStarting(true);
+    try {
+      // 附加的资料库文件和「我的内容」读成正文，和已勾选资料一起交给助理检索
+      const extra = [...attachments.carried];
+      if (attachments.selection.fileIds.length || attachments.selection.artifactKeys.length) {
+        const resolved = await resolveAttachments(owner, attachments.selection);
+        resolved.problems.forEach((message) => toast(message));
+        extra.push(...resolved.sources);
+      }
+      const runId = startRun(owner, { goal, options, context: { topic, sources: [...selectedSources, ...extra] } });
+      setDraft('');
+      setAttachments(NO_ATTACHMENTS);
+      setSelection({ kind: 'run', id: runId });
+    } finally {
+      setStarting(false);
+    }
   };
 
   const openRun = (runId: string) => setSelection({ kind: 'run', id: runId });
@@ -158,9 +204,12 @@ export default function AgentView({ owner, topic, selectedSources, onView }: Ter
       onOptions={(patch) => setOptions((current) => ({ ...current, ...patch }))}
       topicTitle={topic?.title}
       sourceTitles={selectedSources.map((source) => source.title)}
-      onStart={start}
+      onStart={() => void start()}
       onSchedule={() => newSchedule(draft.trim())}
       compact={phone}
+      starting={starting}
+      attachedCount={attachmentCount(attachments)}
+      attach={<AttachBar owner={owner} value={attachments} onChange={setAttachments} disabled={starting} onManage={() => onView('library')} addLabel="附上资料或我的内容" initialTab="artifacts" />}
     />
   );
 
@@ -174,6 +223,22 @@ export default function AgentView({ owner, topic, selectedSources, onView }: Ter
       onRerun={() => restart(run)}
       onDelete={() => removeRun(run)}
       onOpen={openItem}
+      sendTo={run.status === 'done' && run.summary?.trim() ? (
+        <SendTo
+          owner={owner}
+          text={`# ${run.title}\n\n${run.summary}`}
+          title={run.title}
+          topicId={run.topicId}
+          topicTitle={run.topicTitle}
+          actions={['save-note', 'add-todos', 'make-flashcards']}
+          routes={['lesson']}
+          origin={{ section: 'agent', label: `助理任务：${run.title}`, open: { view: 'agent', params: { run: run.id } } }}
+          label="把小结发送到"
+          align="end"
+        >
+          <IconButton label="把这次任务的小结发送到…"><Forward size={16} strokeWidth={1.75} /></IconButton>
+        </SendTo>
+      ) : undefined}
     />
   );
 

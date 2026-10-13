@@ -1,10 +1,16 @@
 /**
  * LLM 统一封装 —— llmCall(role, payload)
  * mode='mock' 时不发网络请求(断网兜底);
- * mode='api' 时调 OpenAI 兼容端点(默认 DeepSeek),失败由调用方降级 mock。
+ * mode='api' 是「自定义线路」:按设置里选的协议(OpenAI Chat / Responses、Anthropic Messages、Gemini)
+ * 经 lib/providers 的适配器直连用户自己的端点,失败由调用方降级 mock。
  */
 import type { LlmSettings } from '../types';
+import type { Effort } from '../store/modelPrefs';
 import { API_BASE, gatewayFetch } from '../lib/api';
+import { ProviderError, extractJsonObject, isAbort } from '../lib/providers/core';
+import { isDeepSeek, openAiRoot } from '../lib/providers/openaiChat';
+import { runProvider } from '../lib/providers/run';
+import { connectionOf } from '../lib/providers/settings';
 
 export type LlmRole = 'evaluator' | 'xiaobai' | 'report' | 'coach';
 
@@ -50,18 +56,20 @@ function roleModel(role: LlmRole, settings: LlmSettings): string {
 /** 单轮要过评估+渲染两跳,单跳超时须控制在体感可接受范围 */
 const TIMEOUT_MS = 45_000;
 
-/** 兼容三种 baseUrl 写法:https://api.deepseek.com / …/v1 / 直接粘贴完整 …/chat/completions */
+/** 兼容三种 baseUrl 写法:https://api.deepseek.com / …/v1 / 直接粘贴完整 …/chat/completions(只有域名时补 /v1) */
 export function chatCompletionsUrl(baseUrl: string): string {
-  const root = baseUrl.trim().replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
-  return `${root}/chat/completions`;
+  return `${openAiRoot(baseUrl)}/chat/completions`;
 }
 
-/** api 模式的思考预算:只对模型名含 deepseek 的端点下发(已实测 v4 系列接受 none/low),其余自带端点不发,
- *  未知参数可能被判 400。小白关思考(none):台词照样自然、不再被思考挤空正文;评估器 low 保判定;与网关同策略。 */
-function apiReasoningEffort(role: LlmRole, settings: LlmSettings): { reasoning_effort?: 'none' | 'low' } {
-  if (role === 'coach' || !/deepseek/i.test(roleModel(role, settings))) return {};
-  return { reasoning_effort: role === 'xiaobai' ? 'none' : 'low' };
-}
+/**
+ * api 模式各角色的思考强度。
+ * DeepSeek 沿用实测过的口径:小白关思考(none,台词照样自然、不再被思考挤空正文),评估与报告 low 保判定,
+ * 助教不下发(用模型默认);额度 ROLE_MAX_TOKENS 已含思考,原样下发。
+ * 其他协议和模型:取该模型支持的最低一档上下(由适配器就近取档,不可调的模型不发任何思考参数),
+ * 开着思考时适配器另加思考额度,正文仍按 ROLE_MAX_TOKENS。
+ */
+const DEEPSEEK_ROLE_EFFORT: Record<LlmRole, Effort | undefined> = { xiaobai: 'none', evaluator: 'low', report: 'low', coach: undefined };
+const ROLE_EFFORT: Record<LlmRole, Effort> = { xiaobai: 'none', evaluator: 'low', report: 'low', coach: 'low' };
 
 /** 各角色温度:评估恒 0,小白用用户配置 */
 export async function llmCall(
@@ -79,36 +87,37 @@ export async function llmCall(
   signal?.addEventListener('abort', abort, { once: true });
   if (signal?.aborted) abort();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  const connection = connectionOf(settings);
+  const model = roleModel(role, settings);
+  const deepseek = connection.protocol === 'openai-chat' && isDeepSeek(model);
   try {
-    const res = await fetch(chatCompletionsUrl(settings.baseUrl), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${settings.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: roleModel(role, settings),
-        temperature: roleTemperature(role, settings),
-        max_tokens: ROLE_MAX_TOKENS[role],
-        ...apiReasoningEffort(role, settings),
-        ...(payload.json ? { response_format: { type: 'json_object' } } : {}),
-        messages: [
-          { role: 'system', content: payload.system },
-          { role: 'user', content: payload.user },
-        ],
-      }),
+    const result = await runProvider({
+      connection,
+      model,
+      messages: [
+        { role: 'system', content: payload.system },
+        { role: 'user', content: payload.user },
+      ],
+      json: !!payload.json,
+      effort: deepseek ? DEEPSEEK_ROLE_EFFORT[role] : ROLE_EFFORT[role],
+      maxTokens: ROLE_MAX_TOKENS[role],
+      exactMaxTokens: deepseek,
+      temperature: roleTemperature(role, settings),
+      // 课堂这几路不需要逐字显示，一次取回整段
+      stream: false,
       signal: ctrl.signal,
     });
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      throw new Error(`llm-http-${res.status}${body ? `:${body.slice(0, 160)}` : ''}`);
-    }
-    const data = await res.json();
-    const text: unknown = data?.choices?.[0]?.message?.content;
-    if (typeof text !== 'string' || !text) throw new Error('llm-empty');
+    // 要 JSON 时去掉围栏和前后闲话,保证调用方拿到的是能直接解析的对象
+    const text = payload.json ? extractJsonObject(result.text) ?? result.text : result.text;
+    if (!text) throw new Error('llm-empty');
     return text;
   } catch (e) {
-    if (e instanceof DOMException && e.name === 'AbortError') throw new Error('llm-timeout');
+    if (isAbort(e)) throw new Error('llm-timeout');
+    if (e instanceof ProviderError) {
+      if (e.kind === 'network') throw new Error('llm-network');
+      // detail 是端点给的原因,已去掉密钥并截短
+      throw new Error(`llm-http-${e.status ?? 502}${e.detail ? `:${e.detail}` : ''}`);
+    }
     throw e;
   } finally {
     clearTimeout(timer);

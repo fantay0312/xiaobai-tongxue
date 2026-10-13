@@ -86,6 +86,7 @@ import { createLearningAnswerRouter } from './learning-answer-router.mjs';
 import { createModelCatalog } from './model-catalog.mjs';
 import { createRealtimeAsrSigner } from './tencent-asr.mjs';
 import { createModelGatewayService, createModelGatewayRouter } from './model-gateway.mjs';
+import { createResearchConnectorsRouter } from './research-connectors.mjs';
 import { createJsonLlmClient, createTopicCompiler } from './custom-content/topic-compiler.mjs';
 import { createWeKnoraClient } from './custom-content/weknora-client.mjs';
 import {
@@ -2871,7 +2872,7 @@ else if (process.env.NODE_ENV !== 'production' && process.env.FILE_LIBRARY_LOCAL
 }
 const fileLibraryRouter = createFileLibraryRouter({ service: fileLibraryService, send, readJson, readRaw,
   resolveOwner: async (req, res) => { const user = await protectedUser(req, res, 'all'); return user ? { ...user, id: (await findUser(user.name))?.id ?? user.name } : null; },
-  rateLimit: productionStorage ? (owner) => productionStorage.redisOtp.rateLimit({ scope: 'library-upload', subject: owner.id, limit: 60, windowSeconds: 86400 }) : undefined,
+  rateLimit: productionStorage ? (owner) => productionStorage.redisOtp.rateLimit({ scope: 'library-upload', subject: owner.id, limit: 300, windowSeconds: 86400 }) : undefined,
 });
 if (fileLibraryService) { const cleanup = setInterval(() => { void fileLibraryService.reconcile().catch(() => console.error('[library] pending upload cleanup failed')); }, 300000); cleanup.unref(); }
 const modelCatalog = createModelCatalog(cfg);
@@ -2899,6 +2900,10 @@ const modelGatewayRouter = createModelGatewayRouter({
   resolveOwner: async (req, res) => { const user = await protectedUser(req, res, 'chat'); return user ? { ...user, id: (await findUser(user.name))?.id ?? user.name } : null; },
   reserveCalls: reserveModelCalls, send, readJson: (req, limit) => readJson(req, limit, 15_000), hasJsonContentType,
 });
+// 文献连接器：科研台的检索与取文，只访问模块内写死的学术来源
+const researchConnectorsRouter = createResearchConnectorsRouter({
+  resolveUser: (req, res) => protectedUser(req, res, 'chat'), send, readJson: (req, limit) => readJson(req, limit, 15_000), hasJsonContentType,
+});
 
 const server = http.createServer((req, res) => {
   let { pathname } = new URL(req.url, 'http://localhost');
@@ -2909,6 +2914,7 @@ const server = http.createServer((req, res) => {
   if (pathname.startsWith('/api/')) {
     if (pathname.startsWith('/api/learning/')) return void learningAnswerRouter.handle(req,res,pathname);
     if (pathname.startsWith('/api/model/')) return void modelGatewayRouter.handle(req, res, pathname);
+    if (pathname.startsWith('/api/research/')) return void researchConnectorsRouter.handle(req, res, pathname);
     if (pathname === '/api/library' || pathname.startsWith('/api/library/')) return void fileLibraryRouter.handle(req, res, pathname);
     if (pathname.startsWith('/api/study/')) return void studyTutorRouter.handle(req, res, pathname);
     if (pathname === '/api/xb' || pathname.startsWith('/api/xb/')) {

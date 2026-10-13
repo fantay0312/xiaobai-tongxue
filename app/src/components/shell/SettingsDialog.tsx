@@ -1,18 +1,19 @@
 /**
  * 设置 —— 左侧分区目录 + 右侧滚动内容。
  * 「外观」是皮肤与个性化的陈列台（store/skinStore），改动即时生效，只保存在本机浏览器。
- * 其余分区沿用原有的线路、语音、小白台词、记忆与引路设置：store 调用与载荷不变。
+ * 「模型」里的自定义线路是一套完整的接口配置：协议、地址、密钥、勾选模型、测试（lib/providers）。
+ * 「小白与记忆」里可以用文字写角色卡（store/personaCard），并对着固定一句讲解试听。
  * 评估与状态机永远本地规则运行，模型只负责理解与台词。
  */
 import {
-  useEffect, useId, useRef, useState,
-  type ChangeEvent, type ComponentProps, type CSSProperties, type ReactNode,
+  useCallback, useEffect, useId, useRef, useState,
+  type ChangeEvent, type ComponentProps, type CSSProperties, type FormEvent, type ReactNode,
 } from 'react';
 import { useNavigate } from 'react-router';
 import { Tabs as RTabs } from 'radix-ui';
 import {
-  Brain, Check, CircleCheck, CircleX, Cpu, Download, Eye, EyeOff, ImagePlus, Info, Mic, Palette,
-  Pipette, RotateCcw, Route, ShieldCheck, Trash2, type LucideIcon,
+  Brain, Check, ChevronsUpDown, CircleCheck, CircleX, Cpu, Download, Eye, EyeOff, ImagePlus, Info, Mic, Palette,
+  Pipette, Play, Plus, RefreshCw, RotateCcw, Route, Search, ShieldCheck, Star, Trash2, type LucideIcon,
 } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { useAuthStore } from '../../store/authStore';
@@ -20,13 +21,17 @@ import { useThemeStore } from '../../store/themeStore';
 import { DEFAULT_SKIN, SKINS, useSkinStore, type SkinPrefs } from '../../store/skinStore';
 import { useModelPrefs } from '../../store/modelPrefs';
 import { studyData } from '../../store/studyData';
-import { loadModelCatalog, type ModelCatalog } from '../../lib/modelGateway';
+import { PERSONA_CARD_MAX, PERSONA_CARD_TEMPLATES, personaCard, usePersonaCard } from '../../store/personaCard';
+import { ModelUnavailableError, loadModelCatalog, streamModel, type ModelCatalog } from '../../lib/modelGateway';
+import { LLM_PROTOCOLS, listModels, testConnection, type ProviderModel } from '../../lib/providers';
 import { llmCall } from '../../engine';
 import { relDay } from '../../lib/relDay';
-import type { Persona } from '../../types';
+import type { LlmProtocol, LlmSettings, Persona } from '../../types';
 import { isTourDone, resetTours, type TourKey } from '../tour/tourState';
+import { XiaobaiFace } from '../xiaobai/XiaobaiAvatar';
 import {
-  Badge, Button, Dialog, Field, IconButton, Input, ModelPicker, Segmented, Switch, cx, toast,
+  Badge, Button, Dialog, Field, IconButton, Input, Menu, MenuContent, MenuItem, MenuTrigger, ModelPicker,
+  Segmented, Switch, Textarea, ThinkingDots, cx, toast,
 } from '../ui';
 import { useSheetKeyboardInset } from './ProfileSheetKeyboard';
 import s from './SettingsDialog.module.css';
@@ -37,9 +42,9 @@ type SectionId = 'look' | 'model' | 'voice' | 'xiaobai' | 'data' | 'about';
 
 const SECTIONS: { id: SectionId; label: string; hint: string; icon: LucideIcon }[] = [
   { id: 'look', label: '外观', hint: '皮肤、强调色、字体与壁纸，改动立即生效，只保存在这台设备。', icon: Palette },
-  { id: 'model', label: '模型', hint: '小白与小砚走哪条线路、默认用哪个模型。', icon: Cpu },
+  { id: 'model', label: '模型', hint: '小白与小砚走哪条线路、用哪些模型。', icon: Cpu },
   { id: 'voice', label: '语音', hint: '讲课时把口述转成文字。', icon: Mic },
-  { id: 'xiaobai', label: '小白与记忆', hint: '小白的性格、说话方式，以及它记住了什么。', icon: Brain },
+  { id: 'xiaobai', label: '小白与记忆', hint: '小白的性格、说话方式，以及他记住了什么。', icon: Brain },
   { id: 'data', label: '数据与隐私', hint: '导出或清空你的学习记录。', icon: ShieldCheck },
   { id: 'about', label: '关于', hint: '产品信息与新手引路。', icon: Info },
 ];
@@ -224,11 +229,12 @@ type TestState =
   | { status: 'ok'; detail: string }
   | { status: 'fail'; detail: string };
 
-const ENGINE_MODES = [
+/* 线路只有两条。本地台词是线路连不上时的临时兜底，不是可选项 */
+const LINE_MODES = [
   { id: 'proxy', short: '服务器', desc: '走服务器网关调用模型，密钥不出服务器，需要登录。' },
-  { id: 'mock', short: '演示', desc: '内置教学引擎，不联网也能完整跑通一堂课。' },
-  { id: 'api', short: '自定义', desc: '浏览器直连你自己的 OpenAI 兼容端点，密钥只存本机。' },
+  { id: 'api', short: '自定义', desc: '浏览器用你自己的接口和密钥直连模型，可选协议、可勾选模型，密钥只存本机。' },
 ] as const;
+type LineMode = (typeof LINE_MODES)[number]['id'];
 
 const ASR_MODES = [
   { id: 'proxy', short: '服务器', desc: '走服务器网关转写，密钥不出服务器，需要登录。' },
@@ -241,15 +247,18 @@ const PERSONAS: { value: Persona; line: string }[] = [
   { value: '杠精型', line: '「我不信。你要是对的，这段代码怎么解释？」' },
 ];
 
-/* 温度档位的口吻注解：描述倾向，不许诺具体行为（台词仍由引擎定） */
-const TEMPER_BANDS: { max: number; name: string; line: string }[] = [
-  { max: 0.35, name: '沉稳', line: '字斟句酌，句句落在点上，很少发散。' },
-  { max: 0.95, name: '平和', line: '偶尔打个比方，大体跟着你的思路走。' },
-  { max: Infinity, name: '活泼', line: '爱举例子也爱追问，时不时蹦出个新鲜联想。' },
-];
+/* 活泼程度五档（settings.temperature 0–1）：描述倾向，不许诺具体行为（台词仍由引擎定） */
+const LIVELINESS = [
+  { at: 0, name: '沉稳', line: '字斟句酌，一句只说一件事，几乎不发散。' },
+  { at: 0.25, name: '稳当', line: '话不多，想清楚了再问，紧跟你的思路。' },
+  { at: 0.5, name: '平和', line: '有问有答，偶尔打个比方。' },
+  { at: 0.75, name: '活泼', line: '爱举例子也爱追问，语气更有起伏。' },
+  { at: 1, name: '跳脱', line: '想到哪说到哪，时不时蹦出个新鲜联想。' },
+] as const;
+type LivelinessStop = (typeof LIVELINESS)[number];
 
-const temperBand = (value: number) =>
-  TEMPER_BANDS.find((band) => value < band.max) ?? TEMPER_BANDS[TEMPER_BANDS.length - 1];
+const livelinessStop = (value: number): LivelinessStop =>
+  LIVELINESS[Math.min(LIVELINESS.length - 1, Math.max(0, Math.round(value * (LIVELINESS.length - 1))))];
 
 const TOUR_STOPS: { key: TourKey; name: string }[] = [
   { key: 'home', name: '学习终端' },
@@ -671,6 +680,20 @@ function LookPreview({ prefs, skinName }: { prefs: SkinPrefs; skinName: string }
 
 /* ───────────────────────── 2 模型 ───────────────────────── */
 
+const trimUrl = (value: string) => value.trim().replace(/\/+$/, '');
+
+/** 已启用的模型：settings.models 加上默认模型（老存档只有 model 一项），去重保序 */
+function enabledModels(settings: Pick<LlmSettings, 'model' | 'models'>): string[] {
+  const list = (settings.models ?? []).map((id) => id.trim()).filter(Boolean);
+  const model = settings.model.trim();
+  return [...new Set(model && !list.includes(model) ? [model, ...list] : list)];
+}
+
+/** 取到的模型列表按连接记在内存里：在设置里换个分区再回来不必重取。键里不放完整密钥 */
+const fetchedModelsCache = new Map<string, ProviderModel[]>();
+const connectionKey = (protocol: LlmProtocol, baseUrl: string, apiKey: string) =>
+  `${protocol}\n${trimUrl(baseUrl)}\n${apiKey.length}:${apiKey.slice(-4)}`;
+
 function ModelSection() {
   const settings = useAppStore((state) => state.settings);
   const setSettings = useAppStore((state) => state.setSettings);
@@ -681,7 +704,15 @@ function ModelSection() {
   const resetModelPrefs = useModelPrefs((state) => state.reset);
   const [test, setTest] = useState<TestState>({ status: 'idle' });
   const [catalog, setCatalog] = useState<ModelCatalog | null>(null);
-  const apiReady = Boolean(settings.baseUrl && settings.apiKey && settings.model);
+  const testAbort = useRef<AbortController | null>(null);
+
+  /* 旧存档里的 mock 不再是可选项：界面上按「服务器」显示，存储值由迁移任务改写 */
+  const line: LineMode = settings.mode === 'api' ? 'api' : 'proxy';
+  const protocol: LlmProtocol = settings.protocol ?? 'openai-chat';
+  const enabled = enabledModels(settings);
+  const apiReady = Boolean(trimUrl(settings.baseUrl) && settings.apiKey && settings.model.trim());
+  /* 线路、协议、地址、密钥有无、勾选的模型，任何一项变了都重取一次目录 */
+  const catalogKey = [line, protocol, trimUrl(settings.baseUrl), settings.apiKey ? 'key' : '', settings.model, enabled.join('|')].join('\n');
 
   useEffect(() => {
     let alive = true;
@@ -693,16 +724,24 @@ function ModelSection() {
       alive = false;
       controller.abort();
     };
-  }, [settings.mode]);
+  }, [catalogKey]);
 
-  const runTest = async () => {
+  useEffect(() => () => testAbort.current?.abort(), []);
+
+  const patch = (partial: Partial<LlmSettings>) => {
+    testAbort.current?.abort();
+    setSettings(partial);
+    setTest({ status: 'idle' });
+  };
+
+  const runProxyTest = async () => {
     setTest({ status: 'busy' });
     const startedAt = performance.now();
     try {
       const reply = await llmCall(
         'xiaobai',
         { system: '你是连接测试,收到任何消息都只回复两个字:在的', user: 'ping' },
-        { ...settings, temperature: 0 },
+        { ...settings, mode: 'proxy', temperature: 0 },
       );
       const ms = Math.round(performance.now() - startedAt);
       setTest({ status: 'ok', detail: `连接成功 · ${ms}ms · ${reply.trim().slice(0, 24)}` });
@@ -711,9 +750,26 @@ function ModelSection() {
     }
   };
 
-  const patch = (partial: Parameters<typeof setSettings>[0]) => {
-    setSettings(partial);
-    setTest({ status: 'idle' });
+  const runApiTest = async () => {
+    testAbort.current?.abort();
+    const controller = new AbortController();
+    testAbort.current = controller;
+    setTest({ status: 'busy' });
+    const result = await testConnection(
+      { protocol, baseUrl: settings.baseUrl.trim(), apiKey: settings.apiKey, model: settings.model.trim() },
+      controller.signal,
+    ).catch((error: unknown) => ({
+      ok: false,
+      message: error instanceof Error && error.message ? error.message : '连接没有成功，请稍后再试',
+      latencyMs: undefined,
+    }));
+    if (controller.signal.aborted) return;
+    if (result.ok) {
+      const latency = typeof result.latencyMs === 'number' ? ` · ${Math.round(result.latencyMs)}ms` : '';
+      setTest({ status: 'ok', detail: `${result.message || '连接成功'}${latency}` });
+    } else {
+      setTest({ status: 'fail', detail: result.message || '连接没有成功' });
+    }
   };
 
   const hasCatalog = Boolean(catalog?.available && catalog.models.length);
@@ -721,69 +777,43 @@ function ModelSection() {
   return (
     <>
       <Group title="线路">
-        <Row label="调用方式" desc="线路失败时自动降级为演示，课程不中断">
+        <Row label="调用方式" desc="线路连不上时，课堂临时改用本地台词，课不会中断">
           <Segmented
             label="模型线路"
-            value={settings.mode}
+            value={line}
             onChange={(mode) => patch({ mode })}
-            options={ENGINE_MODES.map((mode) => ({ value: mode.id, label: mode.short }))}
+            options={LINE_MODES.map((mode) => ({ value: mode.id, label: mode.short }))}
           />
         </Row>
         <ul className={s.legend}>
-          {ENGINE_MODES.map((mode) => (
-            <li key={mode.id} data-on={mode.id === settings.mode || undefined}>
+          {LINE_MODES.map((mode) => (
+            <li key={mode.id} data-on={mode.id === line || undefined}>
               <strong>{mode.short}</strong>
               <span>{mode.desc}</span>
             </li>
           ))}
         </ul>
       </Group>
+      <p className={s.foot}>课堂、学习终端、助理任务、AI 课堂、科研台都走这条线路。</p>
 
-      {settings.mode === 'proxy' && (
+      {line === 'proxy' && (
         <Group title="连接">
           <Row label="测试连接" desc="向服务器网关发一句话，看它回不回">
-            <ConnTest onTest={() => void runTest()} test={test} />
+            <ConnTest onTest={() => void runProxyTest()} test={test} />
           </Row>
         </Group>
       )}
 
-      {settings.mode === 'api' && (
-        <Group title="自定义端点">
-          <Row label="Base URL" desc="任何 OpenAI 兼容端点（/chat/completions）" wide>
-            <Input
-              size="sm"
-              type="url"
-              value={settings.baseUrl}
-              placeholder="https://api.deepseek.com/v1"
-              spellCheck={false}
-              aria-label="Base URL"
-              onChange={(event) => patch({ baseUrl: event.target.value })}
-            />
-          </Row>
-          <Row label="API Key" desc="只存本机浏览器，不上传" wide>
-            <SecretInput
-              label="API Key"
-              value={settings.apiKey}
-              placeholder="sk-…"
-              autoComplete="off"
-              onChange={(event) => patch({ apiKey: event.target.value })}
-            />
-          </Row>
-          <Row label="模型" desc="端点上的模型名称" wide>
-            <Input
-              size="sm"
-              type="text"
-              value={settings.model}
-              placeholder="如 deepseek-v4-flash"
-              spellCheck={false}
-              aria-label="模型"
-              onChange={(event) => patch({ model: event.target.value })}
-            />
-          </Row>
-          <Row label="测试连接" desc={apiReady ? '用上面的配置发一句话试试' : '先填好 Base URL、API Key 与模型'}>
-            <ConnTest disabled={!apiReady} onTest={() => void runTest()} test={test} />
-          </Row>
-        </Group>
+      {line === 'api' && (
+        <ProviderSetup
+          settings={settings}
+          protocol={protocol}
+          enabled={enabled}
+          patch={patch}
+          test={test}
+          testReady={apiReady}
+          onTest={() => void runApiTest()}
+        />
       )}
 
       <Group title="学习终端">
@@ -791,7 +821,7 @@ function ModelSection() {
           label="默认模型与思考强度"
           desc={hasCatalog
             ? '新对话默认用它；在输入框里可以随时换'
-            : '当前线路没有可选模型，相关功能使用本地演示'}
+            : line === 'api' ? '填好接口并勾选模型后，这里就能选' : '这条线路现在取不到可选模型，登录后再看'}
         >
           <ModelPicker
             models={catalog?.models ?? []}
@@ -802,12 +832,324 @@ function ModelSection() {
             onReset={resetModelPrefs}
             side="bottom"
             align="end"
+            emptyLabel="暂无可选模型"
           />
         </Row>
       </Group>
 
       <p className={s.foot}>讲解评估与课堂状态始终在本地按规则运行，模型只负责理解与台词。</p>
     </>
+  );
+}
+
+/** 自定义线路：协议 → 接口地址 → 密钥 → 勾选模型 → 测试 */
+function ProviderSetup({ settings, protocol, enabled, patch, test, testReady, onTest }: {
+  settings: LlmSettings;
+  protocol: LlmProtocol;
+  /** 已勾选启用的模型 id */
+  enabled: string[];
+  patch: (partial: Partial<LlmSettings>) => void;
+  test: TestState;
+  testReady: boolean;
+  onTest: () => void;
+}) {
+  const info = LLM_PROTOCOLS.find((item) => item.id === protocol) ?? LLM_PROTOCOLS[0];
+  const base = trimUrl(settings.baseUrl);
+  const key = connectionKey(protocol, settings.baseUrl, settings.apiKey);
+  const [fetched, setFetched] = useState<ProviderModel[] | null>(() => fetchedModelsCache.get(key) ?? null);
+  const [fetching, setFetching] = useState(false);
+  const [fetchIssue, setFetchIssue] = useState<string | null>(null);
+  const [manual, setManual] = useState('');
+  const fetchAbort = useRef<AbortController | null>(null);
+  const manualRef = useRef<HTMLInputElement>(null);
+
+  /* 连接一变，旧列表就不作数了：换成这条连接缓存过的那份（没有就空着） */
+  useEffect(() => {
+    fetchAbort.current?.abort();
+    setFetching(false);
+    setFetchIssue(null);
+    setFetched(fetchedModelsCache.get(key) ?? null);
+  }, [key]);
+
+  useEffect(() => () => fetchAbort.current?.abort(), []);
+
+  /* 地址空着，或还停在别的协议的默认地址上：提示可以一键换成当前协议的默认地址 */
+  const offerDefault = trimUrl(info.defaultBaseUrl) !== base
+    && (!base || LLM_PROTOCOLS.some((item) => item.id !== protocol && trimUrl(item.defaultBaseUrl) === base));
+  const canFetch = Boolean(base && settings.apiKey);
+
+  const fetchList = async () => {
+    fetchAbort.current?.abort();
+    const controller = new AbortController();
+    fetchAbort.current = controller;
+    setFetching(true);
+    setFetchIssue(null);
+    try {
+      const list = await listModels({ protocol, baseUrl: settings.baseUrl.trim(), apiKey: settings.apiKey }, controller.signal);
+      if (controller.signal.aborted) return;
+      const seen = new Set<string>();
+      const clean = list.filter((item) => item.id && !seen.has(item.id) && seen.add(item.id));
+      fetchedModelsCache.set(key, clean);
+      setFetched(clean);
+      if (!clean.length) setFetchIssue('这个接口没有返回任何模型，可以手动添加。');
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setFetchIssue(error instanceof Error && error.message ? error.message : '模型列表没有取到，可以手动添加。');
+    } finally {
+      if (!controller.signal.aborted) setFetching(false);
+    }
+  };
+
+  /** 写回勾选结果；默认模型不在其中时换成指定的后继，没有就取第一个 */
+  const commit = (nextModels: string[], nextDefault = settings.model.trim()) => {
+    const models = [...new Set(nextModels.map((id) => id.trim()).filter(Boolean))];
+    patch({ models, model: models.includes(nextDefault) ? nextDefault : models[0] ?? '' });
+  };
+
+  const toggle = (id: string) => {
+    if (!enabled.includes(id)) {
+      commit([...enabled, id]);
+      return;
+    }
+    const at = enabled.indexOf(id);
+    const rest = enabled.filter((item) => item !== id);
+    // 去掉的正好是默认模型：顺位取它后面那一个
+    commit(rest, id === settings.model.trim() ? rest[at] ?? rest[0] ?? '' : undefined);
+  };
+
+  const addManual = (event: FormEvent) => {
+    event.preventDefault();
+    const id = manual.trim();
+    if (!id) return;
+    commit([...enabled, id]);
+    setManual('');
+  };
+
+  const focusManual = () => {
+    manualRef.current?.focus();
+    manualRef.current?.scrollIntoView({ block: 'nearest' });
+  };
+
+  /* 手动添加、列表里没有的排在前面；取到的列表保持接口给的顺序，勾选时行不跳动 */
+  const fetchedIds = new Set(fetched?.map((item) => item.id));
+  const rows: ProviderModel[] = [
+    ...enabled.filter((id) => !fetchedIds.has(id)).map((id) => ({ id })),
+    ...(fetched ?? []),
+  ];
+
+  return (
+    <Group title="自定义接口">
+      <Row label="协议" desc={info.hint}>
+        <Segmented
+          className={s.protoSeg}
+          label="接口协议"
+          value={protocol}
+          onChange={(next) => patch({ protocol: next })}
+          options={LLM_PROTOCOLS.map((item) => ({ value: item.id, label: item.label, title: item.hint }))}
+        />
+        {/* 手机上四个协议名排不下一行分段，换成一枚下拉 */}
+        <Menu>
+          <MenuTrigger asChild>
+            <button type="button" className={s.protoSelect} aria-label={`接口协议：${info.label}`}>
+              <span>{info.label}</span>
+              <ChevronsUpDown size={15} strokeWidth={1.75} aria-hidden="true" />
+            </button>
+          </MenuTrigger>
+          <MenuContent align="end">
+            {LLM_PROTOCOLS.map((item) => (
+              <MenuItem
+                key={item.id}
+                hint={item.hint}
+                checked={item.id === protocol}
+                onSelect={() => patch({ protocol: item.id })}
+              >
+                {item.label}
+              </MenuItem>
+            ))}
+          </MenuContent>
+        </Menu>
+      </Row>
+
+      <Row label="接口地址" desc={`接口的根地址，例如 ${info.defaultBaseUrl}`} wide>
+        <Input
+          size="sm"
+          type="url"
+          inputMode="url"
+          value={settings.baseUrl}
+          placeholder={info.defaultBaseUrl}
+          spellCheck={false}
+          autoCapitalize="none"
+          autoCorrect="off"
+          aria-label="接口地址"
+          onChange={(event) => patch({ baseUrl: event.target.value })}
+        />
+      </Row>
+      {offerDefault && (
+        <div className={s.offer}>
+          <span>{info.label} 的默认地址是 <code>{info.defaultBaseUrl}</code></span>
+          <Button variant="soft" size="sm" onClick={() => patch({ baseUrl: info.defaultBaseUrl })}>填入</Button>
+        </div>
+      )}
+
+      <Row label="密钥" desc="只存在这个浏览器里，不上传" wide>
+        <SecretInput
+          label="密钥"
+          value={settings.apiKey}
+          placeholder="sk-…"
+          autoComplete="off"
+          onChange={(event) => patch({ apiKey: event.target.value })}
+        />
+        {settings.apiKey && (
+          <Button className={s.rowFixed} variant="ghost" size="sm" onClick={() => patch({ apiKey: '' })}>清除</Button>
+        )}
+      </Row>
+
+      <div className={s.models}>
+        <div className={s.modelsHead}>
+          <div className={s.rowCopy}>
+            <span className={s.rowLabel}>模型</span>
+            <span className={s.rowDesc}>
+              {canFetch ? '勾选要用的模型，点星标定一个默认' : '填好接口地址和密钥后可以获取列表，也可以直接手动添加'}
+            </span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            icon={<RefreshCw size={14} strokeWidth={1.75} />}
+            loading={fetching}
+            disabled={!canFetch}
+            onClick={() => void fetchList()}
+          >
+            {fetching ? '正在获取…' : fetched ? '重新获取' : '获取模型列表'}
+          </Button>
+        </div>
+
+        {fetchIssue && (
+          <div className={s.fetchIssue} role="alert">
+            <span>{fetchIssue}</span>
+            <Button variant="outline" size="sm" onClick={focusManual}>手动添加</Button>
+          </div>
+        )}
+
+        {rows.length > 0 && (
+          <ModelChecklist
+            rows={rows}
+            selected={enabled}
+            defaultId={settings.model.trim()}
+            onToggle={toggle}
+            onDefault={(id) => commit(enabled.includes(id) ? enabled : [...enabled, id], id)}
+            onSelectMany={(ids) => commit([...enabled, ...ids])}
+            onClear={() => commit([])}
+          />
+        )}
+
+        <form className={s.modelAdd} onSubmit={addManual}>
+          <Input
+            ref={manualRef}
+            size="sm"
+            value={manual}
+            placeholder="接口不提供列表时，在这里填模型名"
+            spellCheck={false}
+            autoCapitalize="none"
+            autoCorrect="off"
+            aria-label="手动添加模型"
+            onChange={(event) => setManual(event.target.value)}
+          />
+          <Button type="submit" variant="soft" size="sm" icon={<Plus size={14} strokeWidth={1.75} />} disabled={!manual.trim()}>
+            添加模型
+          </Button>
+        </form>
+      </div>
+
+      <Row
+        label="测试连接"
+        desc={testReady ? `用默认模型 ${settings.model.trim()} 发一句很短的话` : '先填好接口地址和密钥，并选好默认模型'}
+      >
+        <ConnTest disabled={!testReady} onTest={onTest} test={test} />
+      </Row>
+    </Group>
+  );
+}
+
+/** 清单超过这么多项才出现搜索框 */
+const SEARCH_FROM = 8;
+
+/** 模型勾选清单：可搜索，勾选即启用，星标是默认模型 */
+function ModelChecklist({ rows, selected, defaultId, onToggle, onDefault, onSelectMany, onClear }: {
+  rows: ProviderModel[];
+  selected: string[];
+  defaultId: string;
+  onToggle: (id: string) => void;
+  onDefault: (id: string) => void;
+  onSelectMany: (ids: string[]) => void;
+  onClear: () => void;
+}) {
+  const [query, setQuery] = useState('');
+  const needle = query.trim().toLowerCase();
+  const filtered = needle
+    ? rows.filter((row) => row.id.toLowerCase().includes(needle) || row.label?.toLowerCase().includes(needle))
+    : rows;
+  const chosen = new Set(selected);
+  const addable = filtered.filter((row) => !chosen.has(row.id));
+
+  return (
+    <div className={s.checklist}>
+      <div className={s.checkBar}>
+        {/* 只有几项时一眼看得完，搜索框反而碍事 */}
+        {rows.length > SEARCH_FROM && (
+          <Input
+            size="sm"
+            wrapClassName={s.checkSearch}
+            leading={<Search size={15} strokeWidth={1.75} />}
+            value={query}
+            placeholder="搜索模型"
+            spellCheck={false}
+            autoCapitalize="none"
+            aria-label="搜索模型"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        )}
+        <span className={s.checkCount} role="status">
+          已选 {selected.length} 个{needle ? ` · 匹配 ${filtered.length} 个` : ` · 共 ${rows.length} 个`}
+        </span>
+        <span className={s.checkActions}>
+          <Button variant="ghost" size="sm" disabled={!addable.length} onClick={() => onSelectMany(addable.map((row) => row.id))}>
+            {needle ? '全选筛选结果' : '全选'}
+          </Button>
+          <Button variant="ghost" size="sm" disabled={!selected.length} onClick={onClear}>清空</Button>
+        </span>
+      </div>
+      <ul className={s.checkList} aria-label="可用模型">
+        {filtered.map((row) => {
+          const checked = chosen.has(row.id);
+          const isDefault = checked && row.id === defaultId;
+          return (
+            <li key={row.id} className={s.checkRow} data-checked={checked || undefined}>
+              <label className={s.checkLabel}>
+                <input className={s.checkInput} type="checkbox" checked={checked} onChange={() => onToggle(row.id)} />
+                <span className={s.checkBox} aria-hidden="true"><Check size={12} strokeWidth={3} /></span>
+                <span className={s.checkText}>
+                  <code>{row.id}</code>
+                  {row.label && row.label !== row.id ? <small>{row.label}</small> : null}
+                </span>
+              </label>
+              {isDefault && <Badge tone="accent">默认</Badge>}
+              <button
+                type="button"
+                className={s.star}
+                aria-pressed={isDefault}
+                aria-label={isDefault ? `${row.id} 是默认模型` : `把 ${row.id} 设为默认模型`}
+                title={isDefault ? '默认模型' : '设为默认'}
+                onClick={() => onDefault(row.id)}
+              >
+                <Star size={16} strokeWidth={1.75} fill={isDefault ? 'currentColor' : 'none'} />
+              </button>
+            </li>
+          );
+        })}
+        {filtered.length === 0 && <li className={s.checkEmpty}>没有匹配「{query.trim()}」的模型</li>}
+      </ul>
+    </div>
   );
 }
 
@@ -881,47 +1223,327 @@ function VoiceSection() {
 
 /* ───────────────────────── 4 小白与记忆 ───────────────────────── */
 
+type CardTab = 'preset' | 'custom';
+type SaveState = 'idle' | 'pending' | 'saved';
+type VoiceState =
+  | { status: 'idle' }
+  | { status: 'busy'; text: string }
+  | { status: 'done'; text: string }
+  | { status: 'fail'; text: string };
+
+const CARD_TABS: { value: CardTab; label: string }[] = [
+  { value: 'preset', label: '预设' },
+  { value: 'custom', label: '自定义角色卡' },
+];
+
+const ADDRESS_SUGGESTIONS = ['先生', '老师', '师父'];
+
+/** 试听用的固定一句讲解：让不同角色卡对着同一句话开口，才比得出差别 */
+const VOICE_TEACHER_LINE = '梯度下降就是每一步都朝着让误差降得最快的方向走一小步，一步一步走到谷底。';
+
+function voicePrompt(voice: { cardText: string | null; persona: Persona; address: string; stop: LivelinessStop }): string {
+  const personaLine = PERSONAS.find((item) => item.value === voice.persona)?.line ?? '';
+  return [
+    '你在扮演「小白」：一个正在听老师讲课的学生，不是老师。',
+    '听完老师的一句讲解后，你只回一两句话：先用自己的话复述听到的意思，再问一个你还没弄明白的小问题。',
+    '不讲解知识，不使用老师没说过的专业术语。',
+    voice.cardText
+      ? `你的角色设定：${voice.cardText}`
+      : `你的性格是${voice.persona}，说话的感觉像这样：${personaLine}`,
+    voice.address ? `你称呼老师为「${voice.address}」。` : '',
+    `说话的活泼程度：${voice.stop.name}。${voice.stop.line}`,
+    '只输出小白说的话，不加引号、括号和旁白，不超过 60 个字。',
+  ].filter(Boolean).join('\n');
+}
+
+/** 试听没成时给一句对得上原因的话；认不出的错误码只说没生成出来 */
+function voiceFailure(error: unknown): string {
+  const code = error instanceof Error ? error.message : '';
+  if (code === 'model-auth') return '线路没有接受密钥，到「模型」里检查一下再试。';
+  if (code === 'model-busy') return '线路正忙，过一会儿再试。';
+  if (code === 'model-network' || code === 'model-timeout') return '线路没连上，稍后再试。';
+  return '这次没有生成出来，稍后再试。';
+}
+
 function XiaobaiSection({ onClose }: { onClose: () => void }) {
+  const owner = useAuthStore((state) => state.user);
+  // 换了账号就换一张卡：整块重建，草稿不串
+  return <XiaobaiPanel key={owner ?? 'local'} owner={owner} onClose={onClose} />;
+}
+
+function XiaobaiPanel({ owner, onClose }: { owner: string | null; onClose: () => void }) {
   const persona = useAppStore((state) => state.global.persona);
   const setPersona = useAppStore((state) => state.setPersona);
   const temperature = useAppStore((state) => state.settings.temperature);
+  const lineMode = useAppStore((state) => state.settings.mode);
   const setSettings = useAppStore((state) => state.setSettings);
   const memory = useAppStore((state) => state.memory);
   const setMemoryPaused = useAppStore((state) => state.setMemoryPaused);
   const resetMemory = useAppStore((state) => state.resetMemory);
+  const card = usePersonaCard(owner);
   const navigate = useNavigate();
-  const [confirming, setConfirming] = useState(false);
 
-  const band = temperBand(temperature);
-  const personaLine = PERSONAS.find((item) => item.value === persona)?.line ?? PERSONAS[0].line;
+  const [tab, setTab] = useState<CardTab>(card.mode);
+  const [text, setText] = useState(card.text);
+  const [address, setAddress] = useState(card.addressTeacherAs);
+  const [saveState, setSaveState] = useState<SaveState>('idle');
+  const [pendingTemplate, setPendingTemplate] = useState<{ name: string; text: string } | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  /* 试听：null=还不知道这条线路有没有模型；false=没有，整块不出现 */
+  const [voiceReady, setVoiceReady] = useState<boolean | null>(null);
+  const [voice, setVoice] = useState<VoiceState>({ status: 'idle' });
+
+  /* 草稿与页签放进 ref：防抖落盘和卸载时的补存都要读「此刻」的值，而不是闭包里的旧值 */
+  const draft = useRef({ tab, text, address, dirty: false });
+  const voiceAbort = useRef<AbortController | null>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
+
+  const persist = useCallback(() => {
+    const now = draft.current;
+    if (!now.dirty) return false;
+    now.dirty = false;
+    // 正文为空时 store 会自动退回预设；页签停在哪一侧，就按哪一侧存
+    personaCard.save(owner, { mode: now.tab, text: now.text, addressTeacherAs: now.address });
+    return true;
+  }, [owner]);
+
+  useEffect(() => {
+    if (!draft.current.dirty) return undefined;
+    setSaveState('pending');
+    const timer = window.setTimeout(() => { if (persist()) setSaveState('saved'); }, 500);
+    return () => window.clearTimeout(timer);
+  }, [text, address, persist]);
+
+  /* 关窗或换分区时，还没落盘的草稿补存一次 */
+  useEffect(() => () => { persist(); }, [persist]);
+
+  useEffect(() => {
+    let alive = true;
+    setVoiceReady(null);
+    loadModelCatalog()
+      .then((catalog) => { if (alive) setVoiceReady(catalog.available); })
+      .catch(() => { if (alive) setVoiceReady(false); });
+    return () => { alive = false; };
+  }, [lineMode]);
+
+  useEffect(() => () => voiceAbort.current?.abort(), []);
+
+  const editText = (next: string) => {
+    const value = next.slice(0, PERSONA_CARD_MAX);
+    draft.current.text = value;
+    draft.current.dirty = true;
+    setText(value);
+  };
+
+  const editAddress = (next: string) => {
+    const value = next.slice(0, 6);
+    draft.current.address = value;
+    draft.current.dirty = true;
+    setAddress(value);
+  };
+
+  const chooseTab = (next: CardTab) => {
+    draft.current.tab = next;
+    draft.current.dirty = false;
+    setTab(next);
+    personaCard.save(owner, { mode: next, text: draft.current.text, addressTeacherAs: draft.current.address });
+    setSaveState('idle');
+  };
+
+  const applyTemplate = (template: { name: string; text: string }) => {
+    if (text.trim() && text.trim() !== template.text.trim()) setPendingTemplate(template);
+    else editText(template.text);
+  };
+
+  const level = Math.min(1, Math.max(0, temperature));
+  const stop = livelinessStop(level);
+  const cardActive = tab === 'custom' && text.trim().length > 0;
   const activeCount = memory.items.filter((item) => !item.muted).length;
   const profile = memory.profile;
+
+  const runVoice = async () => {
+    voiceAbort.current?.abort();
+    const controller = new AbortController();
+    voiceAbort.current = controller;
+    setVoice({ status: 'busy', text: '' });
+    try {
+      const result = await streamModel({
+        messages: [
+          { role: 'system', content: voicePrompt({ cardText: cardActive ? text.trim() : null, persona, address: address.trim(), stop }) },
+          { role: 'user', content: `老师说：${VOICE_TEACHER_LINE}` },
+        ],
+        temperature: level,
+        effort: 'none',
+        maxTokens: 400,
+        signal: controller.signal,
+        onText: (partial) => { if (!controller.signal.aborted) setVoice({ status: 'busy', text: partial }); },
+      });
+      if (controller.signal.aborted) return;
+      const line = result.text.trim();
+      setVoice(line ? { status: 'done', text: line } : { status: 'fail', text: '这次他没说出话来，再试一次。' });
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      if (error instanceof ModelUnavailableError) {
+        // 这条线路没有模型：收起整块，不留一个点了没反应的按钮
+        setVoiceReady(false);
+        setVoice({ status: 'idle' });
+        return;
+      }
+      setVoice({ status: 'fail', text: voiceFailure(error) });
+    }
+  };
 
   return (
     <>
       <Group title="小白">
-        <Row label="性格" desc={personaLine}>
-          <Segmented
-            label="小白的性格"
-            value={persona}
-            onChange={setPersona}
-            options={PERSONAS.map((item) => ({ value: item.value, label: item.value }))}
-          />
+        <Row label="性格" desc={tab === 'custom' ? '用文字写一张角色卡，决定他怎么说话' : '从三种内置性格里选一种'}>
+          <Segmented label="性格来源" value={tab} onChange={chooseTab} options={CARD_TABS} />
         </Row>
-        <Row label="说话活泼程度" desc={`${band.name} · ${band.line}`}>
-          <Range
-            label="小白台词温度"
+
+        {tab === 'preset' ? (
+          <div className={s.presetBlock}>
+            <Segmented
+              block
+              label="小白的性格"
+              value={persona}
+              onChange={setPersona}
+              options={PERSONAS.map((item) => ({ value: item.value, label: item.value }))}
+            />
+            <ul className={s.legend}>
+              {PERSONAS.map((item) => (
+                <li key={item.value} data-on={item.value === persona || undefined}>
+                  <strong>{item.value}</strong>
+                  <span>{item.line}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div className={s.card}>
+            <div className={s.cardChips} role="group" aria-label="角色卡模板">
+              <span className={s.cardChipsLabel}>从模板起稿</span>
+              {PERSONA_CARD_TEMPLATES.map((template) => (
+                <button key={template.name} type="button" className={s.chip} onClick={() => applyTemplate(template)}>
+                  {template.name}
+                </button>
+              ))}
+            </div>
+            <Textarea
+              ref={textRef}
+              className={s.cardText}
+              value={text}
+              maxLength={PERSONA_CARD_MAX}
+              rows={6}
+              placeholder="写写他是个什么样的学生：性格、说话方式、口头禅、兴趣，还有他对老师的态度。想到什么写什么，像给角色写设定。"
+              aria-label="角色卡"
+              onChange={(event) => editText(event.target.value)}
+            />
+            <div className={s.cardMeta}>
+              <span className={s.cardSaved} data-on={saveState === 'saved' || undefined} role="status">
+                {saveState === 'saved' ? <><Check size={13} strokeWidth={2.5} />已保存</> : saveState === 'pending' ? '正在保存…' : ''}
+              </span>
+              <span className={s.cardCount} data-full={text.length >= PERSONA_CARD_MAX || undefined}>
+                {text.length} / {PERSONA_CARD_MAX}
+              </span>
+            </div>
+            {!text.trim() && <p className={s.cardHint}>卡片还是空的，小白暂时按预设的「{persona}」说话。</p>}
+
+            <div className={s.cardAddress}>
+              <div className={s.rowCopy}>
+                <span className={s.rowLabel}>怎么称呼你</span>
+                <span className={s.rowDesc}>可以不填，不填就用默认的称呼</span>
+              </div>
+              <div className={s.cardAddressControl}>
+                <Input
+                  size="sm"
+                  wrapClassName={s.cardAddressInput}
+                  value={address}
+                  maxLength={6}
+                  placeholder="先生"
+                  aria-label="小白怎么称呼你"
+                  onChange={(event) => editAddress(event.target.value)}
+                />
+                {ADDRESS_SUGGESTIONS.map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    className={s.chip}
+                    aria-pressed={address.trim() === name}
+                    onClick={() => editAddress(name)}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className={s.cardNote}>角色卡只改变他说话的样子：他仍然只提问和复述，也仍然不会用你还没教过的词。</p>
+          </div>
+        )}
+
+        <div className={s.lively}>
+          <div className={s.livelyHead}>
+            <span className={s.rowLabel}>说话活泼程度</span>
+            <span className={s.livelyNow}>
+              <strong>{stop.name}</strong>
+              <small>{level.toFixed(2)}</small>
+            </span>
+          </div>
+          <input
+            className={cx(s.rangeInput, s.livelyRange)}
+            style={{ '--fill': `${level * 100}%` } as CSSProperties}
+            type="range"
             min={0}
-            max={1.5}
+            max={1}
             step={0.05}
-            value={temperature}
-            valueText={temperature.toFixed(2)}
-            ariaValueText={`${temperature.toFixed(2)}，${band.name}`}
-            onChange={(next) => setSettings({ temperature: next })}
+            value={level}
+            aria-label="说话活泼程度"
+            aria-valuetext={`${stop.name}：${stop.line}`}
+            onChange={(event) => setSettings({ temperature: Number(event.target.value) })}
           />
-        </Row>
+          <div className={s.livelyStops}>
+            {LIVELINESS.map((item) => (
+              <button
+                key={item.name}
+                type="button"
+                className={s.livelyStop}
+                aria-pressed={item.name === stop.name}
+                onClick={() => setSettings({ temperature: item.at })}
+              >
+                {item.name}
+              </button>
+            ))}
+          </div>
+          <p className={s.livelyLine}>{stop.line}</p>
+        </div>
+
+        {voiceReady && (
+          <div className={s.voice}>
+            <XiaobaiFace mood={voice.status === 'busy' ? 'thinking' : voice.status === 'done' ? 'curious' : 'idle'} size={44} className={s.voiceFace} />
+            <div className={s.voiceBody}>
+              {voice.status === 'idle' ? (
+                <p className={s.voiceHint}>对着同一句讲解，听听他现在会怎么开口。</p>
+              ) : (
+                <>
+                  <p className={s.voiceTeacher}>你讲：{VOICE_TEACHER_LINE}</p>
+                  <p className={s.voiceBubble} data-state={voice.status} role="status">
+                    {voice.status === 'busy' && !voice.text ? <ThinkingDots label="小白正在想怎么说" /> : voice.text}
+                  </p>
+                </>
+              )}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<Play size={13} strokeWidth={2} />}
+              loading={voice.status === 'busy'}
+              onClick={() => void runVoice()}
+            >
+              {voice.status === 'busy' ? '正在说…' : voice.status === 'idle' ? '试听一句' : '再听一句'}
+            </Button>
+          </div>
+        )}
       </Group>
-      <p className={s.foot}>只影响小白说话的活泼程度；讲解评估固定用 temperature 0，判定不受影响。</p>
+      <p className={s.foot}>这里只影响小白说话的样子；讲解评估的判定标准不变。</p>
 
       <Group title="记忆">
         <Row label="记住我的讲法" desc="关掉后上课不再记新的，已经记住的照旧">
@@ -955,6 +1577,19 @@ function XiaobaiSection({ onClose }: { onClose: () => void }) {
       </Group>
       <p className={s.foot}>只记你的讲法与习惯，不记用户名、邮箱与手机号。</p>
 
+      <ConfirmDialog
+        open={pendingTemplate !== null}
+        title={`换成「${pendingTemplate?.name ?? ''}」？`}
+        body="现在写的角色卡会被这张模板替换，原来的文字不会保留。"
+        confirmLabel="替换"
+        tone="solid"
+        onCancel={() => setPendingTemplate(null)}
+        onConfirm={() => {
+          if (pendingTemplate) editText(pendingTemplate.text);
+          setPendingTemplate(null);
+          window.requestAnimationFrame(() => textRef.current?.focus());
+        }}
+      />
       <ConfirmDialog
         open={confirming}
         title="清空全部记忆？"
@@ -1228,13 +1863,15 @@ function ConnTest({ disabled = false, onTest, test }: { disabled?: boolean; onTe
   );
 }
 
-/** 破坏性操作的二次确认；requireText 存在时必须照输一遍才放行 */
-function ConfirmDialog({ open, title, body, confirmLabel, requireText, onConfirm, onCancel }: {
+/** 二次确认；requireText 存在时必须照输一遍才放行 */
+function ConfirmDialog({ open, title, body, confirmLabel, requireText, tone = 'danger', onConfirm, onCancel }: {
   open: boolean;
   title: string;
   body: string;
   confirmLabel: string;
   requireText?: string;
+  /** danger=删除类；solid=只是替换、覆盖这类可以重来的操作 */
+  tone?: 'danger' | 'solid';
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -1256,7 +1893,7 @@ function ConfirmDialog({ open, title, body, confirmLabel, requireText, onConfirm
       footer={(
         <>
           <Button variant="ghost" onClick={onCancel}>取消</Button>
-          <Button variant="danger" disabled={blocked} onClick={onConfirm}>{confirmLabel}</Button>
+          <Button variant={tone} disabled={blocked} onClick={onConfirm}>{confirmLabel}</Button>
         </>
       )}
     >

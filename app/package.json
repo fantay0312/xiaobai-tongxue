@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsx scripts/export-study-catalog.ts && tsc -b && vite build && node scripts/check-build-artifacts.mjs dist --label app/dist",
+    "build": "node scripts/fetch-pyodide.mjs && tsx scripts/export-study-catalog.ts && tsc -b && vite build && node scripts/check-build-artifacts.mjs dist --label app/dist",
     "lint": "oxlint",
     "test:commerce": "tsx scripts/commerce-contract.test.ts",
     "test:auth": "tsx scripts/auth-state.test.ts && tsx scripts/auth-lifecycle.test.ts",
@@ -41,6 +41,7 @@
     "mermaid": "^12.2.0",
     "pdfjs-dist": "^6.4.299",
     "pptxgenjs": "^4.0.1",
+    "pyodide": "314.0.7",
     "radix-ui": "^1.8.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

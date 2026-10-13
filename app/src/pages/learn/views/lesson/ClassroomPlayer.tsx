@@ -4,19 +4,23 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router';
 import {
-  ArrowLeft, ArrowUp, Download, FileCode2, GraduationCap, Hand, MoreHorizontal, Pause, Play,
+  ArrowLeft, ArrowUp, Download, FileCode2, Forward, GraduationCap, Hand, MoreHorizontal, Pause, Play,
   Presentation, RefreshCw, RotateCcw, SkipBack, SkipForward, Square, Trash2, Volume2, VolumeX,
 } from 'lucide-react';
 import { CoachMarkdown } from '../../../../components/coach/CoachMarkdown';
+import { SendTo } from '../../../../components/handoff/SendTo';
 import { XiaoyanPet, type XiaoyanPetState } from '../../../../components/coach/XiaoyanPet';
 import {
   Badge, Button, IconButton, Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger, ThinkingDots, Tip, cx, toast,
 } from '../../../../components/ui';
 import { XiaobaiAvatar } from '../../../../components/xiaobai/XiaobaiAvatar';
+import { logActivity } from '../../../../engine/activityLog';
 import {
-  AGENTS, SCENE_LABELS, askTeacher, describeModelError, estimateMinutes, regenerateScene, splitSentences,
+  AGENTS, SCENE_LABELS, askTeacher, describeModelError, estimateMinutes, lessonMarkdown, regenerateScene, sceneMarkdown, splitSentences,
   type Lesson, type SpeakerId,
 } from '../../../../engine/lessonStudio';
+import type { ArtifactOrigin } from '../../../../lib/artifacts';
+import type { CrossAction } from '../../../../lib/crossActions';
 import { recordTutorTurn, tutorMemoryHints } from '../../../../engine/tutorMemory';
 import { ModelUnavailableError } from '../../../../lib/modelGateway';
 import { useAppStore } from '../../../../store/appStore';
@@ -38,6 +42,17 @@ function scrollHost(element: HTMLElement | null): HTMLElement | null {
   }
   return null;
 }
+
+/** 举手时说自己没听懂的说法 */
+const STUCK = /没懂|不懂|听不懂|看不懂|不明白|没明白|不理解|没理解|还是不|卡住|搞不清|分不清|糊涂|太难|再讲一遍|再解释/;
+/** 一幕能就地变成什么：讲解类 → 笔记、闪卡、题目、导图；测验 → 笔记、闪卡；项目 → 笔记、待办 */
+const SCENE_ACTIONS: Record<string, CrossAction[]> = {
+  slide: ['save-note', 'make-flashcards', 'make-quiz', 'make-mindmap'],
+  whiteboard: ['save-note', 'make-flashcards', 'make-quiz', 'make-mindmap'],
+  interactive: ['save-note', 'make-flashcards', 'make-quiz'],
+  quiz: ['save-note', 'make-flashcards'],
+  pbl: ['save-note', 'add-todos'],
+};
 
 /** 字幕与记录里的小头像 */
 function Face({ speaker, size = 24 }: { speaker: SpeakerId; size?: number }) {
@@ -69,6 +84,8 @@ export function ClassroomPlayer({ lesson, sidebar, owner, topic, topics, selecte
   const [handUp, setHandUp] = useState(false);
   const [answering, setAnswering] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  /** 手机上「把整堂课发送到」收在右上角更多里，点了再升起面板 */
+  const [sendLessonOpen, setSendLessonOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
@@ -81,6 +98,9 @@ export function ClassroomPlayer({ lesson, sidebar, owner, topic, topics, selecte
   const goTeach = teachTopicId ? () => navigate(`/teach/${teachTopicId}`) : undefined;
   const playing = status === 'playing';
   const SceneIcon = scene ? SCENE_ICONS[scene.type] : Presentation;
+  /** 从这堂课交出去的内容，来源都指回这堂课 */
+  const lessonOrigin = (label: string): ArtifactOrigin => ({ section: 'lesson', label, open: { view: 'classroom', params: { lesson: lesson.id } } });
+  const lessonTopic = { ...(lesson.topicId ? { topicId: lesson.topicId } : {}), ...(lesson.topicTitle ? { topicTitle: lesson.topicTitle } : {}) };
 
   useEffect(() => {
     // 从课程库进来时页面可能已经滚到下面，回到舞台顶部
@@ -172,6 +192,14 @@ export function ClassroomPlayer({ lesson, sidebar, owner, topic, topics, selecte
     pb.pushLine({ key: `ask-${id}`, speaker: 'user', text, sceneIndex, kind: 'ask' });
     pb.pushLine(answerLine);
     setAnswering(true);
+    logActivity(owner, {
+      source: 'lesson', signal: STUCK.test(text) ? 'struggle' : 'interest',
+      summary: `AI 课《${lesson.title}》举手提问：${text.replace(/\s+/g, ' ')}`.slice(0, 150),
+      detail: `第 ${sceneIndex + 1} 幕「${scene.title}」`,
+      ...(lesson.topicId ? { topicId: lesson.topicId } : {}),
+      ...(lesson.topicTitle ? { topicTitle: lesson.topicTitle } : {}),
+      ref: { kind: 'lesson', id: lesson.id, title: lesson.title },
+    });
     if (phone) showAsk();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -295,6 +323,22 @@ export function ClassroomPlayer({ lesson, sidebar, owner, topic, topics, selecte
           </p>
         </div>
         {lesson.origin === 'local' && <Tip label="没有接通模型，这堂课由课程讲义、例题和题库拼成"><Badge tone="warn">本地演示</Badge></Tip>}
+        <SendTo
+          owner={owner}
+          text={() => lessonMarkdown(lesson)}
+          title={lesson.title}
+          {...lessonTopic}
+          teachTopicId={teachTopicId}
+          routes={['agent', 'teach']}
+          origin={lessonOrigin(`AI 课：${lesson.title}`)}
+          label="把整堂课发送到"
+          align="end"
+          open={phone ? sendLessonOpen : undefined}
+          onOpenChange={setSendLessonOpen}
+        >
+          {/* 手机顶栏位置紧，入口收进「更多」 */}
+          {phone ? null : <Button variant="ghost" icon={<Forward size={15} strokeWidth={1.75} />} aria-label="把整堂课发送到"><span className={s.hideNarrow}>发送到</span></Button>}
+        </SendTo>
         <Menu>
           <MenuTrigger asChild><Button variant="outline" icon={<Download size={15} strokeWidth={1.75} />}><span className={s.hideNarrow}>导出</span></Button></MenuTrigger>
           <MenuContent align="end">
@@ -307,6 +351,7 @@ export function ClassroomPlayer({ lesson, sidebar, owner, topic, topics, selecte
           <MenuContent align="end">
             <MenuItem icon={<RefreshCw size={16} strokeWidth={1.75} />} disabled={regenerating} onSelect={() => void regenerate()}>重新生成这一幕</MenuItem>
             <MenuItem icon={<RotateCcw size={16} strokeWidth={1.75} />} onSelect={() => pb.goScene(0, true)}>从头上课</MenuItem>
+            {phone && <MenuItem icon={<Forward size={16} strokeWidth={1.75} />} onSelect={() => setSendLessonOpen(true)}>把整堂课发送到…</MenuItem>}
             {phone && (
               <>
                 <MenuSeparator />
@@ -329,6 +374,19 @@ export function ClassroomPlayer({ lesson, sidebar, owner, topic, topics, selecte
               <h2>{scene.title}</h2>
               {scene.origin === 'local' && lesson.origin !== 'local' && <Badge tone="warn">本地演示</Badge>}
               <span className={s.sceneCount}>{String(sceneIndex + 1).padStart(2, '0')} / {String(pb.total).padStart(2, '0')}</span>
+              <SendTo
+                owner={owner}
+                text={() => sceneMarkdown(scene, sceneIndex)}
+                title={scene.title}
+                {...lessonTopic}
+                actions={SCENE_ACTIONS[scene.type]}
+                routes={['agent']}
+                origin={lessonOrigin(`AI 课：${lesson.title} · 第 ${sceneIndex + 1} 幕`)}
+                label="把这一幕发送到"
+                align="end"
+              >
+                <IconButton size="sm" label="把这一幕发送到：笔记、闪卡、题目…"><Forward size={15} strokeWidth={1.75} /></IconButton>
+              </SendTo>
             </header>
             <div className={s.stageBody} key={scene.id} data-stage-body data-loading={regenerating || undefined}>
               <SceneStage
@@ -336,6 +394,8 @@ export function ClassroomPlayer({ lesson, sidebar, owner, topic, topics, selecte
                 reveal={pb.reveal}
                 owner={owner}
                 topicId={lesson.topicId}
+                lessonId={lesson.id}
+                lessonTitle={lesson.title}
                 xiaobaiLevel={xiaobaiLevel}
                 say={pb.say}
                 onQuizDone={pb.completeHold}

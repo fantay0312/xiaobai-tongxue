@@ -3,6 +3,9 @@ import { ArrowRight, FileUp } from 'lucide-react';
 import { IconClassroom, IconJourney, IconRead, IconTeach } from '../../../components/ui/icons';
 import { XiaobaiAvatar } from '../../../components/xiaobai/XiaobaiAvatar';
 import { JourneyStatusCard } from '../../../components/story/JourneyStatus';
+import { RecentWork } from '../../../components/handoff/RecentWork';
+import type { Artifact } from '../../../lib/artifacts';
+import type { ConversationBrief } from '../../../lib/artifactProviders/chat';
 import { useAppStore } from '../../../store/appStore';
 import type { LearningIdentity } from '../../../engine/learningIdentity';
 import type { Topic } from '../../../types';
@@ -19,7 +22,10 @@ interface Suggestion {
 }
 
 /** 没有打开课程、对话也是空的时候：一段开场，而不是一块空白的聊天区 */
-export function TerminalWelcome({ topics, identity, onAccept, onSelectCourse, onUpload, onTeach, onClassroom, onJourney }: {
+export function TerminalWelcome({
+  topics, identity, onAccept, onSelectCourse, onUpload, onTeach, onClassroom, onJourney,
+  owner = null, conversations = [], onOpenConversation, onOpenArtifact, onSearchAll,
+}: {
   topics: Topic[];
   identity: LearningIdentity;
   onAccept: () => void;
@@ -29,6 +35,12 @@ export function TerminalWelcome({ topics, identity, onAccept, onSelectCourse, on
   onTeach: () => void;
   onClassroom: () => void;
   onJourney: () => void;
+  /** 「最近」一行：各门课里的对话，加上各板块做出来的东西 */
+  owner?: string | null;
+  conversations?: ConversationBrief[];
+  onOpenConversation?: (chat: ConversationBrief) => void;
+  onOpenArtifact?: (artifact: Artifact) => void;
+  onSearchAll?: () => void;
 }) {
   const level = useAppStore((state) => state.global.learningLevel);
   const lastTopic = topics.find((topic) => topic.topicId === identity.lastTopicId && !topic.locked);
@@ -93,6 +105,10 @@ export function TerminalWelcome({ topics, identity, onAccept, onSelectCourse, on
           </button>
         ))}
       </div>
+
+      {onOpenConversation && onOpenArtifact && (
+        <RecentWork owner={owner} conversations={conversations} onOpenConversation={onOpenConversation} onOpenArtifact={onOpenArtifact} onAll={onSearchAll} />
+      )}
 
       <JourneyStatusCard onOpen={onTeach} />
 

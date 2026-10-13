@@ -54,6 +54,8 @@
   font: 500 var(--fz-xs)/1 var(--ui-font);
 }
 .attachment > svg { flex: none; color: var(--text-3); }
+/* 从「我的内容」带进来的成果：图标用强调色，与资料库文件区分 */
+.attachment[data-kind='artifact'] > svg { color: var(--accent); }
 .attachment > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .attachment > button {
   display: grid;
@@ -328,6 +330,10 @@
   .demoTag { height: 28px; }
   .attachment { height: 34px; }
   .attachment > button { width: 28px; height: 28px; }
+  /* 附件多了横向滑动，不把输入框撑高 */
+  .attachments { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+  .attachments::-webkit-scrollbar { display: none; }
+  .attachment { flex: none; max-width: 200px; }
   .commands { width: 100%; }
   .command { min-height: 48px; }
   .command kbd { display: none; }

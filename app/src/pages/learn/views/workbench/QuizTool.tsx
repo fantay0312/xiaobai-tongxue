@@ -1,27 +1,25 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowRight, BookMarked, Check, CircleCheck, CircleX, Pencil, Play, Plus, RotateCcw, Trash2, X } from 'lucide-react';
 import { CoachMarkdown } from '../../../../components/coach/CoachMarkdown';
 import { Badge, Button, Dialog, Field, IconButton, Input, Kbd, Progress, Segmented, Switch, Textarea, toast } from '../../../../components/ui';
-import { newId, studyData, useStudyData, type QuestionType, type QuizQuestion, type QuizSet } from '../../../../store/studyData';
+import { IconFlashcard, IconSpark } from '../../../../components/ui/icons';
+import { logActivity } from '../../../../engine/activityLog';
+import { newId, studyData, useStudyData, type Flashcard, type QuestionType, type QuizQuestion, type QuizSet } from '../../../../store/studyData';
+import { isAbort } from './actions';
+import { AiBlock, ItemOrigin, SendMenu, useAiRun } from './AiKit';
+import { useAiFocus } from './AskPanel';
+import {
+  LETTERS, TYPE_LABEL, aiErrorText, answerText, explainWrong, isChoice, keyOf, optionsOf, questionText, referenceOf, reinforceQuiz, similarQuestion, wrongCards,
+} from './ai';
 import { QUESTION_TYPES, TRUE_FALSE } from './generate';
-import { DetailHead, ICON_SM, OriginBadge, ToolFrame, type ToolProps } from './shared';
-import { clip, useAutosave, useHotkeys } from './util';
+import { itemKey, setItemOrigin } from './origins';
+import { DetailHead, ICON_SM, ToolFrame, type ToolProps } from './shared';
+import { clip, useAutosave, useHotkeys, useWorkbenchNav } from './util';
 import s from './workbench.module.css';
 import q from './quiz.module.css';
+import a from './ai.module.css';
 
 type Answer = number[] | string;
-const TYPE_LABEL = Object.fromEntries(QUESTION_TYPES.map((type) => [type.value, type.label])) as Record<QuestionType, string>;
-const LETTERS = 'ABCDEFGH';
-const isChoice = (type: QuestionType) => type === 'single' || type === 'multiple' || type === 'truefalse';
-
-const optionsOf = (question: QuizQuestion): string[] =>
-  question.type === 'truefalse' ? (question.options?.length === 2 ? question.options : TRUE_FALSE) : question.options ?? [];
-const keyOf = (question: QuizQuestion): number[] => (Array.isArray(question.answer) ? question.answer : []);
-const referenceOf = (question: QuizQuestion): string => {
-  if (!isChoice(question.type)) return typeof question.answer === 'string' ? question.answer : '';
-  const options = optionsOf(question);
-  return keyOf(question).map((index) => (question.type === 'truefalse' ? options[index] : `${LETTERS[index]}. ${options[index] ?? ''}`)).join('　');
-};
 const fold = (text: string) => text.toLowerCase().replace(/[\s，。,.;；:：!！?？"'“”‘’（）()、]/g, '');
 
 /** true/false 为自动判分；null 表示简答题，需要对照参考答案自评 */
@@ -41,8 +39,22 @@ const lastScore = (set: QuizSet) => {
   return last && last.total ? Math.round((last.correct / last.total) * 100) : null;
 };
 
+/** 整套题的可读文本：给「问小砚」和「发送到」用 */
+const setMarkdown = (set: QuizSet) => set.questions.map((question, index) => `${index + 1}. ${questionText(question)}\n   答案：${referenceOf(question)}${question.explanation ? `\n   解析：${question.explanation}` : ''}`).join('\n\n');
+
+/** 错题卡收进同一个卡组：「<题目集> · 错题卡」，没有就新建 */
+function saveWrongCards(owner: string | null, set: QuizSet, cards: Flashcard[]): { id: string; title: string } {
+  const title = `${set.title || '未命名题目集'} · 错题卡`;
+  const existing = studyData.get(owner).decks.find((deck) => deck.title === title);
+  const fronts = new Set(existing?.cards.map((card) => card.front));
+  const fresh = cards.filter((card) => !fronts.has(card.front));
+  const saved = studyData.saveDeck(owner, { ...(existing ?? {}), title, cards: [...(existing?.cards ?? []), ...fresh], ...(set.topicId ? { topicId: set.topicId } : {}) });
+  setItemOrigin(owner, itemKey('deck', saved.id), { section: 'workbench', label: `题目集：${clip(set.title || '未命名题目集', 24)}`, open: { view: 'workbench', params: { tool: 'quiz', id: set.id } } });
+  return { id: saved.id, title };
+}
+
 export default function QuizTool(props: ToolProps) {
-  const { owner, onAsk } = props;
+  const { owner } = props;
   const { quizSets } = useStudyData(owner);
 
   return (
@@ -59,14 +71,19 @@ export default function QuizTool(props: ToolProps) {
     >
       {(id) => {
         const set = quizSets.find((item) => item.id === id);
-        return set ? <QuizDetail key={set.id} set={set} owner={owner} onAsk={onAsk} /> : null;
+        return set ? <QuizDetail key={set.id} set={set} view={props} /> : null;
       }}
     </ToolFrame>
   );
 }
 
-function QuizDetail({ set, owner, onAsk }: { set: QuizSet; owner: string | null; onAsk: (text: string) => void }) {
+function QuizDetail({ set, view }: { set: QuizSet; view: ToolProps }) {
+  const { owner } = view;
+  const { go } = useWorkbenchNav();
   const [title, setTitle] = useState(set.title);
+  const [busy, setBusy] = useState(false);
+  const setRef = useRef(set);
+  useEffect(() => { setRef.current = set; });
   const [dirty, setDirty] = useState(false);
   const [reveal, setReveal] = useState(false);
   const [run, setRun] = useState<{ ids: string[]; wrongOnly: boolean; key: number } | null>(null);
@@ -89,20 +106,60 @@ function QuizDetail({ set, owner, onAsk }: { set: QuizSet; owner: string | null;
   const saveQuestions = (questions: QuizQuestion[]) => studyData.saveQuizSet(owner, { ...set, title, questions, wrongIds: set.wrongIds.filter((id) => questions.some((question) => question.id === id)) });
   const start = (wrongOnly: boolean) => setRun({ ids: (wrongOnly ? wrong : set.questions).map((question) => question.id), wrongOnly, key: Date.now() });
 
+  // 练习时由练习界面报告正在做的那道题
+  useAiFocus(run ? null : {
+    kind: 'quiz',
+    id: set.id,
+    label: '题目集',
+    title,
+    ...(set.topicId ? { topicId: set.topicId } : {}),
+    getText: () => setMarkdown(setRef.current),
+  });
+
+  const cardsFromWrong = (questions: QuizQuestion[]) => {
+    if (!questions.length) return;
+    const deck = saveWrongCards(owner, setRef.current, wrongCards(questions));
+    toast.success(`${questions.length} 道错题已做成闪卡`, { description: `收在《${clip(deck.title, 20)}》里，今天就可以复习。`, action: { label: '打开', onClick: () => go('flashcards', deck.id) } });
+  };
+  /** 根据错题出一套巩固卷：新建一套题，来源指回这一套 */
+  const reinforce = async (questions: QuizQuestion[]) => {
+    if (!questions.length || busy) return;
+    setBusy(true);
+    const id = toast.loading('正在根据错题出巩固卷…');
+    try {
+      const current = setRef.current;
+      const made = await reinforceQuiz(current.title, questions);
+      if (!made.questions.length) throw new Error('gen-empty');
+      const saved = studyData.saveQuizSet(owner, { title: made.title, questions: made.questions, ...(current.topicId ? { topicId: current.topicId } : {}) });
+      setItemOrigin(owner, itemKey('quiz', saved.id), { section: 'workbench', label: `题目集：${clip(current.title || '未命名题目集', 20)} 的错题`, open: { view: 'workbench', params: { tool: 'quiz', id: current.id } } });
+      toast.success(`巩固卷出好了，共 ${saved.questions.length} 题`, {
+        id,
+        description: made.local ? '本地演示：没有模型，这一套是把错题打乱选项重排的。' : undefined,
+        action: { label: '打开', onClick: () => go('quiz', saved.id) },
+      });
+    } catch (reason) {
+      if (!isAbort(reason)) toast.error(aiErrorText(reason), { id });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (run) {
     return (
       <div className={s.card}>
-        <Practice key={run.key} set={set} ids={run.ids} wrongOnly={run.wrongOnly} owner={owner} onExit={() => setRun(null)} onRestart={start} onAsk={onAsk} />
+        <Practice key={run.key} set={set} ids={run.ids} wrongOnly={run.wrongOnly} view={view} onExit={() => setRun(null)} onRestart={start} onCards={cardsFromWrong} onReinforce={(questions) => void reinforce(questions)} />
       </div>
     );
   }
 
   return (
     <div className={s.card}>
-      <DetailHead title={title} onTitle={(value) => { setTitle(value); setDirty(true); }} badges={<OriginBadge origin={set.origin} />}>
+      <DetailHead title={title} onTitle={(value) => { setTitle(value); setDirty(true); }} badges={<ItemOrigin owner={owner} kind="quiz" id={set.id} origin={set.origin} />}>
         <label className={q.reveal}>
           <Switch checked={reveal} onCheckedChange={setReveal} label="显示答案" />显示答案
         </label>
+        <IconButton label="问小砚" size="sm" onClick={() => view.askHere()}><IconSpark size={16} /></IconButton>
+        <SendMenu view={view} item={{ kind: 'quiz', id: set.id, label: '题目集', title, ...(set.topicId ? { topicId: set.topicId } : {}), text: () => setMarkdown(setRef.current) }} />
       </DetailHead>
 
       <div className={q.summary}>
@@ -119,6 +176,13 @@ function QuizDetail({ set, owner, onAsk }: { set: QuizSet; owner: string | null;
           </Button>
           <Button variant="ghost" size="lg" icon={<Plus {...ICON_SM} />} onClick={() => setEditing('new')}>添加题目</Button>
         </div>
+        {wrong.length > 0 && (
+          <div className={a.aiRow}>
+            <span>错题本里有 {wrong.length} 道题</span>
+            <Button variant="ghost" size="sm" icon={<IconSpark size={16} />} loading={busy} onClick={() => void reinforce(wrong)}>根据错题出一套巩固卷</Button>
+            <Button variant="ghost" size="sm" icon={<IconFlashcard size={16} />} onClick={() => cardsFromWrong(wrong)}>把错题做成闪卡</Button>
+          </div>
+        )}
       </div>
 
       {set.questions.length === 0 ? (
@@ -186,17 +250,25 @@ function QuizDetail({ set, owner, onAsk }: { set: QuizSet; owner: string | null;
 }
 
 /* ── 练习 ── */
-function Practice({ set, ids, wrongOnly, owner, onExit, onRestart, onAsk }: {
+function Practice({ set, ids, wrongOnly, view, onExit, onRestart, onCards, onReinforce }: {
   set: QuizSet;
   ids: string[];
   wrongOnly: boolean;
-  owner: string | null;
+  view: ToolProps;
   onExit: () => void;
   onRestart: (wrongOnly: boolean) => void;
-  onAsk: (text: string) => void;
+  onCards: (questions: QuizQuestion[]) => void;
+  onReinforce: (questions: QuizQuestion[]) => void;
 }) {
+  const { owner, topic, topics, askHere } = view;
   // 练习开始时把题目定下来，练习中题目集被外部改动也不影响这一轮
-  const [questions] = useState(() => ids.flatMap((id) => set.questions.find((question) => question.id === id) ?? []));
+  const [questions, setQuestions] = useState(() => ids.flatMap((id) => set.questions.find((question) => question.id === id) ?? []));
+  const course = set.topicId ? topics.find((item) => item.topicId === set.topicId) ?? topic : topic;
+  /* ── 答错之后：讲解这道题、再出一道同类题 ── */
+  const explain = useAiRun();
+  const similar = useAiRun();
+  const [helper, setHelper] = useState<'explain' | 'similar' | null>(null);
+  const drafted = useRef<QuizQuestion | null>(null);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [marks, setMarks] = useState<Record<string, boolean>>({});
@@ -211,8 +283,18 @@ function Practice({ set, ids, wrongOnly, owner, onExit, onRestart, onAsk }: {
     // 只练错题时：做对的移出错题本，其余保留
     const wrongIds = wrongOnly ? [...new Set([...set.wrongIds.filter((id) => !rightNow.has(id)), ...wrongNow])] : wrongNow;
     studyData.recordQuizAttempt(owner, set.id, { at: new Date().toISOString(), answers, correct: rightNow.size, total }, wrongIds);
+    const missedNow = questions.filter((item) => !finalMarks[item.id]);
+    logActivity(owner, {
+      source: 'quiz',
+      summary: `做了《${clip(set.title || '未命名题目集', 24)}》${wrongOnly ? '的错题' : ''}：${total} 题对 ${rightNow.size} 题`,
+      signal: total > 0 && rightNow.size / total >= 0.8 ? 'success' : 'struggle',
+      ...(missedNow.length ? { detail: `做错的题：${missedNow.map((item) => clip(item.stem.replace(/\s+/g, ' '), 40)).join('；')}` } : {}),
+      ...(course ? { topicId: course.topicId, topicTitle: course.title } : {}),
+      ref: { kind: 'quiz', id: set.id, title: set.title },
+    });
     setDone(true);
   };
+  const closeHelper = () => { explain.reset(); similar.reset(); drafted.current = null; setHelper(null); };
 
   const check = () => {
     if (!question || checked) return;
@@ -225,8 +307,56 @@ function Practice({ set, ids, wrongOnly, owner, onExit, onRestart, onAsk }: {
   };
   const next = () => {
     if (!question || marks[question.id] === undefined) return;
+    closeHelper();
     if (index + 1 < total) { setIndex(index + 1); setChecked(false); }
     else finish(marks);
+  };
+
+  useAiFocus(done || !question ? null : {
+    kind: 'quiz',
+    id: set.id,
+    label: '题目集',
+    title: set.title,
+    detail: clip(question.stem.replace(/\s+/g, ' '), 80),
+    ...(set.topicId ? { topicId: set.topicId } : {}),
+    getText: () => `正在做第 ${index + 1} / ${total} 题：\n${questionText(question)}${checked ? `\n\n我的答案：${answerText(question, answers[question.id])}\n正确答案：${referenceOf(question)}${question.explanation ? `\n解析：${question.explanation}` : ''}` : '\n\n（还没有作答，不要直接说出答案，给思路。）'}`,
+  });
+
+  const runExplain = () => {
+    if (!question) return;
+    setHelper('explain');
+    void explain.start((call) => explainWrong({ question, mine: answers[question.id], context: { ...(course ? { topic: course } : {}) } }, call));
+  };
+  const runSimilar = () => {
+    if (!question) return;
+    setHelper('similar');
+    drafted.current = null;
+    void similar.start(async (call) => {
+      const made = await similarQuestion(question, call.signal);
+      drafted.current = made.question;
+      const options = made.question.type === 'truefalse' ? '' : optionsOf(made.question).map((option, at) => `- ${LETTERS[at]}. ${option}`).join('\n');
+      return {
+        text: `**${TYPE_LABEL[made.question.type]}** · ${made.question.stem}${options ? `\n\n${options}` : ''}`,
+        local: made.local,
+        ...(made.local ? { note: '本地演示：没有模型，这是把原题的选项打乱后再出一遍。' } : {}),
+      };
+    });
+  };
+  /** 同类题收进题目集；next=true 时排到这一轮的下一题 */
+  const keepSimilar = (next: boolean) => {
+    const made = drafted.current;
+    if (!made) return;
+    const current = studyData.get(owner).quizSets.find((item) => item.id === set.id);
+    if (current) studyData.saveQuizSet(owner, { ...current, questions: [...current.questions, made] });
+    if (next) setQuestions((list) => [...list.slice(0, index + 1), made, ...list.slice(index + 1)]);
+    closeHelper();
+    toast.success(next ? '已加入题目集，下一题就做它' : '已加入题目集');
+  };
+  const saveExplanation = () => {
+    if (!question) return;
+    const current = studyData.get(owner).quizSets.find((item) => item.id === set.id);
+    if (current) studyData.saveQuizSet(owner, { ...current, questions: current.questions.map((item) => (item.id === question.id ? { ...item, explanation: explain.state.text } : item)) });
+    toast.success('已存为这道题的解析');
   };
   const pick = (at: number) => {
     if (!question || checked) return;
@@ -263,6 +393,12 @@ function Practice({ set, ids, wrongOnly, owner, onExit, onRestart, onAsk }: {
           <Button variant={missed.length ? 'soft' : 'solid'} icon={<RotateCcw {...ICON_SM} />} onClick={() => onRestart(false)}>再练一遍</Button>
           <Button variant="ghost" onClick={onExit}>回到题目</Button>
         </div>
+        {missed.length > 0 && (
+          <div className={a.aiRow} style={{ justifyContent: 'center' }}>
+            <Button variant="ghost" size="sm" icon={<IconSpark size={16} />} onClick={() => onReinforce(missed)}>根据错题出一套巩固卷</Button>
+            <Button variant="ghost" size="sm" icon={<IconFlashcard size={16} />} onClick={() => onCards(missed)}>把错题做成闪卡</Button>
+          </div>
+        )}
         {missed.length > 0 && (
           <ul className={q.missed}>
             {missed.map((item) => (
@@ -373,15 +509,35 @@ function Practice({ set, ids, wrongOnly, owner, onExit, onRestart, onAsk }: {
                 <Button variant="ghost" size="sm" onClick={() => setMarks((current) => ({ ...current, [question.id]: true }))}>意思一样，算我对</Button>
               )}
               {verdict === false && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onAsk(`这道题我做错了，请讲讲我错在哪、该怎么想：\n\n${question.stem}${options.length ? `\n${options.map((option, at) => `${LETTERS[at]}. ${option}`).join('\n')}` : ''}\n\n我的答案：${Array.isArray(mine) ? mine.map((at) => LETTERS[at]).join('、') : mine ?? '（未作答）'}\n正确答案：${referenceOf(question)}`)}
-                >
-                  问小砚
-                </Button>
+                <>
+                  <Button variant="soft" size="sm" icon={<IconSpark size={16} />} onClick={runExplain}>讲解这道题</Button>
+                  <Button variant="ghost" size="sm" icon={<IconSpark size={16} />} onClick={runSimilar}>再出一道同类题</Button>
+                  <Button variant="ghost" size="sm" icon={<IconFlashcard size={16} />} onClick={() => onCards([question])}>做成闪卡</Button>
+                  <Button variant="ghost" size="sm" onClick={() => askHere('这道题我做错了，我错在哪、该怎么想？')}>问小砚</Button>
+                </>
               )}
             </div>
+            {helper === 'explain' && (
+              <AiBlock
+                state={explain.state}
+                title="讲解这道题"
+                doing="正在看你的答案"
+                actions={explain.state.local ? [] : [{ label: '存为这道题的解析', onClick: saveExplanation }]}
+                onRetry={() => void explain.retry()}
+                onStop={explain.stop}
+                onDiscard={closeHelper}
+              />
+            )}
+            {helper === 'similar' && (
+              <AiBlock
+                state={similar.state}
+                title="同类题"
+                doing="正在出一道同类题"
+                actions={[{ label: '下一题就做它', primary: true, onClick: () => keepSimilar(true) }, { label: '只加入题目集', onClick: () => keepSimilar(false) }]}
+                onRetry={runSimilar}
+                onDiscard={closeHelper}
+              />
+            )}
           </div>
         )}
       </div>

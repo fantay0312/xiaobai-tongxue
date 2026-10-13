@@ -137,6 +137,9 @@ export const studyData = {
   removeWriting: (owner: string | null, id: string) => remove(owner, 'writings', id),
 };
 
+/** 任一账号的工作台数据变化时通知（非 Hook；资料库的「生成的内容」据此刷新） */
+export const subscribeStudyData = (listener: () => void): (() => void) => useStore.subscribe(listener);
+
 const EMPTY = emptyStudyData();
 /** 订阅当前账号的工作台数据 */
 export function useStudyData(owner: string | null): StudyData {

@@ -5,12 +5,18 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MoonStar, Trash2 } from 'lucide-react';
-import { Badge, Button, Empty, IconButton, Shimmer } from '../../../../components/ui';
-import { DREAM_INTERVAL_HOURS, dreamNow, dreamStatus, removeDream, useDreams } from '../../../../engine/dreams';
+import { Badge, Button, Empty, IconButton, Shimmer, Switch } from '../../../../components/ui';
+import { useActivities } from '../../../../engine/activityLog';
+import {
+  DREAM_INTERVAL_HOURS, applyDreamProposal, discardDreamProposal, dreamNow, dreamStatus, removeDream, setDreamReview, useDreams,
+} from '../../../../engine/dreams';
 import type { DreamChange, DreamEntry, Dreamer } from '../../../../engine/dreams';
-import { useTutorMemory } from '../../../../engine/tutorMemory';
+import { useRepo } from '../../../../engine/memoryRepo';
+import type { ProposalKind } from '../../../../engine/memoryRepo';
 import { useAppStore } from '../../../../store/appStore';
+import { DiffLines } from './repoShared';
 import s from './dream.module.css';
+import r from './repo.module.css';
 
 interface Props {
   owner: string | null;
@@ -26,9 +32,11 @@ const GROUPS: { kind: DreamChange['kind']; label: string }[] = [
   { kind: 'question', label: '还想问' },
 ];
 const ABOUT: Record<Dreamer, string> = {
-  xiaoyan: '做梦就是空闲时把记下的东西重新过一遍：合并重复的，从反复出现的事里提炼出一条，放下很久没提起的，再留一段记录。小砚整理的是她记得的你，整理结果会直接改到她的记忆里；置顶的和你自己写的不会动。',
-  xiaobai: '做梦就是空闲时把记下的东西重新过一遍。小白回放的是你最近教他的课：哪些记牢了，哪些开始模糊，还有哪句想问你。他的梦只留下这张纸条，不改课堂上的任何数据。',
+  xiaoyan: '做梦就是空闲时把记忆库重新过一遍：合并重复的，从做题、闪卡、提问这些反复出现的事里提炼出一条，把很久没提起的归档，前后说法相反时对照出处和日期留下站得住的那条。每场梦是记忆库里的一次提交，能看差异，也能撤销；置顶的和你自己写的不会动。',
+  xiaobai: '做梦就是空闲时把记下的东西重新过一遍。小白回放的是你最近教他的课：哪些记牢了，哪些开始模糊，还有哪句想问你。他的梦只往自己的记忆库里写（还想问的、开始模糊的），不改课堂上的任何数据。',
 };
+const PROPOSAL_LABEL: Record<ProposalKind, string> = { merged: '合并', promoted: '提炼', faded: '归档', kept: '加深', question: '还想问', moved: '挪走', ruled: '排除' };
+const REVIEW_LABEL: Record<NonNullable<DreamEntry['review']>, string> = { pending: '等你确认', applied: '已采纳', discarded: '没采纳' };
 
 /** 今天 14:05 / 昨天 21:30 / 明天 09:10 / 10月12日 21:30 */
 function formatWhen(iso: string): string {
@@ -63,11 +71,13 @@ function DreamGroups({ changes }: { changes: DreamChange[] }) {
 export function DreamPanel({ owner, who }: Props) {
   const allDreams = useDreams(owner);
   const dreams = useMemo(() => allDreams.filter((dream) => dream.who === who), [allDreams, who]);
-  // 订阅两份记忆的变动，状态里的「新内容」才会跟着更新
-  const tutorState = useTutorMemory(owner);
+  // 订阅记忆库、学习行为和课堂数据的变动，状态里的「新内容」才会跟着更新
+  const repo = useRepo(owner, who);
+  const activities = useActivities(owner);
   const events = useAppStore((st) => st.events);
   const xiaobaiPaused = useAppStore((st) => st.memory.paused);
-  const status = useMemo(() => dreamStatus(owner, who), [owner, who, allDreams, tutorState, events, xiaobaiPaused]);
+  const status = useMemo(() => dreamStatus(owner, who), [owner, who, allDreams, repo, activities, events, xiaobaiPaused]);
+  const pending = repo.pending;
 
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -96,14 +106,16 @@ export function DreamPanel({ owner, who }: Props) {
     }
     setNote(status.paused
       ? `${name}的记忆暂停着，暂停期间不整理。先把上面的「暂停记忆」关掉。`
-      : who === 'xiaoyan'
-        ? '没有新的内容可以整理。和小砚再聊几轮，有了新记下的东西再来。'
-        : '没有新的内容可以整理。再给小白上一课，他才有新的梦可做。');
+      : status.pendingChanges
+        ? '上一场梦提出的改动还没处理完。先在下面采纳或丢弃，再整理下一场。'
+        : who === 'xiaoyan'
+          ? '没有新的内容可以整理。再学一会儿——提问、做题、翻闪卡都算，有了新记下的东西再来。'
+          : '没有新的内容可以整理。再给小白上一课，他才有新的梦可做。');
   };
 
   const freshLine = who === 'xiaoyan'
-    ? status.freshItems || status.freshTurns
-      ? `${status.freshItems} 条记忆有新增或变动，${status.freshTurns} 次新提问`
+    ? status.freshItems || status.freshTurns || status.freshActivities
+      ? `${status.freshItems} 条记忆有新增或变动，${status.freshTurns} 次新提问，${status.freshActivities} 次对话之外的学习行为`
       : '没有新内容'
     : status.freshLessons
       ? `新上了 ${status.freshLessons} 门课`
@@ -144,6 +156,53 @@ export function DreamPanel({ owner, who }: Props) {
         </div>
       </section>
       {note && <p className={s.note} role="status">{note}</p>}
+
+      <div className={r.reviewRow}>
+        <div>
+          <strong>{status.review ? '先给我看再生效' : '做梦后直接生效'}</strong>
+          <span>
+            {status.review
+              ? '梦里想做的改动先列在下面，你逐条采纳或丢弃后才写进记忆库。'
+              : '梦里的改动直接写进记忆库；每一场都能在变更历史里看差异、撤销。'}
+          </span>
+        </div>
+        <div className={s.run}>
+          <label htmlFor={`dream-review-${who}`}>先给我看</label>
+          <Switch id={`dream-review-${who}`} checked={status.review} onCheckedChange={(next) => setDreamReview(owner, who, next)} label="做梦后先给我看再生效" />
+        </div>
+      </div>
+
+      {pending && (
+        <section className={r.proposal} aria-label="等你确认的改动">
+          <div className={r.proposalHead}>
+            <div>
+              <h3>等你确认：{pending.title}</h3>
+              <p>{formatWhen(pending.at)} 的梦提出了 {pending.changes.length} 处改动，采纳的才会写进记忆库。</p>
+            </div>
+            <div className={r.proposalActions}>
+              <Button size="sm" variant="ghost" onClick={() => discardDreamProposal(owner, who)}>全部丢弃</Button>
+              <Button size="sm" variant="solid" onClick={() => applyDreamProposal(owner, who)}>全部采纳</Button>
+            </div>
+          </div>
+          <ul className={r.proposalList}>
+            {pending.changes.map((change) => (
+              <li key={change.id} className={r.proposalItem}>
+                <div className={r.proposalTop}>
+                  <span className={r.proposalNote}>
+                    <Badge tone="warn">{PROPOSAL_LABEL[change.kind]}</Badge>
+                    <span>{change.note}{change.toPath ? `（${change.path} → ${change.toPath}）` : `（${change.path}）`}</span>
+                  </span>
+                  <span className={r.proposalActions}>
+                    <Button size="sm" variant="ghost" onClick={() => discardDreamProposal(owner, who, [change.id])}>丢弃</Button>
+                    <Button size="sm" variant="outline" onClick={() => applyDreamProposal(owner, who, [change.id])}>采纳</Button>
+                  </span>
+                </div>
+                <DiffLines changes={[change]} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section aria-label="梦境记录" className={s.panel}>
         <div className={s.journalHead}>
@@ -186,6 +245,7 @@ function CardDream({ dream, fresh, onRemove }: DreamProps) {
           <div className={s.entryMeta}>
             <span>{formatWhen(dream.at)}</span>
             <Badge tone={dream.method === 'model' ? 'accent' : 'neutral'}>{dream.method === 'model' ? '模型整理' : '本地规则整理'}</Badge>
+            {dream.review && <Badge tone={dream.review === 'pending' ? 'warn' : 'outline'}>{REVIEW_LABEL[dream.review]}</Badge>}
           </div>
         </div>
         <IconButton size="sm" label="删掉这条记录" onClick={onRemove}>
@@ -207,6 +267,7 @@ function PaperDream({ dream, fresh, onRemove }: DreamProps) {
           <div className={s.entryMeta}>
             <span>{formatWhen(dream.at)}</span>
             <span className={s.paperTag}>{dream.method === 'model' ? '模型整理' : '本地规则整理'}</span>
+            {dream.review && <span className={s.paperTag}>{REVIEW_LABEL[dream.review]}</span>}
           </div>
         </div>
         {/* 纸条上不用通用按钮：它的颜色跟着皮肤走，在深色皮肤的浅色纸面上会看不清 */}

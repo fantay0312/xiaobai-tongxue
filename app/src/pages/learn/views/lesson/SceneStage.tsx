@@ -9,7 +9,9 @@ import {
   optionLetter, plainText, sameAnswer, xiaobaiAttempt,
   type BoardStroke, type InteractiveScene, type LessonQuestion, type LessonScene, type PblScene, type QuizScene, type SlideScene, type WhiteboardScene,
 } from '../../../../engine/lessonStudio';
+import { logActivity } from '../../../../engine/activityLog';
 import { studyData } from '../../../../store/studyData';
+import { setItemOrigin } from '../workbench/origins';
 import { Formula, InteractiveFrame, MermaidFigure } from './figures';
 import type { AdhocLine } from './usePlayback';
 import s from './player.module.css';
@@ -20,6 +22,9 @@ export interface SceneStageProps {
   reveal: number;
   owner: string | null;
   topicId?: string;
+  /** 这堂课的 id 与标题：测验结果、里程碑记进学习行为日志时标明出处 */
+  lessonId?: string;
+  lessonTitle?: string;
   /** 小白当前的学习水平，决定他答题的正确率 */
   xiaobaiLevel: 1 | 2 | 3 | 4 | 5;
   say: (lines: AdhocLine[]) => void;
@@ -108,7 +113,7 @@ function OptionText({ text }: { text: string }) {
 
 interface QuestionState { picked: number[]; done: boolean; by?: 'user' | 'xiaobai'; correct?: boolean }
 
-function QuizView({ scene, xiaobaiLevel, say, onQuizDone, onTeach }: SceneStageProps & { scene: QuizScene }) {
+function QuizView({ scene, xiaobaiLevel, say, onQuizDone, onTeach, owner, topicId, lessonId, lessonTitle }: SceneStageProps & { scene: QuizScene }) {
   const [states, setStates] = useState<Record<string, QuestionState>>({});
   const total = scene.questions.length;
   const doneCount = scene.questions.filter((question) => states[question.id]?.done).length;
@@ -119,8 +124,21 @@ function QuizView({ scene, xiaobaiLevel, say, onQuizDone, onTeach }: SceneStageP
     if (doneCount === total && total > 0 && !reported.current) {
       reported.current = true;
       onQuizDone();
+      // 这一幕的测验结果记进学习行为日志：自己答的算数，让小白代答的单独说明
+      const mine = scene.questions.filter((question) => states[question.id]?.by === 'user');
+      const right = mine.filter((question) => states[question.id]?.correct).length;
+      const missed = mine.filter((question) => !states[question.id]?.correct);
+      const delegated = total - mine.length;
+      logActivity(owner, {
+        source: 'lesson',
+        signal: !mine.length ? 'neutral' : missed.length ? 'struggle' : 'success',
+        summary: `AI 课${lessonTitle ? `《${lessonTitle}》` : ''}测验「${scene.title}」：${mine.length ? `自己答对 ${right}/${mine.length}` : '全部让小白代答'}${mine.length && delegated ? `，${delegated} 题让小白答` : ''}`.slice(0, 150),
+        ...(missed.length ? { detail: `答错：${missed.map((question) => plainText(question.stem)).join('；')}` } : {}),
+        ...(topicId ? { topicId } : {}),
+        ...(lessonId ? { ref: { kind: 'lesson', id: lessonId, ...(lessonTitle ? { title: lessonTitle } : {}) } } : {}),
+      });
     }
-  }, [doneCount, total, onQuizDone]);
+  }, [doneCount, total, onQuizDone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const settle = (question: LessonQuestion, picked: number[], by: 'user' | 'xiaobai', lead?: AdhocLine) => {
     const correct = sameAnswer(picked, question.answer);
@@ -228,13 +246,21 @@ function InteractiveView({ scene }: { scene: InteractiveScene }) {
   );
 }
 
-function PblView({ scene, owner, topicId, onOpenTodos }: SceneStageProps & { scene: PblScene }) {
+function PblView({ scene, owner, topicId, onOpenTodos, lessonId, lessonTitle }: SceneStageProps & { scene: PblScene }) {
   const [pushed, setPushed] = useState(false);
   const push = () => {
     for (const milestone of [...scene.milestones].reverse()) {
-      studyData.addTodo(owner, { text: `${scene.title}：${milestone.title}`, origin: 'agent', ...(topicId ? { topicId } : {}) });
+      const todo = studyData.addTodo(owner, { text: `${scene.title}：${milestone.title}`, origin: 'agent', ...(topicId ? { topicId } : {}) });
+      if (lessonId) setItemOrigin(owner, `todo:${todo.id}`, { section: 'lesson', label: `AI 课：${lessonTitle ?? scene.title}`, open: { view: 'classroom', params: { lesson: lessonId } } });
     }
     setPushed(true);
+    logActivity(owner, {
+      source: 'lesson', signal: 'goal',
+      summary: `AI 课${lessonTitle ? `《${lessonTitle}》` : ''}项目「${scene.title}」的 ${scene.milestones.length} 个里程碑加入了待办`.slice(0, 150),
+      detail: scene.milestones.map((item) => item.title).join('；'),
+      ...(topicId ? { topicId } : {}),
+      ...(lessonId ? { ref: { kind: 'lesson', id: lessonId, ...(lessonTitle ? { title: lessonTitle } : {}) } } : {}),
+    });
     toast.success(`已把 ${scene.milestones.length} 个里程碑加入待办`, { action: { label: '去看看', onClick: onOpenTodos } });
   };
   return (

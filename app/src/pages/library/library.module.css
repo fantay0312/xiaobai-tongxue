@@ -49,6 +49,52 @@
 .progressBar i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width var(--dur-3) var(--ease); }
 .progressBar::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 55%, transparent), transparent); animation: sweep 1.4s linear infinite; }
 
+/* ── 一行说明 ── */
+.tip { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 6px 6px 6px 14px; border-radius: var(--r-md); background: var(--accent-softer); color: var(--text-2); font-size: var(--fz-sm); line-height: 1.6; }
+.tip > svg { flex: none; color: var(--accent); }
+.tip > span { flex: 1; min-width: 0; padding: 2px 0; }
+
+/* ── 来源与类型筛选 ── */
+.filterBar { display: flex; align-items: center; gap: 8px; min-width: 0; margin-bottom: 8px; }
+.chips { flex: 1; display: flex; gap: 6px; min-width: 0; padding: 3px; margin: -3px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; height: var(--ctl-sm); padding: 0 11px;
+  border: 1px solid var(--border); border-radius: var(--r-full); background: var(--surface); color: var(--text-2);
+  font: 500 var(--fz-sm)/1 var(--ui-font); white-space: nowrap; cursor: pointer; scroll-snap-align: start;
+  transition: background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.chip > svg { flex: none; color: var(--text-3); transition: color var(--dur-1) var(--ease); }
+.chip > i { color: var(--text-4); font-style: normal; font-size: var(--fz-xs); font-variant-numeric: tabular-nums; }
+.chip:hover { border-color: var(--border-2); background: var(--hover); color: var(--text); }
+.chip:active { transform: scale(0.97); }
+.chip:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.chip[aria-checked='true'] { border-color: transparent; background: var(--solid); color: var(--on-solid); }
+.chip[aria-checked='true'] > svg, .chip[aria-checked='true'] > i { color: inherit; opacity: 0.8; }
+.filterBar .filterButton { flex: none; }
+.filterButton[data-on] { background: var(--accent-softer); color: var(--accent); }
+.groupHead { display: flex; align-items: center; gap: 8px; margin-top: 16px; padding: 8px 12px 6px; color: var(--text-2); font-size: var(--fz-sm); }
+.groupHead:first-child, .listHead + .groupHead { margin-top: 4px; }
+.groupHead > svg { flex: none; color: var(--text-3); }
+.groupHead > strong { min-width: 0; overflow: hidden; color: var(--text); font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.groupHead > span { flex: none; color: var(--text-4); font-size: var(--fz-xs); }
+
+/* ── 自动保存到资料库 ── */
+.syncButton[data-alert] { color: var(--warn); }
+.syncPanel { display: grid; gap: 10px; width: min(340px, calc(100vw - 32px)); }
+.syncSwitch { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.syncSwitch > label { color: var(--text); font: 600 var(--fz-md)/1.45 var(--ui-font); cursor: pointer; }
+.syncNote { margin: 0; color: var(--text-3); font-size: var(--fz-sm); line-height: 1.65; }
+.syncStatus { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 10px; border-radius: var(--r-md); background: var(--inset); color: var(--text-2); font-size: var(--fz-sm); line-height: 1.55; }
+.syncStatus > svg, .syncStatus > span:first-child { flex: none; margin-top: 3px; }
+.syncStatus > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.syncStatus[data-tone='ok'] > svg { color: var(--ok); }
+.syncStatus[data-tone='warn'] { background: var(--warn-soft); color: var(--text); }
+.syncStatus[data-tone='warn'] > svg { color: var(--warn); }
+.syncStatus[data-tone='bad'] { background: var(--bad-soft); color: var(--text); }
+.syncStatus[data-tone='bad'] > svg { color: var(--bad); }
+.syncFoot { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-3); font-size: var(--fz-xs); font-variant-numeric: tabular-nums; }
+
 /* ── 勾选框 ── */
 .check {
   position: relative; flex: none; display: grid; place-items: center; width: 18px; height: 18px; padding: 0;
@@ -65,7 +111,7 @@ button.check:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 /* ── 列表 ── */
 .fileArea { min-height: 240px; }
 .list { display: flex; flex-direction: column; }
-.listHead, .row { display: grid; grid-template-columns: 20px minmax(0, 1fr) 184px 84px 116px 96px; align-items: center; column-gap: 12px; padding: 0 8px 0 12px; }
+.listHead, .row { display: grid; grid-template-columns: 20px minmax(0, 1fr) 92px 148px 116px 96px; align-items: center; column-gap: 12px; padding: 0 8px 0 12px; }
 .listHead { position: sticky; top: 0; z-index: 2; height: 36px; border-bottom: 1px solid var(--border); background: var(--bg); color: var(--text-3); font-size: var(--fz-xs); }
 .row { position: relative; min-height: 56px; border-radius: var(--r-md); color: var(--text-3); font-size: var(--fz-sm); transition: background var(--dur-1) var(--ease); }
 .row::after { content: ''; position: absolute; left: 44px; right: 8px; bottom: 0; height: 1px; background: var(--border); }
@@ -76,11 +122,18 @@ button.check:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 .rowMain:focus-visible, .cardMain:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 .rowText { display: grid; gap: 2px; min-width: 0; }
 .rowText strong { overflow: hidden; color: var(--text); font: 500 var(--fz-md)/1.4 var(--ui-font); white-space: nowrap; text-overflow: ellipsis; }
-.rowText small { display: none; overflow: hidden; color: var(--text-3); font-size: var(--fz-xs); line-height: 1.4; white-space: nowrap; text-overflow: ellipsis; }
+.rowText small { display: block; overflow: hidden; color: var(--text-3); font-size: var(--fz-xs); line-height: 1.4; white-space: nowrap; text-overflow: ellipsis; }
+/* 有「最近更新」列时，名称下面不重复写时间 */
+.metaDate { display: none; }
+.colOrigin { min-width: 0; color: var(--text-4); }
+.origin { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; color: var(--text-2); font-size: var(--fz-xs); line-height: 1.4; white-space: nowrap; }
+.origin > svg { flex: none; color: var(--text-3); }
+.origin > span { overflow: hidden; text-overflow: ellipsis; }
+.origin[data-origin='upload'] { color: var(--text-3); }
 .rowBadges { display: flex; gap: 6px; min-width: 0; overflow: hidden; }
 .rowBadgesInline { display: none; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .rowBadgesInline:empty { display: none; }
-.colSize, .colDate { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.colDate { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .rowActions { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
 .rowActions > *, .rowActions > button:disabled { opacity: 0; }
 .row:hover .rowActions > *, .row:focus-within .rowActions > *, .card:hover .rowActions > *, .card:focus-within .rowActions > *,
@@ -100,6 +153,8 @@ button.check:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 .cardMain { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; padding: 4px 14px 14px; border: 0; border-radius: var(--r-md); background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .cardMain strong { display: -webkit-box; margin-top: 10px; overflow: hidden; color: var(--text); font: 500 var(--fz-md)/1.45 var(--ui-font); overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .cardMain small { color: var(--text-3); font-size: var(--fz-xs); line-height: 1.5; }
+.cardMain .cardSummary { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.cardBadges { align-items: center; }
 .cardBadges { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 14px; }
 .cardBadges:empty { display: none; }
 
@@ -163,6 +218,8 @@ button.check:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 .linkRow { display: flex; align-items: center; gap: 10px; width: 100%; font-size: var(--fz-sm); }
 .linkRow > svg { flex: none; color: var(--text-3); }
 .linkRow > span { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.linkRow > span > small { margin-left: 8px; color: var(--text-3); font-size: var(--fz-xs); font-variant-numeric: tabular-nums; }
+.detailActions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 /* ── 选择文件对话框 ── */
 .picker { display: grid; gap: 10px; padding-top: 4px; }
@@ -177,7 +234,8 @@ button.check:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 .pickerLead { flex: none; width: 18px; }
 .pickerText { flex: 1; min-width: 0; display: grid; gap: 2px; }
 .pickerText strong { overflow: hidden; font-weight: 500; font-size: var(--fz-md); white-space: nowrap; text-overflow: ellipsis; }
-.pickerText small { color: var(--text-3); font-size: var(--fz-xs); }
+.pickerText small { overflow: hidden; color: var(--text-3); font-size: var(--fz-xs); white-space: nowrap; text-overflow: ellipsis; }
+.pickerNote { margin: 0 0 6px; padding: 8px 12px; border-radius: var(--r-md); background: var(--warn-soft); color: var(--text); font-size: var(--fz-sm); line-height: 1.6; }
 .pickerSize { flex: none; color: var(--text-3); font-size: var(--fz-xs); font-variant-numeric: tabular-nums; }
 .pickerArrow { flex: none; color: var(--text-4); }
 .pickerFoot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; width: 100%; }
@@ -185,15 +243,15 @@ button.check:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 
 /* ── 响应式 ── */
 @container (max-width: 860px) {
-  .listHead, .row { grid-template-columns: 20px minmax(0, 1fr) 168px 96px; }
-  .colSize, .colDate { display: none; }
-  .rowText small { display: block; }
+  .listHead, .row { grid-template-columns: 20px minmax(0, 1fr) 84px 132px 96px; }
+  .colDate { display: none; }
+  .metaDate { display: inline; }
 }
 @container (max-width: 600px) {
   .listHead, .row { grid-template-columns: 20px minmax(0, 1fr) auto; padding: 0 2px 0 6px; }
   .row { min-height: 60px; }
   .row::after { left: 38px; right: 2px; }
-  .colStatus, .hideNarrow { display: none; }
+  .colStatus, .colOrigin, .hideNarrow { display: none; }
   .rowBadgesInline { display: flex; }
   .rowActions > * { opacity: 1; }
   .rowActions > button:disabled { opacity: 0.45; }
@@ -226,6 +284,7 @@ button.check:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
   .pickerSize { display: none; }
 }
 .touchOnly, .shortLabel { display: none; }
+.quickCats { min-width: 0; }
 
 /* ── 手机：顶部只留搜索与上传，分类和文件夹一行；批量操作条贴底通栏 ── */
 @media (max-width: 760px) {
@@ -234,6 +293,17 @@ button.check:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
   .header:has(.headerTools) .heading { display: none; }
   .inner { padding-top: 12px; }
   .quickNav { margin-bottom: 8px; }
+  /* 五个分类一行放不下时横向滑动；「文件夹」只留图标 */
+  .quickCats { flex: 1; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+  .quickCats::-webkit-scrollbar { display: none; }
+  .quickCats > [role='radiogroup'] { min-width: max-content; }
+  .folderButton > span, .syncButton > span, .filterButton > span { display: none; }
+  .chips { overscroll-behavior-x: contain; }
+  .tip { align-items: flex-start; padding-left: 12px; }
+  .tip > svg { margin-top: 5px; }
+  .linkRow { flex-wrap: wrap; }
+  .linkRow > span { white-space: normal; }
+  .linkRow > span > small { display: block; margin-left: 0; }
   .toolbar { min-height: 0; margin-bottom: 4px; }
   .crumbs b { max-width: 180px; }
   .crumbs button { max-width: 140px; }
@@ -280,6 +350,9 @@ button.check:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 }
 @media (pointer: coarse) {
   .quickNav [role='radio'], .viewTools [role='radio'] { min-height: 34px; padding-inline: 12px; font-size: var(--fz-sm); }
+  .chip { height: 40px; padding: 0 14px; }
+  .chips { gap: 8px; }
+  .syncButton, .filterButton, .folderButton { min-width: 40px; height: 40px; }
   .rowActions > button { width: 40px; height: 40px; }
   .crumbs button { height: 36px; }
   .selectionBar > button { width: 40px; height: 40px; }
@@ -296,5 +369,6 @@ button.check:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 }
 @media (prefers-reduced-motion: reduce) {
   .selectionBar, .dropOverlay, .progressBar::after { animation: none; }
+  .chip:active { transform: none; }
   .card:hover { transform: none; }
 }

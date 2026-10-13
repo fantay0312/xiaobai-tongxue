@@ -63,10 +63,10 @@ function gather(input: GenInput): { title: string; body: string } {
 }
 
 /* ── 校验小件 ── */
-const str = (value: unknown, max = 4000): string =>
+export const str = (value: unknown, max = 4000): string =>
   (typeof value === 'string' ? value : typeof value === 'number' ? String(value) : '').trim().slice(0, max);
-const arr = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
-const rec = (value: unknown): Record<string, unknown> =>
+export const arr = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+export const rec = (value: unknown): Record<string, unknown> =>
   (value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {});
 const clampInt = (value: unknown, min: number, max: number, fallback: number) => {
   const n = typeof value === 'number' ? value : Number(value);
@@ -75,7 +75,7 @@ const clampInt = (value: unknown, min: number, max: number, fallback: number) =>
 
 const SYSTEM = '你是大学课程助教「小砚」。只依据用户给出的材料组织内容，不编造材料之外的事实。用简体中文。只输出一个 JSON 对象，不要代码围栏，不要任何多余文字。';
 
-const isUnavailable = (error: unknown) =>
+export const isUnavailable = (error: unknown) =>
   error instanceof ModelUnavailableError || (error instanceof Error && (error.name === 'ModelUnavailableError' || error.message === 'model-unavailable'));
 
 async function run<T>(input: GenInput, prompt: string, parse: (raw: unknown) => T | null, fallback: () => T, maxTokens = 3200): Promise<GenResult<T>> {
@@ -99,22 +99,22 @@ async function run<T>(input: GenInput, prompt: string, parse: (raw: unknown) => 
 const withExtra = (instruction?: string) => (instruction?.trim() ? `\n\n补充要求：${instruction.trim().slice(0, 400)}` : '');
 
 /* ── 本地抽取用的文本工具 ── */
-const stripMd = (text: string) => text
+export const stripMd = (text: string) => text
   .replace(/```[\s\S]*?```/g, ' ')
   .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
   .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
   .replace(/[*_`>#|]/g, '')
   .replace(/[ \t]+/g, ' ');
 
-function sentences(text: string): string[] {
+export function sentences(text: string): string[] {
   return stripMd(text)
     .split(/(?<=[。！？!?；;])|\n+|(?<=\.)\s+(?=[A-Z])/)
     .map((part) => part.replace(/^\s*(?:[-+•]|\d+[.)、])\s*/, '').trim())
     .filter((part) => part.length >= 8 && part.length <= 180);
 }
 
-interface Section { title: string; lines: string[] }
-function sections(md: string): Section[] {
+export interface Section { title: string; lines: string[] }
+export function sections(md: string): Section[] {
   const out: Section[] = [];
   let current: Section | null = null;
   let fenced = false;
@@ -133,9 +133,9 @@ function sections(md: string): Section[] {
   return out.filter((section) => section.title || section.lines.length);
 }
 
-interface Pair { term: string; desc: string }
+export interface Pair { term: string; desc: string }
 /** 从文字里找「术语：解释」「X 是 Y」一类的成对内容，凑不够再用小节标题和句子补 */
-function pairs(md: string): Pair[] {
+export function pairs(md: string): Pair[] {
   const found: Pair[] = [];
   const push = (term: string, desc: string) => {
     const t = stripMd(term).trim().replace(/[：:，,。.]$/, '');
@@ -177,7 +177,7 @@ function seeded(seed: string) {
     return ((h ^= h >>> 16) >>> 0) / 4294967296;
   };
 }
-function shuffle<T>(items: T[], seed: string): T[] {
+export function shuffle<T>(items: T[], seed: string): T[] {
   const random = seeded(seed);
   const out = [...items];
   for (let i = out.length - 1; i > 0; i -= 1) {

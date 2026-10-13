@@ -132,11 +132,13 @@ function serve(req, res, send, urlPath, {
   }
   const extension = path.extname(target).toLowerCase();
   const immutable = immutableAssets && /\/assets\//.test(target);
+  // 浏览器内 Python 运行环境体积大、按固定版本发布:缓存一天,免得每次会话重新下载
+  const runtime = immutableAssets && target.startsWith(path.join(root, 'pyodide') + path.sep);
   try {
     const data = readFileSync(target);
     res.writeHead(200, {
       'Content-Type': MIME[extension] ?? 'application/octet-stream',
-      'Cache-Control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache',
+      'Cache-Control': immutable ? 'public, max-age=31536000, immutable' : runtime ? 'public, max-age=86400' : 'no-cache',
       'Content-Security-Policy': csp,
       'Referrer-Policy': 'no-referrer',
       'Permissions-Policy': admin
