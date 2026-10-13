@@ -107,3 +107,37 @@ test('reasoningEffort 显式设为 none 时空正文不再重试', async () => {
   await assert.rejects(llm.generate({ system: 's', user: 'u' }), /compiler-empty/);
   assert.equal(calls, 1);
 });
+
+test('evaluation token budget survives compatibility and empty-response retries', async () => {
+  const bodies = [];
+  const llm = client(async (_url, init) => {
+    bodies.push(JSON.parse(init.body));
+    if (bodies.length === 1) return jsonResponse(400, { error: 'unsupported reasoning effort' });
+    return bodies.length === 2 ? reply('', 'length') : reply('{"ok":true}');
+  });
+  assert.equal(await llm.generate({ system: 's', user: 'u', maxTokens: 700, requestTimeoutMs: 30_000 }), '{"ok":true}');
+  assert.equal(bodies.length, 3);
+  assert.deepEqual(bodies.map(body => body.max_tokens), [700, 700, 700]);
+  assert.deepEqual(bodies.map(body => body.reasoning_effort ?? null), ['low', null, 'none']);
+});
+
+test('evaluation deadline can be shortened without raising the client timeout', async () => {
+  const llm = client((_url, init) => new Promise((_, reject) => {
+    const pendingSocket = setInterval(() => {}, 1_000);
+    init.signal.addEventListener('abort', () => {
+      clearInterval(pendingSocket);
+      reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+    }, { once: true });
+  }), { timeoutMs: 5_000 });
+  await assert.rejects(llm.generate({ system: 's', user: 'u', requestTimeoutMs: 20 }), /^Error: compiler-timeout$/);
+});
+
+test('per-request tokens cannot raise the configured compiler maximum', async () => {
+  let body;
+  const llm = client(async (_url, init) => {
+    body = JSON.parse(init.body);
+    return reply('{"ok":true}');
+  });
+  await llm.generate({ system: 's', user: 'u', maxTokens: 1_000_000 });
+  assert.equal(body.max_tokens, 16_000);
+});

@@ -187,3 +187,49 @@ test('semantic evaluation has atomic burst limits and an owner inflight gate', a
   await Promise.all([first, second]);
   assert.equal(responses.filter(({ status }) => status === 200).length, 2);
 });
+
+test('semantic evaluation fails closed before model use when quotas are unavailable or denied', async () => {
+  for (const [rateLimitMany, expectedStatus] of [
+    [null, 503],
+    [async () => { throw new Error('redis unavailable'); }, 503],
+    [async () => ({ allowed: false, retryAfterSeconds: 45 }), 429],
+  ]) {
+    let evaluated = false;
+    const responses = [];
+    const router = createCustomContentRouter({
+      service: { async evaluateTopic() { evaluated = true; } },
+      async resolveOwner() { return { id: 'owner-id' }; },
+      send(_res, status, body) { responses.push({ status, body }); },
+      async readJson() { return { utterance: 'test' }; },
+      async readRaw() { return Buffer.alloc(0); },
+      rateLimitMany,
+    });
+    await router.handle({ method: 'POST', headers: {}, resume() {} }, { headersSent: false }, '/api/xb/topics/topic-id/evaluate');
+    assert.equal(evaluated, false);
+    assert.equal(responses[0].status, expectedStatus);
+  }
+});
+
+test('failed semantic evaluations release the owner concurrency permit', async () => {
+  const responses = [];
+  let calls = 0;
+  const router = createCustomContentRouter({
+    service: {
+      async evaluateTopic() {
+        calls += 1;
+        if (calls <= 2) throw new Error('upstream unavailable');
+        return { reasoning: 'ok' };
+      },
+    },
+    async resolveOwner() { return { id: 'owner-id' }; },
+    send(_res, status) { responses.push(status); },
+    async readJson() { return { utterance: 'test' }; },
+    async readRaw() { return Buffer.alloc(0); },
+    async rateLimitMany() { return { allowed: true }; },
+    logger: { error() {} },
+  });
+  for (let i = 0; i < 3; i += 1) {
+    await router.handle({ method: 'POST', headers: {}, resume() {} }, { headersSent: false }, '/api/xb/topics/topic-id/evaluate');
+  }
+  assert.deepEqual(responses, [500, 500, 200]);
+});
