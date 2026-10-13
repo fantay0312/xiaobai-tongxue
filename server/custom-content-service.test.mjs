@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setImmediate as waitTurn } from 'node:timers/promises';
+import { setTimeout as wait } from 'node:timers/promises';
 import { deflateRawSync } from 'node:zlib';
 import { createCustomContentService, validateFileInProcess, zipCrc32 } from './custom-content/service.mjs';
 import { validateUploadedFile } from './custom-content/file-validator.mjs';
@@ -328,14 +329,21 @@ function repositoryFixture() {
       },
       async findById(id) { return jobs.get(id) ?? null; },
       async listClaimable() {
-        return [...jobs.values()].filter((job) => job.status === 'queued' || (job.status === 'running' && !job.leaseToken));
+        return [...jobs.values()].filter((job) => job.status === 'queued' || (job.status === 'running' && (!job.leaseToken || Date.parse(job.leaseExpiresAt) <= Date.now())));
       },
       async claimForRun(id, leaseToken) {
         const job = jobs.get(id);
-        if (!job || (job.status !== 'queued' && !(job.status === 'running' && !job.leaseToken))) return null;
+        if (!job || (job.status !== 'queued' && !(job.status === 'running' && (!job.leaseToken || Date.parse(job.leaseExpiresAt) <= Date.now())))) return null;
         const claimed = { ...job, status: 'running', leaseToken, leaseExpiresAt: new Date(Date.now() + 600_000).toISOString() };
         jobs.set(id, claimed);
         return claimed;
+      },
+      async renewLease(id, leaseToken) {
+        const job = jobs.get(id);
+        if (!job || job.status !== 'running' || job.leaseToken !== leaseToken || Date.parse(job.leaseExpiresAt) <= Date.now()) return null;
+        const renewed = { ...job, leaseExpiresAt: new Date(Date.now() + 600_000).toISOString() };
+        jobs.set(id, renewed);
+        return renewed;
       },
       async findOpenByCourse(courseId) {
         return [...jobs.values()].find((job) => (
@@ -430,6 +438,77 @@ function cosFixture() {
     async delete({ key }) { objects.delete(key); return true; },
   };
 }
+
+async function compileWorkerFixture(compile) {
+  const repository = repositoryFixture();
+  const weknora = {
+    async createKnowledgeBase(input) { return { id: input.id }; },
+    async uploadFile() {}, async findKnowledgeByMetadata() {},
+  };
+  const compiler = { async compile(input) { return compile ? compile(input) : { topic: rawDraft(), qualityIssues: [] }; } };
+  const options = { repository, weknora, compiler, cos: cosFixture(), embeddingModelId: 'embed', logger: { error() {} }, compileHeartbeatMs: 10 };
+  const service = createCustomContentService(options);
+  const owner = { id: IDS[19], name: 'worker-test' };
+  const course = await service.createCourse(owner, 'worker course', 'test-course');
+  const asset = await repository.assets.create({ courseId: course.id, parseStatus: 'completed' });
+  return { repository, service, owner, course, asset, options };
+}
+
+test('transient job-claim failure is contained and maintenance can recover the queue', async () => {
+  const f = await compileWorkerFixture();
+  const claim = f.repository.jobs.claimForRun;
+  let attempts = 0;
+  f.repository.jobs.claimForRun = async (...args) => {
+    if (++attempts === 1) throw new Error('transient-db-disconnect');
+    return claim(...args);
+  };
+  const job = await f.service.startCompile(f.owner, { courseId: f.course.id, assetIds: [f.asset.id] });
+  await waitTurn();
+  assert.equal((await f.repository.jobs.findById(job.id)).status, 'queued');
+  await f.service.resumePendingJobs();
+  await waitTurn();
+  assert.equal((await f.repository.jobs.findById(job.id)).status, 'needs_review');
+  assert.equal(attempts, 2);
+});
+
+test('a slow compile renews its lease, excludes another worker and stops its heartbeat on completion', async () => {
+  let finish;
+  const gate = new Promise((resolve) => { finish = resolve; });
+  let compileCalls = 0;
+  const f = await compileWorkerFixture(async () => { compileCalls += 1; await gate; return { topic: rawDraft(), qualityIssues: [] }; });
+  let renewals = 0;
+  const renew = f.repository.jobs.renewLease;
+  f.repository.jobs.renewLease = async (...args) => { renewals += 1; return renew(...args); };
+  const job = await f.service.startCompile(f.owner, { courseId: f.course.id, assetIds: [f.asset.id] });
+  await wait(35);
+  assert.ok(renewals >= 1);
+  const otherWorker = createCustomContentService(f.options);
+  assert.equal(await otherWorker.resumePendingJobs(), 0);
+  assert.equal(compileCalls, 1);
+  finish();
+  await waitTurn();
+  assert.equal((await f.repository.jobs.findById(job.id)).status, 'needs_review');
+  const completedRenewals = renewals;
+  await wait(25);
+  assert.equal(renewals, completedRenewals, 'completed jobs must not keep renewing');
+});
+
+test('a worker which loses its lease cannot attach a stale draft or fail the new owner job', async () => {
+  let finish;
+  const gate = new Promise((resolve) => { finish = resolve; });
+  const f = await compileWorkerFixture(async () => { await gate; return { topic: rawDraft(), qualityIssues: [] }; });
+  const job = await f.service.startCompile(f.owner, { courseId: f.course.id, assetIds: [f.asset.id] });
+  await waitTurn();
+  const current = await f.repository.jobs.findById(job.id);
+  current.leaseToken = IDS[29];
+  await wait(25);
+  finish();
+  await waitTurn();
+  const after = await f.repository.jobs.findById(job.id);
+  assert.equal(after.status, 'running');
+  assert.equal(after.leaseToken, IDS[29]);
+  assert.equal(after.topicId, null);
+});
 
 function storedZip(files, archiveComment = Buffer.alloc(0)) {
   const localParts = [];

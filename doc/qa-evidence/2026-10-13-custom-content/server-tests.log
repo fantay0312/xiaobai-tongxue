@@ -1,0 +1,1325 @@
+
+> test
+> node --test --test-concurrency=4 *.test.mjs
+
+TAP version 13
+# Subtest: account changes require a session-bound two-step verification grant
+ok 1 - account changes require a session-bound two-step verification grant
+  ---
+  duration_ms: 2678.793167
+  ...
+# Subtest: account verification grants are session, action, account and revision bound
+ok 2 - account verification grants are session, action, account and revision bound
+  ---
+  duration_ms: 0.380375
+  ...
+# Subtest: account verification grants expire and newer grants replace the same action
+ok 3 - account verification grants expire and newer grants replace the same action
+  ---
+  duration_ms: 0.176667
+  ...
+# Subtest: distributed audit quotas isolate anonymous, member, and Owner traffic
+ok 4 - distributed audit quotas isolate anonymous, member, and Owner traffic
+  ---
+  duration_ms: 3.149042
+  ...
+# Subtest: bad auth traffic produces bounded audits and wrong methods produce none
+ok 5 - bad auth traffic produces bounded audits and wrong methods produce none
+  ---
+  duration_ms: 4.804792
+  ...
+# Subtest: pre-auth ingress denial cannot fall through to PostgreSQL audit
+ok 6 - pre-auth ingress denial cannot fall through to PostgreSQL audit
+  ---
+  duration_ms: 0.150834
+  ...
+# Subtest: one mutation admission covers intent and result, and denial is fail-closed
+ok 7 - one mutation admission covers intent and result, and denial is fail-closed
+  ---
+  duration_ms: 1.169
+  ...
+# Subtest: non-Owner invitation attempts are rejected before body, audit, or email work
+ok 8 - non-Owner invitation attempts are rejected before body, audit, or email work
+  ---
+  duration_ms: 0.388584
+  ...
+# Subtest: date-only audit upper bound includes the full selected UTC day
+ok 9 - date-only audit upper bound includes the full selected UTC day
+  ---
+  duration_ms: 1.377583
+  ...
+# Subtest: audit date range still rejects an upper date before the lower date
+ok 10 - audit date range still rejects an upper date before the lower date
+  ---
+  duration_ms: 0.315667
+  ...
+# Subtest: timestamped start can use the remainder of a date-only upper day
+ok 11 - timestamped start can use the remainder of a date-only upper day
+  ---
+  duration_ms: 0.100917
+  ...
+# Subtest: inclusive local-day timestamps become one exclusive SQL upper bound
+ok 12 - inclusive local-day timestamps become one exclusive SQL upper bound
+  ---
+  duration_ms: 0.083584
+  ...
+# Subtest: user disabled must be a boolean and cannot forge the audit action
+ok 13 - user disabled must be a boolean and cannot forge the audit action
+  ---
+  duration_ms: 1.020958
+  ...
+# Subtest: a normalized durable intent precedes the write and success event
+ok 14 - a normalized durable intent precedes the write and success event
+  ---
+  duration_ms: 0.516667
+  ...
+# Subtest: blank high-risk reasons are rejected before audit or mutation
+ok 15 - blank high-risk reasons are rejected before audit or mutation
+  ---
+  duration_ms: 0.086625
+  ...
+# Subtest: admin login identity ingress rejects before account lookup or KDF
+ok 16 - admin login identity ingress rejects before account lookup or KDF
+  ---
+  duration_ms: 1.046334
+  ...
+# Subtest: admin activation invitation ingress rejects before lookup or KDF
+ok 17 - admin activation invitation ingress rejects before lookup or KDF
+  ---
+  duration_ms: 0.125667
+  ...
+# Subtest: admin auth Redis outage fails closed before PostgreSQL
+ok 18 - admin auth Redis outage fails closed before PostgreSQL
+  ---
+  duration_ms: 0.652334
+  ...
+# Subtest: admin user JSON cannot expose password or session credentials
+ok 19 - admin user JSON cannot expose password or session credentials
+  ---
+  duration_ms: 0.861625
+  ...
+# Subtest: admin list repositories select explicit safe columns
+ok 20 - admin list repositories select explicit safe columns
+  ---
+  duration_ms: 2.439042
+  ...
+# Subtest: member global exhaustion cannot consume the reserved Owner global bucket
+ok 21 - member global exhaustion cannot consume the reserved Owner global bucket
+  ---
+  duration_ms: 1.337291
+  ...
+# Subtest: signed admin sessions authenticate class and expiry before storage
+ok 22 - signed admin sessions authenticate class and expiry before storage
+  ---
+  duration_ms: 0.831625
+  ...
+# Subtest: random cookies stay at zero session SQL and cannot consume Owner capacity
+ok 23 - random cookies stay at zero session SQL and cannot consume Owner capacity
+  ---
+  duration_ms: 3.045834
+  ...
+# Subtest: member pre-auth and actor quotas stop downstream PostgreSQL work
+ok 24 - member pre-auth and actor quotas stop downstream PostgreSQL work
+  ---
+  duration_ms: 0.285667
+  ...
+# Subtest: session envelope class mismatch revokes before RBAC or rotation
+ok 25 - session envelope class mismatch revokes before RBAC or rotation
+  ---
+  duration_ms: 0.198542
+  ...
+# Subtest: local concurrency gates reserve independent Owner capacity
+ok 26 - local concurrency gates reserve independent Owner capacity
+  ---
+  duration_ms: 0.452292
+  ...
+# Subtest: invitation creation locks the account before replacing its active token
+ok 27 - invitation creation locks the account before replacing its active token
+  ---
+  duration_ms: 0.633458
+  ...
+# Subtest: activating one token revokes every sibling so an older token cannot activate
+ok 28 - activating one token revokes every sibling so an older token cannot activate
+  ---
+  duration_ms: 0.439375
+  ...
+# Subtest: migration deduplicates active invitations before adding the partial unique index
+ok 29 - migration deduplicates active invitations before adding the partial unique index
+  ---
+  duration_ms: 2.572083
+  ...
+# Subtest: admin login shares the process KDF concurrency and minute budgets
+ok 30 - admin login shares the process KDF concurrency and minute budgets
+  ---
+  duration_ms: 1.956125
+  ...
+# Subtest: admin account lookup runs only after the local KDF permit
+ok 31 - admin account lookup runs only after the local KDF permit
+  ---
+  duration_ms: 0.399042
+  ...
+# Subtest: activation hashes only inside a releasable KDF permit
+ok 32 - activation hashes only inside a releasable KDF permit
+  ---
+  duration_ms: 0.217708
+  ...
+# Subtest: pending and unknown admin accounts perform identical dummy derivations
+ok 33 - pending and unknown admin accounts perform identical dummy derivations
+  ---
+  duration_ms: 0.2185
+  ...
+# Subtest: admin overload and slow bodies have explicit public responses
+ok 34 - admin overload and slow bodies have explicit public responses
+  ---
+  duration_ms: 0.146291
+  ...
+# Subtest: changing role permissions bumps members and revokes their sessions
+ok 35 - changing role permissions bumps members and revokes their sessions
+  ---
+  duration_ms: 1.669792
+  ...
+# Subtest: admin configuration is fail-closed and keeps independent HMAC keys
+ok 36 - admin configuration is fail-closed and keeps independent HMAC keys
+  ---
+  duration_ms: 1.033542
+  ...
+# Subtest: admin login uses an independent strict cookie and auth endpoints are audited
+ok 37 - admin login uses an independent strict cookie and auth endpoints are audited
+  ---
+  duration_ms: 0.659709
+  ...
+# Subtest: CSRF and a missing durable audit intent both block mutations
+ok 38 - CSRF and a missing durable audit intent both block mutations
+  ---
+  duration_ms: 0.492708
+  ...
+# Subtest: role writes and operator creation remain Owner-only regardless of delegated keys
+ok 39 - role writes and operator creation remain Owner-only regardless of delegated keys
+  ---
+  duration_ms: 0.484291
+  ...
+# Subtest: activation rate limiting happens before invitation lookup and password hashing
+ok 40 - activation rate limiting happens before invitation lookup and password hashing
+  ---
+  duration_ms: 0.345875
+  ...
+# Subtest: user validation is strict while legacy users may omit email
+ok 41 - user validation is strict while legacy users may omit email
+  ---
+  duration_ms: 1.268209
+  ...
+# Subtest: canonical name and email uniqueness spans configured and registered users
+ok 42 - canonical name and email uniqueness spans configured and registered users
+  ---
+  duration_ms: 0.851667
+  ...
+# Subtest: configured-user email overlay is strict, merged, and globally unique
+ok 43 - configured-user email overlay is strict, merged, and globally unique
+  ---
+  duration_ms: 0.408917
+  ...
+# Subtest: verified binding persists through overlay for configured users and registry for legacy users
+ok 44 - verified binding persists through overlay for configured users and registry for legacy users
+  ---
+  duration_ms: 0.247875
+  ...
+# Subtest: binding rejects already-bound users and globally owned email addresses
+ok 45 - binding rejects already-bound users and globally owned email addresses
+  ---
+  duration_ms: 0.230917
+  ...
+# Subtest: mainland phone overlay is strict, unique, and masks only canonical E.164 values
+ok 46 - mainland phone overlay is strict, unique, and masks only canonical E.164 values
+  ---
+  duration_ms: 0.224791
+  ...
+# Subtest: verified phone bind/change persists to the correct source and enforces one owner
+ok 47 - verified phone bind/change persists to the correct source and enforces one owner
+  ---
+  duration_ms: 0.263792
+  ...
+# Subtest: verified email change updates the correct durable source and remains valid after reload
+ok 48 - verified email change updates the correct durable source and remains valid after reload
+  ---
+  duration_ms: 0.422875
+  ...
+# Subtest: verified email change rejects unbound, unchanged, and globally owned targets
+ok 49 - verified email change rejects unbound, unchanged, and globally owned targets
+  ---
+  duration_ms: 0.270292
+  ...
+# Subtest: two legacy accounts racing for one email can persist only one owner
+ok 50 - two legacy accounts racing for one email can persist only one owner
+  ---
+  duration_ms: 0.274792
+  ...
+# Subtest: binding upgrade revokes every prior session for that canonical account only
+ok 51 - binding upgrade revokes every prior session for that canonical account only
+  ---
+  duration_ms: 0.109625
+  ...
+# Subtest: encoded expected identity must canonically match the cookie user
+ok 52 - encoded expected identity must canonically match the cookie user
+  ---
+  duration_ms: 0.342458
+  ...
+# Subtest: password service performs the same derivation for known and unknown users
+ok 53 - password service performs the same derivation for known and unknown users
+  ---
+  duration_ms: 0.306208
+  ...
+# Subtest: password service preserves legacy verification and versions stronger new hashes
+ok 54 - password service preserves legacy verification and versions stronger new hashes
+  ---
+  duration_ms: 0.34875
+  ...
+# Subtest: auth gate enforces concurrency and minute budgets atomically
+ok 55 - auth gate enforces concurrency and minute budgets atomically
+  ---
+  duration_ms: 0.448417
+  ...
+# Subtest: per-IP rejection before global admission neither drains the budget nor leaks a slot
+ok 56 - per-IP rejection before global admission neither drains the budget nor leaks a slot
+  ---
+  duration_ms: 0.11975
+  ...
+# Subtest: IPv6 addresses are grouped by /64 while IPv4 stays exact
+ok 57 - IPv6 addresses are grouped by /64 while IPv4 stays exact
+  ---
+  duration_ms: 2.833167
+  ...
+# Subtest: auth transport is HTTPS-only unless local/test override is explicit
+ok 58 - auth transport is HTTPS-only unless local/test override is explicit
+  ---
+  duration_ms: 0.0575
+  ...
+# Subtest: binding endpoints suppress occupied-email enumeration and still consume limits
+ok 59 - binding endpoints suppress occupied-email enumeration and still consume limits
+  ---
+  duration_ms: 4419.348833
+  ...
+# Subtest: captcha challenges are scene-bound, unique, and never cacheable
+ok 60 - captcha challenges are scene-bound, unique, and never cacheable
+  ---
+  duration_ms: 88.107208
+  ...
+# Subtest: email-code routes require one-time valid proofs before sending mail
+ok 61 - email-code routes require one-time valid proofs before sending mail
+  ---
+  duration_ms: 6468.803833
+  ...
+# Subtest: valid login proofs cover password and email login while risky proofs sign no session
+ok 62 - valid login proofs cover password and email login while risky proofs sign no session
+  ---
+  duration_ms: 885.837959
+  ...
+# Subtest: same actor and key replay exactly one encrypted CDK batch
+ok 63 - same actor and key replay exactly one encrypted CDK batch
+  ---
+  duration_ms: 3.368208
+  ...
+# Subtest: same key conflicts on another request while another actor remains isolated
+ok 64 - same key conflicts on another request while another actor remains isolated
+  ---
+  duration_ms: 0.430042
+  ...
+# Subtest: concurrent identical requests create one campaign and replay one code export
+ok 65 - concurrent identical requests create one campaign and replay one code export
+  ---
+  duration_ms: 0.30325
+  ...
+# Subtest: expired export becomes a ciphertext-free tombstone and never creates again
+ok 66 - expired export becomes a ciphertext-free tombstone and never creates again
+  ---
+  duration_ms: 0.376458
+  ...
+# Subtest: migration enforces actor-key uniqueness and immutable AES-GCM export tombstones
+ok 67 - migration enforces actor-key uniqueness and immutable AES-GCM export tombstones
+  ---
+  duration_ms: 2.492167
+  ...
+# Subtest: admin CDK API requires and forwards the normalized idempotency key
+ok 68 - admin CDK API requires and forwards the normalized idempotency key
+  ---
+  duration_ms: 0.378083
+  ...
+# Subtest: CDK and admin subscription bonuses acquire user before wallet locks
+ok 69 - CDK and admin subscription bonuses acquire user before wallet locks
+  ---
+  duration_ms: 1.622042
+  ...
+# Subtest: campaign creation resolves and persists immutable plan and entitlement snapshots
+ok 70 - campaign creation resolves and persists immutable plan and entitlement snapshots
+  ---
+  duration_ms: 2.067
+  ...
+# Subtest: redemption uses only the frozen plan version and entitlement definition
+ok 71 - redemption uses only the frozen plan version and entitlement definition
+  ---
+  duration_ms: 0.964542
+  ...
+# Subtest: legacy and malformed reward payloads fail before any value is issued
+ok 72 - legacy and malformed reward payloads fail before any value is issued
+  ---
+  duration_ms: 0.35075
+  ...
+# Subtest: same-user redemption replay is successful but a different user is rejected
+ok 73 - same-user redemption replay is successful but a different user is rejected
+  ---
+  duration_ms: 0.365292
+  ...
+# Subtest: summary outage cannot turn an already committed redemption into a failure
+ok 74 - summary outage cannot turn an already committed redemption into a failure
+  ---
+  duration_ms: 0.136167
+  ...
+# Subtest: repository assigns the exact frozen version and can read a prior redemption
+ok 75 - repository assigns the exact frozen version and can read a prior redemption
+  ---
+  duration_ms: 0.612917
+  ...
+# Subtest: migration constrains and protects campaign snapshots
+ok 76 - migration constrains and protects campaign snapshots
+  ---
+  duration_ms: 2.857625
+  ...
+# Subtest: CDK requests reject duplicate standalone entitlement keys
+ok 77 - CDK requests reject duplicate standalone entitlement keys
+  ---
+  duration_ms: 0.613209
+  ...
+# Subtest: frozen CDK snapshots reject duplicate standalone entitlement keys
+ok 78 - frozen CDK snapshots reject duplicate standalone entitlement keys
+  ---
+  duration_ms: 0.219584
+  ...
+# Subtest: 助教推理预算够用,空正文由非推理模型兜底,不再降级离线锦囊
+ok 79 - 助教推理预算够用,空正文由非推理模型兜底,不再降级离线锦囊
+  ---
+  duration_ms: 393.889542
+  ...
+# Subtest: protected concurrency permit is per request and reusable after finish
+ok 80 - protected concurrency permit is per request and reusable after finish
+  ---
+  duration_ms: 0.628542
+  ...
+# Subtest: catalog concurrency gate rejects before PG and releases on finish
+ok 81 - catalog concurrency gate rejects before PG and releases on finish
+  ---
+  duration_ms: 0.34525
+  ...
+# Subtest: commerce catalog and me preserve the exact public contract and BIGINT strings
+ok 82 - commerce catalog and me preserve the exact public contract and BIGINT strings
+  ---
+  duration_ms: 0.842208
+  ...
+# Subtest: restriction and feature decisions are enforced by the shared API access controller
+ok 83 - restriction and feature decisions are enforced by the shared API access controller
+  ---
+  duration_ms: 0.689917
+  ...
+# Subtest: CDK stores HMAC only, redeems once under concurrency, and completes its campaign
+ok 84 - CDK stores HMAC only, redeems once under concurrency, and completes its campaign
+  ---
+  duration_ms: 2.3845
+  ...
+# Subtest: CDK redeem requires exact Origin, JSON, and both user/IP rate budgets
+ok 85 - CDK redeem requires exact Origin, JSON, and both user/IP rate budgets
+  ---
+  duration_ms: 0.244
+  ...
+# Subtest: protected ingress short-circuits local Redis denials before global and PG
+ok 86 - protected ingress short-circuits local Redis denials before global and PG
+  ---
+  duration_ms: 1.028583
+  ...
+# Subtest: catalog, me, and redeem limits stop listPlans, resolveUser, summary, and writes
+ok 87 - catalog, me, and redeem limits stop listPlans, resolveUser, summary, and writes
+  ---
+  duration_ms: 0.435042
+  ...
+# Subtest: public catalog cache deduplicates promises and supports explicit invalidation
+ok 88 - public catalog cache deduplicates promises and supports explicit invalidation
+  ---
+  duration_ms: 0.222625
+  ...
+# Subtest: admin catalog mutations explicitly invalidate the public cache
+ok 89 - admin catalog mutations explicitly invalidate the public cache
+  ---
+  duration_ms: 0.347041
+  ...
+# Subtest: accessDecision and summary reuse one request entitlement/feature snapshot
+ok 90 - accessDecision and summary reuse one request entitlement/feature snapshot
+  ---
+  duration_ms: 0.24475
+  ...
+# Subtest: commit failure remains recoverable and never invokes the fail-stop handler
+ok 91 - commit failure remains recoverable and never invokes the fail-stop handler
+  ---
+  duration_ms: 0.42725
+  ...
+# Subtest: post-commit refresh failure invokes fail-stop before propagating
+ok 92 - post-commit refresh failure invokes fail-stop before propagating
+  ---
+  duration_ms: 0.085875
+  ...
+# Subtest: successful commit and refresh return both authoritative results
+ok 93 - successful commit and refresh return both authoritative results
+  ---
+  duration_ms: 0.285416
+  ...
+# Subtest: 默认带思考预算与 JSON 模式,一次成功不重试
+ok 94 - 默认带思考预算与 JSON 模式,一次成功不重试
+  ---
+  duration_ms: 0.908583
+  ...
+# Subtest: finish=length 的断尾正文 → 关思考重发;仍截断 → compiler-truncated
+ok 95 - finish=length 的断尾正文 → 关思考重发;仍截断 → compiler-truncated
+  ---
+  duration_ms: 0.311125
+  ...
+# Subtest: 思考吃光 max_tokens 正文为空 → 关思考重发一次
+ok 96 - 思考吃光 max_tokens 正文为空 → 关思考重发一次
+  ---
+  duration_ms: 0.131917
+  ...
+# Subtest: 关思考后仍为空 → compiler-empty(稳定错误码前缀)
+ok 97 - 关思考后仍为空 → compiler-empty(稳定错误码前缀)
+  ---
+  duration_ms: 0.212208
+  ...
+# Subtest: 上游不认 reasoning_effort(400)→ 去参数重发
+ok 98 - 上游不认 reasoning_effort(400)→ 去参数重发
+  ---
+  duration_ms: 0.107583
+  ...
+# Subtest: 429 → compiler-rate-limited;其他非 2xx → compiler-upstream-failed
+ok 99 - 429 → compiler-rate-limited;其他非 2xx → compiler-upstream-failed
+  ---
+  duration_ms: 0.096333
+  ...
+# Subtest: 超时 → compiler-timeout
+ok 100 - 超时 → compiler-timeout
+  ---
+  duration_ms: 21.756084
+  ...
+# Subtest: reasoningEffort 显式设为 none 时空正文不再重试
+ok 101 - reasoningEffort 显式设为 none 时空正文不再重试
+  ---
+  duration_ms: 0.255208
+  ...
+# Subtest: evaluation token budget survives compatibility and empty-response retries
+ok 102 - evaluation token budget survives compatibility and empty-response retries
+  ---
+  duration_ms: 0.217417
+  ...
+# Subtest: unsupported reasoning parameter stays absent after an incomplete compatibility retry
+ok 103 - unsupported reasoning parameter stays absent after an incomplete compatibility retry
+  ---
+  duration_ms: 0.329125
+  ...
+# Subtest: evaluation deadline can be shortened without raising the client timeout
+ok 104 - evaluation deadline can be shortened without raising the client timeout
+  ---
+  duration_ms: 21.061792
+  ...
+# Subtest: per-request tokens cannot raise the configured compiler maximum
+ok 105 - per-request tokens cannot raise the configured compiler maximum
+  ---
+  duration_ms: 0.160792
+  ...
+# Subtest: custom topic contract normalizes a complete grounded draft
+ok 106 - custom topic contract normalizes a complete grounded draft
+  ---
+  duration_ms: 1.529416
+  ...
+# Subtest: student custom topic view strips assessment-only and source fields
+ok 107 - student custom topic view strips assessment-only and source fields
+  ---
+  duration_ms: 0.340542
+  ...
+# Subtest: quality gate blocks ungrounded and incomplete drafts
+ok 108 - quality gate blocks ungrounded and incomplete drafts
+  ---
+  duration_ms: 0.22475
+  ...
+# Subtest: quality gate preserves and reports invalid quiz references and answers
+ok 109 - quality gate preserves and reports invalid quiz references and answers
+  ---
+  duration_ms: 0.181958
+  ...
+# Subtest: blank quiz options remain positional and cannot silently retarget the answer
+ok 110 - blank quiz options remain positional and cannot silently retarget the answer
+  ---
+  duration_ms: 0.559291
+  ...
+# Subtest: long topic-prefixed quiz ids preserve their distinguishing suffixes
+ok 111 - long topic-prefixed quiz ids preserve their distinguishing suffixes
+  ---
+  duration_ms: 0.5135
+  ...
+# Subtest: custom semantic evaluation keeps the full rubric inside the server compiler
+ok 112 - custom semantic evaluation keeps the full rubric inside the server compiler
+  ---
+  duration_ms: 0.375375
+  ...
+# Subtest: topic compiler retrieves a requested title before applying the source budget
+ok 113 - topic compiler retrieves a requested title before applying the source budget
+  ---
+  duration_ms: 2.034
+  ...
+# Subtest: custom content migration anchors COS ownership and active compile uniqueness
+ok 114 - custom content migration anchors COS ownership and active compile uniqueness
+  ---
+  duration_ms: 5.186167
+  ...
+# Subtest: custom maintenance starts after listen and shares the COS upload ceiling
+ok 115 - custom maintenance starts after listen and shares the COS upload ceiling
+  ---
+  duration_ms: 2.361875
+  ...
+# Subtest: 归一化容错:字符串/一维/大小写/"C1-C2"/说话人前缀都能对回契约
+ok 116 - 归一化容错:字符串/一维/大小写/"C1-C2"/说话人前缀都能对回契约
+  ---
+  duration_ms: 1.644917
+  ...
+# Subtest: 缺 probe 时以错误认知作判断题、缺解释取首条纠正标准;缺 remedy 不再抛弃整条误区
+ok 117 - 缺 probe 时以错误认知作判断题、缺解释取首条纠正标准;缺 remedy 不再抛弃整条误区
+  ---
+  duration_ms: 0.308917
+  ...
+# Subtest: 首稿没过闸 → 带问题清单修补一轮,修补稿过闸即采用
+ok 118 - 首稿没过闸 → 带问题清单修补一轮,修补稿过闸即采用
+  ---
+  duration_ms: 1.0865
+  ...
+# Subtest: 修补稿更差或解析失败 → 保留首稿交老师校订
+ok 119 - 修补稿更差或解析失败 → 保留首稿交老师校订
+  ---
+  duration_ms: 1.21125
+  ...
+# Subtest: 首稿即过闸 → 不发修补请求
+ok 120 - 首稿即过闸 → 不发修补请求
+  ---
+  duration_ms: 0.250959
+  ...
+# Subtest: repair():对存量草稿修补,保留 teacherEdited 与 topicId
+ok 121 - repair():对存量草稿修补,保留 teacherEdited 与 topicId
+  ---
+  duration_ms: 0.3575
+  ...
+# Subtest: custom content owner resolution failures return a bounded 503 response
+ok 122 - custom content owner resolution failures return a bounded 503 response
+  ---
+  duration_ms: 0.764584
+  ...
+# Subtest: custom uploads use an idle timeout and size-scaled total deadline
+ok 123 - custom uploads use an idle timeout and size-scaled total deadline
+  ---
+  duration_ms: 0.59375
+  ...
+# Subtest: custom multipart parsing returns a zero-copy file view
+ok 124 - custom multipart parsing returns a zero-copy file view
+  ---
+  duration_ms: 0.61125
+  ...
+# Subtest: custom JSON endpoints reject parsed primitives with a bounded 400
+ok 125 - custom JSON endpoints reject parsed primitives with a bounded 400
+  ---
+  duration_ms: 0.143416
+  ...
+# Subtest: custom owner and global quotas use one atomic reservation
+ok 126 - custom owner and global quotas use one atomic reservation
+  ---
+  duration_ms: 0.131292
+  ...
+# Subtest: semantic evaluation has atomic burst limits and an owner inflight gate
+ok 127 - semantic evaluation has atomic burst limits and an owner inflight gate
+  ---
+  duration_ms: 2.59075
+  ...
+# Subtest: semantic evaluation fails closed before model use when quotas are unavailable or denied
+ok 128 - semantic evaluation fails closed before model use when quotas are unavailable or denied
+  ---
+  duration_ms: 0.27325
+  ...
+# Subtest: failed semantic evaluations release the owner concurrency permit
+ok 129 - failed semantic evaluations release the owner concurrency permit
+  ---
+  duration_ms: 0.402292
+  ...
+# Subtest: transient job-claim failure is contained and maintenance can recover the queue
+ok 130 - transient job-claim failure is contained and maintenance can recover the queue
+  ---
+  duration_ms: 4.44
+  ...
+# Subtest: a slow compile renews its lease, excludes another worker and stops its heartbeat on completion
+ok 131 - a slow compile renews its lease, excludes another worker and stops its heartbeat on completion
+  ---
+  duration_ms: 62.781375
+  ...
+# Subtest: a worker which loses its lease cannot attach a stale draft or fail the new owner job
+ok 132 - a worker which loses its lease cannot attach a stale draft or fail the new owner job
+  ---
+  duration_ms: 26.382583
+  ...
+# Subtest: custom content service runs create, upload, compile, review, publish and student-view flow
+ok 133 - custom content service runs create, upload, compile, review, publish and student-view flow
+  ---
+  duration_ms: 4.7435
+  ...
+# Subtest: teacher-added checklist item is grounded against owned course chunks on save
+ok 134 - teacher-added checklist item is grounded against owned course chunks on save
+  ---
+  duration_ms: 1.821375
+  ...
+# Subtest: custom content service rejects disguised and oversized files before WeKnora
+ok 135 - custom content service rejects disguised and oversized files before WeKnora
+  ---
+  duration_ms: 0.288917
+  ...
+# Subtest: OOXML uploads require bounded DOCX/PPTX archive structure
+ok 136 - OOXML uploads require bounded DOCX/PPTX archive structure
+  ---
+  duration_ms: 384.639583
+  ...
+# Subtest: failed WeKnora ingestion compensates the already written COS original
+ok 137 - failed WeKnora ingestion compensates the already written COS original
+  ---
+  duration_ms: 0.440167
+  ...
+# Subtest: stale upload reconciliation is bounded to four concurrent upstream deletions
+ok 138 - stale upload reconciliation is bounded to four concurrent upstream deletions
+  ---
+  duration_ms: 15.908792
+  ...
+# Subtest: failed reparse claims settle to failed without disturbing referenced assets
+ok 139 - failed reparse claims settle to failed without disturbing referenced assets
+  ---
+  duration_ms: 0.631625
+  ...
+# Subtest: reparse claims block stale polling, duplicate reparse, delete and compile readiness
+ok 140 - reparse claims block stale polling, duplicate reparse, delete and compile readiness
+  ---
+  duration_ms: 0.414542
+  ...
+# Subtest: asset deletion resumes idempotently from a persisted deleting state
+ok 141 - asset deletion resumes idempotently from a persisted deleting state
+  ---
+  duration_ms: 0.218708
+  ...
+# Subtest: background maintenance removes stale deleting assets after a crashed request
+ok 142 - background maintenance removes stale deleting assets after a crashed request
+  ---
+  duration_ms: 0.165
+  ...
+# Subtest: lost commit acknowledgements recover committed course and asset rows without compensation
+ok 143 - lost commit acknowledgements recover committed course and asset rows without compensation
+  ---
+  duration_ms: 0.178625
+  ...
+# Subtest: normalizeEmail accepts conservative addresses and canonicalizes case
+ok 144 - normalizeEmail accepts conservative addresses and canonicalizes case
+  ---
+  duration_ms: 0.592583
+  ...
+# Subtest: Resend adapter sends fixed transactional payload and required headers
+ok 145 - Resend adapter sends fixed transactional payload and required headers
+  ---
+  duration_ms: 0.4285
+  ...
+# Subtest: Resend adapter preserves bounded redacted diagnostics for non-OK responses
+ok 146 - Resend adapter preserves bounded redacted diagnostics for non-OK responses
+  ---
+  duration_ms: 0.722708
+  ...
+# Subtest: code is bound to email and purpose, then consumed exactly once
+ok 147 - code is bound to email and purpose, then consumed exactly once
+  ---
+  duration_ms: 1.367667
+  ...
+# Subtest: binding code is additionally bound to the canonical session subject
+ok 148 - binding code is additionally bound to the canonical session subject
+  ---
+  duration_ms: 0.208
+  ...
+# Subtest: login code cannot cross an email ownership-version change
+ok 149 - login code cannot cross an email ownership-version change
+  ---
+  duration_ms: 0.137875
+  ...
+# Subtest: email-change code is bound to account, purpose, and target email, then consumed once
+ok 150 - email-change code is bound to account, purpose, and target email, then consumed once
+  ---
+  duration_ms: 0.174042
+  ...
+# Subtest: password-reset code is bound to the owner and credential revision
+ok 151 - password-reset code is bound to the owner and credential revision
+  ---
+  duration_ms: 0.147542
+  ...
+# Subtest: code expires after ten minutes
+ok 152 - code expires after ten minutes
+  ---
+  duration_ms: 0.244459
+  ...
+# Subtest: five wrong attempts invalidate the current code
+ok 153 - five wrong attempts invalidate the current code
+  ---
+  duration_ms: 0.319917
+  ...
+# Subtest: successful resend invalidates the previous code
+ok 154 - successful resend invalidates the previous code
+  ---
+  duration_ms: 0.299167
+  ...
+# Subtest: failed resend keeps the previously delivered code valid
+ok 155 - failed resend keeps the previously delivered code valid
+  ---
+  duration_ms: 0.216458
+  ...
+# Subtest: in-flight send locks the email against concurrent requests
+ok 156 - in-flight send locks the email against concurrent requests
+  ---
+  duration_ms: 0.095416
+  ...
+# Subtest: global sender limit protects Resend from distributed bursts
+ok 157 - global sender limit protects Resend from distributed bursts
+  ---
+  duration_ms: 0.07175
+  ...
+# Subtest: suppressed login and register requests respond normally without storing a code
+ok 158 - suppressed login and register requests respond normally without storing a code
+  ---
+  duration_ms: 0.096667
+  ...
+# Subtest: delivered and suppressed requests share one jittered minimum response duration
+ok 159 - delivered and suppressed requests share one jittered minimum response duration
+  ---
+  duration_ms: 0.141542
+  ...
+# Subtest: slow sender is not delayed again after exceeding the jittered minimum
+ok 160 - slow sender is not delayed again after exceeding the jittered minimum
+  ---
+  duration_ms: 0.067208
+  ...
+# Subtest: opaque delivery returns on the shared delay and stores the code only after send succeeds
+ok 161 - opaque delivery returns on the shared delay and stores the code only after send succeeds
+  ---
+  duration_ms: 3.906125
+  ...
+# Subtest: fast sender failure is padded to the same jittered minimum
+ok 162 - fast sender failure is padded to the same jittered minimum
+  ---
+  duration_ms: 0.219625
+  ...
+# Subtest: failed later dimension does not pollute earlier rate-limit dimensions
+ok 163 - failed later dimension does not pollute earlier rate-limit dimensions
+  ---
+  duration_ms: 0.103916
+  ...
+# Subtest: global hourly and daily budgets cap distributed senders
+ok 164 - global hourly and daily budgets cap distributed senders
+  ---
+  duration_ms: 0.087125
+  ...
+# Subtest: verified accounts change email safely while legacy first-binding remains supported
+ok 165 - verified accounts change email safely while legacy first-binding remains supported
+  ---
+  duration_ms: 10774.843083
+  ...
+# Subtest: every runtime feature scope is fixed and missing rows fail closed
+ok 166 - every runtime feature scope is fixed and missing rows fail closed
+  ---
+  duration_ms: 0.795583
+  ...
+# Subtest: a configured feature can allow or deny its exact API scope
+ok 167 - a configured feature can allow or deny its exact API scope
+  ---
+  duration_ms: 0.313666
+  ...
+# Subtest: feature writes reject typo keys before any query
+ok 168 - feature writes reject typo keys before any query
+  ---
+  duration_ms: 0.178375
+  ...
+# Subtest: feature storage keeps only the public reason, never the internal change reason
+ok 169 - feature storage keeps only the public reason, never the internal change reason
+  ---
+  duration_ms: 0.490084
+  ...
+# Subtest: migration seeds all managed feature rows enabled for compatibility
+ok 170 - migration seeds all managed feature rows enabled for compatibility
+  ---
+  duration_ms: 2.47175
+  ...
+# Subtest: permanent inbound policy rejections are acknowledged without provider retries
+ok 171 - permanent inbound policy rejections are acknowledged without provider retries
+  ---
+  duration_ms: 0.661125
+  ...
+# Subtest: signature failures return 400 and infrastructure failures remain retryable
+ok 172 - signature failures return 400 and infrastructure failures remain retryable
+  ---
+  duration_ms: 0.068917
+  ...
+# Subtest: PostgreSQL BIGINT boundaries are checked before SQL casts
+ok 173 - PostgreSQL BIGINT boundaries are checked before SQL casts
+  ---
+  duration_ms: 0.447875
+  ...
+# Subtest: point operations reject out-of-range postings before querying storage
+ok 174 - point operations reject out-of-range postings before querying storage
+  ---
+  duration_ms: 0.290834
+  ...
+# Subtest: CDK point rewards reject both individual and aggregate overflow
+ok 175 - CDK point rewards reject both individual and aggregate overflow
+  ---
+  duration_ms: 0.181792
+  ...
+# Subtest: plan price duration is capped before its INTEGER SQL cast
+ok 176 - plan price duration is capped before its INTEGER SQL cast
+  ---
+  duration_ms: 0.556166
+  ...
+# Subtest: legacy configured and registered accounts receive restricted sessions
+ok 177 - legacy configured and registered accounts receive restricted sessions
+  ---
+  duration_ms: 653.722666
+  ...
+# Subtest: vision and transcript APIs enforce protected media boundaries and account isolation
+ok 178 - vision and transcript APIs enforce protected media boundaries and account isolation
+  ---
+  duration_ms: 5032.594334
+  ...
+# Subtest: vision configuration keeps main credentials same-origin and rejects insecure transports
+ok 179 - vision configuration keeps main credentials same-origin and rejects insecure transports
+  ---
+  duration_ms: 558.876792
+  ...
+# Subtest: nginx does not trust the viewer-controlled client IP header
+ok 180 - nginx does not trust the viewer-controlled client IP header
+  ---
+  duration_ms: 2.086917
+  ...
+# Subtest: validates the exact password override shape and returns a detached record
+ok 181 - validates the exact password override shape and returns a detached record
+  ---
+  duration_ms: 2.188333
+  ...
+# Subtest: requires arrays and valid configured-user records
+ok 182 - requires arrays and valid configured-user records
+  ---
+  duration_ms: 0.160084
+  ...
+# Subtest: override names must uniquely and exactly identify configured accounts
+ok 183 - override names must uniquely and exactly identify configured accounts
+  ---
+  duration_ms: 0.150833
+  ...
+# Subtest: override credentials and timestamps use strict persisted formats
+ok 184 - override credentials and timestamps use strict persisted formats
+  ---
+  duration_ms: 0.202416
+  ...
+# Subtest: versioned password credentials accept the current scheme and reject unknown schemes
+ok 185 - versioned password credentials accept the current scheme and reject unknown schemes
+  ---
+  duration_ms: 0.09125
+  ...
+# Subtest: applies overrides without mutating configured users or leaking metadata
+ok 186 - applies overrides without mutating configured users or leaking metadata
+  ---
+  duration_ms: 0.3215
+  ...
+# Subtest: configured password updates append and replace durable overrides
+ok 187 - configured password updates append and replace durable overrides
+  ---
+  duration_ms: 0.238125
+  ...
+# Subtest: registered password updates preserve account fields and record the change time
+ok 188 - registered password updates preserve account fields and record the change time
+  ---
+  duration_ms: 0.143458
+  ...
+# Subtest: updates reject unknown users, malformed credentials, and malformed timestamps
+ok 189 - updates reject unknown users, malformed credentials, and malformed timestamps
+  ---
+  duration_ms: 0.302541
+  ...
+# Subtest: updates require valid arrays and globally unique canonical account names
+ok 190 - updates require valid arrays and globally unique canonical account names
+  ---
+  duration_ms: 0.289292
+  ...
+# Subtest: password reset and authenticated password change are durable and revoke prior sessions
+ok 191 - password reset and authenticated password change are durable and revoke prior sessions
+  ---
+  duration_ms: 9427.984833
+  ...
+# Subtest: credential mutations serialize and stale reset codes cannot win a password-change race
+ok 192 - credential mutations serialize and stale reset codes cannot win a password-change race
+  ---
+  duration_ms: 2183.932333
+  ...
+# Subtest: malformed password-overrides.json fails closed during gateway startup
+ok 193 - malformed password-overrides.json fails closed during gateway startup
+  ---
+  duration_ms: 79.530375
+  ...
+# Subtest: session TTL configuration rejects non-numeric and out-of-range values
+ok 194 - session TTL configuration rejects non-numeric and out-of-range values
+  ---
+  duration_ms: 195.720792
+  ...
+# Subtest: password login accepts account or verified email without weakening legacy binding
+ok 195 - password login accepts account or verified email without weakening legacy binding
+  ---
+  duration_ms: 3185.128292
+  ...
+# Subtest: phone login, forced binding, opaque sends, and phone password reset are durable
+ok 196 - phone login, forced binding, opaque sends, and phone password reset are durable
+  ---
+  duration_ms: 3774.057209
+  ...
+# Subtest: phone OTP is bound to phone, purpose, and subject then consumed once
+ok 197 - phone OTP is bound to phone, purpose, and subject then consumed once
+  ---
+  duration_ms: 1.312708
+  ...
+# Subtest: phone OTP expires and five wrong attempts invalidate it
+ok 198 - phone OTP expires and five wrong attempts invalidate it
+  ---
+  duration_ms: 0.456834
+  ...
+# Subtest: successful resend replaces the old code and suppressed delivery stores nothing
+ok 199 - successful resend replaces the old code and suppressed delivery stores nothing
+  ---
+  duration_ms: 0.217292
+  ...
+# Subtest: production OTP store persists codes and distributed limits across process restarts
+ok 200 - production OTP store persists codes and distributed limits across process restarts
+  ---
+  duration_ms: 0.288
+  ...
+# Subtest: point posting locks idempotency and wallets, balances two postings, and replays safely
+ok 201 - point posting locks idempotency and wallets, balances two postings, and replays safely
+  ---
+  duration_ms: 1.962541
+  ...
+# Subtest: debits consume locked lots in earliest-expiry order and keep wallet/lot totals aligned
+ok 202 - debits consume locked lots in earliest-expiry order and keep wallet/lot totals aligned
+  ---
+  duration_ms: 0.419583
+  ...
+# Subtest: point repository declares the primitives needed for concurrent first-write safety
+ok 203 - point repository declares the primitives needed for concurrent first-write safety
+  ---
+  duration_ms: 2.23
+  ...
+# Subtest: main and admin SPAs have isolated fallbacks and cache policies
+ok 204 - main and admin SPAs have isolated fallbacks and cache policies
+  ---
+  duration_ms: 4.469917
+  ...
+# Subtest: themed index boots inline without opening script-src, and audio keeps its media type
+ok 205 - themed index boots inline without opening script-src, and audio keeps its media type
+  ---
+  duration_ms: 2.313875
+  ...
+# Subtest: decoded traversal cannot leave either distribution root
+ok 206 - decoded traversal cannot leave either distribution root
+  ---
+  duration_ms: 1.840625
+  ...
+# Subtest: contact protector normalizes, hashes, encrypts, and authenticates PII
+ok 207 - contact protector normalizes, hashes, encrypts, and authenticates PII
+  ---
+  duration_ms: 1.821709
+  ...
+# Subtest: contact configuration and generated IDs fail closed
+ok 208 - contact configuration and generated IDs fail closed
+  ---
+  duration_ms: 0.167
+  ...
+# Subtest: COS store creates random private SSE keys scoped to the user UUID
+ok 209 - COS store creates random private SSE keys scoped to the user UUID
+  ---
+  duration_ms: 1.003667
+  ...
+# Subtest: COS configuration and bodies fail closed
+ok 210 - COS configuration and bodies fail closed
+  ---
+  duration_ms: 0.352916
+  ...
+# Subtest: PostgreSQL repositories parameterize input and never persist contact plaintext
+ok 211 - PostgreSQL repositories parameterize input and never persist contact plaintext
+  ---
+  duration_ms: 1.730417
+  ...
+# Subtest: PostgreSQL transactions commit, roll back, and health-check
+ok 212 - PostgreSQL transactions commit, roll back, and health-check
+  ---
+  duration_ms: 0.504583
+  ...
+# Subtest: PostgreSQL configuration and schema are fail-closed and complete
+ok 213 - PostgreSQL configuration and schema are fail-closed and complete
+  ---
+  duration_ms: 2.512417
+  ...
+# Subtest: inbound quota atomically reserves user and global daily count and bytes
+ok 214 - inbound quota atomically reserves user and global daily count and bytes
+  ---
+  duration_ms: 1.670708
+  ...
+# Subtest: inbound quota distinguishes rejection from an idempotent retry reservation
+ok 215 - inbound quota distinguishes rejection from an idempotent retry reservation
+  ---
+  duration_ms: 0.20925
+  ...
+# Subtest: inbound quota rejects invalid sizes and malformed Redis responses
+ok 216 - inbound quota rejects invalid sizes and malformed Redis responses
+  ---
+  duration_ms: 0.41725
+  ...
+# Subtest: Redis Lua scripts consume once, expire attempts, and preserve TradingVane keys
+ok 217 - Redis Lua scripts consume once, expire attempts, and preserve TradingVane keys
+  ---
+  duration_ms: 116.189208
+  ...
+# Subtest: OTP operations are atomic, hashed, and isolated to xiaobai keys
+ok 218 - OTP operations are atomic, hashed, and isolated to xiaobai keys
+  ---
+  duration_ms: 1.621375
+  ...
+# Subtest: Redis production configuration explicitly selects RESP2 and fails closed
+ok 219 - Redis production configuration explicitly selects RESP2 and fails closed
+  ---
+  duration_ms: 15.9375
+  ...
+# Subtest: Resend inbound verifies raw signature then stores body and attachments in PG/COS
+ok 220 - Resend inbound verifies raw signature then stores body and attachments in PG/COS
+  ---
+  duration_ms: 1.687375
+  ...
+# Subtest: Resend inbound compensates COS writes when PostgreSQL fails
+ok 221 - Resend inbound compensates COS writes when PostgreSQL fails
+  ---
+  duration_ms: 0.485833
+  ...
+# Subtest: Resend inbound ignores unrelated verified events and fails closed on signature config
+ok 222 - Resend inbound ignores unrelated verified events and fails closed on signature config
+  ---
+  duration_ms: 0.146167
+  ...
+# Subtest: Resend inbound acknowledges quota rejection without writing PG or COS
+ok 223 - Resend inbound acknowledges quota rejection without writing PG or COS
+  ---
+  duration_ms: 0.144625
+  ...
+# Subtest: Resend inbound enforces body and total attachment limits before storage
+ok 224 - Resend inbound enforces body and total attachment limits before storage
+  ---
+  duration_ms: 0.85525
+  ...
+# Subtest: Resend inbound rejects invalid metadata and verifies downloaded attachment size
+ok 225 - Resend inbound rejects invalid metadata and verifies downloaded attachment size
+  ---
+  duration_ms: 0.744125
+  ...
+# Subtest: Resend inbound streams attachment bodies instead of buffering unbounded responses
+ok 226 - Resend inbound streams attachment bodies instead of buffering unbounded responses
+  ---
+  duration_ms: 0.285667
+  ...
+# Subtest: Resend inbound caps concurrent webhook processing
+ok 227 - Resend inbound caps concurrent webhook processing
+  ---
+  duration_ms: 0.155417
+  ...
+# Subtest: lost subscription responses replay without a second subscription or bonus
+ok 228 - lost subscription responses replay without a second subscription or bonus
+  ---
+  duration_ms: 1.352666
+  ...
+# Subtest: the same key with a different assignment request conflicts
+ok 229 - the same key with a different assignment request conflicts
+  ---
+  duration_ms: 0.284459
+  ...
+# Subtest: subscription assignment requires a client idempotency key
+ok 230 - subscription assignment requires a client idempotency key
+  ---
+  duration_ms: 0.10975
+  ...
+# Subtest: a bonus plan requires points.adjust before any business write
+ok 231 - a bonus plan requires points.adjust before any business write
+  ---
+  duration_ms: 0.085917
+  ...
+# Subtest: assignment storage is locked, hashed, unique, and immutable after completion
+ok 232 - assignment storage is locked, hashed, unique, and immutable after completion
+  ---
+  duration_ms: 2.78125
+  ...
+# Subtest: subscription assignment locks the user, revokes the prior slot, and snapshots versioned rights
+ok 233 - subscription assignment locks the user, revokes the prior slot, and snapshots versioned rights
+  ---
+  duration_ms: 1.242875
+  ...
+# Subtest: subscription scheduling fails closed and entitlement overrides are deterministic
+ok 234 - subscription scheduling fails closed and entitlement overrides are deterministic
+  ---
+  duration_ms: 0.332208
+  ...
+# Subtest: commercial migration defines independent auth, immutable ledgers, and defensive guards
+ok 235 - commercial migration defines independent auth, immutable ledgers, and defensive guards
+  ---
+  duration_ms: 2.790792
+  ...
+# Subtest: aidEncrypted uses repeated 32-byte key and IV+ciphertext+GCM tag layout
+ok 236 - aidEncrypted uses repeated 32-byte key and IV+ciphertext+GCM tag layout
+  ---
+  duration_ms: 0.841167
+  ...
+# Subtest: TC3 headers match a stable vector and omit Region
+ok 237 - TC3 headers match a stable vector and omit Region
+  ---
+  duration_ms: 1.048375
+  ...
+# Subtest: challenge exposes no secret and successful proof sends the fixed API payload
+ok 238 - challenge exposes no secret and successful proof sends the fixed API payload
+  ---
+  duration_ms: 9.876375
+  ...
+# Subtest: challenge is consumed before await so replay and concurrent replay fail closed
+ok 239 - challenge is consumed before await so replay and concurrent replay fail closed
+  ---
+  duration_ms: 0.44675
+  ...
+# Subtest: missing fields consume a supplied challenge and trerror never reaches Tencent
+ok 240 - missing fields consume a supplied challenge and trerror never reaches Tencent
+  ---
+  duration_ms: 0.18475
+  ...
+# Subtest: risk rejection is failed while HTTP, API and timeout faults are unavailable
+    # Subtest: evil
+    ok 1 - evil
+      ---
+      duration_ms: 0.383917
+      ...
+    # Subtest: ticket rejection
+    ok 2 - ticket rejection
+      ---
+      duration_ms: 0.314375
+      ...
+    # Subtest: HTTP
+    ok 3 - HTTP
+      ---
+      duration_ms: 0.310792
+      ...
+    # Subtest: API
+    ok 4 - API
+      ---
+      duration_ms: 0.286667
+      ...
+    # Subtest: bad JSON
+    ok 5 - bad JSON
+      ---
+      duration_ms: 0.278125
+      ...
+    # Subtest: timeout
+    ok 6 - timeout
+      ---
+      duration_ms: 5.960833
+      ...
+    # Subtest: body timeout
+    ok 7 - body timeout
+      ---
+      duration_ms: 5.489625
+      ...
+    # Subtest: oversized body
+    ok 8 - oversized body
+      ---
+      duration_ms: 0.533542
+      ...
+    1..8
+ok 241 - risk rejection is failed while HTTP, API and timeout faults are unavailable
+  ---
+  duration_ms: 14.264959
+  ...
+# Subtest: CVM role credentials are cached and temporary token is sent
+ok 242 - CVM role credentials are cached and temporary token is sent
+  ---
+  duration_ms: 0.804042
+  ...
+# Subtest: incomplete configuration never issues a challenge
+ok 243 - incomplete configuration never issues a challenge
+  ---
+  duration_ms: 0.053708
+  ...
+# Subtest: mainland phone normalization accepts documented prefixes and rejects non-mainland input
+ok 244 - mainland phone normalization accepts documented prefixes and rejects non-mainland input
+  ---
+  duration_ms: 0.492541
+  ...
+# Subtest: TC3 SendSms headers match a stable signing vector
+ok 245 - TC3 SendSms headers match a stable signing vector
+  ---
+  duration_ms: 1.244125
+  ...
+# Subtest: Tencent SMS sender posts one E.164 target with SDKAppID 1401167280
+ok 246 - Tencent SMS sender posts one E.164 target with SDKAppID 1401167280
+  ---
+  duration_ms: 9.497709
+  ...
+# Subtest: Tencent SMS sender fails closed on per-recipient provider errors
+ok 247 - Tencent SMS sender fails closed on per-recipient provider errors
+  ---
+  duration_ms: 0.572292
+  ...
+# Subtest: WeKnora client sends API key, request id and exact hybrid query_text contract
+ok 248 - WeKnora client sends API key, request id and exact hybrid query_text contract
+  ---
+  duration_ms: 16.695166
+  ...
+# Subtest: WeKnora knowledge-base creation preserves the caller-supplied id
+ok 249 - WeKnora knowledge-base creation preserves the caller-supplied id
+  ---
+  duration_ms: 4.171584
+  ...
+# Subtest: WeKnora upload uses multipart file and process_config without exposing key in body
+ok 250 - WeKnora upload uses multipart file and process_config without exposing key in body
+  ---
+  duration_ms: 4.78275
+  ...
+# Subtest: WeKnora client reconciles an ambiguous upload by private metadata marker
+ok 251 - WeKnora client reconciles an ambiguous upload by private metadata marker
+  ---
+  duration_ms: 1.696542
+  ...
+# Subtest: WeKnora client turns upstream pages into stable errors
+ok 252 - WeKnora client turns upstream pages into stable errors
+  ---
+  duration_ms: 2.850334
+  ...
+# Subtest: WeKnora client accepts only an explicit api/v1 base and private HTTP transport
+ok 253 - WeKnora client accepts only an explicit api/v1 base and private HTTP transport
+  ---
+  duration_ms: 0.185416
+  ...
+# Subtest: WeKnora FAQ import wait accepts underscored task ids and resolves on completed
+ok 254 - WeKnora FAQ import wait accepts underscored task ids and resolves on completed
+  ---
+  duration_ms: 504.31875
+  ...
+1..254
+# tests 262
+# suites 0
+# pass 262
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 16613.039917

@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -37,6 +38,7 @@ import {
 } from '../../lib/customContent';
 import { useAppStore } from '../../store/appStore';
 import { useAuthStore } from '../../store/authStore';
+import { watchCustomContent } from '../../lib/customContentSync';
 import type { Misconception, PredictionQuizItem } from '../../types';
 import sec from '../../styles/section.module.css';
 import s from './customContent.module.css';
@@ -53,6 +55,8 @@ const STATUS_LABEL: Record<CustomAsset['parseStatus'], string> = {
 const JOB_LABEL: Record<CompileJob['status'], string> = {
   queued: '已排入编译队列', running: '小砚正在编讲稿', needs_review: '草稿待校订', done: '课题已发布', failed: '编译未完成',
 };
+type UploadItem = { id: number; file: File; role: AssetRole; status: 'waiting' | 'uploading' | 'done' | 'failed' | 'uncertain'; message: string };
+const UPLOAD_LABEL = { waiting: '等待上传', uploading: '正在上传', done: '已接收', failed: '未上传', uncertain: '待核对' };
 
 function fileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -67,6 +71,9 @@ function errorHint(error: unknown, maximumBytes = 0): string {
       : '资料超过了服务器允许的单文件上限。';
   }
   const hints: Record<string, string> = {
+    'request-timeout': '等待响应超时，请重新连接后核对最新状态。',
+    'request-network-failed': '连接中断，请检查网络后重试。',
+    'custom-content-contract-invalid': '服务返回的数据不完整，请刷新状态后重试。',
     'custom-content-unavailable': '资料服务尚未启用，请稍后再试。',
     'course-title-invalid': '课程名至少写两个字。',
     'course-create-upstream-failed': '知识库没有建成，请稍后重试。',
@@ -75,6 +82,7 @@ function errorHint(error: unknown, maximumBytes = 0): string {
     'file-content-mismatch': '文件内容与扩展名不一致，请确认文件没有损坏。',
     'asset-duplicate': '这份资料已经入过库了。',
     'asset-upload-upstream-failed': '资料没能交给解析服务，请稍后重试。',
+    'asset-reparse-upstream-failed': '重新解析暂未确认，请刷新资料状态后再试。',
     'asset-storage-failed': '原文件没有完整写入私有 COS，本次上传已撤销。',
     'asset-storage-missing': 'COS 原件校验失败，请重新上传这份资料。',
     'asset-storage-delete-failed': 'COS 原件尚未删除，本次删除已停止。',
@@ -103,6 +111,12 @@ function errorHint(error: unknown, maximumBytes = 0): string {
   return hints[code] ?? '这一步没有完成，请稍后再试。';
 }
 
+function parseErrorHint(error: string | null): string {
+  if (/timeout|超时/i.test(error ?? '')) return '解析等待超时，请重新解析这份资料。';
+  if (/empty|无.*文本|空白/i.test(error ?? '')) return '未能读取正文，请确认文件包含可提取的文字。';
+  return '资料解析未完成，可重新解析；反复失败时请检查文件内容或格式。';
+}
+
 function groupsText(groups: string[][]): string {
   return groups.map((group) => group.join('、')).join('\n');
 }
@@ -113,10 +127,6 @@ function parseGroups(value: string): string[][] {
 
 function lines(value: string): string[] {
   return value.split(/\n+/).map((item) => item.trim()).filter(Boolean);
-}
-
-function retryDelay(failures: number): number {
-  return Math.min(15_000, 1_000 * (2 ** Math.min(failures, 4)));
 }
 
 function starterQuiz(prefix: string, checklistRef: string, mcRef: string | null = null): PredictionQuizItem[] {
@@ -348,7 +358,7 @@ function QuizEditor({
   );
 }
 
-function DraftEditor({
+const DraftEditor = memo(function DraftEditor({
   record,
   onChange,
   onError,
@@ -586,7 +596,7 @@ function DraftEditor({
       </section>
     </div>
   );
-}
+});
 
 export default function CustomContentPage() {
   useDocTitle('自选讲义');
@@ -600,16 +610,27 @@ export default function CustomContentPage() {
   const [courseId, setCourseId] = useState('');
   const [assets, setAssets] = useState<CustomAsset[]>([]);
   const [assetRefreshToken, setAssetRefreshToken] = useState(0);
+  const [jobRefreshToken, setJobRefreshToken] = useState(0);
+  const [assetsLoading, setAssetsLoading] = useState(false);
+  const [assetError, setAssetError] = useState('');
+  const [jobError, setJobError] = useState('');
+  const [assetQuery, setAssetQuery] = useState('');
+  const [assetFilter, setAssetFilter] = useState<'all' | 'completed' | 'failed'>('all');
+  const [online, setOnline] = useState(() => navigator.onLine);
+  const [pendingAssetIds, setPendingAssetIds] = useState<Set<string>>(() => new Set());
   const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(() => new Set());
   const [newCourseTitle, setNewCourseTitle] = useState('');
   const [creatingCourse, setCreatingCourse] = useState(false);
   const [assetRole, setAssetRole] = useState<AssetRole>('lecture');
   const [uploading, setUploading] = useState<{ name: string; index: number; total: number } | null>(null);
+  const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([]);
   const [dragging, setDragging] = useState(false);
   const [topicTitle, setTopicTitle] = useState('');
   const [job, setJob] = useState<CompileJob | null>(null);
   const [recoveringJob, setRecoveringJob] = useState(false);
+  const [startingCompile, setStartingCompile] = useState(false);
   const [draftRecord, setDraftRecord] = useState<CustomTopicRecord | null>(null);
+  const [draftEdited, setDraftEdited] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [discardArmed, setDiscardArmed] = useState(false);
@@ -621,6 +642,12 @@ export default function CustomContentPage() {
   const courseIdRef = useRef(courseId);
   const authUserRef = useRef(authUser);
   const workspaceGenerationRef = useRef(0);
+  const uploadBusyRef = useRef(false);
+  const compileBusyRef = useRef(false);
+  const createBusyRef = useRef(false);
+  const draftBusyRef = useRef(false);
+  const assetBusyRef = useRef(new Set<string>());
+  const nextUploadId = useRef(0);
   courseIdRef.current = courseId;
   authUserRef.current = authUser;
 
@@ -637,6 +664,36 @@ export default function CustomContentPage() {
     () => assets.filter((asset) => selectedAssetIds.has(asset.id) && asset.parseStatus === 'completed'),
     [assets, selectedAssetIds],
   );
+  const visibleAssets = useMemo(() => assets.filter((asset) => (
+    (!assetQuery.trim() || asset.filename.toLocaleLowerCase().includes(assetQuery.trim().toLocaleLowerCase()))
+    && (assetFilter === 'all' || (assetFilter === 'failed'
+      ? asset.parseStatus === 'failed' || asset.parseStatus === 'cancelled'
+      : asset.parseStatus === 'completed'))
+  )), [assets, assetQuery, assetFilter]);
+  const readyAssets = assets.filter((asset) => asset.parseStatus === 'completed');
+  const failedAssets = assets.filter((asset) => asset.parseStatus === 'failed' || asset.parseStatus === 'cancelled');
+  const parsingCount = assets.filter((asset) => ['pending', 'processing', 'finalizing'].includes(asset.parseStatus)).length;
+  const allVisibleSelected = visibleAssets.some((asset) => asset.parseStatus === 'completed')
+    && visibleAssets.filter((asset) => asset.parseStatus === 'completed').every((asset) => selectedAssetIds.has(asset.id));
+  const changeDraft = useCallback((payload: CustomTopicPayload) => {
+    setDraftEdited(true);
+    setDraftRecord((current) => current ? { ...current, payload } : current);
+  }, []);
+  const draftError = useCallback((error: unknown) => setNotice(errorHint(error)), []);
+
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
+  }, []);
+
+  useEffect(() => {
+    if (!draftEdited) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [draftEdited]);
 
   const refreshCourses = useCallback(async (preferredId?: string) => {
     const ownerAtRequest = authUserRef.current;
@@ -653,6 +710,7 @@ export default function CustomContentPage() {
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
     setWorkspaceOwner(null);
     setMaxFileBytes(0);
     setCourses([]);
@@ -661,6 +719,7 @@ export default function CustomContentPage() {
     setSelectedAssetIds(new Set());
     setJob(null);
     setDraftRecord(null);
+    setDraftEdited(false);
     setPublishedTopicId(null);
     setNewCourseTitle('');
     setTopicTitle('');
@@ -678,7 +737,7 @@ export default function CustomContentPage() {
       let finalState: 'unhealthy' | 'unavailable' = 'unhealthy';
       for (let attempt = 0; attempt <= CUSTOM_BOOTSTRAP_RETRY_MS.length; attempt += 1) {
         try {
-          const [status, nextCourses] = await Promise.all([customContentStatus(), listCustomCourses()]);
+          const [status, nextCourses] = await Promise.all([customContentStatus(controller.signal), listCustomCourses(controller.signal)]);
           if (!active || authUserRef.current !== authUser) return;
           if (status.healthy) {
             setService('ready');
@@ -703,7 +762,7 @@ export default function CustomContentPage() {
         setService(finalState);
       }
     })();
-    return () => { active = false; };
+    return () => { active = false; controller.abort(); };
   }, [authUser, bootstrapToken]);
 
   useEffect(() => {
@@ -711,117 +770,108 @@ export default function CustomContentPage() {
       setAssets([]);
       return undefined;
     }
-    let active = true;
-    let timer = 0;
-    let failures = 0;
+    setAssetsLoading(true);
+    setAssetError('');
     let deletingSince = 0;
-    let deletingPolls = 0;
-    const refresh = async () => {
-      try {
-        const next = await listCourseAssets(courseId);
-        if (!active) return;
-        failures = 0;
-        setAssets(next);
+    return watchCustomContent({
+      load: (signal) => listCourseAssets(courseId, signal),
+      onData: (next) => {
+        setAssetsLoading(false);
+        setAssetError('');
+        setAssets((current) => JSON.stringify(current) === JSON.stringify(next) ? current : next);
         setSelectedAssetIds((current) => new Set([...current].filter((id) => next.some((asset) => asset.id === id && asset.parseStatus === 'completed'))));
+      },
+      shouldPoll: (next) => {
         const parsing = next.some((asset) => (
           asset.parseStatus === 'pending'
           || asset.parseStatus === 'processing'
           || asset.parseStatus === 'finalizing'
         ));
         const deleting = next.some((asset) => asset.parseStatus === 'deleting');
-        if (deleting) {
-          deletingSince ||= Date.now();
-          deletingPolls += 1;
-        } else {
-          deletingSince = 0;
-          deletingPolls = 0;
+        if (deleting) deletingSince ||= Date.now();
+        else deletingSince = 0;
+        if (deleting && Date.now() - deletingSince >= DELETE_POLL_TIMEOUT_MS) {
+          setAssetError('资料删除收尾超过预期，请稍后点击删除图标重试。');
+          return parsing;
         }
-        if (parsing) {
-          timer = window.setTimeout(() => void refresh(), 2_000);
-        } else if (deleting && Date.now() - deletingSince < DELETE_POLL_TIMEOUT_MS) {
-          timer = window.setTimeout(() => void refresh(), retryDelay(deletingPolls));
-        } else if (deleting) {
-          setNotice('资料删除收尾超过预期，请稍后点击删除图标重试。');
-        }
-      } catch (error) {
-        if (active) {
-          setNotice(errorHint(error));
-          failures += 1;
-          timer = window.setTimeout(() => void refresh(), retryDelay(failures));
-        }
-      }
-    };
-    void refresh();
-    return () => { active = false; window.clearTimeout(timer); };
+        return parsing || deleting;
+      },
+      onError: (error, stopped) => {
+        setAssetsLoading(false);
+        setAssetError(`${errorHint(error)}${stopped ? ' 自动重试已暂停。' : ' 正在重新连接…'}`);
+      },
+    });
   }, [authUser, courseId, assetRefreshToken]);
 
   useEffect(() => {
     workspaceGenerationRef.current += 1;
+    uploadBusyRef.current = false;
+    compileBusyRef.current = false;
+    createBusyRef.current = false;
+    draftBusyRef.current = false;
+    assetBusyRef.current.clear();
+    setPendingAssetIds(new Set());
+    setUploadQueue([]);
+    setAssetQuery('');
+    setAssetFilter('all');
+    setTopicTitle('');
+    setStartingCompile(false);
     setUploading(null);
     setCreatingCourse(false);
     setSaving(false);
     setPublishing(false);
     setDiscarding(false);
+    setJob(null);
+    setDraftRecord(null);
+    setPublishedTopicId(null);
+    setDiscardArmed(false);
+    setDraftEdited(false);
+    return () => { workspaceGenerationRef.current += 1; };
+  }, [authUser, courseId]);
+
+  useEffect(() => {
     if (!courseId) {
       setJob(null);
       setDraftRecord(null);
       setRecoveringJob(false);
       return undefined;
     }
-    let active = true;
-    setJob(null);
-    setDraftRecord(null);
-    setPublishedTopicId(null);
-    setDiscardArmed(false);
+    setJobError('');
     setRecoveringJob(true);
-    let timer = 0;
-    let failures = 0;
-    const recover = async () => {
-      try {
-        const next = await getCourseCompileJob(courseId);
-        if (!active) return;
+    return watchCustomContent({
+      load: (signal) => getCourseCompileJob(courseId, signal),
+      onData: (next) => {
         setJob(next);
         setDraftRecord(next?.status === 'needs_review' && next.topic ? next.topic : null);
         if (next) setSelectedAssetIds(new Set(next.assetIds));
         setRecoveringJob(false);
-      } catch (error) {
-        if (!active) return;
-        setNotice(errorHint(error));
-        failures += 1;
-        timer = window.setTimeout(() => void recover(), retryDelay(failures));
-      }
-    };
-    void recover();
-    return () => { active = false; window.clearTimeout(timer); };
-  }, [authUser, courseId]);
+        setJobError('');
+      },
+      onError: (error, stopped) => {
+        setJobError(`${errorHint(error)}${stopped ? ' 请点击重新同步找回已有草稿。' : ' 正在重新连接…'}`);
+        if (stopped) setRecoveringJob(false);
+      },
+    });
+  }, [authUser, courseId, jobRefreshToken]);
 
   useEffect(() => {
     if (!activeJobId || (activeJobStatus !== 'queued' && activeJobStatus !== 'running')) return undefined;
-    let active = true;
-    let timer = 0;
-    let failures = 0;
-    const poll = async () => {
-      try {
-        const next = await getCompileJob(activeJobId);
-        if (!active) return;
-        failures = 0;
+    return watchCustomContent({
+      load: (signal) => getCompileJob(activeJobId, signal),
+      onData: (next) => {
         setJob(next);
+        setJobError('');
         if (next.topic && next.status === 'needs_review') setDraftRecord(next.topic);
-        else if (next.status === 'queued' || next.status === 'running') timer = window.setTimeout(() => void poll(), 2_000);
-      } catch (error) {
-        if (active) {
-          setNotice(errorHint(error));
-          failures += 1;
-          timer = window.setTimeout(() => void poll(), retryDelay(failures));
-        }
-      }
-    };
-    timer = window.setTimeout(() => void poll(), 700);
-    return () => { active = false; window.clearTimeout(timer); };
-  }, [activeJobId, activeJobStatus, authUser]);
+      },
+      shouldPoll: (next) => next.status === 'queued' || next.status === 'running',
+      onError: (error, stopped) => setJobError(`${errorHint(error)}${stopped ? ' 自动同步已暂停，可重新同步。' : ' 正在重新连接…'}`),
+    });
+  }, [activeJobId, activeJobStatus, authUser, jobRefreshToken]);
 
   const makeCourse = async () => {
-    if (creatingCourse || !newCourseTitle.trim()) return;
+    if (createBusyRef.current || !newCourseTitle.trim() || !online || uploadBusyRef.current) return;
+    if (draftEdited) { setNotice('请先保存当前草稿的校订，再新建课程。'); return; }
+    createBusyRef.current = true;
     setCreatingCourse(true);
     setNotice('');
     const ownerAtRequest = authUser;
@@ -836,31 +886,52 @@ export default function CustomContentPage() {
     } catch (error) {
       if (workspaceIsCurrent(ownerAtRequest, generationAtRequest)) setNotice(errorHint(error));
     } finally {
-      if (workspaceIsCurrent(ownerAtRequest, generationAtRequest)) setCreatingCourse(false);
+      if (workspaceIsCurrent(ownerAtRequest, generationAtRequest)) { createBusyRef.current = false; setCreatingCourse(false); }
     }
   };
 
-  const uploadFiles = async (files: File[]) => {
-    if (!courseId || maxFileBytes < 1 || files.length === 0 || uploading) return;
-    const usable = files.filter((file) => file.size > 0 && file.size <= maxFileBytes);
+  const uploadFiles = async (files: File[], retryItems?: UploadItem[]) => {
+    if (!courseId || maxFileBytes < 1 || (!files.length && !retryItems?.length) || uploadBusyRef.current || !online) return;
+    uploadBusyRef.current = true;
     const ownerAtRequest = authUser;
     const generationAtRequest = workspaceGenerationRef.current;
     const courseAtRequest = courseId;
-    if (usable.length !== files.length) {
-      setNotice(`已跳过空文件或超过 ${fileSize(maxFileBytes)} 的资料。`);
-    }
-    for (const [index, file] of usable.entries()) {
+    const items: UploadItem[] = retryItems?.map((item) => ({ ...item, status: 'waiting', message: '' })) ?? files.map((file) => {
+      const reason = !file.size ? '文件为空，请选择有内容的资料。'
+        : file.size > maxFileBytes ? `超过单份 ${fileSize(maxFileBytes)} 的上限。`
+          : !/\.(pdf|pptx?|docx|md|txt)$/i.test(file.name) ? '暂不支持此格式，请换成 PDF、PPT、DOCX、MD 或 TXT。' : '';
+      return { id: ++nextUploadId.current, file, role: assetRole, status: reason ? 'failed' : 'waiting', message: reason };
+    });
+    if (retryItems) setUploadQueue((current) => current.map((item) => items.find((retry) => retry.id === item.id) ?? item));
+    else setUploadQueue(items);
+    const patchItem = (id: number, patch: Partial<UploadItem>) => setUploadQueue((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item));
+    const usable = items.filter((item) => item.status === 'waiting');
+    for (const [index, item] of usable.entries()) {
+      const file = item.file;
+      if (!workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) break;
       setUploading({ name: file.name, index: index + 1, total: usable.length });
+      patchItem(item.id, { status: 'uploading' });
       try {
-        const asset = await uploadCourseAsset(courseAtRequest, file, assetRole);
+        const asset = await uploadCourseAsset(courseAtRequest, file, item.role);
         if (!workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) break;
         setAssets((current) => [asset, ...current.filter((item) => item.id !== asset.id)]);
+        patchItem(item.id, { status: 'done', message: '已接收，解析完成后即可选用。' });
       } catch (error) {
         if (!workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) break;
-        setNotice(`${file.name}：${errorHint(error, maxFileBytes)}`);
+        const uncertain = error instanceof CustomContentError && error.status === 0;
+        const duplicate = error instanceof Error && error.message === 'asset-duplicate';
+        patchItem(item.id, {
+          status: duplicate ? 'done' : uncertain ? 'uncertain' : 'failed',
+          message: duplicate ? '资料库已有这份文件，无需重复上传。' : uncertain ? '响应中断，文件可能已接收。请先刷新资料核对，避免重复上传。' : errorHint(error, maxFileBytes),
+        });
+        if (uncertain || (error instanceof CustomContentError && error.status === 429)) {
+          usable.slice(index + 1).forEach((pending) => patchItem(pending.id, { status: 'failed', message: '本批次已暂停，这份尚未上传，可稍后重试。' }));
+          break;
+        }
       }
     }
     if (!workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) return;
+    uploadBusyRef.current = false;
     setUploading(null);
     setAssetRefreshToken((value) => value + 1);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -876,13 +947,22 @@ export default function CustomContentPage() {
     void uploadFiles(Array.from(event.dataTransfer.files));
   };
 
-  const toggleAsset = (assetId: string) => setSelectedAssetIds((current) => {
+  const toggleAsset = (assetId: string) => {
+    if (!selectedAssetIds.has(assetId) && selectedAssetIds.size >= 12) {
+      setNotice('每个课题最多选用 12 份资料，可分成多个课题生成。');
+      return;
+    }
+    setSelectedAssetIds((current) => {
     const next = new Set(current);
     if (next.has(assetId)) next.delete(assetId); else next.add(assetId);
     return next;
-  });
+    });
+  };
 
   const reparseAsset = async (assetId: string) => {
+    if (assetBusyRef.current.has(assetId)) return;
+    assetBusyRef.current.add(assetId);
+    setPendingAssetIds(new Set(assetBusyRef.current));
     const ownerAtRequest = authUser;
     const generationAtRequest = workspaceGenerationRef.current;
     const courseAtRequest = courseId;
@@ -893,10 +973,18 @@ export default function CustomContentPage() {
       setAssetRefreshToken((value) => value + 1);
     } catch (error) {
       if (workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) setNotice(errorHint(error));
+    } finally {
+      if (workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) {
+        assetBusyRef.current.delete(assetId);
+        setPendingAssetIds(new Set(assetBusyRef.current));
+      }
     }
   };
 
   const removeAsset = async (assetId: string) => {
+    if (assetBusyRef.current.has(assetId)) return;
+    assetBusyRef.current.add(assetId);
+    setPendingAssetIds(new Set(assetBusyRef.current));
     const ownerAtRequest = authUser;
     const generationAtRequest = workspaceGenerationRef.current;
     const courseAtRequest = courseId;
@@ -904,16 +992,25 @@ export default function CustomContentPage() {
       await deleteCustomAsset(assetId);
       if (!workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) return;
       setAssets((current) => current.filter((item) => item.id !== assetId));
+      setSelectedAssetIds((current) => new Set([...current].filter((id) => id !== assetId)));
       setDeleteArmedId(null);
+      void refreshCourses().catch(() => {});
     } catch (error) {
       if (!workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) return;
       setNotice(errorHint(error));
       setDeleteArmedId(null);
+    } finally {
+      if (workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) {
+        assetBusyRef.current.delete(assetId);
+        setPendingAssetIds(new Set(assetBusyRef.current));
+      }
     }
   };
 
   const beginCompile = async () => {
-    if (!courseId || recoveringJob || selectedReadyAssets.length === 0 || job?.status === 'queued' || job?.status === 'running' || job?.status === 'needs_review') return;
+    if (!courseId || compileBusyRef.current || assetBusyRef.current.size > 0 || recoveringJob || jobError || selectedReadyAssets.length === 0 || job?.status === 'queued' || job?.status === 'running' || job?.status === 'needs_review' || !online) return;
+    compileBusyRef.current = true;
+    setStartingCompile(true);
     setNotice('');
     setDraftRecord(null);
     setPublishedTopicId(null);
@@ -929,12 +1026,23 @@ export default function CustomContentPage() {
       });
       if (workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) setJob(nextJob);
     } catch (error) {
-      if (workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) setNotice(errorHint(error));
+      if (workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) {
+        setNotice(errorHint(error));
+        if (error instanceof CustomContentError && (error.status === 0 || error.message === 'compile-job-active')) {
+          setJobRefreshToken((value) => value + 1);
+        }
+      }
+    } finally {
+      if (workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) {
+        compileBusyRef.current = false;
+        setStartingCompile(false);
+      }
     }
   };
 
   const saveDraft = async (): Promise<CustomTopicRecord | null> => {
-    if (!draftRecord || saving) return null;
+    if (!draftRecord || draftBusyRef.current || !online) return null;
+    draftBusyRef.current = true;
     const draftId = draftRecord.id;
     const courseAtSave = courseId;
     const ownerAtSave = authUser;
@@ -945,17 +1053,19 @@ export default function CustomContentPage() {
       const saved = await saveTopicDraft(draftRecord.id, draftRecord.payload);
       if (!workspaceIsCurrent(ownerAtSave, generationAtSave, courseAtSave)) return null;
       setDraftRecord((current) => current?.id === draftId ? saved : current);
+      setDraftEdited(false);
       return saved;
     } catch (error) {
       if (workspaceIsCurrent(ownerAtSave, generationAtSave, courseAtSave)) setNotice(errorHint(error));
       return null;
     } finally {
-      if (workspaceIsCurrent(ownerAtSave, generationAtSave, courseAtSave)) setSaving(false);
+      if (workspaceIsCurrent(ownerAtSave, generationAtSave, courseAtSave)) { draftBusyRef.current = false; setSaving(false); }
     }
   };
 
   const publish = async () => {
-    if (!draftRecord || publishing) return;
+    if (!draftRecord || draftBusyRef.current || !online) return;
+    draftBusyRef.current = true;
     const courseAtPublish = courseId;
     const ownerAtPublish = authUser;
     const generationAtPublish = workspaceGenerationRef.current;
@@ -965,6 +1075,7 @@ export default function CustomContentPage() {
       const saved = await saveTopicDraft(draftRecord.id, draftRecord.payload);
       if (!workspaceIsCurrent(ownerAtPublish, generationAtPublish, courseAtPublish)) return;
       setDraftRecord(saved);
+      setDraftEdited(false);
       if (announceBlocking(saved)) return;
       const published = await publishCustomTopic(saved.id);
       if (!workspaceIsCurrent(ownerAtPublish, generationAtPublish, courseAtPublish)) return;
@@ -987,7 +1098,7 @@ export default function CustomContentPage() {
       }
       setNotice(errorHint(error));
     } finally {
-      if (workspaceIsCurrent(ownerAtPublish, generationAtPublish, courseAtPublish)) setPublishing(false);
+      if (workspaceIsCurrent(ownerAtPublish, generationAtPublish, courseAtPublish)) { draftBusyRef.current = false; setPublishing(false); }
     }
   };
 
@@ -1004,7 +1115,8 @@ export default function CustomContentPage() {
   };
 
   const discardDraft = async () => {
-    if (!draftRecord || !discardArmed || discarding || draftRecord.status !== 'draft') return;
+    if (!draftRecord || !discardArmed || draftBusyRef.current || draftRecord.status !== 'draft' || !online) return;
+    draftBusyRef.current = true;
     const draftId = draftRecord.id;
     const courseAtDiscard = courseId;
     const ownerAtDiscard = authUser;
@@ -1015,6 +1127,7 @@ export default function CustomContentPage() {
       await discardTopicDraft(draftId);
       if (!workspaceIsCurrent(ownerAtDiscard, generationAtDiscard, courseAtDiscard)) return;
       setDraftRecord((current) => current?.id === draftId ? null : current);
+      setDraftEdited(false);
       setJob((current) => current?.topicId === draftId || current?.topic?.id === draftId ? null : current);
       setPublishedTopicId(null);
       setDiscardArmed(false);
@@ -1022,7 +1135,7 @@ export default function CustomContentPage() {
     } catch (error) {
       if (workspaceIsCurrent(ownerAtDiscard, generationAtDiscard, courseAtDiscard)) setNotice(errorHint(error));
     } finally {
-      if (workspaceIsCurrent(ownerAtDiscard, generationAtDiscard, courseAtDiscard)) setDiscarding(false);
+      if (workspaceIsCurrent(ownerAtDiscard, generationAtDiscard, courseAtDiscard)) { draftBusyRef.current = false; setDiscarding(false); }
     }
   };
 
@@ -1044,7 +1157,24 @@ export default function CustomContentPage() {
     if (rect.top >= 0 && rect.bottom <= window.innerHeight) return;
     revealElement(el);
   }, [visibleNotice]);
-  const focusNewCourse = () => document.getElementById('new-course')?.focus();
+  const focusNewCourse = () => {
+    const field = document.getElementById('new-course');
+    const details = field?.closest('details');
+    if (details) details.open = true;
+    field?.focus();
+  };
+  const refreshJob = () => { setJob(null); setJobRefreshToken((value) => value + 1); };
+  const selectVisible = () => setSelectedAssetIds((current) => {
+    const next = new Set(current);
+    visibleAssets.filter((asset) => asset.parseStatus === 'completed').forEach((asset) => {
+      if (allVisibleSelected) next.delete(asset.id); else if (next.size < 12) next.add(asset.id);
+    });
+    return next;
+  });
+  const compileLocked = startingCompile || recoveringJob || !!jobError || !online
+    || job?.status === 'queued' || job?.status === 'running' || job?.status === 'needs_review';
+  const retryableUploads = uploadQueue.filter((item) => item.status === 'failed' && item.file.size > 0
+    && item.file.size <= maxFileBytes && /\.(pdf|pptx?|docx|md|txt)$/i.test(item.file.name));
 
   // 三步流程票签的活态:资料入库 → 编成课题 → 校订发布,按当前工作台状态点亮
   const hasReadyAssets = assets.some((asset) => asset.parseStatus === 'completed');
@@ -1057,15 +1187,16 @@ export default function CustomContentPage() {
     <div className={s.page}>
       <header id="custom-overview" className={`${s.head} ${s.rise}`}>
         <h1 className={sec.titleLg}>自选课</h1>
-        <p className={sec.note}>把自己的讲义交给小白：上传课件，编出要点、误区与备课包，校订后就能在书斋里开讲。课件只用来拆页、分块与找出处，小白照旧按备课、追问、误区与赴考的流程上课。</p>
+        <p className={sec.note}>把你的讲义，变成可以讲给小白听的一堂课。</p>
         <ol className={s.steps} aria-label="自定义课程三步流程">
-          <li data-state={step1}>资料入库<small>PDF、PPT 或 Markdown</small></li>
-          <li data-state={step2}>编成课题<small>要点、误区、备课包</small></li>
-          <li data-state={step3}>校订发布<small>回到书斋开讲</small></li>
+          <li data-state={step1}>资料入库<small>{readyAssets.length ? `${readyAssets.length} 份可用` : '上传自己的讲义'}</small></li>
+          <li data-state={step2}>编成课题<small>{job ? JOB_LABEL[job.status] : '选择资料生成草稿'}</small></li>
+          <li data-state={step3}>校订发布<small>{publishedTopicId ? '可以去备课了' : '确认内容，再开讲'}</small></li>
         </ol>
       </header>
 
       {visibleNotice ? <p ref={noticeRef} className={s.notice} role="status"><Icon name="circle-help" size={16} />{visibleNotice}</p> : null}
+      {!online ? <p className={s.syncMessage} role="status">网络已断开，自动同步已暂停。已显示的内容会保留，联网后继续同步。</p> : null}
       {visibleService !== 'ready' ? (
         <section className={`${s.unavailable} ${s.rise}`} role="status" style={{ animationDelay: '90ms' }}>
           <h2>{visibleService === 'checking' ? '正在连接资料服务…' : '资料服务暂时没有应答'}</h2>
@@ -1078,25 +1209,29 @@ export default function CustomContentPage() {
             <h2 className={s.asideTitle}>课程</h2>
             <div className={s.courseList}>
               {courses.map((course) => (
-                <button key={course.id} type="button" className={`${s.courseRow}${course.id === courseId ? ` ${s.courseActive}` : ''}`} aria-current={course.id === courseId ? 'true' : undefined} disabled={Boolean(uploading) || creatingCourse || saving || publishing || discarding} onClick={() => { setCourseId(course.id); setAssets([]); setSelectedAssetIds(new Set()); setDeleteArmedId(null); setJob(null); setDraftRecord(null); setPublishedTopicId(null); setDiscardArmed(false); }}>
+                <button key={course.id} type="button" className={`${s.courseRow}${course.id === courseId ? ` ${s.courseActive}` : ''}`} aria-current={course.id === courseId ? 'true' : undefined} disabled={Boolean(uploading) || creatingCourse || startingCompile || saving || publishing || discarding || pendingAssetIds.size > 0} onClick={() => { if (course.id === courseId) return; if (draftEdited) { setNotice('这份草稿还有未保存的校订，请先保存校订或放弃草稿，再切换课程。'); return; } setCourseId(course.id); setAssets([]); setSelectedAssetIds(new Set()); setDeleteArmedId(null); setJob(null); setDraftRecord(null); setPublishedTopicId(null); setDiscardArmed(false); }}>
                   <p><strong>{course.title}</strong><small>{course.assetCount} 份资料 · {course.topicCount} 个课题</small></p>
                   <Icon name="chevron-right" size={15} />
                 </button>
               ))}
               {courses.length === 0 ? <p className={s.emptyIndex}>还没有课程，先在下面写一个课程名。</p> : null}
             </div>
+            <details className={s.courseCreator} open={courses.length === 0 || undefined}>
+            <summary>新建课程</summary>
             <form className={s.newCourse} onSubmit={(event) => { event.preventDefault(); void makeCourse(); }}>
               <label htmlFor="new-course">新课程</label>
               <input id="new-course" className={s.field} value={newCourseTitle} maxLength={120} onChange={(event) => setNewCourseTitle(event.target.value)} placeholder="课程名，例如：数据结构" />
-              <button className={s.btnGhost} type="submit" disabled={creatingCourse || newCourseTitle.trim().length < 2}>{creatingCourse ? '新建中…' : '新建课程'}</button>
+              <button className={s.btnText} type="submit" disabled={creatingCourse || !!uploading || !online || newCourseTitle.trim().length < 2}>{creatingCourse ? '新建中…' : '新建课程'} <Icon name="plus" size={15} /></button>
             </form>
+            </details>
           </aside>
 
           <main className={s.main}>
             <section id="custom-assets" className={s.section}>
-              <header className={sec.head}>
-                <h2 className={sec.title}>{selectedCourse ? `《${selectedCourse.title}》的资料` : '资料'}</h2>
-                <p className={sec.note}>{selectedCourse ? `讲义、课件、大纲都收在这门课里；单份不超过 ${fileSize(maxFileBytes)}，原文件加密保存。` : '每门课有自己的资料库，讲义、课件与大纲都收在一起。'}</p>
+              <header className={`${sec.head} ${s.sectionHead}`}>
+                <div><h2 className={sec.title}>{selectedCourse ? selectedCourse.title : '资料'}</h2>
+                <p className={sec.note}>{selectedCourse ? `${assets.length} 份资料 · ${readyAssets.length} 份可用${parsingCount ? ` · ${parsingCount} 份解析中` : ''}${failedAssets.length ? ` · ${failedAssets.length} 份需处理` : ''}` : '每门课有自己的资料库，讲义、课件与大纲都收在一起。'}</p></div>
+                {selectedCourse ? <button className={`${s.btnText} ${s.btnQuiet}`} type="button" disabled={assetsLoading || !online} onClick={() => setAssetRefreshToken((value) => value + 1)}>{assetsLoading ? '同步中…' : '刷新资料'}</button> : null}
               </header>
               {selectedCourse ? (
                 <>
@@ -1109,18 +1244,35 @@ export default function CustomContentPage() {
                   >
                     <div>
                       <strong>{uploading ? `正在上传 ${uploading.name}（${uploading.index}/${uploading.total}）` : '把讲义拖到这里，或选择文件'}</strong>
-                      <span>支持 PDF、PPT、DOCX、Markdown 与 TXT，一次可以选多份。</span>
+                      <span>PDF、PPT/PPTX、DOCX、MD、TXT · 每份最多 {fileSize(maxFileBytes)} · 加密保存</span>
                     </div>
                     <div className={s.dropActions}>
-                      <label className={s.roleSelect}>作为<select value={assetRole} onChange={(event) => setAssetRole(event.target.value as AssetRole)}>{Object.entries(ROLE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-                      <button className={s.btn} type="button" onClick={() => fileInputRef.current?.click()} disabled={Boolean(uploading) || maxFileBytes < 1}>选择文件</button>
+                      <label className={s.roleSelect}>作为<select value={assetRole} disabled={!!uploading} onChange={(event) => setAssetRole(event.target.value as AssetRole)}>{Object.entries(ROLE_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                      <button className={s.btn} type="button" onClick={() => fileInputRef.current?.click()} disabled={Boolean(uploading) || maxFileBytes < 1 || !online}>{uploading ? '上传中…' : '选择文件'}</button>
                     </div>
                     <input ref={fileInputRef} type="file" accept={ACCEPT} multiple onChange={onFiles} tabIndex={-1} aria-hidden="true" />
                   </div>
 
+                  {uploadQueue.length > 0 ? <section className={s.uploadQueue} aria-label="本次上传" aria-live="polite">
+                    <div className={s.queueHead}><strong>{uploading ? `正在处理 ${uploading.index} / ${uploading.total}` : `本次上传 · ${uploadQueue.filter((item) => item.status === 'done').length} / ${uploadQueue.length} 份已接收`}</strong>
+                      {!uploading && retryableUploads.length > 0 ? <button className={s.btnText} disabled={!online} onClick={() => void uploadFiles([], retryableUploads)}>重试未上传的 {retryableUploads.length} 份</button> : null}
+                      {!uploading ? <button className={`${s.btnText} ${s.btnQuiet}`} onClick={() => setUploadQueue([])}>收起记录</button> : null}
+                    </div>
+                    {uploading ? <progress max={uploadQueue.length} value={uploadQueue.filter((item) => !['waiting', 'uploading'].includes(item.status)).length} aria-label="本批次处理进度" /> : null}
+                    <ul>{uploadQueue.map((item) => <li key={item.id} data-state={item.status}><div><strong>{item.file.name}</strong><small>{item.message || UPLOAD_LABEL[item.status]}</small></div><span>{UPLOAD_LABEL[item.status]}</span></li>)}</ul>
+                  </section> : null}
+
+                  {assetError ? <div className={s.syncMessage} role="status"><span>{assetError}</span><button className={s.btnText} disabled={!online} onClick={() => setAssetRefreshToken((value) => value + 1)}>重新同步资料</button></div> : null}
+
                   {assets.length > 0 ? (
-                    <div className={s.assetList} aria-live="polite">
-                      {assets.map((asset, index) => {
+                    <>
+                    <div className={s.assetToolbar}>
+                      <label className={s.assetSearch}><Icon name="search" size={16} /><input value={assetQuery} onChange={(event) => setAssetQuery(event.target.value)} aria-label="按文件名查找资料" placeholder="查找资料" /></label>
+                      <select className={s.filterSelect} aria-label="筛选资料状态" value={assetFilter} onChange={(event) => setAssetFilter(event.target.value as typeof assetFilter)}><option value="all">全部资料</option><option value="completed">可用资料</option><option value="failed">需处理</option></select>
+                      <button className={s.btnText} disabled={!visibleAssets.some((asset) => asset.parseStatus === 'completed')} onClick={selectVisible}>{allVisibleSelected ? '取消本页选择' : '全选可用资料'}</button>
+                    </div>
+                    <div className={s.assetList}>
+                      {visibleAssets.map((asset) => {
                         const ready = asset.parseStatus === 'completed';
                         const lockedByJob = Boolean(
                           job
@@ -1128,30 +1280,32 @@ export default function CustomContentPage() {
                           && job.assetIds.includes(asset.id),
                         );
                         return (
-                          <article key={asset.id} className={s.assetRow} style={{ animationDelay: `${Math.min(index * 45, 300)}ms` }}>
+                          <article key={asset.id} className={s.assetRow} data-selected={selectedAssetIds.has(asset.id)}>
                             <label className={s.assetPick}>
                               <input type="checkbox" checked={selectedAssetIds.has(asset.id)} disabled={!ready} onChange={() => toggleAsset(asset.id)} aria-label={`选用 ${asset.filename}`} />
                               <span aria-hidden="true">{selectedAssetIds.has(asset.id) ? <Icon name="check" size={13} /> : null}</span>
                             </label>
-                            <div className={s.assetName}><strong>{asset.filename}</strong><small>{ROLE_LABEL[asset.assetRole]} · {fileSize(asset.byteSize)}</small></div>
+                            <div className={s.assetName}><strong>{asset.filename}</strong><small>{ROLE_LABEL[asset.assetRole]} · {fileSize(asset.byteSize)}</small>{asset.parseStatus === 'failed' || asset.parseStatus === 'cancelled' ? <small className={s.assetFailure}>{parseErrorHint(asset.errorMessage)}</small> : null}</div>
                             <span className={s.assetStatus} data-state={asset.parseStatus}>{STATUS_LABEL[asset.parseStatus]}</span>
                             <span className={s.assetActions}>
-                              {asset.parseStatus === 'failed' || asset.parseStatus === 'cancelled' ? <button className={s.btnText} type="button" onClick={() => void reparseAsset(asset.id)}>重新解析</button> : null}
+                              {asset.parseStatus === 'failed' || asset.parseStatus === 'cancelled' ? <button className={s.btnText} type="button" disabled={pendingAssetIds.has(asset.id) || !online} onClick={() => void reparseAsset(asset.id)}>{pendingAssetIds.has(asset.id) ? '处理中…' : '重新解析'}</button> : null}
                               {deleteArmedId === asset.id && !lockedByJob ? (
                                 <span className={s.confirmPair}>
-                                  <button className={`${s.btnText} ${s.btnDanger}`} type="button" onClick={() => void removeAsset(asset.id)}>确认删除</button>
+                                  <button className={`${s.btnText} ${s.btnDanger}`} type="button" disabled={pendingAssetIds.has(asset.id) || !online} onClick={() => void removeAsset(asset.id)}>{pendingAssetIds.has(asset.id) ? '删除中…' : '确认删除'}</button>
                                   <button className={`${s.btnText} ${s.btnQuiet}`} type="button" onClick={() => setDeleteArmedId(null)}>保留</button>
                                 </span>
                               ) : (
-                                <button className={`${s.btnText} ${s.btnQuiet}`} type="button" title={lockedByJob ? '这份资料正在被未完成的草稿使用' : undefined} disabled={lockedByJob} onClick={() => setDeleteArmedId(asset.id)}>删除</button>
+                                <button className={`${s.btnText} ${s.btnQuiet}`} type="button" title={lockedByJob ? '这份资料正在被未完成的草稿使用' : undefined} disabled={lockedByJob || pendingAssetIds.has(asset.id) || !online} onClick={() => setDeleteArmedId(asset.id)}>删除</button>
                               )}
                             </span>
                           </article>
                         );
                       })}
+                      {visibleAssets.length === 0 ? <p className={s.emptyText}>没有找到匹配的资料，试试其他文件名或状态。</p> : null}
                     </div>
+                    </>
                   ) : (
-                    <p className={s.emptyText}>资料还是空的。先放一份讲义，小白才知道这门课要讲什么。</p>
+                    <p className={s.emptyText}>{assetsLoading ? '正在读取这门课的资料…' : assetError ? '资料暂未取回，重新同步后可继续。' : '资料还是空的。先放一份讲义，小白才知道这门课要讲什么。'}</p>
                   )}
                 </>
               ) : (
@@ -1166,22 +1320,24 @@ export default function CustomContentPage() {
             <section id="custom-compiler" className={s.section}>
               <header className={sec.head}>
                 <h2 className={sec.title}>课题</h2>
-                <p className={sec.note}>小砚会从勾选的资料里编出讲解要点、小白会想岔的地方、随堂题与备课包，每一条都指回课件出处；编好的草稿要经你校订才发布。</p>
+                <p className={sec.note}>选择资料，让小砚整理要点、误区、随堂题与备课包。确认草稿后，再发布到书架。</p>
               </header>
               {selectedCourse ? (
                 <div className={s.compileRow}>
                   <label><span>课题名<small>　可留空，由小砚拟题</small></span><input className={s.field} value={topicTitle} maxLength={160} onChange={(event) => setTopicTitle(event.target.value)} placeholder="例如：栈与函数调用" /></label>
-                  <button className={s.btn} type="button" onClick={() => void beginCompile()} disabled={!courseId || recoveringJob || selectedReadyAssets.length === 0 || job?.status === 'queued' || job?.status === 'running' || job?.status === 'needs_review'}>{recoveringJob ? '正在找回草稿…' : '生成课题草稿'}</button>
-                  <p className={s.compileMeta}>已选 <strong>{selectedReadyAssets.length}</strong> 份已入库的资料{!hasReadyAssets ? '，先在上面勾选已入库的讲义' : ''}</p>
+                  <button className={s.btn} type="button" onClick={() => void beginCompile()} disabled={!courseId || compileLocked || selectedReadyAssets.length === 0 || pendingAssetIds.size > 0}>{startingCompile ? '正在提交…' : recoveringJob ? '正在找回草稿…' : '生成课题草稿'}</button>
+                  <p className={s.compileMeta}>已选 <strong>{selectedReadyAssets.length} / 12</strong> 份可用资料{selectedReadyAssets.length === 0 ? '，在上方勾选或全选即可开始' : job?.status === 'needs_review' ? '，先校订或放弃现有草稿' : ''}</p>
                 </div>
               ) : (
                 <p className={s.emptyLine}>先建一门课程、放一份讲义，这里才会亮起来。</p>
               )}
 
+              {jobError ? <div className={s.syncMessage} role="status"><span>{jobError} 已有任务会继续保留。</span><button className={s.btnText} disabled={!online || recoveringJob} onClick={refreshJob}>重新同步草稿</button></div> : null}
+
               {job ? (
                 <div className={`${s.jobRow}${job.status === 'failed' ? ` ${s.jobFailed}` : ''}`} role="status">
                   <span>{job.status === 'running' || job.status === 'queued' ? <span className={s.jobDot} /> : <Icon name={job.status === 'failed' ? 'circle-x' : 'circle-check'} size={17} />}</span>
-                  <p><strong>{JOB_LABEL[job.status]}</strong><small>{job.status === 'running' ? '正在读取分块、生成要点并逐条核对出处。' : job.status === 'failed' ? errorHint(new Error(job.errorCode ?? '')) : '草稿不会自动发布，要经你校订。'}</small></p>
+                  <p><strong>{JOB_LABEL[job.status]}</strong><small>{job.status === 'running' ? '正在读取资料、编写讲稿并核对出处。可以先离开此页，回来后会找回进度。' : job.status === 'queued' ? '正在等待空闲的编写席位，可以先去学习其他课程。' : job.status === 'failed' ? errorHint(new Error(job.errorCode ?? '')) : '草稿不会自动发布，要经你校订。'}</small></p>
                 </div>
               ) : null}
 
@@ -1192,7 +1348,8 @@ export default function CustomContentPage() {
                     <Issues issues={draftRecord.qualityIssues} draft={draftRecord.payload} onJump={jumpToDraftPath} />
                   </aside>
                   <div className={s.reviewMain}>
-                    <DraftEditor disabled={saving || publishing || discarding} record={draftRecord} onError={(error) => setNotice(errorHint(error))} onChange={(payload) => setDraftRecord((current) => current ? { ...current, payload } : current)} />
+                    <nav className={s.draftNav} aria-label="草稿校订导航">{[['checklist.0', '讲解要点'], ['misconceptions.0', '误区'], ['quizBank', '随堂题'], ['prep', '备课包']].map(([path, label]) => <button key={path} className={s.btnText} onClick={() => jumpToDraftPath(path)}>{label}</button>)}</nav>
+                    <DraftEditor disabled={saving || publishing || discarding || draftRecord.status !== 'draft'} record={draftRecord} onError={draftError} onChange={changeDraft} />
                     <footer className={s.actions}>
                       {draftRecord.status === 'draft' ? discardArmed ? (
                         <span className={s.actionsLead}>
@@ -1200,8 +1357,9 @@ export default function CustomContentPage() {
                           <button className={`${s.btnText} ${s.btnQuiet}`} type="button" onClick={() => setDiscardArmed(false)} disabled={discarding}>保留草稿</button>
                         </span>
                       ) : <span className={s.actionsLead}><button className={`${s.btnText} ${s.btnDanger}`} type="button" onClick={() => setDiscardArmed(true)} disabled={saving || publishing}>放弃这份草稿</button></span> : null}
-                      <button className={s.btnGhost} type="button" onClick={() => void saveDraft()} disabled={saving || publishing || draftRecord.status !== 'draft'}>{saving ? '正在核对出处…' : '保存校订'}</button>
-                      <button className={s.btn} type="button" onClick={() => void publish()} disabled={saving || publishing || draftRecord.status !== 'draft'}>{publishing ? '发布中…' : '发布到书架'} <Icon name="arrow-right" size={16} /></button>
+                      <span className={s.saveState} role="status">{draftEdited ? '有未保存的校订' : '校订已保存'}</span>
+                      <button className={s.btnGhost} type="button" onClick={() => void saveDraft()} disabled={saving || publishing || discarding || !online || draftRecord.status !== 'draft'}>{saving ? '正在核对出处…' : '保存校订'}</button>
+                      <button className={s.btn} type="button" onClick={() => void publish()} disabled={saving || publishing || discarding || !online || draftRecord.status !== 'draft'}>{publishing ? '发布中…' : '发布到书架'} <Icon name="arrow-right" size={16} /></button>
                     </footer>
                     {publishedTopicId ? <p className={s.published}><Icon name="circle-check" size={17} />课题已经上架。<Link to={`/prep/${publishedTopicId}`}>去备这门新课 <Icon name="arrow-right" size={15} /></Link></p> : null}
                   </div>

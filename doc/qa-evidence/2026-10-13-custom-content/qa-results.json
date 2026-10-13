@@ -1,0 +1,30 @@
+[
+  {
+    "name": "desktop: search, filter, select, course switch, offline",
+    "passed": true
+  },
+  {
+    "name": "mobile: search, filter, select, course switch, offline",
+    "passed": true
+  },
+  {
+    "name": "duplicate compile submission is prevented",
+    "passed": true
+  },
+  {
+    "name": "failed draft recovery can be explicitly retried",
+    "passed": true
+  },
+  {
+    "name": "partial upload and uncertain response retain independent results",
+    "passed": true
+  },
+  {
+    "name": "dirty draft survives course clicks and saves before switching",
+    "passed": true
+  },
+  {
+    "name": "published drafts are read-only and allow course switching",
+    "passed": true
+  }
+]

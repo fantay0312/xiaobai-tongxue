@@ -12,7 +12,7 @@
     "test:agent": "tsx scripts/xiaobai-agent.test.ts",
     "test:coach-markdown": "tsx scripts/coach-markdown.test.ts",
     "test:conversation": "tsx scripts/conversation-repair.test.ts",
-    "test:custom-content": "tsx scripts/custom-content-contract.test.ts",
+    "test:custom-content": "tsx scripts/custom-content-contract.test.ts && tsx scripts/custom-content-resilience.test.ts",
     "test:growth": "tsx scripts/growth-hero-contract.test.ts && tsx scripts/memory-panorama-contract.test.ts && tsx scripts/growth-progress.test.ts",
     "test:feedback": "tsx scripts/ui-feedback-contract.test.ts",
     "test:landing-data": "tsx scripts/landing-data.test.ts",

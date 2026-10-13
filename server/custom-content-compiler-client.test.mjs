@@ -118,7 +118,20 @@ test('evaluation token budget survives compatibility and empty-response retries'
   assert.equal(await llm.generate({ system: 's', user: 'u', maxTokens: 700, requestTimeoutMs: 30_000 }), '{"ok":true}');
   assert.equal(bodies.length, 3);
   assert.deepEqual(bodies.map(body => body.max_tokens), [700, 700, 700]);
-  assert.deepEqual(bodies.map(body => body.reasoning_effort ?? null), ['low', null, 'none']);
+  assert.deepEqual(bodies.map(body => body.reasoning_effort ?? null), ['low', null, null]);
+});
+
+test('unsupported reasoning parameter stays absent after an incomplete compatibility retry', async () => {
+  const bodies = [];
+  const llm = client(async (_url, init) => {
+    const body = JSON.parse(init.body);
+    bodies.push(body);
+    if ('reasoning_effort' in body) return jsonResponse(400, { error: 'unsupported parameter' });
+    return bodies.length === 2 ? reply('', 'length') : reply('{"ok":true}');
+  });
+  assert.equal(await llm.generate({ system: 's', user: 'u' }), '{"ok":true}');
+  assert.deepEqual(bodies.map(body => body.reasoning_effort ?? null), ['low', null, null]);
+  assert.deepEqual(bodies.map(body => body.max_tokens), [16_000, 16_000, 16_000]);
 });
 
 test('evaluation deadline can be shortened without raising the client timeout', async () => {

@@ -953,6 +953,20 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       return jobRow(result.rows[0]);
     },
 
+    async renewLease(id, leaseToken) {
+      assertUuid(id);
+      assertUuid(leaseToken);
+      const result = await queryable.query(
+        `UPDATE custom_compile_jobs
+            SET lease_expires_at = NOW() + INTERVAL '10 minutes'
+          WHERE id = $1 AND status = 'running' AND lease_token = $2
+            AND lease_expires_at > NOW()
+          RETURNING *`,
+        [id, leaseToken],
+      );
+      return jobRow(result.rows[0]);
+    },
+
     async findOpenByCourse(courseId) {
       assertUuid(courseId);
       const result = await queryable.query(

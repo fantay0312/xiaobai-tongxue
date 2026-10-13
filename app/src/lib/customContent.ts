@@ -104,14 +104,32 @@ async function payload(response: Response): Promise<Record<string, unknown>> {
 }
 
 async function request<T>(pathname: string, init?: RequestInit): Promise<T> {
-  const response = await gatewayFetch(`${ROOT}${pathname}`, init);
-  const data = await payload(response);
-  if (!response.ok) {
-    const code = typeof data.error === 'string' ? data.error : 'custom-content-failed';
-    const retryAfter = Number(data.retryAfter ?? response.headers.get('Retry-After') ?? 0);
-    throw new CustomContentError(code, response.status, Number.isFinite(retryAfter) ? retryAfter : 0);
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  const timeoutMs = init?.body instanceof FormData ? 180_000 : init?.method ? 120_000 : 20_000;
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
+  init?.signal?.addEventListener('abort', abort, { once: true });
+  if (init?.signal?.aborted) abort();
+  try {
+    const response = await gatewayFetch(`${ROOT}${pathname}`, { ...init, signal: controller.signal });
+    const data = await payload(response);
+    if (controller.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+    if (!response.ok) {
+      const code = typeof data.error === 'string' ? data.error : 'custom-content-failed';
+      const retryAfter = Number(data.retryAfter ?? response.headers.get('Retry-After') ?? 0);
+      throw new CustomContentError(code, response.status, Number.isFinite(retryAfter) ? retryAfter : 0);
+    }
+    if (Object.keys(data).length === 0) throw new CustomContentError('custom-content-contract-invalid', 502);
+    return data as T;
+  } catch (error) {
+    if (timedOut) throw new CustomContentError('request-timeout', 0);
+    if (controller.signal.aborted || error instanceof CustomContentError) throw error;
+    throw new CustomContentError('request-network-failed', 0);
+  } finally {
+    clearTimeout(timer);
+    init?.signal?.removeEventListener('abort', abort);
   }
-  return data as T;
 }
 
 function json(method: string, body?: unknown): RequestInit {
@@ -122,8 +140,8 @@ function json(method: string, body?: unknown): RequestInit {
   };
 }
 
-export async function customContentStatus(): Promise<{ configured: boolean; healthy: boolean; maxFileBytes: number }> {
-  const status = await request<{ configured: boolean; healthy: boolean; maxFileBytes: number }>('/status');
+export async function customContentStatus(signal?: AbortSignal): Promise<{ configured: boolean; healthy: boolean; maxFileBytes: number }> {
+  const status = await request<{ configured: boolean; healthy: boolean; maxFileBytes: number }>('/status', { signal });
   if (!Number.isSafeInteger(status.maxFileBytes)
     || status.maxFileBytes < 1
     || status.maxFileBytes > ABSOLUTE_MAX_FILE_BYTES) {
@@ -132,16 +150,24 @@ export async function customContentStatus(): Promise<{ configured: boolean; heal
   return status;
 }
 
-export async function listCustomCourses(): Promise<CustomCourse[]> {
-  return (await request<{ courses: CustomCourse[] }>('/courses')).courses;
+export async function listCustomCourses(signal?: AbortSignal): Promise<CustomCourse[]> {
+  const data = await request<{ courses: CustomCourse[] }>('/courses', { signal });
+  if (!Array.isArray(data.courses) || data.courses.some((item) => !item || typeof item.id !== 'string' || typeof item.title !== 'string')) {
+    throw new CustomContentError('custom-content-contract-invalid', 502);
+  }
+  return data.courses;
 }
 
 export async function createCustomCourse(title: string): Promise<CustomCourse> {
   return (await request<{ course: CustomCourse }>('/courses', json('POST', { title }))).course;
 }
 
-export async function listCourseAssets(courseId: string): Promise<CustomAsset[]> {
-  return (await request<{ assets: CustomAsset[] }>(`/courses/${encodeURIComponent(courseId)}/assets`)).assets;
+export async function listCourseAssets(courseId: string, signal?: AbortSignal): Promise<CustomAsset[]> {
+  const data = await request<{ assets: CustomAsset[] }>(`/courses/${encodeURIComponent(courseId)}/assets`, { signal });
+  if (!Array.isArray(data.assets) || data.assets.some((item) => !item || typeof item.id !== 'string' || typeof item.filename !== 'string')) {
+    throw new CustomContentError('custom-content-contract-invalid', 502);
+  }
+  return data.assets;
 }
 
 export async function uploadCourseAsset(
@@ -178,13 +204,14 @@ export async function startTopicCompile(input: {
   return (await request<{ job: CompileJob }>('/topics/compile', json('POST', input))).job;
 }
 
-export async function getCompileJob(jobId: string): Promise<CompileJob> {
-  return (await request<{ job: CompileJob }>(`/compile-jobs/${encodeURIComponent(jobId)}`)).job;
+export async function getCompileJob(jobId: string, signal?: AbortSignal): Promise<CompileJob> {
+  return (await request<{ job: CompileJob }>(`/compile-jobs/${encodeURIComponent(jobId)}`, { signal })).job;
 }
 
-export async function getCourseCompileJob(courseId: string): Promise<CompileJob | null> {
+export async function getCourseCompileJob(courseId: string, signal?: AbortSignal): Promise<CompileJob | null> {
   return (await request<{ job: CompileJob | null }>(
     `/courses/${encodeURIComponent(courseId)}/compile-job`,
+    { signal },
   )).job;
 }
 

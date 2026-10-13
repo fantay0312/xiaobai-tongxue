@@ -326,10 +326,12 @@ export function createJsonLlmClient({
       const timeoutBudget = Math.max(1, Math.min(timeoutMs, Math.trunc(Number.isFinite(requestTimeoutMs) ? requestTimeoutMs : timeoutMs)));
       const request = { system, user, requestId, tokenBudget, timeoutBudget };
       let effort = reasoningEffort || null;
+      let effortUnsupported = false;
       let result = await attempt({ ...request, effort });
       if (effort && result.status === 400) {
         logger.error?.(`[custom-content] compiler upstream 400 with reasoning_effort=${effort}, retry without`);
         effort = null;
+        effortUnsupported = true;
         result = await attempt({ ...request, effort: null });
       }
       if (result.status === 429) throw new Error('compiler-rate-limited');
@@ -337,8 +339,8 @@ export function createJsonLlmClient({
       // 正文为空(思考吃光额度)或 finish=length(正文被截成断尾 JSON)都算没答上来 → 关思考重发一次
       const incomplete = (r) => !r.content || r.finish === 'length';
       if (incomplete(result) && effort !== 'none') {
-        logger.error?.(`[custom-content] compiler ${result.content ? 'truncated' : 'empty'} (finish=${result.finish}, effort=${effort ?? 'default'}), retry with reasoning_effort=none`);
-        result = await attempt({ ...request, effort: 'none' });
+        logger.error?.(`[custom-content] compiler ${result.content ? 'truncated' : 'empty'} (finish=${result.finish}, effort=${effort ?? 'default'}), retry ${effortUnsupported ? 'without reasoning_effort' : 'with reasoning_effort=none'}`);
+        result = await attempt({ ...request, effort: effortUnsupported ? null : 'none' });
         if (result.status === 429) throw new Error('compiler-rate-limited');
         if (result.status < 200 || result.status >= 300) throw new Error(`compiler-upstream-failed:${result.status}`);
       }

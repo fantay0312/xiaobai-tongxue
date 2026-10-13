@@ -835,6 +835,7 @@ export function createCustomContentService({
   embeddingModelId,
   summaryModelId,
   maxFileBytes = DEFAULT_MAX_FILE_BYTES,
+  compileHeartbeatMs = 60_000,
   logger = console,
 } = {}) {
   if (!repository?.courses || !repository?.assets || !repository?.topics || !repository?.jobs) {
@@ -1117,9 +1118,22 @@ export function createCustomContentService({
     if (runningJobs.has(jobId)) return runningJobs.get(jobId);
     const task = (async () => {
       const leaseToken = crypto.randomUUID();
-      const job = await repository.jobs.claimForRun(jobId, leaseToken);
-      if (!job) return;
+      let job;
+      let heartbeat;
+      let renewing;
+      let leaseLost = false;
       try {
+        job = await repository.jobs.claimForRun(jobId, leaseToken);
+        if (!job) return;
+        heartbeat = setInterval(() => {
+          if (renewing || leaseLost) return;
+          renewing = repository.jobs.renewLease(job.id, leaseToken).then((renewed) => {
+            if (!renewed) leaseLost = true;
+          }).catch(() => {
+            logger.error?.('[custom-content] compile lease renewal unavailable');
+          }).finally(() => { renewing = null; });
+        }, compileHeartbeatMs);
+        heartbeat.unref?.();
         const course = await repository.courses.findById(job.courseId);
         if (!course) throw new Error('course-not-found');
         const assets = await repository.assets.findManyByCourse(job.courseId, job.assetIds);
@@ -1134,6 +1148,8 @@ export function createCustomContentService({
           requestedTitle: job.requestedTitle,
           requestId: `xb-compile-${job.id}`,
         });
+        if (renewing) await renewing;
+        if (leaseLost || !await repository.jobs.renewLease(job.id, leaseToken)) return;
         const attached = await repository.jobs.createDraftAndAttach({
           jobId: job.id,
           leaseToken,
@@ -1146,10 +1162,13 @@ export function createCustomContentService({
         if (!attached) throw new Error('compile-attach-failed');
       } catch (error) {
         logger.error?.('[custom-content] compile failed:', stableCompilerError(error), String(error?.message ?? '').slice(0, 160));
-        await repository.jobs.transitionClaimed(job.id, leaseToken, {
+        if (job && !leaseLost) await repository.jobs.transitionClaimed(job.id, leaseToken, {
           status: 'failed',
           errorCode: stableCompilerError(error),
         }).catch(() => {});
+      } finally {
+        clearInterval(heartbeat);
+        if (renewing) await renewing;
       }
     })().finally(() => runningJobs.delete(jobId));
     runningJobs.set(jobId, task);
@@ -1161,7 +1180,9 @@ export function createCustomContentService({
       const jobId = compileQueue.shift();
       queuedJobIds.delete(jobId);
       activeCompiles += 1;
-      void runJob(jobId).finally(() => {
+      void runJob(jobId).catch(() => {
+        logger.error?.('[custom-content] compile worker unavailable');
+      }).finally(() => {
         activeCompiles -= 1;
         pumpCompileQueue();
       });
