@@ -40,10 +40,10 @@ const prepDeskUi = read('../src/pages/prep/deskUi.tsx');
 const homePage = read('../src/pages/home/index.tsx');
 
 const firstStep = nextStep({ events: [], reports: [], topicStates: {}, topics: TOPICS });
-assert.equal(firstStep.to, '/study#shelf', '首次旅程必须先让用户到书架选课');
-assert.equal(firstStep.cta, '去书架选课', '首次行动文案必须明示选课');
+assert.equal(firstStep.to, '/learn', '首次旅程必须先让用户到书架选课');
+assert.equal(firstStep.cta, '在左栏选择课程', '首次行动文案必须明示从终端左栏选课');
 
-assert.match(prepPage, /备完，回书斋/, '备课桌必须能合上并回书斋');
+assert.match(prepPage, /备完，回学习终端/, '备课桌必须能合上并回书斋');
 assert.match(prepPage, /讲给小白听/, '讲解舱保留为可选去向');
 assert.doesNotMatch(prepPage, /跳过备课/, '备课不得再把跳过材料去讲课写成主路');
 assert.doesNotMatch(prepPage, /讲解舱才会解锁/, '自检不得再把门闩指向讲解舱');
@@ -127,7 +127,7 @@ assert.match(letterStyles, /transform-origin:\s*50% 100%/, '拜师帖必须从�
 assert.match(letterStyles, /@keyframes letter-rise[\s\S]*?translate3d\(0, 5rem, 0\)/, '展帖必须从下方升起');
 assert.match(letterStyles, /@keyframes letter-sink/, '关帖必须有对应的下沉过渡');
 
-assert.match(shell, /const NAV_GROUPS:[\s\S]*?study[\s\S]*?growth[\s\S]*?teacher/, '三个主导航必须提供分区快跳');
+assert.match(shell, /const NAV_GROUPS:[\s\S]*?custom-content[\s\S]*?growth[\s\S]*?teacher/, '学习终端、成长册和教师看板必须提供分区快跳');
 assert.match(shell, /<NavLink[\s\S]*?to=\{group\.path\}/, '主导航文字必须进入对应页面');
 assert.match(shell, /aria-label=\{`\$\{group\.label\}章节快跳`\}/, '章节菜单必须由独立按钮打开');
 assert.match(shell, /aria-expanded=\{expanded\}/, '分区导航必须暴露 disclosure 状态');

@@ -1,0 +1,79 @@
+.answer { margin-top: 8px; color: var(--ink); }
+.formatChoice { margin-left: auto; display: flex; align-items: center; gap: 4px; color: var(--ink-soft); }
+.formatChoice select { border: 0; color: inherit; background: transparent; font: inherit; font-size: 11px; padding: 3px; cursor: pointer; }
+.mobileMode { display: none; }
+.sourceList summary { display: flex; align-items: center; gap: 5px; list-style: none; cursor: pointer; padding-block: 5px; }
+.sourceList summary::-webkit-details-marker { display: none; }
+.sourceList > div { display: grid; gap: 5px; padding-top: 8px; }
+.sourceList > div > button { text-align: left; justify-content: flex-start; gap: 6px; font-size: 11px; }
+.blocks { display: grid; gap: 26px; margin-top: 26px; }
+.blocks h3 { margin: 0 0 12px; font-size: 18px; line-height: 1.5; font-weight: 600; letter-spacing: -.015em; }
+.sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 13px; }
+.sources button { display: flex; align-items: center; gap: 5px; border: 0; border-radius: 5px; padding: 4px 7px; background: var(--paper-warm); color: var(--ink-soft); font: inherit; font-size: 11px; }
+.sources button span { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-faint); }
+.sources button:hover { background: var(--paper-edge); }
+.blockHeading { display: flex; align-items: center; gap: 9px; }
+.blockHeading h3 { margin-bottom: 0; flex: 1; }
+.blockHeading > span { color: var(--ink-soft); font-size: 11px; }
+.question { margin: 18px 0 14px; font-size: 16px; line-height: 1.8; }
+.quiz, .flashcard, .plan { border: 1px solid var(--line); border-radius: 12px; padding: 22px; background: var(--paper); }
+.options { display: grid; gap: 8px; }
+.options button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: var(--paper); text-align: left; font: inherit; font-size: 14px; line-height: 1.6; }
+.options button > span { color: var(--ink-soft); font-size: 12px; }
+.options button > svg { margin-left: auto; flex: none; }
+.options button:hover:not(:disabled) { border-color: var(--ink-soft); background: var(--paper-warm); }
+.options button[aria-pressed=true] { border-color: var(--azure); background: var(--azure-wash, #eef4fc); }
+.options button[data-result=correct] { border-color: var(--jade); background: var(--reed-wash); }
+.options button[data-result=wrong] { border-color: var(--cinnabar, #a84325); }
+.options button:disabled { opacity: 1; cursor: default; }
+.checkAnswer { display: inline-flex; align-items: center; justify-content: center; gap: 12px; margin-top: 16px; border: 0; padding: 9px 14px; border-radius: 6px; background: var(--ink); color: var(--paper); font: inherit; font-size: 13px; }
+.checkAnswer:disabled { background: var(--paper-edge); color: var(--ink-soft); cursor: not-allowed; }
+.feedback { padding-top: 18px; line-height: 1.8; }
+.feedback > strong { color: var(--cinnabar, #a84325); font-size: 14px; }
+.feedback[data-correct=true] > strong { color: var(--jade); }
+.feedback > button, .planFooter button, .answerFooter button { display: inline-flex; align-items: center; gap: 6px; border: 0; padding: 5px 0; margin-right: 18px; color: var(--ink-soft); background: none; font: inherit; font-size: 12px; }
+.feedback > button:hover, .planFooter button:hover, .answerFooter button:hover { color: var(--azure); }
+.flashAnswer { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 16px; }
+.tableScroll { overflow-x: auto; }
+.comparison table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.7; }
+.comparison th, .comparison td { border-bottom: 1px solid var(--line); padding: 12px; vertical-align: top; text-align: left; min-width: 110px; }
+.comparison thead th { background: var(--paper-warm); font-weight: 600; }
+.comparison tbody th { min-width: 95px; color: var(--ink-soft); font-weight: 500; }
+.planSteps { margin-top: 18px; }
+.planSteps label { display: flex; align-items: flex-start; gap: 12px; padding: 15px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.planSteps input { accent-color: var(--azure); width: 16px; height: 16px; margin: 3px 0 0; flex: none; }
+.planSteps label > span { flex: 1; }
+.planSteps strong { display: block; font-size: 14px; font-weight: 550; }
+.planSteps small { display: block; margin-top: 5px; color: var(--ink-soft); line-height: 1.7; font-size: 13px; }
+.planSteps label[data-done=true] strong { text-decoration: line-through; color: var(--ink-soft); }
+.planSteps time { white-space: nowrap; color: var(--ink-soft); font-size: 12px; font-variant-numeric: tabular-nums; }
+.planFooter { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+.planFooter > span { color: var(--ink-soft); font-size: 11px; }
+.planFooter button { margin: 0; }
+.answerFooter { margin-top: 16px; }
+.followUps { margin-top: 19px; border-top: 1px solid var(--line); padding-top: 7px; }
+.followUps button { display: flex; align-items: center; justify-content: space-between; gap: 15px; border: 0; border-radius: 4px; padding: 12px 0; width: 100%; font: inherit; font-size: 13px; color: var(--ink-soft); background: none; text-align: left; }
+.followUps button:hover { color: var(--azure); }
+.activity { margin: 4px 0 19px; font-size: 12px; color: var(--ink-soft); }
+.activity summary { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; list-style: none; }
+.activity summary::-webkit-details-marker { display: none; }
+.activity time { font-variant-numeric: tabular-nums; color: var(--ink-soft); margin-left: 4px; }
+.activityMark { display: flex; width: 16px; justify-content: center; }
+.pulse { width: 7px; height: 7px; display: block; border-radius: 50%; background: var(--azure); animation: breathe 1.5s ease-in-out infinite; }
+.steps { margin: 12px 0 0 21px; padding: 2px 0 0 14px; border-left: 1px solid var(--line); }
+.steps > div { display: flex; align-items: center; gap: 8px; margin: 9px 0; }
+.steps > div[data-state=done] > svg { color: var(--jade); }
+.steps > p { font-size: 11px; margin: 10px 0 0; color: var(--ink-soft); }
+.answer :is(button,input):focus-visible, .activity summary:focus-visible { outline: 2px solid var(--azure); outline-offset: 3px; }
+@keyframes breathe { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+@media (max-width: 700px) {
+  .quiz, .flashcard, .plan { padding: 17px 14px; }
+  .blocks h3 { font-size: 17px; }
+  .planSteps label { gap: 8px; }
+  .sources button span { max-width: 120px; }
+  .options button { padding: 11px; }
+  .desktopModes.desktopModes { display: none; }
+  .mobileMode { display: flex; margin-left: auto; }
+  .mobileMode select { border: 0; background: var(--paper-warm); color: var(--ink-soft); border-radius: 6px; padding: 7px; font: inherit; font-size: 12px; }
+}

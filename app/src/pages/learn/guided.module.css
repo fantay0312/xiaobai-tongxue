@@ -1,0 +1,25 @@
+.panel { width: min(100%, 880px); margin: 0 auto; padding: 28px 0; }
+.steps { display: flex; gap: 8px; overflow-x: auto; padding: 6px 0 18px; }
+.steps button { display: flex; align-items: center; gap: 7px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink-soft); background: var(--paper); white-space: nowrap; font-size: 12px; }
+.steps button > span:first-child { display: grid; place-items: center; width: 19px; height: 19px; border-radius: 50%; background: var(--paper-shade); }
+.steps button { flex: 0 0 auto; max-width: 200px; }
+.steps button > span:first-child { flex-shrink: 0; }
+.steps button > span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.steps button[aria-current='step'] { color: var(--accent); border-color: var(--accent); background: var(--paper-warm); }
+.scene { border: 1px solid var(--line); border-radius: 12px; padding: 28px; }
+.scene h3 { font-size: 22px; margin: 18px 0; }
+.sceneLabel { display: flex; gap: 8px; align-items: center; color: var(--accent); font-size: 12px; }
+.sceneLabel > span { margin-left: auto; color: var(--ink-faint); }
+.reflection { display: grid; gap: 10px; margin: 20px 0; color: var(--ink-soft); font-size: 14px; }
+.reflection textarea { width: 100%; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 12px; font: inherit; color: var(--ink); background: var(--paper); }
+.actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end; align-items: center; margin: 18px 0; }
+.actions > :first-child { margin-right: auto; }
+.finish { padding: 20px; margin: 20px 0; border-left: 3px solid var(--accent); background: var(--paper-warm); font-size: 14px; }
+.finish p { line-height: 1.8; margin: 10px 0 18px; color: var(--ink-soft); }
+@media (max-width: 700px) {
+  .panel { padding: 12px 0; }
+  .scene { padding: 18px; }
+  .scene h3 { font-size: 19px; }
+  .sceneLabel > span { display: none; }
+  .actions { gap: 8px; }
+}

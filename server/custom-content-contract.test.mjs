@@ -60,6 +60,20 @@ function completeDraft() {
   };
 }
 
+test('compiler verifies specific formula evidence before broad semantic headings', async () => {
+  const draft = completeDraft();
+  draft.checklist[0] = { ...draft.checklist[0], point:'Scaled Dot-Product Attention',
+    groundTruth:'Divide the dot product by sqrt(d_k) to avoid extremely small gradients.', terms:['sqrt(d_k)','gradients'] };
+  const chunks = [
+    { id:'heading', content:'Scaled Dot-Product Attention and Multi-Head Attention.' },
+    { id:'reason', content:'For large d_k, dot products grow large, pushing softmax into regions with extremely small gradients. We scale by √d_k.' },
+    { id:'remaining', content:'课件明确说明要点2的原理。课件明确说明要点3的原理。' },
+  ];
+  const compiler = createTopicCompiler({ weknora:{listChunks:async()=>chunks,search:async()=>[chunks[0]]},llm:{model:'unit-model',generate:async()=>JSON.stringify(draft)} });
+  const result=await compiler.compile({course:{title:'Attention',wkDocKbId:'kb'},assets:[{id:'asset',wkKnowledgeId:'knowledge',filename:'paper.pdf'}],topicId:'custom-test',requestedTitle:'Attention',requestId:'test'});
+  assert.deepEqual(result.topic.checklist[0].sourceChunkIds,['reason']);
+});
+
 test('custom topic contract normalizes a complete grounded draft', () => {
   const topic = normalizeTopicDraft(completeDraft(), {
     topicId: 'custom-course-topic',

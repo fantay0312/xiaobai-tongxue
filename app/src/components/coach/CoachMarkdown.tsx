@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from 'react';
 import s from './CoachMarkdown.module.css';
+import { INLINE_MARKDOWN_RE } from './markdownInline';
 import {
   isMarkdownTableBodyRow,
   isMarkdownTableStart,
@@ -25,8 +26,6 @@ const HEADING_RE = /^(#{1,3})\s+(.+)$/;
 const LIST_RE = /^\s*([-+*]|\d+[.)])\s+(.+)$/;
 const QUOTE_RE = /^\s*>\s?(.*)$/;
 const RULE_RE = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/;
-const INLINE_RE =
-  /(!\[[^\]\n]*]\((?:[^()\s]|\([^)\s]*\))+\)|\[[^\]\n]+]\((?:[^()\s]|\([^)\s]*\))+\)|`[^`\n]+`|\*\*[^*\n]+\*\*|__[^_\n]+__|~~[^~\n]+~~|\*[^*\n]+\*|_[^_\n]+_)/g;
 
 function safeHttpUrl(value: string): string | null {
   try {
@@ -54,7 +53,7 @@ function linkedText(token: string, key: string): ReactNode {
 }
 
 function inline(text: string, keyBase: string): ReactNode[] {
-  return text.split(INLINE_RE).filter(Boolean).map((token, index) => {
+  return text.split(INLINE_MARKDOWN_RE).filter(Boolean).map((token, index) => {
     const key = `${keyBase}-${index}`;
     if (token.startsWith('![') || token.startsWith('[')) return linkedText(token, key);
     if (token.startsWith('`') && token.endsWith('`')) {

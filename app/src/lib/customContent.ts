@@ -163,6 +163,24 @@ export async function createCustomCourse(title: string): Promise<CustomCourse> {
   return (await request<{ course: CustomCourse }>('/courses', json('POST', { title }))).course;
 }
 
+export async function listStudyMaterials(topicId: string, signal?: AbortSignal): Promise<import('../engine/notebookSources').NotebookSource[]> {
+  const data = await request<{ sources: import('../engine/notebookSources').NotebookSource[] }>(`/topics/${encodeURIComponent(topicId)}/study-materials`, { signal });
+  if (!Array.isArray(data.sources) || data.sources.some((source) => typeof source?.id !== 'string' || typeof source.title !== 'string' || typeof source.content !== 'string' || typeof source.assetId !== 'string')) throw new CustomContentError('study-materials-invalid', 502);
+  return data.sources;
+}
+
+export async function findStudySources(topicId: string, query: string, signal?: AbortSignal, assetIds?: string[]): Promise<SourceCandidate[]> {
+  const data = await request<{ sources: SourceCandidate[] }>(`/topics/${encodeURIComponent(topicId)}/study-sources`, {
+    ...json('POST', { query, ...(assetIds === undefined ? {} : { assetIds }) }), signal,
+  });
+  if (!Array.isArray(data.sources) || data.sources.some((source) => !source
+    || typeof source.chunkId !== 'string' || typeof source.assetId !== 'string'
+    || typeof source.filename !== 'string' || typeof source.excerpt !== 'string')) {
+    throw new CustomContentError('custom-content-contract-invalid', 502);
+  }
+  return data.sources;
+}
+
 export async function listCourseAssets(courseId: string, signal?: AbortSignal): Promise<CustomAsset[]> {
   const data = await request<{ assets: CustomAsset[] }>(`/courses/${encodeURIComponent(courseId)}/assets`, { signal });
   if (!Array.isArray(data.assets) || data.assets.some((item) => !item || typeof item.id !== 'string' || typeof item.filename !== 'string')) {

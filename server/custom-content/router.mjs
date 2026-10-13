@@ -432,6 +432,23 @@ export function createCustomContentRouter({
         ));
       }
 
+      const studyMaterialsMatch = /^\/api\/xb\/topics\/([^/]+)\/study-materials$/.exec(pathname);
+      if (studyMaterialsMatch && req.method === 'GET') {
+        return withOwner(req, res, 'study-materials', async (owner, traceId) => {
+          if (!await admit(owner, res, 'study-materials', 60, 86_400, 600)) return;
+          return send(res, 200, { sources: await service.listStudyMaterials(owner, decodeURIComponent(studyMaterialsMatch[1]), traceId) });
+        });
+      }
+      const studySourcesMatch = /^\/api\/xb\/topics\/([^/]+)\/study-sources$/.exec(pathname);
+      if (studySourcesMatch && req.method === 'POST') {
+        return withOwnerJson(req, res, 'study-source-search', async (owner, traceId, body) => {
+          if (!await admit(owner, res, 'study-source-search', 120, 86_400, 1_200)) return;
+          return send(res, 200, {
+            sources: await service.findStudySources(owner, decodeURIComponent(studySourcesMatch[1]), body, traceId),
+          });
+        });
+      }
+
       const sourceCandidatesMatch = /^\/api\/xb\/topics\/([^/]+)\/source-candidates$/.exec(pathname);
       if (sourceCandidatesMatch && req.method === 'POST') {
         return withOwnerJson(req, res, 'custom-topic-source-candidates', async (owner, traceId, body) => {

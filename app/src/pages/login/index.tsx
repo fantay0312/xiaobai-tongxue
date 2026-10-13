@@ -30,7 +30,7 @@ function containsControlCharacter(value: string): boolean {
 
 function safeNextPath(value: string): string {
   return value.startsWith('/') && !value.startsWith('//')
-    && !value.includes('\\') && !containsControlCharacter(value) ? value : '/study';
+    && !value.includes('\\') && !containsControlCharacter(value) ? value : '/learn';
 }
 
 function AuthNotice({ title, text, role, children }: {
@@ -114,7 +114,7 @@ export default function LoginPage() {
     : resetting ? '先生忘了口令？小生陪先生慢慢寻。'
     : emailCodeLogin || phoneCodeLogin ? '先生今日也来教小生？'
     : '先生又来授业了？';
-  const next = safeNextPath(params.get('next') || '/study');
+  const next = safeNextPath(params.get('next') || '/learn');
   useDocTitle(bindingPhone ? '绑定验证手机号'
     : bindingEmail ? '补录验证邮箱'
       : resetting ? '找回密码' : registering ? '递帖注册' : '登入书斋');
@@ -312,8 +312,8 @@ export default function LoginPage() {
     return (
       <AuthNotice title={standalone ? '本地演示模式' : '已在书斋中'}
         text={standalone ? '当前为本地演示，无需登录即可使用全部功能。' : '你已登录，可以直接给小白开讲。'}>
-        <Link className={s.noticeLink} to={standalone ? '/study' : next}>
-          {standalone ? '回书斋' : '继续'} <Icon name="arrow-right" size={16} />
+        <Link className={s.noticeLink} to={standalone ? '/learn' : next}>
+          {standalone ? '回学习终端' : '继续'} <Icon name="arrow-right" size={16} />
         </Link>
       </AuthNotice>
     );
@@ -473,7 +473,7 @@ export default function LoginPage() {
                   onClick={() => switchMode('login')}>
                   {resetFlowBusy ? '正在处理…' : '返回密码登录'}
                 </button>
-              ) : <Link className={s.backLink} to="/study"><Icon name="arrow-left" size={15} />先随便看看</Link>}
+              ) : <Link className={s.backLink} to="/learn"><Icon name="arrow-left" size={15} />先看看课程</Link>}
             </div>
           </footer>
         </section>

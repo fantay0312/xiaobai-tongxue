@@ -203,7 +203,7 @@ test('only completed source versions are cacheable and status reads share in-fli
   assert.deepEqual(sourceCacheOptions({ parseStatus: 'processing', enableStatus: 'enabled' }), {});
   const asset = { id:'a',courseId:'course-a',parseStatus:'completed',enableStatus:'enabled',statusRevision:'3' };
   assert.notDeepEqual(sourceCacheOptions(asset),sourceCacheOptions({...asset,statusRevision:'4'}));
-  assert.notDeepEqual(sourceCacheOptions(asset),sourceCacheOptions({...asset,courseId:'course-b'}));
+  assert.deepEqual(sourceCacheOptions(asset),sourceCacheOptions({...asset,courseId:'course-b'}), 'the same canonical source version is reused across courses');
   let calls=0;
   await withServer(async (_req,res)=>{
     calls++; await new Promise(resolve=>setTimeout(resolve,20));

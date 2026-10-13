@@ -10,6 +10,7 @@ import { createFeatureRepository } from './features.mjs';
 import { createPointRepository } from './points.mjs';
 import { createSubscriptionRepository } from './subscriptions.mjs';
 import { createUserAccessRepository } from './user-access.mjs';
+import { createFileLibraryRepository } from '../../file-library/repository.mjs';
 import { createContactRepository, createUserRepository } from './users.mjs';
 import {
   createPostgresPoolFromEnv,
@@ -23,6 +24,7 @@ function dataLayer(queryable, options) {
     contacts: createContactRepository(queryable, options.contactProtector, options),
     learningStates: createLearningStateRepository(queryable),
     userFiles: createUserFileRepository(queryable, options),
+    fileLibrary: createFileLibraryRepository(queryable),
     inboundEmails: createInboundEmailRepository(queryable, options),
     authAuditEvents: createAuthAuditRepository(queryable, options),
     adminAuth: createAdminAuthRepository(queryable, options),

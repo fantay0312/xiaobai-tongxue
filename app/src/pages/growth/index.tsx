@@ -576,7 +576,7 @@ export default function GrowthPage() {
             <span aria-hidden="true">LEDGER 00</span>
             <p>
               <strong>第一课,还没落笔。</strong>
-              去书斋门厅开一课,这本册子会替你记下每次讲明白的时刻。
+              去学习终端开一课,这本册子会替你记下每次讲明白的时刻。
             </p>
           </div>
         ) : (

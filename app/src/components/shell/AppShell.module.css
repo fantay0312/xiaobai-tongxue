@@ -15,6 +15,17 @@
   overflow: hidden;
 }
 
+.terminal {
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--paper);
+}
+.terminal .header { flex-shrink: 0; background: var(--paper); backdrop-filter: none; }
+.terminal .headerInner { max-width: none; padding-inline: 25px; }
+.terminal .headerInner::after { display: none; }
+.terminal .brandMotto, .terminal .brandRule { display: none; }
+.terminal .main { flex: 1; min-height: 0; overflow: hidden; }
+
 /* 讲解舱场景:根铺黑板色兜底(讲解舱自铺黑板底,此处防纸色露边) */
 .board {
   background: var(--board);

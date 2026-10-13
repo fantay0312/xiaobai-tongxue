@@ -91,7 +91,7 @@ export default function ExamPage() {
           <Icon name="route" size={28} />
           <h1>这场考试还没有入册</h1>
           <p>先在学堂里给小白讲完一课，它才有东西可以带进考场。</p>
-          <Link to="/study" className={s.primaryBtn}>回书斋</Link>
+          <Link to="/learn" className={s.primaryBtn}>回学习终端</Link>
         </div>
       </div>
     );

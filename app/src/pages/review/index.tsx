@@ -99,9 +99,9 @@ export default function ReviewPage() {
         <div className={`${s.empty} ${s.rise}`}>
           <h1 className={s.emptyTitle}>这份教学档案还不存在</h1>
           <p className={s.emptyText}>
-            可能链接有误,或者演示数据刚被重置。先回书斋门厅给小白讲一课,这里就会长出属于你的第一份档案。
+            可能链接有误,或者演示数据刚被重置。先回学习终端给小白讲一课,这里就会长出属于你的第一份档案。
           </p>
-          <Link to="/study" className={s.btnPrimary}>回书斋门厅</Link>
+          <Link to="/learn" className={s.btnPrimary}>回学习终端</Link>
         </div>
       </div>
     );
@@ -140,7 +140,7 @@ export default function ReviewPage() {
       <header className={`${s.head} ${s.rise}`} style={rise(0)}>
         <div className={s.headMain}>
           <p className={s.chapterKicker}>第四章 · 灯下批注</p>
-          <p className={s.crumb}><Link to="/study">书斋门厅</Link> / 教学档案</p>
+          <p className={s.crumb}><Link to="/learn">学习终端</Link> / 教学档案</p>
           <h1 className={s.title}>{topic?.title ?? report.topicId}</h1>
           <p className={s.subTitle}>一次讲解的完整复盘 —— 教然后知困</p>
         </div>
@@ -418,14 +418,14 @@ export default function ReviewPage() {
           {/* 底部去处 —— 档案读完不留死胡同(出师后主按钮已指向书斋,不再重复给次链接) */}
           <footer className={`${s.footNav} ${s.rise}`} style={rise(7)}>
             <Link
-              to={report.masteredNow ? '/study' : `/teach/${report.topicId}`}
+              to={report.masteredNow ? '/learn' : `/teach/${report.topicId}`}
               className={s.btnPrimary}
             >
-              {report.masteredNow ? '回书斋,再挑一本' : '回讲台,把盲区讲明白'}
+              {report.masteredNow ? '回学习终端,再挑一本' : '回讲台,把盲区讲明白'}
               <Icon name="arrow-right" size={17} />
             </Link>
             {!report.masteredNow && (
-              <Link to="/study" className={s.footLink}>回书斋门厅 <Icon name="arrow-right" size={15} /></Link>
+              <Link to="/learn" className={s.footLink}>回学习终端 <Icon name="arrow-right" size={15} /></Link>
             )}
           </footer>
         </div>

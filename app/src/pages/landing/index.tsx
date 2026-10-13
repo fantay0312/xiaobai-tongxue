@@ -90,7 +90,7 @@ export default function LandingPage() {
           <span className={styles.footerMotto}>教然后知困</span>
         </div>
         <nav className={styles.footerNav} aria-label="页脚">
-          <Link to="/study">课程书架</Link>
+          <Link to="/learn">课程书架</Link>
           <Link to="/login">登录</Link>
         </nav>
       </footer>

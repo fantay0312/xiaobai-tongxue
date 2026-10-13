@@ -1,0 +1,15 @@
+{
+  "release": "/opt/xiaobai-learning-test/releases/20261014-shared-v5",
+  "contentSha256": "5c0130ca2ad22aca8aec35d24544ee5c0a0f0b7c809268b8cb9b74608207218c",
+  "checks": {
+    "test_health": 200,
+    "anonymous_library": 401,
+    "anonymous_state": 401,
+    "primary_gateway": 200,
+    "primary_page": 200,
+    "test_page": 200
+  },
+  "testService": "active",
+  "testAutostart": "enabled",
+  "primaryPid": "2137063"
+}

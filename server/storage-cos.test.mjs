@@ -86,6 +86,11 @@ test('COS store creates random private SSE keys scoped to the user UUID', async 
   assert.equal((await store.verifySize({ userId: USER_ID, key: custom.key })).byteSize, 8);
 
   const read = await store.read({ userId: USER_ID, key: uploaded.key });
+  const libraryKey = store.createLibraryFileKey({ userId: USER_ID });
+  assert.match(libraryKey, /\/library-files\/[a-f0-9]{32}$/);
+  await store.uploadLibraryFile({ userId: USER_ID, key: libraryKey, body: Buffer.from('library'), contentType: 'text/plain' });
+  assert.equal(cos.calls.at(-1).parameters.ACL, 'private');
+  assert.throws(() => store.uploadLibraryFile({ userId: OTHER_USER_ID, key: libraryKey, body: Buffer.from('bad'), contentType: 'text/plain' }), /invalid-cos-key/);
   assert.equal(read.body.toString(), 'stored');
   await store.delete({ userId: USER_ID, key: uploaded.key });
   await assert.rejects(

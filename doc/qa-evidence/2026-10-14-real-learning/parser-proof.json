@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-13T19:24:06.188Z",
+  "results": [
+    {
+      "assetId": "6b00ed74-0264-4809-8e15-0bd1726c32e4",
+      "knowledgeId": "d4531529-e954-472a-a0c6-20012c756a0a",
+      "status": "completed",
+      "enabled": "enabled",
+      "chunkCount": 100,
+      "totalTextChars": 30314,
+      "samples": [
+        {
+          "id": "c57df7c8-7842-4d25-9278-9abbf3330d7b",
+          "text": "large and limited training data.\n∗Equal contribution. Listing order is random. Jakob proposed replacing RNNs with self-attention and started\nthe effort to evaluate this idea. Ashish, with Illia, designed and implemented "
+        },
+        {
+          "id": "ed6707e2-156e-4f84-999f-c3b85f46ee3d",
+          "text": "Noam proposed scaled dot-product attention, multi-head\nattention and the parameter-free position representation and became the other person involved in nearly every\ndetail. Niki designed, implemented, tuned and evaluated"
+        }
+      ]
+    }
+  ]
+}

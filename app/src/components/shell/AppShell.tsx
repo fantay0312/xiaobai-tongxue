@@ -4,7 +4,7 @@
  * /teach 路由下切换为「夜自习」深色透明变体(粉笔白文字),
  * 页面根不铺纸色底,由讲解舱自铺黑板底。
  * / (宣传页)下头部同样吸顶;下滚收起、上滚滑出;品牌落款回宣传页,「书斋」导航到 /study。
- * 宣传页头部不放应用内导航/登入——对外留品牌、「进入书斋」与外观设置入口。
+ * 宣传页头部不放应用内导航/登入——对外留品牌、「进入学习终端」与外观设置入口。
  */
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
@@ -25,6 +25,9 @@ import {
 } from '../tour/tourState';
 import styles from './AppShell.module.css';
 import { retryModule } from '../../lib/moduleRecovery';
+import { ShellActionsContext } from './ShellActions';
+import { WorkspaceNavigation } from './WorkspaceNavigation';
+import workspace from './workspace.module.css';
 
 const ProfileDialog = lazy(() =>
   retryModule(() => import('./ProfileDialog')).then((module) => ({ default: module.ProfileDialog })),
@@ -43,19 +46,11 @@ interface NavGroup {
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    key: 'study', path: '/study', label: '书斋', end: true,
+    key: 'custom-content', path: '/learn', label: '学习终端', end: false,
     sections: [
-      { to: '/study#study-overview', label: '书斋门厅' },
-      { to: '/study#lesson-loop', label: '一课的走法' },
-      { to: '/study#shelf', label: '选课书架' },
-    ],
-  },
-  {
-    key: 'custom-content', path: '/custom-content', label: '自选课', end: true,
-    sections: [
-      { to: '/custom-content#custom-overview', label: '自选讲义' },
-      { to: '/custom-content#custom-assets', label: '资料入库' },
-      { to: '/custom-content#custom-compiler', label: '课题编译' },
+      { to: '/learn', label: '我的学习空间' },
+      { to: '/learn?view=library', label: '资料库' },
+      { to: '/learn?view=journey', label: '师徒旅程' },
     ],
   },
   {
@@ -151,10 +146,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   // 讲解舱已改「亮书斋 + 木框黑板物件」,全暗外壳退役(board 变体样式保留备用)
   const boardMode = pathname.startsWith('/teach/');
   // 宣传页场景:头部吸顶,品牌落款回首页
-  const landingMode = pathname === '/';
+  const landingMode = pathname === '/about';
+  const terminalMode = pathname === '/learn' || pathname.startsWith('/prep/');
   // 注意精确到 '/teach/':裸 startsWith('/teach') 会把 /teacher 教师看板一并锁死(2026-07-16 生产 bug)
   const appLocked = pathname.startsWith('/teach/');
   const authMode = pathname === '/login';
+  const workspaceMode = !landingMode && !authMode && !boardMode;
+  const secondaryWorkspace = workspaceMode && !terminalMode;
+  const [workspaceNavOpen, setWorkspaceNavOpen] = useState(false);
+  const [workspaceNavCollapsed, setWorkspaceNavCollapsed] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [themeHint, setThemeHint] = useState(false);
@@ -179,6 +179,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     setProfileOpen(false);
     setSettingsOpen(true);
   }, []);
+
+  useEffect(() => {
+    if (workspaceMode) document.documentElement.dataset.surface = 'workspace';
+    else delete document.documentElement.dataset.surface;
+    setWorkspaceNavOpen(false);
+    return () => { delete document.documentElement.dataset.surface; };
+  }, [workspaceMode, pathname]);
 
   const settleThemeHint = useCallback((openPanel: boolean) => {
     if (themeHintOn.current) {
@@ -236,7 +243,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   useEffect(() => {
-    if (appLocked) {
+    if (appLocked || terminalMode) {
       setHeaderHidden(false);
       return undefined;
     }
@@ -256,7 +263,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, [appLocked, openMenu, profileOpen, settingsOpen, themeHint]);
+  }, [appLocked, terminalMode, openMenu, profileOpen, settingsOpen, themeHint]);
 
   useEffect(() => {
     if (!openMenu) return undefined;
@@ -303,12 +310,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     : landingMode
       ? `${styles.shell} ${styles.landing}`
       : authMode ? `${styles.shell} ${styles.auth}` : styles.shell;
-  const shellClass = `${shellVariantClass}${appLocked ? ` ${styles.locked}` : ''}`;
+  const shellClass = `${shellVariantClass}${appLocked ? ` ${styles.locked}` : ''}${terminalMode ? ` ${styles.terminal}` : ''}${workspaceMode ? ` ${workspace.workspace}` : ''}`;
 
   return (
-    <div className={shellClass}>
+    <ShellActionsContext.Provider value={{ openSettings, openProfile: () => { setSettingsOpen(false); setProfileOpen(true); } }}>
+    <div className={shellClass} data-ui-theme={uiTheme}>
       {uiTheme === 'tech' && <TechBarfield />}
-      <header
+      {!workspaceMode && <header
         className={`${styles.header}${headerHidden ? ` ${styles.headerHidden}` : ''}${reducedMotion ? ` ${styles.headerInstant}` : ''}`}
         onFocusCapture={() => setHeaderHidden(false)}
       >
@@ -330,7 +338,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 bubbleRef={themeHintBubbleRef}
                 onClick={() => settleThemeHint(true)}
               />
-              <NavLink to="/study" className={styles.loginBtn}>进入书斋</NavLink>
+              <NavLink to="/learn" className={styles.loginBtn}>进入学习终端</NavLink>
             </nav>
           ) : (
           <nav ref={navRef} className={styles.nav} aria-label="主导航">
@@ -341,7 +349,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <NavLink
                     to={group.path}
                     end={group.end}
-                    className={({ isActive }) => `${styles.link}${isActive ? ` ${styles.linkActive}` : ''}`}
+                    className={({ isActive }) => `${styles.link}${isActive || (terminalMode && group.key === 'custom-content') ? ` ${styles.linkActive}` : ''}`}
                     data-tour={group.key === 'growth' ? 'nav-growth' : undefined}
                     onClick={() => setOpenMenu(null)}
                   >
@@ -417,10 +425,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
           )}
         </div>
-      </header>
+      </header>}
 
 
-      <main className={styles.main}>{children}</main>
+      {secondaryWorkspace ? <div className={workspace.surface} data-navigation-open={workspaceNavOpen || undefined} data-navigation-collapsed={workspaceNavCollapsed || undefined}>
+        <WorkspaceNavigation onClose={() => { setWorkspaceNavOpen(false); setWorkspaceNavCollapsed(true); }} onNavigate={() => setWorkspaceNavOpen(false)} />
+        <div className={workspace.mobileBar}><button className={workspace.iconButton} aria-label="展开应用导航" onClick={() => { setWorkspaceNavOpen(true); setWorkspaceNavCollapsed(false); }}><Icon name="panel-left" size={19} /></button>小白同学</div>
+        <main className={`${styles.main} ${workspace.content}`}>{children}</main>
+      </div> : <main className={styles.main}>{children}</main>}
 
       <AmbiencePlayer />
 
@@ -435,5 +447,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         {settingsOpen && <SettingsDialog open={settingsOpen} onClose={closeSettings} />}
       </Suspense>
     </div>
+    </ShellActionsContext.Provider>
   );
 }

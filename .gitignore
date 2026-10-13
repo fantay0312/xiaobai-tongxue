@@ -2,6 +2,7 @@ node_modules/
 dist/
 .DS_Store
 *.local
+.codex_tmp/
 
 # 含真实 API 密钥,禁止入库
 doc/aiapi.md
@@ -33,6 +34,10 @@ server/transcripts/
 admin/.env
 admin/.env.*
 !admin/.env.example
+
+# Isolated optional framework runtime; source revision and dependencies are pinned in deploy/deeptutor.
+deploy/deeptutor/.runtime/
+deploy/deeptutor/__pycache__/
 
 # 含账号凭据/本地打包产物,禁止入库
 doc/账号.md

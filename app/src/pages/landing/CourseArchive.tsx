@@ -22,7 +22,7 @@ export function CourseArchive() {
         <h2 id="course-archive-title" className={landing.sectionTitle}>
           {courseCount} 门课程，{topicCount} 个知识点
         </h2>
-        <Link className={s.textLink} to="/study">
+        <Link className={s.textLink} to="/learn">
           去课程书架
           <Icon name="arrow-right" size={16} />
         </Link>
@@ -33,7 +33,7 @@ export function CourseArchive() {
           <li key={course.id} data-landing-reveal data-reveal-order={index}>
             <Link
               className={s.card}
-              to="/study"
+              to="/learn"
               aria-label={`进入《${course.course}》，${availability(course)}`}
             >
               <span className={s.cover}>

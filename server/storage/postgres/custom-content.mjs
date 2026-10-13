@@ -35,8 +35,11 @@ function assetRow(row) {
   if (!row) return null;
   return {
     id: row.id,
-    courseId: row.course_id,
-    assetRole: row.asset_role,
+    courseId: row.context_course_id ?? row.course_id,
+    ownerId: row.owner_id,
+    wkKbId: row.wk_kb_id,
+    libraryFileId: row.library_file_id ?? null,
+    assetRole: row.context_asset_role ?? row.asset_role,
     filename: row.filename,
     contentType: row.content_type,
     byteSize: Number(row.byte_size),
@@ -201,7 +204,8 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
                 COUNT(DISTINCT a.id)::int AS asset_count,
                 COUNT(DISTINCT t.id) FILTER (WHERE t.status = 'ready')::int AS topic_count
            FROM custom_courses c
-           LEFT JOIN custom_assets a ON a.course_id = c.id
+           LEFT JOIN custom_course_assets ca ON ca.course_id = c.id
+           LEFT JOIN custom_assets a ON a.id = ca.asset_id
            LEFT JOIN custom_topics t ON t.course_id = c.id
           WHERE c.owner_id = $1
           GROUP BY c.id
@@ -326,102 +330,96 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
         const result = await client.query(
           `INSERT INTO custom_assets
              (id, course_id, asset_role, filename, content_type, byte_size, sha256,
-              cos_key, wk_knowledge_id, parse_status, enable_status, error_message)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+              cos_key, wk_knowledge_id, parse_status, enable_status, error_message, owner_id, wk_kb_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, (SELECT wk_doc_kb_id FROM custom_courses WHERE id = $2))
            RETURNING *`,
           [
             id, input.courseId, input.assetRole, input.filename, input.contentType,
             input.byteSize, input.sha256, intent.cos_key, input.wkKnowledgeId, input.parseStatus,
-            input.enableStatus ?? 'disabled', input.errorMessage ?? null,
+            input.enableStatus ?? 'disabled', input.errorMessage ?? null, ownerId,
           ],
         );
+        await client.query('INSERT INTO custom_course_assets(course_id,asset_id,asset_role) VALUES($1,$2,$3)', [input.courseId,id,input.assetRole]);
         await client.query('DELETE FROM custom_asset_upload_intents WHERE id = $1', [intentId]);
         return assetRow(result.rows[0]);
       });
     },
 
     async create(input) {
-      const id = uuid();
-      assertUuid(id);
-      assertUuid(input.courseId);
-      const result = await queryable.query(
-        `INSERT INTO custom_assets
-           (id, course_id, asset_role, filename, content_type, byte_size, sha256,
-            cos_key, wk_knowledge_id, parse_status, enable_status, error_message)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-         RETURNING *`,
-        [
-          id, input.courseId, input.assetRole, input.filename, input.contentType,
-          input.byteSize, input.sha256, input.cosKey, input.wkKnowledgeId, input.parseStatus,
-          input.enableStatus ?? 'disabled', input.errorMessage ?? null,
-        ],
-      );
+      const id = uuid(); assertUuid(id);
+      if (input.courseId) assertUuid(input.courseId);
+      return withTransaction(async (client) => {
+        const result = await client.query(
+          `INSERT INTO custom_assets (id,course_id,asset_role,filename,content_type,byte_size,sha256,cos_key,wk_knowledge_id,parse_status,enable_status,error_message,owner_id,wk_kb_id,library_file_id)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,COALESCE($13::uuid,(SELECT owner_id FROM custom_courses WHERE id=$2)),COALESCE($14,(SELECT wk_doc_kb_id FROM custom_courses WHERE id=$2)),$15) RETURNING *`,
+          [id,input.courseId ?? null,input.assetRole,input.filename,input.contentType,input.byteSize,input.sha256,input.cosKey,input.wkKnowledgeId,input.parseStatus,input.enableStatus ?? 'disabled',input.errorMessage ?? null,input.ownerId ?? null,input.wkKbId ?? null,input.libraryFileId ?? null]);
+        if (input.courseId) await client.query('INSERT INTO custom_course_assets(course_id,asset_id,asset_role) VALUES($1,$2,$3)',[input.courseId,id,input.assetRole]);
+        return assetRow(result.rows[0]);
+      });
+    },
+    async ensureLibrarySpace(ownerId) {
+      assertUuid(ownerId);
+      await queryable.query('INSERT INTO library_parse_spaces(owner_id,wk_kb_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[ownerId,uuid()]);
+      const result = await queryable.query('SELECT * FROM library_parse_spaces WHERE owner_id=$1',[ownerId]);
+      return { id: result.rows[0].wk_kb_id, ready: result.rows[0].ready };
+    },
+    async readyLibrarySpace(ownerId) { await queryable.query('UPDATE library_parse_spaces SET ready=TRUE WHERE owner_id=$1',[ownerId]); },
+    async getLibrarySpace(ownerId) {
+      const result = await queryable.query('SELECT * FROM library_parse_spaces WHERE owner_id=$1',[ownerId]);
+      return result.rows[0] ? { id: result.rows[0].wk_kb_id, ready: result.rows[0].ready } : null;
+    },
+    async findLibraryFile(ownerId, fileId) {
+      const result = await queryable.query('SELECT * FROM custom_assets WHERE owner_id=$1 AND library_file_id=$2',[ownerId,fileId]);
       return assetRow(result.rows[0]);
     },
-
+    async adoptLibraryFile(ownerId, assetId, fileId) {
+      const result = await queryable.query(`UPDATE custom_assets SET library_file_id=$3 WHERE owner_id=$1 AND id=$2 AND parse_status<>'deleting' AND (library_file_id IS NULL OR library_file_id=$3) RETURNING *`,[ownerId,assetId,fileId]);
+      return assetRow(result.rows[0]);
+    },
+    async attach(ownerId, courseId, assetId, assetRole) {
+      return withTransaction(async (client) => {
+        const owned = await client.query(`SELECT a.id FROM custom_assets a JOIN custom_courses c ON c.id=$2 WHERE a.id=$3 AND a.owner_id=$1 AND c.owner_id=$1 AND a.parse_status<>'deleting' FOR UPDATE OF a`,[ownerId,courseId,assetId]);
+        if (!owned.rows.length) return null;
+        await client.query(`INSERT INTO custom_course_assets(course_id,asset_id,asset_role) VALUES($1,$2,$3) ON CONFLICT(course_id,asset_id) DO UPDATE SET asset_role=EXCLUDED.asset_role`,[courseId,assetId,assetRole]);
+        return true;
+      });
+    },
+    async detach(ownerId, courseId, assetId) {
+      return withTransaction(async (client) => {
+        const owned = await client.query(`SELECT a.id FROM custom_assets a JOIN custom_courses c ON c.id=$2 WHERE a.id=$3 AND a.owner_id=$1 AND c.owner_id=$1 FOR UPDATE OF a`,[ownerId,courseId,assetId]);
+        if (!owned.rows.length) return false;
+        const references = await client.query(`SELECT EXISTS(SELECT 1 FROM custom_topics WHERE course_id=$1 AND status IN ('draft','ready') AND COALESCE(payload->'sources','[]'::jsonb) @> $3::jsonb) OR EXISTS(SELECT 1 FROM custom_compile_jobs WHERE course_id=$1 AND status IN ('queued','running','needs_review') AND $2=ANY(asset_ids)) AS used`,[courseId,assetId,JSON.stringify([{assetId}])]);
+        if (references.rows[0].used) return false;
+        await client.query('DELETE FROM custom_course_assets WHERE course_id=$1 AND asset_id=$2',[courseId,assetId]); return true;
+      });
+    },
+    async listBindings(ownerId, assetId) {
+      const result = await queryable.query(`SELECT ca.course_id FROM custom_course_assets ca JOIN custom_assets a ON a.id=ca.asset_id WHERE a.owner_id=$1 AND a.id=$2`,[ownerId,assetId]);
+      return result.rows.map((row) => row.course_id);
+    },
     async listOwned(ownerId, courseId) {
-      assertUuid(ownerId);
-      assertUuid(courseId);
-      const result = await queryable.query(
-        `SELECT a.*
-           FROM custom_assets a
-           JOIN custom_courses c ON c.id = a.course_id
-          WHERE a.course_id = $1 AND c.owner_id = $2
-          ORDER BY a.created_at DESC`,
-        [courseId, ownerId],
-      );
+      assertUuid(ownerId); assertUuid(courseId);
+      const result = await queryable.query(`SELECT a.*,ca.course_id AS context_course_id,ca.asset_role AS context_asset_role FROM custom_assets a JOIN custom_course_assets ca ON ca.asset_id=a.id JOIN custom_courses c ON c.id=ca.course_id WHERE ca.course_id=$1 AND a.owner_id=$2 AND c.owner_id=$2 ORDER BY a.created_at DESC`,[courseId,ownerId]);
       return result.rows.map(assetRow);
     },
-
     async findOwned(ownerId, assetId) {
-      assertUuid(ownerId);
-      assertUuid(assetId);
-      const result = await queryable.query(
-        `SELECT a.*
-           FROM custom_assets a
-           JOIN custom_courses c ON c.id = a.course_id
-          WHERE a.id = $1 AND c.owner_id = $2`,
-        [assetId, ownerId],
-      );
+      assertUuid(ownerId); assertUuid(assetId);
+      const result = await queryable.query('SELECT * FROM custom_assets WHERE id=$1 AND owner_id=$2',[assetId,ownerId]);
       return assetRow(result.rows[0]);
     },
-
     async findOwnedByStorageRefs(ownerId, cosKey, wkKnowledgeId) {
       assertUuid(ownerId);
-      const result = await queryable.query(
-        `SELECT a.*
-           FROM custom_assets a
-           JOIN custom_courses c ON c.id = a.course_id
-          WHERE c.owner_id = $1 AND a.cos_key = $2 AND a.wk_knowledge_id = $3`,
-        [ownerId, cosKey, wkKnowledgeId],
-      );
+      const result = await queryable.query('SELECT * FROM custom_assets WHERE owner_id=$1 AND cos_key=$2 AND wk_knowledge_id=$3',[ownerId,cosKey,wkKnowledgeId]);
       return assetRow(result.rows[0]);
     },
-
     async findManyOwned(ownerId, courseId, assetIds) {
-      assertUuid(ownerId);
-      assertUuid(courseId);
-      for (const id of assetIds) assertUuid(id);
-      const result = await queryable.query(
-        `SELECT a.*
-           FROM custom_assets a
-           JOIN custom_courses c ON c.id = a.course_id
-          WHERE a.course_id = $1 AND c.owner_id = $2 AND a.id = ANY($3::uuid[])
-          ORDER BY a.created_at`,
-        [courseId, ownerId, assetIds],
-      );
+      assertUuid(ownerId); assertUuid(courseId); for (const id of assetIds) assertUuid(id);
+      const result = await queryable.query(`SELECT a.*,ca.course_id AS context_course_id,ca.asset_role AS context_asset_role FROM custom_assets a JOIN custom_course_assets ca ON ca.asset_id=a.id JOIN custom_courses c ON c.id=ca.course_id WHERE ca.course_id=$1 AND a.owner_id=$2 AND c.owner_id=$2 AND a.id=ANY($3::uuid[]) ORDER BY a.created_at`,[courseId,ownerId,assetIds]);
       return result.rows.map(assetRow);
     },
-
     async findManyByCourse(courseId, assetIds) {
-      assertUuid(courseId);
-      for (const id of assetIds) assertUuid(id);
-      const result = await queryable.query(
-        `SELECT * FROM custom_assets
-          WHERE course_id = $1 AND id = ANY($2::uuid[])
-          ORDER BY created_at`,
-        [courseId, assetIds],
-      );
+      assertUuid(courseId); for (const id of assetIds) assertUuid(id);
+      const result = await queryable.query(`SELECT a.*,ca.course_id AS context_course_id,ca.asset_role AS context_asset_role FROM custom_assets a JOIN custom_course_assets ca ON ca.asset_id=a.id JOIN custom_courses c ON c.id=ca.course_id WHERE ca.course_id=$1 AND a.owner_id=c.owner_id AND a.id=ANY($2::uuid[]) ORDER BY a.created_at`,[courseId,assetIds]);
       return result.rows.map(assetRow);
     },
 
@@ -491,9 +489,7 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
             WHERE a.id = c.id
             RETURNING a.*
          )
-         SELECT a.*, c.owner_id
-           FROM claimed a
-           JOIN custom_courses c ON c.id = a.course_id`,
+         SELECT a.* FROM claimed a`,
       );
       return result.rows.map((row) => ({ ...assetRow(row), ownerId: row.owner_id }));
     },
@@ -512,9 +508,8 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
         const locked = await client.query(
           `SELECT a.*
              FROM custom_assets a
-             JOIN custom_courses c ON c.id = a.course_id
-            WHERE a.id = $1
-              AND c.owner_id = $2
+             WHERE a.id = $1
+              AND a.owner_id = $2
             FOR UPDATE OF a`,
           [id, ownerId],
         );
@@ -530,12 +525,11 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
              ) OR EXISTS (
                SELECT 1
                  FROM custom_compile_jobs j
-                WHERE j.course_id = $3
-                  AND j.status IN ('queued', 'running', 'needs_review')
+                WHERE j.status IN ('queued', 'running', 'needs_review')
                   AND $1 = ANY(j.asset_ids)
              )
-           ) AS referenced`,
-          [id, source, locked.rows[0].course_id],
+           ) OR EXISTS (SELECT 1 FROM custom_course_assets ca JOIN custom_assets a ON a.id=ca.asset_id WHERE ca.asset_id=$1 AND a.library_file_id IS NOT NULL) AS referenced`,
+          [id, source],
         );
         if (referenced.rows[0]?.referenced === true) return null;
         const result = await client.query(
@@ -563,9 +557,8 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
         const locked = await client.query(
           `SELECT a.*
              FROM custom_assets a
-             JOIN custom_courses c ON c.id = a.course_id
-            WHERE a.id = $1
-              AND c.owner_id = $2
+             WHERE a.id = $1
+              AND a.owner_id = $2
             FOR UPDATE OF a`,
           [id, ownerId],
         );
@@ -581,12 +574,11 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
              ) OR EXISTS (
                SELECT 1
                  FROM custom_compile_jobs j
-                WHERE j.course_id = $3
-                  AND j.status IN ('queued', 'running', 'needs_review')
+                WHERE j.status IN ('queued', 'running', 'needs_review')
                   AND $1 = ANY(j.asset_ids)
              )
            ) AS referenced`,
-          [id, source, locked.rows[0].course_id],
+          [id, source],
         );
         if (referenced.rows[0]?.referenced === true) return null;
         const result = await client.query(
@@ -675,8 +667,7 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
            ) OR EXISTS (
              SELECT 1
                FROM custom_compile_jobs j
-              WHERE j.course_id = custom_assets.course_id
-                AND j.status IN ('queued', 'running', 'needs_review')
+              WHERE j.status IN ('queued', 'running', 'needs_review')
                 AND custom_assets.id = ANY(j.asset_ids)
            )
          ) AS referenced
@@ -826,7 +817,7 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
         const selected = await client.query(
           `SELECT id
              FROM custom_assets
-            WHERE course_id = $1
+            WHERE EXISTS(SELECT 1 FROM custom_course_assets ca JOIN custom_courses c ON c.id=ca.course_id WHERE ca.course_id=$1 AND ca.asset_id=custom_assets.id AND c.owner_id=custom_assets.owner_id)
               AND id = ANY($2::uuid[])
               AND parse_status = 'completed'
             ORDER BY id
