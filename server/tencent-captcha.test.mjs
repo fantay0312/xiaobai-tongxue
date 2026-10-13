@@ -42,6 +42,22 @@ function repeatedAesKey(secret) {
   return key;
 }
 
+test('rejected captcha diagnostics classify failure without recording credentials or proofs', async () => {
+  const events = [];
+  const captcha = createTencentCaptcha({
+    env: configuredEnv(), now: () => NOW_MS,
+    fetchImpl: async () => successResponse(100),
+    onDiagnostic: (event) => events.push(event),
+  });
+  const challenge = captcha.issueChallenge('login');
+  assert.deepEqual(await captcha.verify('login', proof(challenge), '203.0.113.9'), { ok: false, error: 'captcha-failed' });
+  assert.deepEqual(events, [{ scene: 'login', reason: 'provider-rejected', captchaCode: 1, evilLevel: 100 }]);
+  await captcha.verify('login', proof(challenge), '203.0.113.9');
+  assert.equal(events[1].reason, 'challenge-missing-or-consumed');
+  const diagnosticText = JSON.stringify(events);
+  for (const secret of ['ticket-ok', '@rand', challenge.aidEncrypted, '203.0.113.9', APP_SECRET]) assert.ok(!diagnosticText.includes(secret));
+});
+
 test('aidEncrypted uses repeated 32-byte key and IV+ciphertext+GCM tag layout', () => {
   const iv = Buffer.from('012345678901');
   const encrypted = createAidEncrypted('123456789', APP_SECRET, {

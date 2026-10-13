@@ -222,7 +222,9 @@ if (SMS_SDK_APP_ID && SMS_SIGN_NAME && SMS_TEMPLATE_ID && SMS_SECRET_ID && SMS_S
 }
 const passwordService = createPasswordService();
 const authGate = createAuthGate({ maxConcurrent: 8, maxPerMinute: 120 });
-const captchaService = createTencentCaptcha();
+const captchaService = createTencentCaptcha({
+  onDiagnostic: (event) => console.warn('[captcha]', JSON.stringify(event)),
+});
 let adminConfig = null;
 try {
   adminConfig = readAdminConfig(process.env);

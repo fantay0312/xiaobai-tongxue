@@ -186,6 +186,7 @@ export function createTencentCaptcha({
   challengeTtlSeconds = CHALLENGE_TTL_SECONDS,
   requestTimeoutMs = 5_000,
   metadataTimeoutMs = 1_500,
+  onDiagnostic = () => {},
 } = {}) {
   const emailScene = sceneConfig(env, 'email');
   const loginScene = sceneConfig(env, 'login');
@@ -201,6 +202,9 @@ export function createTencentCaptcha({
   const challenges = new Map();
   let cachedCredentials = null;
   let credentialRequest = null;
+  function diagnose(scene, reason, detail = {}) {
+    try { onDiagnostic({ scene, reason, ...detail }); } catch { /* diagnostics cannot affect admission */ }
+  }
 
   function pruneChallenges(at) {
     for (const [aidEncrypted, challenge] of challenges) {
@@ -246,12 +250,16 @@ export function createTencentCaptcha({
       && validProofField(proof?.randstr, 1024) && aidEncrypted;
     if (!complete) {
       if (aidEncrypted) challenges.delete(aidEncrypted);
+      diagnose(scene, 'missing-proof');
       return RESULT_REQUIRED;
     }
     const challenge = challenges.get(aidEncrypted);
     challenges.delete(aidEncrypted);
-    if (!challenge || challenge.scene !== scene || challenge.expiresAt <= now()) return RESULT_FAILED;
-    if (/^trerror_/i.test(proof.ticket)) return RESULT_FAILED;
+    if (!challenge || challenge.scene !== scene || challenge.expiresAt <= now()) {
+      diagnose(scene, !challenge ? 'challenge-missing-or-consumed' : challenge.scene !== scene ? 'scene-mismatch' : 'challenge-expired');
+      return RESULT_FAILED;
+    }
+    if (/^trerror_/i.test(proof.ticket)) { diagnose(scene, 'disaster-ticket'); return RESULT_FAILED; }
     return { ok: true, ticket: proof.ticket, randstr: proof.randstr };
   }
 
@@ -294,7 +302,7 @@ export function createTencentCaptcha({
     const claimed = consumeChallenge(scene, proof);
     if (!claimed.ok) return claimed;
     const config = scenes.get(scene);
-    if (!config || !validProofField(userIp, 128)) return RESULT_FAILED;
+    if (!config || !validProofField(userIp, 128)) { diagnose(scene, 'invalid-scene-or-ip'); return RESULT_FAILED; }
     const body = JSON.stringify({
       CaptchaType: 9,
       Ticket: claimed.ticket,
@@ -313,8 +321,14 @@ export function createTencentCaptcha({
         headers,
         body,
       }, requestTimeoutMs);
-      return validCaptchaResponse(payload) ? { ok: true } : RESULT_FAILED;
+      const valid = validCaptchaResponse(payload);
+      if (!valid) diagnose(scene, 'provider-rejected', {
+        captchaCode: payload.Response.CaptchaCode,
+        evilLevel: payload.Response.EvilLevel,
+      });
+      return valid ? { ok: true } : RESULT_FAILED;
     } catch {
+      diagnose(scene, 'provider-unavailable');
       return RESULT_UNAVAILABLE;
     }
   }
