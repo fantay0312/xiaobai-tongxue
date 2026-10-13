@@ -1,4 +1,45 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { createChunkUploadStore } from './custom-content/chunk-upload.mjs';
+
+test('chunk routes authorize, stage and complete through the existing ingest path', async (t) => {
+  const chunks = createChunkUploadStore(); t.after(() => chunks.close());
+  const file = Buffer.from('%PDF-1.7\nlesson\n%%EOF');
+  let owner = { id: 'alice' };
+  let body = { filename: 'lesson.pdf', byteSize: file.length, sha256: createHash('sha256').update(file).digest('hex'), clientUploadId: 'test-intent' };
+  let rawReads = 0;
+  let ingests = 0;
+  let response;
+  const router = createCustomContentRouter({
+    chunkUploads: chunks,
+    service: {
+      maxFileBytes: 80 * 1024 * 1024,
+      async prepareUpload(_owner, courseId, value) { assert.equal(courseId, 'course'); return { ...value, courseId }; },
+      async uploadAsset(actualOwner, courseId, input) {
+        assert.equal(actualOwner.id, 'alice'); assert.equal(courseId, 'course'); assert.deepEqual(input.bytes, file);
+        ingests += 1; return { id: 'stored-asset' };
+      },
+    },
+    async resolveOwner() { return owner; },
+    send(_res, status, data) { response = { status, data }; },
+    async readJson() { return body; },
+    async readRaw() { rawReads += 1; return file; },
+  });
+  const call = async (method, path) => router.handle({ method, headers: {}, resume() {} }, {}, path);
+  await call('POST', '/api/xb/courses/course/uploads');
+  assert.equal(response.status, 201);
+  const id = response.data.upload.id;
+  owner = null;
+  await call('PUT', `/api/xb/uploads/${id}/chunks/0`);
+  assert.equal(rawReads, 0);
+  owner = { id: 'alice' };
+  await call('PUT', `/api/xb/uploads/${id}/chunks/0`);
+  assert.equal(response.status, 200);
+  await call('POST', `/api/xb/uploads/${id}/complete`);
+  await call('POST', `/api/xb/uploads/${id}/complete`);
+  assert.equal(response.status, 202);
+  assert.equal(ingests, 1);
+});
 import test from 'node:test';
 import { createCustomContentRouter } from './custom-content/router.mjs';
 

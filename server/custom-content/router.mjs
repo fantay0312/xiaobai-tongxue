@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { createChunkUploadStore, UPLOAD_CHUNK_BYTES } from './chunk-upload.mjs';
 
 const JSON_LIMIT = 2 * 1024 * 1024;
 const MULTIPART_OVERHEAD = 2 * 1024 * 1024;
@@ -130,6 +131,7 @@ export function createCustomContentRouter({
   rateLimitMany = null,
   clientIp = (req) => req?.socket?.remoteAddress ?? 'unknown',
   logger = console,
+  chunkUploads = createChunkUploadStore(),
 } = {}) {
   if (!service || !resolveOwner || !sendResponse || !readJson || !readRaw) {
     throw new Error('custom-content-router-dependencies-required');
@@ -144,6 +146,7 @@ export function createCustomContentRouter({
     });
   }
   const uploadOwners = new Set();
+  let chunksInflight = 0;
   let evaluatorInflight = 0;
   const evaluatorOwners = new Map();
 
@@ -306,6 +309,47 @@ export function createCustomContentRouter({
           send(res, 200, {
             job: await service.getCourseCompileJob(owner, decodeURIComponent(courseJobMatch[1])),
           })
+        ));
+      }
+
+      const initUpload = /^\/api\/xb\/courses\/([^/]+)\/uploads$/.exec(pathname);
+      if (initUpload && req.method === 'POST') {
+        return withOwnerJson(req, res, 'custom-upload-init', async (owner, _traceId, body) => {
+          if (!await admit(owner, res, 'asset-upload', 30, 86_400, 300)) return;
+          const input = await service.prepareUpload(owner, decodeURIComponent(initUpload[1]), body);
+          return send(res, 201, { upload: await chunkUploads.create(owner.id, input.courseId, input) });
+        });
+      }
+      const chunkMatch = /^\/api\/xb\/uploads\/([0-9a-f-]{36})\/chunks\/(\d{1,3})$/.exec(pathname);
+      if (chunkMatch && req.method === 'PUT') {
+        return withOwner(req, res, 'custom-upload-chunk', async (owner) => {
+          if (chunksInflight >= 12) { req.resume(); return send(res, 429, { error: 'upload-busy', retryAfter: 1 }); }
+          chunksInflight += 1;
+          try {
+            const bytes = await readRaw(req, UPLOAD_CHUNK_BYTES, { idleTimeoutMs: 30_000, totalTimeoutMs: 60_000 });
+            return send(res, 200, await chunkUploads.put(owner.id, chunkMatch[1], Number(chunkMatch[2]), bytes));
+          } finally { chunksInflight -= 1; }
+        });
+      }
+      const finishUpload = /^\/api\/xb\/uploads\/([0-9a-f-]{36})\/complete$/.exec(pathname);
+      if (finishUpload && req.method === 'POST') {
+        return withOwner(req, res, 'custom-upload-complete', async (owner, traceId) => {
+          if (uploadInflight >= 2 || uploadOwners.has(owner.id)) {
+            return send(res, 429, { error: 'upload-busy', retryAfter: 1 });
+          }
+          uploadInflight += 1; uploadOwners.add(owner.id);
+          try {
+            const asset = await chunkUploads.finish(owner.id, finishUpload[1], (courseId, input) => (
+              service.uploadAsset(owner, courseId, { ...input, requestId: traceId })
+            ));
+            return send(res, 202, { asset });
+          } finally { uploadInflight -= 1; uploadOwners.delete(owner.id); }
+        });
+      }
+      const cancelUpload = /^\/api\/xb\/uploads\/([0-9a-f-]{36})$/.exec(pathname);
+      if (cancelUpload && req.method === 'DELETE') {
+        return withOwner(req, res, 'custom-upload-cancel', async (owner) => (
+          send(res, 200, await chunkUploads.cancel(owner.id, cancelUpload[1]))
         ));
       }
 

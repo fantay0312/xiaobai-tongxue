@@ -55,7 +55,7 @@ const STATUS_LABEL: Record<CustomAsset['parseStatus'], string> = {
 const JOB_LABEL: Record<CompileJob['status'], string> = {
   queued: '已排入编译队列', running: '小砚正在编讲稿', needs_review: '草稿待校订', done: '课题已发布', failed: '编译未完成',
 };
-type UploadItem = { id: number; file: File; role: AssetRole; status: 'waiting' | 'uploading' | 'done' | 'failed' | 'uncertain'; message: string };
+type UploadItem = { id: number; file: File; role: AssetRole; status: 'waiting' | 'uploading' | 'done' | 'failed' | 'uncertain'; message: string; loaded?: number };
 const UPLOAD_LABEL = { waiting: '等待上传', uploading: '正在上传', done: '已接收', failed: '未上传', uncertain: '待核对' };
 
 function fileSize(bytes: number): string {
@@ -643,6 +643,7 @@ export default function CustomContentPage() {
   const authUserRef = useRef(authUser);
   const workspaceGenerationRef = useRef(0);
   const uploadBusyRef = useRef(false);
+  const uploadAbortRef = useRef<AbortController | null>(null);
   const compileBusyRef = useRef(false);
   const createBusyRef = useRef(false);
   const draftBusyRef = useRef(false);
@@ -813,6 +814,7 @@ export default function CustomContentPage() {
   useEffect(() => {
     workspaceGenerationRef.current += 1;
     uploadBusyRef.current = false;
+    uploadAbortRef.current?.abort();
     compileBusyRef.current = false;
     createBusyRef.current = false;
     draftBusyRef.current = false;
@@ -833,7 +835,7 @@ export default function CustomContentPage() {
     setPublishedTopicId(null);
     setDiscardArmed(false);
     setDraftEdited(false);
-    return () => { workspaceGenerationRef.current += 1; };
+    return () => { workspaceGenerationRef.current += 1; uploadAbortRef.current?.abort(); };
   }, [authUser, courseId]);
 
   useEffect(() => {
@@ -919,7 +921,17 @@ export default function CustomContentPage() {
       setUploading({ name: file.name, index: index + 1, total: usable.length });
       patchItem(item.id, { status: 'uploading' });
       try {
-        const asset = await uploadCourseAsset(courseAtRequest, file, item.role);
+        const controller = new AbortController();
+        uploadAbortRef.current = controller;
+        const asset = await uploadCourseAsset(courseAtRequest, file, item.role, {
+          signal: controller.signal,
+          onProgress: ({ phase, loaded, total }) => {
+            if (!workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) return;
+            patchItem(item.id, { loaded, message: phase === 'preparing' ? '正在准备文件…'
+              : phase === 'processing' ? '文件已传完，正在校验并入库…'
+                : `已上传 ${fileSize(loaded)} / ${fileSize(total)}（${Math.floor(loaded / total * 100)}%）` });
+          },
+        });
         if (!workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) break;
         setAssets((current) => [asset, ...current.filter((item) => item.id !== asset.id)]);
         patchItem(item.id, { status: 'done', message: '已接收，解析完成后即可选用。' });
@@ -1267,7 +1279,7 @@ export default function CustomContentPage() {
                       {!uploading ? <button className={`${s.btnText} ${s.btnQuiet}`} onClick={() => setUploadQueue([])}>收起记录</button> : null}
                     </div>
                     {uploading ? <progress max={uploadQueue.length} value={uploadQueue.filter((item) => !['waiting', 'uploading'].includes(item.status)).length} aria-label="本批次处理进度" /> : null}
-                    <ul>{uploadQueue.map((item) => <li key={item.id} data-state={item.status}><div><strong>{item.file.name}</strong><small>{item.message || UPLOAD_LABEL[item.status]}</small></div><span>{UPLOAD_LABEL[item.status]}</span></li>)}</ul>
+                    <ul>{uploadQueue.map((item) => <li key={item.id} data-state={item.status}><div><strong>{item.file.name}</strong><small>{item.message || UPLOAD_LABEL[item.status]}</small>{item.status === 'uploading' && item.loaded !== undefined ? <progress max={item.file.size} value={item.loaded} aria-label={`${item.file.name} 上传进度`} /> : null}</div><span>{UPLOAD_LABEL[item.status]}</span></li>)}</ul>
                   </section> : null}
 
                   {assetError ? <div className={s.syncMessage} role="status"><span>{assetError}</span><button className={s.btnText} disabled={!online} onClick={() => setAssetRefreshToken((value) => value + 1)}>重新同步资料</button></div> : null}

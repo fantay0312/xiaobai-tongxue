@@ -1296,6 +1296,21 @@ export function createCustomContentService({
       return { ...publicCourse(course), assets: refreshed.map(publicAsset) };
     },
 
+    async prepareUpload(owner, courseId, input) {
+      const course = await requireCourse(owner.id, courseId);
+      const filename = cleanFilename(input?.filename);
+      if (!/\.(pdf|pptx?|docx|md|txt)$/i.test(filename)) throw publicError('file-type-unsupported', 415);
+      if (!Number.isSafeInteger(input?.byteSize) || input.byteSize < 1 || input.byteSize > maxFileBytes) {
+        throw publicError('file-too-large', 413);
+      }
+      if (!/^[a-f0-9]{64}$/.test(input?.sha256 ?? '')) throw publicError('upload-checksum-invalid');
+      if (!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(input?.clientUploadId ?? '')) {
+        throw publicError('upload-session-invalid');
+      }
+      return { courseId: course.id, filename, byteSize: input.byteSize, sha256: input.sha256,
+        clientUploadId: input.clientUploadId, assetRole: ASSET_ROLES.has(input.assetRole) ? input.assetRole : 'lecture' };
+    },
+
     async uploadAsset(owner, courseId, {
       bytes,
       filename: filenameValue,

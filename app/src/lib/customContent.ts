@@ -1,5 +1,6 @@
 import type { ChecklistItem, Misconception, Topic } from '../types';
 import { API_BASE, gatewayFetch } from './api';
+import { uploadInChunks, type UploadProgress } from './chunkedUpload';
 
 const ROOT = `${API_BASE}/xb`;
 const ABSOLUTE_MAX_FILE_BYTES = 80 * 1024 * 1024;
@@ -106,7 +107,7 @@ async function payload(response: Response): Promise<Record<string, unknown>> {
 async function request<T>(pathname: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const abort = () => controller.abort();
-  const timeoutMs = init?.body instanceof FormData ? 180_000 : init?.method ? 120_000 : 20_000;
+  const timeoutMs = init?.body instanceof FormData ? 180_000 : init?.body instanceof Blob ? 60_000 : init?.method ? 120_000 : 20_000;
   let timedOut = false;
   const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
   init?.signal?.addEventListener('abort', abort, { once: true });
@@ -174,14 +175,17 @@ export async function uploadCourseAsset(
   courseId: string,
   file: File,
   assetRole: AssetRole,
+  options: { signal?: AbortSignal; onProgress?: (value: UploadProgress) => void } = {},
 ): Promise<CustomAsset> {
+  if (file.size >= 2 * 1024 * 1024) return uploadInChunks<CustomAsset>(request, courseId, file, assetRole, options);
+  options.onProgress?.({ phase: 'uploading', loaded: 0, total: file.size });
   const form = new FormData();
   form.append('file', file, file.name);
   form.append('fileName', file.webkitRelativePath || file.name);
   form.append('asset_role', assetRole);
   return (await request<{ asset: CustomAsset }>(
     `/courses/${encodeURIComponent(courseId)}/assets`,
-    { method: 'POST', body: form },
+    { method: 'POST', body: form, signal: options.signal },
   )).asset;
 }
 

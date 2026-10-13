@@ -454,6 +454,21 @@ async function compileWorkerFixture(compile) {
   return { repository, service, owner, course, asset, options };
 }
 
+test('chunk upload preparation enforces course ownership, size, type and digest before staging', async () => {
+  const f = await compileWorkerFixture();
+  const input = { filename: 'lesson.pdf', byteSize: 10, sha256: 'a'.repeat(64), clientUploadId: IDS[0], assetRole: 'lecture' };
+  const result = await f.service.prepareUpload(f.owner, f.course.id, input);
+  assert.equal(result.filename, input.filename);
+  assert.equal(result.courseId, f.course.id);
+  await assert.rejects(f.service.prepareUpload({ id: IDS[29] }, f.course.id, input), /course-not-found/);
+  for (const badSize of [0, -1, 81 * 1024 * 1024, 1.5]) {
+    await assert.rejects(f.service.prepareUpload(f.owner, f.course.id, { ...input, byteSize: badSize }), /file-too-large/);
+  }
+  await assert.rejects(f.service.prepareUpload(f.owner, f.course.id, { ...input, filename: 'run.exe' }), /file-type-unsupported/);
+  await assert.rejects(f.service.prepareUpload(f.owner, f.course.id, { ...input, sha256: 'bad' }), /upload-checksum-invalid/);
+  await assert.rejects(f.service.prepareUpload(f.owner, f.course.id, { ...input, clientUploadId: '../' }), /upload-session-invalid/);
+});
+
 test('transient job-claim failure is contained and maintenance can recover the queue', async () => {
   const f = await compileWorkerFixture();
   const claim = f.repository.jobs.claimForRun;
