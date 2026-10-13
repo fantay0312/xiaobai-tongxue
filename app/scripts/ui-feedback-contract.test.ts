@@ -126,13 +126,11 @@ assert.match(growthStyles, /\.evidenceDock\s*\{[\s\S]*?--paper:\s*var\(--star-sk
 assert.match(growthStyles, /\.evidenceDock\s*\{[\s\S]*?left:\s*clamp/, '选中后的证据浮卡必须落在星海左上');
 assert.match(growthStyles, /\.evidenceDock\s*\{[\s\S]*?width:\s*min\(18\.5rem/, '证据浮卡必须缩小并落在星空区内');
 assert.match(growthStyles, /data-corner='right'/, '点选左半场星时浮卡必须能挂到右上角');
-assert.match(growthStyles, /\.evidenceDock \.collapse > div::-webkit-scrollbar/, '证据卡必须隐藏右侧滚动条');
-assert.match(growth, /className=\{s\.evidenceMore\}/, '证据卡必须有底部下翻指引');
-assert.match(growthStyles, /\.evidenceMore[\s\S]*?linear-gradient\(\s*to top/, '底部必须是可见的渐变阴影横条');
-assert.match(growthStyles, /\.evidenceMoreChevron[\s\S]*?border-top:\s*7px solid var\(--ink\)/, '下翻指引必须是月白小三角');
-assert.match(growthStyles, /\.evidenceClose[\s\S]*?opacity:\s*0/, '叉号默认必须隐藏');
-assert.match(growthStyles, /\.evidenceCloseOn[\s\S]*?opacity:\s*1/, '滑动或靠近右上角时叉号必须浮现');
-assert.match(growth, /showEvidenceClose/, '叉号必须由右上角靠近或滑动唤起');
+assert.match(growthStyles, /\.evidenceDock\s*\{[\s\S]*?border:\s*0/, '证据浮卡不得再画外框');
+assert.match(growthStyles, /\.evidenceDock\s*\{[\s\S]*?transform:\s*none/, '证据浮卡不得再滑入');
+assert.match(growthStyles, /\.evidenceDock\s*\{[\s\S]*?overflow:\s*visible/, '证据内容必须一次摆开，不得卡内滚动');
+assert.doesNotMatch(growth, /s\.evidenceMore|scrollIntoView\(\{/, '证据卡不得再提示下翻或把页面滑过去');
+assert.match(growthStyles, /\.evidenceClose[\s\S]*?opacity:\s*1/, '关闭叉号必须直接可见');
 assert.match(growthStyles, /\.evidenceDock \.h3[\s\S]*?font-size:\s*var\(--fs-tiny\)/, '掌握度证据链标题必须缩小');
 assert.match(growthStyles, /\.evidenceDock\s*\{[\s\S]*?pointer-events:\s*none/, '星海空态浮卡不得拦截星体点击');
 assert.match(growthStyles, /\.evidenceDockOpen\s*\{[\s\S]*?pointer-events:\s*auto/, '打开的证据浮卡必须恢复交互');
