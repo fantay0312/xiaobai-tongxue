@@ -349,7 +349,23 @@
 
 /* ── 窄栏（手机，或侧栏挤压后的对话列） ── */
 @media (max-width: 760px) {
-  .column { padding: 20px 12px 28px; }
+  /* 手机滚动条是浮层，不必两侧预留槽位 */
+  .scroller { scrollbar-gutter: auto; -webkit-overflow-scrolling: touch; }
+  .column { gap: 24px; padding: 16px 14px 28px; }
+  /* 常驻伙伴站在输入框上沿：滚到底时给它留出位置，不压住最后一条的操作 */
+  :global([data-companion]) .column { padding-bottom: 72px; }
+  .userBubble { max-width: 88%; padding: 10px 14px; }
+  /* 触屏没有悬停，操作条常显，按钮放大到手指好点 */
+  .actions, .userTools { opacity: 1; }
+  .actions > button, .userTools > button { width: 36px; height: 36px; }
+  .linkButton { min-height: 36px; padding: 4px 10px; font-size: var(--fz-sm); }
+  .sourceChip, .sourceMore { height: 32px; }
+  .runState { padding: 10px 10px 10px 12px; }
+  /* 长代码、长公式在自己里面横向滚，不撑破对话列（表格由 CoachMarkdown 自带的滚动外框处理） */
+  .body pre { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+  .body :global(.katex-display) { max-width: 100%; padding-block: 2px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
+  .toBottomWrap { bottom: 10px; }
+  .toBottom { height: 38px; padding: 0 16px 0 12px; }
 }
 @container feed (max-width: 520px) {
   .column { gap: 24px; }

@@ -372,11 +372,87 @@
   .onlyWide { display: none; }
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hero h1 { font-size: var(--fz-2xl); }
+  /* 标题行压成一行；看条目时整行收起，返回钮在详情头里 */
+  .toolHead { align-items: center; }
+  .toolHead[data-detail] { display: none; }
+  .toolTitle h2 { font-size: var(--fz-xl); }
+  .toolTitle p { display: none; }
+  /* 两行说明，不截成半句 */
+  .tileText span { display: -webkit-box; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.4; }
+  .items { overflow: visible; }
+  .itemMain { gap: 3px; padding: 11px 4px 11px 12px; }
+  .itemTitle { font-size: var(--fz-md); }
+  .item .itemMore { width: 40px; height: 40px; }
+  .detailHead { gap: 4px; padding: 8px 10px 8px 6px; }
+  .titleInput { min-width: 120px; padding-inline: 6px; }
+  .detailActions { padding-left: 6px; }
 }
 @container wb (max-width: 420px) {
   .tile { padding: 14px; gap: 12px 10px; }
   .tileCount { font-size: var(--fz-2xl); }
   .detailMeta { padding: 0 16px 12px; }
+}
+
+/* ── 手机：工具切换钉在顶上；练习、复习这类一屏一件事的界面占满主区 ── */
+@media (max-width: 760px) {
+  .root {
+    --wb-nav-h: calc(var(--ctl-md) + 12px);
+    min-height: 100%;
+    padding: 0 16px 20px;
+    gap: 14px;
+  }
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    flex: none;
+    gap: 4px;
+    margin: 0 -16px;
+    padding: 6px 16px;
+    background: var(--bg);
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 16px;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .navItem { scroll-snap-align: start; padding: 0 12px; font-size: var(--fz-md); }
+  .navSep { margin: 0 4px; }
+  /* 大面积的卡面在手机上不用大模糊阴影 */
+  .card { box-shadow: var(--shadow-1), 0 0 0 1px var(--border); }
+  .emptyCard { padding: 20px 12px; }
+  .pack { padding: 14px 16px; }
+  .pack > button { width: 100%; }
+
+  /* 只在正看着这个条目时才进入占满一屏的状态；条目被收起（回到列表）时不改外框 */
+  .root:has(.split[data-picked='true'] [data-wb-focus]) { gap: 0; padding-bottom: 0; }
+  .root:has(.split[data-picked='true'] [data-wb-focus]) > .nav,
+  .root:has(.split[data-picked='true'] [data-wb-focus]) > .toolHead { display: none; }
+  .root:has(.split[data-picked='true'] [data-wb-focus]) > .split { flex: 1; align-items: stretch; }
+  .split[data-picked='true']:has([data-wb-focus]) .detailPane { display: flex; flex-direction: column; }
+  .split[data-picked='true']:has([data-wb-focus]) .detailPane > .card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin: 0 -16px;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+}
+/* 触屏：分段切换加高一档，标题输入框留足点按高度 */
+@media (pointer: coarse) {
+  .detailActions [role='radio'],
+  .listPane [role='radio'] { min-height: 34px; padding-inline: 12px; font-size: var(--fz-sm); }
+  .titleInput { min-height: 40px; }
+}
+/* 触屏没有悬停：点过之后不留悬停态 */
+@media (hover: none) {
+  .tile:hover { box-shadow: var(--shadow-2); transform: none; }
+  .tile:hover .tileIcon { background: var(--inset); color: var(--text-2); }
+  .tile:active { transform: scale(0.98); }
+  .item:hover { background: none; }
+  .item[data-active='true']:hover { background: var(--surface); }
+  .navItem:hover:not([aria-current='page']) { background: none; color: var(--text-3); }
 }
 @media (prefers-reduced-motion: reduce) {
   .tile, .todayItem, .navItem, .chip { transition: none; }

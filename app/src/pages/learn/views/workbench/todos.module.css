@@ -208,6 +208,47 @@
   .row { flex-wrap: wrap; }
   .main { flex-basis: calc(100% - 80px); }
 }
+/* 手机：快速添加钉在工具切换下面，平时只占一行，点进去才展开课程与日期；勾选区放大到好点 */
+@media (max-width: 760px) {
+  .wrap { gap: 16px; }
+  .add {
+    position: sticky;
+    top: calc(var(--wb-nav-h, 0px) + 2px);
+    z-index: 4;
+    gap: 6px 10px;
+    padding: 6px 8px 6px 14px;
+    border-color: var(--border);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-1);
+  }
+  .add:focus-within { border-color: var(--accent); box-shadow: var(--shadow-1), 0 0 0 3px var(--ring); }
+  .addInput { flex: 1 1 0; height: 44px; font-size: 16px; }
+  .addTools { width: 100%; padding-bottom: 2px; }
+  .addTools > button:last-child { margin-left: auto; }
+  .add:not(:focus-within):not(:has(.addInput:not(:placeholder-shown))):not(:has([data-state='open'])) .addTools { display: none; }
+  .due { height: 32px; padding: 0 10px; }
+  .filters { width: 100%; }
+  .search { flex: 1; width: auto; }
+  .list { padding: 2px; }
+  .row { flex-wrap: nowrap; gap: 8px; padding: 6px 2px 6px 4px; }
+  .main { flex: 1 1 0; gap: 2px; padding: 6px 0; }
+  .check { position: relative; margin: 10px 8px 10px 8px; }
+  .check::before { content: ''; position: absolute; inset: -12px; }
+  .text, .textInput { min-height: 32px; font-size: 16px; }
+  .tags { gap: 6px 8px; }
+  .tags .due { height: 28px; margin-left: -4px; padding: 0 8px; }
+  .course { height: 24px; padding: 0 8px; font-size: var(--fz-xs); }
+  .del { align-self: flex-start; margin-top: 2px; }
+  .picker { width: min(264px, calc(100vw - 48px)); }
+  .calDay { font-size: var(--fz-sm); }
+}
+@media (hover: none) {
+  .row:hover { background: none; }
+}
+@media (pointer: coarse) {
+  .filters [role='radio'] { min-height: 34px; padding-inline: 12px; font-size: var(--fz-sm); }
+  .del > button { width: 40px; height: 40px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .row, .check[aria-checked='true'] { animation: none; }
   .check path, .text { transition: none; }

@@ -4,11 +4,12 @@
  * 展开内容是步骤时间线和（若有）思考过程。
  */
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
-import { Check, ChevronRight, CircleSlash, Lightbulb, ListChecks, TriangleAlert, X } from 'lucide-react';
+import { Check, ChevronRight, CircleSlash, ListChecks, TriangleAlert, X } from 'lucide-react';
 import { CoachMarkdown } from '../../components/coach/CoachMarkdown';
 import { Shimmer, Spinner } from '../../components/ui';
 import type { LearningRun, LearningStep } from '../../lib/learningAnswer';
 import s from './chat/process.module.css';
+import { IconSpark } from '../../components/ui/icons';
 
 export interface LearningActivityProps {
   run?: LearningRun;
@@ -98,7 +99,7 @@ export function LearningActivity({ run, reasoning, thinkingMs, live, answerStart
   const mark = running ? <Spinner size={14} />
     : state === 'failed' ? <TriangleAlert size={14} strokeWidth={1.75} />
       : state === 'stopped' ? <CircleSlash size={14} strokeWidth={1.75} />
-        : thought ? <Lightbulb size={14} strokeWidth={1.75} /> : <ListChecks size={14} strokeWidth={1.75} />;
+        : thought ? <IconSpark size={14} /> : <ListChecks size={14} strokeWidth={1.75} />;
 
   const summary = (
     <>

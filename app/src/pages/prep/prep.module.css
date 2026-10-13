@@ -1675,6 +1675,168 @@ button.toolHead:focus-visible {
   .stepItem[data-current] .step { padding-right: 6px; }
 }
 
+/* ── 手机：进度条压成两行细条吸顶，主动作吸底，小砚站在主动作右侧 ── */
+.dock {
+  display: none;
+}
+@media (max-width: 760px) {
+  .page {
+    padding: 12px 12px 0;
+  }
+  .shell {
+    gap: 16px;
+    /* 没有吸底主动作时，给站在右下角的小砚留出滚动余量 */
+    padding-bottom: 104px;
+  }
+  .shell[data-dock] {
+    padding-bottom: 0;
+  }
+  .hero {
+    gap: 12px;
+  }
+  .tagline {
+    font-size: var(--fz-md);
+  }
+  .pupilFigure {
+    zoom: 0.72;
+  }
+  .pupilBubble {
+    font-size: var(--fz-md);
+  }
+  /* 吸顶条：不用毛玻璃（滚动时省一层合成），五步一行 + 备课度一行 */
+  .journey {
+    gap: 6px;
+    margin: 0 -4px;
+    padding: 6px 10px 8px 6px;
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    backdrop-filter: none;
+    box-shadow: var(--shadow-2);
+  }
+  .step {
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+  }
+  .roadBadge b,
+  .roadBadgeWarn b {
+    font-size: var(--fz-xs);
+  }
+  .meter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-left: 6px;
+  }
+  .meterTop {
+    display: contents;
+  }
+  .meter > :last-child {
+    flex: 1;
+    min-width: 40px;
+  }
+  .meterNote {
+    order: 3;
+    flex: 0 1 auto;
+  }
+  .section {
+    padding: 16px 14px;
+    scroll-margin-top: 104px;
+  }
+  .sectionTitle {
+    font-size: var(--fz-xl);
+  }
+  .stepHeadAside {
+    white-space: normal;
+  }
+  /* 作答与勾选：一指宽 */
+  .choice {
+    min-height: 48px;
+  }
+  .mcOptions .choice {
+    align-items: flex-start;
+    padding: 12px 14px;
+  }
+  .gapMark {
+    height: 40px;
+    padding: 0 16px;
+    font-size: var(--fz-sm);
+  }
+  .checkLabel {
+    min-height: 48px;
+  }
+  .collapseHead {
+    min-height: 52px;
+  }
+  /* 图解、代码横滚不带动整页 */
+  .figScroll,
+  .code {
+    overscroll-behavior-x: contain;
+  }
+  .figSvg {
+    min-width: 560px;
+  }
+  .verdictBtns > * {
+    flex: 1 1 auto;
+  }
+  /* 步骤里的上一步/下一步交给吸底条 */
+  .stepNav {
+    display: none;
+  }
+  .exits {
+    padding: 12px;
+  }
+  .exitsBtns,
+  .exitsBtns > * {
+    width: 100%;
+  }
+  /* 出口、学法、案头工具里的按钮：一指宽 */
+  .exitsBtns > *,
+  .finaleBtns > *,
+  .verdictBtns > *,
+  .tools :global(button) {
+    min-height: 44px;
+  }
+  .methodSeg {
+    overscroll-behavior-x: contain;
+  }
+  /* 类名叠写：压过基础件 .segSm .segItem 的高度与字号 */
+  .methodSeg.methodSeg :global(button) {
+    height: 40px;
+    padding: 0 14px;
+    font-size: var(--fz-sm);
+  }
+  .shell[data-dock] .finaleBtns > :first-child {
+    display: none;
+  }
+  .dock {
+    position: sticky;
+    bottom: 0;
+    z-index: 19;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 -12px;
+    /* 右侧 76px 让给小砚（桌宠 56px + 边距） */
+    padding: 10px 76px 10px 12px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .dock > :first-child:not(.dockMain) {
+    flex: none;
+    width: 46px;
+    height: 46px;
+  }
+  .dockMain {
+    flex: 1;
+    min-width: 0;
+    height: 46px;
+  }
+  .motto {
+    margin: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pupilBubble,
   .recall,

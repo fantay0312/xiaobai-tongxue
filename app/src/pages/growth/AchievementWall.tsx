@@ -417,6 +417,11 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
 
     const bodyRect = body.getBoundingClientRect();
     const anchorRect = anchor.getBoundingClientRect();
+    /* 印章滚出视口:条件卡跟着收起,不贴着屏幕边追着走(手机上滚页时会压住别的版块) */
+    if (anchorRect.bottom < 0 || anchorRect.top > window.innerHeight) {
+      dismissDetail();
+      return;
+    }
     const detailRect = detail.getBoundingClientRect();
     const compact = window.matchMedia('(max-width: 560px)').matches;
     const inset = compact ? 6 : 10;
@@ -459,7 +464,7 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
         ? current
         : nextPosition
     ));
-  }, [activeDetail?.id]);
+  }, [activeDetail?.id, dismissDetail]);
 
   useEffect(() => {
     if (spreadIndex < spreadCount) return;
@@ -592,7 +597,11 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
             {/* 叙事桥:印章册反指星图——同一套成就,一屏落印、一屏点亮 */}
             {typeof litStars === 'number' && litStars > 0 ? <em className={s.albumStars}>星海里已点亮 {litStars} 星。</em> : null}
           </p>
-          <span>{earnedCount}/{achievements.length} · 悬停查看，点印固定</span>
+          <span>
+            {earnedCount}/{achievements.length} ·{' '}
+            <span className={s.hoverCopy}>悬停查看，点印固定</span>
+            <span className={s.touchCopy}>点一枚印看来历</span>
+          </span>
         </div>
         <div className={s.ceremonySlot}>
           {celebratingAchievement ? (

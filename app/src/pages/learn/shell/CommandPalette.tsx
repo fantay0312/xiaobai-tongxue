@@ -1,8 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { Command } from 'cmdk';
-import {
-  BookOpen, ClipboardList, FileUp, GraduationCap, MessageSquare, NotebookText, Route, Search, Settings, SquarePen, StickyNote,
-} from 'lucide-react';
+import { ClipboardList, FileUp, Search, Settings, SquarePen } from 'lucide-react';
+import { IconChat, IconGrowth, IconJourney, IconNote, IconRead, IconTeach } from '../../../components/ui/icons';
 import type { StudyConversation } from '../../../engine/studyWorkspace';
 import type { Topic } from '../../../types';
 import { STUDY_TABS, TERMINAL_NAV, type View } from './views';
@@ -75,25 +74,25 @@ export function CommandPalette(props: CommandPaletteProps) {
           <Row value="新建对话" keywords={['new', 'chat']} icon={<SquarePen size={16} strokeWidth={1.75} />} onSelect={run(props.onNewChat)}>新建对话</Row>
           <Row value="上传资料开始学" keywords={['upload', '文件', '资料库']} icon={<FileUp size={16} strokeWidth={1.75} />} onSelect={run(props.onAttach)}>从资料库选择文件</Row>
           {topic && (
-            <Row value={`教小白 讲给小白听 ${topic.title}`} keywords={['teach']} hint={topic.title} icon={<GraduationCap size={16} strokeWidth={1.75} />} onSelect={run(props.onTeach)}>
+            <Row value={`教小白 讲给小白听 ${topic.title}`} keywords={['teach']} hint={topic.title} icon={<IconTeach size={16} />} onSelect={run(props.onTeach)}>
               把这一课讲给小白听
             </Row>
           )}
-          <Row value="学习便笺" keywords={['note', '笔记']} icon={<StickyNote size={16} strokeWidth={1.75} />} onSelect={run(() => props.onView('notes'))}>打开学习便笺</Row>
-          <Row value="师徒旅程 拜师帖" keywords={['journey']} icon={<Route size={16} strokeWidth={1.75} />} onSelect={run(() => props.onView('journey'))}>师徒旅程与拜师帖</Row>
-          <Row value="成长册" keywords={['growth']} icon={<NotebookText size={16} strokeWidth={1.75} />} onSelect={run(() => props.onNavigate('/growth'))}>成长册</Row>
+          <Row value="学习便笺" keywords={['note', '笔记']} icon={<IconNote size={16} />} onSelect={run(() => props.onView('notes'))}>打开学习便笺</Row>
+          <Row value="师徒旅程 拜师帖" keywords={['journey']} icon={<IconJourney size={16} />} onSelect={run(() => props.onView('journey'))}>师徒旅程与拜师帖</Row>
+          <Row value="成长册" keywords={['growth']} icon={<IconGrowth size={16} />} onSelect={run(() => props.onNavigate('/growth'))}>成长册</Row>
           <Row value="教师看板" keywords={['teacher']} icon={<ClipboardList size={16} strokeWidth={1.75} />} onSelect={run(() => props.onNavigate('/teacher'))}>教师看板</Row>
           <Row value="设置 外观 皮肤 模型" keywords={['settings']} icon={<Settings size={16} strokeWidth={1.75} />} onSelect={run(props.onSettings)}>设置</Row>
         </Command.Group>
 
         <Command.Group heading="功能" className={p.group}>
           {TERMINAL_NAV.map(({ view, label, hint, icon: ItemIcon }) => (
-            <Row key={view} value={`${label} ${hint}`} hint={hint} icon={<ItemIcon size={16} strokeWidth={1.75} />} onSelect={run(() => props.onView(view as View))}>
+            <Row key={view} value={`${label} ${hint}`} hint={hint} icon={<ItemIcon size={16} />} onSelect={run(() => props.onView(view as View))}>
               {label}
             </Row>
           ))}
           {topic && STUDY_TABS.filter((tab) => tab.id !== 'ask').map(({ id, label, icon: ItemIcon }) => (
-            <Row key={id} value={`${label} ${topic.title}`} hint={topic.title} icon={<ItemIcon size={16} strokeWidth={1.75} />} onSelect={run(() => props.onView(id))}>
+            <Row key={id} value={`${label} ${topic.title}`} hint={topic.title} icon={<ItemIcon size={16} />} onSelect={run(() => props.onView(id))}>
               {label}
             </Row>
           ))}
@@ -106,7 +105,7 @@ export function CommandPalette(props: CommandPaletteProps) {
                 key={item.topicId}
                 value={`${item.course} ${item.title} ${item.topicId}`}
                 hint={item.course}
-                icon={<BookOpen size={16} strokeWidth={1.75} />}
+                icon={<IconRead size={16} />}
                 onSelect={run(() => props.onOpenTopic(item.topicId))}
               >
                 {item.title}
@@ -121,7 +120,7 @@ export function CommandPalette(props: CommandPaletteProps) {
               key={chat.id}
               value={`${chat.title} ${chat.id}`}
               hint={chat.messages.length ? `${chat.messages.length} 条` : '空白'}
-              icon={<MessageSquare size={16} strokeWidth={1.75} />}
+              icon={<IconChat size={16} />}
               onSelect={run(() => props.onSelectChat(chat.id))}
             >
               {chat.title}

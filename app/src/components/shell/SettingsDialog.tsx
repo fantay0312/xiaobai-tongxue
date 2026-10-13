@@ -28,6 +28,7 @@ import { isTourDone, resetTours, type TourKey } from '../tour/tourState';
 import {
   Badge, Button, Dialog, Field, IconButton, Input, ModelPicker, Segmented, Switch, cx, toast,
 } from '../ui';
+import { useSheetKeyboardInset } from './ProfileSheetKeyboard';
 import s from './SettingsDialog.module.css';
 
 /* ───────────────────────── 分区目录 ───────────────────────── */
@@ -263,6 +264,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   /* 窄屏目录横排：把朝向如实交给 Tabs，方向键才对得上（断点与 module.css 的 720 咬合） */
   const [narrow, setNarrow] = useState(false);
   const paneRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLDivElement>(null);
+  useSheetKeyboardInset(paneRef, open);
 
   useEffect(() => {
     const query = window.matchMedia('(max-width: 720px)');
@@ -274,6 +277,15 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
 
   useEffect(() => {
     paneRef.current?.scrollTo({ top: 0 });
+    // 窄屏目录是一条横滑的胶囊：把选中的那一枚带到中间，后面的分区才露得出来
+    const nav = navRef.current;
+    const chip = nav?.querySelector<HTMLElement>('[data-state="active"]');
+    if (nav && chip && nav.scrollWidth > nav.clientWidth) {
+      const navBox = nav.getBoundingClientRect();
+      const chipBox = chip.getBoundingClientRect();
+      const left = nav.scrollLeft + chipBox.left - navBox.left - (navBox.width - chipBox.width) / 2;
+      nav.scrollTo({ left, behavior: 'smooth' });
+    }
   }, [active]);
 
   const section = SECTIONS.find((item) => item.id === active) ?? SECTIONS[0];
@@ -292,7 +304,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         onValueChange={(value) => setActive(value as SectionId)}
         orientation={narrow ? 'horizontal' : 'vertical'}
       >
-        <RTabs.List className={s.nav} aria-label="设置分区">
+        <RTabs.List ref={navRef} className={s.nav} aria-label="设置分区">
           {SECTIONS.map(({ id, label, icon: IconComp }) => (
             <RTabs.Trigger key={id} value={id} className={s.navItem}>
               <IconComp size={17} strokeWidth={1.75} />

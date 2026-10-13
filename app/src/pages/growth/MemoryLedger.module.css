@@ -325,10 +325,18 @@
     row-gap: 4px;
   }
 
-  .acts { margin-left: -6px; opacity: 1; }
+  .acts { margin-left: -8px; gap: 4px; opacity: 1; }
+  /* 手机:行内动作与证据签放大到一指宽 */
+  .acts :global(button) { min-width: 40px; min-height: 40px; }
+  .ev summary { height: 40px; padding: 0 14px; }
+  .head :global(button),
+  .meta :global(button),
+  .foot :global(button) { min-height: 40px; }
 
   .add { grid-template-columns: minmax(0, 1fr) auto; }
   .add .addInput { grid-column: 1 / -1; }
+  .add :global(input),
+  .add :global(button) { min-height: 44px; }
   .scopeBtn { max-width: none; justify-content: space-between; }
 }
 

@@ -79,3 +79,19 @@
 }
 .effort:active .effortThumb { transform: scale(1.06); }
 @media (prefers-reduced-motion: reduce) { .effortFill i { animation: none; opacity: 0.5; } }
+/* ── 手机：面板铺满屏宽，贴着输入框上沿，行与按钮按手指来 ── */
+@media (max-width: 640px) {
+  .trigger { height: 36px; padding: 0 11px 0 10px; border-radius: var(--r-full); }
+  .panel { width: calc(100vw - 24px); padding: 18px 16px 16px; }
+  .head { grid-template-columns: 40px 1fr 40px; }
+  .headIcon, .reset { width: 40px; height: 40px; }
+  .modelLink { min-height: 36px; padding: 4px 6px 4px 10px; font-size: var(--fz-md); }
+  .back { min-height: 40px; font-size: var(--fz-md); }
+  .list { max-height: min(48dvh, 420px); overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .option { min-height: 52px; padding: 10px 12px; }
+  .option em { font-size: var(--fz-xs); }
+  .effort { --h: 46px; }
+  .hint { font-size: var(--fz-sm); }
+}
+@media (hover: none) { .reset:hover { transform: none; } }
+

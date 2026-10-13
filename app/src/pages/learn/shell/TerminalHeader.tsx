@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
-import { ChevronRight, GraduationCap, Library, PanelLeft, Sparkles } from 'lucide-react';
+import { ChevronRight, PanelLeft } from 'lucide-react';
 import { Badge, Button, IconButton } from '../../../components/ui';
+import { IconLibrary, IconTeach, IconWorkbench } from '../../../components/ui/icons';
 import type { Topic } from '../../../types';
 import t from '../terminal.module.css';
 
@@ -28,20 +29,20 @@ export function TerminalHeader({
         <PanelLeft size={18} strokeWidth={1.75} />
       </IconButton>
 
-      <nav className={t.breadcrumb} aria-label="当前位置">
+      <nav className={t.breadcrumb} aria-label="当前位置" data-has-topic={topic ? '' : undefined} data-has-view={viewLabel ? '' : undefined}>
         {topic ? (
           <>
             <button type="button" className={t.crumb} data-level="course" onClick={onCourse}>{topic.course}</button>
             <ChevronRight size={14} strokeWidth={1.75} data-level="course" />
-            <button type="button" className={t.crumb} data-current={!viewLabel || undefined} onClick={onTopic}>{topic.title}</button>
+            <button type="button" className={t.crumb} data-level="topic" data-current={!viewLabel || undefined} onClick={onTopic}>{topic.title}</button>
           </>
         ) : (
-          <button type="button" className={t.crumb} data-current={!viewLabel || undefined} onClick={onTopic}>学习终端</button>
+          <button type="button" className={t.crumb} data-level="root" data-current={!viewLabel || undefined} onClick={onTopic}>学习终端</button>
         )}
         {viewLabel && (
           <>
             <ChevronRight size={14} strokeWidth={1.75} />
-            <span className={t.crumb} data-current aria-current="page">{viewLabel}</span>
+            <span className={t.crumb} data-level="view" data-current aria-current="page">{viewLabel}</span>
           </>
         )}
       </nav>
@@ -55,7 +56,7 @@ export function TerminalHeader({
               aria-label="资料"
               aria-pressed={inspector === 'sources'}
               className={t.headerButton}
-              icon={<Library size={16} strokeWidth={1.75} />}
+              icon={<IconLibrary size={16} active={inspector === 'sources'} />}
               onClick={() => onInspector('sources')}
             >
               <span className={t.headerLabel}>资料</span>
@@ -67,7 +68,7 @@ export function TerminalHeader({
               aria-label="工具与产物"
               aria-pressed={inspector === 'tools'}
               className={t.headerButton}
-              icon={<Sparkles size={16} strokeWidth={1.75} />}
+              icon={<IconWorkbench size={16} active={inspector === 'tools'} />}
               onClick={() => onInspector('tools')}
             >
               <span className={t.headerLabel}>工具与产物</span>
@@ -75,7 +76,7 @@ export function TerminalHeader({
           </>
         )}
         {topic && (
-          <Button asChild variant="solid" size="sm" icon={<GraduationCap size={16} strokeWidth={1.75} />}>
+          <Button asChild variant="solid" size="sm" icon={<IconTeach size={16} />}>
             <Link to={`/teach/${encodeURIComponent(topic.topicId)}`}>教小白</Link>
           </Button>
         )}

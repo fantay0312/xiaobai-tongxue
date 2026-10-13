@@ -2,7 +2,7 @@
  * 一键生成课程：写主题 / 选材料 / 定学习者、长度与幕类型，生成时逐幕显示进度。
  */
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { BookOpen, Check, FileUp, Paperclip, Sparkles, X } from 'lucide-react';
+import { BookOpen, Check, FileUp, Paperclip, X } from 'lucide-react';
 import { Badge, Button, Progress, Segmented, Shimmer, Spinner, cx, toast } from '../../../../components/ui';
 import {
   LENGTH_LABELS, LENGTH_SCENES, LEVEL_LABELS, LessonInputError, SCENE_LABELS, SCENE_TYPES, buildLocalLesson, describeModelError, generateLesson,
@@ -13,8 +13,9 @@ import { loadModelCatalog } from '../../../../lib/modelGateway';
 import { lessonStore } from '../../../../store/lessonStore';
 import { newId } from '../../../../store/studyData';
 import type { TerminalViewProps } from '../types';
-import { SCENE_ICONS } from './ClassroomPlayer';
+import { SCENE_ICONS } from './sceneMeta';
 import st from './studio.module.css';
+import { IconSpark } from '../../../../components/ui/icons';
 
 const SUGGESTIONS = ['用生活例子讲清贝叶斯定理', 'TCP 三次握手为什么是三次', '进程和线程到底差在哪', '梯度下降是怎么找到最低点的'];
 const LEVEL_OPTIONS = (Object.keys(LEVEL_LABELS) as AudienceLevel[]).map((value) => ({ value, label: LEVEL_LABELS[value] }));
@@ -23,9 +24,13 @@ const MAX_UPLOAD = 400_000;
 
 interface ComposerProps extends Pick<TerminalViewProps, 'owner' | 'topic' | 'selectedSources'> {
   onCreated: (lesson: Lesson) => void;
+  /** 生成进度（null = 没在生成），侧栏据此显示每一幕的状态 */
+  onProgress?: (progress: GenerateProgress | null) => void;
+  /** 手机版式：选项一行一项，分段控件拉满宽度 */
+  compact?: boolean;
 }
 
-export function LessonComposer({ owner, topic, selectedSources, onCreated }: ComposerProps) {
+export function LessonComposer({ owner, topic, selectedSources, onCreated, onProgress, compact = false }: ComposerProps) {
   const [prompt, setPrompt] = useState('');
   const [useTopic, setUseTopic] = useState(true);
   const [useSources, setUseSources] = useState(true);
@@ -44,6 +49,10 @@ export function LessonComposer({ owner, topic, selectedSources, onCreated }: Com
     loadModelCatalog().then((catalog) => { if (alive) setModelReady(catalog.available); }).catch(() => { if (alive) setModelReady(false); });
     return () => { alive = false; abortRef.current?.abort(); };
   }, []);
+
+  useEffect(() => {
+    onProgress?.(progress);
+  }, [progress, onProgress]);
 
   const material: NotebookSource[] = [...(useSources ? selectedSources : []), ...uploads];
   const activeTopic = useTopic ? topic : undefined;
@@ -124,7 +133,7 @@ export function LessonComposer({ owner, topic, selectedSources, onCreated }: Com
   const planned = progress?.scenes.length || LENGTH_SCENES[length];
 
   return (
-    <section className={st.composer} aria-label="生成课程" aria-busy={generating}>
+    <section data-compact={compact || undefined} className={st.composer} aria-label="生成课程" aria-busy={generating}>
       <textarea
         className={st.prompt}
         value={prompt}
@@ -202,11 +211,11 @@ export function LessonComposer({ owner, topic, selectedSources, onCreated }: Com
           <div className={st.options}>
             <div className={st.option}>
               <span className={st.optionLabel}>学习者</span>
-              <Segmented size="sm" label="学习者水平" value={level} onChange={setLevel} options={LEVEL_OPTIONS} />
+              <Segmented size={compact ? 'md' : 'sm'} block={compact} label="学习者水平" value={level} onChange={setLevel} options={LEVEL_OPTIONS} />
             </div>
             <div className={st.option}>
               <span className={st.optionLabel}>长度</span>
-              <Segmented size="sm" label="课程长度" value={length} onChange={setLength} options={LENGTH_OPTIONS} />
+              <Segmented size={compact ? 'md' : 'sm'} block={compact} label="课程长度" value={length} onChange={setLength} options={LENGTH_OPTIONS} />
             </div>
             <div className={cx(st.option, st.optionWide)}>
               <span className={st.optionLabel}>包含</span>
@@ -234,7 +243,7 @@ export function LessonComposer({ owner, topic, selectedSources, onCreated }: Com
                 ? <><Badge tone="warn">本地演示</Badge>现在没有接通模型：{topic || material.length ? '会用课程讲义、例题和题库拼一堂课。' : '需要先打开一门课或上传资料。'}</>
                 : '先出大纲，再逐幕生成，通常一两分钟。'}
             </p>
-            <Button variant="solid" size="lg" icon={<Sparkles size={17} strokeWidth={1.75} />} disabled={!canSubmit} onClick={() => void run()}>生成课程</Button>
+            <Button variant="solid" size="lg" icon={<IconSpark size={17} />} disabled={!canSubmit} onClick={() => void run()}>生成课程</Button>
           </footer>
         </>
       )}

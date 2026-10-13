@@ -4,8 +4,8 @@
  */
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Dialog as RDialog } from 'radix-ui';
-import { ChevronLeft, ChevronRight, Download, HardDriveDownload, MessageSquarePlus, ScanText, X } from 'lucide-react';
-import { Button, Empty, IconButton, Segmented, toast, type SegmentOption } from '../ui';
+import { ArrowLeft, ChevronLeft, ChevronRight, Download, Ellipsis, HardDriveDownload, MessageSquarePlus, ScanText, X } from 'lucide-react';
+import { Button, Empty, IconButton, Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger, Segmented, toast, type SegmentOption } from '../ui';
 import { saveBlob } from '../../lib/notebookMedia';
 import { fileKind, formatSize, kindLabel, withAccurateType, type FileKind } from './fileKind';
 import { FileTypeIcon } from './FileTypeIcon';
@@ -173,6 +173,8 @@ function PreviewSession({ file, load, onClose, onPrev, onNext, position, onUseIn
   return (
     <>
       <header className={s.head}>
+        {/* 手机上预览铺满全屏：左上角返回，其余操作收进「更多」 */}
+        <IconButton label="返回" tip={false} className={s.headBack} onClick={onClose}><ArrowLeft size={18} /></IconButton>
         <FileTypeIcon name={file.name} mimeType={file.mimeType} size={36} className={s.headIcon} />
         <div className={s.headText}>
           <RDialog.Title className={s.title} title={file.name}>{file.name}</RDialog.Title>
@@ -193,7 +195,24 @@ function PreviewSession({ file, load, onClose, onPrev, onNext, position, onUseIn
             <Button variant="soft" className={s.headButton} icon={<MessageSquarePlus size={15} />} aria-label="用于对话" onClick={onUseInConversation}><span>用于对话</span></Button>
           )}
           <Button variant="outline" className={s.headButton} icon={<Download size={15} />} aria-label="下载" loading={saving} onClick={download}><span>下载</span></Button>
-          <IconButton label="关闭预览" shortcut="Esc" tip="bottom" onClick={onClose}><X size={18} /></IconButton>
+          <Menu modal={false}>
+            <MenuTrigger asChild>
+              <IconButton label="更多操作" tip={false} className={s.headMore}><Ellipsis size={18} /></IconButton>
+            </MenuTrigger>
+            <MenuContent align="end">
+              {position && <MenuLabel>第 {position.index + 1} 份，共 {position.total} 份</MenuLabel>}
+              {(onPrev || onNext) && (
+                <>
+                  <MenuItem icon={<ChevronLeft size={15} />} disabled={!onPrev} onSelect={() => onPrev?.()}>上一份</MenuItem>
+                  <MenuItem icon={<ChevronRight size={15} />} disabled={!onNext} onSelect={() => onNext?.()}>下一份</MenuItem>
+                  <MenuSeparator />
+                </>
+              )}
+              {onUseInConversation && <MenuItem icon={<MessageSquarePlus size={15} />} onSelect={onUseInConversation}>用于对话</MenuItem>}
+              <MenuItem icon={<Download size={15} />} disabled={saving} onSelect={download}>下载原件</MenuItem>
+            </MenuContent>
+          </Menu>
+          <IconButton label="关闭预览" shortcut="Esc" tip="bottom" className={s.headClose} onClick={onClose}><X size={18} /></IconButton>
         </div>
       </header>
 

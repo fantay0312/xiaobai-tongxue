@@ -84,6 +84,7 @@ import { postgresFileLibraryStore } from './file-library/repository.mjs';
 import { createLearningAnswerService } from './learning-answer.mjs';
 import { createLearningAnswerRouter } from './learning-answer-router.mjs';
 import { createModelCatalog } from './model-catalog.mjs';
+import { createRealtimeAsrSigner } from './tencent-asr.mjs';
 import { createModelGatewayService, createModelGatewayRouter } from './model-gateway.mjs';
 import { createJsonLlmClient, createTopicCompiler } from './custom-content/topic-compiler.mjs';
 import { createWeKnoraClient } from './custom-content/weknora-client.mjs';
@@ -176,6 +177,13 @@ const COOKIE = 'xiaobai_sid';
 const ASR_UPSTREAM = String(cfg.asrUpstreamUrl ?? 'https://openrouter.ai/api/v1/audio/transcriptions');
 const ASR_MODEL = cfg.asrModel ?? 'qwen/qwen3-asr-flash-2026-02-10';
 const ASR_KEY = cfg.asrApiKey ?? '';
+// 实时语音识别（边说边出字）：浏览器直连腾讯云，这里只签名。密钥只从服务端环境变量读。
+const realtimeAsrSign = createRealtimeAsrSigner({
+  appId: process.env.TENCENT_ASR_APP_ID, secretId: process.env.TENCENT_ASR_SECRET_ID,
+  secretKey: process.env.TENCENT_ASR_SECRET_KEY, engine: process.env.TENCENT_ASR_ENGINE || '16k_zh_en',
+});
+const realtimeAsrHits = new Map(); // name -> { count, resetAt }
+const realtimeAsrDaily = new Map(); // name -> { day, count }
 /** 邮件密钥环境变量优先;配置文件回落仅供现有单文件部署兼容(该文件必须 0600 且不入库) */
 const RESEND_API_KEY = process.env.RESEND_API_KEY
   || (typeof cfg.resendApiKey === 'string' ? cfg.resendApiKey : '');
@@ -2361,6 +2369,17 @@ const ASR_TIMEOUT = 60_000;
 const ASR_MAX_INFLIGHT = 6;
 let asrInflight = 0;
 
+/** 实时语音：status 只回是否开通；POST 给一次连接签名（每次按一次语音会话计数）。 */
+async function handleAsrRealtime(req, res, issue) {
+  const u = await protectedUser(req, res, 'asr');
+  if (!u) return;
+  if (!issue) return send(res, 200, { available: !!realtimeAsrSign });
+  if (!realtimeAsrSign) return send(res, 503, { error: 'asr-disabled' });
+  const limited = rateCheck(u.name, 20, 600, realtimeAsrHits, realtimeAsrDaily);
+  if (limited) return send(res, 429, { error: limited });
+  send(res, 200, realtimeAsrSign());
+}
+
 async function handleAsr(req, res) {
   const u = await protectedUser(req, res, 'asr');
   if (!u) { req.resume(); return; }
@@ -2929,6 +2948,8 @@ const server = http.createServer((req, res) => {
     if (pathname === '/api/me' && req.method === 'GET') return handleMe(req, res);
     if (pathname === '/api/chat' && req.method === 'POST') return void handleChat(req, res);
     if (pathname === '/api/asr' && req.method === 'POST') return void handleAsr(req, res);
+    if (pathname === '/api/asr/realtime/status' && req.method === 'GET') return void handleAsrRealtime(req, res, false);
+    if (pathname === '/api/asr/realtime' && req.method === 'POST') return void handleAsrRealtime(req, res, true);
     if (pathname === '/api/vision' && req.method === 'POST') return void handleVision(req, res);
     if (pathname === '/api/state' && req.method === 'GET') return void handleStateGet(req, res);
     if (pathname === '/api/state' && req.method === 'PUT') return void handleStatePut(req, res);

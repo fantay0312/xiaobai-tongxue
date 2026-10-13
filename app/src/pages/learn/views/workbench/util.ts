@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'react-router';
 
 export const TOOL_IDS = ['notes', 'mindmap', 'quiz', 'flashcards', 'todos', 'writing'] as const;
@@ -141,4 +141,19 @@ export function useHotkeys(handler: (event: KeyboardEvent) => void, enabled = tr
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [enabled]);
+}
+
+/** 手机宽度。只用在必须换结构的地方（视图选项、条目里元素的位置），样式仍交给 CSS */
+export function useNarrow(query = '(max-width: 760px)') {
+  // 没有 matchMedia 的环境（测试、服务端）一律按宽屏
+  const media = () => (typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(query) : null);
+  return useSyncExternalStore(
+    (notify) => {
+      const list = media();
+      list?.addEventListener('change', notify);
+      return () => list?.removeEventListener('change', notify);
+    },
+    () => media()?.matches ?? false,
+    () => false,
+  );
 }

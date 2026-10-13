@@ -1092,51 +1092,263 @@
   }
 }
 
+/* ── 手机（设置是一张底部面板）：目录横排成胶囊，宽控件另起一行占满，点按目标放大 ── */
 @media (max-width: 720px) {
   .layout {
+    /* 窄屏一律用触屏尺寸的控件，不依赖指针类型 */
+    --ctl-sm: 38px;
+    --ctl-md: 44px;
+    --ctl-lg: 46px;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
-    gap: 12px;
+    gap: 10px;
   }
 
   .nav {
+    --nav-bleed: 22px;
     flex-direction: row;
-    gap: 4px;
-    margin: 0 -22px;
-    padding: 3px 22px;
+    gap: 6px;
+    margin: 0 calc(var(--nav-bleed) * -1);
+    padding: 3px var(--nav-bleed);
     overflow-x: auto;
     overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: var(--nav-bleed);
+    -webkit-overflow-scrolling: touch;
   }
 
   .navItem {
-    height: var(--ctl-md);
-    padding: 0 12px;
+    height: 40px;
+    padding: 0 14px;
     border-radius: var(--r-full);
-    font-size: var(--fz-sm);
+    font-size: var(--fz-md);
+    scroll-snap-align: start;
+  }
+
+  /* --kb 是软键盘盖住的高度（useSheetKeyboardInset 写入），垫在底下，输入框才滚得上来 */
+  .pane {
+    padding-bottom: calc(24px + var(--kb, 0px));
+    -webkit-overflow-scrolling: touch;
   }
 
   .paneHead {
-    padding-bottom: 12px;
+    padding: 2px 0 12px;
   }
 
   .paneHead h3 {
     font-size: var(--fz-xl);
   }
 
+  .group {
+    margin-bottom: 24px;
+  }
+
+  .row {
+    gap: 10px 16px;
+    min-height: 60px;
+    padding: 14px 0;
+  }
+
+  .rowLabel {
+    font-size: var(--fz-lg);
+  }
+
   .rowControl {
     justify-content: flex-start;
   }
 
+  /* 宽控件（分段、滑杆、色板、输入框）另起一行占满，标签在上 */
   .rowWide .rowControl {
-    flex-basis: 100%;
+    flex: 1 1 100%;
   }
 
-  .accents {
-    justify-content: flex-start;
+  .rowControl:has(> [role='radiogroup']),
+  .rowControl:has(> .range),
+  .rowControl:has(> .accents) {
+    flex: 1 1 100%;
   }
 
-  .range {
+  .rowControl > [role='radiogroup'] {
+    display: flex;
     width: 100%;
+  }
+
+  .rowControl > [role='radiogroup'] > button {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 4px;
+  }
+
+  /* 开关放大一档，可点范围再向外扩一圈 */
+  .rowControl > [role='switch'] {
+    margin-left: 10px;
+    transform: scale(1.24);
+    transform-origin: right center;
+  }
+
+  .rowControl > [role='switch']::before {
+    content: '';
+    position: absolute;
+    inset: -12px -8px;
+  }
+
+  /* 输入框文字不小于 16px：iOS 聚焦时才不会把页面放大 */
+  .pane .rowControl input:not([type='range'], [type='color']) {
+    font-size: 16px;
+  }
+
+  /* 皮肤：两列大卡 */
+  .skinGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 6px -4px 0;
+  }
+
+  .skinCard {
+    padding: 6px 6px 12px;
+  }
+
+  .skinMeta strong {
+    font-size: var(--fz-md);
+  }
+
+  .skinCheck {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* 强调色：色点放大到 40px，五个一排 */
+  .accents {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    justify-items: center;
+    gap: 12px 4px;
+    width: 100%;
+  }
+
+  .accentAuto {
+    grid-column: 1 / -1;
+    justify-self: start;
+    height: 40px;
+    padding: 0 16px 0 12px;
+    font-size: var(--fz-sm);
+  }
+
+  .accentAuto i {
+    width: 12px;
+    height: 12px;
+  }
+
+  .accentDot,
+  .accentCustom {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* 滑杆：占满一行，拇指放大 */
+  .range {
+    gap: 14px;
+    width: 100%;
+  }
+
+  .rangeInput {
+    height: 40px;
+  }
+
+  .rangeInput::-webkit-slider-runnable-track {
+    height: 8px;
+  }
+
+  .rangeInput::-moz-range-track,
+  .rangeInput::-moz-range-progress {
+    height: 8px;
+  }
+
+  .rangeInput::-webkit-slider-thumb {
+    width: 28px;
+    height: 28px;
+    margin-top: -10px;
+  }
+
+  .rangeInput::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+  }
+
+  .rangeValue {
+    min-width: 44px;
+    font-size: var(--fz-md);
+  }
+
+  /* 壁纸：三列 */
+  .wallGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    margin-inline: -4px;
+  }
+
+  .wallTile {
+    padding: 5px 5px 9px;
+  }
+
+  .resetBar {
+    padding: 14px;
+  }
+
+  /* 预览压成一条矮的：先看一眼效果，不把设置项挤到第二屏 */
+  .look {
+    gap: 16px;
+  }
+
+  .lookAside {
+    gap: 6px;
+  }
+
+  .preview {
+    height: 172px;
+    grid-template-columns: 26% minmax(0, 1fr);
+    border-radius: var(--r-lg);
+  }
+
+  .pvSide {
+    padding: 10px 6px;
+  }
+
+  .pvQuest {
+    display: none;
+  }
+
+  .pvMain {
+    gap: 8px;
+    padding: 12px 10px 10px;
+  }
+
+  .pvThread {
+    gap: 8px;
+  }
+
+  .pvComposer {
+    height: 32px;
+  }
+
+  .pvComposer i {
+    width: 22px;
+    height: 22px;
+  }
+
+  .pvCompanion {
+    bottom: 50px;
+    width: 28px;
+    height: 28px;
+  }
+
+  .legend li {
+    padding: 9px 10px;
+  }
+
+  .testResult {
+    max-width: 100%;
   }
 
   .about {
@@ -1146,6 +1358,49 @@
   .about > :last-child {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .confirmField.confirmField input {
+    font-size: 16px;
+  }
+}
+
+/* 底部面板的左右内边距在 640 以下是 16px：目录的出血跟着改，否则会把面板撑出横向滚动 */
+@media (max-width: 640px) {
+  .dialog {
+    height: 92dvh;
+  }
+
+  /* 关闭钮是 kit 弹窗自带的 30px 圆钮，手机上放大到好点按 */
+  .dialog > header > button {
+    width: 40px;
+    height: 40px;
+    margin: -4px -4px 0 0;
+  }
+
+  /* 内容一直滚到面板底边，不在底下留一条白边 */
+  .layout {
+    height: calc(100% + 18px);
+    margin-bottom: -18px;
+  }
+
+  .nav {
+    --nav-bleed: 16px;
+  }
+}
+
+/* 触屏没有悬停：点过之后不留下悬停态 */
+@media (hover: none) {
+  .skinCard:hover:not([aria-pressed='true']),
+  .wallTile:hover:not(:disabled):not([aria-pressed='true']) {
+    background: transparent;
+  }
+
+  .skinCard:hover .skinMock,
+  .accentDot:hover,
+  .accentCustom:hover,
+  .rangeInput:not(:disabled):hover::-webkit-slider-thumb {
+    transform: none;
   }
 }
 

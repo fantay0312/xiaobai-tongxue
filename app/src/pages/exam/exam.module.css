@@ -451,12 +451,16 @@
 }
 .resultQ small { color: var(--text-3); font-size: var(--fz-xs); }
 
-.resultFoot {
+.resultEnd {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 16px 24px;
+}
+.resultFoot,
+.sendoffAction {
+  display: flex;
 }
 .resultNote {
   flex: 1 1 18rem;
@@ -488,13 +492,45 @@
 }
 
 @media (max-width: 560px) {
-  .page { padding-top: 16px; padding-bottom: 40px; gap: 16px; }
+  .page { padding-top: 16px; padding-bottom: 16px; gap: 16px; }
   .pageHead { gap: 10px; }
-  .avatarSide > div:first-child { width: 132px !important; height: 132px !important; }
-  .sendoffBody > :global(button) { width: 100%; }
-  .rule { margin: 20px 0 24px; }
+  .crumb a { padding-block: 9px; margin-block: -9px; }
+  .phaseStep { height: 30px; }
+  .avatarSide { gap: 10px; padding: 20px 16px; }
+  .avatarSide > div:first-child { width: 112px !important; height: 112px !important; }
+  /* 主动作吸底：卡片改用 clip 裁圆角（hidden 会截断 sticky），正文块摊平成卡片的直接子项 */
+  .sendoff { overflow: clip; }
+  .sendoffBody { display: contents; }
+  .sendoffBody > * { margin-inline: 20px; }
+  .sendoffBody > .kicker { margin-top: 24px; }
+  .lead { line-height: 1.8; }
+  .rule { justify-self: start; margin: 20px 20px 24px; }
+  .sendoffBody > .sendoffAction,
+  .examDesk > :global(footer),
+  .resultFoot {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    /* 外壳的手机底栏在滚动区下方,已经让过底部安全区,这里不再重复留白 */
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .sendoffBody > .sendoffAction { margin: 0; }
+  .sendoffAction > *,
+  .resultFoot > * { width: 100%; }
+  /* 卡片用 clip 裁圆角:吸底条停在半途时是直角,滚到卡片末尾才跟着卡片收圆 */
+  .examDesk { padding: 16px 16px 0; overflow: clip; }
+  .examDesk > :global(footer) { margin: 16px -16px 0; }
   .resultDetail { padding: 16px; }
-  .resultFoot > a { width: 100%; }
+  .resultItem { padding: 14px 0; }
+  .resultQ small { font-size: var(--fz-sm); }
+  /* 放榜：说明留在文档流里，按钮条吸底并铺到屏幕两侧 */
+  .resultEnd { display: contents; }
+  .resultFoot {
+    margin: 0 -16px -16px;
+    background: var(--bg);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

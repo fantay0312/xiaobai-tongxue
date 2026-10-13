@@ -160,6 +160,34 @@ button.mark:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
   .pFoot > button { width: 100%; }
   .cta > button { flex: 1 1 auto; }
 }
+/* 手机：一屏一道题。进度条钉在上面，「检查答案 / 下一题」钉在下面，拇指够得到 */
+@media (max-width: 760px) {
+  .summary { gap: 14px; padding: 4px 14px 16px; }
+  /* 题目多的时候，屏幕外的题先不排版 */
+  .item { padding: 16px 14px; content-visibility: auto; contain-intrinsic-size: auto 240px; }
+  .cta > button { flex: 1 1 auto; }
+  .practice { flex: 1; min-height: calc(100dvh - 200px); overflow-x: clip; }
+  .pTop { position: sticky; top: 0; z-index: 2; gap: 12px; padding: 8px 6px 8px 16px; background: var(--bg); }
+  .pBody { gap: 14px; padding: 8px 16px 20px; }
+  .pStem { font-size: var(--fz-xl); line-height: 1.6; }
+  .opts { gap: 10px; }
+  .opt { align-items: center; min-height: 56px; padding: 12px 14px; font-size: 16px; line-height: 1.5; }
+  .mark { width: 28px; height: 28px; font-size: var(--fz-sm); }
+  .resultActions { gap: 8px; }
+  .pFoot { position: sticky; bottom: 0; z-index: 2; padding: 10px 16px 12px; background: var(--bg); }
+  .pFoot > span { display: none; }
+  .pFoot > button { width: 100%; height: 48px; font-size: 16px; }
+  .done { padding: 28px 16px 24px; }
+  .done .cta { width: 100%; }
+  .formOpt { gap: 6px; }
+}
+@media (hover: none) {
+  .opt:hover:not([aria-disabled]):not([aria-checked='true']) { background: var(--inset); }
+}
+@media (pointer: coarse) {
+  .itemActions > button, .pTop > button { width: 40px; height: 40px; }
+  .formOpt > .mark { width: 32px; height: 32px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .pBody, .result { animation: none; }
   .ring circle:last-child { transition: none; }

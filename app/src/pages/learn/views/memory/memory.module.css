@@ -88,6 +88,40 @@
 }
 .panel[hidden] { display: none; }
 
+/* ── 有侧栏时的页头：哪份记忆、哪一块、暂停开关 ── */
+.sliceHead {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+.sliceCopy { flex: 1; min-width: 0; }
+.sliceMark {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-3);
+  font: 500 var(--fz-xs)/1.4 var(--ui-font);
+}
+.sliceCopy h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 2px 0 0;
+  font: 650 var(--fz-2xl)/1.3 var(--ui-font);
+  letter-spacing: -0.01em;
+}
+.sliceCopy > p:last-child {
+  margin: 4px 0 0;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+.sliceHead > .sectionSide { flex: none; align-self: flex-start; padding-top: 6px; }
+.slice { display: grid; gap: 24px; min-width: 0; }
+
 /* ── 通用小节 ── */
 .section { display: grid; gap: 12px; min-width: 0; }
 .sectionHead {
@@ -598,6 +632,10 @@
 }
 .bondRows dt { color: var(--text-3); font-size: var(--fz-sm); }
 .bondRows dd { margin: 0; color: var(--text-2); font-size: var(--fz-md); line-height: 1.6; }
+.demonRows { display: grid; gap: 14px; margin: 0; }
+.demonRows div { display: grid; gap: 6px; }
+.demonRows dt { color: var(--text-2); font: 500 var(--fz-sm)/1.4 var(--ui-font); }
+.demonRows dd { margin: 0; }
 .bondMeta {
   display: flex;
   align-items: center;
@@ -637,6 +675,8 @@
   .root { padding: 20px 16px 56px; gap: 20px; }
   .head h1 { font-size: var(--fz-2xl); }
   .duo, .facets, .lessons { grid-template-columns: minmax(0, 1fr); }
+  .sliceHead { flex-wrap: wrap; }
+  .sliceHead > .sectionSide { padding-top: 0; }
   .profile { padding: 16px; }
   .storyCard { padding: 16px; gap: 12px 14px; }
   .storyQuote { font-size: var(--fz-xl); }
@@ -644,6 +684,148 @@
   .rowActions { flex-wrap: wrap; margin-left: -6px; }
   .groupHint { display: none; }
   .toggleChip { max-width: 100%; }
+}
+
+/* ── 手机与触屏：行操作收进一颗「更多」，始终可见 ── */
+.row[data-compact] {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 10px 4px 10px 12px;
+}
+.row[data-compact] .rowActions {
+  flex-wrap: nowrap;
+  margin: -4px 0 0;
+  opacity: 1;
+}
+.row[data-compact] .rowActions > button {
+  min-width: 40px;
+  min-height: 40px;
+}
+.row[data-compact] .rowActions svg { width: 18px; height: 18px; }
+/* 删除前的就地确认占一整行 */
+.row[data-compact] .rowActions[data-open] {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  margin: 0;
+}
+.row[data-compact] .rowEdit > button { min-height: 40px; }
+
+/* ── 手机版式（data-phone 由 MemoryView 在 760px 以下加上） ──
+   根节点是纵向 flex：吸底的添加条要能在整页范围内吸住，grid 里的 sticky 只在自己那一格里动。 */
+.root[data-phone] {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 100%;
+  padding: 16px 16px 0;
+}
+.root[data-phone] .head p { margin-top: 2px; font-size: var(--fz-sm); }
+
+/* 分类：横向滑动的一排签 */
+.kindChips {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  margin: 0 -16px;
+  padding: 2px 16px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 16px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.kindChips::-webkit-scrollbar { display: none; }
+.kindChip {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font: 500 var(--fz-sm)/1 var(--ui-font);
+  white-space: nowrap;
+  scroll-snap-align: start;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+/* 看起来 36px 高，可点范围上下各多 4px */
+.kindChip::after {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
+}
+.kindChip span {
+  color: var(--text-3);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.kindChip:active { background: var(--active); }
+.kindChip:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.kindChip[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.kindChip[aria-pressed='true'] span { color: inherit; }
+.sliceNote {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+.phoneBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.phoneBody .sectionSide > button,
+.phoneBody .listFoot > button,
+.phoneBody .banner > button,
+.phoneBody .more { min-height: 40px; }
+.phoneBody .suggestChip { height: 36px; }
+.phoneBody .topicChip { height: 28px; }
+.phoneBody .quoteWall { grid-template-columns: minmax(0, 1fr); }
+
+/* 吸底的添加条 */
+.dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  display: grid;
+  gap: 8px;
+  margin: auto -16px 0;
+  padding: 8px 16px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+.dockRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dockRow > button {
+  flex: none;
+  min-height: 42px;
+}
+.dockOpts {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.dockOpts::-webkit-scrollbar { display: none; }
+.dockOpts > * { flex: none; }
+
+/* 触屏上输入框保持 16px，聚焦时 iOS 不放大页面 */
+@media (pointer: coarse), (max-width: 760px) {
+  .root.root input,
+  .dock.dock input { font-size: 16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

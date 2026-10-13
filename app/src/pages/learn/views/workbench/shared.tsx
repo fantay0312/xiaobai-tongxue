@@ -1,33 +1,40 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import {
-  ArrowLeft, Bot, Ellipsis, GalleryVerticalEnd, LayoutGrid, ListChecks, ListTodo, MessageSquare, Network, NotebookPen,
-  PanelLeftClose, PanelLeftOpen, PenLine, Pencil, Search, Trash2, type LucideIcon,
-} from 'lucide-react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode, type RefObject } from 'react';
+import { ArrowLeft, Bot, Ellipsis, MessageSquare, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import {
   Badge, Button, Dialog, Empty, Field, IconButton, Input, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger,
   Segmented, Shimmer, Skeleton, Textarea, cx, toast,
 } from '../../../../components/ui';
-import type { Origin, QuestionType } from '../../../../store/studyData';
+import { IconFlashcard, IconMindmap, IconNote, IconQuiz, IconTodo, IconWorkbench, IconWriting, type XbIconProps, IconSpark } from '../../../../components/ui/icons';
+import { useStudyData, type Origin, type QuestionType } from '../../../../store/studyData';
 import type { TerminalViewProps } from '../types';
 import { createFromAI, errorText, isAbort, type Created, type GenKind } from './actions';
 import { QUESTION_TYPES, hasMaterial } from './generate';
+import { CREATE_LABEL, GEN_OF, createItem, itemMenu, listEntries, removeItem, renameItem, type Entry, type ListTool } from './registry';
 import { clip, matches, useWorkbenchNav, TOOL_IDS, type ToolId } from './util';
 import s from './workbench.module.css';
 
 export const ICON = { size: 17, strokeWidth: 1.75 } as const;
 export const ICON_SM = { size: 15, strokeWidth: 1.75 } as const;
 
-export const TOOLS: Record<ToolId, { name: string; hint: string; icon: LucideIcon; unit: string }> = {
-  notes: { name: '笔记', hint: '用 Markdown 记下要点，随写随存', icon: NotebookPen, unit: '篇' },
-  mindmap: { name: '思维导图', hint: '把一课的结构理成一张图', icon: Network, unit: '张' },
-  quiz: { name: '题目集', hint: '做题、看解析、攒错题本', icon: ListChecks, unit: '套' },
-  flashcards: { name: '闪卡', hint: '按遗忘规律安排复习', icon: GalleryVerticalEnd, unit: '组' },
-  todos: { name: '待办', hint: '把今天要学的事列出来', icon: ListTodo, unit: '项' },
-  writing: { name: '作文与翻译', hint: '写完就批改，对照着改进', icon: PenLine, unit: '篇' },
+/** 工具图标用产品自己的那一套（components/ui/icons） */
+export const TOOLS: Record<ToolId, { name: string; hint: string; icon: ComponentType<XbIconProps> }> = {
+  notes: { name: '笔记', hint: '用 Markdown 记下要点，随写随存', icon: IconNote },
+  mindmap: { name: '思维导图', hint: '把一课的结构理成一张图', icon: IconMindmap },
+  quiz: { name: '题目集', hint: '做题、看解析、攒错题本', icon: IconQuiz },
+  flashcards: { name: '闪卡', hint: '按遗忘规律安排复习', icon: IconFlashcard },
+  todos: { name: '待办', hint: '把今天要学的事列出来', icon: IconTodo },
+  writing: { name: '作文与翻译', hint: '写完就批改，对照着改进', icon: IconWriting },
 };
 
-/** 工具组件的入参：终端视图入参 + 地址里选中的条目 */
-export interface ToolProps extends TerminalViewProps { activeId: string | null }
+/** 工具组件的入参：终端视图入参 + 选中的条目 + 导航在不在侧栏 */
+export interface ToolProps extends TerminalViewProps {
+  activeId: string | null;
+  /** 终端侧栏有挂载位：工具切换与条目列表都在侧栏，主区只放编辑器 */
+  sideNav: boolean;
+  onGenerate: (kind: GenKind) => void;
+  /** 待办的输入框，侧栏「新建待办」用它聚焦 */
+  todoInputRef?: RefObject<HTMLInputElement | null>;
+}
 
 /** 条目来源：助理任务写入、从对话保存的才标出来 */
 export function OriginBadge({ origin }: { origin: Origin }) {
@@ -36,19 +43,27 @@ export function OriginBadge({ origin }: { origin: Origin }) {
   return null;
 }
 
-/* ── 工具导航 ── */
+/* ── 主区里的工具导航：只在没有侧栏挂载位（手机、侧栏收起）时出现 ── */
 export function WorkbenchNav({ tool, counts, onGo }: { tool: ToolId | null; counts: Record<ToolId, number>; onGo: (tool: ToolId | null) => void }) {
+  const ref = useRef<HTMLElement>(null);
+  // 横向滚动的一排：换工具后把当前项挪到中间，后面的工具不会藏在屏幕外
+  useEffect(() => {
+    const nav = ref.current;
+    const current = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!nav || !current || nav.scrollWidth <= nav.clientWidth) return;
+    nav.scrollTo({ left: current.offsetLeft - (nav.clientWidth - current.offsetWidth) / 2 });
+  }, [tool]);
   return (
-    <nav className={s.nav} aria-label="学习工作台">
+    <nav ref={ref} className={s.nav} aria-label="学习工作台">
       <button type="button" className={s.navItem} aria-current={tool === null ? 'page' : undefined} onClick={() => onGo(null)}>
-        <LayoutGrid {...ICON_SM} />工作台
+        <IconWorkbench size={16} active={tool === null} />概览
       </button>
       <span className={s.navSep} aria-hidden="true" />
       {TOOL_IDS.map((id) => {
         const Icon = TOOLS[id].icon;
         return (
           <button key={id} type="button" className={s.navItem} aria-current={tool === id ? 'page' : undefined} onClick={() => onGo(id)}>
-            <Icon {...ICON_SM} />{TOOLS[id].name}
+            <Icon size={16} active={tool === id} />{TOOLS[id].name}
             {counts[id] > 0 && <span className={s.navCount}>{counts[id]}</span>}
           </button>
         );
@@ -57,9 +72,10 @@ export function WorkbenchNav({ tool, counts, onGo }: { tool: ToolId | null; coun
   );
 }
 
-export function ToolHead({ tool, children }: { tool: ToolId; children?: ReactNode }) {
+/** detail：窄屏上正在看某个条目时收起这一行，把高度让给内容（返回钮在详情头里） */
+export function ToolHead({ tool, detail, children }: { tool: ToolId; detail?: boolean; children?: ReactNode }) {
   return (
-    <div className={s.toolHead}>
+    <div className={s.toolHead} data-detail={detail || undefined}>
       <div className={s.toolTitle}>
         <h2>{TOOLS[tool].name}</h2>
         <p>{TOOLS[tool].hint}</p>
@@ -70,18 +86,8 @@ export function ToolHead({ tool, children }: { tool: ToolId; children?: ReactNod
 }
 
 /* ── 列表-详情 ── */
-interface SplitCtx { collapsed: boolean; toggleList: () => void; backToList: () => void }
-const SplitContext = createContext<SplitCtx>({ collapsed: false, toggleList: () => {}, backToList: () => {} });
-
-export interface Entry {
-  id: string;
-  title: string;
-  meta?: ReactNode;
-  origin: Origin;
-  topicId?: string;
-  /** 参与搜索的正文 */
-  text?: string;
-}
+interface SplitCtx { inSplit: boolean; collapsed: boolean; toggleList: () => void; backToList: () => void }
+const SplitContext = createContext<SplitCtx>({ inSplit: false, collapsed: false, toggleList: () => {}, backToList: () => {} });
 
 function RenameInput({ initial, onDone }: { initial: string; onDone: (title: string | null) => void }) {
   const [value, setValue] = useState(initial);
@@ -102,6 +108,9 @@ function RenameInput({ initial, onDone }: { initial: string; onDone: (title: str
       className={s.renameInput}
       value={value}
       aria-label="重命名"
+      autoComplete="off"
+      data-1p-ignore
+      data-lpignore="true"
       onChange={(event) => setValue(event.target.value)}
       onBlur={() => finish(value.trim())}
       onKeyDown={(event) => {
@@ -112,24 +121,21 @@ function RenameInput({ initial, onDone }: { initial: string; onDone: (title: str
   );
 }
 
-export function SplitLayout({ tool, entries, activeId, topic, empty, onRename, onDelete, menu, children }: {
-  tool: ToolId;
+/** 主区里的「列表-详情」：没有侧栏挂载位时的备用导航 */
+function SplitLayout({ tool, owner, entries, activeId, topic, children }: {
+  tool: ListTool;
+  owner: string | null;
   entries: Entry[];
   activeId: string | null;
   topic?: TerminalViewProps['topic'];
-  empty: { title: string; description: string; action: ReactNode };
-  onRename: (id: string, title: string) => void;
-  onDelete: (id: string) => void;
-  /** 每个条目菜单里的额外项 */
-  menu?: (id: string) => ReactNode;
-  children: (id: string | null) => ReactNode;
+  children: (id: string) => ReactNode;
 }) {
   const { go } = useWorkbenchNav();
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<'all' | 'course'>('all');
   const [collapsed, setCollapsed] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
-  const { name, icon: Icon } = TOOLS[tool];
+  const { name } = TOOLS[tool];
 
   const shown = useMemo(
     () => entries.filter((entry) => (scope === 'all' || !topic || entry.topicId === topic.topicId) && matches(query, entry.title, entry.text)),
@@ -138,18 +144,16 @@ export function SplitLayout({ tool, entries, activeId, topic, empty, onRename, o
   const picked = activeId !== null && entries.some((entry) => entry.id === activeId);
   const currentId = picked ? activeId : shown[0]?.id ?? null;
   const ctx = useMemo<SplitCtx>(() => ({
+    inSplit: true,
     collapsed,
     toggleList: () => setCollapsed((value) => !value),
     backToList: () => go(tool, null),
   }), [collapsed, go, tool]);
 
-  if (!entries.length) {
-    return (
-      <div className={s.emptyCard}>
-        <Empty icon={<Icon size={22} strokeWidth={1.75} />} title={empty.title} description={empty.description} action={empty.action} />
-      </div>
-    );
-  }
+  const remove = (id: string) => {
+    removeItem(tool, owner, id);
+    if (activeId === id) go(tool, null, true);
+  };
 
   return (
     <SplitContext.Provider value={ctx}>
@@ -186,7 +190,7 @@ export function SplitLayout({ tool, entries, activeId, topic, empty, onRename, o
                     initial={entry.title}
                     onDone={(title) => {
                       setRenaming(null);
-                      if (title && title !== entry.title) onRename(entry.id, title);
+                      if (title && title !== entry.title) renameItem(tool, owner, entry.id, title);
                     }}
                   />
                 ) : (
@@ -196,7 +200,7 @@ export function SplitLayout({ tool, entries, activeId, topic, empty, onRename, o
                         <span>{entry.title || '未命名'}</span>
                         <OriginBadge origin={entry.origin} />
                       </span>
-                      {entry.meta && <span className={s.itemMeta}>{entry.meta}</span>}
+                      <span className={s.itemMeta}>{entry.meta}</span>
                     </button>
                     <Menu>
                       <MenuTrigger asChild>
@@ -204,9 +208,9 @@ export function SplitLayout({ tool, entries, activeId, topic, empty, onRename, o
                       </MenuTrigger>
                       <MenuContent align="end" onCloseAutoFocus={(event) => event.preventDefault()}>
                         <MenuItem icon={<Pencil {...ICON_SM} />} onSelect={() => setRenaming(entry.id)}>重命名</MenuItem>
-                        {menu?.(entry.id)}
+                        {itemMenu(tool, owner, entry.id)}
                         <MenuSeparator />
-                        <MenuItem danger icon={<Trash2 {...ICON_SM} />} onSelect={() => onDelete(entry.id)}>删除</MenuItem>
+                        <MenuItem danger icon={<Trash2 {...ICON_SM} />} onSelect={() => remove(entry.id)}>删除</MenuItem>
                       </MenuContent>
                     </Menu>
                   </>
@@ -224,6 +228,67 @@ export function SplitLayout({ tool, entries, activeId, topic, empty, onRename, o
   );
 }
 
+/**
+ * 每个「条目-详情」工具的外框。
+ * 侧栏有挂载位时主区只放选中条目的编辑器（没有条目时是空状态）；
+ * 没有挂载位时在主区自带标题行、新建与列表，保证手机和侧栏收起时什么都点得到。
+ */
+export function ToolFrame({ tool, view, empty, actions, children }: {
+  tool: ListTool;
+  view: ToolProps;
+  empty: { title: string; description: string; primary?: 'create' | 'generate'; createLabel?: string; generateLabel?: string };
+  /** 自定义标题行与空状态里的动作（作文与翻译有两种新建） */
+  actions?: { head: ReactNode; empty: ReactNode };
+  children: (id: string) => ReactNode;
+}) {
+  const { owner, topic, activeId, sideNav, onGenerate } = view;
+  const { go } = useWorkbenchNav();
+  const data = useStudyData(owner);
+  const entries = useMemo(() => listEntries(tool, data), [tool, data]);
+  const kind = GEN_OF[tool];
+  const Icon = TOOLS[tool].icon;
+  const create = () => go(tool, createItem(tool, owner, topic));
+  const leadWithGenerate = Boolean(kind) && empty.primary === 'generate';
+
+  const emptyCard = (
+    <div className={s.emptyCard}>
+      <Empty
+        icon={<Icon size={22} />}
+        title={empty.title}
+        description={empty.description}
+        action={actions?.empty ?? (
+          <>
+            {kind && leadWithGenerate && <Button variant="solid" icon={<IconSpark />} onClick={() => onGenerate(kind)}>{empty.generateLabel ?? 'AI 生成'}</Button>}
+            <Button variant={leadWithGenerate ? 'soft' : 'solid'} icon={<Plus {...ICON_SM} />} onClick={create}>{empty.createLabel ?? CREATE_LABEL[tool]}</Button>
+            {kind && !leadWithGenerate && <Button variant="soft" icon={<IconSpark />} onClick={() => onGenerate(kind)}>{empty.generateLabel ?? 'AI 生成'}</Button>}
+          </>
+        )}
+      />
+    </div>
+  );
+
+  if (sideNav) {
+    if (!entries.length) return emptyCard;
+    return <>{(activeId && children(activeId)) || <div className={s.emptyCard}><p className={s.listEmpty}>在侧栏里选一项，或者新建一个。</p></div>}</>;
+  }
+
+  return (
+    <>
+      <ToolHead tool={tool} detail={activeId !== null && entries.some((entry) => entry.id === activeId)}>
+        {actions?.head ?? (
+          <>
+            {kind && <Button variant="soft" icon={<IconSpark />} onClick={() => onGenerate(kind)}>AI 生成</Button>}
+            <Button variant="outline" icon={<Plus {...ICON_SM} />} onClick={create}>{CREATE_LABEL[tool]}</Button>
+          </>
+        )}
+      </ToolHead>
+      {entries.length
+        ? <SplitLayout tool={tool} owner={owner} entries={entries} activeId={activeId} topic={tool === 'writing' ? undefined : topic}>{children}</SplitLayout>
+        : emptyCard}
+    </>
+  );
+}
+
 /** 详情头：窄屏的返回、收起后的展开按钮、可改的标题、右侧操作 */
 export function DetailHead({ title, onTitle, badges, children }: {
   title: string;
@@ -231,13 +296,15 @@ export function DetailHead({ title, onTitle, badges, children }: {
   badges?: ReactNode;
   children?: ReactNode;
 }) {
-  const { collapsed, toggleList, backToList } = useContext(SplitContext);
+  const { inSplit, collapsed, toggleList, backToList } = useContext(SplitContext);
   return (
     <header className={s.detailHead}>
-      <span className={s.onlyNarrow}>
-        <IconButton label="返回列表" onClick={backToList}><ArrowLeft {...ICON} /></IconButton>
-      </span>
-      {collapsed && (
+      {inSplit && (
+        <span className={s.onlyNarrow}>
+          <IconButton label="返回列表" onClick={backToList}><ArrowLeft {...ICON} /></IconButton>
+        </span>
+      )}
+      {inSplit && collapsed && (
         <span className={s.onlyWide}>
           <IconButton label="展开列表" onClick={toggleList}><PanelLeftOpen {...ICON} /></IconButton>
         </span>
@@ -248,6 +315,9 @@ export function DetailHead({ title, onTitle, badges, children }: {
         readOnly={!onTitle}
         placeholder="未命名"
         aria-label="标题"
+        autoComplete="off"
+        data-1p-ignore
+        data-lpignore="true"
         onChange={(event) => onTitle?.(event.target.value)}
         onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
       />
@@ -255,12 +325,6 @@ export function DetailHead({ title, onTitle, badges, children }: {
       {children && <div className={s.detailActions}>{children}</div>}
     </header>
   );
-}
-
-/** 删除并给出可撤销的提示 */
-export function removeWithUndo(label: string, remove: () => void, restore: () => void) {
-  remove();
-  toast(`已删除「${clip(label || '未命名', 16)}」`, { action: { label: '撤销', onClick: restore } });
 }
 
 /* ── 生成 ── */

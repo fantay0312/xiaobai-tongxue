@@ -727,8 +727,10 @@
 }
 
 @media (max-width: 560px) {
+  /* 整块大面积的重阴影在手机上滚动时费帧，换成轻一档的 */
   .window {
     border-radius: var(--r-xl);
+    box-shadow: var(--shadow-2), 0 0 0 1px var(--border);
   }
 
   .bar {
@@ -747,11 +749,39 @@
   }
 
   .feed {
-    padding: 16px 14px 4px;
+    padding: 14px 14px 4px;
+  }
+
+  .turn {
+    gap: 10px;
+  }
+
+  .welcome strong {
+    font-size: 21px;
   }
 
   .answer {
     font-size: var(--fz-md);
+    line-height: 1.75;
+  }
+
+  /* 手机上只留一轮问答的骨架：出处标签收起，正文里的编号还在 */
+  .sources {
+    display: none;
+  }
+
+  .quiz {
+    padding: 12px 12px 14px;
+  }
+
+  .quizOptions {
+    margin-top: 10px;
+  }
+
+  .effortPop {
+    right: 10px;
+    bottom: 58px;
+    width: min(100% - 20px, 264px);
   }
 
   .math {

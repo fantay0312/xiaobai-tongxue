@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Languages, MessageCircleQuestion, PenLine, RefreshCw, Sparkles, Wand2 } from 'lucide-react';
+import { Languages, MessageCircleQuestion, PenLine, RefreshCw, Wand2 } from 'lucide-react';
 import { CoachMarkdown } from '../../../../components/coach/CoachMarkdown';
 import { Badge, Button, Field, Progress, Segmented, Textarea, toast } from '../../../../components/ui';
 import { studyData, useStudyData, type WritingDoc } from '../../../../store/studyData';
 import { errorText, isAbort } from './actions';
 import { diffText, feedbackSection, reviewEssay, reviewTranslation } from './generate';
-import { DetailHead, GenRunning, ICON_SM, OriginBadge, SplitLayout, ToolHead, removeWithUndo, type Entry, type ToolProps } from './shared';
-import { ago, clip, countWords, useAutosave, useWorkbenchNav } from './util';
+import { createItem } from './registry';
+import { DetailHead, GenRunning, ICON_SM, OriginBadge, ToolFrame, type ToolProps } from './shared';
+import { clip, countWords, useAutosave, useWorkbenchNav } from './util';
 import s from './workbench.module.css';
 import w from './writing.module.css';
+import { IconSpark } from '../../../../components/ui/icons';
 
 type Kind = WritingDoc['kind'];
 const COPY: Record<Kind, {
@@ -53,63 +55,39 @@ const SAMPLES: Record<Kind, { title: string; source: string; draft: string }> = 
 };
 
 export default function WritingTool(props: ToolProps) {
-  const { owner, activeId, onAsk } = props;
+  const { owner, onAsk } = props;
   const { go } = useWorkbenchNav();
   const { writings } = useStudyData(owner);
-
-  const entries = useMemo<Entry[]>(() => [...writings]
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .map((doc) => ({
-      id: doc.id,
-      title: doc.title,
-      origin: doc.origin,
-      text: `${doc.source} ${doc.draft}`,
-      meta: <>{COPY[doc.kind]?.name ?? '写作'}{typeof doc.score === 'number' && ` · ${doc.score} 分`} · {ago(doc.updatedAt)}</>,
-    })), [writings]);
-
-  const create = (kind: Kind) => {
-    const doc = studyData.saveWriting(owner, { kind, title: '', source: '', draft: '' });
-    go('writing', doc.id);
-  };
-  const remove = (id: string) => {
-    const doc = writings.find((item) => item.id === id);
-    if (!doc) return;
-    removeWithUndo(doc.title, () => studyData.removeWriting(owner, id), () => studyData.saveWriting(owner, doc));
-    if (activeId === id) go('writing', null, true);
-  };
+  const create = (kind: Kind) => go('writing', createItem('writing', owner, undefined, kind));
 
   return (
-    <>
-      <ToolHead tool="writing">
-        <Button variant="outline" icon={<PenLine {...ICON_SM} />} onClick={() => create('essay')}>作文批改</Button>
-        <Button variant="outline" icon={<Languages {...ICON_SM} />} onClick={() => create('translation')}>翻译练习</Button>
-      </ToolHead>
-      <SplitLayout
-        tool="writing"
-        entries={entries}
-        activeId={activeId}
-        empty={{
-          title: '写完就能看到讲评',
-          description: '作文批改给出分数、分类问题和修改稿；翻译练习给出参考译文和逐句对照。每一篇都会留在这里，方便回看。',
-          action: (
-            <>
-              <Button variant="solid" icon={<PenLine {...ICON_SM} />} onClick={() => create('essay')}>批改一篇作文</Button>
-              <Button variant="soft" icon={<Languages {...ICON_SM} />} onClick={() => create('translation')}>做翻译练习</Button>
-            </>
-          ),
-        }}
-        onRename={(id, title) => {
-          const doc = writings.find((item) => item.id === id);
-          if (doc) studyData.saveWriting(owner, { ...doc, title });
-        }}
-        onDelete={remove}
-      >
-        {(id) => {
-          const doc = writings.find((item) => item.id === id);
-          return doc ? <WritingEditor key={doc.id} doc={doc} owner={owner} onAsk={onAsk} /> : null;
-        }}
-      </SplitLayout>
-    </>
+    <ToolFrame
+      tool="writing"
+      view={props}
+      empty={{
+        title: '写完就能看到讲评',
+        description: '作文批改给出分数、分类问题和修改稿；翻译练习给出参考译文和逐句对照。每一篇都会留在这里，方便回看。',
+      }}
+      actions={{
+        head: (
+          <>
+            <Button variant="outline" icon={<PenLine {...ICON_SM} />} onClick={() => create('essay')}>作文批改</Button>
+            <Button variant="outline" icon={<Languages {...ICON_SM} />} onClick={() => create('translation')}>翻译练习</Button>
+          </>
+        ),
+        empty: (
+          <>
+            <Button variant="solid" icon={<PenLine {...ICON_SM} />} onClick={() => create('essay')}>批改一篇作文</Button>
+            <Button variant="soft" icon={<Languages {...ICON_SM} />} onClick={() => create('translation')}>做翻译练习</Button>
+          </>
+        ),
+      }}
+    >
+      {(id) => {
+        const doc = writings.find((item) => item.id === id);
+        return doc ? <WritingEditor key={doc.id} doc={doc} owner={owner} onAsk={onAsk} /> : null;
+      }}
+    </ToolFrame>
   );
 }
 
@@ -208,7 +186,7 @@ function WritingEditor({ doc, owner, onAsk }: { doc: WritingDoc; owner: string |
             <Textarea className={w.draft} rows={kind === 'essay' ? 14 : 9} value={draft} placeholder={copy.draftHint} onChange={(event) => touch(setDraft)(event.target.value)} />
           </Field>
           <div className={w.run}>
-            <Button variant="solid" size="lg" icon={<Sparkles {...ICON_SM} />} loading={state === 'running'} disabled={!ready} onClick={() => void review()}>
+            <Button variant="solid" size="lg" icon={<IconSpark />} loading={state === 'running'} disabled={!ready} onClick={() => void review()}>
               {doc.feedback ? `重新${kind === 'essay' ? '批改' : '讲评'}` : copy.action}
             </Button>
             {state === 'running' && <Button variant="ghost" size="lg" onClick={() => { abort.current?.abort(); setState('idle'); }}>取消</Button>}

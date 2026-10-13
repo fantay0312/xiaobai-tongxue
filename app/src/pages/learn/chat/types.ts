@@ -40,6 +40,8 @@ export interface ComposerProps {
   /** settings.mode === 'mock'：本地演示，没有模型 */
   demo: boolean;
   sourceCount: number;
+  /** 当前没有任何资料可选：可以不带资料直接问模型（有资料但一份没勾时仍要先勾选） */
+  freeChat?: boolean;
   attachments: ComposerAttachment[];
   onRemoveAttachment: (id: string) => void;
   /** 打开资料库选择文件 */

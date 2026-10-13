@@ -246,6 +246,44 @@
 /* sonner 的说明文字默认用它自己的浅色变量，深色皮肤下看不清 */
 .toastDesc { color: var(--text-2) !important; }
 
+/* ── 手机：对话框变成从底部升起的面板，抽屉占满宽度；悬停效果只在有鼠标的设备上生效 ── */
+@keyframes sheetUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (max-width: 640px) {
+  .dialog {
+    top: auto; bottom: 0; left: 0; transform: none;
+    width: 100%; max-height: 92dvh;
+    border-radius: var(--r-2xl) var(--r-2xl) 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    animation: sheetUp var(--dur-3) var(--ease);
+  }
+  .dialogHead { padding: 16px 16px 10px; }
+  .dialogBody { padding: 4px 16px 18px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  .dialogFoot { padding: 12px 16px; }
+  .dialogFoot > * { flex: 1; }
+  .sheet { width: min(100vw, 360px); padding-bottom: env(safe-area-inset-bottom); }
+  .popover { max-width: calc(100vw - 24px); }
+  .menu { max-width: calc(100vw - 24px); }
+  .menuItem { min-height: 42px; }
+  .tabs { overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: none; }
+}
+/* 触屏：输入不小于 16px（否则 iOS 聚焦时放大页面），关闭钮和开关加大到好点按 */
+@media (pointer: coarse) {
+  .inputWrap input, .inputSm input, .textarea { font-size: 16px; }
+  .badge { height: 22px; font-size: var(--fz-xs); }
+  .dialogClose { width: 40px; height: 40px; }
+  .switch { width: 46px; height: 28px; }
+  .switchThumb { width: 24px; height: 24px; }
+  .switch[data-state='checked'] .switchThumb { transform: translateX(20px); }
+  .segItem { min-height: 36px; }
+  .tab { min-height: 40px; }
+}
+@media (hover: none) {
+  .cardInteractive:hover { border-color: var(--border); box-shadow: none; transform: none; }
+  .tip { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .popover, .menu, .tip, .overlay, .dialog, .sheet { animation: none; }
 }

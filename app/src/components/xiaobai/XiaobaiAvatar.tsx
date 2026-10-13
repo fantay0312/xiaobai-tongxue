@@ -15,8 +15,8 @@ export interface XiaobaiAvatarProps {
   speaking?: boolean;
   /** 画布边长 px,默认 240 */
   size?: number;
-  /** 场景:paper 宣纸页面 / board 黑板讲解舱 */
-  variant?: 'paper' | 'board';
+  /** 场景:paper 宣纸页面 / board 黑板讲解舱 / seat 讲解舱课桌后的无框半身(透明底,不套画框) */
+  variant?: 'paper' | 'board' | 'seat';
 }
 
 interface SpriteFrame { column: 0 | 1 | 2 | 3; row: 0 | 1 }
@@ -177,5 +177,36 @@ export function XiaobaiAvatar({
         <i />
       </span>
     </div>
+  );
+}
+
+/** 头像小签用的静态表情:只裁出脑袋,不起任何定时器,适合在对话流里一行一枚 */
+const FACE_ZOOM = 1.62;
+const FACE_CENTER = { x: 0.485, y: 0.4 };
+
+export function XiaobaiFace({ mood, size = 32, className }: {
+  mood: XiaobaiMood;
+  /** 圆签直径 px,默认 32 */
+  size?: number;
+  className?: string;
+}) {
+  const normalizedMood: XiaobaiMood = Object.prototype.hasOwnProperty.call(SPRITE_FRAMES, mood)
+    ? mood : 'idle';
+  const frame = SPRITE_FRAMES[normalizedMood];
+  const cell = size * FACE_ZOOM;
+  const style: CSSProperties = {
+    width: size,
+    height: size,
+    backgroundImage: `url(${ASSET_URL})`,
+    backgroundSize: `${cell * 4}px ${cell * 2}px`,
+    backgroundPosition: `${size / 2 - (frame.column + FACE_CENTER.x) * cell}px ${size / 2 - (frame.row + FACE_CENTER.y) * cell}px`,
+  };
+  return (
+    <span
+      className={[styles.face, className].filter(Boolean).join(' ')}
+      style={style}
+      data-mood={normalizedMood}
+      aria-hidden="true"
+    />
   );
 }

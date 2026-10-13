@@ -10,8 +10,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  ArrowUp, BookmarkPlus, ChevronRight, Eye, Info, Lightbulb, PenLine, Sparkles, Swords, X,
-  type LucideIcon,
+  ArrowUp, BookmarkPlus, ChevronRight, Eye, Info, Lightbulb, PenLine, Swords, X, type LucideIcon,
 } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import {
@@ -26,6 +25,7 @@ import { CoachMarkdownMessage } from './CoachMarkdown';
 import { markdownToPlainText } from './coachMarkdownText';
 import { XiaoyanPet, type XiaoyanPetState } from './XiaoyanPet';
 import s from './coach.module.css';
+import { IconSpark } from '../ui/icons';
 
 const uid = () => (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
 const now = () => new Date().toISOString();
@@ -45,6 +45,8 @@ const MODES: { id: CoachMode; label: string; Icon: LucideIcon }[] = [
 const ATLAS_URL = `${import.meta.env.BASE_URL}xiaoyan-prep-coach-atlas.webp`;
 const portraitStyle: CSSProperties = { backgroundImage: `url(${ATLAS_URL})` };
 
+/** 手机断点(与终端底栏、coach.module.css 一致) */
+const PHONE_QUERY = '(max-width: 760px)';
 /** 首次引导气泡:点开过一次就永久收起 */
 const HINT_KEY = 'xiaobai-coach-hint-done';
 /** 已放映过打字机的回复 id(模块级,面板开合/换页不重放) */
@@ -104,6 +106,7 @@ export function PrepCoach({
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const petBtnRef = useRef<HTMLButtonElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<number | null>(null);
   /* 长 await 续体必须校验知识点未切换(同 submitTeaching 的 sessionId 纪律) */
   const topicIdRef = useRef(topic.topicId);
@@ -202,9 +205,33 @@ export function PrepCoach({
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, busy, open, mode]);
+  /* 手机上不自动聚焦：键盘一弹出来就把建议问法和回复盖住了，等用户自己点输入框 */
+  const focusInput = () => {
+    if (!window.matchMedia(PHONE_QUERY).matches) inputRef.current?.focus();
+  };
   useEffect(() => {
-    if (open && !closing) inputRef.current?.focus();
+    if (open && !closing) focusInput();
   }, [open, closing, mode]);
+
+  /* 手机全屏抽屉跟着可视视口走：键盘弹出时面板收到键盘上方，输入框不被盖住 */
+  useEffect(() => {
+    const root = rootRef.current;
+    const viewport = window.visualViewport;
+    if (!open || !root || !viewport) return undefined;
+    const sync = () => {
+      root.style.setProperty('--coach-vv-top', `${Math.round(viewport.offsetTop)}px`);
+      root.style.setProperty('--coach-vv-height', `${Math.round(viewport.height)}px`);
+    };
+    sync();
+    viewport.addEventListener('resize', sync);
+    viewport.addEventListener('scroll', sync);
+    return () => {
+      viewport.removeEventListener('resize', sync);
+      viewport.removeEventListener('scroll', sync);
+      root.style.removeProperty('--coach-vv-top');
+      root.style.removeProperty('--coach-vv-height');
+    };
+  }, [open]);
 
   /* 「已记进草稿」回执 1.6s 后收起 */
   useEffect(() => {
@@ -266,7 +293,7 @@ export function PrepCoach({
     const text = raw.trim();
     if (!text || busyTid !== null) return;
     const tid = topic.topicId;
-    inputRef.current?.focus();
+    focusInput();
     setInput('');
     setBusyTid(tid);
     const history = getCoachThread(tid);
@@ -286,7 +313,7 @@ export function PrepCoach({
     if (!text || busyTid !== null || !rehearseMc) return;
     const tid = topic.topicId;
     const mc = rehearseMc;
-    inputRef.current?.focus();
+    focusInput();
     setInput('');
     setBusyTid(tid);
     setMessages(appendCoachMessage(tid, { id: uid(), role: 'teacher', text, t: now() }));
@@ -310,7 +337,7 @@ export function PrepCoach({
     setMessages(appendCoachMessage(topic.topicId, {
       id: uid(), role: 'coach', text: mc.triggerLine, t: now(), kind: 'rehearsal-probe',
     }));
-    inputRef.current?.focus();
+    focusInput();
   };
 
   /** 草稿:一键送审 */
@@ -393,7 +420,7 @@ export function PrepCoach({
 
   /* 挂到 body：终端栏位里可能有 transform / 容器查询，会改掉 fixed 的参照物 */
   return createPortal(
-    <div className={s.root}>
+    <div ref={rootRef} className={s.root} data-open={open || undefined}>
       {open && (
         <section
           id="prep-coach-panel"
@@ -413,7 +440,7 @@ export function PrepCoach({
               <span className={s.role}>备课助教 · 《{topic.title}》</span>
             </div>
             <Badge tone={live ? 'ok' : 'neutral'} dot>{live ? '已连线' : '本地演示'}</Badge>
-            <IconButton label="收起助教面板" size="sm" round tip={false} onClick={close}>
+            <IconButton label="收起助教面板" size="sm" round tip={false} className={s.closeBtn} onClick={close}>
               <X size={16} strokeWidth={1.75} />
             </IconButton>
           </header>
@@ -454,7 +481,7 @@ export function PrepCoach({
                 </Button>
                 <Button
                   variant="solid"
-                  icon={<Sparkles size={15} strokeWidth={1.75} />}
+                  icon={<IconSpark size={15} />}
                   disabled={inputLocked || draftText.trim().length < 20}
                   onClick={() => void critique()}
                 >
@@ -556,7 +583,7 @@ export function PrepCoach({
                           disabled={inputLocked}
                           onClick={() => void send(q)}
                         >
-                          <Sparkles className={s.suggestMark} size={14} strokeWidth={1.75} aria-hidden="true" />
+                          <IconSpark size={14} className={s.suggestMark} />
                           <span className={s.suggestText}>{q}</span>
                           <ChevronRight className={s.suggestGo} size={15} strokeWidth={1.75} aria-hidden="true" />
                         </button>
@@ -663,6 +690,7 @@ export function PrepCoach({
         state={petState}
         suppressReply={hintOn}
         launcher
+        className={s.pet}
         data-tour="coach"
         onClick={toggle}
         aria-expanded={open}

@@ -19,8 +19,12 @@ export interface TutorMemoryItem {
   edited?: boolean;
   /** 同一件事被再次观察到的次数 */
   seen?: number;
+  /** 这条是做梦整理时提炼出来的（engine/dreams） */
+  dream?: boolean;
 }
 export interface TutorMemoryState { items: TutorMemoryItem[]; paused: boolean }
+/** 最近提问的摘要：做梦整理时用来回放近期经历 */
+export interface TutorTurnDigest { at: string; question: string; topicId?: string; topicTitle?: string }
 
 export interface TutorTurnInput { topicId?: string; topicTitle?: string; question: string; answer: string }
 
@@ -42,6 +46,8 @@ const STORAGE_PREFIX = 'xiaobai-tutor-memory-v1:';
 const DUPLICATE_AT = 0.72;
 const CONCEPT_CAP = 60;
 const FORGOTTEN_CAP = 40;
+const TURN_LOG_CAP = 30;
+const TURN_DIGEST_MAX = 120;
 const EMPTY_STATE: TutorMemoryState = { items: [], paused: false };
 
 /** 被问到的概念计数：同一概念反复问到即记为薄弱点 */
@@ -51,6 +57,8 @@ interface Entry {
   concepts: ConceptTrace[];
   /** 我删掉的自动记忆（归一化文本）：之后不再自动记回来 */
   forgotten: string[];
+  /** 最近提问的摘要，新的在前 */
+  turns: TutorTurnDigest[];
 }
 interface Draft {
   kind: TutorMemoryKind; text: string; topicId?: string; topicTitle?: string; source: 'auto' | 'user';
@@ -103,6 +111,7 @@ function sanitizeItem(value: unknown): TutorMemoryItem | null {
   if (raw.pinned === true) item.pinned = true;
   if (raw.edited === true) item.edited = true;
   if (typeof raw.seen === 'number' && Number.isFinite(raw.seen) && raw.seen > 1) item.seen = Math.min(99, Math.floor(raw.seen));
+  if (raw.dream === true) item.dream = true;
   return item;
 }
 
@@ -134,14 +143,32 @@ function sanitizeEntry(value: unknown): Entry {
   const forgotten = (Array.isArray(raw.forgotten) ? raw.forgotten : [])
     .filter((text): text is string => typeof text === 'string' && text.length > 0)
     .slice(0, FORGOTTEN_CAP);
-  return { state: { items: capItems(items), paused: raw.paused === true }, concepts: concepts.slice(0, CONCEPT_CAP), forgotten };
+  const turns: TutorTurnDigest[] = [];
+  for (const candidate of Array.isArray(raw.turns) ? raw.turns : []) {
+    if (!candidate || typeof candidate !== 'object') continue;
+    const turn = candidate as Record<string, unknown>;
+    const question = cleanText(turn.question, TURN_DIGEST_MAX);
+    if (!question || !isIso(turn.at) || isSensitiveMemoryText(question)) continue;
+    turns.push({
+      at: turn.at,
+      question,
+      ...(typeof turn.topicId === 'string' && turn.topicId ? { topicId: turn.topicId } : {}),
+      ...(typeof turn.topicTitle === 'string' && turn.topicTitle ? { topicTitle: turn.topicTitle.slice(0, 60) } : {}),
+    });
+  }
+  return {
+    state: { items: capItems(items), paused: raw.paused === true },
+    concepts: concepts.slice(0, CONCEPT_CAP),
+    forgotten,
+    turns: turns.slice(0, TURN_LOG_CAP),
+  };
 }
 
 function readEntry(owner: string | null): Entry {
   const key = ownerKey(owner);
   const cached = cache.get(key);
   if (cached) return cached;
-  let entry: Entry = { state: EMPTY_STATE, concepts: [], forgotten: [] };
+  let entry: Entry = { state: EMPTY_STATE, concepts: [], forgotten: [], turns: [] };
   try {
     const raw = browserStorage()?.getItem(STORAGE_PREFIX + key);
     if (raw) entry = sanitizeEntry(JSON.parse(raw));
@@ -167,7 +194,7 @@ function writeEntry(owner: string | null, entry: Entry) {
   cache.set(key, entry);
   try {
     browserStorage()?.setItem(STORAGE_PREFIX + key, JSON.stringify({
-      v: 1, items: entry.state.items, paused: entry.state.paused, concepts: entry.concepts, forgotten: entry.forgotten,
+      v: 1, items: entry.state.items, paused: entry.state.paused, concepts: entry.concepts, forgotten: entry.forgotten, turns: entry.turns,
     }));
   } catch {
     // 存储已满或被禁用：本次会话内仍然可用
@@ -206,6 +233,16 @@ export function loadTutorMemory(owner: string | null): TutorMemoryState {
 /** 订阅当前账号的记忆，对话里新记下的内容会立即出现 */
 export function useTutorMemory(owner: string | null): TutorMemoryState {
   return useSyncExternalStore(subscribeTutorMemory, () => loadTutorMemory(owner), () => EMPTY_STATE);
+}
+
+const NO_TURNS: TutorTurnDigest[] = [];
+/** 最近提问的摘要（新的在前，最多 30 条）。只读，供做梦整理回放。 */
+export function loadTutorTurnLog(owner: string | null): TutorTurnDigest[] {
+  try {
+    return readEntry(owner).turns;
+  } catch {
+    return NO_TURNS;
+  }
 }
 
 // ───────────────────────── 隐私过滤、相似度、合并 ─────────────────────────
@@ -431,7 +468,7 @@ export const tutorMemory = {
     const removed = readEntry(owner).state.items;
     pendingByOwner.delete(ownerKey(owner));
     recentByOwner.delete(ownerKey(owner));
-    updateState(owner, (entry) => ({ state: { items: [], paused: entry.state.paused }, concepts: [], forgotten: [] }));
+    updateState(owner, (entry) => ({ state: { items: [], paused: entry.state.paused }, concepts: [], forgotten: [], turns: [] }));
     return removed;
   },
 };
@@ -453,6 +490,159 @@ export function summarizeTutorMemory(state: TutorMemoryState): TutorProfileSumma
     strengths: state.items.filter((item) => item.kind === 'strength').length,
     updatedAt: state.items.reduce<string | null>((latest, item) => (!latest || item.updatedAt > latest ? item.updatedAt : latest), null),
   };
+}
+
+// ───────────────────────── 做梦整理（engine/dreams 调用） ─────────────────────────
+
+/** 两句话说的是不是同一件事：0..1，做梦整理时找重复用 */
+export function tutorTextSimilarity(a: string, b: string): number {
+  return similarity(a, b);
+}
+
+/** text 里有多少内容能在 sources 里找到出处（按二元组算，0..1） */
+function supportedBy(text: string, sources: string[]): number {
+  const grams = bigrams(normalize(text));
+  const pool = new Set<string>();
+  for (const source of sources) for (const gram of bigrams(normalize(source)).keys()) pool.add(gram);
+  let hit = 0;
+  let total = 0;
+  for (const [gram, count] of grams) {
+    total += count;
+    if (pool.has(gram)) hit += count;
+  }
+  return total ? hit / total : 0;
+}
+
+export interface TutorDreamOps {
+  /** 说同一件事的几条并成一条；text 省略时保留其中最完整的一句 */
+  merges?: { ids: string[]; text?: string }[];
+  /** 从反复出现的事里提炼出的新认识；support 是它依据的原话（至少两句） */
+  promotions?: { kind: TutorMemoryKind; text: string; support: string[]; topicId?: string; topicTitle?: string }[];
+  fades?: string[];
+  keeps?: string[];
+  /** 多少天没再提起才允许淡忘，最少 7 天 */
+  fadeAfterDays?: number;
+}
+export interface TutorDreamResult {
+  merged: { text: string; from: string[] }[];
+  promoted: TutorMemoryItem[];
+  faded: TutorMemoryItem[];
+  kept: TutorMemoryItem[];
+}
+
+const isProtected = (item: TutorMemoryItem) => Boolean(item.pinned) || item.source === 'user' || Boolean(item.edited);
+const uniqueIds = (ids: unknown): string[] => [...new Set(Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : [])];
+
+/**
+ * 把一场梦的整理结果落到记忆上，返回真正发生的改动（梦境记录只写这些）。
+ * 守的线：置顶的、我写的、我改过的条目不改不删，只在一字不差的重复之间合并；
+ * 提炼必须有至少两句出处；淡忘只动很久没提起的自动记录；隐私内容不写入。暂停时什么都不做。
+ */
+export function applyTutorDream(owner: string | null, ops: TutorDreamOps): TutorDreamResult {
+  const result: TutorDreamResult = { merged: [], promoted: [], faded: [], kept: [] };
+  try {
+    updateState(owner, (entry) => {
+      if (entry.state.paused) return null;
+      const at = nowIso();
+      const now = Date.now();
+      let items = entry.state.items;
+      const gone = new Set<string>();
+      const find = (id: string) => (gone.has(id) ? undefined : items.find((item) => item.id === id));
+
+      for (const group of (ops.merges ?? []).slice(0, 8)) {
+        let members = uniqueIds(group.ids).map(find).filter((item): item is TutorMemoryItem => !!item);
+        if (members.length < 2) continue;
+        const first = normalize(members[0].text);
+        const exact = members.every((item) => normalize(item.text) === first);
+        if (!exact) members = members.filter((item) => !isProtected(item));
+        if (members.length < 2) continue;
+        const rank = (item: TutorMemoryItem) => (item.pinned ? 2 : isProtected(item) ? 1 : 0);
+        const survivor = [...members].sort((a, b) => rank(b) - rank(a) || b.updatedAt.localeCompare(a.updatedAt))[0];
+        let text = survivor.text;
+        if (!isProtected(survivor)) {
+          const texts = members.map((item) => item.text);
+          const proposed = cleanText(group.text, 60);
+          const longest = texts.reduce((best, candidate) => (candidate.length > best.length ? candidate : best));
+          text = proposed.length >= 2 && !isSensitiveMemoryText(proposed) && supportedBy(proposed, texts) >= 0.6 ? proposed : longest;
+        }
+        const scoped = members.find((item) => item.topicId);
+        const merged: TutorMemoryItem = {
+          ...survivor,
+          text,
+          updatedAt: at,
+          createdAt: members.reduce((earliest, item) => (item.createdAt < earliest ? item.createdAt : earliest), survivor.createdAt),
+          seen: Math.min(99, members.reduce((sum, item) => sum + (item.seen ?? 1), 0)),
+          ...(members.some((item) => item.pinned) ? { pinned: true } : {}),
+          ...(!survivor.topicId && scoped?.topicId ? { topicId: scoped.topicId, ...(scoped.topicTitle ? { topicTitle: scoped.topicTitle } : {}) } : {}),
+        };
+        const dropped = new Set(members.filter((item) => item.id !== survivor.id).map((item) => item.id));
+        items = items.filter((item) => !dropped.has(item.id)).map((item) => (item.id === survivor.id ? merged : item));
+        for (const id of dropped) gone.add(id);
+        result.merged.push({ text, from: members.map((item) => item.text) });
+      }
+
+      let accepted = 0;
+      for (const promo of (ops.promotions ?? []).slice(0, 6)) {
+        if (accepted >= 2) break;
+        const text = cleanText(promo.text, 60);
+        const support = Array.isArray(promo.support) ? promo.support.filter((line) => typeof line === 'string' && line.trim()) : [];
+        if (!isKind(promo.kind) || text.length < 4 || isSensitiveMemoryText(text)) continue;
+        if (support.length < 2 || supportedBy(text, support) < 0.15) continue;
+        const draft: Draft = { kind: promo.kind, text, source: 'auto', ...(promo.topicId ? { topicId: promo.topicId, topicTitle: promo.topicTitle } : {}) };
+        // 新认识和它的出处天然相像，查重时不拿出处来比
+        const sources = new Set(support.map(normalize));
+        const duplicate = findDuplicate(items.filter((item) => !sources.has(normalize(item.text))), draft);
+        if (duplicate) {
+          if (isProtected(duplicate)) continue;
+          accepted += 1;
+          // 已有同样的认识：梦里提炼过的换成新说法，其余只算再印证一次
+          const refreshed: TutorMemoryItem = {
+            ...duplicate, updatedAt: at, seen: Math.min(99, (duplicate.seen ?? 1) + 1), ...(duplicate.dream ? { text } : {}),
+          };
+          items = items.map((item) => (item.id === duplicate.id ? refreshed : item));
+          if (duplicate.dream && duplicate.text !== text) result.promoted.push(refreshed);
+          else result.kept.push(refreshed);
+          continue;
+        }
+        const item: TutorMemoryItem = { id: newId(), kind: promo.kind, text, source: 'auto', dream: true, createdAt: at, updatedAt: at };
+        if (promo.topicId) {
+          item.topicId = promo.topicId;
+          if (promo.topicTitle) item.topicTitle = promo.topicTitle.slice(0, 60);
+        }
+        items = [item, ...items];
+        result.promoted.push(item);
+        accepted += 1;
+      }
+
+      const fadeAfterMs = Math.max(7, ops.fadeAfterDays ?? 30) * 86_400_000;
+      for (const id of uniqueIds(ops.fades).slice(0, 8)) {
+        const item = find(id);
+        if (!item || isProtected(item) || result.promoted.some((fresh) => fresh.id === id)) continue;
+        if (now - Date.parse(item.updatedAt) < fadeAfterMs) continue;
+        items = items.filter((candidate) => candidate.id !== id);
+        gone.add(id);
+        result.faded.push(item);
+      }
+
+      for (const id of uniqueIds(ops.keeps).slice(0, 8)) {
+        const item = find(id);
+        if (!item || result.kept.some((kept) => kept.id === id) || result.promoted.some((fresh) => fresh.id === id)) continue;
+        if (isProtected(item)) {
+          result.kept.push(item);
+          continue;
+        }
+        const stronger: TutorMemoryItem = { ...item, updatedAt: at, seen: Math.min(99, (item.seen ?? 1) + 1) };
+        items = items.map((candidate) => (candidate.id === id ? stronger : candidate));
+        result.kept.push(stronger);
+      }
+
+      if (items === entry.state.items) return null;
+      return { ...entry, state: { ...entry.state, items: capItems(items) } };
+    });
+  } catch {
+    // 整理失败时保持记忆原样
+  }
+  return result;
 }
 
 // ───────────────────────── 提示词要点 ─────────────────────────
@@ -679,15 +869,16 @@ function observeQuestion(owner: string | null, entry: Entry, turn: Turn): { draf
 }
 
 /** 写入自动提炼的草稿：尊重暂停，跳过我删过的内容 */
-function commitAuto(owner: string | null, drafts: Draft[], concepts?: ConceptTrace[]) {
-  updateState(owner, (entry) => {
-    if (entry.state.paused) return null;
+function commitAuto(owner: string | null, drafts: Draft[], concepts?: ConceptTrace[], digest?: TutorTurnDigest) {
+  updateState(owner, (current) => {
+    if (current.state.paused) return null;
+    const entry = digest ? { ...current, turns: [digest, ...current.turns].slice(0, TURN_LOG_CAP) } : current;
     const allowed = drafts.filter((draft) => {
       const key = normalize(cleanText(draft.text));
       return key && !entry.forgotten.some((old) => old === key || similarity(old, key) >= DUPLICATE_AT);
     });
     const merged = mergeDrafts(entry.state.items, allowed, nowIso());
-    if (!merged.changed && (!concepts || concepts === entry.concepts)) return null;
+    if (!merged.changed && (!concepts || concepts === entry.concepts)) return digest ? entry : null;
     // 说了「懂了」的概念：撤掉自动记下的「反复问到」，计数也清零
     const resolved = allowed.flatMap((draft) => (draft.resolves ? [draft.resolves] : []));
     const outdated = (item: TutorMemoryItem) => item.kind === 'weakness' && item.source === 'auto' && !item.pinned && !item.edited
@@ -803,7 +994,12 @@ export function recordTutorTurn(owner: string | null, input: TutorTurnInput): vo
         const entry = readEntry(owner);
         if (entry.state.paused) return;
         const { drafts, concepts } = observeQuestion(owner, entry, turn);
-        commitAuto(owner, drafts, concepts);
+        // 提问摘要留给做梦整理回放；含隐私的提问不留
+        const question = cleanText(turn.question, TURN_DIGEST_MAX);
+        const digest: TutorTurnDigest | undefined = question && !isSensitiveMemoryText(turn.question)
+          ? { at: nowIso(), question, ...(turn.topicId ? { topicId: turn.topicId } : {}), ...(turn.topicTitle ? { topicTitle: turn.topicTitle } : {}) }
+          : undefined;
+        commitAuto(owner, drafts, concepts, digest);
         queueExtraction(owner, turn);
       } catch {
         // 记忆整理失败不影响对话

@@ -130,6 +130,15 @@
   gap: 6px;
 }
 
+/* 章节菜单：只在章节链接收起的窄屏出现 */
+.navActions .navMenu {
+  display: none;
+}
+
+.navMenuList {
+  min-width: 184px;
+}
+
 /* ── 首屏 ── */
 .hero {
   padding-top: clamp(40px, 9vh, 96px);
@@ -273,6 +282,10 @@
   line-height: 1.15;
   letter-spacing: -0.032em;
   text-wrap: balance;
+}
+
+.chapterClause {
+  display: inline-block;
 }
 
 .chapterLead {
@@ -587,6 +600,10 @@
     display: none;
   }
 
+  .navActions .navMenu {
+    display: inline-grid;
+  }
+
   .heroHead,
   .split,
   .skins {
@@ -606,12 +623,40 @@
   }
 }
 
-@media (max-width: 560px) {
+/* ── 手机：顶栏只留品牌 + 主按钮 + 菜单；章节收紧，整页不拖沓 ── */
+@media (max-width: 640px) {
   .page {
-    --lp-nav-h: 56px;
+    --lp-nav-h: 54px;
+    --lp-gutter: 18px;
+    /* 触屏尺寸的控件：窄屏一律用好点按的高度，不依赖指针类型 */
+    --ctl-sm: 34px;
+    --ctl-md: 40px;
+    --ctl-lg: 46px;
+  }
+
+  /* 整条顶栏的毛玻璃在手机上滚动时最费帧，换成实底 */
+  .nav {
+    padding-top: env(safe-area-inset-top);
+    background: var(--bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .navInner {
+    gap: 8px;
+  }
+
+  .navActions {
+    gap: 4px;
+  }
+
+  .navActions .navLogin {
+    display: none;
   }
 
   .brand {
+    gap: 8px;
+    min-height: 40px;
     font-size: var(--fz-lg);
   }
 
@@ -620,8 +665,30 @@
     height: 26px;
   }
 
-  .skinList {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .hero {
+    padding-top: 28px;
+  }
+
+  .heroHead {
+    gap: 20px;
+  }
+
+  .kicker {
+    font-size: var(--fz-xs);
+  }
+
+  .heroTitle {
+    margin-top: 16px;
+    font-size: clamp(44px, 14vw, 60px);
+  }
+
+  .heroLead {
+    font-size: 16px;
+    line-height: 1.75;
+  }
+
+  .heroActions {
+    margin-top: 22px;
   }
 
   .heroActions,
@@ -630,16 +697,123 @@
   }
 
   .page .cta {
+    --h: 50px;
     flex: 1 1 auto;
+  }
+
+  .heroNote {
+    margin-top: 12px;
+  }
+
+  .heroScene {
+    margin-top: 28px;
+  }
+
+  .chapter {
+    padding-block: 56px;
+  }
+
+  .chapterTitle {
+    margin-top: 20px;
+    font-size: clamp(28px, 8.2vw, 34px);
+  }
+
+  .chapterLead {
+    margin-top: 12px;
+    font-size: 16px;
+    line-height: 1.75;
+  }
+
+  .chapterBody {
+    margin-top: 28px;
+  }
+
+  .split {
+    gap: 24px;
+  }
+
+  .points li {
+    gap: 4px;
+    padding: 14px 0;
+  }
+
+  .points span {
+    line-height: 1.65;
+  }
+
+  .stage {
+    padding: 10px;
+    border-radius: var(--r-xl);
+  }
+
+  .panel {
+    border-radius: var(--r-lg);
+  }
+
+  /* 滚动显现在手机上收短：位移小、时间短，快速滑动时不拖影 */
+  .page[data-motion='on'] [data-reveal] {
+    transform: translateY(8px);
+    transition-duration: 380ms;
+    transition-delay: 0ms;
+  }
+
+  .closing {
+    padding-block: 48px 64px;
+  }
+
+  .skins {
+    gap: 16px;
+    padding: 18px 14px 16px;
+    border-radius: var(--r-xl);
+  }
+
+  .skinsText {
+    padding-inline: 4px;
+  }
+
+  .skinsText p {
+    line-height: 1.65;
+  }
+
+  .skinList {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .skin {
+    padding: 6px 2px 10px;
+  }
+
+  .skinHint {
+    padding-inline: 4px;
+  }
+
+  .closingBody {
+    gap: 22px;
+    margin-top: 48px;
+  }
+
+  .closingTitle {
+    font-size: clamp(40px, 12.6vw, 54px);
   }
 
   .footerInner {
     flex-direction: column;
     align-items: flex-start;
+    gap: 6px;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
   }
 
   .footerNav {
-    margin-left: -10px;
+    margin-left: -12px;
+  }
+
+  .footerNav a,
+  .footerNav button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 12px;
   }
 }
 

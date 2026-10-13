@@ -592,6 +592,28 @@
   .sessionCard { grid-template-columns: 60px minmax(0, 1fr); row-gap: 4px; }
   .sessionLink { grid-column: 2; justify-self: start; margin-left: -10px; }
   .mcFrom { margin-left: 0; flex-basis: 100%; }
+
+  /* 手机:课程筛选横滑,一枚一指宽 */
+  .courseBar {
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+  }
+  /* 类名叠写：压过基础件 .segSm .segItem 的高度与字号 */
+  .courseBar.courseBar :global(button) {
+    height: 40px;
+    padding: 0 14px;
+    font-size: var(--fz-sm);
+    scroll-snap-align: start;
+  }
+  /* 学情表只横滚,不在页面里再套一层竖滚 */
+  .tableScroll {
+    max-height: none;
+    overscroll-behavior-x: contain;
+  }
+  .table th { height: 44px; }
+  .table td { height: 48px; }
+  .sortBtn { height: 40px; }
+  .sessionLink { min-height: 40px; }
 }
 
 /* 窄屏横滚时知识点一列吸左,数字滚过去还知道是哪一讲 */

@@ -176,10 +176,12 @@
   .overview, .cards { padding-inline: 16px; }
   .hero { padding: 18px 16px; }
   .heroActions, .heroActions > button { width: 100%; }
-  .cardRow { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+  /* 正面、背面各占整行；到期时间和操作在最后一行，按钮不压在文字上 */
+  .cardRow { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 12px 0 6px; }
+  .cardFront { grid-column: 1 / -1; }
   .cardBack { grid-column: 1 / -1; grid-row: 2; }
-  .cardDue { grid-column: 1; grid-row: 3; }
-  .cardActions { grid-column: 2; grid-row: 1 / span 3; opacity: 1; }
+  .cardDue { grid-column: 1; grid-row: 3; align-self: center; }
+  .cardActions { grid-column: 2; grid-row: 3; opacity: 1; }
   .stage { padding: 16px; }
   .face { padding: 18px 18px 16px; }
   .flip { min-height: 260px; }
@@ -189,6 +191,40 @@
   .rating kbd { display: none; }
   .show { width: 100%; }
   .cardsTools { flex-wrap: wrap; }
+}
+/* 手机：卡片占满一屏，点一下翻面；四个评分钮钉在底部一排 */
+@media (max-width: 760px) {
+  .overview { gap: 16px; padding: 4px 14px 20px; }
+  .cards { padding: 4px 14px 18px; }
+  .cardsTools > button { flex: 1 1 100%; }
+  .cardRow { content-visibility: auto; contain-intrinsic-size: auto 96px; }
+  .bars { gap: 6px; }
+  .review { flex: 1; min-height: calc(100dvh - 200px); }
+  .rTop { position: sticky; top: 0; z-index: 2; gap: 12px; padding: 8px 6px 8px 16px; background: var(--bg); }
+  .stage { place-items: stretch; padding: 8px 16px 12px; }
+  .flip { width: 100%; min-height: 240px; }
+  .face { padding: 18px 18px 16px; box-shadow: var(--shadow-2), 0 0 0 1px var(--border); }
+  .faceText { font-size: var(--fz-xl); }
+  .back .faceText { font-size: 16px; }
+  .rFoot { position: sticky; bottom: 0; z-index: 2; align-content: center; min-height: 84px; padding: 8px 16px 12px; background: var(--bg); }
+  .show { width: 100%; height: 52px; font-size: 16px; }
+  .show kbd, .rating kbd { display: none; }
+  .ratings { gap: 8px; width: 100%; }
+  .rating { align-content: center; min-height: 60px; padding: 8px 4px; }
+  .rating b { font-size: var(--fz-lg); }
+  .done { padding: 32px 16px 28px; }
+  .done > button { width: 100%; }
+}
+@media (hover: none) {
+  .flip:hover .face { box-shadow: var(--shadow-3); }
+  .rating:hover { border-color: transparent; background: color-mix(in srgb, var(--tone) 11%, transparent); transform: none; }
+  .rating:active { background: color-mix(in srgb, var(--tone) 22%, transparent); transform: scale(0.97); }
+}
+@media (max-width: 760px) and (hover: none) {
+  .flip:hover .face { box-shadow: var(--shadow-2), 0 0 0 1px var(--border); }
+}
+@media (pointer: coarse) {
+  .cardActions > button, .rTop > button { width: 40px; height: 40px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .flip { transition: none; animation: none; }

@@ -1,7 +1,8 @@
 /**
  * 页首：小白本人 —— 科名、学识进度、连续天数、他此刻想说的一句话，以及唯一的主按钮。
  */
-import { ArrowRight, Flame, NotebookText } from 'lucide-react';
+import { ArrowRight, ChevronRight, Flame, NotebookText } from 'lucide-react';
+import { IconTeach } from '../../../../components/ui/icons';
 import { XiaobaiAvatar } from '../../../../components/xiaobai/XiaobaiAvatar';
 import { Button, Progress } from '../../../../components/ui';
 import { STAGE_META } from '../../../../engine/evolution';
@@ -17,22 +18,26 @@ interface Props {
   stageUp: boolean;
   onPrimary: () => void;
   onGrowth: () => void;
+  /** 手机版式：小白在左、科名与学识在右，主按钮通栏 */
+  compact?: boolean;
 }
 
-export function Hero({ progress, primary, busy, stageUp, onPrimary, onGrowth }: Props) {
+export function Hero({ progress, primary, busy, stageUp, onPrimary, onGrowth, compact = false }: Props) {
   const { stage, wisdom, board, mood, nextStageLine } = progress;
   const { streak } = board;
 
   let streakText = '今天开始连续';
   if (streak.days > 0) streakText = streak.activeToday ? `连续 ${streak.days} 天` : `连续 ${streak.days} 天 · 今天还没学`;
+  // 手机上右栏只有两百像素宽，「今天还没学」换成短说法
+  if (compact && streak.days > 0 && !streak.activeToday) streakText = `${streak.days} 天 · 今天未学`;
 
   return (
-    <section className={s.hero} aria-label="小白的近况">
+    <section className={s.hero} data-compact={compact || undefined} aria-label="小白的近况">
       <div className={s.heroFigure}>
         <div className={s.heroHalo}>
           {/* 小白画在纸上：data-story 让他的底色回到宣纸，深色皮肤里也看得清 */}
           <div className={s.heroPortrait} data-story>
-            <XiaobaiAvatar mood={mood} level={stage.stage} size={128} variant="paper" />
+            <XiaobaiAvatar mood={mood} level={stage.stage} size={compact ? 72 : 128} variant="paper" />
           </div>
         </div>
         <span className={s.stageSeal} data-fresh={stageUp || undefined} aria-hidden="true">
@@ -42,11 +47,20 @@ export function Hero({ progress, primary, busy, stageUp, onPrimary, onGrowth }: 
 
       <div className={s.heroBody}>
         <div className={s.heroTop}>
-          <p className={s.eyebrow}>小白 · 你的 AI 学生</p>
+          <p className={s.eyebrow}>
+            <IconTeach size={15} />
+            教小白 · 他是你的 AI 学生
+          </p>
           <span className={s.streak} data-on={streak.activeToday || undefined}>
             <Flame size={15} strokeWidth={1.75} aria-hidden="true" />
             {streakText}
           </span>
+          {compact && (
+            <button type="button" className={s.growthChip} onClick={onGrowth}>
+              成长册
+              <ChevronRight size={14} strokeWidth={1.75} aria-hidden="true" />
+            </button>
+          )}
         </div>
 
         <h1 className={s.heroTitle}>
@@ -85,20 +99,23 @@ export function Hero({ progress, primary, busy, stageUp, onPrimary, onGrowth }: 
           <Button
             variant="solid"
             size="lg"
+            block={compact}
             loading={busy}
             iconRight={<ArrowRight size={17} strokeWidth={1.75} />}
             onClick={onPrimary}
           >
             {primary.cta}
           </Button>
-          <Button
-            variant="ghost"
-            size="lg"
-            icon={<NotebookText size={17} strokeWidth={1.75} />}
-            onClick={onGrowth}
-          >
-            成长册
-          </Button>
+          {!compact && (
+            <Button
+              variant="ghost"
+              size="lg"
+              icon={<NotebookText size={17} strokeWidth={1.75} />}
+              onClick={onGrowth}
+            >
+              成长册
+            </Button>
+          )}
         </div>
       </div>
     </section>

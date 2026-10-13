@@ -1,6 +1,7 @@
 /** 模型选择与思考强度：输入框里的胶囊触发器 + 两页弹层（强度页 / 模型列表页）。 */
 import { useState } from 'react';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, RotateCcw, Zap } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { IconModel } from './icons';
 import { Popover, PopoverContent, PopoverTrigger } from './kit';
 import { EffortSlider } from './EffortSlider';
 import { EFFORT_HINTS, EFFORT_LABELS, type Effort } from '../../store/modelPrefs';
@@ -35,7 +36,7 @@ export function ModelPicker({ models, model, effort, onModel, onEffort, onReset,
   const [page, setPage] = useState<'effort' | 'models'>('effort');
   const current = models.find((item) => item.id === model) ?? models[0];
   if (!current) {
-    return <span className={s.trigger} data-disabled><Zap size={14} className={s.triggerIcon} /><span className={s.triggerModel}>{emptyLabel}</span></span>;
+    return <span className={s.trigger} data-disabled><IconModel size={15} className={s.triggerIcon} /><span className={s.triggerModel}>{emptyLabel}</span></span>;
   }
   const efforts: Effort[] = current.efforts.length ? current.efforts : ['none'];
   // 当前模型不支持已存的强度时，落到它的默认档
@@ -52,7 +53,7 @@ export function ModelPicker({ models, model, effort, onModel, onEffort, onReset,
     <Popover open={open} onOpenChange={(next) => { setOpen(next); if (next) setPage('effort'); }}>
       <PopoverTrigger asChild>
         <button type="button" className={s.trigger} disabled={disabled} aria-label={`模型 ${current.label}${adjustable ? `，思考强度 ${EFFORT_LABELS[active]}` : ''}`}>
-          <Zap size={14} className={s.triggerIcon} />
+          <IconModel size={15} className={s.triggerIcon} />
           <span className={s.triggerModel}>{current.label}</span>
           {adjustable && <span className={s.triggerEffort}>{EFFORT_LABELS[active]}</span>}
           <ChevronDown size={14} className={s.triggerChevron} />
@@ -62,7 +63,7 @@ export function ModelPicker({ models, model, effort, onModel, onEffort, onReset,
         {page === 'effort' ? (
           <>
             <div className={s.head}>
-              <span className={s.headIcon}><Zap size={18} /></span>
+              <span className={s.headIcon}><IconModel size={20} active /></span>
               <div className={s.headCenter}>
                 <strong>{adjustable ? EFFORT_LABELS[active] : '标准'}</strong>
                 <button type="button" className={s.modelLink} onClick={() => setPage('models')}>

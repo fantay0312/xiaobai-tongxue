@@ -57,7 +57,8 @@ function mainCsp(inlineScripts) {
     `img-src 'self' data: blob: ${CAPTCHA_PRIMARY_ORIGINS}`,
     "font-src 'self' data:",
     // 浏览器直连模式允许用户配置任意 OpenAI 兼容 HTTPS LLM / ASR 端点。
-    "connect-src 'self' https:",
+    // wss://asr.cloud.tencent.com：实时语音识别由浏览器直连（https: 不涵盖 wss）。
+    "connect-src 'self' https: wss://asr.cloud.tencent.com",
     // blob: 给资料库的 PDF 内嵌预览；'self' 给课堂互动演示的隔离宿主页 /sandbox.html
     "frame-src 'self' blob: https://turing.captcha.qcloud.com",
     `media-src 'self' blob: ${CAPTCHA_PRIMARY_ORIGINS}`,

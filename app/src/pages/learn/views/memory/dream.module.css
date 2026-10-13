@@ -1,0 +1,202 @@
+/* 梦境面板：两份记忆各自的离线整理记录。只用 skins.css 语义令牌；小白的梦是纸条，放在 [data-story] 岛里。 */
+
+.panel { display: grid; gap: 20px; min-width: 0; }
+
+.about {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fz-md);
+  line-height: 1.7;
+}
+
+/* ── 状态与「现在整理」 ── */
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+.facts {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  flex: 1 1 280px;
+}
+.facts div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+}
+.facts dt { color: var(--text-3); font-size: var(--fz-sm); }
+.facts dd { margin: 0; color: var(--text); font-size: var(--fz-md); line-height: 1.6; }
+.run { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.running { font-size: var(--fz-sm); }
+.note {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+
+/* ── 梦境记录 ── */
+.journalHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.journalHead h2 { margin: 0; font: 600 var(--fz-xl)/1.3 var(--ui-font); }
+.journalHead span { color: var(--text-3); font-size: var(--fz-sm); }
+.journal { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+
+.entry {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.entry[data-fresh] { animation: dreamIn var(--dur-3) var(--ease) both; }
+.entryHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+.entryHead h3 {
+  margin: 0;
+  font: 600 var(--fz-lg)/1.4 var(--ui-font);
+  overflow-wrap: anywhere;
+}
+.entryMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+.narrative {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fz-lg);
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+.groups { display: grid; gap: 10px; margin: 0; }
+.group {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+}
+.group dt {
+  color: var(--text-3);
+  font: 500 var(--fz-sm)/1.6 var(--ui-font);
+}
+.group dd { margin: 0; min-width: 0; }
+.group ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.group li {
+  color: var(--text-2);
+  font-size: var(--fz-md);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.group[data-kind='question'] li { color: var(--text); }
+.group[data-kind='faded'] li { color: var(--text-3); }
+
+/* ── 小白的梦：一张手写纸条 ── */
+.paper {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow-paper);
+}
+.paper[data-fresh] { animation: dreamIn var(--dur-3) var(--ease) both; }
+.paper .entryHead h3 { color: var(--ink); font: 600 var(--fz-xl)/1.4 var(--font-serif); }
+.paper .entryMeta { color: var(--ink-faint); font-family: var(--font-serif); }
+.paper .narrative {
+  color: var(--ink);
+  font: 400 var(--fz-2xl)/1.7 var(--font-display);
+}
+.paper .groups { padding-top: 12px; border-top: 1px dashed var(--line-strong); }
+.paper .group dt { color: var(--terra-ink); font-family: var(--font-serif); }
+.paper .group li { color: var(--ink-soft); font: 400 var(--fz-lg)/1.6 var(--font-display); }
+.paper .group[data-kind='question'] li { color: var(--ink); }
+.paper .group[data-kind='faded'] li { color: var(--ink-faint); }
+.sign {
+  margin: 0;
+  color: var(--ink-soft);
+  font: 400 var(--fz-md)/1.5 var(--font-display);
+  text-align: right;
+}
+.paperRemove {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--ctl-sm);
+  height: var(--ctl-sm);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.paperRemove:hover { background: var(--ink-wash); color: var(--ink); }
+.paperRemove:active { transform: scale(0.94); }
+.paperRemove:focus-visible { outline: 2px solid var(--terra-ink); outline-offset: 2px; }
+.paperTag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-full);
+  color: var(--ink-faint);
+  font: 400 var(--fz-xs)/1 var(--font-serif);
+}
+
+@keyframes dreamIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 720px) {
+  .status { padding: 14px 16px; }
+  .facts div { grid-template-columns: 64px minmax(0, 1fr); gap: 8px; }
+  .entry, .paper { padding: 16px; }
+  .group { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .paper .narrative { font-size: var(--fz-xl); }
+  .run { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entry[data-fresh], .paper[data-fresh] { animation: none; }
+}

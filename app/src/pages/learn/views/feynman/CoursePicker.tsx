@@ -1,10 +1,11 @@
 /**
- * 选课：待重讲 / 已教过 / 还没教 三组，每门课带掌握度。选中的课驱动上面的四站。
+ * 选课（主区版）：该回讲了 / 讲过的 / 还没讲的 三组，每门课带掌握度。
+ * 只在没有侧栏挂载位（手机、侧栏收起）时出现；有侧栏时选课在 SideNav 里。
  */
 import { useMemo, useState } from 'react';
 import { Check, Search } from 'lucide-react';
 import { Badge, Input, Segmented, type SegmentOption } from '../../../../components/ui';
-import { GROUP_LABELS, type CourseGroup, type CourseRow } from './data';
+import { GROUP_LABELS, GROUP_SHORT, type CourseGroup, type CourseRow } from './data';
 import s from './feynman.module.css';
 
 type Filter = 'all' | CourseGroup;
@@ -16,9 +17,11 @@ interface Props {
   rows: CourseRow[];
   selectedId: string | null;
   onSelect: (topicId: string) => void;
+  /** 放进底部抽屉：不带分区标题和外框，列表跟着抽屉滚动 */
+  sheet?: boolean;
 }
 
-export function CoursePicker({ rows, selectedId, onSelect }: Props) {
+export function CoursePicker({ rows, selectedId, onSelect, sheet = false }: Props) {
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
 
@@ -32,7 +35,8 @@ export function CoursePicker({ rows, selectedId, onSelect }: Props) {
     { value: 'all', label: `全部 ${rows.length}` },
     ...GROUP_ORDER.map((group) => ({
       value: group,
-      label: `${GROUP_LABELS[group]} ${counts[group]}`,
+      label: `${GROUP_SHORT[group]} ${counts[group]}`,
+      title: GROUP_LABELS[group],
       disabled: counts[group] === 0,
     })),
   ];
@@ -46,18 +50,10 @@ export function CoursePicker({ rows, selectedId, onSelect }: Props) {
     .map((group) => ({ group, items: visible.filter((row) => row.group === group) }))
     .filter((entry) => entry.items.length > 0);
 
-  return (
-    <section className={s.section} aria-labelledby="feynman-courses-title">
-      <header className={s.sectionHead}>
-        <div>
-          <h2 id="feynman-courses-title" className={s.sectionTitle}>选一门课教给小白</h2>
-          <p className={s.sectionNote}>掌握度按小白真正听懂的要点计算，久不复习会回落。</p>
-        </div>
-      </header>
-
-      <div className={s.panel}>
+  const body = (
+    <>
         <div className={s.pickerTools}>
-          <Segmented value={filter} onChange={setFilter} options={options} size="sm" label="按教学进度筛选" />
+          <Segmented value={filter} onChange={setFilter} options={options} size={sheet ? 'md' : 'sm'} block={sheet} label="按教学进度筛选" />
           {rows.length > SEARCH_THRESHOLD && (
             <Input
               size="sm"
@@ -87,6 +83,7 @@ export function CoursePicker({ rows, selectedId, onSelect }: Props) {
                       role="radio"
                       aria-checked={selected}
                       className={s.courseRow}
+                      data-group={row.group}
                       onClick={() => onSelect(row.topic.topicId)}
                     >
                       <span className={s.courseMark} aria-hidden="true">
@@ -118,7 +115,21 @@ export function CoursePicker({ rows, selectedId, onSelect }: Props) {
             ))}
           </div>
         )}
-      </div>
+    </>
+  );
+
+  if (sheet) return <div className={s.pickerSheet}>{body}</div>;
+
+  return (
+    <section className={s.section} aria-labelledby="feynman-courses-title">
+      <header className={s.sectionHead}>
+        <div>
+          <h2 id="feynman-courses-title" className={s.sectionTitle}>选一门课教给小白</h2>
+          <p className={s.sectionNote}>掌握度按小白真正听懂的要点计算，久不复习会回落。</p>
+        </div>
+      </header>
+
+      <div className={s.panel}>{body}</div>
     </section>
   );
 }

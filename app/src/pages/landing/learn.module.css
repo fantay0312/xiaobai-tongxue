@@ -555,15 +555,59 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .pair {
-    grid-template-columns: minmax(0, 1fr);
+  /* 页签是 kit 的分段钮；手机上加高到好点按 */
+  .answer .formTabs button {
+    height: 38px;
+    padding-inline: 4px;
   }
 
+  .answer {
+    padding: 12px;
+  }
+
+  .pair {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  /* 取六种形式里最高的一种：切换页签时下方不上下跳 */
   .formBody {
-    min-height: 0;
+    min-height: 232px;
   }
 
   .flashcard {
     font-size: var(--fz-lg);
+  }
+
+  .face {
+    padding: 16px 18px;
+  }
+
+  .quizOption {
+    min-height: 48px;
+  }
+
+  .linkButton {
+    min-height: 36px;
+    padding: 6px 10px;
+  }
+
+  .table th,
+  .table td {
+    padding: 10px;
+  }
+
+  .table tbody th {
+    width: auto;
+  }
+
+  .material {
+    min-height: 44px;
+    font-size: var(--fz-md);
+  }
+
+  .small {
+    padding: 14px;
   }
 }

@@ -1789,6 +1789,29 @@
 
   .memoryList { padding-inline: 16px; }
   .memoryLine { font-size: var(--fz-lg); }
+
+  /* 侧注里的去向按钮:一指宽,下一步铺满 */
+  .notesColumn :global(a[href]) { min-height: 44px; }
+  .journeyCard :global(a[href]) { width: 100%; }
+
+  /* 巡天筛选:一行横滑,不折成两三行 */
+  .filterRow {
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-inline: calc(var(--growth-gutter, 16px) * -1);
+    padding: 3px var(--growth-gutter, 16px);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: var(--growth-gutter, 16px);
+    scrollbar-width: none;
+  }
+  .filterRow::-webkit-scrollbar { display: none; }
+  .filterRow .filterChip {
+    flex: none;
+    min-height: 40px;
+    scroll-snap-align: start;
+  }
 }
 
 @media (forced-colors: active) {

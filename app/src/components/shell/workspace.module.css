@@ -264,7 +264,8 @@
   background: none;
 }
 
-.mobileBar {
+.mobileBar,
+.mobileNav {
   display: none;
 }
 
@@ -281,13 +282,23 @@
     display: none;
   }
 
+  .pane {
+    flex: 1;
+  }
+
+  .content {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── 顶栏：菜单 + 本页名 ── */
   .mobileBar {
     display: flex;
     align-items: center;
     gap: 8px;
     flex: none;
-    min-height: 52px;
-    padding: 0 12px;
+    min-height: calc(48px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 12px 0 4px;
     border-bottom: 1px solid var(--border);
     background: var(--bg);
     color: var(--text);
@@ -295,14 +306,99 @@
     font-weight: 600;
   }
 
-  .mobileBar img {
+  .mobileBar > button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .mobileBar img,
+  .mobileBar > svg {
     width: 22px;
     height: 22px;
+    flex: none;
     border-radius: 6px;
   }
 
   .mobileBar > span {
     flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── 底栏：与学习终端的底栏同一制式 ── */
+  .mobileNav {
+    display: flex;
+    flex: none;
+    justify-content: space-around;
+    padding: 3px 6px calc(3px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: var(--sidebar);
+  }
+
+  .mobileNavItem {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    max-width: 96px;
+    height: 50px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-lg);
+    background: none;
+    color: var(--text-3);
+    font: inherit;
+    font-size: var(--fz-xs);
+    line-height: 1.2;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobileNavItem > svg {
+    box-sizing: content-box;
+    padding: 2px 16px;
+    border-radius: var(--r-full);
+    transition: background var(--dur-2) var(--ease), color var(--dur-1) var(--ease);
+  }
+
+  .mobileNavItem:active > svg {
+    background: var(--active);
+  }
+
+  .mobileNavItem[data-active] {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .mobileNavItem[data-active] > svg {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .mobileNavItem:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--ring);
+  }
+
+  /* ── 抽屉里的导航：行高按手指来 ── */
+  .sheet .navItem {
+    min-height: 44px;
+    gap: 12px;
+  }
+
+  .sheet .brandRow {
+    display: none;
+  }
+
+  .sheet .footerRow > button {
+    width: 44px;
+    height: 44px;
   }
 }
 

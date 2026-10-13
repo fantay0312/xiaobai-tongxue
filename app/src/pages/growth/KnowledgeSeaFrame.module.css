@@ -278,7 +278,27 @@
 
 @media (max-width: 720px) {
   .toolbar {
+    gap: 0.5rem;
     padding-inline: 0.75rem;
+  }
+
+  .courseNav {
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+  }
+
+  .courseNav button {
+    min-height: 2.5rem;
+    scroll-snap-align: start;
+  }
+
+  .viewSwitch button {
+    min-height: 2.5rem;
+    font-size: 0.75rem;
+  }
+
+  .foot {
+    font-size: 0.75rem;
   }
 
   .allSea {

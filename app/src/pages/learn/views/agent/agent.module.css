@@ -40,6 +40,25 @@
   line-height: 1.65;
 }
 
+.headMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* 板块自己的标记 */
+.mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-lg);
+  background: var(--inset);
+  color: var(--text-2);
+}
+
 .modeBadge {
   display: inline-flex;
   flex: none;
@@ -230,6 +249,7 @@ div.option {
   display: grid;
   gap: 2px;
   max-height: calc(100vh - 160px);
+  max-height: calc(100dvh - 160px);
   margin: -4px;
   padding: 4px;
   overflow-y: auto;
@@ -1065,6 +1085,25 @@ div.option {
   gap: 16px;
 }
 
+/* 主区的定时任务编辑器 */
+.editorCard {
+  display: grid;
+  gap: 20px;
+  width: 100%;
+  max-width: 680px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.editorFoot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 /* 分段控件按内容宽度排，不随表单拉满 */
 .fit {
   display: flex;
@@ -1118,6 +1157,14 @@ div.option {
     font-size: var(--fz-2xl);
   }
 
+  .mark {
+    display: none;
+  }
+
+  .editorCard {
+    padding: 16px;
+  }
+
   .composerInput {
     padding: 16px 16px 8px;
   }
@@ -1166,6 +1213,299 @@ div.option {
     grid-column: 1 / -1;
     justify-content: flex-end;
     margin-top: -4px;
+  }
+}
+
+/* ── 手机 ──
+   data-phone / data-compact 由 AgentView 在 760px 以下加上：
+   目标输入在最上，选项一行，「开始」通栏，模板横向滑动；任务列表与运行详情分成两屏。 */
+.root[data-phone] {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.root[data-phone] .inner {
+  gap: 14px;
+  padding: 16px 16px 40px;
+}
+
+.root[data-phone] .head {
+  margin-bottom: 0;
+}
+
+.root[data-phone] .head p {
+  margin-top: 4px;
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+
+.composer[data-compact] {
+  border-radius: var(--r-xl);
+}
+
+/* 16px：聚焦时 iOS 不放大页面 */
+.composer[data-compact] .composerInput {
+  min-height: 84px;
+  padding: 14px 16px 8px;
+  font-size: 16px;
+}
+
+.composer[data-compact] .composerBar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-content: stretch;
+  gap: 12px;
+  padding: 12px;
+}
+
+.composer[data-compact] .options {
+  gap: 0 14px;
+}
+
+/* 开关本身只有 21px 高，整行标签一起可点，行高给够 40px */
+.composer[data-compact] .option {
+  min-height: 40px;
+}
+
+/* 每轮步数：一枚小签，点开菜单 */
+.budget {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  margin-left: auto;
+  padding: 0 8px 0 12px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font: 500 var(--fz-sm) / 1 var(--ui-font);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+
+.budget::after {
+  content: '';
+  position: absolute;
+  inset: -6px 0;
+}
+
+.budget:active {
+  background: var(--active);
+}
+
+.budget:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.composer[data-compact] .composerActions {
+  width: 100%;
+  margin: 0;
+}
+
+.composer[data-compact] .composerActions > button {
+  min-height: 46px;
+}
+
+.composer[data-compact] .composerActions > button:first-child {
+  flex: none;
+  min-width: 46px;
+}
+
+.templates[data-compact] {
+  flex-wrap: nowrap;
+  margin: 0 -16px;
+  padding: 2px 16px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 16px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.templates[data-compact]::-webkit-scrollbar {
+  display: none;
+}
+
+.templates[data-compact] .template {
+  flex: none;
+  height: 40px;
+  padding: 0 14px;
+  scroll-snap-align: start;
+}
+
+/* 任务列表：一行一条，点进去看详情 */
+.runRows {
+  display: grid;
+  gap: 8px;
+}
+
+.runRow {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 60px;
+  transition: background var(--dur-1) var(--ease);
+}
+
+.runRow:active {
+  background: var(--active);
+}
+
+.runRow:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.runRow .runTitle {
+  display: -webkit-box;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.runGo {
+  color: var(--text-4);
+}
+
+/* 运行详情这一屏 */
+.back {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  min-height: 40px;
+  margin: -6px 0 -6px -8px;
+  padding: 0 12px 0 8px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-2);
+  font: 500 var(--fz-md) / 1 var(--ui-font);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+
+.back:active {
+  background: var(--active);
+}
+
+.back:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* 纵向 flex：吸底的动作条要能在整页范围内吸住（grid 里的 sticky 只在自己那一格里动） */
+.root[data-phone] .inner[data-screen='run'] {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding-bottom: 0;
+}
+
+.detail[data-compact] {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 目标原文就在下面时间线的第一条，标题收到两行 */
+.detail[data-compact] .detailTitle {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.detail[data-compact] .tail {
+  scroll-margin-bottom: 84px;
+}
+
+.detail[data-compact] .toolHead {
+  min-height: 46px;
+}
+
+.detail[data-compact] .thinkingHead {
+  height: 36px;
+}
+
+.detail[data-compact] .chip {
+  height: 36px;
+}
+
+.detail[data-compact] .lanes {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.detail[data-compact] .code,
+.detail[data-compact] .thinkingBody {
+  overscroll-behavior: contain;
+}
+
+.runDock {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: auto -16px 0;
+  padding: 8px 16px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.runDock > button {
+  flex: 1;
+  min-height: 44px;
+}
+
+.runDock > button:last-child {
+  flex: none;
+  min-width: 44px;
+}
+
+/* 定时任务：行内按钮够一指宽；抽屉里的输入框 16px */
+@media (max-width: 760px) {
+  .scheduleNote > button {
+    min-height: 40px;
+  }
+
+  .scheduleActions > button {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .linkButton {
+    min-height: 28px;
+  }
+}
+
+@media (pointer: coarse), (max-width: 760px) {
+  .form.form input,
+  .form.form textarea,
+  .composerInput {
+    font-size: 16px;
   }
 }
 

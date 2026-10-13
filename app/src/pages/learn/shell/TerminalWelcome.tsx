@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { ArrowRight, BookOpen, FileUp, GraduationCap, Presentation, Route } from 'lucide-react';
+import { ArrowRight, FileUp } from 'lucide-react';
+import { IconClassroom, IconJourney, IconRead, IconTeach } from '../../../components/ui/icons';
 import { XiaobaiAvatar } from '../../../components/xiaobai/XiaobaiAvatar';
 import { JourneyStatusCard } from '../../../components/story/JourneyStatus';
 import { useAppStore } from '../../../store/appStore';
@@ -38,7 +39,7 @@ export function TerminalWelcome({ topics, identity, onAccept, onSelectCourse, on
       key: 'continue',
       title: lastTopic ? '继续上次的课' : '选一门课开始',
       detail: lastTopic ? `${lastTopic.course} · ${lastTopic.title}` : '从课程里挑一个知识点，跟小砚学懂它',
-      icon: <BookOpen size={18} strokeWidth={1.75} />,
+      icon: <IconRead size={18} />,
       onSelect: () => onSelectCourse(lastTopic?.topicId),
     },
     {
@@ -52,14 +53,14 @@ export function TerminalWelcome({ topics, identity, onAccept, onSelectCourse, on
       key: 'teach',
       title: '给小白上一课',
       detail: '把学懂的讲出来，小白会追问到你讲清楚',
-      icon: <GraduationCap size={18} strokeWidth={1.75} />,
+      icon: <IconTeach size={18} />,
       onSelect: onTeach,
     },
     {
       key: 'classroom',
       title: '生成一堂 AI 课',
       detail: '给一个主题，排出一堂可以播放的课',
-      icon: <Presentation size={18} strokeWidth={1.75} />,
+      icon: <IconClassroom size={18} />,
       onSelect: onClassroom,
     },
   ];
@@ -96,7 +97,7 @@ export function TerminalWelcome({ topics, identity, onAccept, onSelectCourse, on
       <JourneyStatusCard onOpen={onTeach} />
 
       <button type="button" className={w.journeyLink} onClick={onJourney}>
-        <Route size={15} strokeWidth={1.75} />
+        <IconJourney size={15} />
         <span>{accepted ? '看看完整的师徒旅程' : '这段旅程会怎样展开'}</span>
         <ArrowRight size={14} strokeWidth={1.75} />
       </button>

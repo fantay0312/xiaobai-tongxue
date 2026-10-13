@@ -170,6 +170,46 @@
     padding: 20px 16px 40px;
   }
 
+  /* 步骤条贴到屏幕两边滑动 */
+  .steps {
+    margin: 0 -16px;
+    padding: 4px 16px 14px;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: 16px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .steps button {
+    min-height: 40px;
+    font-size: var(--fz-sm);
+    scroll-snap-align: start;
+  }
+
+  /* 主操作单独一行、整宽，拇指够得着；上一步与跳过排在下面 */
+  .actions {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    justify-items: end;
+    gap: 10px 8px;
+  }
+
+  .actions > :last-child {
+    grid-row: 1;
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .actions > :first-child {
+    justify-self: start;
+    margin-right: 0;
+  }
+
+  .reflection textarea {
+    font-size: 16px;
+  }
+
   .scene {
     padding: 18px;
   }

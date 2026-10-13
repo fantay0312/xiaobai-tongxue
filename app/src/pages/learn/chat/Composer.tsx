@@ -7,25 +7,28 @@ import {
   type FormEvent, type KeyboardEvent, type MouseEvent, type ReactNode,
 } from 'react';
 import {
-  ArrowUp, BookOpen, ChevronDown, FileText, FolderOpen, GraduationCap, Layers, LayoutGrid, ListChecks,
-  MessageCircleQuestion, Mic, Network, Plus, ScrollText, Sparkles, Square, SquareSlash, Telescope, X,
+  ArrowUp, BookOpen, ChevronDown, FileText, FolderOpen, LayoutGrid,
+  MessageCircleQuestion, Mic, Plus, Square, SquareSlash, Telescope, X,
 } from 'lucide-react';
+import { IconChat, IconFlashcard, IconGuide, IconMindmap, IconQuiz, IconRead } from '../../../components/ui/icons';
 import {
   IconButton, Kbd, Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger, ModelPicker, Tip, toast,
   type ModelOption,
 } from '../../../components/ui';
 import type { StudyMode } from '../../../engine/studyWorkspace';
 import { useModelPrefs } from '../../../store/modelPrefs';
-import { dictationSupported, useDictation } from './speech';
+import { useDictation } from './speech';
+import { DICTATION_MESSAGES } from '../../../lib/realtimeAsr';
 import type { ComposerProps } from './types';
 import { useModelCatalog } from './useModelCatalog';
+import { useMediaQuery } from '../shell/views';
 import s from './composer.module.css';
 
 const MAX_LENGTH = 3000;
 const ICON = { size: 16, strokeWidth: 1.75 } as const;
 
 const MODES: { value: StudyMode; label: string; hint: string; icon: ReactNode }[] = [
-  { value: 'ask', label: '直接答疑', hint: '先把疑点讲清，再给例子和自检题', icon: <Sparkles {...ICON} /> },
+  { value: 'ask', label: '直接答疑', hint: '先把疑点讲清，再给例子和自检题', icon: <IconChat size={16} /> },
   { value: 'socratic', label: '引导思考', hint: '给一点提示，每次只问一个问题', icon: <MessageCircleQuestion {...ICON} /> },
   { value: 'deep', label: '深入答疑', hint: 'DeepTutor 多轮核对资料，耗时更长', icon: <Telescope {...ICON} /> },
 ];
@@ -34,23 +37,23 @@ interface SlashCommand { name: string; keys: string[]; hint: string; icon: React
 /** keys 是拼音与英文别名，输入法还没上屏时也能筛到 */
 const COMMANDS: SlashCommand[] = [
   {
-    name: '导图', keys: ['daotu', 'dt', 'mindmap'], hint: '把所选资料整理成思维导图', icon: <Network {...ICON} />,
+    name: '导图', keys: ['daotu', 'dt', 'mindmap'], hint: '把所选资料整理成思维导图', icon: <IconMindmap size={16} />,
     prompt: '请把所选资料整理成一张思维导图：先给出中心主题，再分出 3 到 5 个分支，每个分支列出关键概念和它们之间的关系。',
   },
   {
-    name: '出题', keys: ['chuti', 'ct', 'quiz'], hint: '出一组自测题，答完再看讲解', icon: <ListChecks {...ICON} />,
+    name: '出题', keys: ['chuti', 'ct', 'quiz'], hint: '出一组自测题，答完再看讲解', icon: <IconQuiz size={16} />,
     prompt: '请根据所选资料出 5 道自测题，选择题和简答题都要有。先只给题目，等我作答后再逐题讲解。',
   },
   {
-    name: '闪卡', keys: ['shanka', 'sk', 'cards'], hint: '把重点概念做成问答卡片', icon: <Layers {...ICON} />,
+    name: '闪卡', keys: ['shanka', 'sk', 'cards'], hint: '把重点概念做成问答卡片', icon: <IconFlashcard size={16} />,
     prompt: '请把所选资料里最重要的概念做成 8 张闪卡，每张包含正面的问题和背面的答案。',
   },
   {
-    name: '带我学', keys: ['daiwoxue', 'dwx', 'guide'], hint: '一步一步讲，每步确认理解', icon: <GraduationCap {...ICON} />,
+    name: '带我学', keys: ['daiwoxue', 'dwx', 'guide'], hint: '一步一步讲，每步确认理解', icon: <IconGuide size={16} />,
     prompt: '请带我一步步学习所选资料：先说明学习路线，然后每次只讲一小步，并用一个问题确认我是否理解，再继续下一步。',
   },
   {
-    name: '总结', keys: ['zongjie', 'zj', 'summary'], hint: '分点概括核心内容并标注来源', icon: <ScrollText {...ICON} />,
+    name: '总结', keys: ['zongjie', 'zj', 'summary'], hint: '分点概括核心内容并标注来源', icon: <IconRead size={16} />,
     prompt: '请总结所选资料的核心内容：分点列出要点，说明它们之间的联系，并标注来源。',
   },
 ];
@@ -70,10 +73,26 @@ function slashQuery(input: string): string | null {
 
 export function Composer({
   input, onInput, mode, onMode, answerFormat, onAnswerFormat, busy, onStop, onSubmit, inputRef,
-  deepAvailable, intelligentAvailable, demo, sourceCount, attachments, onRemoveAttachment, onAttach, onOpenSources, placeholder,
+  deepAvailable, intelligentAvailable, demo, sourceCount, freeChat, attachments, onRemoveAttachment, onAttach, onOpenSources, placeholder,
 }: ComposerProps) {
   const listId = useId();
+  const wrapRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLFormElement>(null);
+  /** 手机：次要控件收进「+」菜单；阅读页里的输入框平时缩成一行，点进去才展开 */
+  const phone = useMediaQuery('(max-width: 760px)');
+  const [engaged, setEngaged] = useState(false);
+  useEffect(() => {
+    if (!engaged) return;
+    const onDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target || wrapRef.current?.contains(target)) return;
+      // 菜单、弹层开着时点外面是在关它们，输入框先不收
+      if (document.querySelector('[data-radix-popper-content-wrapper]')) return;
+      setEngaged(false);
+    };
+    document.addEventListener('pointerdown', onDown, true);
+    return () => document.removeEventListener('pointerdown', onDown, true);
+  }, [engaged]);
   const inputValue = useRef(input);
   inputValue.current = input;
 
@@ -95,11 +114,12 @@ export function Composer({
     const node = inputRef.current;
     if (!node) return;
     node.style.height = 'auto';
-    const max = Math.max(120, Math.round(window.innerHeight * 0.4));
+    // 软键盘弹出时按剩下的可视高度算上限，免得输入框把对话挤没
+    const max = Math.max(120, Math.round((window.visualViewport?.height ?? window.innerHeight) * 0.4));
     node.style.height = `${Math.min(node.scrollHeight, max)}px`;
     node.style.overflowY = node.scrollHeight > max ? 'auto' : 'hidden';
   }, [inputRef]);
-  useLayoutEffect(resize, [input, resize]);
+  useLayoutEffect(resize, [input, resize, engaged, phone]);
   useEffect(() => {
     const box = boxRef.current;
     if (!box || typeof ResizeObserver === 'undefined') return;
@@ -135,7 +155,7 @@ export function Composer({
   const dictation = useDictation({
     getValue: () => inputValue.current,
     onChange: onInput,
-    onError: (code) => toast.error(DICTATION_ERRORS[code] ?? '语音输入没有成功，请再试一次'),
+    onError: (code) => toast.error(DICTATION_ERRORS[code] ?? (DICTATION_MESSAGES as Record<string, string>)[code] ?? '语音输入没有成功，请再试一次'),
     maxLength: MAX_LENGTH,
   });
   const { cancel: cancelDictation } = dictation;
@@ -165,13 +185,15 @@ export function Composer({
 
   /* ── 发送 ── */
   const hasText = input.trim().length > 0;
-  const canSend = !busy && hasText && sourceCount > 0;
-  const sendHint = !hasText ? '输入问题后发送' : sourceCount === 0 ? '先选择学习资料' : '发送';
+  // 有资料可选却一份没勾才需要先选；完全没有资料时可以直接问模型
+  const needsSources = sourceCount === 0 && !freeChat;
+  const canSend = !busy && hasText && !needsSources;
+  const sendHint = !hasText ? '输入问题后发送' : needsSources ? '先选择学习资料' : '发送';
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (busy || !hasText) return;
-    if (sourceCount === 0) {
+    if (needsSources) {
       toast('先选择要学习的资料，再向小砚提问', { id: 'composer-no-sources' });
       return;
     }
@@ -217,7 +239,7 @@ export function Composer({
   const remaining = MAX_LENGTH - input.length;
 
   return (
-    <div className={s.wrap}>
+    <div ref={wrapRef} className={s.wrap} data-expanded={engaged || hasText || attachments.length > 0 || dictation.listening || busy || undefined}>
       {commandsOpen && (
         <div className={s.commands} role="listbox" id={listId} aria-label="快捷指令">
           <p className={s.commandsTitle}>快捷指令</p>
@@ -266,11 +288,11 @@ export function Composer({
           aria-autocomplete="list"
           aria-controls={commandsOpen ? listId : undefined}
           aria-activedescendant={commandsOpen ? `${listId}-${activeIndex}` : undefined}
-          placeholder={placeholder ?? (sourceCount === 0 ? '先选好资料，再向小砚提问' : '向小砚提问，输入 / 使用快捷指令')}
+          placeholder={placeholder ?? (needsSources ? '先选好资料，再向小砚提问' : '向小砚提问，输入 / 使用快捷指令')}
           enterKeyHint="send"
           onChange={(event) => onInput(event.target.value)}
           onKeyDown={onKeyDown}
-          onFocus={() => setDismissed(false)}
+          onFocus={() => { setDismissed(false); setEngaged(true); }}
           onBlur={() => { if (query !== null) setDismissed(true); }}
         />
 
@@ -278,11 +300,32 @@ export function Composer({
           <div className={s.tools}>
             <Menu>
               <MenuTrigger asChild>
-                <IconButton label="添加资料与指令" round><Plus size={18} strokeWidth={1.75} /></IconButton>
+                <IconButton label={phone ? '资料、回答方式与指令' : '添加资料与指令'} round className={s.plus}><Plus size={18} strokeWidth={1.75} /></IconButton>
               </MenuTrigger>
               <MenuContent side="top" align="start" onCloseAutoFocus={returnFocus}>
                 <MenuItem icon={<FolderOpen {...ICON} />} hint="把资料库里的文件加入这次对话" onSelect={onAttach}>从资料库选择文件</MenuItem>
                 <MenuItem icon={<BookOpen {...ICON} />} hint={sourceCount ? `已选 ${sourceCount} 份` : '还没有选资料'} onSelect={onOpenSources}>查看本课资料</MenuItem>
+                {phone && (
+                  <>
+                    <MenuSeparator />
+                    <MenuLabel>回答方式</MenuLabel>
+                    {modes.map((item) => (
+                      <MenuItem key={item.value} icon={item.icon} hint={item.hint} checked={item.value === mode} onSelect={() => onMode(item.value)}>
+                        {item.label}
+                      </MenuItem>
+                    ))}
+                    {intelligentAvailable && (
+                      <MenuItem
+                        icon={<LayoutGrid {...ICON} />}
+                        hint="按需用卡片、对比表和小测验作答"
+                        checked={interactive}
+                        onSelect={() => onAnswerFormat(interactive ? 'text' : 'auto')}
+                      >
+                        互动回答
+                      </MenuItem>
+                    )}
+                  </>
+                )}
                 {/* 已经写了内容时不提供：它会把输入换成「/」 */}
                 {!hasText && <MenuSeparator />}
                 {!hasText && <MenuItem icon={<SquareSlash {...ICON} />} shortcut="/" onSelect={openCommands}>快捷指令</MenuItem>}
@@ -291,7 +334,7 @@ export function Composer({
 
             <Menu>
               <MenuTrigger asChild>
-                <button type="button" className={s.pill} aria-label={`回答方式：${currentMode.label}`}>
+                <button type="button" className={s.pill} data-kind="mode" data-default={mode === 'ask' || undefined} aria-label={`回答方式：${currentMode.label}`}>
                   {currentMode.icon}
                   <span className={s.pillText}>{currentMode.label}</span>
                   <ChevronDown size={13} strokeWidth={2} className={s.pillChevron} />
@@ -312,6 +355,7 @@ export function Composer({
                 <button
                   type="button"
                   className={s.pill}
+                  data-kind="interactive"
                   data-on={interactive || undefined}
                   aria-pressed={interactive}
                   aria-label="互动回答"
@@ -323,17 +367,17 @@ export function Composer({
               </Tip>
             )}
 
-            <Tip label={sourceCount ? '查看本课资料' : '还没有选资料，点这里去选'}>
+            <Tip label={sourceCount ? '查看本课资料' : freeChat ? '现在不带资料直接问；点这里可以添加资料' : '还没有选资料，点这里去选'}>
               <button
                 type="button"
                 className={s.pill}
                 data-kind="sources"
-                data-tone={sourceCount === 0 ? 'warn' : undefined}
-                aria-label={sourceCount ? `已选 ${sourceCount} 份资料` : '先选资料'}
+                data-tone={needsSources ? 'warn' : undefined}
+                aria-label={sourceCount ? `已选 ${sourceCount} 份资料` : freeChat ? '不带资料，直接问' : '先选资料'}
                 onClick={onOpenSources}
               >
                 <BookOpen {...ICON} />
-                <span className={s.pillText}>{sourceCount ? `${sourceCount} 份资料` : '先选资料'}</span>
+                <span className={s.pillText}>{sourceCount ? `${sourceCount} 份资料` : freeChat ? '不带资料' : '先选资料'}</span>
               </button>
             </Tip>
           </div>
@@ -354,7 +398,7 @@ export function Composer({
               </div>
             ) : null}
 
-            {dictationSupported && (
+            {dictation.supported && (
               <IconButton
                 label={dictation.listening ? '结束语音输入' : '语音输入'}
                 round

@@ -14,8 +14,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import {
-  ArrowRight, Award, Check, ChevronDown, Compass, Flame, GraduationCap, Mail, NotebookText,
-  Presentation, Quote, ScrollText, Sparkles, X,
+  ArrowRight, Award, Check, ChevronDown, Compass, Flame, GraduationCap, Mail, NotebookText, Presentation, Quote, ScrollText, X,
 } from 'lucide-react';
 import type { LearnEvent, LearnEventType, Persona, SessionMode, SessionReport, XiaobaiMood } from '../../types';
 import { useAppStore } from '../../store/appStore';
@@ -43,6 +42,7 @@ import { PersonaPicker } from './PersonaPicker';
 import paper from '../../styles/paper.module.css';
 import scope from './paperScope.module.css';
 import s from './growth.module.css';
+import { IconSpark } from '../../components/ui/icons';
 
 const DREAM_GOAL = 5;
 
@@ -417,7 +417,7 @@ export default function GrowthPage() {
             <dd className={s.statNote}>第 {global.learningLevel} / {STAGE_META.length} 阶 · {currentStage.description}</dd>
           </div>
           <div className={s.statTile}>
-            <dt><Sparkles size={15} strokeWidth={1.75} aria-hidden="true" />学识</dt>
+            <dt><IconSpark size={15} />学识</dt>
             <dd>
               <b>{wisdom.xp}</b><small>点</small>
               <span className={s.statMeter} aria-hidden="true"><i style={{ width: `${wisdomPct}%` }} /></span>

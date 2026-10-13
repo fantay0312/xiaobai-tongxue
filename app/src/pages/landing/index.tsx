@@ -4,9 +4,9 @@
  * 全页只用皮肤令牌，访客在页尾换肤，整页与终端一起变。
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
-import { ArrowRight, Check } from 'lucide-react';
-import { Button } from '../../components/ui';
+import { Link, useNavigate } from 'react-router';
+import { ArrowRight, Check, Menu as MenuIcon } from 'lucide-react';
+import { Button, IconButton, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '../../components/ui';
 import { Seal } from '../../components/shell/Seal';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
@@ -137,6 +137,7 @@ export default function LandingPage() {
   const reducedMotion = useReducedMotion();
   const pageRef = useScrollReveal(reducedMotion);
   const { sentinelRef, scrolled, active } = useNavState();
+  const navigate = useNavigate();
   const authed = useAuthStore((state) => state.status === 'authed');
   const skin = useSkinStore((state) => state.skin);
   const darkSkin = SKINS.find((item) => item.id === skin)?.dark ?? false;
@@ -167,13 +168,39 @@ export default function LandingPage() {
           </nav>
           <div className={s.navActions}>
             {!authed && (
-              <Button asChild variant="ghost">
+              <Button asChild variant="ghost" className={s.navLogin}>
                 <Link to="/login">登录</Link>
               </Button>
             )}
             <Button asChild variant="solid">
               <Link to="/learn">进入学习终端</Link>
             </Button>
+            {/* 窄屏没有章节链接，收进一个菜单；手机上「登录」也并进来，顶栏只留品牌和一个主按钮 */}
+            <Menu modal={false}>
+              <MenuTrigger asChild>
+                <IconButton label="打开章节菜单" tip={false} className={s.navMenu}>
+                  <MenuIcon size={19} strokeWidth={1.75} />
+                </IconButton>
+              </MenuTrigger>
+              <MenuContent align="end" className={s.navMenuList}>
+                {CHAPTERS.map((chapter) => (
+                  <MenuItem
+                    key={chapter.id}
+                    checked={active === chapter.id}
+                    // 等菜单收起、焦点还回按钮后再滚，免得两边抢滚动
+                    onSelect={() => window.setTimeout(() => scrollToChapter(chapter.id, !reducedMotion), 160)}
+                  >
+                    {chapter.label}
+                  </MenuItem>
+                ))}
+                {!authed && (
+                  <>
+                    <MenuSeparator />
+                    <MenuItem onSelect={() => navigate('/login')}>登录</MenuItem>
+                  </>
+                )}
+              </MenuContent>
+            </Menu>
           </div>
         </div>
       </header>

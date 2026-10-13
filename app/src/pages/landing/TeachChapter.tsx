@@ -217,6 +217,9 @@ export function TeachChapter() {
             ))}
           </ol>
 
+          {/* 手机上四步收成一行，当前一步的说明挪到这里 */}
+          <p className={s.stepHint}>{STEPS[step].text}</p>
+
           <div className={`${base.panel} ${s.sceneWrap}`} aria-live="off">
             <div key={step} className={s.sceneIn}>
               <Scene />

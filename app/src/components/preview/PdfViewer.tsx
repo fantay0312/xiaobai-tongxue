@@ -195,8 +195,12 @@ export function PdfViewer({ blob, name, onDownload }: { blob: Blob; name: string
   }, []);
 
   const ready = state.phase === 'ready' ? state : null;
-  const fitScale = ready && width ? Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.min(width - 32, FIT_MAX_WIDTH) / ready.base.w)) : 0;
+  // 手机上滚动区两侧只留 8px，页面尽量贴近屏宽
+  const gutter = width <= 640 ? 16 : 32;
+  const fitScale = ready && width ? Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.min(width - gutter, FIT_MAX_WIDTH) / ready.base.w)) : 0;
   const scale = zoom === 'fit' ? fitScale : zoom;
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
   const laidOut = !!ready && scale > 0;
   const total = ready?.doc.numPages ?? 0;
 
@@ -229,6 +233,54 @@ export function PdfViewer({ blob, name, onDownload }: { blob: Blob; name: string
     const root = scrollRef.current;
     if (root && laidOut) root.scrollTop = ratioRef.current * root.scrollHeight;
   }, [scale, laidOut]);
+
+  // 双指缩放：手势进行中只用变换跟手，松手后才按新比例重画，画布不会每一帧都重排
+  useEffect(() => {
+    const root = scrollRef.current;
+    if (!root) return;
+    // x：双指中点在页面里的横向位置；at：它在滚动区里的横向位置。松手后据此把中点留在原处
+    let pinch: { start: number; factor: number; x: number; at: number } | null = null;
+    const spread = (touches: TouchList) => Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+    const sheet = () => root.firstElementChild as HTMLElement | null;
+    const onStart = (event: TouchEvent) => {
+      const pages = sheet();
+      if (event.touches.length !== 2 || !pages || !scaleRef.current) { pinch = null; return; }
+      const box = pages.getBoundingClientRect();
+      const midX = (event.touches[0].clientX + event.touches[1].clientX) / 2;
+      const midY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
+      pages.style.transformOrigin = `${midX - box.left}px ${midY - box.top}px`;
+      pinch = { start: Math.max(1, spread(event.touches)), factor: 1, x: midX - box.left, at: midX - root.getBoundingClientRect().left };
+    };
+    const onMove = (event: TouchEvent) => {
+      const pages = sheet();
+      if (!pinch || event.touches.length !== 2 || !pages) return;
+      event.preventDefault();
+      const current = scaleRef.current;
+      pinch.factor = Math.min(MAX_SCALE / current, Math.max(MIN_SCALE / current, spread(event.touches) / pinch.start));
+      pages.style.transform = `scale(${pinch.factor})`;
+    };
+    const onEnd = () => {
+      if (!pinch) return;
+      const { factor, x, at } = pinch;
+      pinch = null;
+      const pages = sheet();
+      if (pages) { pages.style.transform = ''; pages.style.transformOrigin = ''; }
+      if (Math.abs(factor - 1) <= 0.03) return;
+      setZoom(Math.min(MAX_SCALE, Math.max(MIN_SCALE, scaleRef.current * factor)));
+      // 重排之后再对横向位置（纵向由上面的阅读位置恢复负责）
+      requestAnimationFrame(() => { root.scrollLeft = Math.max(0, (sheet()?.offsetLeft ?? 0) + x * factor - at); });
+    };
+    root.addEventListener('touchstart', onStart, { passive: true });
+    root.addEventListener('touchmove', onMove, { passive: false });
+    root.addEventListener('touchend', onEnd);
+    root.addEventListener('touchcancel', onEnd);
+    return () => {
+      root.removeEventListener('touchstart', onStart);
+      root.removeEventListener('touchmove', onMove);
+      root.removeEventListener('touchend', onEnd);
+      root.removeEventListener('touchcancel', onEnd);
+    };
+  }, []);
 
   const frameRef = useRef(0);
   const onScroll = () => {

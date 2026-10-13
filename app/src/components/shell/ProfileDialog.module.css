@@ -535,6 +535,127 @@
   }
 }
 
+/* ── 手机（个人中心是一张底部面板）：点按目标放大，表单不被软键盘压住 ── */
+@media (max-width: 720px) {
+  .layout {
+    /* 窄屏一律用触屏尺寸的控件，不依赖指针类型 */
+    --ctl-sm: 38px;
+    --ctl-md: 44px;
+    --ctl-lg: 46px;
+    gap: 10px;
+  }
+
+  .nav {
+    --nav-bleed: 22px;
+    gap: 6px;
+    margin-left: calc(var(--nav-bleed) * -1);
+    padding-left: var(--nav-bleed);
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: var(--nav-bleed);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .navItem {
+    height: 40px;
+    padding: 0 14px;
+    font-size: var(--fz-md);
+    scroll-snap-align: start;
+  }
+
+  .logout {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* --kb 是软键盘盖住的高度（useSheetKeyboardInset 写入），垫在底下，输入框才滚得上来 */
+  .pane {
+    padding-bottom: calc(24px + var(--kb, 0px));
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .paneHead {
+    padding-top: 2px;
+  }
+
+  .hero {
+    margin-bottom: 24px;
+  }
+
+  .group {
+    margin-bottom: 24px;
+  }
+
+  .row {
+    gap: 10px 16px;
+    min-height: 60px;
+    padding: 14px 0;
+  }
+
+  .rowLabel,
+  .entryCopy > span {
+    font-size: var(--fz-lg);
+  }
+
+  .rowNote {
+    overflow: visible;
+  }
+
+  .entry {
+    min-height: 64px;
+  }
+
+  /* 输入框文字不小于 16px：iOS 聚焦时才不会把页面放大 */
+  .pane input:not([type='file'], [type='checkbox'], [type='radio']),
+  .pane textarea {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .dialog.dialog {
+    height: 92dvh;
+  }
+
+  /* 关闭钮是 kit 弹窗自带的 30px 圆钮，手机上放大到好点按 */
+  .dialog > header > button {
+    width: 40px;
+    height: 40px;
+    margin: 0 -4px 0 0;
+  }
+
+  /* 内容一直滚到面板底边，不在底下留一条白边 */
+  .layout {
+    height: calc(100% + 18px);
+    margin-bottom: -18px;
+  }
+
+  .nav {
+    --nav-bleed: 16px;
+  }
+}
+
+/* 触屏没有悬停：点过之后不留下悬停态 */
+@media (hover: none) {
+  .entry:hover {
+    background: transparent;
+  }
+
+  .entry:hover::before,
+  .entry:hover + .entry::before {
+    opacity: 1;
+  }
+
+  .entry:active {
+    background: var(--active);
+  }
+
+  .entry:hover .entryChevron {
+    color: var(--text-3);
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .navItem,
   .logout,

@@ -267,50 +267,84 @@
   }
 }
 
-/* 手机：让开底部导航栏与输入框 */
+/* 手机：缩小站在输入框上沿（--dock-h 由终端按输入框实际高度写入），键盘弹出时让位 */
 @media (max-width: 760px) {
   .companion {
-    right: 8px;
-    bottom: calc(72px + env(safe-area-inset-bottom));
-    width: 48px;
+    --dock-bottom: calc(57px + env(safe-area-inset-bottom) + var(--dock-h, 0px));
+    right: 10px;
+    bottom: calc(var(--dock-bottom) + 2px);
+    width: 44px;
   }
 
   .companion[data-has-composer] {
-    bottom: calc(216px + env(safe-area-inset-bottom));
+    bottom: calc(var(--dock-bottom) + 2px);
+  }
+
+  :global(html[data-keyboard='open']) .companion,
+  :global(html[data-keyboard='open']) .restore {
+    display: none;
   }
 
   .companion:not([data-expanded]):not(.floating) .character {
-    height: 56px;
+    height: 52px;
   }
 
   .companion:not([data-expanded]):not(.floating) .pet {
-    width: 38px;
+    width: 36px;
   }
 
   .companion:not([data-expanded]):not(.floating) .student {
-    height: 56px;
-    transform: scale(0.3);
+    height: 52px;
+    transform: scale(0.28);
   }
 
   .companion[data-expanded],
   .companion.floating {
-    width: 156px;
+    width: 196px;
+    padding: 8px;
+    border-radius: var(--r-xl);
+    background: var(--surface);
+    box-shadow: var(--shadow-3);
+    filter: none;
   }
 
   .companion[data-expanded] .character,
   .companion.floating .character {
-    height: 104px;
+    height: 96px;
   }
 
   .companion[data-expanded] .pet,
   .companion.floating .pet {
-    width: 72px;
+    width: 66px;
   }
 
   .companion[data-expanded] .student,
   .companion.floating .student {
-    height: 104px;
-    transform: scale(0.7);
+    height: 96px;
+    transform: scale(0.64);
+  }
+
+  .companion[data-expanded] .speech,
+  .companion.floating .speech {
+    background: var(--inset);
+    box-shadow: none;
+    font-size: var(--fz-sm);
+  }
+
+  .controls button {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* 手机上不拖动 */
+  .controls .dragHandle {
+    visibility: hidden;
+  }
+
+  .switcher button {
+    min-height: 34px;
+    padding: 0 12px;
+    font-size: var(--fz-sm);
   }
 
   .companion .actions,
@@ -318,10 +352,22 @@
     position: static;
     width: 100%;
     margin-top: 8px;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .actions button {
+    min-height: 42px;
   }
 
   .restore {
     right: 12px;
-    bottom: var(--mobile-restore-bottom, 205px);
+    bottom: calc(63px + env(safe-area-inset-bottom) + var(--dock-h, 0px));
+    width: 40px;
+    min-height: 40px;
+    padding: 0;
+    justify-content: center;
+    overflow: hidden;
+    font-size: 0;
   }
 }

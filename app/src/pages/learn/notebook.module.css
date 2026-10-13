@@ -754,6 +754,13 @@
 }
 
 @media (max-width: 760px) {
+  /* 整屏面板：四周留白按手机来，滚动不带动后面的页面 */
+  .panelBody {
+    padding: 12px 14px calc(24px + env(safe-area-inset-bottom));
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .artifactViewer {
     padding: 24px 16px 40px;
   }

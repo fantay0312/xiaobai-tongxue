@@ -18,6 +18,8 @@ export type CourseGroup = [key: string, group: { title: string; items: Topic[] }
 export interface TerminalSidebarProps {
   /** 小屏抽屉里的侧栏：额外列出全部功能入口与账号行 */
   mobile?: boolean;
+  /** 非对话板块时，侧栏整块让给该板块：这里只留品牌行、挂载位和页脚 */
+  sectionSlot?: (element: HTMLDivElement | null) => void;
   view: View;
   topicId: string;
   hasTopic: boolean;
@@ -33,6 +35,8 @@ export interface TerminalSidebarProps {
   onRenameChat: (id: string, title: string) => void;
   onDeleteChat: (id: string) => void;
   onView: (view: View) => void;
+  /** 抽屉里点了账号、设置这类会另开弹窗的入口：先把抽屉收起 */
+  onDismiss?: () => void;
 }
 
 export function TerminalSidebar(props: TerminalSidebarProps) {
@@ -53,21 +57,35 @@ export function TerminalSidebar(props: TerminalSidebarProps) {
     if (event.key === 'Escape') { event.preventDefault(); setRenaming(null); }
   };
 
+  const brandRow = (
+    <div className={t.brandRow}>
+      <Link to="/learn" className={t.brand} aria-label="小白同学">
+        <Seal />
+        <span>小白同学</span>
+      </Link>
+      {props.onCollapse && (
+        <IconButton label="收起侧栏" size="sm" tip="bottom" onClick={props.onCollapse}>
+          <PanelLeftClose size={17} strokeWidth={1.75} />
+        </IconButton>
+      )}
+    </div>
+  );
+
+  if (!mobile && props.sectionSlot && railKey(view) !== 'ask') {
+    return (
+      <div className={t.sidebarInner}>
+        {brandRow}
+        <div className={t.sectionSlot} ref={props.sectionSlot} />
+        <footer className={t.sidebarFooter}>
+          <JourneyStatusCard compact onOpen={() => props.onView('feynman')} />
+        </footer>
+      </div>
+    );
+  }
+
   return (
     <div className={t.sidebarInner}>
-      {!mobile && (
-        <div className={t.brandRow}>
-          <Link to="/learn" className={t.brand} aria-label="小白同学">
-            <Seal />
-            <span>小白同学</span>
-          </Link>
-          {props.onCollapse && (
-            <IconButton label="收起侧栏" size="sm" tip="bottom" onClick={props.onCollapse}>
-              <PanelLeftClose size={17} strokeWidth={1.75} />
-            </IconButton>
-          )}
-        </div>
-      )}
+      {!mobile && brandRow}
 
       <button type="button" className={t.newChat} onClick={props.onNewChat}>
         <SquarePen size={16} strokeWidth={1.75} />
@@ -206,7 +224,7 @@ export function TerminalSidebar(props: TerminalSidebarProps) {
       <footer className={t.sidebarFooter}>
         <JourneyStatusCard compact onOpen={() => props.onView('feynman')} />
         {mobile && (
-          <div className={t.mobileAccountRow}>
+          <div className={t.mobileAccountRow} onClick={props.onDismiss}>
             <AccountButton />
             <IconButton asChild label="成长册" tip={false}>
               <Link to="/growth"><NotebookText size={17} strokeWidth={1.75} /></Link>

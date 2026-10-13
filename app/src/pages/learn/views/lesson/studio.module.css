@@ -12,6 +12,9 @@
   font-family: var(--ui-font);
 }
 
+/* 打开着课堂时生成器仍然挂着（生成不中断），只是不显示 */
+.root[hidden] { display: none; }
+
 /* ── 题头 ── */
 .hero {
   display: flex;
@@ -472,6 +475,67 @@ button.chip:disabled { opacity: 0.5; cursor: not-allowed; }
   .composer { padding: 16px; }
   .prompt { font-size: var(--fz-lg); }
 }
+/* 生成器与卖点合成一块，手机上切到课程库时整块藏起（生成器不卸载） */
+.pane {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.pane[hidden] { display: none; }
+
+/* ── 手机 ── */
+@media (max-width: 760px) {
+  .root { gap: 16px; }
+  .pane { gap: 20px; }
+  .heroText p { margin-top: 4px; }
+  /* 16px：聚焦时 iOS 不放大页面 */
+  .prompt { font-size: 16px; }
+  .chip { height: 36px; }
+  .typeChip {
+    height: 36px;
+    padding: 0 12px;
+    font-size: var(--fz-sm);
+  }
+  .typeRow { gap: 8px; }
+  .composer[data-compact] .options { gap: 14px; }
+  .composer[data-compact] .option {
+    flex: 1 1 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .composer[data-compact] .optionLabel { width: auto; }
+  .composerFoot > button { width: 100%; }
+  .progressList { grid-template-columns: minmax(0, 1fr); }
+  .progress header > button { min-height: 40px; }
+  .error > button { min-height: 40px; }
+
+  /* 课程库：一行一张通栏卡片 */
+  .library { margin-top: 0; }
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .card { content-visibility: auto; contain-intrinsic-size: auto 220px; }
+  .cardFoot { padding: 0 6px 6px 16px; }
+  .cardFoot > button {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+
+/* 触屏没有悬停：播放钮常显，卡片不上浮 */
+@media (hover: none) {
+  .coverPlay {
+    opacity: 1;
+    transform: translateY(-50%);
+  }
+  .card:hover {
+    box-shadow: 0 0 0 1px var(--border);
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .card, .cover, .coverPlay, .chip, .typeChip { transition: none; }
   .card:hover { transform: none; }

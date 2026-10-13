@@ -249,6 +249,7 @@ header ~ main .page { min-height: 0; }
 
 .sheet {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
   width: min(400px, 100%);
   animation: sheetIn var(--dur-3) var(--ease) backwards;
@@ -322,13 +323,16 @@ header ~ main .page { min-height: 0; }
   white-space: nowrap;
 }
 
+/* 列宽写成 minmax(0, 1fr)：输入框的固有宽度不会把整列撑出表单（窄屏 16px 字号时会多出几像素） */
 .form {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 
 .fieldset {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   min-width: 0;
   margin: 0;
@@ -476,6 +480,44 @@ header ~ main .page { min-height: 0; }
   }
 
   .panel { padding: 24px 20px 40px; }
+}
+
+/* ── 手机：控件用触屏尺寸，文字链放大到好点按，让出刘海与底部横条 ── */
+@media (max-width: 640px) {
+  .page {
+    /* 窄屏一律用触屏尺寸的控件，不依赖指针类型 */
+    --ctl-sm: 38px;
+    --ctl-md: 44px;
+    --ctl-lg: 46px;
+  }
+
+  .story {
+    padding: max(10px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) 0 max(18px, env(safe-area-inset-left));
+  }
+
+  .storyBody { padding-top: 10px; }
+
+  .panel {
+    padding: 20px max(18px, env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  }
+
+  .sheet { gap: 20px; }
+  .head { gap: 6px; }
+  .form { gap: 18px; }
+
+  /* 文字链的可点范围向外撑到 40px 高，版面位置不变 */
+  .link {
+    margin: -10px -10px;
+    padding: 10px 10px;
+  }
+
+  .fieldTail { margin-top: -6px; }
+
+  .foot { font-size: var(--fz-sm); }
+  .foot .link { font-size: var(--fz-sm); }
+
+  .noticeActions { width: 100%; }
+  .noticeActions > * { flex: 1 1 auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {

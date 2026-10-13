@@ -90,6 +90,12 @@
 
 .albumNote p { font-family: var(--font-display); color: var(--ink-soft); }
 .albumNote > span { flex: none; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+/* 触屏没有悬停:换一句说法 */
+.touchCopy { display: none; }
+@media (hover: none) {
+  .hoverCopy { display: none; }
+  .touchCopy { display: inline; }
+}
 /* 星图叙事桥:芦青一档,承接掌握/点亮语义;font-style 归正(法典禁斜体强调) */
 .albumStars { margin-left: 0.35em; font-style: normal; color: var(--jade-ink); }
 .ceremonySlot { height: 0; }
@@ -627,9 +633,20 @@
   }
   .pageLeft::after,
   .pageRight::before { display: none; }
-  .seal { min-height: 11.75rem; padding-inline: 0.45rem; }
-  .artworkStage { width: clamp(5.25rem, 27vw, 6.2rem); }
-  .sealCriterion { min-height: 2.6em; }
+  /* 手机:一叶四枚排成一行,格里只留状态、印面、印名与进度;来历点开再看 */
+  .bookNav :global(button) { min-width: 44px; min-height: 40px; }
+  .sealWall { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .seal { min-height: 0; gap: 6px; padding: 10px 2px 12px; }
+  .seal:nth-child(4n) { border-right: 0; }
+  .sealMeta { justify-content: center; }
+  .sealMeta > span:first-child { display: none; }
+  .sealStatus { height: 20px; padding: 0 5px; font-size: 0.75rem; letter-spacing: 0; }
+  .artworkStage { width: min(3.9rem, 100% - 14px); margin-top: 0; }
+  .sealName { font-size: 0.9375rem; letter-spacing: 0.06em; text-indent: 0.06em; }
+  .sealCriterion { display: none; }
+  .sealProgress { width: calc(100% - 14px); grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 3px; }
+  .sealProgressTrack { width: 100%; }
+  .sealProgressText { font-size: 0.75rem; }
   .ceremonyNote { right: 0; }
   .detailPopover { width: calc(100% - 1.1rem); }
   .sealDetail {

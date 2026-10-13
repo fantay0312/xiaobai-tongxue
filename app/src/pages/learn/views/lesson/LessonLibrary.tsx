@@ -2,10 +2,11 @@
  * 课程库：已生成的课，卡片上能看到幕类型构成和预计时长。
  */
 import { Clock, FileCode2, MoreHorizontal, Play, Presentation, Trash2 } from 'lucide-react';
+import { IconClassroom } from '../../../../components/ui/icons';
 import { Badge, Empty, IconButton, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '../../../../components/ui';
 import { SCENE_LABELS, estimateMinutes, sceneTypeMix, type Lesson } from '../../../../engine/lessonStudio';
 import { LESSON_CAP } from '../../../../store/lessonStore';
-import { SCENE_ICONS, runExport } from './ClassroomPlayer';
+import { SCENE_ICONS, runExport } from './sceneMeta';
 import st from './studio.module.css';
 
 const dayLabel = (iso: string) => {
@@ -27,7 +28,7 @@ export function LessonLibrary({ lessons, onOpen, onDelete }: {
       {lessons.length === 0 ? (
         <Empty
           className={st.empty}
-          icon={<Presentation size={22} strokeWidth={1.5} />}
+          icon={<IconClassroom size={22} />}
           title="还没有课程"
           description="在上面写一个主题，或者直接用正在学的课生成第一堂课。"
         />
