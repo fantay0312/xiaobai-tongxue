@@ -111,23 +111,27 @@ function relatedToWrong(text: string, wrong: Misconception[]): boolean {
   );
 }
 
-function Collapse({ title, tag, tagTone, defaultOpen, onOpen, children }: {
+function Collapse({ title, tag, tagTone, onOpen, children }: {
   title: string;
   tag?: string;
   tagTone?: 'warn' | 'plain';
-  defaultOpen: boolean;
   /** 首次翻开时通知页面(材料翻开几册,进度与小砚都要知道) */
   onOpen?: (title: string) => void;
   children: ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(false);
   const onOpenRef = useRef(onOpen);
   onOpenRef.current = onOpen;
   useEffect(() => {
     if (open) onOpenRef.current?.(title);
   }, [open, title]);
   return (
-    <section className={`${s.collapse} ${open ? s.collapseOn : ''}`}>
+    <section
+      className={`${s.collapse} ${open ? s.collapseOn : ''}`}
+      onPointerEnter={(event) => {
+        if (event.pointerType === 'mouse' && window.matchMedia('(hover: hover)').matches) setOpen(true);
+      }}
+    >
       <button
         type="button"
         className={s.collapseHead}
@@ -501,13 +505,10 @@ function PrepRoom({ topicId }: { topicId: string }) {
     );
   }
 
-  /** 材料包按需展开:有错题时,微课讲义 + 与错题相关的例题默认展开 */
+  /** 保留错题相关提示，材料一律由先生主动翻开。 */
   const exampleRelated = topic.prep.examples.map((ex) =>
     relatedToWrong(ex.title + ex.code + ex.walkthrough, wrongMcs),
   );
-  const anyRelated = exampleRelated.some(Boolean);
-  const exampleDefaultOpen = (i: number) =>
-    wrongMcs.length > 0 && (exampleRelated[i] || !anyRelated);
 
   const checkedCount = checks.filter(Boolean).length;
   const allChecked =
@@ -942,18 +943,13 @@ function PrepRoom({ topicId }: { topicId: string }) {
                   </span>
                 </div>
                 <p className={s.sectionHint}>
-                  {wrongMcs.length > 0
-                    ? '已按你的错题展开了相关部分;带着任务卡上的问题读。'
-                    : allCorrect
-                      ? '你全对了,材料默认收起,想翻哪节点哪节。'
-                      : '错的没挂到具体误区——对照右侧薄弱点,想翻哪节点哪节。'}
+                  材料默认收起，移到标题上或点击即可翻开；再点标题收起。带着任务卡上的问题读。
                 </p>
                 <div className={s.materials}>
                   <Collapse
                     title={topic.prep.microLecture.title}
                     tag="微课讲义"
                     tagTone="plain"
-                    defaultOpen
                     onOpen={markOpened}
                   >
                     <Md text={topic.prep.microLecture.body} className={s.md} />
@@ -963,7 +959,6 @@ function PrepRoom({ topicId }: { topicId: string }) {
                       title="一张图看懂"
                       tag="图解"
                       tagTone="plain"
-                      defaultOpen={wrongMcs.length > 0}
                       onOpen={markOpened}
                     >
                       {figures.map((fig) => (
@@ -984,7 +979,6 @@ function PrepRoom({ topicId }: { topicId: string }) {
                       title={ex.title}
                       tag={wrongMcs.length > 0 && exampleRelated[i] ? '与错题相关' : undefined}
                       tagTone="warn"
-                      defaultOpen={exampleDefaultOpen(i)}
                       onOpen={markOpened}
                     >
                       <pre className={s.code}><code>{ex.code}</code></pre>
@@ -995,7 +989,6 @@ function PrepRoom({ topicId }: { topicId: string }) {
                     title="预演:小白会怎么为难你"
                     tag="误区剧本"
                     tagTone="warn"
-                    defaultOpen={wrongMcs.length > 0}
                     onOpen={markOpened}
                   >
                     <p className={s.drillLead}>
@@ -1035,7 +1028,6 @@ function PrepRoom({ topicId }: { topicId: string }) {
                       title="视频参考"
                       tag={`选看 · ${videoRefs.length} 部`}
                       tagTone="plain"
-                      defaultOpen={wrongMcs.length > 0}
                       onOpen={markOpened}
                     >
                       <p className={s.refLead}>
@@ -1068,7 +1060,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                     </Collapse>
                   )}
                   {readRefs.length > 0 && (
-                    <Collapse title="延伸书单" tag="选读" tagTone="plain" defaultOpen={false} onOpen={markOpened}>
+                    <Collapse title="延伸书单" tag="选读" tagTone="plain" onOpen={markOpened}>
                       <p className={s.refLead}>课上用不到,课后想深挖再看——先把课讲完。</p>
                       <ul className={s.refList}>
                         {readRefs.map((ref) => (
@@ -1210,19 +1202,6 @@ function PrepRoom({ topicId }: { topicId: string }) {
               })}
             </ol>
           </nav>
-          {materialsVisible && (
-            <div>
-              <h3 className={s.asideTitle}>路线图</h3>
-              <ol className={s.miniRoute}>
-                {topic.checklist.map((item) => (
-                  <li key={item.id} className={s.miniRouteItem}>
-                    <span className={s.miniRouteLevel}>{LEVEL_META[item.level]}</span>
-                    {item.point}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
           {(wrongMcs.length > 0 || wrongSelfTests.length > 0) && (
             <div>
               <h3 className={s.asideTitle}>摸底暴露的薄弱点</h3>

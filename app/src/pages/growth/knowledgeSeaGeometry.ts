@@ -77,39 +77,46 @@ export function groupByCourse(nodes: MapNode[]): CourseRealm[] {
   });
 }
 
-function columnsFor(nodeCount: number, focused: boolean, compact: boolean): number {
-  if (!focused) return 7;
-  if (compact) return Math.max(3, Math.min(5, Math.ceil(Math.sqrt(nodeCount))));
-  return Math.max(3, Math.min(7, Math.ceil(Math.sqrt(nodeCount * 1.5))));
+export const ORBIT_RINGS = [
+  { rx: 285, ry: 115, tilt: -0.42 },
+  { rx: 360, ry: 152, tilt: 0.33 },
+  { rx: 405, ry: 190, tilt: -0.12 },
+] as const;
+
+export function orbitalPoint(ringIndex: number, angle: number, compact = false): SeaPoint {
+  const ring = ORBIT_RINGS[ringIndex % ORBIT_RINGS.length];
+  const x = Math.cos(angle) * ring.rx;
+  const y = Math.sin(angle) * ring.ry * (compact ? 1.1 : 1);
+  const tilt = compact ? ring.tilt * 0.45 : ring.tilt;
+  return {
+    x: SEA_WIDTH * 0.5 + x * Math.cos(tilt) - y * Math.sin(tilt),
+    y: SEA_HEIGHT * 0.52 + x * Math.sin(tilt) + y * Math.cos(tilt),
+  };
 }
 
 export function layoutSea(
   nodes: MapNode[],
   focused: boolean,
   compact: boolean,
+  selectedId: string | null = null,
 ): Map<string, SeaPoint> {
-  const columns = columnsFor(nodes.length, focused, compact);
-  const rows = Math.max(1, Math.ceil(nodes.length / columns));
-  const left = focused ? 168 : 68;
-  const right = SEA_WIDTH - left;
-  const top = focused ? 172 : 150;
-  const bottom = SEA_HEIGHT - 74;
-  const stepX = columns === 1 ? 0 : (right - left) / (columns - 1);
-  const stepY = rows === 1 ? 0 : (bottom - top) / (rows - 1);
   const points = new Map<string, SeaPoint>();
-
+  const ringCount = Math.min(3, Math.max(1, Math.ceil(nodes.length / 12)));
   nodes.forEach((node, index) => {
-    const row = Math.floor(index / columns);
-    const offset = index % columns;
-    const column = row % 2 === 0 ? offset : columns - 1 - offset;
-    const xJitter = compact ? 0 : (hash01(node.topic.topicId, 11) - 0.5) * (focused ? 34 : 26);
-    const yJitter = compact ? 0 : (hash01(node.topic.topicId, 17) - 0.5) * (focused ? 30 : 22);
-    const wave = compact ? 0 : Math.sin(index * 1.67) * (focused ? 14 : 9);
-    points.set(node.topic.topicId, {
-      x: Math.max(42, Math.min(SEA_WIDTH - 42, left + column * stepX + xJitter)),
-      y: Math.max(124, Math.min(SEA_HEIGHT - 42, top + row * stepY + yJitter + wave)),
-    });
+    const ring = index % ringCount;
+    const count = Math.ceil((nodes.length - ring) / ringCount);
+    const angle = Math.floor(index / ringCount) / count * Math.PI * 2 + ring * 0.83 + (focused ? 0.2 : 0);
+    const point = orbitalPoint(ring, angle, compact);
+    points.set(node.topic.topicId, selectedId ? { x: point.x, y: point.y * 0.62 + 22 } : point);
   });
+  if (selectedId && points.has(selectedId)) {
+    points.set(selectedId, { x: compact ? 650 : 720, y: 190 });
+    const links = activeStarLinks(selectedId, points);
+    const linked = links.map((link) => link.a === selectedId ? link.b : link.a);
+    linked.forEach((id, index) => points.set(id, {
+      x: [440, 810, 630][index], y: [125, 95, 305][index],
+    }));
+  }
   return points;
 }
 

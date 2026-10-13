@@ -190,13 +190,11 @@ const SCORE_RULES: Partial<Record<LearnEvent['type'], number>> = {
   topic_mastered: 20,
 };
 
-/** 等级阶梯:门槛间距递增,前两级一节课内可达(给正反馈),宗师需通几门课 */
-const RANKS: { at: number; title: string }[] = [
-  { at: 0, title: '蒙师' },
-  { at: 30, title: '塾师' },
-  { at: 80, title: '讲席' },
-  { at: 160, title: '山长' },
-  { at: 280, title: '宗师' },
+/** 三档先生称号由真实履历分派生；所有页面共用门槛与名称。 */
+export const TEACHER_RANKS: readonly { at: number; title: string }[] = [
+  { at: 0, title: '塾师' },
+  { at: 80, title: '外傅' },
+  { at: 160, title: '夫子' },
 ];
 
 export function deriveTeacherRank(input: AchievementInput): TeacherRank {
@@ -208,13 +206,13 @@ export function deriveTeacherRank(input: AchievementInput): TeacherRank {
   }, 0);
 
   let level = 1;
-  for (let i = 0; i < RANKS.length; i += 1) {
-    if (score >= RANKS[i].at) level = i + 1;
+  for (let i = 0; i < TEACHER_RANKS.length; i += 1) {
+    if (score >= TEACHER_RANKS[i].at) level = i + 1;
   }
-  const next = level < RANKS.length ? RANKS[level] : null;
+  const next = level < TEACHER_RANKS.length ? TEACHER_RANKS[level] : null;
   return {
     level,
-    title: RANKS[level - 1].title,
+    title: TEACHER_RANKS[level - 1].title,
     score,
     nextTitle: next?.title ?? null,
     nextAt: next?.at ?? null,

@@ -15,6 +15,7 @@ import {
   type SeaPoint,
 } from './knowledgeSeaGeometry';
 import { StarSkyCanvas } from './StarSkyCanvas';
+import { OrbitPlanet } from './OrbitPlanet';
 import s from './KnowledgeSeaField.module.css';
 
 function label(node: MapNode): string {
@@ -126,8 +127,9 @@ export function KnowledgeSeaField({
   };
 
   return (
-    <div className={s.field} data-course-focus={focusedCourse || undefined}>
+    <div className={s.field} data-course-focus={focusedCourse || undefined} data-observing={selectedId !== null || undefined}>
       <StarSkyCanvas compact={compact} keepouts={keepouts} />
+      <OrbitPlanet compact={compact} selected={selectedId !== null} />
 
       {realms.map((realm, realmIndex) => {
         const marker = courseLabelPoint(realm, points, realmIndex, realms.length);

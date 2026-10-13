@@ -47,7 +47,7 @@ export interface XiaobaiWisdom {
  * 第 n→n+1 级需 15 + 10·(n-1) 点(15/25/35/45…),即 t(n)=15(n-1)+5(n-1)(n-2)。
  * t(1)=0 / t(2)=15 / t(3)=40 / t(4)=75 / t(5)=120 …
  */
-const cumThreshold = (n: number): number => 15 * (n - 1) + 5 * (n - 1) * (n - 2);
+export const wisdomThreshold = (n: number): number => 15 * (n - 1) + 5 * (n - 1) * (n - 2);
 
 export function deriveWisdom(events: LearnEvent[]): XiaobaiWisdom {
   const evs = chronological(events);
@@ -62,9 +62,9 @@ export function deriveWisdom(events: LearnEvent[]): XiaobaiWisdom {
   }
   // 等级 = 满足累计门槛的最高级(不设硬顶,一路往上找)
   let level = 1;
-  while (cumThreshold(level + 1) <= xp) level += 1;
-  const base = cumThreshold(level);
-  const nextAt = cumThreshold(level + 1);
+  while (wisdomThreshold(level + 1) <= xp) level += 1;
+  const base = wisdomThreshold(level);
+  const nextAt = wisdomThreshold(level + 1);
   return { xp, level, intoLevel: xp - base, forNext: nextAt - base };
 }
 

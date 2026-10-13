@@ -449,6 +449,36 @@
 }
 
 .currentRung { position: relative; }
+.stageToggle {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-left: -0.5rem;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.currentChapter > .stageToggle { position: absolute; top: 0; left: 0; }
+.stageToggle .currentMarker { position: static; }
+.stageToggle .rungMarker { margin-left: 0; }
+.stageToggle:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
+.stagePreview { grid-column: 2 / -1; padding: 0 0 var(--gap-tight); }
+.stagePreview[hidden], .wisdom[hidden] { display: none; }
+.teacherRanks { display: grid; gap: var(--gap); margin: var(--gap) 0; padding: 0; list-style: none; }
+.teacherRanks li { display: grid; grid-template-columns: 1fr auto; gap: var(--gap-hair); font-size: var(--fs-small); }
+.teacherRanks li > span { display: flex; justify-content: space-between; gap: var(--gap-tight); }
+.teacherRanks li > span small { color: var(--ink-soft); font-size: var(--fs-tiny); }
+.teacherRanks progress { grid-row: 2; width: 100%; height: 4px; appearance: none; border: 0; background: var(--paper-edge); }
+.teacherRanks progress::-webkit-progress-bar { background: var(--paper-edge); }
+.teacherRanks progress::-webkit-progress-value { background: var(--azure); }
+.teacherRanks progress::-moz-progress-bar { background: var(--azure); }
+.teacherRanks li > small { grid-row: 2; color: var(--ink-soft); font-size: var(--fs-tiny); line-height: 1; }
+.teacherRanks [aria-current] > span { color: var(--azure); font-weight: 600; }
+.memoryEntry { display: inline-flex; align-items: center; gap: var(--gap-tight); min-height: 2.75rem; padding: 0.5rem 0.8rem; margin-top: var(--gap); background: var(--azure); color: var(--paper); border-radius: var(--radius-s); font-size: var(--fs-small); }
+.memoryEntry:hover { background: var(--azure-deep); }
 
 .rung {
   position: relative;
@@ -786,6 +816,8 @@
   }
 
   .rungMarker { grid-column: 1; grid-row: 1 / span 2; margin-left: 0.2rem; }
+  .rung > .stageToggle { grid-column: 1; grid-row: 1 / span 2; margin-left: -0.6rem; }
+  .currentChapter > .stageToggle { margin-left: -0.6rem; }
   .rungSign { grid-column: 2; grid-row: 1; }
   .rungState { grid-column: 3; grid-row: 1; justify-self: end; }
   .rungDesc { grid-column: 2; grid-row: 2; }

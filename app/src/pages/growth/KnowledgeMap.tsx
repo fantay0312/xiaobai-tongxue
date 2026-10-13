@@ -75,8 +75,8 @@ export function KnowledgeMap({
   const fogStars = nodes.filter((node) => node.status === 'forgotten').length;
   const selectedNode = nodes.find((node) => node.topic.topicId === selectedId) ?? null;
   const seaPoints = useMemo(
-    () => layoutSea(visibleNodes, courseFocus !== null, compact),
-    [compact, courseFocus, visibleNodes],
+    () => layoutSea(visibleNodes, courseFocus !== null, compact, selectedId),
+    [compact, courseFocus, visibleNodes, selectedId],
   );
   const dockCorner = useMemo(
     () => pickDockCorner(selectedId, seaPoints),

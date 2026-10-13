@@ -91,7 +91,12 @@ test('429 → compiler-rate-limited;其他非 2xx → compiler-upstream-failed',
 
 test('超时 → compiler-timeout', async () => {
   const llm = client((url, init) => new Promise((_, reject) => {
-    init.signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })));
+    // 模拟真实网络句柄：客户端超时 timer 是 unref 的，悬空 Promise 本身不会保活。
+    const pendingSocket = setInterval(() => {}, 1_000);
+    init.signal.addEventListener('abort', () => {
+      clearInterval(pendingSocket);
+      reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+    }, { once: true });
   }), { timeoutMs: 20 });
   await assert.rejects(llm.generate({ system: 's', user: 'u' }), /^Error: compiler-timeout$/);
 });

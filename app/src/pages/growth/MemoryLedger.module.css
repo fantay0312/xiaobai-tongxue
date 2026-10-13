@@ -221,17 +221,20 @@
 
 /* 题头的暂停钮按下态:墨底纸字 */
 .head .act {
+  min-height: 2.75rem;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   padding: 0 0.9rem;
-  color: var(--ink);
+  color: var(--paper);
+  background: var(--azure);
+  font-weight: 600;
   transition:
     background var(--t-fast) var(--ease-out),
     color var(--t-fast) var(--ease-out),
     border-color var(--t-fast) var(--ease-out);
 }
 
-.head .act:hover { background: var(--ink-wash); text-decoration: none; }
+.head .act:hover { background: var(--azure-deep); text-decoration: none; }
 
 .head .actOn {
   background: var(--ink);
