@@ -9,7 +9,7 @@
  * 保留契约:setPersona / 复习 await startReview(topicId) → navigate(`/teach/${topicId}?mode=review`)
  * 且 reviewBusy 防抖原样。
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import type { LearnEvent, LearnEventType, Persona, SessionMode, SessionReport, XiaobaiMood } from '../../types';
 import { useAppStore } from '../../store/appStore';
@@ -261,11 +261,6 @@ export default function GrowthPage() {
 
   const selNode = nodes.find((n) => n.topic.topicId === selected) ?? null;
   const evidencePanelRef = useRef<HTMLElement | null>(null);
-  const evidenceScrollRef = useRef<HTMLDivElement | null>(null);
-  const evidenceScrollTimerRef = useRef<number | null>(null);
-  const [evidenceMore, setEvidenceMore] = useState(false);
-  const [evidenceCloseOn, setEvidenceCloseOn] = useState(false);
-  const evidenceCloseTimerRef = useRef<number | null>(null);
   // 同印章册预览:收起时缓存内容,折叠动画不吃空
   const lastNodeRef = useRef<MapNode | null>(null);
   if (selNode) lastNodeRef.current = selNode;
@@ -317,73 +312,8 @@ export default function GrowthPage() {
     }
   };
 
-  useEffect(() => () => {
-    if (evidenceScrollTimerRef.current !== null) {
-      window.clearTimeout(evidenceScrollTimerRef.current);
-    }
-    if (evidenceCloseTimerRef.current !== null) {
-      window.clearTimeout(evidenceCloseTimerRef.current);
-    }
-  }, []);
-
-  const showEvidenceClose = () => {
-    setEvidenceCloseOn(true);
-    if (evidenceCloseTimerRef.current !== null) {
-      window.clearTimeout(evidenceCloseTimerRef.current);
-      evidenceCloseTimerRef.current = null;
-    }
-  };
-
-  const hideEvidenceCloseSoon = () => {
-    if (evidenceCloseTimerRef.current !== null) {
-      window.clearTimeout(evidenceCloseTimerRef.current);
-    }
-    evidenceCloseTimerRef.current = window.setTimeout(() => {
-      evidenceCloseTimerRef.current = null;
-      setEvidenceCloseOn(false);
-    }, 1400);
-  };
-
-  useEffect(() => {
-    const scroller = evidenceScrollRef.current;
-    if (!scroller) {
-      setEvidenceMore(false);
-      return;
-    }
-    const sync = () => {
-      setEvidenceMore(scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight > 8);
-    };
-    const onScroll = () => {
-      sync();
-      showEvidenceClose();
-      hideEvidenceCloseSoon();
-    };
-    sync();
-    scroller.addEventListener('scroll', onScroll, { passive: true });
-    const observer = new ResizeObserver(sync);
-    observer.observe(scroller);
-    return () => {
-      scroller.removeEventListener('scroll', onScroll);
-      observer.disconnect();
-    };
-  }, [selected, shownNode, shownEvents.length]);
-
   const selectStar = (topicId: string) => {
-    const nextId = selected === topicId ? null : topicId;
-    setSelected(nextId);
-    if (evidenceScrollTimerRef.current !== null) {
-      window.clearTimeout(evidenceScrollTimerRef.current);
-      evidenceScrollTimerRef.current = null;
-    }
-    if (!nextId || !window.matchMedia('(max-width: 960px)').matches) return;
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    evidenceScrollTimerRef.current = window.setTimeout(() => {
-      evidenceScrollTimerRef.current = null;
-      evidencePanelRef.current?.scrollIntoView({
-        behavior: reduceMotion ? 'auto' : 'smooth',
-        block: 'start',
-      });
-    }, reduceMotion ? 0 : 320);
+    setSelected(selected === topicId ? null : topicId);
   };
 
   const closeEvidence = () => {
@@ -680,6 +610,28 @@ export default function GrowthPage() {
               : '一讲一星，照见每一讲的掌握证据'}
           </small>
         </h2>
+        <div className={s.filterRow} role="group" aria-label="巡天筛选:按状态聚焦星宿">
+          <button
+            type="button"
+            className={s.filterChip}
+            aria-pressed={statusFocus === null}
+            onClick={() => setStatusFocus(null)}
+          >
+            全览 <b className={s.filterCount}>{nodes.length}</b>
+          </button>
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              className={s.filterChip}
+              aria-pressed={statusFocus === f.key}
+              onClick={() => setStatusFocus((cur) => (cur === f.key ? null : f.key))}
+            >
+              <span className={`${s.swatch} ${STATUS_SWATCH[f.key]}`} aria-hidden="true" />
+              {f.label} <b className={s.filterCount}>{statusCounts[f.key]}</b>
+            </button>
+          ))}
+        </div>
         <div className={s.observatory}>
           <div className={s.chartColumn}>
             <div className={s.mapWrap}>
@@ -695,36 +647,22 @@ export default function GrowthPage() {
             id="knowledge-evidence"
             ref={evidencePanelRef}
             className={`${s.evidenceDock} ${s.evidenceDockOpen}`}
-            data-more={evidenceMore || undefined}
             aria-label="掌握度证据链"
             aria-live="polite"
             onKeyDown={(event) => {
               if (event.key === 'Escape') closeEvidence();
             }}
-            onPointerMove={(event) => {
-              const box = event.currentTarget.getBoundingClientRect();
-              if (box.right - event.clientX <= 72 && event.clientY - box.top <= 72) {
-                showEvidenceClose();
-              }
-            }}
-            onPointerLeave={hideEvidenceCloseSoon}
-            onWheel={() => {
-              showEvidenceClose();
-              hideEvidenceCloseSoon();
-            }}
           >
             <button
               type="button"
-              className={`${s.evidenceClose} ${evidenceCloseOn ? s.evidenceCloseOn : ''}`}
+              className={s.evidenceClose}
               aria-label={`收起${selNode.topic.title}的证据链`}
               onClick={closeEvidence}
-              onFocus={showEvidenceClose}
-              onBlur={hideEvidenceCloseSoon}
             >
               <Icon name="x" size={18} strokeWidth={2.2} />
             </button>
             <div className={`${s.collapse} ${s.open}`}>
-              <div ref={evidenceScrollRef}>
+              <div>
                 {shownNode && shownNode.state && (
                   <div className={s.nodePanel}>
                     <div className={s.panelHead}>
@@ -915,36 +853,9 @@ export default function GrowthPage() {
             )}
           </div>
         </div>
-            <span className={s.evidenceMore} aria-hidden="true">
-              <i className={s.evidenceMoreChevron} />
-            </span>
           </aside>
               ) : null}
               </KnowledgeMap>
-            </div>
-            {/* 图例升为「巡天筛选器」:点一态,余星连线视觉下沉(不卸载,量测/Tab 序稳);
-                再点或点「全览」复位。计数实时派生自 nodes。 */}
-            <div className={s.filterRow} role="group" aria-label="巡天筛选:按状态聚焦星宿">
-              <button
-                type="button"
-                className={s.filterChip}
-                aria-pressed={statusFocus === null}
-                onClick={() => setStatusFocus(null)}
-              >
-                全览 <b className={s.filterCount}>{nodes.length}</b>
-              </button>
-              {STATUS_FILTERS.map((f) => (
-                <button
-                  key={f.key}
-                  type="button"
-                  className={s.filterChip}
-                  aria-pressed={statusFocus === f.key}
-                  onClick={() => setStatusFocus((cur) => (cur === f.key ? null : f.key))}
-                >
-                  <span className={`${s.swatch} ${STATUS_SWATCH[f.key]}`} aria-hidden="true" />
-                  {f.label} <b className={s.filterCount}>{statusCounts[f.key]}</b>
-                </button>
-              ))}
             </div>
           </div>
         </div>

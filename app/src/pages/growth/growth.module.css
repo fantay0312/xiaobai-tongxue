@@ -1789,7 +1789,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--gap-tight);
-  margin-top: var(--gap-tight);
+  margin-top: calc(clamp(1.4rem, 3vw, 2rem) * -0.55);
+  margin-bottom: var(--gap);
 }
 
 .filterChip {
@@ -1897,36 +1898,27 @@
   display: flex;
   flex-direction: column;
   width: min(18.5rem, calc(100% - 1.1rem));
-  max-height: min(24rem, 72%);
-  overflow: hidden;
-  overscroll-behavior: contain;
+  overflow: visible;
+  overscroll-behavior: auto;
   scroll-margin-top: calc(var(--header-h) + var(--gap-tight));
-  border: 1px solid color-mix(in oklch, var(--line-strong) 88%, var(--star-sky-moon));
-  border-radius: var(--radius);
+  border: 0;
+  border-radius: 0;
   background: color-mix(in oklch, var(--paper) 78%, transparent);
   backdrop-filter: blur(16px) saturate(1.18);
   -webkit-backdrop-filter: blur(16px) saturate(1.18);
-  box-shadow:
-    0 1px 0 color-mix(in oklch, var(--star-sky-moon) 12%, transparent),
-    0 18px 40px color-mix(in oklch, var(--star-sky-deep) 48%, transparent);
+  box-shadow: none;
   pointer-events: none;
   touch-action: manipulation;
-  transform: translate3d(0, 0.4rem, 0);
+  transform: none;
   opacity: 0;
   visibility: hidden;
-  transition:
-    opacity var(--t-med) var(--ease-out),
-    transform var(--t-med) var(--ease-out),
-    visibility 0s linear var(--t-med);
 }
 
 .evidenceDockOpen {
-  border-color: color-mix(in oklch, var(--azure) 48%, var(--line-strong));
   pointer-events: auto;
   opacity: 1;
   visibility: visible;
   transform: none;
-  transition-delay: 0s;
 }
 
 :global([data-corner='right']) .evidenceDock {
@@ -1934,15 +1926,22 @@
   right: clamp(0.4rem, 1.2vw, 0.7rem);
 }
 
+:global([data-corner='right']) .evidenceClose {
+  left: auto;
+  right: 0.1rem;
+}
+
 .evidenceDock .collapse {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
+  grid-template-rows: 1fr;
+  transition: none;
 }
 
 .evidenceDock .collapse > div {
-  overflow: auto;
-  overscroll-behavior: contain;
-  padding-bottom: 2.4rem;
+  overflow: visible;
+  overscroll-behavior: auto;
+  padding-bottom: 0;
   scrollbar-width: none;
 }
 
@@ -2075,12 +2074,21 @@
   margin-bottom: var(--gap-tight);
 }
 
-.evidenceDock .panelHead { gap: var(--gap-hair) var(--gap-tight); }
+.evidenceDock .panelHead {
+  gap: var(--gap-hair) var(--gap-tight);
+  padding-left: 2.4rem;
+}
+
+:global([data-corner='right']) .evidenceDock .panelHead {
+  padding-left: 0;
+  padding-right: 2.4rem;
+}
 
 .evidenceClose {
   position: absolute;
   top: 0.1rem;
-  right: 0.1rem;
+  left: 0.1rem;
+  right: auto;
   z-index: 40;
   display: grid;
   width: 2.75rem;
@@ -2093,10 +2101,10 @@
   border-radius: 0;
   background: transparent;
   color: var(--ink);
-  opacity: 0;
-  pointer-events: none;
+  opacity: 1;
+  pointer-events: auto;
   filter: drop-shadow(0 0 4px var(--paper)) drop-shadow(0 1px 2px var(--paper));
-  transition: opacity var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
+  transition: none;
 }
 
 .evidenceCloseOn,
@@ -2147,6 +2155,12 @@
 .evidenceDock .masteryFactors dd,
 .evidenceDock .masteryFormula {
   font-size: 0.68rem;
+}
+
+.evidenceDock .masteryProof {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .masteryProof {
@@ -2263,8 +2277,7 @@
     bottom: auto;
     left: 0.4rem;
     width: min(18.5rem, calc(100% - 0.8rem));
-    max-height: min(20rem, 70%);
-    transform: translate3d(0, 0.75rem, 0);
+    transform: none;
   }
 
   .evidenceDockOpen {

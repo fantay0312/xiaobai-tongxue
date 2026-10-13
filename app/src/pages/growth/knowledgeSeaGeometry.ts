@@ -237,6 +237,71 @@ export function seedSkyStars(count: number): SkyStar[] {
   });
 }
 
+/** 平时公转角速度（弧度/秒）。全体相同。拖动地球时会暂时加快，再降回这个速度。 */
+export const SATELLITE_SPEED = 0.05;
+
+/** 拖动地球时卫星沿轨道冲刺的角速度，全体相同。 */
+export const SATELLITE_BURST_SPEED = 1.45;
+
+/** 俯仰压扁轨道，使三圈椭圆的横纵比例接近参考图。 */
+export const ORBIT_VIEW_PITCH = 0.5;
+
+export interface SatelliteOrbit {
+  radius: number;
+  tilt: number;
+  node: number;
+  phase: number;
+}
+
+const ORBIT_LANES = 3;
+
+/** 三圈拉开的椭圆，多颗卫星共用一条。间距对应参考图：贴着地球、中间一圈、靠外缘一圈。 */
+export function satelliteOrbit(id: string, index: number, count: number): SatelliteOrbit {
+  const lane = index % ORBIT_LANES;
+  const seat = Math.floor(index / ORBIT_LANES);
+  const seats = Math.max(1, Math.ceil(count / ORBIT_LANES));
+  return {
+    radius: lane / (ORBIT_LANES - 1),
+    tilt: 0.16,
+    node: 0.22 + lane * 0.48,
+    phase: (seat / seats) * Math.PI * 2 + hash01(id, 31) * 0.2,
+  };
+}
+
+export function orbitLaneKey(orbit: SatelliteOrbit): string {
+  return `${orbit.radius.toFixed(4)}:${orbit.tilt.toFixed(4)}:${orbit.node.toFixed(4)}`;
+}
+
+/** 单位轨道上某个真近点角的位置。观看俯仰固定，不跟地球拖动耦合。 */
+export function orbitVector(
+  orbit: SatelliteOrbit,
+  angle: number,
+): { x: number; y: number; z: number } {
+  const x0 = Math.cos(angle);
+  const z0 = Math.sin(angle);
+  const y = -Math.sin(orbit.tilt) * z0;
+  const z1 = Math.cos(orbit.tilt) * z0;
+  const nodeC = Math.cos(orbit.node);
+  const nodeS = Math.sin(orbit.node);
+  const x = x0 * nodeC + z1 * nodeS;
+  const z = -x0 * nodeS + z1 * nodeC;
+  const cp = Math.cos(ORBIT_VIEW_PITCH);
+  const sp = Math.sin(ORBIT_VIEW_PITCH);
+  return {
+    x,
+    y: y * cp - z * sp,
+    z: y * sp + z * cp,
+  };
+}
+
+/** 单位轨道上的位置。angleRad 是全体卫星共用的公转角。 */
+export function satelliteVector(
+  orbit: SatelliteOrbit,
+  angleRad: number,
+): { x: number; y: number; z: number } {
+  return orbitVector(orbit, orbit.phase + angleRad);
+}
+
 export function seedMilkyWay(count: number): SkyStar[] {
   const total = Math.max(48, Math.min(1100, Math.round(count)));
   return Array.from({ length: total }, (_, index) => {

@@ -144,7 +144,7 @@ export function KnowledgeMap({
               points={seaPoints}
             />
           )}
-          {children}
+          {viewMode === 'chart' ? children : null}
         </div>
 
         <div className={s.foot}>
@@ -155,7 +155,9 @@ export function KnowledgeMap({
             ) : null}
           </p>
           <p className={s.hint}>
-            {compact ? '先选课程，再点星查看；可切到名录查找。' : '方向键巡星，回车展开证据。'}
+            {compact
+              ? '先选课程，再点星查看；可切到名录查找。拖动地球可旋转。'
+              : '方向键巡星，回车展开证据。拖动地球可旋转。'}
           </p>
         </div>
       </div>
