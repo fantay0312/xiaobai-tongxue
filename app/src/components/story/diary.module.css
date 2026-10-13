@@ -4,7 +4,7 @@
 
 .leaf {
   max-width: 44em;
-  padding: var(--gap-loose) clamp(var(--gap), 4vw, var(--gap-loose));
+  padding: clamp(1.5rem, 4vw, 2.5rem) clamp(var(--gap), 4vw, 2.5rem);
   background: var(--paper-warm);
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius);

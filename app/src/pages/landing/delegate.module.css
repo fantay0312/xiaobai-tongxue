@@ -1,0 +1,512 @@
+/* 第四章「托」：助理任务运行记录、AI 课堂的一页课、资料库文件。 */
+
+.duo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 40px clamp(20px, 3vw, 40px);
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.colText h3,
+.libraryText h3 {
+  font-size: clamp(20px, 2.2vw, 26px);
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+
+.colText p,
+.libraryText p {
+  max-width: 30em;
+  margin-top: 8px;
+  color: var(--text-2);
+  font-size: var(--fz-lg);
+  line-height: 1.75;
+}
+
+.run,
+.lesson {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: clamp(16px, 2vw, 22px);
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  color: var(--text-3);
+}
+
+.panelHead strong {
+  margin-right: auto;
+  color: var(--text);
+  font-size: var(--fz-lg);
+  font-weight: 600;
+}
+
+/* ── 助理任务 ── */
+.goal {
+  align-self: flex-end;
+  max-width: 92%;
+  padding: 10px 16px;
+  border-radius: var(--r-xl) var(--r-xl) var(--r-xs) var(--r-xl);
+  background: var(--inset);
+  font-size: var(--fz-md);
+  line-height: 1.6;
+}
+
+@keyframes logIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.log {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 步骤之间的一条竖线 */
+.log::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 10px;
+  width: 1.5px;
+  background: var(--border-2);
+}
+
+.log > li {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  animation: logIn 460ms var(--ease) backwards;
+  animation-delay: var(--d, 0ms);
+}
+
+.log > li > i {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px var(--border-2);
+  color: var(--accent);
+}
+
+.log > li > i[data-done] {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--surface);
+  color: var(--bg);
+}
+
+.log > li > div {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  min-width: 0;
+  color: var(--text-2);
+  font-size: var(--fz-md);
+  line-height: 22px;
+}
+
+.log code,
+.lane code {
+  padding: 1px 7px;
+  border-radius: var(--r-xs);
+  background: var(--inset);
+  color: var(--text);
+  font-family: var(--ui-mono);
+  font-size: var(--fz-xs);
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.withIcon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lanes {
+  display: grid;
+  flex: 1 0 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.lane {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--sidebar);
+  font-size: var(--fz-sm);
+  line-height: 1.4;
+}
+
+.laneWho {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.laneWho svg {
+  color: var(--text-3);
+}
+
+.laneResult {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 5px;
+  color: var(--text-2);
+}
+
+.laneResult svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ok);
+}
+
+.runFoot {
+  margin-top: auto;
+  padding-top: 16px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── AI 课堂 ── */
+.exports {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.exports span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: var(--r-sm);
+  box-shadow: inset 0 0 0 1px var(--border-2);
+  color: var(--text-2);
+  font: 500 var(--fz-xs) / 1 var(--ui-mono);
+}
+
+.slide {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  padding: 20px 16px 26px;
+  border-radius: var(--r-lg);
+  background: var(--sidebar);
+}
+
+.slide > strong {
+  font-size: var(--fz-xl);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.slideNo {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  color: var(--text-3);
+  font: 500 var(--fz-xs) / 1 var(--ui-mono);
+}
+
+.tree {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0;
+}
+
+.node {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-1), 0 0 0 1px var(--border-2);
+}
+
+.node b {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 30px;
+  border-radius: 5px;
+  background: var(--inset);
+  font: 600 var(--fz-md) / 1 var(--ui-mono);
+}
+
+.node b[data-new] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* 父节点到两个孩子的连线 */
+.kids {
+  position: relative;
+  display: flex;
+  gap: 24px;
+  margin-top: 10px;
+  padding-top: 16px;
+}
+
+.kids::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 22%;
+  left: 20%;
+  height: 16px;
+  border: 1.5px solid var(--border-2);
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+}
+
+.kids::after {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  width: 1.5px;
+  height: 10px;
+  background: var(--border-2);
+}
+
+/* 白板上的手写批注 */
+.chalk {
+  margin-top: 10px;
+  padding: 2px 10px;
+  border-bottom: 1.5px dashed var(--accent);
+  color: var(--accent);
+  font-family: var(--story-hand);
+  font-size: 17px;
+  line-height: 1.5;
+  transform: rotate(-1.5deg);
+}
+
+.voices {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.voices p {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--text-2);
+  font-size: var(--fz-md);
+  line-height: 1.65;
+}
+
+.speaker {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-xs);
+  font-weight: 650;
+}
+
+.speaker[data-teacher] {
+  background: var(--solid);
+  color: var(--on-solid);
+}
+
+.speaker[data-teacher] + span {
+  color: var(--text);
+}
+
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+
+/* 语音讲解中的小波形 */
+.wave {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 14px;
+  margin-left: 8px;
+  vertical-align: -2px;
+}
+
+.wave i {
+  width: 2.5px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  animation: wave 900ms var(--ease-in-out) infinite;
+}
+
+.wave i:nth-child(2) { animation-delay: 150ms; }
+.wave i:nth-child(3) { animation-delay: 300ms; }
+.wave i:nth-child(4) { animation-delay: 450ms; }
+
+.outline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: auto 0 0;
+  padding: 16px 0 0;
+  list-style: none;
+}
+
+.outline li {
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ── 资料库 ── */
+.library {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: center;
+  gap: 24px clamp(32px, 5vw, 72px);
+  margin-top: clamp(56px, 9vh, 104px);
+}
+
+.files {
+  display: grid;
+  margin: 0;
+  padding: 6px 8px;
+  list-style: none;
+}
+
+.files li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 10px;
+  color: var(--text-3);
+  font-size: var(--fz-md);
+}
+
+.files li + li {
+  border-top: 1px solid var(--border);
+}
+
+.fileType {
+  flex: none;
+  width: 40px;
+  padding: 3px 0;
+  border-radius: var(--r-xs);
+  background: var(--inset);
+  color: var(--text-2);
+  font: 650 var(--fz-2xs) / 1.4 var(--ui-mono);
+  text-align: center;
+}
+
+.files strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileMeta {
+  flex: none;
+  font-size: var(--fz-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes parsing {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(260%); }
+}
+
+.parsing {
+  flex: none;
+  width: 48px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--r-full);
+  background: var(--inset);
+}
+
+.parsing i {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  animation: parsing 1.3s var(--ease-in-out) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave i:nth-child(odd) { transform: scaleY(0.5); }
+
+  .parsing i {
+    width: 55%;
+    animation: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .duo,
+  .library {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .lanes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fileMeta {
+    display: none;
+  }
+
+  .node b {
+    width: 30px;
+    height: 28px;
+  }
+
+  .kids {
+    gap: 14px;
+  }
+}

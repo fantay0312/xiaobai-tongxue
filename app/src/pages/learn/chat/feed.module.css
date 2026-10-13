@@ -1,0 +1,365 @@
+/* 对话流：滚动容器、消息行、来源小签、操作条 */
+.root {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  container: feed / inline-size;
+  color: var(--text);
+  font-family: var(--ui-font);
+}
+
+.scroller {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-2) transparent;
+  outline: none;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  gap: 28px;
+  width: 100%;
+  max-width: 828px; /* 780 正文 + 两侧 24，与外壳的输入框停靠区对齐 */
+  margin: 0 auto;
+  padding: 28px 24px 36px;
+}
+
+.emptyWrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.end { flex: none; height: 1px; margin-top: -1px; }
+
+/* ── 我的提问 ── */
+.user {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 0;
+}
+.userBubble {
+  max-width: min(86%, 620px);
+  padding: 10px 16px;
+  border-radius: var(--r-xl);
+  background: var(--inset);
+  color: var(--text);
+  font: 400 var(--fz-lg)/1.65 var(--ui-font);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.userBubble[data-clamped] {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 8;
+  line-clamp: 8;
+}
+.userTools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--ctl-sm);
+  opacity: 0;
+  transition: opacity var(--dur-2) var(--ease);
+}
+.user:hover .userTools,
+.user:focus-within .userTools { opacity: 1; }
+
+.linkButton {
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--text-3);
+  font: 500 var(--fz-xs)/1.4 var(--ui-font);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.linkButton:hover { background: var(--hover); color: var(--text); }
+.linkButton:active { background: var(--active); }
+.linkButton:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+/* ── 小砚的回答 ── */
+.assistant {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+.identity strong {
+  color: var(--text);
+  font: 600 var(--fz-sm)/1 var(--ui-font);
+  letter-spacing: 0.01em;
+}
+
+.avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--s);
+  height: var(--s);
+  overflow: hidden;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--accent) 20%, white);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+/* 图集 1254px，头部约占 190px：按头像尺寸等比缩放后平移到头部 */
+.avatar img {
+  position: absolute;
+  top: calc(var(--s) * -0.105);
+  left: calc(var(--s) * -0.774);
+  width: calc(var(--s) * 6.6);
+  height: calc(var(--s) * 6.6);
+  max-width: none;
+  user-select: none;
+  pointer-events: none;
+}
+.avatar[data-pose='thinking'] img {
+  top: calc(var(--s) * -3.368);
+  left: calc(var(--s) * -2.816);
+}
+.avatar b {
+  color: var(--accent);
+  font: 650 calc(var(--s) * 0.46)/1 var(--ui-font);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.body {
+  min-width: 0;
+  color: var(--text);
+  font: 400 var(--fz-lg)/1.75 var(--ui-font);
+  overflow-wrap: anywhere;
+}
+
+/* 流式写入时，最后一段文字后面跟一个呼吸的圆点 */
+@keyframes caret {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.82); }
+}
+.body[data-streaming] > div > :is(p, h1, h2, h3, h4, h5, h6, blockquote):last-child::after,
+.body[data-streaming] > div > :is(ul, ol):last-child > li:last-child::after {
+  content: '';
+  display: inline-block;
+  width: 0.62em;
+  height: 0.62em;
+  margin-left: 5px;
+  border-radius: 50%;
+  background: var(--text);
+  vertical-align: 0.02em;
+  animation: caret 1.1s var(--ease-in-out) infinite;
+}
+
+.pending {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--ctl-sm);
+  color: var(--text-3);
+  font: 500 var(--fz-md)/1.5 var(--ui-font);
+}
+
+/* 停止 / 未完成 */
+.runState {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 8px 8px 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.5;
+}
+.runState > svg { flex: none; color: var(--text-3); }
+.runState > span { flex: 1 1 12em; min-width: 0; }
+.runState[data-tone='bad'] { background: var(--bad-soft); color: var(--text); }
+.runState[data-tone='bad'] > svg { color: var(--bad); }
+
+/* ── 来源小签 ── */
+.sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.sourcesLabel {
+  margin-right: 2px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  font-weight: 500;
+}
+.sourceChip,
+.sourceMore {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font: 500 var(--fz-xs)/1 var(--ui-font);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.sourceChip { max-width: min(100%, 230px); padding: 0 11px 0 4px; }
+.sourceMore { padding: 0 11px; color: var(--text-3); }
+.sourceChip i {
+  display: grid;
+  place-items: center;
+  flex: none;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: var(--r-full);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  color: var(--text-2);
+  font: 600 var(--fz-xs)/1 var(--ui-mono);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.sourceChip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sourceChip:hover { background: var(--accent-soft); color: var(--accent); }
+.sourceChip:hover i { background: var(--accent); color: var(--on-accent); }
+.sourceMore:hover { background: var(--active); color: var(--text); }
+.sourceChip:active, .sourceMore:active { transform: scale(0.97); }
+.sourceChip:focus-visible, .sourceMore:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+/* ── 操作条：桌面悬停显现，触屏与最后一条常显 ── */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: var(--ctl-sm);
+  margin: -2px 0 0 -6px;
+  opacity: 0;
+  transition: opacity var(--dur-2) var(--ease);
+}
+.assistant:hover .actions,
+.assistant:focus-within .actions,
+.actions[data-pinned] { opacity: 1; }
+.meta {
+  min-width: 0;
+  margin-left: 8px;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (hover: none) {
+  .actions, .userTools { opacity: 1; }
+}
+
+/* ── 回到底部 ── */
+.toBottomWrap {
+  position: absolute;
+  right: 0;
+  bottom: 14px;
+  left: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(6px);
+  transition: opacity var(--dur-2) var(--ease), transform var(--dur-2) var(--ease), visibility 0s linear var(--dur-2);
+}
+.toBottomWrap[data-visible] {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition-delay: 0s;
+}
+.toBottom {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px 0 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  color: var(--text-2);
+  font: 500 var(--fz-sm)/1 var(--ui-font);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+.toBottom:hover { background: color-mix(in srgb, var(--surface) 92%, var(--text)); color: var(--text); }
+.toBottom:active { transform: scale(0.96); }
+.toBottom:focus-visible { outline: none; box-shadow: var(--shadow-2), 0 0 0 3px var(--ring); }
+
+/* ── 气泡样式：小砚的回答也装进气泡 ── */
+:global(html[data-chat='bubble']) .card {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs) var(--r-xl) var(--r-xl) var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+:global(html[data-chat='bubble']) .userBubble {
+  border-radius: var(--r-xl) var(--r-xl) var(--r-xs) var(--r-xl);
+  background: var(--accent-soft);
+}
+:global(html[data-chat='bubble']) .actions { margin-left: 2px; }
+
+/* ── 窄栏（手机，或侧栏挤压后的对话列） ── */
+@media (max-width: 760px) {
+  .column { padding: 20px 12px 28px; }
+}
+@container feed (max-width: 520px) {
+  .column { gap: 24px; }
+  .userBubble { max-width: 92%; }
+  .sourceChip { max-width: 100%; }
+  .meta { margin-left: 6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .body[data-streaming] > div > :last-child::after,
+  .body[data-streaming] > div > :is(ul, ol):last-child > li:last-child::after { animation: none; }
+  .toBottomWrap, .actions, .userTools { transition: none; }
+}

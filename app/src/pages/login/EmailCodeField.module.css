@@ -1,106 +1,160 @@
+/* 认证字段样式。
+   field / label / input / hint 四个类名被个人中心的换绑、改密表单直接引用，
+   类名不能改；这里只把它们换成新令牌，和 kit 的 Field + Input 同一副长相。 */
+
 .field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-hair);
+  display: grid;
+  gap: 6px;
 }
 
-/* 票据字段签:打字机小签制式(四声部——字段签/眉批走打字机档) */
 .label {
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-small);
-  text-transform: uppercase;
-  letter-spacing: var(--track-label);
-  color: var(--ink-soft);
+  color: var(--text-2);
+  font: 500 var(--fz-sm) / 1.3 var(--ui-font);
 }
 
 .input {
   width: 100%;
   min-width: 0;
-  min-height: 44px;
-  padding: 0.55rem 0.2rem;
-  border: none;
-  border-bottom: 1.5px solid var(--paper-edge);
-  border-radius: 0;
-  background: transparent;
-  color: var(--ink);
-  font-family: var(--font-body);
-  font-size: var(--fs-body);
-  transition: border-color var(--t-fast) var(--ease-out);
+  height: var(--ctl-lg);
+  padding: 0 12px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-md);
+  outline: 0;
+  background: var(--surface);
+  color: var(--text);
+  font: var(--fz-md) / 1.4 var(--ui-font);
+  transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+
+.input::placeholder { color: var(--text-4); }
+
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.input[aria-invalid='true'] { border-color: var(--bad); }
+.input[aria-invalid='true']:focus { box-shadow: 0 0 0 3px var(--bad-soft); }
+
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .input:-webkit-autofill,
 .input:-webkit-autofill:hover,
 .input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 1000px var(--paper) inset;
-  -webkit-text-fill-color: var(--ink);
-  caret-color: var(--ink);
+  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
 }
-
-.input:focus { border-bottom-color: var(--azure); }
-.input[aria-invalid='true'] { border-bottom-color: var(--cinnabar); }
 
 .hint {
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
-  letter-spacing: 0.02em;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.5;
 }
 
-.codeRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: var(--gap-tight);
-}
+/* ── 以下为 EmailCodeField / PhoneCodeField / PasswordInput 内部用 ── */
 
-.phoneRow {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  border-bottom: 1.5px solid var(--paper-edge);
-  transition: border-color var(--t-fast) var(--ease-out);
-}
-
-.phoneRow:focus-within { border-bottom-color: var(--azure); }
-
-.phoneRow:has(.input[aria-invalid='true']) { border-bottom-color: var(--cinnabar); }
-
-.phoneRow .input {
-  border-bottom: 0;
-}
-
+/* 手机号前的区号：跟在图标后，用一条细线与号码隔开 */
 .dialCode {
-  padding-right: var(--gap-hair);
-  color: var(--ink-soft);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-small);
-  letter-spacing: 0.04em;
+  flex: none;
+  padding-right: 8px;
+  border-right: 1px solid var(--border);
+  color: var(--text-2);
+  font: 500 var(--fz-md) / 1 var(--ui-font);
+  font-variant-numeric: tabular-nums;
 }
 
-/* 取码票根钮:铅字小签制式的锐角票券钮(radius-tag),azure 小字合规 */
-.sendCode {
-  min-width: 7.5rem;
-  min-height: 44px;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-tag);
-  background: var(--paper-warm);
-  color: var(--azure-deep);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-small);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  transition: background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+/* 验证码框右侧的发码钮：贴在输入框内，倒计时期间宽度不跳 */
+.codeRule {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  background: var(--border);
 }
 
-.sendCode:hover:not(:disabled) {
-  background: var(--azure-wash);
-  border-color: var(--azure);
+.sendCode.sendCode {
+  min-width: 96px;
+  margin-right: -6px;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
 }
 
-.sendCode:active:not(:disabled) { transform: translateY(1px); }
-.sendCode:disabled { color: var(--ink-faint); cursor: not-allowed; }
-
-@media (max-width: 560px) {
-  .codeRow { gap: var(--gap-hair); }
-  .sendCode { min-width: 6.9rem; padding-inline: 0.5rem; }
+.sendCode.sendCode:hover:not(:disabled) {
+  background: var(--accent-softer);
+  color: var(--accent-hover);
 }
+
+.sendCode.sendCode:disabled {
+  opacity: 1;
+  color: var(--text-3);
+}
+
+/* 密码显隐钮：同样贴在输入框内 */
+.eye {
+  margin-right: -6px;
+}
+
+/* 禁用态（提交中、发码中）：整框退到凹面色，不只是里面的字变灰 */
+.wrap:has(input:disabled) {
+  background: var(--inset);
+  color: var(--text-3);
+}
+
+.wrap input:disabled { cursor: not-allowed; }
+
+/* kit 的输入框内层是透明底，浏览器自动填充会刷出一块异色，这里压回表面色 */
+.autofill:-webkit-autofill,
+.autofill:-webkit-autofill:hover,
+.autofill:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+}
+
+/* 表单级提示行：一条安静的底色条，图标带语义色，正文仍是正文色 */
+.feedback { min-width: 0; }
+
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  color: var(--text);
+  font-size: var(--fz-sm);
+  line-height: 1.5;
+  animation: alertIn var(--dur-2) var(--ease) backwards;
+}
+
+.alert svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.alertBad { background: var(--bad-soft); }
+.alertBad svg { color: var(--bad); }
+.alertOk { background: var(--ok-soft); }
+.alertOk svg { color: var(--ok); }
+
+@keyframes alertIn {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alert { animation: none; }
+}
+
+/* 验证码六位数字留出字距，更好核对 */
+.codeDigits {
+  letter-spacing: 0.18em;
+  font-variant-numeric: tabular-nums;
+}
+
+.codeDigits::placeholder { letter-spacing: 0; }

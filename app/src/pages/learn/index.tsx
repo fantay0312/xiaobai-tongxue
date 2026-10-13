@@ -1,9 +1,20 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+/**
+ * 学习终端 —— 导轨 · 侧栏 · 主区域 · 按需侧面板。
+ * 这里保存终端的全部状态与流程（工作区存取、资料选择、答疑管线、产物、撤销、资料库守卫）；
+ * 版面拆在 shell/ 下，对话流与输入框在 chat/，各功能视图在 views/。
+ */
+import {
+  lazy, Suspense, useEffect, useMemo, useRef, useState,
+  type ComponentType, type FormEvent, type LazyExoticComponent, type ReactNode,
+} from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { ArrowLeft, ArrowRight, Download, FileText, Info, Library, Sparkles, TriangleAlert, X } from 'lucide-react';
 import { useAllTopics } from '../../hooks/useAllTopics';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
+import { useModelPrefs } from '../../store/modelPrefs';
+import { useSkinStore } from '../../store/skinStore';
 import { getTopic } from '../../data';
 import { hydrateTeacherRuntimeTopic, topicCourseKey } from '../../data/runtimeTopics';
 import { isCurrentAccount } from '../../lib/api';
@@ -11,44 +22,66 @@ import { saveBlob } from '../../lib/notebookMedia';
 import { LibraryPicker } from '../library/LibraryPicker';
 import { prepareLibrarySources, readLibrarySources, downloadLibraryFile } from '../../lib/fileLibrary';
 import { getTeacherCustomTopic, listStudyMaterials } from '../../lib/customContent';
-import { Icon, type IconName } from '../../components/ui/Icon';
+import { askDeepStudyTutor, getStudyTutorStatus } from '../../lib/studyTutor';
+import { learningAnswerAvailable, streamLearningAnswer, type LearningEvent, type LearningRun } from '../../lib/learningAnswer';
+import { ModelUnavailableError, streamModel } from '../../lib/modelGateway';
+import { Button, Empty, IconButton, Sheet, Spinner, Tabs, Textarea } from '../../components/ui';
 import { CoachMarkdown } from '../../components/coach/CoachMarkdown';
 import { RequireAuth } from '../../components/shell/RequireAuth';
-import { loadLearningIdentity, saveLearningIdentity, type LearningIdentity } from '../../engine/learningIdentity';
-import { askStudyTutor, downloadStudyFile, loadWorkspace, prepareStudySources, saveWorkspace, studyId, type StudyMode, type StudySource, type StudyWorkspace } from '../../engine/studyWorkspace';
-import type { Topic } from '../../types';
-import { CardsPanel, PracticePanel, ReadingPanel } from './StudyPanels';
-import { StudyWelcome, StudyJourney } from './StudyWelcome';
-import { StudyCompanion } from './StudyCompanion';
-import { Seal } from '../../components/shell/Seal';
 import { useShellActions } from '../../components/shell/ShellActions';
-import { StudyComposer } from './StudyComposer';
-import { GuidedStudyPanel } from './GuidedStudyPanel';
+import { loadLearningIdentity, saveLearningIdentity, type LearningIdentity } from '../../engine/learningIdentity';
+import {
+  askStudyTutor, downloadStudyFile, loadWorkspace, prepareStudySources, saveWorkspace, studyId,
+  type StudyConversation, type StudyMessage, type StudyMode, type StudySource, type StudyWorkspace,
+} from '../../engine/studyWorkspace';
 import { restoreGuidedProgress, sceneQuestionContext, studyScenes } from '../../engine/guidedStudy';
-import { askDeepStudyTutor, getStudyTutorStatus } from '../../lib/studyTutor';
 import { courseSources, notebookScopeKey, selectNotebookSources, sourceEvidence, sourceScopedTopic, type NotebookSource } from '../../engine/notebookSources';
 import { createStudyArtifact, enrichStudyArtifact, type StudioKind, type StudyArtifact } from '../../engine/studyStudio';
-import { SourcesPanel, StudioPanel } from './NotebookPanels';
-import { ArtifactPanel } from './ArtifactPanel';
-import { IntelligentAnswer, LearningSources } from './IntelligentAnswer';
-import { LearningActivity } from './LearningActivity';
-import { learningAnswerAvailable, streamLearningAnswer, type LearningRun } from '../../lib/learningAnswer';
+import { recordTutorTurn, tutorMemoryHints } from '../../engine/tutorMemory';
+import { startAgentScheduler } from '../../engine/agent/scheduler';
 import type { LearningInteraction } from '../../../../server/shared/learning-ui.mjs';
-import s from './learn.module.css';
-import n from './notebook.module.css';
+import type { Topic } from '../../types';
+import { CardsPanel, PracticePanel, ReadingPanel } from './StudyPanels';
+import { StudyJourney } from './StudyWelcome';
+import { StudyCompanion } from './StudyCompanion';
+import { GuidedStudyPanel } from './GuidedStudyPanel';
+import { SourcesPanel, StudioPanel, type StudioToolId } from './NotebookPanels';
+import { ArtifactPanel } from './ArtifactPanel';
+import { ChatFeed } from './chat/ChatFeed';
+import { Composer } from './chat/Composer';
+import type { TerminalViewProps } from './views/types';
+import { CommandPalette } from './shell/CommandPalette';
+import { Inspector } from './shell/Inspector';
+import { TerminalHeader, type InspectorPanel } from './shell/TerminalHeader';
+import { TerminalRail } from './shell/TerminalRail';
+import { TerminalSidebar, type CourseGroup } from './shell/TerminalSidebar';
+import { TerminalWelcome } from './shell/TerminalWelcome';
+import { STUDY_TABS, VIEW_LABELS, isToolView, isView, useMediaQuery, type ToolView, type View } from './shell/views';
 import t from './terminal.module.css';
 
 const PrepPage = lazy(() => import('../prep'));
 const LibraryPage = lazy(() => import('../library/LibraryPage'));
-type View = 'ask' | 'guided' | 'read' | 'practice' | 'cards' | 'prepare' | 'library' | 'journey' | 'studio' | 'source' | 'notes';
-const VIEWS: { id: View; label: string; icon: IconName }[] = [
-  { id: 'ask', label: '问小砚', icon: 'sparkles' },
-  { id: 'guided', label: '带我学', icon: 'route' },
-  { id: 'read', label: '读讲义', icon: 'book-open' },
-  { id: 'practice', label: '练一练', icon: 'clipboard' },
-  { id: 'cards', label: '闪卡复习', icon: 'library' },
-  { id: 'prepare', label: '备课流程', icon: 'route' },
-];
+const TOOL_COMPONENTS: Record<ToolView, LazyExoticComponent<ComponentType<TerminalViewProps>>> = {
+  workbench: lazy(() => import('./views/WorkbenchView')),
+  feynman: lazy(() => import('./views/FeynmanView')),
+  classroom: lazy(() => import('./views/CourseStudioView')),
+  agent: lazy(() => import('./views/AgentView')),
+  memory: lazy(() => import('./views/MemoryView')),
+};
+
+/** 这些视图下方保留输入框，随时可以向小砚提问 */
+const COMPOSER_VIEWS: View[] = ['ask', 'guided', 'read', 'practice', 'cards', 'studio', 'source'];
+const STUDY_VIEW_IDS: View[] = ['guided', 'read', 'practice', 'cards'];
+const SIDEBAR_KEY = 'xiaobai-terminal-sidebar';
+
+interface StageEvent { id: string; label: string; status: 'running' | 'done' }
+/** 另一侧正在给流式答疑加上思考过程事件；这里先按约定的形状接住 */
+type StreamEvent = LearningEvent | { type: 'reasoning'; text: string };
+
+const NO_COURSE_TOPIC: Topic = {
+  topicId: 'library', title: '资料对话', course: '资料库', tagline: '', transferHint: '', checklist: [], misconceptions: [], quizBank: [],
+  prep: { microLecture: { title: '所选文件', body: '' }, examples: [], selfCheck: [], taskCard: '' },
+};
 
 function useStudyTopic(topicId: string, owner: string | null) {
   const [state, setState] = useState<{ topic?: Topic; error?: boolean }>({});
@@ -68,6 +101,26 @@ function useStudyTopic(topicId: string, owner: string | null) {
   return { topic: custom ? state.topic : getTopic(topicId), loading: custom && !state.topic && !state.error, error: state.error, retry: () => setRetry((value) => value + 1) };
 }
 
+/** 给一条助手消息的进度追加或更新一步 */
+function withStage(message: StudyMessage, stage: StageEvent, startedAt: number): StudyMessage {
+  const step = { id: stage.id, label: stage.label, status: stage.status, at: Date.now() };
+  const steps = message.run?.steps ?? [];
+  return {
+    ...message,
+    run: {
+      status: 'running', startedAt,
+      steps: steps.some((item) => item.id === step.id) ? steps.map((item) => (item.id === step.id ? step : item)) : [...steps, step],
+      elapsedMs: Date.now() - startedAt,
+    },
+  };
+}
+
+/** 结束一次进度：还在转的步骤跟着收尾 */
+function closeRun(run: LearningRun, status: 'complete' | 'stopped' | 'failed', startedAt: number): LearningRun {
+  const settled = status === 'complete' ? 'done' : status === 'failed' ? 'error' : 'stopped';
+  return { ...run, status, elapsedMs: Date.now() - startedAt, steps: run.steps.map((step) => (step.status === 'running' ? { ...step, status: settled } : step)) };
+}
+
 export default function LearningPage() {
   const { topicId = '' } = useParams();
   const owner = useAuthStore((state) => state.user);
@@ -78,28 +131,44 @@ function LearningSession({ topicId, owner }: { topicId: string; owner: string | 
   const [identity, setIdentity] = useState(() => loadLearningIdentity(owner));
   const identityRef = useRef(identity);
   const updateIdentity = (patch: Partial<LearningIdentity>) => {
-    const next = { ...identityRef.current, ...patch };
+    // 教小白页的故事匣也会写这份记录（收下拜师帖），合并前先取最新落盘值，避免用旧值盖掉
+    const next = { ...identityRef.current, ...loadLearningIdentity(owner), ...patch };
     identityRef.current = next;
     saveLearningIdentity(owner, next);
     setIdentity(next);
   };
+  // 终端开着的时候，到点的助理任务照常执行
+  useEffect(() => {
+    const stop = startAgentScheduler(owner);
+    return stop;
+  }, [owner]);
   return <TopicWorkspace key={topicId} topicId={topicId} owner={owner} identity={identity} onIdentity={updateIdentity} />;
 }
 
-function TopicWorkspace({ topicId, owner, identity, onIdentity }: { topicId: string; owner: string | null; identity: LearningIdentity; onIdentity: (patch: Partial<LearningIdentity>) => void }) {
+function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
+  topicId: string; owner: string | null; identity: LearningIdentity; onIdentity: (patch: Partial<LearningIdentity>) => void;
+}) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const requestedView = params.get('view');
-  const view: View = ['guided', 'read', 'practice', 'cards', 'prepare', 'library', 'journey', 'studio', 'source', 'notes'].includes(requestedView ?? '') ? requestedView as View : 'ask';
+  const view: View = isView(requestedView) ? requestedView : 'ask';
   const { topic, loading, error, retry } = useStudyTopic(topicId, owner);
   const topics = useAllTopics();
   const settings = useAppStore((state) => state.settings);
   const level = useAppStore((state) => state.global.learningLevel);
-  const [workspace, setWorkspace] = useState<StudyWorkspace>(() => loadWorkspace(owner, topicId || 'library-chat'));
+  const companionOn = useSkinStore((state) => state.companion);
+  const shellActions = useShellActions();
+  const isMobile = useMediaQuery('(max-width: 760px)');
+  const workspaceKeyId = topicId || 'library-chat';
+
+  const [workspace, setWorkspace] = useState<StudyWorkspace>(() => loadWorkspace(owner, workspaceKeyId));
   const [saveFailed, setSaveFailed] = useState(false);
-  const [sourcesOpen, setSourcesOpen] = useState(true);
-  const [inspectorPanel, setInspectorPanel] = useState<'sources' | 'tools' | null>(null);
-  const [mobilePanel, setMobilePanel] = useState<'sources' | 'main' | 'studio'>('main');
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    try { return localStorage.getItem(SIDEBAR_KEY) !== 'closed'; } catch { return true; }
+  });
+  const [navSheetOpen, setNavSheetOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [inspectorPanel, setInspectorPanel] = useState<InspectorPanel | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [librarySources, setLibrarySources] = useState<NotebookSource[]>([]);
   const materialsRequest = useRef<AbortController | null>(null);
@@ -107,14 +176,11 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: { topicId: str
   const [materialsError, setMaterialsError] = useState('');
   const [materialsRetry, setMaterialsRetry] = useState(0);
   const [remoteSources, setRemoteSources] = useState<NotebookSource[]>([]);
-  const shellActions = useShellActions();
-  const authStatus = useAuthStore((state) => state.status);
-  const [query, setQuery] = useState('');
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<StudyMode>('ask');
   const [deepAvailable, setDeepAvailable] = useState(false);
   const [intelligentAvailable, setIntelligentAvailable] = useState(false);
-  const activeStream = useRef<{chatId:string;messageId:string;startedAt:number} | null>(null);
+  const activeStream = useRef<{ chatId: string; messageId: string; startedAt: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState('');
   const [notice, setNotice] = useState('');
@@ -125,14 +191,22 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: { topicId: str
   const requestRef = useRef<AbortController | null>(null);
   const requestSerial = useRef(0);
   const composerRef = useRef<HTMLTextAreaElement>(null);
-  const endRef = useRef<HTMLDivElement>(null);
   const feedRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef(true);
+
   const conversation = workspace.conversations.find((chat) => chat.id === workspace.activeId) ?? workspace.conversations[0];
   const attachmentKey = (conversation.libraryFileIds ?? []).join(',');
-  const studyTopic: Topic = topic ?? { topicId: 'library', title: '资料对话', course: '资料库', tagline: '', transferHint: '', checklist: [], misconceptions: [], quizBank: [], prep: { microLecture: { title: '所选文件', body: '' }, examples: [], selfCheck: [], taskCard: '' } };
-  const sources = useMemo(() => [...(topic ? courseSources(topic) : []), ...remoteSources, ...(workspace.textSources ?? []), ...librarySources.filter((source) => (conversation.libraryFileIds ?? []).includes(source.libraryFileId ?? ''))], [topic, remoteSources, workspace.textSources, librarySources, conversation.libraryFileIds]);
-  const selectedSources = useMemo(() => selectNotebookSources(sources, conversation.selectedSourceIds ?? workspace.selectedSourceIds), [sources, conversation.selectedSourceIds, workspace.selectedSourceIds]);
+  const studyTopic: Topic = topic ?? NO_COURSE_TOPIC;
+  const sources = useMemo(() => [
+    ...(topic ? courseSources(topic) : []),
+    ...remoteSources,
+    ...(workspace.textSources ?? []),
+    ...librarySources.filter((source) => (conversation.libraryFileIds ?? []).includes(source.libraryFileId ?? '')),
+  ], [topic, remoteSources, workspace.textSources, librarySources, conversation.libraryFileIds]);
+  const selectedSources = useMemo(
+    () => selectNotebookSources(sources, conversation.selectedSourceIds ?? workspace.selectedSourceIds),
+    [sources, conversation.selectedSourceIds, workspace.selectedSourceIds],
+  );
   const scopeKey = notebookScopeKey(selectedSources);
   const scopedTopic = sourceScopedTopic(studyTopic, selectedSources);
   const includesLecture = selectedSources.some((source) => source.id === `lecture:${topicId}`);
@@ -140,21 +214,31 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: { topicId: str
   const guided = restoreGuidedProgress(scenes, workspace.guided);
   const artifacts = (workspace.artifacts ?? []).filter((item) => !item.conversationId || item.conversationId === conversation.id);
   const artifact = artifacts.find((item) => item.id === params.get('artifact'));
-  const customCards = includesLecture ? undefined : sourceEvidence(selectedSources).map((source) => ({ id: `${scopeKey}:${source.id}`, front: `请用自己的话解释：${source.title}`, back: source.excerpt }));
+  const customCards = includesLecture ? undefined : sourceEvidence(selectedSources).map((source) => ({
+    id: `${scopeKey}:${source.id}`, front: `请用自己的话解释：${source.title}`, back: source.excerpt,
+  }));
+  const topicUnavailable = loading || Boolean(error) || Boolean(topicId && !topic);
+
+  /* ── 资料与可用能力 ── */
   useEffect(() => {
-    const controller = new AbortController(); materialsRequest.current = controller;
-    setLibrarySources([]); setMaterialsError('');
+    const controller = new AbortController();
+    materialsRequest.current = controller;
+    setLibrarySources([]);
+    setMaterialsError('');
     if (!attachmentKey) { setMaterialsBusy(false); return () => controller.abort(); }
     setMaterialsBusy(true);
-    void prepareLibrarySources(attachmentKey.split(','), controller.signal, (message) => { if (!controller.signal.aborted) setPhase(message); }, materialsRetry > 0).then((result) => {
-      if (!controller.signal.aborted && isCurrentAccount(owner, useAuthStore.getState())) setLibrarySources(result.sources);
-    }).catch((error) => { if (!controller.signal.aborted) setMaterialsError(error.message || '资料读取失败，请重试。'); }).finally(() => { if (!controller.signal.aborted) { setMaterialsBusy(false); setPhase(''); } });
+    void prepareLibrarySources(attachmentKey.split(','), controller.signal, (message) => { if (!controller.signal.aborted) setPhase(message); }, materialsRetry > 0)
+      .then((result) => { if (!controller.signal.aborted && isCurrentAccount(owner, useAuthStore.getState())) setLibrarySources(result.sources); })
+      .catch((reason) => { if (!controller.signal.aborted) setMaterialsError(reason.message || '资料读取失败，请重试。'); })
+      .finally(() => { if (!controller.signal.aborted) { setMaterialsBusy(false); setPhase(''); } });
     return () => controller.abort();
   }, [attachmentKey, conversation.id, owner, materialsRetry]);
   useEffect(() => {
     if (!topicId.startsWith('custom-') || !owner || view === 'library') return;
     const controller = new AbortController();
-    void listStudyMaterials(topicId, controller.signal).then((items) => { if (!controller.signal.aborted) setRemoteSources(items.filter((item) => item.content.trim())); }).catch(() => { if (!controller.signal.aborted) setNotice('原文件摘录暂不可用，可以继续选择已发布讲义，稍后刷新重试。'); });
+    void listStudyMaterials(topicId, controller.signal)
+      .then((items) => { if (!controller.signal.aborted) setRemoteSources(items.filter((item) => item.content.trim())); })
+      .catch(() => { if (!controller.signal.aborted) setNotice('原文件摘录暂不可用，可以继续选择已发布讲义，稍后刷新重试。'); });
     return () => controller.abort();
   }, [topicId, owner, view]);
   useEffect(() => {
@@ -169,11 +253,14 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: { topicId: str
     if (settings.mode === 'proxy' && owner) void learningAnswerAvailable(controller.signal).then((available) => { if (!controller.signal.aborted) setIntelligentAvailable(available); });
     return () => controller.abort();
   }, [settings.mode, owner]);
-  useDocTitle(view === 'library' ? '学习终端 · 资料库' : view === 'journey' ? '学习终端 · 师徒旅程' : topic ? `学习终端 · ${view === 'studio' ? artifact?.title ?? '学习产物' : view === 'notes' ? '学习便笺' : view === 'source' ? '资料原文' : VIEWS.find((item) => item.id === view)?.label ?? '问小砚'} · ${topic.title}` : '学习终端');
+
+  const viewTitle = view === 'studio' ? artifact?.title ?? VIEW_LABELS.studio : view === 'source' ? sourcePreview?.title ?? VIEW_LABELS.source : VIEW_LABELS[view];
+  useDocTitle(topic && !isToolView(view) && view !== 'library' && view !== 'journey' ? `学习终端 · ${viewTitle} · ${topic.title}` : view === 'ask' ? '学习终端' : `学习终端 · ${viewTitle}`);
   useEffect(() => {
     if (topic && topicId && identity.lastTopicId !== topicId) onIdentity({ lastTopicId: topicId });
   }, [topic, topicId, identity.lastTopicId, onIdentity]);
 
+  /* ── 工作区存取 ── */
   const workspaceRef = useRef(workspace);
   workspaceRef.current = workspace;
   // Commit before returning from an input event, including an immediate reload.
@@ -181,10 +268,17 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: { topicId: str
     const next = update(workspaceRef.current);
     workspaceRef.current = next;
     setWorkspace(next);
-    setSaveFailed(!saveWorkspace(owner, topicId || 'library-chat', next));
+    setSaveFailed(!saveWorkspace(owner, workspaceKeyId, next));
   };
+  const mapChat = (chatId: string, update: (chat: StudyConversation) => StudyConversation) => updateWorkspace((current) => ({
+    ...current, conversations: current.conversations.map((chat) => (chat.id === chatId ? update(chat) : chat)),
+  }));
+  const appendMessage = (chatId: string, message: StudyMessage) => mapChat(chatId, (chat) => ({ ...chat, messages: [...chat.messages, message] }));
+  const patchMessage = (chatId: string, messageId: string, patch: (message: StudyMessage) => StudyMessage) => mapChat(chatId, (chat) => ({
+    ...chat, messages: chat.messages.map((message) => (message.id === messageId ? patch(message) : message)),
+  }));
   useEffect(() => {
-    const flush = () => { saveWorkspace(owner, topicId || 'library-chat', workspaceRef.current); };
+    const flush = () => { saveWorkspace(owner, workspaceKeyId, workspaceRef.current); };
     window.addEventListener('pagehide', flush);
     return () => {
       window.removeEventListener('pagehide', flush);
@@ -192,151 +286,360 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: { topicId: str
       requestRef.current?.abort();
       flush();
     };
-  }, [owner, topicId]);
+  }, [owner, workspaceKeyId]);
   const latestMessageText = conversation.messages.at(-1)?.text;
   useEffect(() => {
-    if (pinnedRef.current) endRef.current?.scrollIntoView({ block: 'end', behavior: 'instant' });
+    // 对话流自己不滚动时，由外层容器跟到最新一条
+    const node = feedRef.current;
+    if (node && pinnedRef.current) node.scrollTop = node.scrollHeight;
   }, [conversation.messages.length, latestMessageText, busy]);
   useEffect(() => { setSourcePreview(null); }, [workspace.activeId]);
 
-  const groups = useMemo(() => {
+  const groups = useMemo<CourseGroup[]>(() => {
     const result = new Map<string, { title: string; items: Topic[] }>();
-    topics.filter((item) => !item.locked && `${item.course} ${item.title}`.toLowerCase().includes(query.toLowerCase())).forEach((item) => {
+    topics.filter((item) => !item.locked).forEach((item) => {
       const key = topicCourseKey(item);
       if (!result.has(key)) result.set(key, { title: item.course, items: [] });
       result.get(key)!.items.push(item);
     });
     return [...result.entries()];
-  }, [topics, query]);
+  }, [topics]);
+  const openTopics = useMemo(() => topics.filter((item) => !item.locked), [topics]);
 
-  const switchView = (next: View) => {
+  /* ── 导航 ── */
+  const switchView = (next: View, extra?: Record<string, string>) => {
     if (libraryBlocked && next !== 'library') { setNotice('资料中有未保存的校订或正在提交的任务，请先完成后再切换。'); return; }
-    setParams(next === 'ask' ? {} : { view: next });
-    setMobilePanel('main');
+    setParams({ ...(next === 'ask' ? {} : { view: next }), ...extra });
+    setNavSheetOpen(false);
     if (next === 'library' || next === 'prepare') setInspectorPanel(null);
     setNotice('');
   };
   const openTopic = (id: string) => {
     if (libraryBlocked) { setNotice('请先保存校订或等待当前提交完成，再打开另一门课。'); return; }
-    navigate(`/prep/${encodeURIComponent(id)}`); setMobilePanel('main');
+    setNavSheetOpen(false);
+    navigate(`/prep/${encodeURIComponent(id)}`);
   };
   const chooseCourse = (id?: string) => {
-    if (id) { openTopic(id); return; }
-    setSourcesOpen(true); setMobilePanel('sources');
-    window.requestAnimationFrame(() => document.getElementById('learning-course-search')?.focus());
+    if (id) openTopic(id);
+    else setPaletteOpen(true);
   };
-  const newChat = () => {
-    if (busy) stop();
-    const id = studyId();
-    updateWorkspace((current) => ({ ...current, conversations: [...current.conversations.slice(-23), { id, title: '新的学习对话', messages: [], libraryFileIds: [], selectedSourceIds: sources.filter((source) => source.kind !== 'library').map((source) => source.id) }], activeId: id }));
-    setInput(''); switchView('ask'); composerRef.current?.focus();
+  const setSidebar = (open: boolean) => {
+    setSidebarOpen(open);
+    try { localStorage.setItem(SIDEBAR_KEY, open ? 'open' : 'closed'); } catch { /* 记不住也不影响使用 */ }
   };
-  const askAbout = (text: string) => { setInput(text); switchView('ask'); window.requestAnimationFrame(() => composerRef.current?.focus()); };
-  const saveNote = (text: string, sources: StudySource[] = []) => {
-    const attribution = sources.length ? `\n\n资料来源：\n${sources.map((source, index) => `[${index + 1}] ${source.title}\n> ${source.excerpt.replace(/\n/g, '\n> ')}`).join('\n\n')}` : '';
-    updateWorkspace((current) => ({ ...current, note: `${current.note}${current.note ? '\n\n' : ''}${text}${attribution}`.slice(0, 20000) }));
-    switchView('notes'); setNotice('已收进学习便笺。');
-  };
-  const updateInteraction = (messageId:string,id:string,state:LearningInteraction[string]) => updateWorkspace((current)=>({
-    ...current,conversations:current.conversations.map((chat)=>chat.id===conversation.id?{
-      ...chat,messages:chat.messages.map((message)=>message.id===messageId?{...message,interaction:{...message.interaction,[id]:state}}:message),
-    }:chat),
-  }));
+  const toggleInspector = (panel: InspectorPanel) => setInspectorPanel((current) => (current === panel ? null : panel));
+  const focusComposer = () => window.requestAnimationFrame(() => composerRef.current?.focus());
+
+  /* ── 对话 ── */
   const stop = () => {
     if (materialsBusy) { materialsRequest.current?.abort(); setMaterialsBusy(false); setMaterialsError('已停止读取资料，可重新连接。'); }
-    requestSerial.current += 1; requestRef.current?.abort();
+    requestSerial.current += 1;
+    requestRef.current?.abort();
     const stream = activeStream.current;
-    if (stream) updateWorkspace((current) => ({...current,conversations:current.conversations.map((chat)=>chat.id===stream.chatId?{...chat,messages:chat.messages.map((message)=>message.id===stream.messageId&&message.run?{...message,run:{...message.run,status:'stopped',elapsedMs:Date.now()-stream.startedAt,steps:message.run.steps.map((step)=>step.status==='running'?{...step,status:'stopped'}:step)}}:message)}:chat)}));
-    activeStream.current=null;setBusy(false); setPhase(''); setNotice('已停止处理，已有内容已保留。');
+    if (stream) patchMessage(stream.chatId, stream.messageId, (message) => (message.run ? { ...message, run: closeRun(message.run, 'stopped', stream.startedAt) } : message));
+    activeStream.current = null;
+    setBusy(false);
+    setPhase('');
+    setNotice('已停止处理，已有内容已保留。');
   };
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (busy || materialsBusy || !input.trim()) return;
-    if (materialsError) { setNotice('所选文件尚未准备好，请先重新连接资料。'); return; }
-    if (!selectedSources.length) { setNotice('请先勾选至少一份学习资料。'); return; }
-    if (mode === 'deep' && !deepAvailable) { setNotice('深入答疑暂不可用，请选择直接答疑或引导思考。'); return; }
-    const activeScene = view === 'guided' ? scenes.find((scene) => scene.id === guided.activeId) : undefined;
-    if (activeScene) updateWorkspace((current) => ({ ...current, guided: { ...guided, returnId: activeScene.id } }));
-    if (view !== 'ask') switchView('ask');
-    const question = `${input.trim()}${activeScene ? `\n\n${sceneQuestionContext(activeScene)}` : ''}`.slice(0, 3000);
+  const newChat = () => {
+    if (libraryBlocked) { setNotice('请先保存校订或等待当前提交完成，再新建对话。'); return; }
+    if (busy) stop();
+    const id = studyId();
+    updateWorkspace((current) => ({
+      ...current,
+      conversations: [...current.conversations.slice(-23), { id, title: '新的学习对话', messages: [], libraryFileIds: [], selectedSourceIds: sources.filter((source) => source.kind !== 'library').map((source) => source.id) }],
+      activeId: id,
+    }));
+    setInput('');
+    switchView('ask');
+    focusComposer();
+  };
+  const selectChat = (id: string) => {
+    if (libraryBlocked) { setNotice('请先保存校订或等待当前提交完成，再切换对话。'); return; }
+    if (busy) stop();
+    updateWorkspace((current) => ({ ...current, activeId: id }));
+    switchView('ask');
+  };
+  const renameChat = (id: string, title: string) => mapChat(id, (chat) => ({ ...chat, title: title.slice(0, 80) }));
+  const deleteChat = (id: string) => {
+    if (libraryBlocked) { setNotice('请先保存校订或等待当前提交完成，再删除对话。'); return; }
+    const removed = workspace.conversations.find((chat) => chat.id === id);
+    if (!removed) return;
+    const removedArtifacts = (workspace.artifacts ?? []).filter((item) => item.conversationId === id);
+    if (busy && id === conversation.id) stop();
+    updateWorkspace((current) => {
+      const rest = current.conversations.filter((chat) => chat.id !== id);
+      const conversations = rest.length ? rest : [{ id: studyId(), title: '新的学习对话', messages: [], libraryFileIds: [] }];
+      return {
+        ...current, conversations,
+        activeId: current.activeId === id ? conversations[conversations.length - 1].id : current.activeId,
+        artifacts: (current.artifacts ?? []).filter((item) => item.conversationId !== id),
+      };
+    });
+    undoRef.current = () => updateWorkspace((current) => ({
+      ...current,
+      conversations: [...current.conversations.filter((chat) => chat.id !== id), removed].slice(-24),
+      activeId: removed.id,
+      artifacts: [...(current.artifacts ?? []), ...removedArtifacts].slice(-24),
+    }));
+    setNotice('对话已删除。');
+    setUndoLabel('撤销删除');
+  };
+  const askAbout = (text: string) => { setInput(text); switchView('ask'); focusComposer(); };
+  const saveNote = (text: string, cited: StudySource[] = []) => {
+    const attribution = cited.length ? `\n\n资料来源：\n${cited.map((source, index) => `[${index + 1}] ${source.title}\n> ${source.excerpt.replace(/\n/g, '\n> ')}`).join('\n\n')}` : '';
+    updateWorkspace((current) => ({ ...current, note: `${current.note}${current.note ? '\n\n' : ''}${text}${attribution}`.slice(0, 20000) }));
+    switchView('notes');
+    setNotice('已收进学习便笺。');
+  };
+  const updateInteraction = (messageId: string, id: string, state: LearningInteraction[string]) => patchMessage(
+    conversation.id, messageId, (message) => ({ ...message, interaction: { ...message.interaction, [id]: state } }),
+  );
+  const remember = (question: string, answer: string) => {
+    try { recordTutorTurn(owner, { topicId: topicId || undefined, topicTitle: topic?.title, question, answer }); } catch { /* 记忆提炼失败不影响答疑 */ }
+  };
+
+  /** 发送前的检查；不满足时给出提示并带用户到该去的地方 */
+  const canSend = () => {
+    if (busy || materialsBusy) return false;
+    if (materialsError) { setNotice('所选文件尚未准备好，请先重新连接资料。'); return false; }
+    if (sources.length && !selectedSources.length) { setNotice('请先勾选至少一份学习资料。'); setInspectorPanel('sources'); return false; }
+    if (sources.length && mode === 'deep' && !deepAvailable) { setNotice('深入答疑暂不可用，请选择直接答疑或引导思考。'); return false; }
+    return true;
+  };
+
+  /**
+   * 答疑管线。dropFrom 用于「重新生成」：从这条用户提问起替换掉原来的一轮。
+   * 四条路：没有任何资料时凭模型自身知识作答；有资料时依次是流式生成式答疑、DeepTutor 深入答疑、普通答疑。
+   */
+  const send = async (question: string, dropFrom?: number) => {
     const chatId = conversation.id;
     const serial = ++requestSerial.current;
-    const controller = new AbortController(); requestRef.current = controller;
+    const controller = new AbortController();
+    requestRef.current = controller;
     const currentRequest = () => serial === requestSerial.current && !controller.signal.aborted && isCurrentAccount(owner, useAuthStore.getState());
-    const history = conversation.messages.filter((message) => message.scopeKey === scopeKey);
-    updateWorkspace((current) => ({ ...current, conversations: current.conversations.map((chat) => chat.id === chatId ? { ...chat, title: chat.messages.length ? chat.title : question.slice(0, 28), messages: [...chat.messages, { id: studyId(), role: 'user', text: question, sources: [], scopeKey }] } : chat) }));
-    setInput(''); setNotice(''); setBusy(true); pinnedRef.current = true;
-    let evidence = prepareStudySources(sourceEvidence(selectedSources, question));
+    const kept = dropFrom === undefined ? conversation.messages : conversation.messages.slice(0, dropFrom);
+    const history = kept.filter((message) => message.scopeKey === scopeKey);
+    const prefs = useModelPrefs.getState();
+    const stamp = { ...(prefs.model ? { model: prefs.model } : {}), effort: prefs.effort };
+    mapChat(chatId, (chat) => ({
+      ...chat,
+      title: chat.messages.length ? chat.title : question.slice(0, 28),
+      messages: [...(dropFrom === undefined ? chat.messages : chat.messages.slice(0, dropFrom)), { id: studyId(), role: 'user', text: question, sources: [], scopeKey }],
+    }));
+    setNotice('');
+    setBusy(true);
+    pinnedRef.current = true;
+
+    /** 先放一条带进度的空回答，后面的事件往里填 */
+    const openAnswer = (extra: Partial<StudyMessage> = {}, steps: LearningRun['steps'] = []) => {
+      const messageId = studyId();
+      const startedAt = Date.now();
+      activeStream.current = { chatId, messageId, startedAt };
+      appendMessage(chatId, { id: messageId, role: 'assistant', text: '', sources: [], scopeKey, run: { status: 'running', startedAt, elapsedMs: 0, steps }, ...extra });
+      return { messageId, startedAt };
+    };
+
     try {
-      if (intelligentAvailable && settings.mode==='proxy' && mode!=='deep') {
-        const messageId=studyId(),startedAt=Date.now();
-        activeStream.current={chatId,messageId,startedAt};
-        const run:LearningRun={status:'running',startedAt,elapsedMs:0,steps:[]};
-        updateWorkspace((current)=>({...current,conversations:current.conversations.map((chat)=>chat.id===chatId?{...chat,messages:[...chat.messages,{id:messageId,role:'assistant',text:'',sources:[],scopeKey,run}]}:chat)}));
-        await streamLearningAnswer({question,topicId:topicId||'library',sources:selectedSources,history,mode,format:workspace.answerFormat??'auto',signal:controller.signal,onEvent:(event)=>{
-          if(!currentRequest())return;
-          updateWorkspace((current)=>({...current,conversations:current.conversations.map((chat)=>chat.id===chatId?{...chat,messages:chat.messages.map((message)=>{
-            if(message.id!==messageId)return message;
-            if(event.type==='stage'){
-              const step={id:event.id,label:event.label,status:event.status,at:Date.now()};
-              const steps=message.run?.steps??[];
-              return {...message,run:{...run,steps:steps.some((item)=>item.id===event.id)?steps.map((item)=>item.id===event.id?step:item):[...steps,step],elapsedMs:Date.now()-startedAt}};
-            }
-            if(event.type==='sources')return {...message,sources:prepareStudySources(event.sources,900,8)};
-            if(event.type==='text')return {...message,text:event.text};
-            return {...message,text:event.text,ui:event.ui,interaction:{},sources:prepareStudySources(event.sources,900,8),run:{...message.run!,status:'complete',elapsedMs:Date.now()-startedAt}};
-          })}:chat)}));
-        }});
-        activeStream.current=null;
+      if (!sources.length) {
+        if (settings.mode === 'mock') {
+          appendMessage(chatId, { id: studyId(), role: 'assistant', local: true, sources: [], scopeKey, text: '当前是本地演示，没有连接模型。打开一门课或添加资料后再问我，我会把相关原文找出来给你对照。' });
+          return;
+        }
+        const { messageId, startedAt } = openAnswer(stamp, [{ id: 'model', label: '小砚正在思考', status: 'running', at: Date.now() }]);
+        const hints = tutorMemoryHints(owner, undefined, 6);
+        try {
+          const result = await streamModel({
+            messages: [
+              { role: 'system', content: [
+                '你是小砚，帮助大学生自主学习的助教。学生还没有打开课程，也没有提供资料：凭可靠的知识回答，不确定就直说，不要编造出处或声称看过某份资料。',
+                mode === 'socratic' ? '使用苏格拉底引导：先抓住学生的具体疑点，给一个必要提示，再一次只问一个能帮助推理的问题。' : '先讲清核心想法，再给一个简洁例子和一个自检问题。',
+                hints.length ? `你记得这位学生：${hints.join('；')}` : '',
+                '用中文 Markdown 回答，公式用 LaTeX，不用“小砚：”前缀。',
+              ].filter(Boolean).join('\n') },
+              ...history.slice(-8).map((message) => (message.role === 'user'
+                ? { role: 'user' as const, content: message.text.slice(0, 1500) }
+                : { role: 'assistant' as const, content: message.text.slice(0, 1500) })),
+              { role: 'user', content: question },
+            ],
+            model: prefs.model, effort: prefs.effort, signal: controller.signal,
+            onText: (text) => { if (currentRequest()) patchMessage(chatId, messageId, (message) => ({ ...message, text: text.slice(0, 16000) })); },
+            onReasoning: (reasoning) => { if (currentRequest()) patchMessage(chatId, messageId, (message) => ({ ...message, reasoning: reasoning.slice(0, 12000), thinkingMs: Date.now() - startedAt })); },
+          });
+          if (!currentRequest()) return;
+          if (!result.text.trim()) throw new Error('empty-study-reply');
+          patchMessage(chatId, messageId, (message) => ({
+            ...message, text: result.text.slice(0, 16000), model: result.model || message.model,
+            ...(result.reasoning ? { reasoning: result.reasoning.slice(0, 12000) } : {}),
+            run: closeRun(message.run!, 'complete', startedAt),
+          }));
+          activeStream.current = null;
+          remember(question, result.text);
+        } catch (reason) {
+          if (!(reason instanceof ModelUnavailableError) || !currentRequest()) throw reason;
+          // 没有可用模型：明确说明，而不是留下一条失败的空回答
+          activeStream.current = null;
+          patchMessage(chatId, messageId, ({ run: _run, model: _model, effort: _effort, ...message }) => ({
+            ...message, local: true, text: '现在没有可用的模型。打开一门课或添加资料后，我可以先把相关原文摘出来给你对照。',
+          }));
+        }
         return;
       }
+
+      if (intelligentAvailable && settings.mode === 'proxy' && mode !== 'deep') {
+        const { messageId, startedAt } = openAnswer(stamp);
+        const onEvent = (event: StreamEvent) => {
+          if (!currentRequest()) return;
+          patchMessage(chatId, messageId, (message) => {
+            if (event.type === 'stage') return withStage(message, event, startedAt);
+            if (event.type === 'sources') return { ...message, sources: prepareStudySources(event.sources, 900, 8) };
+            if (event.type === 'reasoning') return { ...message, reasoning: event.text.slice(0, 12000), thinkingMs: Date.now() - startedAt };
+            if (event.type === 'text') return { ...message, text: event.text };
+            return { ...message, text: event.text, ui: event.ui, interaction: {}, sources: prepareStudySources(event.sources, 900, 8), run: { ...message.run!, status: 'complete', elapsedMs: Date.now() - startedAt } };
+          });
+          if (event.type === 'done') remember(question, event.text);
+        };
+        const request = {
+          question, topicId: topicId || 'library', sources: selectedSources, history, mode, format: workspace.answerFormat ?? 'auto',
+          signal: controller.signal, model: prefs.model ?? undefined, effort: prefs.effort, owner, onEvent,
+        };
+        await streamLearningAnswer(request as Parameters<typeof streamLearningAnswer>[0]);
+        activeStream.current = null;
+        return;
+      }
+
+      let evidence = prepareStudySources(sourceEvidence(selectedSources, question));
       const fileIds = selectedSources.filter((source) => source.libraryFileId).map((source) => source.libraryFileId!);
+
+      if (mode === 'deep') {
+        const { messageId, startedAt } = openAnswer({ engine: 'deeptutor', ...stamp });
+        const report = (stage: StageEvent) => { if (currentRequest()) patchMessage(chatId, messageId, (message) => withStage(message, stage, startedAt)); };
+        if (fileIds.length) {
+          report({ id: 'files', label: '核对所选文件', status: 'running' });
+          await readLibrarySources(fileIds, question, controller.signal);
+          report({ id: 'files', label: '核对所选文件', status: 'done' });
+        }
+        if (!currentRequest()) return;
+        // 先挂一步「已提交」，DeepTutor 开始回报自己的阶段后就让位
+        report({ id: 'handoff', label: 'DeepTutor 正在核对资料并组织解释', status: 'running' });
+        let reported = false;
+        const onStage = (stage: StageEvent) => {
+          if (!reported) { reported = true; report({ id: 'handoff', label: '已交给 DeepTutor', status: 'done' }); }
+          report(stage);
+        };
+        const request = { topic: studyTopic, question, note: '', history, signal: controller.signal, selectedSources, onStage };
+        const reply = await askDeepStudyTutor(request as Parameters<typeof askDeepStudyTutor>[0]);
+        if (!currentRequest()) return;
+        patchMessage(chatId, messageId, (message) => ({
+          ...message, text: reply.content, sources: prepareStudySources(reply.sources), engine: 'deeptutor', rounds: reply.rounds,
+          run: closeRun(message.run!, 'complete', startedAt),
+        }));
+        activeStream.current = null;
+        if (reply.sourceNote) setNotice(reply.sourceNote);
+        remember(question, reply.content);
+        return;
+      }
+
       if (fileIds.length) {
         const verified = await readLibrarySources(fileIds, question, controller.signal);
         evidence = prepareStudySources([...verified.evidence, ...sourceEvidence(selectedSources.filter((source) => !source.libraryFileId), question)]);
       }
       if (!currentRequest()) return;
-      if (mode === 'deep') {
-        setPhase('小砚正在通过 DeepTutor 核对资料并组织解释…');
-        const reply = await askDeepStudyTutor({ topic: studyTopic, question, note: '', history, signal: controller.signal, selectedSources });
-        if (!currentRequest()) return;
-        updateWorkspace((current) => ({ ...current, conversations: current.conversations.map((chat) => chat.id === chatId ? { ...chat, messages: [...chat.messages, { id: studyId(), role: 'assistant', text: reply.content, sources: prepareStudySources(reply.sources), engine: 'deeptutor', rounds: reply.rounds, scopeKey }] } : chat) }));
-        if (reply.sourceNote) setNotice(reply.sourceNote);
-        return;
-      }
       setPhase('小砚正在整理解释…');
       const local = settings.mode === 'mock';
-      const reply = local ? `当前为本地演示，以下是所选资料的摘录，供你对照阅读。\n\n${evidence.map((source, i) => `${source.excerpt} [${i + 1}]`).join('\n\n')}` : await askStudyTutor({ topic: studyTopic, mode, note: '', sources: evidence, history, question, settings, signal: controller.signal, selectedOnly: true });
+      const reply = local
+        ? `当前为本地演示，以下是所选资料的摘录，供你对照阅读。\n\n${evidence.map((source, index) => `${source.excerpt} [${index + 1}]`).join('\n\n')}`
+        : await askStudyTutor({ topic: studyTopic, mode, note: '', sources: evidence, history, question, settings, signal: controller.signal, selectedOnly: true });
       if (!currentRequest()) return;
-      updateWorkspace((current) => ({ ...current, conversations: current.conversations.map((chat) => chat.id === chatId ? { ...chat, messages: [...chat.messages, { id: studyId(), role: 'assistant', text: reply, sources: evidence, local, scopeKey }] } : chat) }));
+      appendMessage(chatId, { id: studyId(), role: 'assistant', text: reply, sources: evidence, local, scopeKey });
+      remember(question, reply);
     } catch {
       if (currentRequest()) {
-        const stream=activeStream.current;
-        if(stream)updateWorkspace((current)=>({...current,conversations:current.conversations.map((chat)=>chat.id===chatId?{...chat,messages:chat.messages.map((message)=>message.id===stream.messageId&&message.run?{...message,run:{...message.run,status:'failed',elapsedMs:Date.now()-stream.startedAt,steps:message.run.steps.map((step)=>step.status==='running'?{...step,status:'error'}:step)}}:message)}:chat)}));
-        activeStream.current=null;setInput(question); setNotice('本次回答未完成，问题已放回输入框。请重试；已经显示的内容已保留。');
+        const stream = activeStream.current;
+        if (stream) patchMessage(chatId, stream.messageId, (message) => (message.run ? { ...message, run: closeRun(message.run, 'failed', stream.startedAt) } : message));
+        activeStream.current = null;
+        setInput(question);
+        setNotice('本次回答未完成，问题已放回输入框。请重试；已经显示的内容已保留。');
       }
-    } finally { if (currentRequest()) { setBusy(false); setPhase(''); } }
+    } finally {
+      if (currentRequest()) { setBusy(false); setPhase(''); }
+    }
   };
 
-  const openSource = (source: StudySource) => { const fileId = source.fileId ?? (source.id.startsWith('library:') ? source.id.split(':')[1] : undefined); setSourcePreview({ ...source, fileId }); switchView('source'); };
+  const submit = (event?: FormEvent) => {
+    event?.preventDefault();
+    if (!input.trim() || !canSend()) return;
+    const activeScene = view === 'guided' ? scenes.find((scene) => scene.id === guided.activeId) : undefined;
+    if (activeScene) updateWorkspace((current) => ({ ...current, guided: { ...guided, returnId: activeScene.id } }));
+    if (view !== 'ask') switchView('ask');
+    const question = `${input.trim()}${activeScene ? `\n\n${sceneQuestionContext(activeScene)}` : ''}`.slice(0, 3000);
+    setInput('');
+    void send(question);
+  };
+  /** 重新生成：把这条回答前面的那个提问再问一次 */
+  const regenerate = (messageId: string) => {
+    const messages = conversation.messages;
+    const index = messages.findIndex((message) => message.id === messageId);
+    if (index < 0 || !canSend()) return;
+    let asked = index - 1;
+    while (asked >= 0 && messages[asked].role !== 'user') asked -= 1;
+    if (asked < 0) return;
+    // 最后一轮直接替换；更早的回答保持原样，在末尾重新问一次
+    const lastTurn = !messages.slice(index + 1).some((message) => message.role === 'user');
+    void send(messages[asked].text, lastTurn ? asked : undefined);
+  };
+
+  /* ── 资料与产物 ── */
+  const openSource = (source: StudySource) => {
+    const fileId = source.fileId ?? (source.id.startsWith('library:') ? source.id.split(':')[1] : undefined);
+    setSourcePreview({ ...source, fileId });
+    switchView('source');
+  };
   const selectSources = (ids: string[]) => {
     if (busy) stop();
-    updateWorkspace((current) => ({ ...current, conversations: current.conversations.map((chat) => chat.id === conversation.id ? { ...chat, selectedSourceIds: ids } : chat), readSections: [] }));
+    updateWorkspace((current) => ({ ...current, conversations: current.conversations.map((chat) => (chat.id === conversation.id ? { ...chat, selectedSourceIds: ids } : chat)), readSections: [] }));
   };
   const attachFiles = (ids: string[]) => {
     if (busy) stop();
-    const unique = [...new Set(ids)].slice(0,12);
-    updateWorkspace((current) => ({ ...current, conversations: current.conversations.map((chat) => chat.id === conversation.id ? { ...chat, libraryFileIds: unique, selectedSourceIds: [...selectedSources.filter((source) => !source.libraryFileId).map((source) => source.id), ...unique.map((id) => `library:${id}`)] } : chat) }));
-    setPickerOpen(false); switchView('ask');
+    const unique = [...new Set(ids)].slice(0, 12);
+    mapChat(conversation.id, (chat) => ({
+      ...chat, libraryFileIds: unique,
+      selectedSourceIds: [...selectedSources.filter((source) => !source.libraryFileId).map((source) => source.id), ...unique.map((id) => `library:${id}`)],
+    }));
+    setPickerOpen(false);
+    switchView('ask');
   };
   const addFiles = (ids: string[]) => {
     const merged = [...new Set([...(conversation.libraryFileIds ?? []), ...ids])];
     if (merged.length > 12) { setNotice('当前对话最多使用 12 份文件，请先移除不需要的文件。'); return; }
     attachFiles(merged);
   };
+  const addTextSource = (title: string, content: string) => {
+    if ((workspace.textSources?.length ?? 0) >= 16) { setNotice('每课最多保存 16 份补充文本，请先整理已有资料。'); return; }
+    const source: NotebookSource = { id: `text:${studyId()}`, title, content, kind: 'text' };
+    updateWorkspace((current) => ({
+      ...current, textSources: [...(current.textSources ?? []), source],
+      conversations: current.conversations.map((chat) => (chat.id === conversation.id ? { ...chat, selectedSourceIds: [...selectedSources.map((item) => item.id), source.id] } : chat)),
+    }));
+  };
+  const removeSource = (id: string) => {
+    const removed = workspace.textSources?.find((item) => item.id === id);
+    if (!removed) return;
+    if (busy) stop();
+    updateWorkspace((current) => ({ ...current, textSources: (current.textSources ?? []).filter((item) => item.id !== id), selectedSourceIds: selectedSources.filter((item) => item.id !== id).map((item) => item.id) }));
+    undoRef.current = () => updateWorkspace((current) => ({
+      ...current, textSources: [...(current.textSources ?? []).filter((item) => item.id !== id), removed],
+      selectedSourceIds: [...(current.selectedSourceIds ?? sources.map((source) => source.id)), id],
+    }));
+    setNotice('补充文本已从本课移除。');
+    setUndoLabel('撤销移除');
+  };
   const openArtifact = (id: string) => {
     if (libraryBlocked) { setNotice('请先保存资料校订。'); return; }
-    setParams({ view: 'studio', artifact: id }); setMobilePanel('main'); setNotice('');
+    setParams({ view: 'studio', artifact: id });
+    setNavSheetOpen(false);
+    setNotice('');
   };
   const verifiedSelection = async (signal: AbortSignal) => {
     const fileIds = selectedSources.filter((source) => source.libraryFileId).map((source) => source.libraryFileId!);
@@ -344,13 +647,15 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: { topicId: str
     const verified = await readLibrarySources(fileIds, '', signal);
     return [...selectedSources.filter((source) => !source.libraryFileId), ...verified.sources];
   };
-  const createItem = async (kind: StudioKind | 'guided' | 'read' | 'practice' | 'cards') => {
-    if (materialsBusy || materialsError || !selectedSources.length) { setNotice('请先选择并准备好学习资料。'); return; }
-    if (['guided', 'read', 'practice', 'cards'].includes(kind)) { switchView(kind as View); return; }
+  const createItem = async (kind: StudioToolId) => {
+    if (materialsBusy || materialsError || !selectedSources.length) { setNotice('请先选择并准备好学习资料。'); setInspectorPanel('sources'); return; }
+    if (kind === 'guided' || kind === 'read' || kind === 'practice' || kind === 'cards') { switchView(kind); return; }
     if (libraryBlocked || busy) return;
-    const controller = new AbortController(); requestRef.current = controller;
+    const controller = new AbortController();
+    requestRef.current = controller;
     const serial = ++requestSerial.current;
-    setBusy(true); setPhase('正在核对资料来源…');
+    setBusy(true);
+    setPhase('正在核对资料来源…');
     try {
       const verified = await verifiedSelection(controller.signal);
       if (serial !== requestSerial.current || controller.signal.aborted || !isCurrentAccount(owner, useAuthStore.getState())) return;
@@ -359,114 +664,444 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: { topicId: str
       const created = { ...createStudyArtifact(kind as StudioKind, studyTopic.title, verified), conversationId: conversation.id };
       updateWorkspace((current) => ({ ...current, artifacts: [...(current.artifacts ?? []).slice(-23), created] }));
       openArtifact(created.id);
-    } catch (error) { if (!controller.signal.aborted) setNotice(error instanceof Error ? error.message : '无法读取所选资料。'); }
-    finally { if (serial === requestSerial.current) { setBusy(false); setPhase(''); } }
+    } catch (reason) {
+      if (!controller.signal.aborted) setNotice(reason instanceof Error ? reason.message : '无法读取所选资料。');
+    } finally {
+      if (serial === requestSerial.current) { setBusy(false); setPhase(''); }
+    }
   };
-  const updateArtifact = (updated: StudyArtifact) => updateWorkspace((current) => ({ ...current, artifacts: (current.artifacts ?? []).map((item) => item.id === updated.id ? updated : item) }));
+  const updateArtifact = (updated: StudyArtifact) => updateWorkspace((current) => ({ ...current, artifacts: (current.artifacts ?? []).map((item) => (item.id === updated.id ? updated : item)) }));
   const removeArtifact = (id: string) => {
-    const removed = artifacts.find((item) => item.id === id); if (!removed) return;
+    const removed = artifacts.find((item) => item.id === id);
+    if (!removed) return;
     updateWorkspace((current) => ({ ...current, artifacts: (current.artifacts ?? []).filter((item) => item.id !== id) }));
     if (artifact?.id === id) switchView('ask');
     undoRef.current = () => updateWorkspace((current) => ({ ...current, artifacts: [...(current.artifacts ?? []).filter((item) => item.id !== id), removed] }));
-    setNotice('产物已从当前学习工坊移除。'); setUndoLabel('撤销移除');
-  };
-  const removeSource = (id: string) => {
-    const removed = workspace.textSources?.find((item) => item.id === id); if (!removed) return;
-    if (busy) stop();
-    updateWorkspace((current) => ({ ...current, textSources: (current.textSources ?? []).filter((item) => item.id !== id), selectedSourceIds: selectedSources.filter((item) => item.id !== id).map((item) => item.id) }));
-    undoRef.current = () => updateWorkspace((current) => ({ ...current, textSources: [...(current.textSources ?? []).filter((item) => item.id !== id), removed], selectedSourceIds: [...(current.selectedSourceIds ?? sources.map((source) => source.id)), id] }));
-    setNotice('补充文本已从本课移除。'); setUndoLabel('撤销移除');
+    setNotice('产物已移除。');
+    setUndoLabel('撤销移除');
   };
   const enhanceArtifact = async () => {
     if (!artifact || busy) return;
-    const serial = ++requestSerial.current; const controller = new AbortController(); requestRef.current = controller;
-    setBusy(true); setPhase('小砚正在根据所选资料整理内容…'); setNotice('');
+    const serial = ++requestSerial.current;
+    const controller = new AbortController();
+    requestRef.current = controller;
+    setBusy(true);
+    setPhase('小砚正在根据所选资料整理内容…');
+    setNotice('');
     try {
       const verified = await verifiedSelection(controller.signal);
       const updated = await enrichStudyArtifact(artifact, verified, settings, controller.signal);
       if (serial === requestSerial.current && isCurrentAccount(owner, useAuthStore.getState()) && !controller.signal.aborted) updateArtifact(updated);
-    } catch (error) {
-      if (serial === requestSerial.current && !controller.signal.aborted) setNotice(error instanceof Error ? error.message : '整理未完成，原稿已保留。');
-    } finally { if (serial === requestSerial.current) { setBusy(false); setPhase(''); } }
+    } catch (reason) {
+      if (serial === requestSerial.current && !controller.signal.aborted) setNotice(reason instanceof Error ? reason.message : '整理未完成，原稿已保留。');
+    } finally {
+      if (serial === requestSerial.current) { setBusy(false); setPhase(''); }
+    }
   };
-  const workspaceTitle = view === 'library' ? '资料库' : view === 'studio' ? artifact?.title ?? '学习产物' : view === 'notes' ? '学习便笺' : view === 'source' ? sourcePreview?.title ?? '资料原文' : VIEWS.find((item) => item.id === view)?.label ?? '与资料对话';
-  const showComposer = Boolean(owner || topic) && !['library', 'prepare', 'journey', 'notes'].includes(view);
-  const toggleInspector = (panel: 'sources' | 'tools') => {
-    const next = inspectorPanel === panel ? null : panel;
-    setInspectorPanel(next); setMobilePanel(next ? 'studio' : 'main');
+  const downloadSource = async () => {
+    if (!sourcePreview?.fileId) return;
+    try {
+      const blob = await downloadLibraryFile(sourcePreview.fileId);
+      if (isCurrentAccount(owner, useAuthStore.getState())) saveBlob(sourcePreview.title, blob);
+    } catch {
+      setNotice('原件暂不可用，请检查文件是否已移入回收站。');
+    }
   };
-  return <div className={t.terminal} data-library={view === 'library' || undefined} data-navigation-hidden={!sourcesOpen || undefined} data-mobile-panel={mobilePanel}>
-    <nav className={t.appRail} aria-label="终端导航">
-      <button aria-label="学习终端" title="学习终端" aria-current={view !== 'library' ? 'page' : undefined} onClick={() => switchView('ask')}><Icon name="home" size={21} /></button>
-      <button aria-label="统一资料库" title="资料库" aria-current={view === 'library' ? 'page' : undefined} onClick={() => switchView('library')}><Icon name="files" size={21} /></button>
-      <button aria-label="师徒旅程" title="师徒旅程" onClick={() => switchView('journey')}><Icon name="route" size={21} /></button>
-      <Link aria-label="学习记录" title="学习记录" to="/growth"><Icon name="notebook" size={20} /></Link>
-      <div className={t.railSpacer} />
-      <button aria-label="终端设置" title="设置" onClick={shellActions.openSettings}><Icon name="settings" size={20} /></button>
-      {authStatus === 'authed' ? <button aria-label="个人中心" title="个人中心" onClick={shellActions.openProfile}><Icon name="user" size={20} /></button> : <Link aria-label="登录" title="登录" to="/login"><Icon name="user" size={20} /></Link>}
-    </nav>
-    <aside className={t.sidebar} aria-label="课程项目与会话">
-      <div className={t.sidebarBrand}><Link to="/learn" aria-label="小白同学"><Seal /><span>小白同学</span></Link><button aria-label="收起项目栏" onClick={() => { setSourcesOpen(false); setMobilePanel('main'); }}><Icon name="panel-left" size={17} /></button></div>
-      <button className={t.newConversation} onClick={newChat} disabled={libraryBlocked}><Icon name="message" size={18} />新建学习对话<Icon name="plus" size={15} /></button>
-      <button className={t.sidebarAction} onClick={() => toggleInspector('sources')}><Icon name="library" size={17} />本课资料<span>{sources.length}</span></button>
-      <button className={t.sidebarAction} onClick={() => switchView('journey')}><Icon name="route" size={17} />师徒旅程</button>
-      <div className={t.projectHeading}><span>课程项目</span><button aria-label="添加课程项目" onClick={() => switchView('library')}><Icon name="plus" size={15} /></button></div>
-      <input className={t.projectSearch} id="learning-course-search" aria-label="搜索课程或知识点" placeholder="搜索项目或知识点" value={query} onChange={(event) => setQuery(event.target.value)} />
-      <div className={t.sidebarScroll}>
-        {groups.map(([key, group]) => <details key={key} className={t.projectGroup} open={query ? true : group.items.some((item) => item.topicId === topicId) || undefined}><summary><Icon name="book-open" size={15} /><span>{group.title}</span><small>{group.items.length}</small></summary>{group.items.map((item) => <button key={item.topicId} aria-current={item.topicId === topicId ? 'page' : undefined} disabled={libraryBlocked} onClick={() => openTopic(item.topicId)}><span>{item.title}</span>{item.topicId === topicId && <Icon name="chevron-right" size={12} />}</button>)}</details>)}
-        {<div className={t.conversationHistory}><h3>{topic ? '本课对话' : '资料对话'}</h3>{[...workspace.conversations].reverse().map((chat) => <button key={chat.id} disabled={libraryBlocked} aria-current={chat.id === workspace.activeId ? 'true' : undefined} onClick={() => { if (busy) stop(); updateWorkspace((current) => ({ ...current, activeId: chat.id })); switchView('ask'); }}><Icon name="message" size={13} /><span>{chat.title}</span></button>)}</div>}
-      </div>
-      <footer className={t.sidebarFooter}><Link to="/growth"><Icon name="notebook" size={16} />学习记录</Link><Link to="/teacher"><Icon name="clipboard" size={16} />教师看板</Link><button onClick={shellActions.openSettings}><Icon name="settings" size={16} />设置</button>{authStatus === 'authed' ? <button onClick={shellActions.openProfile}><Icon name="user" size={16} />个人中心</button> : <Link to="/login">登录</Link>}</footer>
-    </aside>
-    <div className={t.workspace}>
-      <header className={t.header}>
-        <button className={t.revealProjects} aria-label="展开项目栏" onClick={() => { setSourcesOpen(true); setMobilePanel('sources'); }}><Icon name="panel-left" size={18} /></button>
-        <div className={t.breadcrumb}><span>{view === 'library' ? '学习终端' : topic?.course ?? '学习终端'}</span>{(topic || view === 'library') && <><Icon name="chevron-right" size={13} /><strong>{view === 'library' ? '资料库' : topic?.title}</strong></>}</div>
-        <div className={t.headerActions}>
-          {topic && view !== 'library' && <><button aria-label="本课资料" aria-pressed={inspectorPanel === 'sources'} onClick={() => toggleInspector('sources')}><Icon name="library" size={16} /><span>资料</span><small>{selectedSources.length}</small></button><button aria-label="工具与产物" aria-pressed={inspectorPanel === 'tools'} onClick={() => toggleInspector('tools')}><Icon name="sparkles" size={16} /><span>工具与产物</span></button><Link aria-label="教小白" to={`/teach/${topicId}`}><Icon name="graduation" size={16} /><span>教小白</span></Link></>}
-        </div>
-      </header>
-      {materialsError && <div className={t.persistWarning} role="alert"><span>{materialsError}</span><button onClick={() => setMaterialsRetry((value) => value + 1)}>重新连接资料</button></div>}
-      {saveFailed && <div className={t.persistWarning} role="alert"><span>本机保存失败，当前改动仅留在页面中。请先导出备份，再处理浏览器存储空间。</span><button onClick={() => downloadStudyFile(`${topic?.title ?? '学习终端'}-备份.json`, JSON.stringify(workspace, null, 2), 'application/json')}>导出当前工作区</button></div>}
-      <div className={t.contentBody} data-inspector-open={inspectorPanel !== null || undefined}>
-        <section className={t.main} aria-label="学习工作区">
-          <div className={t.viewTabs}><button aria-current={view === 'ask' ? 'page' : undefined} onClick={() => switchView('ask')}><Icon name="message" size={14} />对话</button>{view !== 'ask' && <button aria-current="page"><Icon name={view === 'studio' ? 'file' : 'book-open'} size={14} /><span>{workspaceTitle}</span></button>}<button className={t.openTools} onClick={() => toggleInspector('tools')}><Icon name="plus" size={14} />添加内容</button></div>
-      {(notice || undoLabel) && <div className={s.notice} role="status"><Icon name="circle-help" size={15} /><span>{notice}</span>{undoLabel && <button onClick={() => { undoRef.current?.(); undoRef.current = null; setUndoLabel(''); setNotice('已恢复。'); }}>{undoLabel}</button>}<button aria-label="关闭提示" onClick={() => { setNotice(''); setUndoLabel(''); undoRef.current = null; }}><Icon name="x" size={14} /></button></div>}
-      {view === 'library' ? <div className={t.libraryArea}><Suspense fallback={<p>正在打开资料库…</p>}><RequireAuth><LibraryPage onLeaveGuardChange={setLibraryBlocked} onUseInConversation={async (ids) => { addFiles(ids); }} /></RequireAuth></Suspense></div> : view === 'journey' ? <div className={n.mainScroll}><StudyJourney topic={topic} topics={topics} identity={identity} onAccept={() => onIdentity({ acceptedAt: new Date().toISOString() })} onLearn={() => topic ? switchView('guided') : chooseCourse(identity.lastTopicId ?? undefined)} /></div> : loading || error || (topicId && !topic) ? <div className={n.mainScroll}><h2>{loading ? '正在取回你的课程…' : '暂时无法打开这门课'}</h2><p>{loading ? '课程与资料正在准备。' : '课程可能尚未发布，或连接暂时中断。'}</p>{error && <button className={s.primaryButton} onClick={retry}>重新连接</button>}</div> : !topic && !attachmentKey && !conversation.messages.length && view === 'ask' ? <div className={n.mainScroll}><StudyWelcome topics={topics} identity={identity} onAccept={() => onIdentity({ acceptedAt: new Date().toISOString() })} onSelectCourse={chooseCourse} onLibrary={() => setPickerOpen(true)} onJourney={() => switchView('journey')} /></div> : view === 'ask' ? <>
-        {guided.returnId && <div className={s.returnToChat}><button onClick={() => { updateWorkspace((current) => ({ ...current, guided: { ...guided, activeId: guided.returnId!, returnId: undefined } })); switchView('guided'); }}><Icon name="arrow-left" size={15} />返回刚才的学习步骤</button></div>}
-        {attachmentKey && <div className={t.attachments}>{(conversation.libraryFileIds ?? []).map((id) => <span key={id}><Icon name="file" size={14} />{librarySources.find((source) => source.libraryFileId === id)?.title ?? '资料文件'}<button aria-label={`移除对话文件 ${librarySources.find((source) => source.libraryFileId === id)?.title ?? id}`} onClick={() => attachFiles((conversation.libraryFileIds ?? []).filter((fileId) => fileId !== id))}><Icon name="x" size={12} /></button></span>)}<button onClick={() => setPickerOpen(true)}>选择文件</button></div>}
-        <div className={n.chatScroll} ref={feedRef} onScroll={() => { const node = feedRef.current; if (node) pinnedRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100; }}>
-          {conversation.messages.length ? <div className={s.messages}>{conversation.messages.map((message) => <article key={message.id} className={message.role === 'user' ? s.userMessage : s.assistantMessage} aria-label={message.role === 'user' ? '我的提问' : '小砚的回答'}>{message.role === 'assistant' && <div className={s.messageByline}><Icon name="lamp" size={18} /><strong>小砚</strong><span>{message.local ? '资料摘编' : '学习助教'}</span></div>}{message.run&&<LearningActivity run={message.run}/>}{message.ui?<IntelligentAnswer ui={message.ui} sources={message.sources} interaction={message.interaction??{}} onChange={(id,state)=>updateInteraction(message.id,id,state)} onAsk={askAbout} onSource={openSource} onSave={(text)=>saveNote(text,message.sources)}/>:<CoachMarkdown text={message.text}/>}{message.role === 'assistant' && message.run?.status!=='running' && <footer className={s.messageTools}>{message.engine === 'deeptutor' && <span>DeepTutor · {message.rounds} 轮核对</span>}<button disabled={!message.text} onClick={() => saveNote(message.text, message.sources)}><Icon name="notebook" size={14} />存入便笺</button>{message.run ? <LearningSources sources={message.sources} onSource={openSource}/> : message.sources.map((source, index) => <button key={source.id} onClick={() => openSource(source)}><Icon name="file" size={13} />[{index + 1}] {source.title}</button>)}</footer>}</article>)}</div> : <div className={n.chatWelcome}><h1>今天，想把什么学明白？</h1><p>我是小砚。打开一个课程项目，读资料、提问题，或把你的理解讲给小白听。</p><div className={n.suggestions}><button onClick={() => setInput('帮我概括所选资料的核心内容，并标注来源。')}>概括核心内容</button><button onClick={() => createItem('mindmap')}>整理思维导图</button><button onClick={() => createItem('guided')}>带我一步步学</button></div></div>}
-          {(busy || materialsBusy) && !activeStream.current && <div className={s.thinking} role="status"><span /><span>{phase}</span></div>}<div ref={endRef} />
-        </div>
-      </> : <div className={n.mainScroll}>
-        {view === 'source' && sourcePreview && <article className={n.sourceDocument}><h1>{sourcePreview.title}</h1><p>当前查看的是资料正文或本轮保存的引用片段。</p><CoachMarkdown text={sourcePreview.excerpt} />{sourcePreview.fileId && <button className={s.textButton} onClick={async () => { try { const blob = await downloadLibraryFile(sourcePreview.fileId!); if (isCurrentAccount(owner, useAuthStore.getState())) saveBlob(sourcePreview.title, blob); } catch { setNotice('原件暂不可用，请检查文件是否已移入回收站。'); } }}><Icon name="download" size={14} />下载原件</button>}<button className={s.textButton} onClick={() => askAbout(`请解释这份资料中的关键概念：${sourcePreview.title}`)}>带着这份资料提问<Icon name="arrow-right" size={14} /></button></article>}
-        {view === 'notes' && <div className={n.notesEditor}><h1>学习便笺</h1><textarea aria-label="学习便笺" value={workspace.note} maxLength={20000} placeholder="记下你自己的理解，也可以从回答中保存内容…" onChange={(event) => updateWorkspace((current) => ({ ...current, note: event.target.value }))} /><p className={n.quiet}>{saveFailed ? '本机保存失败，请立即导出内容。' : '自动保存在当前浏览器，按账号和课程分开。'}</p><button disabled={!workspace.note.trim()} onClick={() => downloadStudyFile(`${studyTopic.title}-学习便笺.md`, workspace.note)}><Icon name="download" size={15} />导出便笺</button></div>}
-        {view === 'studio' && (artifact ? <ArtifactPanel key={artifact.id + artifact.kind} artifact={artifact} onUpdate={updateArtifact} onEnhance={() => void enhanceArtifact()} busy={busy} saveFailed={saveFailed} onSource={openSource} /> : <p>在学习工坊创建一份内容，或打开已保存的产物。</p>)}
-        {!selectedSources.length && ['read', 'practice', 'cards', 'guided'].includes(view) ? <div className={s.panelEmpty}><h2>先选择学习资料</h2><p>在资料栏勾选想学习的内容，再继续。</p></div> : scopedTopic && <>
-          {view === 'read' && <ReadingPanel key={scopeKey} topic={scopedTopic} readSections={workspace.readSections} onRead={(index) => updateWorkspace((current) => ({ ...current, readSections: [...new Set([...current.readSections, index])] }))} onAsk={askAbout} />}
-          {view === 'guided' && <GuidedStudyPanel key={scopeKey} topic={scopedTopic} includeSelfTests={includesLecture} saved={workspace.guided} onSave={(guided) => updateWorkspace((current) => ({ ...current, guided }))} onAsk={askAbout} />}
-          {view === 'practice' && <PracticePanel key={scopeKey} topic={scopedTopic} selfChecks={customCards} answers={workspace.practiceAnswers} onAnswers={(practiceAnswers) => updateWorkspace((current) => ({ ...current, practiceAnswers }))} onAsk={askAbout} />}
-          {view === 'cards' && <CardsPanel key={scopeKey} topic={scopedTopic} sourceCards={customCards} ratings={workspace.ratings} onRate={(id, value) => updateWorkspace((current) => ({ ...current, ratings: { ...current.ratings, [id]: value } }))} />}
-        </>}
-        {view === 'prepare' && <Suspense fallback={<p>正在打开备课流程…</p>}><PrepPage /></Suspense>}
-        {busy && view === 'studio' && <div className={s.thinking} role="status"><span /><span>{phase}</span><button onClick={stop}>停止整理</button></div>}
-      </div>}
-      {showComposer && <div className={n.composerWrap}><StudyComposer input={input} onInput={setInput} mode={mode} onMode={setMode} busy={busy || materialsBusy} onStop={stop} onSubmit={(event) => void submit(event)} inputRef={composerRef} custom={topicId.startsWith('custom-')} demo={settings.mode === 'mock'} deepAvailable={deepAvailable} sourceCount={selectedSources.length} onAttach={() => setPickerOpen(true)} answerFormat={workspace.answerFormat??'auto'} onAnswerFormat={(answerFormat)=>updateWorkspace((current)=>({...current,answerFormat}))} intelligentAvailable={intelligentAvailable}/></div>}
-        </section>
-        {inspectorPanel && <aside className={t.inspector} aria-label={inspectorPanel === 'sources' ? '本课资料' : '学习工具与产物'}>
-          <div className={n.panelHeading}><h2>{inspectorPanel === 'sources' ? '本课资料' : '工具与产物'}</h2><button aria-label="关闭侧面板" onClick={() => { setInspectorPanel(null); setMobilePanel('main'); }}><Icon name="x" size={17} /></button></div>
-          {inspectorPanel === 'sources' ? <>
-      {<SourcesPanel sources={sources} selected={selectedSources} onSelect={selectSources} onPreview={(source) => openSource({ id: source.id, title: source.title, excerpt: source.content })} onAdd={(title, content) => {
-        if ((workspace.textSources?.length ?? 0) >= 16) { setNotice('每课最多保存 16 份补充文本，请先整理已有资料。'); return; }
-        const source: NotebookSource = { id: `text:${studyId()}`, title, content, kind: 'text' };
-        updateWorkspace((current) => ({ ...current, textSources: [...(current.textSources ?? []), source], conversations: current.conversations.map((chat) => chat.id === conversation.id ? { ...chat, selectedSourceIds: [...selectedSources.map((item) => item.id), source.id] } : chat) }));
-      }} onDelete={removeSource} onPickLibrary={() => setPickerOpen(true)} onLibrary={() => switchView('library')} />}
-          </> : <StudioPanel artifacts={artifacts} sourceCount={selectedSources.length} busy={busy} activeView={view === 'studio' ? artifact?.kind ?? '' : view} onCreate={createItem} onOpen={openArtifact} onDelete={removeArtifact} onNote={() => switchView('notes')} onRead={() => switchView('read')} onPrepare={() => switchView('prepare')} canPrepare={Boolean(topic)} />}
-        </aside>}
+  const dismissNotice = () => { setNotice(''); setUndoLabel(''); undoRef.current = null; };
+  const undo = () => { undoRef.current?.(); undoRef.current = null; setUndoLabel(''); setNotice('已恢复。'); };
+
+  /* ── 版面 ── */
+  const welcomeState = !topic && !topicUnavailable && !attachmentKey && !conversation.messages.length && view === 'ask';
+  const showComposer = Boolean(owner || topic) && COMPOSER_VIEWS.includes(view) && !topicUnavailable;
+  const showPanels = view !== 'library' && view !== 'prepare';
+  const showTabs = Boolean(topic) && !isToolView(view) && view !== 'library' && view !== 'journey';
+  const showBack = !showTabs && !isToolView(view) && view !== 'ask' && view !== 'library';
+  const needsSources = STUDY_VIEW_IDS.includes(view) && !selectedSources.length;
+  const acceptLetter = () => onIdentity({ acceptedAt: new Date().toISOString() });
+  const viewProps: TerminalViewProps = {
+    owner, topic, topics, selectedSources,
+    onAsk: askAbout,
+    onOpenTopic: openTopic,
+    onView: (next, extra) => switchView(isView(next) ? next : 'ask', extra),
+    onNotice: setNotice,
+  };
+  const sidebarProps = {
+    view, topicId, hasTopic: Boolean(topic), groups, conversations: workspace.conversations, activeChatId: workspace.activeId,
+    onNewChat: newChat, onSearch: () => { setNavSheetOpen(false); setPaletteOpen(true); }, onOpenTopic: openTopic,
+    onAddCourse: () => switchView('library'), onSelectChat: selectChat, onRenameChat: renameChat, onDeleteChat: deleteChat,
+    onView: (next: View) => switchView(next),
+  };
+
+  const chatEmpty = (
+    <div className={t.chatEmpty}>
+      <h2>{topic ? `「${topic.title}」，想先弄懂哪一处？` : '资料已经备好，想先弄懂哪一处？'}</h2>
+      <p>我是小砚。可以直接提问，也可以让我先帮你把资料理一遍。</p>
+      <div className={t.chips}>
+        <button type="button" onClick={() => { setInput('帮我概括所选资料的核心内容，并标注来源。'); focusComposer(); }}>概括核心内容</button>
+        <button type="button" onClick={() => void createItem('mindmap')}>整理思维导图</button>
+        <button type="button" onClick={() => void createItem('guided')}>带我一步步学</button>
+        <button type="button" onClick={() => { setInput('围绕所选资料，一次问我一道自检问题，等我回答再反馈。'); focusComposer(); }}>出题考考我</button>
       </div>
     </div>
-    {pickerOpen && <LibraryPicker selected={conversation.libraryFileIds ?? []} onClose={() => setPickerOpen(false)} onConfirm={attachFiles} onManage={() => { setPickerOpen(false); switchView('library'); }} />}
-    {view !== 'prepare' && mobilePanel === 'main' && <StudyCompanion identity={identity} onChange={onIdentity} topic={topic} busy={busy} reading={view === 'read'} withComposer={showComposer} level={level} onAsk={() => { if (topic) { switchView('ask'); window.requestAnimationFrame(() => composerRef.current?.focus()); } else chooseCourse(identity.lastTopicId ?? undefined); }} onJourney={() => switchView('journey')} onTeach={() => { if (topic && !libraryBlocked) navigate(`/teach/${topic.topicId}`); }} />}
-  </div>;
+  );
+
+  let content: ReactNode;
+  if (view === 'library') {
+    content = (
+      <div className={t.fill}>
+        <Suspense fallback={<ViewLoading label="正在打开资料库…" />}>
+          <RequireAuth>
+            <LibraryPage onLeaveGuardChange={setLibraryBlocked} onUseInConversation={async (ids) => { addFiles(ids); }} />
+          </RequireAuth>
+        </Suspense>
+      </div>
+    );
+  } else if (isToolView(view)) {
+    const ToolView = TOOL_COMPONENTS[view];
+    content = (
+      <div className={t.scroll}>
+        <Suspense fallback={<ViewLoading label={`正在打开${VIEW_LABELS[view]}…`} />}>
+          <ToolView {...viewProps} />
+        </Suspense>
+      </div>
+    );
+  } else if (view === 'journey') {
+    content = (
+      <div className={t.scroll}>
+        <StudyJourney topic={topic} topics={topics} identity={identity} onAccept={acceptLetter} onLearn={() => (topic ? switchView('guided') : chooseCourse(identity.lastTopicId ?? undefined))} />
+      </div>
+    );
+  } else if (topicUnavailable) {
+    content = (
+      <div className={t.scroll}>
+        {loading ? (
+          <Empty icon={<Spinner size={20} />} title="正在取回你的课程…" description="课程与资料正在准备。" />
+        ) : (
+          <Empty
+            icon={<TriangleAlert size={22} strokeWidth={1.75} />}
+            title="暂时无法打开这门课"
+            description="课程可能尚未发布，或连接暂时中断。"
+            action={<>
+              {error && <Button variant="solid" onClick={retry}>重新连接</Button>}
+              <Button variant="soft" onClick={() => navigate('/learn')}>回到学习终端</Button>
+            </>}
+          />
+        )}
+      </div>
+    );
+  } else if (welcomeState) {
+    content = (
+      <div className={t.scroll}>
+        <TerminalWelcome
+          topics={topics}
+          identity={identity}
+          onAccept={acceptLetter}
+          onSelectCourse={chooseCourse}
+          onUpload={() => setPickerOpen(true)}
+          onTeach={() => switchView('feynman')}
+          onClassroom={() => switchView('classroom')}
+          onJourney={() => switchView('journey')}
+        />
+      </div>
+    );
+  } else if (view === 'ask') {
+    content = (
+      <>
+        {guided.returnId && (
+          <div className={t.returnBar}>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<ArrowLeft size={15} strokeWidth={1.75} />}
+              onClick={() => { updateWorkspace((current) => ({ ...current, guided: { ...guided, activeId: guided.returnId!, returnId: undefined } })); switchView('guided'); }}
+            >
+              返回刚才的学习步骤
+            </Button>
+          </div>
+        )}
+        <div
+          className={t.chatArea}
+          ref={feedRef}
+          onScroll={() => { const node = feedRef.current; if (node) pinnedRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100; }}
+        >
+          <ChatFeed
+            conversation={conversation}
+            busy={busy || materialsBusy}
+            phase={phase}
+            streamingId={busy ? activeStream.current?.messageId ?? null : null}
+            empty={chatEmpty}
+            onAsk={askAbout}
+            onSource={openSource}
+            onSaveNote={saveNote}
+            onInteraction={updateInteraction}
+            onRegenerate={regenerate}
+          />
+        </div>
+      </>
+    );
+  } else {
+    content = (
+      <div className={t.scroll}>
+        {view === 'source' && (sourcePreview ? (
+          <article className={t.document}>
+            <p className={t.documentKicker}>资料原文</p>
+            <h1>{sourcePreview.title}</h1>
+            <p className={t.documentHint}>当前查看的是资料正文，或本轮回答保存的引用片段。</p>
+            <CoachMarkdown text={sourcePreview.excerpt} />
+            <div className={t.documentActions}>
+              <Button variant="solid" iconRight={<ArrowRight size={15} strokeWidth={1.75} />} onClick={() => askAbout(`请解释这份资料中的关键概念：${sourcePreview.title}`)}>带着这份资料提问</Button>
+              {sourcePreview.fileId && <Button variant="soft" icon={<Download size={15} strokeWidth={1.75} />} onClick={() => void downloadSource()}>下载原件</Button>}
+            </div>
+          </article>
+        ) : (
+          <Empty
+            icon={<FileText size={22} strokeWidth={1.75} />}
+            title="选一份资料查看原文"
+            description="在资料面板点标题，或点回答里的引用编号。"
+            action={<Button variant="solid" onClick={() => setInspectorPanel('sources')}>打开资料</Button>}
+          />
+        ))}
+        {view === 'notes' && (
+          <div className={t.document}>
+            <h1>学习便笺</h1>
+            <p className={t.documentHint}>{saveFailed ? '本机保存失败，请立即导出内容。' : '自动保存在当前浏览器，按账号和课程分开。'}</p>
+            <Textarea
+              className={t.notes}
+              aria-label="学习便笺"
+              value={workspace.note}
+              maxLength={20000}
+              placeholder="记下你自己的理解，也可以从回答中保存内容…"
+              onChange={(event) => updateWorkspace((current) => ({ ...current, note: event.target.value }))}
+            />
+            {workspace.note.trim() && (
+              <div className={t.documentActions}>
+                <Button variant="soft" icon={<Download size={15} strokeWidth={1.75} />} onClick={() => downloadStudyFile(`${studyTopic.title}-学习便笺.md`, workspace.note)}>导出便笺</Button>
+              </div>
+            )}
+          </div>
+        )}
+        {view === 'studio' && (artifact ? (
+          <ArtifactPanel key={artifact.id + artifact.kind} artifact={artifact} onUpdate={updateArtifact} onEnhance={() => void enhanceArtifact()} busy={busy} saveFailed={saveFailed} onSource={openSource} />
+        ) : (
+          <Empty
+            icon={<Sparkles size={22} strokeWidth={1.75} />}
+            title="还没有打开产物"
+            description="用所选资料创建导图、报告或课件，或打开已保存的产物。"
+            action={<Button variant="solid" onClick={() => setInspectorPanel('tools')}>打开工具与产物</Button>}
+          />
+        ))}
+        {needsSources ? (
+          <Empty
+            icon={<Library size={22} strokeWidth={1.75} />}
+            title="先选择学习资料"
+            description="勾选想学的内容，再继续。"
+            action={<Button variant="solid" onClick={() => setInspectorPanel('sources')}>选择资料</Button>}
+          />
+        ) : scopedTopic && (
+          <>
+            {view === 'read' && <ReadingPanel key={scopeKey} topic={scopedTopic} readSections={workspace.readSections} onRead={(index) => updateWorkspace((current) => ({ ...current, readSections: [...new Set([...current.readSections, index])] }))} onAsk={askAbout} />}
+            {view === 'guided' && <GuidedStudyPanel key={scopeKey} topic={scopedTopic} includeSelfTests={includesLecture} saved={workspace.guided} onSave={(next) => updateWorkspace((current) => ({ ...current, guided: next }))} onAsk={askAbout} />}
+            {view === 'practice' && <PracticePanel key={scopeKey} topic={scopedTopic} selfChecks={customCards} answers={workspace.practiceAnswers} onAnswers={(practiceAnswers) => updateWorkspace((current) => ({ ...current, practiceAnswers }))} onAsk={askAbout} />}
+            {view === 'cards' && <CardsPanel key={scopeKey} topic={scopedTopic} sourceCards={customCards} ratings={workspace.ratings} onRate={(id, value) => updateWorkspace((current) => ({ ...current, ratings: { ...current.ratings, [id]: value } }))} />}
+          </>
+        )}
+        {view === 'prepare' && (topic ? (
+          <Suspense fallback={<ViewLoading label="正在打开备课流程…" />}><PrepPage /></Suspense>
+        ) : (
+          <Empty
+            icon={<Library size={22} strokeWidth={1.75} />}
+            title="备课流程从一门课开始"
+            description="先选一个知识点，再按步骤备课、回讲。"
+            action={<Button variant="solid" onClick={() => setPaletteOpen(true)}>选一门课</Button>}
+          />
+        ))}
+        {busy && view === 'studio' && (
+          <div className={t.working} role="status">
+            <Spinner size={15} />
+            <span>{phase}</span>
+            <Button variant="ghost" size="sm" onClick={stop}>停止整理</Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className={t.terminal} data-sidebar={sidebarOpen ? 'open' : 'collapsed'} data-inspector={inspectorPanel && showPanels ? 'open' : undefined} data-view={view}>
+      <TerminalRail view={view} onView={(next) => switchView(next)} onMore={() => setNavSheetOpen(true)} />
+
+      <aside className={t.sidebar} aria-label="课程项目与对话">
+        <TerminalSidebar {...sidebarProps} onCollapse={() => setSidebar(false)} />
+      </aside>
+
+      <div className={t.workspace}>
+        <TerminalHeader
+          topic={topic}
+          viewLabel={view === 'ask' ? undefined : viewTitle}
+          sidebarOpen={sidebarOpen}
+          onShowSidebar={() => (isMobile ? setNavSheetOpen(true) : setSidebar(true))}
+          showPanels={showPanels}
+          inspector={inspectorPanel}
+          sourceCount={selectedSources.length}
+          onInspector={toggleInspector}
+          onCourse={() => setPaletteOpen(true)}
+          onTopic={() => switchView('ask')}
+        />
+
+        {materialsError && (
+          <div className={t.banner} role="alert">
+            <TriangleAlert size={16} strokeWidth={1.75} />
+            <span>{materialsError}</span>
+            <Button variant="outline" size="sm" onClick={() => setMaterialsRetry((value) => value + 1)}>重新连接资料</Button>
+          </div>
+        )}
+        {saveFailed && (
+          <div className={t.banner} role="alert">
+            <TriangleAlert size={16} strokeWidth={1.75} />
+            <span>本机保存失败，当前改动仅留在页面中。请先导出备份，再处理浏览器存储空间。</span>
+            <Button variant="outline" size="sm" onClick={() => downloadStudyFile(`${topic?.title ?? '学习终端'}-备份.json`, JSON.stringify(workspace, null, 2), 'application/json')}>导出当前工作区</Button>
+          </div>
+        )}
+
+        <div className={t.body}>
+          <section className={t.main} aria-label="学习工作区">
+            {showTabs && (
+              <div className={t.tabs}>
+                <Tabs
+                  label="学习方式"
+                  value={view}
+                  onValueChange={(next) => { if (isView(next)) switchView(next); }}
+                  items={STUDY_TABS.map(({ id, label, icon: TabIcon }) => ({ value: id, label, icon: <TabIcon size={15} strokeWidth={1.75} /> }))}
+                />
+              </div>
+            )}
+            {showBack && (
+              <div className={t.returnBar}>
+                <Button variant="ghost" size="sm" icon={<ArrowLeft size={15} strokeWidth={1.75} />} onClick={() => switchView('ask')}>返回对话</Button>
+              </div>
+            )}
+            {(notice || undoLabel) && (
+              <div className={t.notice} role="status">
+                <Info size={16} strokeWidth={1.75} />
+                <span>{notice}</span>
+                {undoLabel && <Button variant="soft" size="sm" onClick={undo}>{undoLabel}</Button>}
+                <IconButton label="关闭提示" size="sm" tip={false} onClick={dismissNotice}><X size={15} strokeWidth={1.75} /></IconButton>
+              </div>
+            )}
+            {content}
+            {showComposer && (
+              <div className={t.composerDock}>
+                <Composer
+                  input={input}
+                  onInput={setInput}
+                  mode={mode}
+                  onMode={setMode}
+                  answerFormat={workspace.answerFormat ?? 'auto'}
+                  onAnswerFormat={(answerFormat) => updateWorkspace((current) => ({ ...current, answerFormat }))}
+                  busy={busy || materialsBusy}
+                  onStop={stop}
+                  onSubmit={submit}
+                  inputRef={composerRef}
+                  deepAvailable={deepAvailable}
+                  intelligentAvailable={intelligentAvailable}
+                  demo={settings.mode === 'mock'}
+                  sourceCount={selectedSources.length}
+                  attachments={(conversation.libraryFileIds ?? []).map((id) => ({ id, title: librarySources.find((source) => source.libraryFileId === id)?.title ?? '资料文件' }))}
+                  onRemoveAttachment={(id) => attachFiles((conversation.libraryFileIds ?? []).filter((fileId) => fileId !== id))}
+                  onAttach={() => setPickerOpen(true)}
+                  onOpenSources={() => setInspectorPanel('sources')}
+                  placeholder={topic ? `向小砚提问「${topic.title}」…` : sources.length ? '依据所选资料向小砚提问…' : '想学什么，直接问小砚…'}
+                />
+              </div>
+            )}
+          </section>
+
+          {inspectorPanel && showPanels && (
+            <Inspector panel={inspectorPanel} sourceCount={selectedSources.length} onPanel={setInspectorPanel} onClose={() => setInspectorPanel(null)}>
+              {inspectorPanel === 'sources' ? (
+                <SourcesPanel
+                  sources={sources}
+                  selected={selectedSources}
+                  onSelect={selectSources}
+                  onPreview={(source) => openSource({ id: source.id, title: source.title, excerpt: source.content })}
+                  onAdd={addTextSource}
+                  onDelete={removeSource}
+                  onPickLibrary={() => setPickerOpen(true)}
+                  onLibrary={() => switchView('library')}
+                />
+              ) : (
+                <StudioPanel
+                  artifacts={artifacts}
+                  sourceCount={selectedSources.length}
+                  busy={busy}
+                  activeView={view === 'studio' ? artifact?.kind ?? '' : view}
+                  onCreate={(kind) => void createItem(kind)}
+                  onOpen={openArtifact}
+                  onDelete={removeArtifact}
+                  onNote={() => switchView('notes')}
+                  onRead={() => switchView('read')}
+                  onPrepare={() => switchView('prepare')}
+                  onSources={() => setInspectorPanel('sources')}
+                  canPrepare={Boolean(topic)}
+                />
+              )}
+            </Inspector>
+          )}
+        </div>
+      </div>
+
+      <Sheet open={isMobile && navSheetOpen} onOpenChange={setNavSheetOpen} title="小白同学" side="left" width={320} className={t.navSheet}>
+        <TerminalSidebar {...sidebarProps} mobile />
+      </Sheet>
+
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        topics={openTopics}
+        topic={topic}
+        conversations={workspace.conversations}
+        onOpenTopic={openTopic}
+        onSelectChat={selectChat}
+        onView={(next) => switchView(next)}
+        onNewChat={newChat}
+        onAttach={() => setPickerOpen(true)}
+        onTeach={() => { if (topic && !libraryBlocked) navigate(`/teach/${encodeURIComponent(topic.topicId)}`); }}
+        onSettings={shellActions.openSettings}
+        onNavigate={(to) => navigate(to)}
+      />
+
+      {pickerOpen && (
+        <LibraryPicker
+          selected={conversation.libraryFileIds ?? []}
+          onClose={() => setPickerOpen(false)}
+          onConfirm={attachFiles}
+          onManage={() => { setPickerOpen(false); switchView('library'); }}
+        />
+      )}
+
+      {companionOn && view !== 'prepare' && view !== 'library' && !isToolView(view) && !(isMobile && (welcomeState || navSheetOpen || inspectorPanel)) && (
+        <StudyCompanion
+          identity={identity}
+          onChange={onIdentity}
+          topic={topic}
+          busy={busy}
+          reading={view === 'read'}
+          withComposer={showComposer}
+          level={level}
+          onAsk={() => { switchView('ask'); focusComposer(); }}
+          onJourney={() => switchView('journey')}
+          onTeach={() => { if (topic && !libraryBlocked) navigate(`/teach/${encodeURIComponent(topic.topicId)}`); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ViewLoading({ label }: { label: string }) {
+  return (
+    <div className={t.loading} role="status">
+      <Spinner size={16} />
+      <span>{label}</span>
+    </div>
+  );
 }

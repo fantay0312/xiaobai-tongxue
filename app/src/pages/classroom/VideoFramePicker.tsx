@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Button } from '../../components/ui';
 import s from './classroom.module.css';
 
 /** 浏览器本地取帧，仍走已验证的辅助讲图链路；不上传整段视频或音轨。 */
@@ -47,17 +48,25 @@ export function VideoFramePicker({ file, onFrame, onClose }: {
   };
   return (
     <section className={s.videoPicker} aria-label="选择视频中的讲解画面">
-      <video ref={videoRef} src={url || undefined} controls playsInline preload="auto"
-        onLoadedData={() => setReady(true)} onSeeking={() => setReady(false)} onSeeked={() => setReady(true)}
-        onError={() => { setReady(false); setError('浏览器无法播放这段视频，请转换为 MP4 或直接选择图片。'); }} />
+      <video
+        ref={videoRef}
+        src={url || undefined}
+        controls
+        playsInline
+        preload="auto"
+        onLoadedData={() => setReady(true)}
+        onSeeking={() => setReady(false)}
+        onSeeked={() => setReady(true)}
+        onError={() => { setReady(false); setError('浏览器无法播放这段视频，请转换为 MP4 或直接选择图片。'); }}
+      />
       <div className={s.videoActions}>
         <p>暂停在要讲解的画面，只发送这一帧图片，视频与声音留在本机。</p>
-        <button type="button" className={s.mediaBtn} onClick={onClose} disabled={busy}>取消</button>
-        <button type="button" className={s.sendBtn} onClick={() => void capture()} disabled={!ready || busy}>
-          {busy ? '正在取帧…' : '使用这帧画面'}
-        </button>
+        <Button variant="ghost" size="sm" pill onClick={onClose} disabled={busy}>取消</Button>
+        <Button variant="solid" size="sm" pill onClick={() => void capture()} disabled={!ready} loading={busy}>
+          {busy ? '正在取帧' : '使用这帧画面'}
+        </Button>
       </div>
-      {error && <p role="alert" className={s.imageStatus}>{error}</p>}
+      {error && <p role="alert" className={s.videoError}>{error}</p>}
     </section>
   );
 }

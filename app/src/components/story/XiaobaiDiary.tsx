@@ -9,7 +9,7 @@ import paper from '../../styles/paper.module.css';
 
 export function XiaobaiDiary({ page }: { page: DiaryPage }) {
   return (
-    <article className={`${s.leaf} ${paper.texture}`} aria-label="小白的日记">
+    <article className={`${s.leaf} ${paper.texture}`} aria-label="小白的日记" data-story>
       <p className={s.dateLine}>{page.dateLabel}　{page.weather}</p>
       {page.paragraphs.map((text, i) => (
         // 段落由模板确定性生成,顺序即身份,index 作 key 安全

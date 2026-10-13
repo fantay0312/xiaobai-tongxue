@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { ChevronsUpDown } from 'lucide-react';
 import type { Persona } from '../../types';
 import styles from './PersonaPicker.module.css';
 
@@ -142,11 +143,16 @@ export function PersonaPicker({ value, onChange }: PersonaPickerProps) {
         onKeyDown={handleTriggerKeyDown}
       >
         <span className={styles.triggerCopy}>
-          <span className={styles.triggerLabel}>性情 · 可更换</span>
+          <span className={styles.triggerLabel}>性情</span>
           <strong>{value}</strong>
           <span className={styles.triggerLine}>{selected.line}</span>
         </span>
-        <span className={open ? `${styles.arrow} ${styles.arrowOpen}` : styles.arrow} aria-hidden="true" />
+        <ChevronsUpDown
+          size={16}
+          strokeWidth={1.75}
+          className={open ? `${styles.arrow} ${styles.arrowOpen}` : styles.arrow}
+          aria-hidden="true"
+        />
       </button>
 
       {open && (

@@ -1,19 +1,19 @@
+/* 头像编辑行：左头像（可点），中标签与状态，右上传 / 移除；与个人中心其他设置行同一节奏 */
+
 .root {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--gap);
-  min-height: 3.5rem;
-  padding: 0.85rem 0;
-  border-bottom: 1px solid var(--paper-edge);
+  gap: 16px;
+  padding: 14px 0;
 }
 
 .fileInput {
   position: absolute;
   width: 1px;
   height: 1px;
-  padding: 0;
   margin: -1px;
+  padding: 0;
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
@@ -22,94 +22,85 @@
 
 .avatarButton {
   position: relative;
+  display: grid;
   padding: 0;
   border: 0;
   border-radius: 50%;
   background: transparent;
-  transition: box-shadow var(--t-fast) var(--ease-out);
+  cursor: pointer;
+  transition: box-shadow var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+
+/* 悬停时浮出相机标，提示头像本身可点 */
+.avatarBadge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--border-2), var(--shadow-1);
+  color: var(--text-2);
+  transition: transform var(--dur-2) var(--ease), color var(--dur-1) var(--ease);
 }
 
 .avatarButton:hover:not(:disabled) {
-  box-shadow: 0 0 0 3px var(--ink-wash);
+  box-shadow: 0 0 0 4px var(--hover);
+}
+
+.avatarButton:hover:not(:disabled) .avatarBadge {
+  color: var(--text);
+  transform: scale(1.08);
+}
+
+.avatarButton:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.avatarButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
 .avatarButton:disabled {
+  opacity: 0.6;
   cursor: wait;
-  opacity: 0.7;
 }
 
 .copy {
   display: flex;
-  min-width: 0;
   flex-direction: column;
-  gap: 0.18rem;
+  gap: 2px;
+  min-width: 0;
 }
 
 .label {
-  color: var(--ink);
-  font-size: var(--fs-body);
-  line-height: 1.4;
+  color: var(--text);
+  font: 500 var(--fz-md) / 1.45 var(--ui-font);
 }
 
 .note {
-  color: var(--ink-faint);
-  font-size: var(--fs-small);
+  color: var(--text-3);
+  font-size: var(--fz-sm);
   line-height: 1.5;
 }
 
 .note span[data-notice='true'] {
-  color: var(--jade-ink);
+  color: var(--ok);
 }
 
 .note span[data-error='true'] {
-  color: var(--cinnabar);
+  color: var(--bad);
 }
 
 .actions {
   display: flex;
   flex: none;
   align-items: center;
-  gap: 0.5rem;
-}
-
-.button,
-.ghostButton {
-  display: inline-flex;
-  min-height: 2.2rem;
-  align-items: center;
-  padding: 0 0.9rem;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--paper);
-  color: var(--ink);
-  font-size: var(--fs-small);
-  font-weight: 500;
-  white-space: nowrap;
-  transition:
-    background var(--t-fast) var(--ease-out),
-    border-color var(--t-fast) var(--ease-out),
-    color var(--t-fast) var(--ease-out);
-}
-
-.button:hover:not(:disabled) {
-  background: var(--ink-wash);
-}
-
-.ghostButton {
-  border-color: transparent;
-  background: transparent;
-  color: var(--ink-faint);
-}
-
-.ghostButton:hover:not(:disabled) {
-  color: var(--cinnabar);
-  background: var(--cinnabar-wash);
-}
-
-.button:disabled,
-.ghostButton:disabled {
-  cursor: wait;
-  opacity: 0.55;
+  gap: 8px;
 }
 
 @media (max-width: 560px) {
@@ -120,5 +111,12 @@
   .actions {
     grid-column: 2;
     justify-content: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatarButton,
+  .avatarBadge {
+    transition: none;
   }
 }

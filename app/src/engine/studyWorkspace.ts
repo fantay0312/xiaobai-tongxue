@@ -20,6 +20,13 @@ export interface StudyMessage {
   ui?: LearningUi;
   interaction?: LearningInteraction;
   run?: LearningRun;
+  /** 模型的思考过程（可折叠展示） */
+  reasoning?: string;
+  /** 思考耗时（毫秒） */
+  thinkingMs?: number;
+  /** 生成这条回答的模型与思考强度 */
+  model?: string;
+  effort?: string;
 }
 export interface StudyConversation { id: string; title: string; messages: StudyMessage[]; libraryFileIds?: string[]; selectedSourceIds?: string[]; }
 export interface StudyWorkspace {
@@ -69,12 +76,16 @@ export function loadWorkspace(owner: string | null, topicId: string): StudyWorks
         const run = message.run && ['running','complete','stopped','failed'].includes(message.run.status) ? {
           status: message.run.status === 'running' ? 'stopped' as const : message.run.status,
           startedAt: Number(message.run.startedAt) || 0, elapsedMs: Math.max(0, Math.min(900000,Number(message.run.elapsedMs)||0)),
-          steps: Array.isArray(message.run.steps) ? message.run.steps.slice(0,8).filter((step)=>['sources','model','validate'].includes(step.id)&&typeof step.label==='string').map((step)=>({...step,label:step.label.slice(0,100),status:step.status==='running'?'stopped' as const:step.status})) : [],
+          steps: Array.isArray(message.run.steps) ? message.run.steps.slice(0,12).filter((step)=>step&&typeof step.id==='string'&&/^[\w:.-]{1,40}$/.test(step.id)&&typeof step.label==='string'&&['running','done','stopped','error'].includes(step.status)).map((step)=>({id:step.id,label:step.label.slice(0,100),status:step.status==='running'?'stopped' as const:step.status,at:Number(step.at)||0})) : [],
         } : undefined;
         return [{ id: message.id.slice(0, 80), role: message.role, text: ui ? learningUiText(ui) : message.text.slice(0, 16000), local: message.local === true,
           ...(ui ? {ui,interaction:restoreLearningInteraction(ui,message.interaction)} : {}), ...(run ? {run} : {}),
           ...(message.engine === 'deeptutor' ? { engine: 'deeptutor' as const, rounds: Math.min(4, Math.max(1, Number(message.rounds) || 1)) } : {}),
           ...(typeof message.scopeKey === 'string' ? { scopeKey: message.scopeKey.slice(0, 80) } : {}),
+          ...(typeof message.reasoning === 'string' && message.reasoning ? { reasoning: message.reasoning.slice(0, 12000) } : {}),
+          ...(Number.isFinite(message.thinkingMs) && Number(message.thinkingMs) > 0 ? { thinkingMs: Math.min(900000, Math.round(Number(message.thinkingMs))) } : {}),
+          ...(typeof message.model === 'string' && message.model ? { model: message.model.slice(0, 120) } : {}),
+          ...(typeof message.effort === 'string' && message.effort ? { effort: message.effort.slice(0, 20) } : {}),
           sources }];
       }) }];
     });

@@ -1,98 +1,66 @@
 ---
-name: 小白同学 · 学习工作台
-description: 以课程项目和学习会话为中心的 Codex 式学习终端
+name: 小白同学 · 学习终端
+description: 现代终端外壳 + 老学堂故事物件；语义令牌与八套皮肤
 colors:
-  workspace: "#ffffff"
-  navigation: "#f3f3f3"
-  text: "#242629"
-  secondary-text: "#555b63"
-  muted-text: "#687079"
-  border: "#dfe1e5"
-  accent: "#2865b8"
-  success: "#258467"
+  bg: "#ffffff"
+  sidebar: "#f7f7f8"
+  inset: "#f2f3f5"
+  text: "#1b1d21"
+  text-2: "#4b5059"
+  text-3: "#7a808a"
+  accent: "#3b72e6"
+  solid: "#16181c"
+  ok: "#1f9d6b"
+  warn: "#c0810c"
+  bad: "#d5483f"
 typography:
   body:
-    fontFamily: "DM Sans, -apple-system, PingFang SC, Microsoft YaHei, sans-serif"
+    fontFamily: "-apple-system, SF Pro Text, DM Sans, PingFang SC, Microsoft YaHei, sans-serif"
+    fontSize: "14px"
+    lineHeight: "1.6"
+  reading:
     fontSize: "15px"
     lineHeight: "1.75"
-  title:
-    fontFamily: "DM Sans, -apple-system, PingFang SC, Microsoft YaHei, sans-serif"
-    fontSize: "23px"
-    fontWeight: 600
-  hero:
-    fontSize: "32px"
-    fontWeight: 570
-  mobile-hero:
-    fontSize: "28px"
-  card:
-    fontSize: "21px"
-  section:
-    fontSize: "19px"
-  emphasis:
-    fontSize: "16px"
-  navigation:
-    fontSize: "14px"
-  control:
-    fontSize: "13px"
-  caption:
-    fontSize: "12px"
-  compact:
-    fontSize: "11px"
-  micro:
-    fontSize: "10px"
 rounded:
-  control: "7px"
-  input: "14px"
-  small: "4px"
-  icon: "5px"
-  compact: "6px"
-  panel: "8px"
-  bubble: "10px"
-  card: "12px"
-  round: "50%"
-spacing:
-  navigation: "15px"
-  workspace: "32px"
+  control: "10px"
+  card: "14px"
+  popover: "20px"
+  panel: "26px"
 ---
 
-# 当前应用视觉：简洁学习工作台（2026-10-14）
+# 当前设计：终端 v3（2026-10-14）
 
-用户最新指令明确拒绝 NotebookLM 式常驻三栏与大块功能卡片，要求类似 Codex 的项目终端。学习终端以课程项目、会话和当前内容为中心，资料与工具只在需要时展开。以下规则优先于本文后面的历史规范。宣传页、登录和正式黑板课堂保持各自场景。
+用户要求对外观做深度重构：去掉控件的廉价感，宣传页与登录页重做，终端支持皮肤与个性化，同时保留拜师帖等故事感与游戏感。以下规则优先于后面的历史规范。
 
-## Overview
+## 两层结构
 
-浅灰侧栏、白色宽主区、深灰文字。课程像项目、会话像工作记录。人物作为可收起的小型常驻伙伴，保留原始形象，但不挤占课程或输入区。没有仿造的操作系统窗口按钮。
+- **现代终端外壳**：灰白中性面、宽松圆角、柔和分层阴影、清晰字阶，参考 Codex、ChatGPT、DeepStudent。
+- **故事物件**：拜师帖、证书、日记、来信、印章、试卷等纸质物件保留老学堂工艺。在物件根节点加 `data-story`，其内部回到纸色、墨色、赭陶与衬线/楷体/打字机字体（见 `styles/skins.css` 的 `[data-story]`）。
+- 讲解舱黑板是场景，不是主题，继续用 `--board/--chalk`。
 
-## Colors
+## 令牌与皮肤
 
-默认主题使用上方令牌。选择状态为中性浅灰，蓝色用于链接和真实进度；绿色只表示成功或已准备好的学习资料。颜色定义位于 `src/components/shell/workspace.module.css`，通过作用域变量传给所有应用页面，不全局污染宣传页和黑板。
+- 语义令牌定义在 `src/styles/skins.css`：面 `--bg/--surface/--sidebar/--inset/--hover/--active`，字 `--text/--text-2/--text-3/--text-4`，线 `--border/--border-2`，强调 `--accent` 系，主按钮 `--solid` 系，状态 `--ok/--warn/--bad`，影 `--shadow-1..3`，形 `--r-xs..--r-2xl`，字号 `--fz-*`，控件高 `--ctl-*`，动效 `--ease/--dur-*`。
+- 八套皮肤用 `html[data-skin]` 切换：素白、墨夜、暖纸、青瓷、晴蓝、樱粉、深海、终端。用户自定义（强调色、圆角、密度、字体、字号、壁纸、对话样式、常驻伙伴）由 `store/skinStore.ts` 写到 `<html>`。
+- 旧变量 `--paper/--ink/--azure/--line` 等在应用与宣传场景下桥接到新令牌，旧样式随皮肤变化；新样式一律用新名字。
+- 不写死颜色；色调用 `color-mix()`。每个界面要在深色皮肤和 390px 宽度下可用。
+- 旧主题 anime / tech 已退役。
 
-## Typography
+## 组件
 
-正文、导航与标题统一为无衬线字体；课程标题通过字号和字重建立层级，不再使用书法体、大面积衬线字或装饰性字距。代码继续使用代码字体。
+- 基础件在 `src/components/ui`（Radix 原语 + 令牌）：Button、IconButton、Popover、Menu、Dialog、Sheet、Tabs、Segmented、Switch、Field、Input、Badge、Shimmer、Empty、Card、Progress、toast、ModelPicker、EffortSlider。新界面用这些件，不再各页手写按钮和弹层。
+- 一个视图一个主动作，主按钮是墨色实心；强调色只用于选中、链接和进度。
+- 所有可交互元素有悬停、按下、焦点、禁用四态。用不了的功能直接不显示，不放灰掉的入口。
+- 图标直接从 `lucide-react` 引入。
+- 模型与讲义文本一律经 `CoachMarkdown` 渲染（GFM、LaTeX、代码高亮、mermaid）。
 
-## Layout
+## 终端布局
 
-桌面左栏 252px，包含课程项目、知识点和本课会话；中央工作区默认占满剩余空间，底部为提问框。顶栏只显示课程路径与资料、工具、教小白。资料与工具共用一个 300px 的按需侧面板，默认关闭，不恢复 NotebookLM 常驻三栏。设置、个人中心与学习记录位于左栏底部。手机按当前任务切换项目栏、内容和侧面板。
+图标栏 52px、侧栏 264px（可收起）、主区、按需出现的侧面板 320px。课程像项目，对话像工作记录。视图有：对话、带我学、读讲义、练一练、闪卡、备课流程、工作台、教小白、AI 课堂、助理任务、记忆、资料库。手机宽度下侧栏变抽屉，图标栏变底栏。
 
-## Elevation & Depth
+## 生产环境约束
 
-主要依靠细边框和浅灰底区分层级。输入框与翻卡只使用极浅接触阴影，不铺纸纹和胶片颗粒。
-
-## Shapes
-
-普通控件约 7px 圆角，输入框 14px；切卡箭头和发送按钮可用圆形。高亮只围绕当前操作。
-
-## Components
-
-工具以低装饰列表呈现，生成结果在中央以内容页/标签展示。闪卡、练习、带我学与原记录复用；报告、导图、课件、表格与导读保存来源快照。无模型整理时标记资料摘编，不伪造 AI 执行。语音是浏览器朗读，视频是无声字幕录制，导出格式按实际能力标示。
-
-## Do's and Don'ts
-
-- 保留小白与小砚的原有图像和学习角色分工。
-- 保留账号隔离、未保存保护、键盘操作及移动端避让。
-- 不在学习应用里恢复旧纸纹、赭色大块或重复顶部导航。
-- 不为了像截图而添加尚未接通的音视频、APKG、技能或任务按钮。
+站点内容安全策略不允许外部脚本、样式和字体，运行时不能从 CDN 取资源。模型生成的互动页面只能在 `/sandbox.html` 隔离宿主里执行。PDF 用 pdf.js 自绘。
 
 ---
 

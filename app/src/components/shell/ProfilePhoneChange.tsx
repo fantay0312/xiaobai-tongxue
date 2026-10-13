@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { PhoneCodeField } from '../../pages/login/PhoneCodeField';
 import {
   CODE_RE, MAINLAND_PHONE_RE, mainlandPhoneToE164, useCooldown, type Issue,
 } from '../../hooks/useAuthForm';
 import { useAuthStore } from '../../store/authStore';
+import { Button } from '../ui';
 import {
+  ProfileCodeFields,
   ProfileCredentialFlow,
   ProfileIdentityVerification,
 } from './ProfileCredentialFlow';
@@ -127,22 +128,22 @@ export function ProfilePhoneChange({
     <ProfileCredentialFlow action="change-phone" step={2} onBack={onCancel}>
       <div className={styles.stage} id={ID_PREFIX}>
         <header className={styles.stageHead}>
-          <p className={styles.typeLabel}>NEW CREDENTIAL</p>
           <h3>设置新的验证手机号</h3>
           <p>验证码通过后，新手机号会立即用于验证码登录与密码找回。</p>
         </header>
       <form className={styles.form} noValidate aria-busy={busy} onSubmit={submitChange}>
         <fieldset className={styles.fieldset} disabled={busy}>
-          <PhoneCodeField
-            phone={phone}
+          <ProfileCodeFields
+            kind="phone"
+            value={phone}
             code={code}
             issueField={issue?.field}
             sending={sending}
             cooldown={cooldown}
             idPrefix={ID_PREFIX}
             feedbackId={FEEDBACK_ID}
-            phoneLabel="新手机号"
-            onPhoneChange={changeDraftPhone}
+            label="新手机号"
+            onValueChange={changeDraftPhone}
             onCodeChange={(value) => {
               setCode(value);
               setIssue((current) => current?.field === 'code' || current?.field === 'form' ? null : current);
@@ -153,17 +154,16 @@ export function ProfilePhoneChange({
         {issue ? <p className={styles.error} id={FEEDBACK_ID} role="alert">{issue.message}</p>
           : feedback ? <p className={styles.success} role="status">{feedback}</p> : null}
         <div className={styles.actions}>
-          <button
-            className={styles.secondary}
-            type="button"
+          <Button
+            variant="ghost"
             disabled={busy}
             onClick={() => { setVerificationToken(null); setIssue(null); setFeedback(null); }}
           >
             重新验证
-          </button>
-          <button className={styles.primary} type="submit" disabled={busy}>
+          </Button>
+          <Button type="submit" variant="solid" loading={changing} disabled={busy}>
             {changing ? '正在更换…' : '确认更换手机号'}
-          </button>
+          </Button>
         </div>
       </form>
       </div>

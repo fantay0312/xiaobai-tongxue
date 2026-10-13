@@ -7,9 +7,11 @@ import {
   useState,
   type CSSProperties,
 } from 'react';
+import { ArrowLeft, ArrowRight, Check, Lock, X } from 'lucide-react';
 import type { Achievement } from '../../engine/achievements';
 import { getTopic } from '../../data';
-import { Icon } from '../../components/ui/Icon';
+import { Button, cx } from '../../components/ui';
+import paperScope from './paperScope.module.css';
 import s from './AchievementWall.module.css';
 import motion from './AchievementSealMotion.module.css';
 import { sealButtonId, useSealCeremony } from './useSealCeremony';
@@ -181,14 +183,19 @@ function SealButton({
       <span className={s.sealWash} aria-hidden="true" />
       <span className={s.sealMeta}>
         <span>{TIER_NAME[achievement.tier]}</span>
-        <span>{earned ? '已入谱' : '待落印'}</span>
+        <span className={s.sealStatus}>
+          {earned ? <Check size={11} strokeWidth={3} aria-hidden="true" /> : <Lock size={11} strokeWidth={2.25} aria-hidden="true" />}
+          {earned ? '已入谱' : '待落印'}
+        </span>
       </span>
       <span className={s.artworkStage} aria-hidden="true">
         <SealArtwork achievement={achievement} earned={earned} />
         {celebrating ? <StampPress /> : null}
       </span>
       <span className={`${s.sealName} ${motion.sealName}`}>{achievement.name}</span>
-      <span className={s.sealCriterion}>{earned ? '此印有据' : achievement.desc}</span>
+      <span className={s.sealCriterion}>
+        {achievement.earnedAt ? `${fmtDay(achievement.earnedAt)} 落印` : achievement.desc}
+      </span>
       {!earned ? (
         <span className={s.sealProgress}>
           <span className={s.sealProgressTrack} aria-hidden="true"><span style={{ transform: `scaleX(${progress / 100})` }} /></span>
@@ -197,6 +204,12 @@ function SealButton({
       ) : null}
     </button>
   );
+}
+
+/** 落印日:只取月日,印格里放得下 */
+function fmtDay(iso: string): string {
+  const date = new Date(iso);
+  return `${date.getMonth() + 1} 月 ${date.getDate()} 日`;
 }
 
 function fmtDateTime(iso: string): string {
@@ -235,7 +248,7 @@ function SealDetail({
         <span className={s.detailState}>{TIER_NAME[achievement.tier]} · {earned ? '已入谱' : '待落印'}</span>
         {pinned ? (
           <button type="button" className={s.detailClose} onClick={onClose} aria-label={`收起${achievement.name}条件卡`}>
-            <Icon name="x" size={16} />
+            <X size={16} strokeWidth={1.75} aria-hidden="true" />
           </button>
         ) : <span className={s.temporaryHint} aria-hidden="true">移开即收起</span>}
       </header>
@@ -556,6 +569,8 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
 
   if (achievements.length === 0) return <p className={s.empty}>册页尚空——先去开一课，印章自会一枚枚落上来。</p>;
 
+  const earnedOn = (items: Achievement[]) => items.filter((item) => item.earnedAt !== null).length;
+
   const detailStyle: DetailStyle = detailPosition ? {
     top: detailPosition.top,
     left: detailPosition.left,
@@ -563,7 +578,7 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
   } : {};
 
   return (
-    <div className={s.album}>
+    <div className={cx(s.album, paperScope.scope)} data-story>
       <SealTextureDefs />
       <aside className={s.albumSpine} aria-hidden="true">
         <span className={s.spineTitle}>师者印章册</span>
@@ -587,29 +602,33 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
           ) : null}
         </div>
         <div className={s.bookNav}>
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="ghost"
             className={s.pageButton}
             disabled={spreadIndex === 0}
             onClick={() => turnTo(spreadIndex - 1)}
             aria-label="翻到上一跨页"
+            icon={<ArrowLeft size={15} strokeWidth={1.75} />}
           >
-            <Icon name="arrow-left" size={16} /> 上一页
-          </button>
+            <span className={s.pageButtonText}>上一页</span>
+          </Button>
           <span className={s.spreadStatus} aria-live="polite">
             第 {spreadPages[0].pageIndex + 1}
             {spreadPages[1].pageIndex < pageCount ? `—${spreadPages[1].pageIndex + 1}` : ''} 页
             <small> / 共 {pageCount} 页</small>
           </span>
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="ghost"
             className={s.pageButton}
             disabled={spreadIndex >= spreadCount - 1}
             onClick={() => turnTo(spreadIndex + 1)}
             aria-label="翻到下一跨页"
+            iconRight={<ArrowRight size={15} strokeWidth={1.75} />}
           >
-            下一页 <Icon name="arrow-right" size={16} />
-          </button>
+            <span className={s.pageButtonText}>下一页</span>
+          </Button>
         </div>
 
         <div
@@ -628,7 +647,7 @@ export function AchievementWall({ achievements, litStars }: { achievements: Achi
             >
               <header className={s.pageHead}>
                 <span>{pageOffset === 0 ? '左叶' : '右叶'}</span>
-                <span>SEAL ARCHIVE · {String(page.pageIndex + 1).padStart(2, '0')}</span>
+                <span>已落印 {earnedOn(page.achievements)}/{page.achievements.length}</span>
               </header>
               <div className={s.sealWall}>
                 {page.achievements.map((achievement) => (

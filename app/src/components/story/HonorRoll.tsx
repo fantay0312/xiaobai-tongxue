@@ -24,7 +24,7 @@ export function HonorRoll({ honors }: { honors: SessionHonors }) {
   const stageAfter = getStageMeta(honors.pupilLevelAfter);
 
   return (
-    <section className={`${s.roll} ${paper.texture}`} aria-label="下课钤印">
+    <section className={`${s.roll} ${paper.texture}`} aria-label="下课钤印" data-story>
       <header className={s.head}>
         <p className={`${paper.typeLabel} ${s.eyebrow}`} aria-hidden="true">SEALS OF THE DAY · 印记存根</p>
         <h2 className={s.title}>下课钤印</h2>

@@ -1,9 +1,12 @@
-/** The source is an actual OpenAI-compatible SSE response; never exposes reasoning_content. */
-export async function readModelStream(body, { signal, onText, maxChars = 40000 } = {}) {
+/**
+ * 读取 OpenAI 兼容的 SSE 响应。正文走 onText（累计全文）。
+ * 思考过程只在调用方显式给了 onReasoning 时才外传（累计全文），返回值里永远不带。
+ */
+export async function readModelStream(body, { signal, onText, onReasoning, maxChars = 60000, maxReasoningChars = 60000 } = {}) {
   if (!body) throw new Error('model-stream-empty');
   const reader = body.getReader();
   const decoder = new TextDecoder();
-  let buffer = '', text = '', finish = null, usage = null, done = false;
+  let buffer = '', text = '', reasoning = '', finish = null, usage = null, done = false;
   const abort = () => { void reader.cancel().catch(() => {}); };
   signal?.addEventListener('abort', abort, { once: true });
   const consume = async (event) => {
@@ -14,7 +17,12 @@ export async function readModelStream(body, { signal, onText, maxChars = 40000 }
     try { value = JSON.parse(data); } catch { throw new Error('model-stream-invalid'); }
     if (value.error) throw new Error('model-upstream-failed');
     const choice = value.choices?.[0];
-    if (typeof choice?.delta?.content === 'string') {
+    const thought = choice?.delta?.reasoning_content ?? choice?.delta?.reasoning;
+    if (onReasoning && typeof thought === 'string' && thought && reasoning.length < maxReasoningChars) {
+      reasoning = (reasoning + thought).slice(0, maxReasoningChars);
+      await onReasoning(reasoning);
+    }
+    if (typeof choice?.delta?.content === 'string' && choice.delta.content) {
       text += choice.delta.content;
       if (text.length > maxChars) throw new Error('model-output-too-large');
       await onText?.(text);

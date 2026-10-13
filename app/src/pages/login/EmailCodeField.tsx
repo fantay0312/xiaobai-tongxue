@@ -1,10 +1,16 @@
+import { Mail } from 'lucide-react';
+import { Field, Input } from '../../components/ui';
 import type { AuthField } from '../../store/authStore';
+import { joinIds } from '../../hooks/useAuthForm';
+import { CodeField, IssueText } from './fields';
 import fs from './EmailCodeField.module.css';
 
 interface EmailCodeFieldProps {
   email: string;
   code: string;
   issueField?: AuthField;
+  /** 传入后，邮箱或验证码出错时文案就显示在该字段下方；不传则只标红，由外层提示行说明 */
+  issueMessage?: string;
   sending: boolean;
   cooldown: number;
   idPrefix?: string;
@@ -16,27 +22,26 @@ interface EmailCodeFieldProps {
   onSend: () => void;
 }
 
-const feedbackFor = (field: AuthField, issueField: AuthField | undefined, feedbackId: string) =>
-  field === issueField ? feedbackId : undefined;
-
 export function EmailCodeField({
-  email, code, issueField, sending, cooldown,
+  email, code, issueField, issueMessage, sending, cooldown,
   idPrefix = 'auth', feedbackId = 'auth-feedback', emailLabel = '邮箱', autoFocusEmail = false,
   onEmailChange, onCodeChange, onSend,
 }: EmailCodeFieldProps) {
   const emailId = `${idPrefix}-email`;
-  const codeId = `${idPrefix}-code`;
-  const codeHintId = `${idPrefix}-code-hint`;
-  const sendLabel = sending ? '正在发送…' : cooldown > 0 ? `${cooldown} 秒后重发` : '获取验证码';
-  const codeDescribedBy = [feedbackFor('code', issueField, feedbackId), codeHintId].filter(Boolean).join(' ');
+  const emailInvalid = issueField === 'email';
+  const emailInline = emailInvalid && Boolean(issueMessage);
 
   return (
     <>
-      <label className={fs.field} htmlFor={emailId}>
-        <span className={fs.label}>{emailLabel}</span>
-        <input
+      <Field
+        label={emailLabel}
+        htmlFor={emailId}
+        error={emailInline ? <IssueText id={feedbackId}>{issueMessage}</IssueText> : undefined}
+      >
+        <Input
           id={emailId}
-          className={fs.input}
+          wrapClassName={fs.wrap}
+          className={fs.autofill}
           type="email"
           value={email}
           autoFocus={autoFocusEmail}
@@ -46,40 +51,25 @@ export function EmailCodeField({
           maxLength={254}
           required
           disabled={sending}
-          aria-invalid={issueField === 'email' || undefined}
-          aria-describedby={feedbackFor('email', issueField, feedbackId)}
+          invalid={emailInvalid}
+          placeholder="name@example.com"
+          leading={<Mail size={16} strokeWidth={1.75} />}
+          aria-describedby={joinIds(emailInvalid && feedbackId)}
           onChange={(event) => onEmailChange(event.target.value)}
         />
-      </label>
-      <div className={fs.field}>
-        <label className={fs.label} htmlFor={codeId}>邮箱验证码</label>
-        <div className={fs.codeRow}>
-          <input
-            id={codeId}
-            className={fs.input}
-            type="text"
-            value={code}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            pattern="[0-9]{6}"
-            maxLength={6}
-            required
-            aria-invalid={issueField === 'code' || undefined}
-            aria-describedby={codeDescribedBy}
-            onChange={(event) => onCodeChange(event.target.value.replace(/\D/g, '').slice(0, 6))}
-          />
-          <button
-            type="button"
-            className={fs.sendCode}
-            disabled={sending || cooldown > 0}
-            aria-describedby={codeHintId}
-            onClick={onSend}
-          >
-            {sendLabel}
-          </button>
-        </div>
-        <span className={fs.hint} id={codeHintId}>6 位数字，十分钟内有效</span>
-      </div>
+      </Field>
+      <CodeField
+        id={`${idPrefix}-code`}
+        label="邮箱验证码"
+        code={code}
+        invalid={issueField === 'code'}
+        issueMessage={issueMessage}
+        feedbackId={feedbackId}
+        sending={sending}
+        cooldown={cooldown}
+        onCodeChange={onCodeChange}
+        onSend={onSend}
+      />
     </>
   );
 }

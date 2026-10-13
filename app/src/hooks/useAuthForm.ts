@@ -24,6 +24,11 @@ export function mapPasswordIssueField(field: AuthField | undefined): AuthField {
   return field === 'password' ? 'newPassword' : field ?? 'form';
 }
 
+/** 拼 aria-describedby：丢掉空值，全空时返回 undefined（不输出空属性） */
+export function joinIds(...ids: (string | false | null | undefined)[]): string | undefined {
+  return ids.filter(Boolean).join(' ') || undefined;
+}
+
 interface CooldownState {
   cooldown: number;
   resetCooldown: () => void;

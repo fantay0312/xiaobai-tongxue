@@ -1,0 +1,652 @@
+/* 记忆视图：小砚的记忆 + 小白的记忆。只用 skins.css 语义令牌；故事物件放在 [data-story] 岛里。 */
+
+.root {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 28px 28px 72px;
+  display: grid;
+  gap: 24px;
+  color: var(--text);
+  font: var(--fz-md)/1.6 var(--ui-font);
+}
+
+.head h1 {
+  margin: 0;
+  font: 650 var(--fz-3xl)/1.2 var(--ui-font);
+  letter-spacing: -0.01em;
+}
+.head p {
+  margin: 6px 0 0;
+  color: var(--text-3);
+  font-size: var(--fz-md);
+}
+
+/* ── 两份记忆的区别：角色 + 一句话 ── */
+.duo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 12px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--r-lg);
+  background: var(--sidebar);
+  transition: background var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
+}
+.who[data-active] {
+  border-color: var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+.whoFigure {
+  flex: none;
+  display: grid;
+  place-items: end center;
+  width: 52px;
+  height: 60px;
+}
+/* 小砚是按钮形态的精灵图，这里只缩小尺寸 */
+.whoFigure > button { width: 40px; }
+.whoAvatar {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  transition: transform var(--dur-1) var(--ease);
+}
+.whoAvatar:hover { transform: translateY(-1px); }
+.whoAvatar:active { transform: scale(0.96); }
+.whoAvatar:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.whoCopy { min-width: 0; }
+.whoCopy strong {
+  display: block;
+  font: 600 var(--fz-md)/1.4 var(--ui-font);
+  color: var(--text);
+}
+.whoCopy span {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.55;
+}
+
+.panel {
+  display: grid;
+  gap: 24px;
+  margin-top: 20px;
+  outline: none;
+}
+.panel[hidden] { display: none; }
+
+/* ── 通用小节 ── */
+.section { display: grid; gap: 12px; min-width: 0; }
+.sectionHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+}
+.sectionHead h2 {
+  margin: 0;
+  font: 600 var(--fz-xl)/1.3 var(--ui-font);
+}
+.sectionHead p {
+  margin: 2px 0 0;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
+.sectionSide {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+}
+.sectionSide label { cursor: pointer; }
+
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--warn-soft);
+  color: var(--text);
+  font-size: var(--fz-sm);
+}
+
+/* ── 小砚眼里的你：画像摘要 ── */
+.profile {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+.profileStats { display: flex; flex-wrap: wrap; gap: 6px; }
+.facets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.facet {
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: var(--r-lg);
+  background: var(--inset);
+}
+.facet dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+  font: 500 var(--fz-xs)/1.4 var(--ui-font);
+}
+.facet dd {
+  margin: 6px 0 0;
+  color: var(--text);
+  font-size: var(--fz-md);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.facet dd + dd { margin-top: 4px; }
+.facet dd[data-empty] { color: var(--text-4); }
+
+/* ── 添加一条 ── */
+.add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.addInput { flex: 1 1 260px; min-width: 0; }
+.addSide { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.suggest {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
+.suggestChip {
+  height: var(--ctl-sm);
+  max-width: 100%;
+  padding: 0 12px;
+  overflow: hidden;
+  border: 1px dashed var(--border-2);
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-2);
+  font: var(--fz-sm)/1 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.suggestChip:hover { border-color: var(--text-3); background: var(--hover); color: var(--text); }
+.suggestChip:active { transform: scale(0.97); }
+.suggestChip:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+.toggleChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--ctl-md);
+  max-width: 220px;
+  padding: 0 12px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text-2);
+  font: var(--fz-sm)/1 var(--ui-font);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.toggleChip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toggleChip svg { flex: none; }
+.toggleChip:hover { background: var(--hover); color: var(--text); }
+.toggleChip:active { transform: scale(0.98); }
+.toggleChip:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.toggleChip[aria-pressed='true'] {
+  border-color: transparent;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ── 分组与条目 ── */
+.groups { display: grid; gap: 20px; }
+.group { display: grid; gap: 8px; min-width: 0; }
+.groupHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+.groupHead h3 {
+  margin: 0;
+  color: var(--text);
+  font: 600 var(--fz-md)/1.4 var(--ui-font);
+}
+.count {
+  padding: 1px 8px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-3);
+  font: 500 var(--fz-xs)/1.5 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+}
+.groupHint {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+
+.rows {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px 12px;
+  padding: 10px 8px 10px 12px;
+  border-radius: var(--r-md);
+  transition: background var(--dur-1) var(--ease);
+}
+.row:hover, .row:focus-within { background: var(--hover); }
+.row[data-fresh] { animation: rowIn var(--dur-3) var(--ease) both; }
+.rowMain { min-width: 0; }
+.rowText {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fz-lg);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.row[data-muted] .rowText { color: var(--text-3); }
+.pinMark {
+  margin-right: 6px;
+  color: var(--accent);
+  vertical-align: -1px;
+}
+.rowMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 4px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.6;
+}
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  transition: opacity var(--dur-1) var(--ease);
+}
+.rowActions svg { width: 15px; height: 15px; }
+.confirmAsk {
+  margin-right: 4px;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  white-space: nowrap;
+}
+.rowEdit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.rowEditInput { flex: 1 1 220px; min-width: 0; }
+
+/* 桌面端操作钮悬停或聚焦时才显出，触屏始终可见 */
+@media (hover: hover) {
+  .row .rowActions { opacity: 0; }
+  .row:hover .rowActions,
+  .row:focus-within .rowActions,
+  .row .rowActions[data-open] { opacity: 1; }
+}
+
+.topicChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  height: 22px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--accent-softer);
+  color: var(--accent);
+  font: 500 var(--fz-xs)/1 var(--ui-font);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.topicChip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topicChip svg { flex: none; }
+.topicChip:hover { background: var(--accent-soft); }
+.topicChip:active { transform: scale(0.97); }
+.topicChip:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.topicChip:disabled { cursor: default; }
+
+.listFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
+
+/* ── 这些记忆怎么用 ── */
+.usage {
+  display: grid;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: var(--r-lg);
+  background: var(--inset);
+}
+.usage h3 {
+  margin: 0;
+  font: 600 var(--fz-md)/1.4 var(--ui-font);
+}
+.usage ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.7;
+}
+.hintBox { display: grid; gap: 8px; }
+.hintBox p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+}
+.hintList {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hintList li {
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--fz-sm);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+/* ── 小白的记忆：故事岛（纸页 + 小白的字） ── */
+.storyCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px 20px;
+  padding: 20px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow-paper);
+}
+.storyQuote {
+  margin: 0;
+  color: var(--ink);
+  font: 400 var(--fz-2xl)/1.65 var(--font-display);
+}
+.storySign {
+  margin: 6px 0 0;
+  color: var(--ink-soft);
+  font: 400 var(--fz-md)/1.5 var(--font-display);
+}
+.storyStats {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line-strong);
+}
+.storyStats div { display: flex; align-items: baseline; gap: 6px; }
+.storyStats dt { color: var(--ink-faint); font: 400 var(--fz-sm)/1.4 var(--font-serif); }
+.storyStats dd {
+  margin: 0;
+  color: var(--ink);
+  font: 600 var(--fz-2xl)/1.2 var(--font-serif);
+  font-variant-numeric: tabular-nums;
+}
+.storyStats dd small { margin-left: 2px; color: var(--ink-soft); font-size: var(--fz-sm); font-weight: 400; }
+
+/* ── 教过的课 ── */
+.lessons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.lesson {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-2) var(--ease);
+}
+.lesson:hover { border-color: var(--border-2); box-shadow: var(--shadow-1); }
+.lessonHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.lessonHead h3 {
+  margin: 0;
+  font: 600 var(--fz-lg)/1.4 var(--ui-font);
+  overflow-wrap: anywhere;
+}
+.lessonHead small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+.lessonBadges { display: flex; flex: none; gap: 4px; }
+.meter { display: grid; gap: 6px; }
+.meterTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+}
+.meterTop strong {
+  color: var(--text);
+  font: 600 var(--fz-lg)/1.2 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+}
+.meterNote { color: var(--text-3); font-size: var(--fz-xs); }
+.lessonLine {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+.chipRow { display: grid; gap: 6px; }
+.chipRow > span { color: var(--text-3); font-size: var(--fz-xs); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 24px;
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-xs);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.chipOk { background: var(--ok-soft); color: var(--ok); }
+.lessonFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+
+/* 金句：小白抄在小本子上的字 */
+.handQuote {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 2px solid var(--terra);
+  border-radius: var(--r-xs);
+  background: var(--paper-warm);
+  color: var(--ink);
+  font: 400 var(--fz-lg)/1.6 var(--font-display);
+  overflow-wrap: anywhere;
+}
+.quoteWall {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.quoteNote {
+  display: grid;
+  align-content: space-between;
+  gap: 10px;
+  min-height: 108px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--paper-warm);
+  color: var(--ink);
+  box-shadow: var(--shadow-paper);
+}
+.quoteNote blockquote {
+  margin: 0;
+  font: 400 var(--fz-xl)/1.6 var(--font-display);
+  overflow-wrap: anywhere;
+}
+.quoteNote footer {
+  color: var(--ink-faint);
+  font: 400 var(--fz-xs)/1.5 var(--font-serif);
+}
+
+/* ── 小白眼里的先生 ── */
+.bond {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.bondSummary {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--fz-lg);
+  line-height: 1.7;
+}
+.bondRows { display: grid; gap: 8px; margin: 0; }
+.bondRows div {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+}
+.bondRows dt { color: var(--text-3); font-size: var(--fz-sm); }
+.bondRows dd { margin: 0; color: var(--text-2); font-size: var(--fz-md); line-height: 1.6; }
+.bondMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+
+.more { justify-self: start; }
+.growthLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: var(--r-lg);
+  background: var(--sidebar);
+  color: var(--text);
+  text-decoration: none;
+  transition: background var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.growthLink:hover { background: var(--hover); }
+.growthLink:active { transform: scale(0.995); }
+.growthLink:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.growthLink strong { display: block; font: 600 var(--fz-md)/1.4 var(--ui-font); }
+.growthLink span { display: block; color: var(--text-3); font-size: var(--fz-sm); }
+.growthLink svg { flex: none; color: var(--text-3); }
+
+@keyframes rowIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 720px) {
+  .root { padding: 20px 16px 56px; gap: 20px; }
+  .head h1 { font-size: var(--fz-2xl); }
+  .duo, .facets, .lessons { grid-template-columns: minmax(0, 1fr); }
+  .profile { padding: 16px; }
+  .storyCard { padding: 16px; gap: 12px 14px; }
+  .storyQuote { font-size: var(--fz-xl); }
+  .row { grid-template-columns: minmax(0, 1fr); padding: 10px 8px 6px 12px; }
+  .rowActions { flex-wrap: wrap; margin-left: -6px; }
+  .groupHint { display: none; }
+  .toggleChip { max-width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row[data-fresh] { animation: none; }
+  .who, .lesson, .whoAvatar, .growthLink, .suggestChip, .toggleChip, .topicChip { transition: none; }
+}

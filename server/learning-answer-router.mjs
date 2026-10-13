@@ -2,7 +2,7 @@
 export function createLearningAnswerRouter({service,resolveOwner,reserveCalls,send,readJson,hasJsonContentType}) {
   return {async handle(req,res,pathname) {
     const owner=await resolveOwner(req,res);if(!owner)return;
-    if(pathname==='/api/learning/status'&&req.method==='GET')return send(res,200,{available:!!service,streaming:!!service,generativeUi:!!service});
+    if(pathname==='/api/learning/status'&&req.method==='GET')return send(res,200,{available:!!service,streaming:!!service,generativeUi:!!service,reasoning:!!service});
     if(pathname!=='/api/learning/answer'||req.method!=='POST')return send(res,404,{error:'not-found'});
     if(!service)return send(res,503,{error:'learning-unavailable'});
     if(!hasJsonContentType(req))return send(res,415,{error:'json-required'});

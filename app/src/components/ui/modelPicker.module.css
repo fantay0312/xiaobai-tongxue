@@ -1,0 +1,81 @@
+/* 模型选择 + 思考强度。触发器是输入框里的胶囊；面板两页：强度页、模型列表页。 */
+.trigger {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px 0 9px; max-width: 100%;
+  border: 0; border-radius: var(--r-md); background: var(--inset); color: var(--text-2);
+  font: 600 var(--fz-sm)/1 var(--ui-font); white-space: nowrap; cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.trigger:hover:not(:disabled) { background: var(--active); color: var(--text); }
+.trigger:active:not(:disabled) { transform: scale(0.97); }
+.trigger:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.trigger:disabled, .trigger[data-disabled] { opacity: 0.55; cursor: default; }
+.trigger[data-state='open'] { background: var(--active); color: var(--text); }
+.triggerIcon { flex: none; color: var(--text); }
+.triggerModel { overflow: hidden; text-overflow: ellipsis; }
+.triggerEffort { color: var(--text-3); font-weight: 500; }
+.triggerChevron { flex: none; color: var(--text-3); transition: transform var(--dur-2) var(--ease); }
+.trigger[data-state='open'] .triggerChevron { transform: rotate(180deg); }
+
+.panel { width: min(92vw, 330px); padding: 16px; border-radius: var(--r-2xl); }
+.head { display: grid; grid-template-columns: 32px 1fr 32px; align-items: center; gap: 6px; margin-bottom: 14px; }
+.headIcon { display: grid; place-items: center; width: 32px; height: 32px; color: var(--accent); }
+.headCenter { display: grid; justify-items: center; gap: 2px; min-width: 0; }
+.headCenter strong { color: var(--accent); font: 650 var(--fz-xl)/1.25 var(--ui-font); letter-spacing: 0.01em; }
+.modelLink { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; padding: 2px 4px 2px 8px; border: 0; border-radius: var(--r-sm); background: none; color: var(--text-3); font: 500 var(--fz-sm)/1.3 var(--ui-font); cursor: pointer; transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease); }
+.modelLink:hover { background: var(--hover); color: var(--text); }
+.modelLink span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reset { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 50%; background: none; color: var(--text-3); cursor: pointer; transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-3) var(--ease); }
+.reset:hover { background: var(--hover); color: var(--text); transform: rotate(-90deg); }
+.hint { margin: 12px 2px 0; color: var(--text-3); font-size: var(--fz-xs); line-height: 1.5; text-align: center; }
+
+.back { display: inline-flex; align-items: center; gap: 4px; margin: -4px 0 6px -6px; padding: 6px 8px; border: 0; border-radius: var(--r-sm); background: none; color: var(--text-3); font: 500 var(--fz-sm)/1 var(--ui-font); cursor: pointer; }
+.back:hover { background: var(--hover); color: var(--text); }
+.list { display: grid; gap: 2px; max-height: min(52dvh, 360px); overflow: auto; margin: 0 -6px; }
+.option { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: var(--r-md); background: none; color: var(--text); text-align: left; cursor: pointer; transition: background var(--dur-1) var(--ease); }
+.option:hover, .option:focus-visible { background: var(--hover); outline: none; }
+.option > span { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.option strong { font: 550 var(--fz-md)/1.35 var(--ui-font); }
+.option small { color: var(--text-3); font-size: var(--fz-xs); line-height: 1.4; }
+.option em { flex: none; padding: 2px 7px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); font: 500 var(--fz-2xs)/1.4 var(--ui-font); font-style: normal; }
+.option > svg { flex: none; color: var(--text); }
+
+/* ── 强度滑杆 ── */
+.effort {
+  --h: 40px;
+  position: relative; height: var(--h); border-radius: 999px; background: var(--inset);
+  cursor: pointer; touch-action: none; user-select: none; outline: none;
+}
+.effort:focus-visible { box-shadow: 0 0 0 3px var(--ring); }
+.effort[aria-disabled] { opacity: 0.5; cursor: not-allowed; }
+.effortFill {
+  position: absolute; inset: 0 auto 0 0; width: calc(var(--h) + (100% - var(--h)) * var(--p));
+  border-radius: 999px; overflow: hidden;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 92%, white), var(--accent));
+  transition: width var(--dur-2) var(--ease);
+}
+@keyframes sparkle {
+  0% { opacity: 0; transform: translate(0, 4px) scale(0.6); }
+  30% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(10px, -10px) scale(1); }
+}
+.effortFill i { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: rgba(255, 255, 255, 0.85); animation: sparkle 2.4s var(--ease-in-out) infinite; }
+.effortFill i:nth-child(1) { left: 12%; top: 58%; animation-delay: 0s; }
+.effortFill i:nth-child(2) { left: 26%; top: 34%; animation-delay: 0.5s; width: 2px; height: 2px; }
+.effortFill i:nth-child(3) { left: 41%; top: 66%; animation-delay: 1.1s; }
+.effortFill i:nth-child(4) { left: 55%; top: 40%; animation-delay: 0.3s; width: 2px; height: 2px; }
+.effortFill i:nth-child(5) { left: 68%; top: 62%; animation-delay: 1.6s; }
+.effortFill i:nth-child(6) { left: 80%; top: 36%; animation-delay: 0.9s; width: 2px; height: 2px; }
+.effortStop {
+  position: absolute; top: 50%; left: calc(var(--h) / 2 + (100% - var(--h)) * var(--i));
+  width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: var(--text-4); pointer-events: none;
+  transition: background var(--dur-2) var(--ease);
+}
+.effortStop[data-on] { background: rgba(255, 255, 255, 0.6); }
+.effortThumb {
+  position: absolute; top: 3px; left: calc((100% - var(--h)) * var(--p) + 3px);
+  width: calc(var(--h) - 6px); height: calc(var(--h) - 6px); border-radius: 50%; background: #fff; pointer-events: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22), 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: left var(--dur-2) var(--ease), transform var(--dur-1) var(--ease);
+}
+.effort:active .effortThumb { transform: scale(1.06); }
+@media (prefers-reduced-motion: reduce) { .effortFill i { animation: none; opacity: 0.5; } }

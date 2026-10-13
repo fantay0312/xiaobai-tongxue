@@ -1,0 +1,310 @@
+/* 输入框：大圆角浮卡 + 一行工具 */
+.wrap {
+  position: relative;
+  flex: none;
+  width: 100%;
+  max-width: 780px; /* 与对话列正文同宽；左右留白由外壳的停靠区给 */
+  margin: 0 auto;
+  container: composer / inline-size;
+  color: var(--text);
+  font-family: var(--ui-font);
+}
+
+.box {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-2xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  cursor: text;
+  transition: border-color var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
+}
+.box:hover { border-color: var(--border-2); }
+.box:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border-2));
+  box-shadow: var(--shadow-2), 0 0 0 3px var(--accent-soft);
+}
+.box[data-listening] {
+  border-color: color-mix(in srgb, var(--bad) 55%, var(--border-2));
+  box-shadow: var(--shadow-2), 0 0 0 3px var(--bad-soft);
+}
+
+/* ── 附件小签 ── */
+.attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 12px 12px 0;
+  list-style: none;
+  cursor: default;
+}
+.attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: min(100%, 240px);
+  height: 30px;
+  padding: 0 4px 0 10px;
+  border-radius: var(--r-md);
+  background: var(--inset);
+  color: var(--text-2);
+  font: 500 var(--fz-xs)/1 var(--ui-font);
+}
+.attachment > svg { flex: none; color: var(--text-3); }
+.attachment > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attachment > button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.attachment > button:hover { background: var(--active); color: var(--text); }
+.attachment > button:active { transform: scale(0.9); }
+.attachment > button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+/* ── 文本域 ── */
+.input {
+  display: block;
+  width: 100%;
+  min-height: 24px;
+  max-height: 40vh;
+  margin: 0;
+  padding: 14px 18px 6px;
+  overflow-y: hidden;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: 400 var(--fz-lg)/1.6 var(--ui-font);
+  resize: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-2) transparent;
+}
+.input::placeholder { color: var(--text-4); opacity: 1; }
+
+/* ── 工具行 ── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 8px 8px;
+}
+.tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.sendGroup {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-left: auto;
+}
+/* 模型胶囊可以被压窄，模型名自己省略 */
+.modelSlot { display: flex; flex: 0 1 auto; min-width: 0; }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  height: var(--ctl-md);
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-2);
+  font: 500 var(--fz-sm)/1 var(--ui-font);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+.pill > svg { flex: none; }
+.pill:hover { background: var(--hover); color: var(--text); }
+.pill:active { background: var(--active); transform: scale(0.97); }
+.pill:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.pill[data-state='open'] { background: var(--active); color: var(--text); }
+.pillChevron { color: var(--text-3); transition: transform var(--dur-2) var(--ease); }
+.pill[data-state='open'] .pillChevron { transform: rotate(180deg); }
+
+.pill[data-on] { background: var(--accent-soft); color: var(--accent); }
+.pill[data-on]:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.pill[data-tone='warn'] { background: var(--warn-soft); color: var(--warn); }
+.pill[data-tone='warn']:hover { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
+
+.demoTag {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-3);
+  font: 500 var(--fz-xs)/1 var(--ui-font);
+  white-space: nowrap;
+  cursor: default;
+}
+
+/* 听写中：麦克风变红并带一圈呼吸 */
+@keyframes listening {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--bad) 38%, transparent); }
+  100% { box-shadow: 0 0 0 8px transparent; }
+}
+.sendGroup .mic[data-listening],
+.sendGroup .mic[data-listening]:hover {
+  background: var(--bad-soft);
+  color: var(--bad);
+  animation: listening 1.4s var(--ease-in-out) infinite;
+}
+
+.send {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--solid);
+  color: var(--on-solid);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+.send:hover { background: var(--solid-hover); }
+.send:active { transform: scale(0.92); }
+.send:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.send[aria-disabled='true'] {
+  background: var(--active);
+  color: var(--text-4);
+  cursor: default;
+}
+.send[aria-disabled='true']:active { transform: none; }
+
+/* ── 斜杠指令列表：浮在输入框上方 ── */
+@keyframes commandsIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+.commands {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  display: grid;
+  gap: 2px;
+  width: min(100%, 360px);
+  padding: 6px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-3);
+  transform-origin: bottom left;
+  animation: commandsIn var(--dur-2) var(--ease);
+}
+.commandsTitle {
+  margin: 0;
+  padding: 6px 9px 4px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  font-weight: 500;
+}
+.command {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+.command[aria-selected='true'] { background: var(--hover); }
+.command:active { background: var(--active); }
+.commandIcon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  background: var(--inset);
+  color: var(--text-2);
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.command[aria-selected='true'] .commandIcon { background: var(--accent-soft); color: var(--accent); }
+.commandText { display: grid; flex: 1; gap: 1px; min-width: 0; }
+.commandText strong { font: 600 var(--fz-sm)/1.4 var(--ui-font); }
+.commandText small {
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 脚注 ── */
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 10px;
+  margin: 8px 0 0;
+  padding: 0 8px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.5;
+  text-align: center;
+}
+.footKeys, .footCount { color: var(--text-4); }
+.footCount[data-full] { color: var(--bad); }
+.footLive { color: var(--bad); }
+
+/* ── 窄栏（手机，或被侧栏挤窄的对话列）：胶囊只留图标，资料数收进「+」菜单 ── */
+@container composer (max-width: 600px) {
+  .pill { padding: 0 9px; }
+  .pillText { display: none; }
+  .pill[data-kind='sources']:not([data-tone]) { display: none; }
+  /* 模型胶囊里的强度文字（模型名后的第二个 span）让位给模型名 */
+  .modelSlot button > span + span { display: none; }
+}
+@container composer (max-width: 460px) {
+  .footKeys { display: none; }
+  .toolbar { gap: 4px; padding: 4px 6px 6px; }
+  .sendGroup { gap: 4px; }
+  .input { padding: 12px 14px 4px; }
+}
+
+/* 触屏：输入字号不低于 16px，避免 iOS 聚焦时放大页面 */
+@media (hover: none) and (pointer: coarse) {
+  .input { font-size: max(16px, var(--fz-lg)); }
+  .footKeys { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .commands { animation: none; }
+  .sendGroup .mic[data-listening] { animation: none; }
+  .box, .pill, .send { transition: none; }
+}

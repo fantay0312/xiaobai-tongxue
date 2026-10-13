@@ -1,0 +1,208 @@
+/* 文件预览器。只用 styles/skins.css 的语义令牌，随皮肤变化。 */
+
+/* ── 类型图标 ── */
+.typeIcon {
+  --tone: var(--text-3);
+  display: inline-grid; place-items: center; flex: none;
+  border-radius: var(--r-md); color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 12%, transparent);
+}
+.typeIcon[data-tone='pdf'] { --tone: var(--bad); }
+.typeIcon[data-tone='doc'] { --tone: var(--accent); }
+.typeIcon[data-tone='slide'] { --tone: var(--warn); }
+.typeIcon[data-tone='sheet'] { --tone: var(--ok); }
+.typeIcon[data-tone='image'] { --tone: color-mix(in oklab, var(--accent) 45%, var(--bad)); }
+.typeIcon[data-tone='video'] { --tone: color-mix(in oklab, var(--bad) 60%, var(--warn)); }
+.typeIcon[data-tone='audio'] { --tone: color-mix(in oklab, var(--ok) 55%, var(--accent)); }
+.typeIcon[data-tone='code'] { --tone: var(--text-2); }
+.typeIcon[data-tone='archive'] { --tone: color-mix(in oklab, var(--warn) 55%, var(--text-3)); }
+.typeIcon[data-tone='folder'] { --tone: color-mix(in oklab, var(--warn) 70%, var(--text-2)); }
+
+/* ── 浮层 ── */
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rise { from { opacity: 0; transform: translateY(10px) scale(0.985); } to { opacity: 1; transform: none; } }
+.overlay { position: fixed; inset: 0; z-index: 2000; background: var(--overlay); backdrop-filter: blur(3px); animation: fade var(--dur-2) var(--ease); }
+.panel {
+  position: fixed; z-index: 2000; inset: 20px; margin: auto; max-width: 1480px;
+  display: flex; flex-direction: column; overflow: hidden;
+  border-radius: var(--r-2xl); background: var(--bg); color: var(--text); box-shadow: var(--shadow-3);
+  font: var(--fz-md)/1.6 var(--ui-font); outline: none;
+  animation: rise var(--dur-3) var(--ease);
+}
+
+.head { display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 20px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.headText { flex: 1; min-width: 0; }
+.title { margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 600 var(--fz-lg)/1.35 var(--ui-font); letter-spacing: -0.005em; color: var(--text); }
+.meta { display: flex; align-items: center; gap: 8px; margin: 2px 0 0; color: var(--text-3); font-size: var(--fz-xs); line-height: 1.5; white-space: nowrap; }
+.headActions { display: flex; align-items: center; gap: 6px; flex: none; }
+.pager { display: flex; align-items: center; gap: 2px; margin-right: 6px; padding: 3px; border-radius: var(--r-md); background: var(--inset); }
+.pagerText { min-width: 46px; text-align: center; color: var(--text-3); font-size: var(--fz-xs); font-variant-numeric: tabular-nums; }
+.paneBar { display: flex; padding: 8px 20px; border-bottom: 1px solid var(--border); background: var(--surface); }
+
+.stage { flex: 1; min-height: 0; display: flex; background: var(--sidebar); }
+.stageLayer { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.stageLayer[hidden], .docxStage[hidden] { display: none; }
+.stageCenter { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; overflow: auto; color: var(--text-3); font-size: var(--fz-sm); }
+
+.viewBar { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 6px 12px 6px 20px; border-bottom: 1px solid var(--border); background: var(--surface); color: var(--text-3); font-size: var(--fz-xs); }
+.viewNote { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.viewNote > span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.viewTools { display: flex; align-items: center; gap: 4px; flex: none; }
+.zoomText { min-width: 44px; color: var(--text-2); font-variant-numeric: tabular-nums; text-align: center; }
+
+/* ── PDF：纸面保持白底，与皮肤无关 ── */
+.viewControls { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; }
+.pageInput { width: 46px; height: var(--ctl-sm); padding: 0 6px; border: 1px solid var(--border-2); border-radius: var(--r-sm); background: var(--surface); color: var(--text); font: 500 var(--fz-xs)/1 var(--ui-font); font-variant-numeric: tabular-nums; text-align: center; outline: none; transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease); }
+.pageInput:hover { border-color: var(--text-4); }
+.pageInput:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+.pageTotal { margin: 0 4px 0 2px; color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pdfScroll { position: relative; flex: 1; min-height: 0; padding: 16px 16px 32px; overflow: auto; background: var(--inset); outline: none; scrollbar-width: thin; scrollbar-color: var(--border-2) transparent; }
+.pdfScroll[hidden] { display: none; }
+.pdfPages { display: flex; flex-direction: column; align-items: center; gap: 12px; width: max-content; min-width: 100%; }
+.pdfPage { position: relative; flex: none; overflow: hidden; color-scheme: light; border-radius: 2px; background: Canvas; box-shadow: var(--shadow-2); }
+.pdfPage::before { content: attr(data-page); position: absolute; inset: 0; display: grid; place-items: center; color: GrayText; font: 500 var(--fz-2xl)/1 var(--ui-font); opacity: 0.45; }
+.pdfCanvas { position: absolute; inset: 0; }
+.pdfCanvas canvas { display: block; width: 100%; height: 100%; }
+.pdfPageError { position: absolute; left: 50%; bottom: 16px; padding: 4px 10px; border-radius: var(--r-full); background: Canvas; color: GrayText; font-size: var(--fz-xs); white-space: nowrap; transform: translateX(-50%); }
+
+/* ── 图片 ── */
+.imageStage {
+  flex: 1; min-height: 0; position: relative; overflow: hidden; cursor: grab; touch-action: none; user-select: none;
+  background-color: var(--inset); background-image: radial-gradient(var(--border-2) 1px, transparent 1px); background-size: 18px 18px;
+}
+.imageStage:active { cursor: grabbing; }
+.image { position: absolute; left: 50%; top: 50%; max-width: none; max-height: none; transform-origin: center; border-radius: 2px; box-shadow: var(--shadow-2); will-change: transform; }
+
+/* ── 文本 / 表格 ── */
+.docStage { flex: 1; min-height: 0; overflow: auto; padding: 24px; scrollbar-width: thin; scrollbar-color: var(--border-2) transparent; }
+.reading { max-width: 860px; margin: 0 auto; padding: 32px 40px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); font-size: var(--fz-lg); overflow-wrap: anywhere; }
+.codePane { max-width: 1080px; margin: 0 auto; }
+.sheetStage { flex: 1; min-height: 0; display: flex; padding: 16px; }
+.tableScroll { flex: 1; min-width: 0; overflow: auto; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); scrollbar-width: thin; scrollbar-color: var(--border-2) transparent; }
+.tableScroll:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.table { min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--fz-sm); line-height: 1.5; }
+.table th, .table td { max-width: 360px; padding: 8px 12px; overflow: hidden; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; text-overflow: ellipsis; }
+.table th { position: sticky; top: 0; z-index: 1; background: var(--inset); color: var(--text-2); font-weight: 600; }
+.table tbody tr:hover td { background: var(--hover); }
+.table tbody tr:last-child td { border-bottom: 0; }
+.table .rowNo { width: 1%; color: var(--text-4); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── DOCX：纸面保持白底黑字，与皮肤无关 ── */
+.docxStage { flex: 1; min-height: 0; overflow: auto; background: var(--inset); scrollbar-width: thin; scrollbar-color: var(--border-2) transparent; }
+.docxStage :global(.docx-wrapper) { padding: 24px 16px 4px; background: transparent; }
+.docxStage :global(.docx-wrapper > section.docx) { color-scheme: light; margin-bottom: 20px; border-radius: 2px; background: Canvas; color: CanvasText; box-shadow: var(--shadow-2); }
+
+/* ── PPTX 文字预览 ── */
+.slides { display: grid; gap: 12px; max-width: 860px; margin: 0 auto; padding: 0; list-style: none; }
+.slide { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 16px; padding: 20px 24px 20px 16px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); }
+.slideNo { display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--r-sm); background: var(--inset); color: var(--text-3); font: 600 var(--fz-xs)/1 var(--ui-mono); }
+.slideBody { min-width: 0; }
+.slideBody h3 { margin: 2px 0 8px; color: var(--text); font: 600 var(--fz-xl)/1.4 var(--ui-font); overflow-wrap: anywhere; }
+.slideBody p { margin: 4px 0; color: var(--text-2); font-size: var(--fz-md); line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.slideBody p[data-level] { color: var(--text-3); }
+.slideBody .tableScroll { margin: 10px 0 6px; }
+.slideBody .slideMuted { color: var(--text-4); font-size: var(--fz-xs); }
+
+/* ── 不支持的类型 ── */
+.fallback { display: grid; justify-items: center; gap: 6px; width: min(100%, 440px); padding: 40px 32px 32px; border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow-2); text-align: center; }
+.fallback h3 { margin: 14px 0 0; color: var(--text); font: 600 var(--fz-xl)/1.4 var(--ui-font); overflow-wrap: anywhere; }
+.fallback p { margin: 0; color: var(--text-3); font-size: var(--fz-sm); }
+.fallback .fallbackNote { margin-top: 6px; color: var(--text-2); line-height: 1.7; }
+.fallbackActions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 18px; }
+.detailsPane { max-width: 680px; margin: 0 auto; }
+
+/* ── 视频 / 音频 ── */
+.media { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; grid-template-rows: minmax(0, 1fr); }
+.player { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--sidebar); }
+.player:fullscreen { background: var(--bg); }
+.screen { flex: 1; min-height: 0; position: relative; display: flex; align-items: center; justify-content: center; padding: 20px; cursor: pointer; }
+.video { min-width: 0; min-height: 0; max-width: 100%; max-height: 100%; border-radius: var(--r-lg); background: var(--inset); box-shadow: var(--shadow-3); outline: none; }
+.video[data-pending] { width: min(100%, 720px); aspect-ratio: 16 / 9; box-shadow: none; }
+.screenLoading { position: absolute; left: 50%; top: 50%; display: flex; align-items: center; gap: 10px; color: var(--text-3); font-size: var(--fz-sm); transform: translate(-50%, -50%); pointer-events: none; }
+.player:fullscreen .screen { padding: 0; }
+.player:fullscreen .video { border-radius: 0; box-shadow: none; }
+.bigPlay { position: absolute; left: 50%; top: 50%; display: grid; place-items: center; width: 64px; height: 64px; padding-left: 4px; border-radius: 50%; background: var(--solid); color: var(--on-solid); box-shadow: var(--shadow-3); opacity: 0.92; transform: translate(-50%, -50%); pointer-events: none; transition: transform var(--dur-2) var(--ease); }
+.screen:hover .bigPlay { transform: translate(-50%, -50%) scale(1.06); }
+.audioCard { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; text-align: center; }
+.audioCard strong { max-width: 480px; color: var(--text); font: 600 var(--fz-lg)/1.5 var(--ui-font); overflow-wrap: anywhere; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 var(--accent-soft); } 50% { box-shadow: 0 0 0 14px var(--accent-softer); } }
+.audioDisc { display: grid; place-items: center; width: 112px; height: 112px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
+.audioDisc[data-playing] { animation: pulse 1.8s var(--ease-in-out) infinite; }
+
+.controls { display: grid; gap: 6px; padding: 10px 16px 12px; border-top: 1px solid var(--border); background: var(--surface); }
+.seekRow { display: flex; align-items: center; gap: 10px; }
+.clock { min-width: 42px; color: var(--text-3); font: 500 var(--fz-xs)/1 var(--ui-mono); font-variant-numeric: tabular-nums; }
+.clock:last-child { text-align: right; }
+.seekTrack { position: relative; flex: 1; display: flex; align-items: center; height: 20px; }
+.seek { -webkit-appearance: none; appearance: none; width: 100%; height: 20px; margin: 0; background: transparent; cursor: pointer; outline: none; }
+.seek::-webkit-slider-runnable-track { height: 4px; border-radius: 99px; background: linear-gradient(to right, var(--accent) var(--pct, 0%), var(--border-2) var(--pct, 0%)); }
+.seek::-moz-range-track { height: 4px; border-radius: 99px; background: var(--border-2); }
+.seek::-moz-range-progress { height: 4px; border-radius: 99px; background: var(--accent); }
+.seek::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; border: 0; border-radius: 50%; background: var(--surface); box-shadow: 0 0 0 1px var(--border-2), var(--shadow-2); transition: transform var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease); }
+.seek::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: var(--surface); box-shadow: 0 0 0 1px var(--border-2), var(--shadow-2); }
+.seek:hover::-webkit-slider-thumb { transform: scale(1.18); }
+.seek:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--ring); }
+.seek:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--ring); }
+.seek:disabled { opacity: 0.5; cursor: default; }
+.seekMark { position: absolute; top: 50%; width: 3px; height: 10px; margin: -5px 0 0 -1px; border-radius: 2px; background: var(--warn); pointer-events: none; }
+.buttonRow { display: flex; align-items: center; gap: 4px; }
+.grow { flex: 1; }
+
+.notes { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--border); background: var(--surface); }
+.notesHead { display: flex; align-items: flex-start; gap: 12px; padding: 16px 14px 12px 16px; }
+.notesHead > div { flex: 1; min-width: 0; }
+.notesHead h3 { margin: 0; color: var(--text); font: 600 var(--fz-md)/1.4 var(--ui-font); }
+.notesHead p { margin: 2px 0 0; color: var(--text-3); font-size: var(--fz-xs); line-height: 1.5; }
+.noteList { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0 8px 8px; overflow: auto; list-style: none; scrollbar-width: thin; scrollbar-color: var(--border-2) transparent; }
+.noteItem { display: flex; align-items: flex-start; gap: 2px; border-radius: var(--r-md); transition: background var(--dur-1) var(--ease); }
+.noteItem:hover, .noteItem:focus-within { background: var(--hover); }
+.noteJump { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 10px; padding: 8px; border: 0; border-radius: var(--r-md); background: none; color: var(--text); font: var(--fz-sm)/1.55 var(--ui-font); text-align: left; cursor: pointer; }
+.noteJump:active { transform: scale(0.99); }
+.noteJump:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.noteTime { flex: none; padding: 1px 7px; border-radius: var(--r-xs); background: var(--accent-soft); color: var(--accent); font: 600 var(--fz-xs)/1.6 var(--ui-mono); font-variant-numeric: tabular-nums; }
+.noteText { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.noteItem .noteRemove { margin: 4px 4px 0 0; opacity: 0; }
+.noteItem:hover .noteRemove, .noteItem:focus-within .noteRemove { opacity: 1; }
+.noteEmpty { display: grid; justify-items: center; gap: 6px; margin: auto; padding: 24px; color: var(--text-4); font-size: var(--fz-sm); }
+.noteForm { display: grid; gap: 8px; padding: 12px; border-top: 1px solid var(--border); background: var(--sidebar); }
+.noteForm .noteInput { min-height: 0; resize: none; font-size: var(--fz-sm); }
+.noteForm > button { justify-self: end; }
+
+@media (hover: none) {
+  .noteItem .noteRemove { opacity: 1; }
+}
+@media (max-width: 900px) {
+  .media { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 44%); }
+  .media[data-kind='audio'] { grid-template-rows: auto minmax(0, 1fr); }
+  .media[data-kind='audio'] .audioCard { flex-direction: row; justify-content: flex-start; gap: 14px; padding: 16px; text-align: left; }
+  .media[data-kind='audio'] .audioDisc { width: 56px; height: 56px; }
+  .notes { border-left: 0; border-top: 1px solid var(--border); }
+  .screen { padding: 12px; }
+}
+@media (max-width: 640px) {
+  .panel { inset: 0; max-width: none; border-radius: 0; }
+  .head { gap: 10px; padding: 10px 8px 10px 12px; }
+  .headIcon { display: none; }
+  .headActions { gap: 2px; }
+  .headButton { width: var(--ctl-md); padding: 0; }
+  .headButton > span { display: none; }
+  .pager { margin-right: 2px; background: none; padding: 0; }
+  .pagerText { display: none; }
+  .paneBar { padding: 8px 12px; }
+  .viewBar { gap: 8px; padding-left: 12px; padding-right: 8px; }
+  .viewControls { gap: 2px; }
+  .viewControls + .viewTools .zoomText { display: none; }
+  .barLink { width: var(--ctl-sm); padding: 0; }
+  .barLink span { display: none; }
+  .pdfScroll { padding: 8px 8px 24px; }
+  .pdfPages { gap: 8px; }
+  .docStage { padding: 12px; }
+  .reading { padding: 20px 16px; font-size: var(--fz-md); }
+  .sheetStage { padding: 8px; }
+  .slide { gap: 12px; padding: 16px 16px 16px 12px; }
+  .docxStage :global(.docx-wrapper) { padding: 12px 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .overlay, .panel, .audioDisc[data-playing] { animation: none; }
+  .bigPlay, .seek::-webkit-slider-thumb { transition: none; }
+}

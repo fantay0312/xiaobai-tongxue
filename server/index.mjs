@@ -83,6 +83,8 @@ import { createFileLibraryRouter } from './file-library/router.mjs';
 import { postgresFileLibraryStore } from './file-library/repository.mjs';
 import { createLearningAnswerService } from './learning-answer.mjs';
 import { createLearningAnswerRouter } from './learning-answer-router.mjs';
+import { createModelCatalog } from './model-catalog.mjs';
+import { createModelGatewayService, createModelGatewayRouter } from './model-gateway.mjs';
 import { createJsonLlmClient, createTopicCompiler } from './custom-content/topic-compiler.mjs';
 import { createWeKnoraClient } from './custom-content/weknora-client.mjs';
 import {
@@ -2853,11 +2855,30 @@ const fileLibraryRouter = createFileLibraryRouter({ service: fileLibraryService,
   rateLimit: productionStorage ? (owner) => productionStorage.redisOtp.rateLimit({ scope: 'library-upload', subject: owner.id, limit: 60, windowSeconds: 86400 }) : undefined,
 });
 if (fileLibraryService) { const cleanup = setInterval(() => { void fileLibraryService.reconcile().catch(() => console.error('[library] pending upload cleanup failed')); }, 300000); cleanup.unref(); }
+const modelCatalog = createModelCatalog(cfg);
 const learningAnswerRouter = createLearningAnswerRouter({
   service: fileLibraryService && API_KEY && /^https:\/\//.test(UPSTREAM)
-    ? createLearningAnswerService({fileLibrary:fileLibraryService,customContent:customContentService,baseUrl:UPSTREAM,apiKey:API_KEY,model:MODEL_COACH}) : null,
+    ? createLearningAnswerService({fileLibrary:fileLibraryService,customContent:customContentService,baseUrl:UPSTREAM,apiKey:API_KEY,model:MODEL_COACH,catalog:modelCatalog}) : null,
   resolveOwner: async (req,res) => {const user=await protectedUser(req,res,'chat');return user?{...user,id:(await findUser(user.name))?.id??user.name}:null;},
   reserveCalls: reserveChatCalls,send,readJson,hasJsonContentType,
+});
+// 模型网关单独计数：助理任务一次目标要连续调用十几步，课堂的每分钟 12 次不够用；每日仍封顶
+const modelHits = new Map(); // name -> { count, resetAt, day, daily }
+function reserveModelCalls(u, res, units = 1) {
+  const today = new Date().toISOString().slice(0, 10);
+  const rate = modelHits.get(u.name) ?? { count: 0, resetAt: Date.now() + 60_000, day: today, daily: 0 };
+  if (rate.resetAt < Date.now()) { rate.count = 0; rate.resetAt = Date.now() + 60_000; }
+  if (rate.day !== today) { rate.day = today; rate.daily = 0; }
+  rate.count += units; rate.daily += units; modelHits.set(u.name, rate);
+  if (rate.count > 60) { send(res, 429, { error: 'rate-limited' }); return false; }
+  if (rate.daily > 1500) { send(res, 429, { error: 'daily-limit' }); return false; }
+  return true;
+}
+// 模型网关：学习终端新功能的统一模型出口；没配密钥时目录返回不可用、流式接口 503
+const modelGatewayRouter = createModelGatewayRouter({
+  service: API_KEY && /^https:\/\//.test(UPSTREAM) ? createModelGatewayService({ baseUrl: UPSTREAM, apiKey: API_KEY, catalog: modelCatalog }) : null,
+  resolveOwner: async (req, res) => { const user = await protectedUser(req, res, 'chat'); return user ? { ...user, id: (await findUser(user.name))?.id ?? user.name } : null; },
+  reserveCalls: reserveModelCalls, send, readJson: (req, limit) => readJson(req, limit, 15_000), hasJsonContentType,
 });
 
 const server = http.createServer((req, res) => {
@@ -2868,6 +2889,7 @@ const server = http.createServer((req, res) => {
   }
   if (pathname.startsWith('/api/')) {
     if (pathname.startsWith('/api/learning/')) return void learningAnswerRouter.handle(req,res,pathname);
+    if (pathname.startsWith('/api/model/')) return void modelGatewayRouter.handle(req, res, pathname);
     if (pathname === '/api/library' || pathname.startsWith('/api/library/')) return void fileLibraryRouter.handle(req, res, pathname);
     if (pathname.startsWith('/api/study/')) return void studyTutorRouter.handle(req, res, pathname);
     if (pathname === '/api/xb' || pathname.startsWith('/api/xb/')) {

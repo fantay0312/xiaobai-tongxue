@@ -1,54 +1,27 @@
 /* ─────────────────────────────────────────────
-   成长页 —— 一本「成长册」的册页语言。
-   分卷编次(卷首/卷一…):卷号小印 + 标题 + 眉注;
-   印章册 = 分叶装订的方章(实印按 tier 分色,虚印降透明);
-   编年史 = 日期栏 + 贯通书脊 + 课堂记录,备课/补学作眉批小条;
-   图谱星图类(mapSvg/vein 与 core、halo 两族前缀)被 KnowledgeMap.tsx 复用,选择器名不可动。
-   朱砂只落在「被带偏」与破坏性操作上——语义法则,不作普通强调。
+   成长册 —— 现代页面框住手作物件。
+   页面骨架(题头、数字带、进阶轨、版块题头、编年史)走 skins.css 语义令牌,随皮肤变化;
+   纸质物件(档案照、愿望笺、金句、印象笺)根上有 data-story,在物件内用老学堂纸墨变量;
+   学问星海是一块自带 --star-sky-* 的深空场景,证据浮卡住在场景里。
+   版式断点用容器查询(以 .page 为容器),侧栏展开/收起都成立。
+   scripts/growth-hero-contract 与 ui-feedback-contract 对本文件若干规则有静态断言,改动前先看。
    ───────────────────────────────────────────── */
 
 .page {
+  container-type: inline-size;
   width: 100%;
   min-width: 0;
-  max-width: var(--page-max);
+  max-width: 1180px;
   margin: 0 auto;
-  padding: clamp(2rem, 4.5vw, 3.5rem) clamp(var(--gap), 4vw, var(--gap-loose)) var(--gap-section);
+  padding: 32px clamp(16px, 4vw, 40px) 96px;
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: var(--fz-md);
+  line-height: 1.6;
 }
 
 /* backwards 而非 both:to 帧不驻留,免得压死后代 hover transform */
-.rise { animation: global(rise) var(--t-med) var(--ease-out) backwards; }
-
-/* scroll-margin:卷五记忆匣的锚点按钮 scrollIntoView 落点,给 sticky 顶栏留出身位 */
-.section { margin-bottom: var(--gap-section); scroll-margin-top: calc(var(--header-h) + var(--gap-tight)); }
-
-.h2 {
-  margin-left: -0.02em;
-  margin-bottom: clamp(1.4rem, 3vw, 2rem);
-  font-size: clamp(1.5rem, 2.6vw, 2.1rem);
-  line-height: 1.3;
-  letter-spacing: 0.015em;
-  color: var(--ink);
-}
-
-.h2 small {
-  display: block;
-  margin-top: 0.5rem;
-  font-family: var(--font-body);
-  font-size: var(--fs-body);
-  font-weight: 400;
-  line-height: 1.8;
-  letter-spacing: 0;
-  color: var(--ink-soft);
-}
-
-.h3 { font-size: var(--fs-sub); color: var(--ink); margin-bottom: var(--gap-tight); }
-
-.muted { color: var(--ink-faint); }
-
-/* 数字纪律:所有数值/时间落 code 字体 */
-.num { font-family: var(--font-code); font-weight: 500; font-size: 0.95em; }
-
-/* ── 卷首:左档案与性情选择 / 中央成长编年轴 / 右侧师道批注 ── */
+.rise { animation: global(rise) var(--dur-3) var(--ease) backwards; }
 
 .srOnly {
   position: absolute;
@@ -62,72 +35,141 @@
   border: 0;
 }
 
+/* 数字纪律:数值一律等宽数字 */
+.num { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.muted { color: var(--ink-faint); }
+
+/* ── 版块与题头 ── */
+
+.section {
+  margin-bottom: 48px;
+  scroll-margin-top: 24px;
+}
+
+.secHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin-bottom: 16px;
+}
+
+.secHead > div { min-width: 0; }
+
+.h2 {
+  margin: 0;
+  font: 650 var(--fz-2xl)/1.3 var(--ui-font);
+  letter-spacing: -0.005em;
+  color: var(--text);
+}
+
+.secNote {
+  margin: 2px 0 0;
+  font-size: var(--fz-sm);
+  line-height: 1.55;
+  color: var(--text-3);
+}
+
+.secCount { flex: none; height: 24px; padding: 0 10px; font-size: var(--fz-xs); }
+
+.subHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font: 600 var(--fz-lg)/1.4 var(--ui-font);
+  color: var(--text);
+}
+
+.subHead svg { color: var(--text-3); }
+
+.emptyCard {
+  border-radius: var(--r-lg);
+  background: var(--sidebar);
+}
+
+/* ── 卷首:题头档案 / 数字带 / 进阶轨 / 侧注 ── */
+
 .hero {
   display: grid;
-  grid-template-columns: minmax(12.5rem, 0.64fr) minmax(27rem, 1.48fr) minmax(12.25rem, 0.64fr);
-  gap: clamp(var(--gap), 3vw, var(--gap-loose));
-  align-items: stretch;
-  margin-bottom: var(--gap-section);
-  scroll-margin-top: calc(var(--header-h) + var(--gap-tight));
+  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
+  grid-template-areas:
+    'profile profile'
+    'stats stats'
+    'rail notes';
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 48px;
+  scroll-margin-top: 24px;
 }
 
 .profileColumn,
 .chronicleColumn,
 .notesColumn { min-width: 0; }
 
+/* 题头:左档案照(纸物),右标题、一句现状与性情 */
 .profileColumn {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  grid-area: profile;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'portrait heading'
+    'portrait facts';
+  grid-template-rows: auto 1fr;
+  column-gap: 28px;
+  row-gap: 16px;
+  padding: 4px 0 12px;
 }
 
-.profileHeading { margin-bottom: var(--gap); }
+.profileHeading { grid-area: heading; align-self: end; min-width: 0; }
 
 .heroTitle {
-  color: var(--ink);
-  font-size: var(--fs-hero);
-  line-height: 0.94;
-  letter-spacing: 0.035em;
-}
-
-.heroTitle span { display: block; }
-
-.heroTitle span + span {
-  margin-top: 0.16em;
-  padding-left: 0.72em;
-  color: var(--azure-deep);
+  margin: 0;
+  font: 680 var(--fz-4xl)/1.2 var(--ui-font);
+  letter-spacing: -0.02em;
+  color: var(--text);
 }
 
 .heroSub {
-  max-width: 15rem;
-  margin-top: var(--gap-tight);
-  color: var(--ink-soft);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  line-height: 1.75;
+  max-width: 40rem;
+  margin: 8px 0 0;
+  font-size: var(--fz-lg);
+  line-height: 1.6;
+  color: var(--text-2);
 }
 
-/* 档案照是卷首唯一的完整纸物;阶牌微斜出框,作为本页破网格的一刻。 */
-.portrait {
-  position: relative;
-  width: 100%;
-  max-width: 14.5rem;
-  margin: 0 0 var(--gap);
-  padding: var(--gap-tight) var(--gap-tight) var(--gap);
-  overflow: visible;
-  background: var(--paper-warm);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-s);
-  box-shadow: inset 0 0 0 4px var(--paper-warm), inset 0 0 0 5px var(--paper-edge), var(--shadow-paper);
-  text-align: center;
+.heroHint {
+  margin: 2px 0 0;
+  font-size: var(--fz-sm);
+  color: var(--text-3);
 }
+
+/* 档案照:卷首唯一的纸物,微斜出框。data-story 让它在深色皮肤里也是一张纸 */
+.portrait {
+  grid-area: portrait;
+  align-self: center;
+  width: 148px;
+  margin: 0;
+  padding: 8px 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--paper-warm);
+  box-shadow: 0 0 0 1px var(--line), var(--shadow-paper);
+  transform: rotate(-2.2deg);
+  transition: transform var(--dur-3) var(--ease);
+}
+
+.portrait:hover { transform: rotate(-1deg) translateY(-2px); }
 
 .portraitStage {
   display: flex;
-  min-height: 11.5rem;
   align-items: flex-end;
   justify-content: center;
+  height: 128px;
   overflow: hidden;
+  border-radius: var(--r-xs);
+  background: var(--paper);
 }
 
 .portraitStage > * { max-width: 100%; }
@@ -135,92 +177,616 @@
 .portraitCaption {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: var(--gap-tight);
-  margin-top: var(--gap-tight);
-  padding-inline: var(--gap-hair);
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding-inline: 4px;
 }
 
 .portraitName {
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: var(--fs-body);
+  font-size: var(--fz-sm);
   font-weight: 700;
   letter-spacing: 0.08em;
 }
 
 .portraitSeal {
   display: grid;
-  width: 1.65rem;
-  height: 1.65rem;
   flex: none;
+  width: 22px;
+  height: 22px;
   place-items: center;
-  border: 1.5px solid var(--seal-red);
-  border-radius: var(--radius-s);
-  color: var(--seal-red);
+  border: 1.5px solid var(--story-seal);
+  border-radius: 4px;
+  color: var(--story-seal);
   font-family: var(--font-display);
-  font-size: var(--fs-small);
+  font-size: var(--fz-xs);
   font-weight: 700;
+  line-height: 1;
   transform: rotate(-5deg);
 }
 
 .profileFacts {
-  width: 100%;
-  max-width: 14.5rem;
-  margin: 0 0 var(--gap-loose);
-  border-top: 1px solid var(--line-strong);
+  grid-area: facts;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin: 0;
+  min-width: 0;
 }
 
 .profileFacts > div {
   display: grid;
-  grid-template-columns: 3.5rem minmax(0, 1fr);
-  gap: var(--gap-tight);
-  padding: 0.38rem 0;
-  border-bottom: 1px dotted var(--paper-edge);
+  gap: 1px;
+  min-width: 0;
 }
 
 .profileFacts dt {
-  color: var(--ink-faint);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  letter-spacing: var(--track-label);
+  font-size: var(--fz-xs);
+  color: var(--text-3);
 }
 
 .profileFacts dd {
   margin: 0;
   min-width: 0;
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
+  font-size: var(--fz-md);
+  font-weight: 550;
+  color: var(--text);
 }
 
 .profileFacts > .personaFact {
-  display: block;
-  padding-block: var(--gap-tight);
+  order: -1;
+  flex: 0 1 19rem;
+  min-width: min(100%, 15rem);
 }
 
-/* 师道回到右侧批注位,不再与左侧性情操作争位。 */
-.rankCard {
+/* ── 概览数字带 ── */
+
+.statRow {
+  grid-area: stats;
   display: grid;
-  width: 100%;
-  grid-template-columns: 2.75rem minmax(0, 1fr);
-  gap: var(--gap-tight);
-  margin-top: auto;
-  padding-top: var(--gap);
-  border-top: 1px solid var(--line-strong);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
 }
 
+.statTile {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  transition: box-shadow var(--dur-2) var(--ease), transform var(--dur-2) var(--ease);
+}
+
+.statTile:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); }
+
+.statTile dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fz-xs);
+  color: var(--text-3);
+}
+
+.statTile dd {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 0;
+  min-width: 0;
+}
+
+.statTile dd b {
+  font: 680 var(--fz-3xl)/1.15 var(--ui-font);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.statTile dd small {
+  font-size: var(--fz-sm);
+  color: var(--text-3);
+}
+
+.statTile dd.statNote {
+  font-size: var(--fz-xs);
+  line-height: 1.5;
+  color: var(--text-3);
+}
+
+/* 五阶小点:走到第几阶一眼可数 */
+.stagePips {
+  display: inline-flex;
+  align-self: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.stagePips i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--inset);
+  box-shadow: inset 0 0 0 1px var(--border-2);
+}
+
+.stagePips i[data-on] {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+.statMeter {
+  flex: 1 1 56px;
+  align-self: center;
+  height: 6px;
+  min-width: 40px;
+  margin-left: 4px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  overflow: hidden;
+}
+
+.statMeter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width var(--dur-3) var(--ease);
+}
+
+/* ── 科名进阶轨 ── */
+
+.chronicleColumn {
+  grid-area: rail;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+
+.railHead { margin-bottom: 12px; }
+.railHead .h2 { font-size: var(--fz-xl); }
+
+.chronicleTrack { position: relative; }
+
+.ladder {
+  /* 圆点圆心距行顶的距离:轨线首尾按它收口 */
+  --marker-y: 26px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rung { position: relative; }
+
+/* 轨线:贯穿每一阶,圆点不透明盖在线上;走过的路段落 --ok */
+.rung::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 21px;
+  z-index: 0;
+  width: 2px;
+  background: var(--border-2);
+  pointer-events: none;
+}
+
+.rung:first-child::after { top: var(--marker-y); }
+.rung:last-child::after { bottom: calc(100% - var(--marker-y)); }
+.rungPast::after { background: var(--ok); }
+
+.currentRung {
+  --marker-y: 38px;
+  padding: 6px 0;
+}
+
+.rungHead {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 44px auto minmax(0, 1fr) auto auto 20px;
+  grid-template-areas: 'toggle sign desc req state chev';
+  align-items: center;
+  column-gap: 12px;
+  min-height: 52px;
+  padding-right: 10px;
+  border-radius: var(--r-md);
+  transition: background var(--dur-1) var(--ease);
+}
+
+.rungHead:hover { background: var(--hover); }
+.rungHead:active { background: var(--active); }
+
+/* 圆点即开关;透明 ::after 把可点面铺满整行 */
+.stageToggle {
+  grid-area: toggle;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.stageToggle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-md);
+  transition: box-shadow var(--dur-1) var(--ease);
+}
+
+.stageToggle:focus-visible { outline: none; }
+.stageToggle:focus-visible::after { box-shadow: 0 0 0 3px var(--ring); }
+
+.rungMarker {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px var(--border-2);
+  color: var(--surface);
+  transition: transform var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
+}
+
+.rungHead:hover .rungMarker { transform: scale(1.1); }
+
+.rungPast .rungMarker {
+  background: var(--ok);
+  box-shadow: none;
+}
+
+.rungNext .rungMarker { box-shadow: inset 0 0 0 2px var(--accent); }
+
+.currentMarker {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+  animation: markerPulse 2.6s var(--ease-in-out) infinite alternate;
+}
+
+@keyframes markerPulse {
+  from { box-shadow: 0 0 0 3px var(--accent-soft); }
+  to { box-shadow: 0 0 0 7px var(--accent-softer); }
+}
+
+.rungSign {
+  grid-area: sign;
+  min-width: 3em;
+  font-size: var(--fz-lg);
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.rungPast .rungSign { color: var(--text); }
+.rungNext .rungSign { color: var(--text); }
+
+.rungDesc {
+  grid-area: desc;
+  min-width: 0;
+  font-size: var(--fz-sm);
+  color: var(--text-3);
+}
+
+.rungReq {
+  grid-area: req;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 6px;
+  font-size: var(--fz-xs);
+  color: var(--text-3);
+}
+
+.reqClause { white-space: nowrap; }
+
+/* 下一阶的门槛:底色即进度 */
+.reqMeter {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  overflow: hidden;
+}
+
+.reqMeter i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent-soft);
+  transition: width var(--dur-3) var(--ease);
+}
+
+.reqMeter[data-done] i { background: var(--ok-soft); }
+.reqMeter[data-done] { color: var(--ok); }
+.reqMeter .reqClause { position: relative; }
+
+.rungState { grid-area: state; }
+
+.rungChevron {
+  grid-area: chev;
+  color: var(--text-4);
+  transition: transform var(--dur-2) var(--ease), color var(--dur-1) var(--ease);
+}
+
+.rungHead:hover .rungChevron { color: var(--text-2); }
+.stageToggle[aria-expanded='true'] ~ .rungChevron { transform: rotate(180deg); }
+
+/* 当前阶:一张强调卡,学识条与愿望笺都在里面 */
+.currentChapter {
+  position: relative;
+  z-index: 1;
+  padding-bottom: 16px;
+  border-radius: var(--r-lg);
+  background: var(--accent-softer);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.currentChapter .rungHead {
+  grid-template-columns: 44px minmax(0, 1fr) auto 20px;
+  grid-template-areas: 'toggle heading state chev';
+  min-height: 64px;
+  border-radius: var(--r-lg);
+}
+
+.currentHeading {
+  grid-area: heading;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  min-width: 0;
+}
+
+.currentHeading h3 {
+  margin: 0;
+  font: 680 var(--fz-3xl)/1.2 var(--ui-font);
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+.currentHeading p {
+  margin: 0;
+  font-size: var(--fz-md);
+  color: var(--text-2);
+}
+
+.wisdom,
+.stagePreview {
+  display: grid;
+  gap: 8px;
+  padding: 4px 16px 12px 56px;
+}
+
+.wisdom { padding-top: 8px; }
+
+.stagePreview[hidden],
+.wisdom[hidden] { display: none; }
+
+.wisdomHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+}
+
+.wisdomLabel {
+  font-size: var(--fz-sm);
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.stagePreview .wisdomLabel { color: var(--text-2); }
+
+.wisdomGap {
+  font-size: var(--fz-xs);
+  color: var(--text-3);
+}
+
+.wisdomGap .num { color: var(--text); }
+
+.wisdomTrack {
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--r-full);
+  background: var(--inset);
+}
+
+.currentChapter .wisdomTrack { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+
+.wisdomFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width var(--dur-3) var(--ease);
+}
+
+/* 愿望笺:贴在当前阶里的一张小纸条(data-story) */
+.dreamThread {
+  margin: 8px 16px 0 56px;
+  padding: 12px 16px;
+  border-radius: var(--r-sm);
+  background: var(--paper-warm);
+  box-shadow: 0 0 0 1px var(--line), var(--shadow-paper);
+  transform: rotate(-0.4deg);
+}
+
+.dreamLabel {
+  margin: 0;
+  color: var(--ink-faint);
+  font-family: var(--font-typewriter);
+  font-size: var(--fz-xs);
+  letter-spacing: 0.08em;
+}
+
+.dreamText {
+  max-width: 30rem;
+  margin: 4px 0 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fz-xl);
+  line-height: 1.7;
+}
+
+.dreamProgress {
+  margin-top: 4px;
+  color: var(--terra-ink);
+  font-size: var(--fz-xs);
+}
+
+.graduationScene {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  margin: 12px 16px 0 56px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--ok-soft);
+}
+
+.graduationLectern {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ok);
+}
+
+.graduationLabel {
+  margin: 0;
+  font-size: var(--fz-xs);
+  font-weight: 600;
+  color: var(--ok);
+}
+
+.graduationQuote {
+  margin: 2px 0 0;
+  font-size: var(--fz-lg);
+  font-weight: 550;
+  color: var(--text);
+}
+
+.graduationProof {
+  margin: 2px 0 0;
+  font-size: var(--fz-xs);
+  color: var(--text-3);
+}
+
+.morphHint {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--sidebar);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+
+.morphHint svg { flex: none; margin-top: 2px; color: var(--accent); }
+.morphCourse { color: var(--accent); font-style: normal; font-weight: 550; }
+
+/* ── 侧注:下一步 + 师道称号 ── */
+
+.notesColumn {
+  grid-area: notes;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.journeyCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--sidebar);
+}
+
+.journeyLabel {
+  margin: 0;
+  font-size: var(--fz-xs);
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.journeyLine {
+  margin: 0 0 4px;
+  font-size: var(--fz-lg);
+  font-weight: 550;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.rankCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+
+.sidebarRankCard { min-width: 0; }
+
+.rankHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* 师道小印:印泥色取故事令牌,皮肤切换不变 */
 .rankSeal {
   display: grid;
-  width: 2.75rem;
-  height: 2.75rem;
+  flex: none;
+  width: 42px;
+  height: 42px;
   place-items: center;
   writing-mode: vertical-rl;
-  border: 1.5px solid var(--seal-red);
-  border-radius: var(--radius-s);
-  color: var(--seal-red);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
+  border: 1.5px solid var(--story-seal);
+  border-radius: var(--r-xs);
+  color: var(--story-seal);
+  font-family: var(--story-hand);
+  font-size: var(--fz-sm);
   font-weight: 700;
   line-height: 1;
   transform: rotate(-3deg);
@@ -228,723 +794,113 @@
 
 .rankBody { min-width: 0; }
 
-.rankLabel,
-.rankScore,
-.rankNext { font-size: var(--fs-tiny); }
-
 .rankLabel {
-  color: var(--ink-faint);
-  font-family: var(--font-typewriter);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  margin: 0;
+  font-size: var(--fz-xs);
+  color: var(--text-3);
 }
 
 .rankTitle {
-  margin-top: 0.1rem;
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-  font-weight: 700;
-  line-height: 1.35;
-}
-
-.rankScore { margin-top: var(--gap-hair); color: var(--ink-soft); line-height: 1.65; }
-.rankNext { margin-top: 0.18rem; color: var(--ink-faint); line-height: 1.65; }
-
-.rankCard.sidebarRankCard {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: 0;
-}
-
-/* 编年轴:左边的一条墨线从当前章节通往五个科名。 */
-.chronicleColumn {
-  padding-inline: clamp(var(--gap), 2.5vw, var(--gap-loose));
-  border-inline: 1px solid var(--paper-edge);
-}
-
-.chronicleTrack {
-  position: relative;
-  isolation: isolate;
-}
-
-.chronicleTrack::before {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  top: 0.5rem;
-  bottom: 1.65rem;
-  left: 0.84rem;
-  border-left: 1px solid var(--line-strong);
-}
-
-.currentChapter {
-  position: relative;
-  padding: var(--gap-tight) 0 var(--gap-loose) 2.75rem;
-  border-bottom: 1px solid var(--line-strong);
-}
-
-.currentMarker {
-  position: absolute;
-  top: 0.55rem;
-  left: 0;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: 0.38rem solid var(--paper);
-  border-radius: 50%;
-  background: var(--azure);
-  box-shadow: 0 0 0 1px var(--azure);
-}
-
-.currentTicket {
-  display: inline-block;
-  padding: 0.12rem 0.45rem 0.16rem;
-  border-radius: var(--radius-tag);
-  background: var(--azure);
-  color: var(--paper);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  text-transform: uppercase;
-  letter-spacing: var(--track-label);
-  transform: rotate(-1.5deg);
-}
-
-.currentHeading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--gap-hair) var(--gap-tight);
-  margin-top: var(--gap-hair);
-}
-
-.currentHeading h2 {
-  color: var(--ink);
-  font-size: clamp(2.1rem, 5vw, 3.35rem);
-  line-height: 1;
-  letter-spacing: 0.08em;
-}
-
-.currentHeading p {
-  color: var(--ink-soft);
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-}
-
-.wisdom { margin-top: var(--gap-loose); }
-
-.wisdomHead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--gap-tight);
-  margin-bottom: var(--gap-hair);
-}
-
-.wisdomLabel,
-.wisdomGap {
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-}
-
-.wisdomLabel {
-  color: var(--azure);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.wisdomGap { color: var(--ink-faint); }
-
-.wisdomTrack {
-  height: 7px;
-  overflow: hidden;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-tag);
-  background: var(--paper);
-}
-
-.wisdomFill {
-  display: block;
-  height: 100%;
-  background: var(--azure);
-  transition: width var(--t-slow) var(--ease-out);
-}
-
-/* 愿望是写在轴边的眉批,只留一道引线,不再包成横向 banner。 */
-.dreamThread {
-  margin: var(--gap-loose) 0 0;
-  padding-left: var(--gap);
-  border-left: 2px solid var(--mustard);
-}
-
-.dreamLabel,
-.dreamProgress {
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-}
-
-.dreamLabel {
-  color: var(--gold-ink);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.dreamText {
-  max-width: 29rem;
-  margin-top: var(--gap-hair);
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-  line-height: 1.75;
-}
-
-.dreamProgress {
-  margin-top: var(--gap-hair);
-  color: var(--ink-faint);
-}
-
-.graduationScene {
-  display: grid;
-  grid-template-columns: 2.75rem minmax(0, 1fr);
-  gap: var(--gap);
-  align-items: start;
-  margin-top: var(--gap);
-  padding: var(--gap) 0 0;
-  border-top: 1px dotted var(--jade);
-}
-
-.graduationLectern {
-  display: grid;
-  width: 2.75rem;
-  height: 2.75rem;
-  place-items: center;
-  border: 1px solid var(--jade);
-  border-radius: 50%;
-  color: var(--jade-ink);
-}
-
-.graduationLabel {
-  color: var(--jade-ink);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-.graduationQuote {
-  margin-top: 0.16rem;
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-}
-
-.graduationProof { margin-top: var(--gap-hair); color: var(--ink-faint); font-size: var(--fs-tiny); }
-
-.ladder {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  list-style: none;
   margin: 0;
-  padding: 0 0 0;
+  font: 680 var(--fz-2xl)/1.3 var(--ui-font);
+  color: var(--text);
 }
 
-.currentRung { position: relative; }
-.stageToggle {
-  position: relative;
-  z-index: 2;
+.rankScore,
+.rankNext,
+.rankNote { margin: 0; font-size: var(--fz-sm); line-height: 1.6; }
+
+.rankScore { color: var(--text-2); }
+.rankScore .num,
+.rankNext .num { color: var(--text); }
+.rankNext { color: var(--text-3); }
+.rankNote { font-size: var(--fz-xs); color: var(--text-3); }
+
+.teacherRanks {
   display: grid;
-  place-items: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  margin-left: -0.5rem;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-.currentChapter > .stageToggle { position: absolute; top: 0; left: 0; }
-.stageToggle .currentMarker { position: static; }
-.stageToggle .rungMarker { margin-left: 0; }
-.stageToggle:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
-.stagePreview { grid-column: 2 / -1; padding: 0 0 var(--gap-tight); }
-.stagePreview[hidden], .wisdom[hidden] { display: none; }
-.teacherRanks { display: grid; gap: var(--gap); margin: var(--gap) 0; padding: 0; list-style: none; }
-.teacherRanks li { display: grid; grid-template-columns: 1fr auto; gap: var(--gap-hair); font-size: var(--fs-small); }
-.teacherRanks li > span { display: flex; justify-content: space-between; gap: var(--gap-tight); }
-.teacherRanks li > span small { color: var(--ink-soft); font-size: var(--fs-tiny); }
-.teacherRanks progress { grid-row: 2; width: 100%; height: 4px; appearance: none; border: 0; background: var(--paper-edge); }
-.teacherRanks progress::-webkit-progress-bar { background: var(--paper-edge); }
-.teacherRanks progress::-webkit-progress-value { background: var(--azure); }
-.teacherRanks progress::-moz-progress-bar { background: var(--azure); }
-.teacherRanks li > small { grid-row: 2; color: var(--ink-soft); font-size: var(--fs-tiny); line-height: 1; }
-.teacherRanks [aria-current] > span { color: var(--azure); font-weight: 600; }
-.memoryEntry { display: inline-flex; align-items: center; gap: var(--gap-tight); min-height: 2.75rem; padding: 0.5rem 0.8rem; margin-top: var(--gap); background: var(--azure); color: var(--paper); border-radius: var(--radius-s); font-size: var(--fs-small); }
-.memoryEntry:hover { background: var(--azure-deep); }
-
-.rung {
-  position: relative;
-  display: grid;
-  min-height: 4.75rem;
-  grid-template-columns: 2.75rem minmax(4.6rem, 0.72fr) minmax(5.8rem, 0.9fr) minmax(8.2rem, 1.3fr) auto;
-  gap: var(--gap-tight);
-  align-items: center;
-  padding: var(--gap-tight) 0;
-  border-bottom: 1px dotted var(--paper-edge);
-}
-
-.rungMarker {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: 1rem;
-  height: 1rem;
-  margin-left: 0.35rem;
-  border: 0.27rem solid var(--paper);
-  border-radius: 50%;
-  background: var(--dust);
-  box-shadow: 0 0 0 1px var(--line-strong);
-}
-
-.rungSign {
-  color: var(--ink-soft);
-  font-family: var(--font-serif);
-  font-size: var(--fs-sub);
-  font-weight: 700;
-  letter-spacing: 0.13em;
-}
-
-.rungDesc,
-.rungReq,
-.rungState { font-size: var(--fs-tiny); }
-
-.rungDesc { color: var(--ink-soft); }
-.rungReq { color: var(--ink-faint); line-height: 1.6; }
-.rungState { color: var(--ink-faint); font-family: var(--font-typewriter); white-space: nowrap; }
-.reqClause { white-space: nowrap; }
-
-.rungPast .rungMarker {
-  background: var(--ink-soft);
-  box-shadow: 0 0 0 1px var(--ink-soft);
-}
-
-.rungPast .rungSign,
-.rungPast .rungDesc,
-.rungPast .rungReq,
-.rungPast .rungState { color: var(--ink-soft); }
-
-.morphHint {
-  margin: var(--gap) 0 0 2.75rem;
-  padding-left: var(--gap);
-  border-left: 2px dotted var(--azure);
-  color: var(--ink-soft);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  line-height: 1.7;
-}
-
-.morphCourse { color: var(--azure); font-style: normal; }
-
-/* 右侧批注承接先生师道与唯一下一步。 */
-.notesColumn {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-loose);
-}
-
-.personaBlock { min-width: 0; }
-
-.blockLabel {
-  margin-bottom: var(--gap-tight);
-  padding-bottom: var(--gap-tight);
-  border-bottom: 1px solid var(--line-strong);
-}
-
-.blockLabel h2 {
-  color: var(--azure-deep);
-  font-size: var(--fs-sub);
-  letter-spacing: 0.06em;
-}
-
-.blockLabel p {
-  margin-top: 0.18rem;
-  color: var(--ink-faint);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.06em;
-}
-
-.personaRow {
-  display: flex;
-  flex-direction: column;
-}
-
-.personaCard {
-  position: relative;
-  display: block;
+  gap: 10px;
   width: 100%;
-  min-height: 4.4rem;
-  padding: var(--gap-tight) 0.1rem var(--gap-tight) var(--gap-tight);
-  border: 0;
-  border-left: 2px solid transparent;
-  border-bottom: 1px dotted var(--paper-edge);
-  border-radius: 0;
-  background: transparent;
-  color: var(--ink);
-  text-align: left;
-  transition: transform var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out);
+  margin: 4px 0;
+  padding: 12px 0;
+  list-style: none;
+  box-shadow: inset 0 1px 0 var(--border), inset 0 -1px 0 var(--border);
 }
 
-.personaCard:hover {
-  border-left-color: var(--azure);
-  transform: translateX(3px);
-}
-
-.personaTop {
-  display: flex;
+.teacherRanks li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--gap-hair);
+  gap: 4px 12px;
 }
 
-.personaName {
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-  font-weight: 700;
-}
+.tierName { font-size: var(--fz-sm); font-weight: 550; color: var(--text-2); }
+.tierNeed,
+.tierState { font-size: var(--fz-xs); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.tierNeed { text-align: right; }
+.tierState { min-width: 3.5em; text-align: right; }
+.tierBar { height: 4px; }
+.teacherRanks [aria-current] .tierName { color: var(--accent); font-weight: 650; }
 
-.personaActive { border-left-color: var(--azure); }
-.personaActive .personaName { color: var(--azure-deep); }
-
-.personaStamp {
-  flex: none;
-  padding: 0 0.3rem;
-  border: 1px solid var(--azure-deep);
-  border-radius: var(--radius-tag);
-  color: var(--azure-deep);
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.1em;
-  transform: rotate(3deg);
-}
-
-.personaLine {
-  display: block;
-  margin-top: var(--gap-hair);
-  color: var(--ink-soft);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  line-height: 1.7;
-}
-
-.journeyCard {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--gap-hair);
-  margin-top: auto;
-  padding-top: var(--gap);
-  border-top: 1px solid var(--line-strong);
-}
-
-.journeyLabel {
-  color: var(--azure-deep);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-}
-
-.journeyLine {
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  line-height: 1.7;
-}
-
-.btnSolid {
-  display: inline-flex;
-  min-height: 44px;
-  align-items: center;
-  gap: var(--gap-hair);
-  margin-top: var(--gap-hair);
-  padding: 0.45rem 1rem;
-  border: 1px solid var(--azure);
-  border-radius: var(--radius-s);
-  background: var(--azure);
-  color: var(--paper);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  transition: transform var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out);
-}
-
-.btnSolid:hover { transform: translateY(-1px); opacity: 0.88; }
-.btnSolid:focus-visible { outline: 2px solid var(--azure); outline-offset: 3px; }
-
-/* 平板:档案+编年轴两列,侧注换到下方整行。 */
-@media (max-width: 960px) {
-  .hero {
-    grid-template-columns: minmax(12.5rem, 0.58fr) minmax(0, 1.42fr);
-    row-gap: var(--gap-loose);
-  }
-
-  .chronicleColumn { border-right: 0; }
-
-  .notesColumn {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: minmax(0, 1.5fr) minmax(13rem, 0.7fr);
-    align-items: end;
-    padding-top: var(--gap);
-    border-top: 1px solid var(--paper-edge);
-  }
-
-  .personaRow {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .personaCard { padding-right: var(--gap-tight); }
-  .journeyCard { margin-top: 0; }
-}
-
-/* 窄平板/放大模式:一列自然下卷,成长轨不做横向滚动。 */
-@media (max-width: 720px) {
-  .hero { grid-template-columns: minmax(0, 1fr); }
-
-  .profileColumn {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.72fr);
-    gap: var(--gap) var(--gap-loose);
-    align-items: start;
-  }
-
-  .profileHeading { margin-bottom: 0; }
-  .portrait { grid-column: 2; grid-row: 1 / span 2; margin: 0; }
-  .profileFacts { grid-column: 1; margin: 0; }
-  .rankCard { grid-column: 1 / -1; margin-top: var(--gap); }
-
-  .chronicleColumn {
-    padding: var(--gap-loose) 0 0;
-    border: 0;
-    border-top: 1px solid var(--line-strong);
-  }
-
-  .notesColumn {
-    display: flex;
-    padding-top: var(--gap-loose);
-  }
-
-  .personaRow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .personaCard { min-height: 6rem; }
-}
-
-@media (max-width: 560px) {
-  .page { padding-inline: var(--gap); }
-
-  .h2 small {
-    display: block;
-    margin: 0.4rem 0 0;
-    line-height: 1.55;
-  }
-
-  /* 手机端收成一条学籍档案:先看题头与小像,随即进入当前章节。 */
-  .profileColumn {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 8rem;
-    gap: var(--gap) var(--gap-tight);
-  }
-
-  .profileHeading { margin-bottom: 0; }
-
-  .portrait {
-    grid-column: 2;
-    grid-row: 1;
-    width: 100%;
-    margin: 0;
-    padding: var(--gap-hair) var(--gap-hair) var(--gap-tight);
-  }
-
-  .portraitStage { min-height: 6.5rem; }
-  .portraitStage > * {
-    width: 6.5rem !important;
-    height: 6.5rem !important;
-    max-width: none;
-  }
-  .portraitCaption { margin-top: var(--gap-hair); padding-inline: 0 2.4rem; }
-  .portraitName { font-size: var(--fs-tiny); }
-  .portraitSeal { display: none; }
-
-  .profileFacts {
-    display: grid;
-    grid-column: 1 / -1;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    max-width: none;
-    margin: 0;
-  }
-
-  .profileFacts > div {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.12rem;
-    padding: var(--gap-hair) var(--gap-tight);
-    border-right: 1px dotted var(--paper-edge);
-    border-bottom: 0;
-  }
-
-  .profileFacts > div:first-child { padding-left: 0; }
-  .profileFacts > div:last-child { border-right: 0; }
-
-  .rankCard {
-    grid-column: 1 / -1;
-    margin-top: var(--gap-hair);
-  }
-
-  .currentChapter { padding-left: 2.35rem; }
-  .chronicleTrack::before { left: 0.7rem; }
-  .currentMarker { width: 1.5rem; height: 1.5rem; }
-  .currentHeading { display: block; }
-  .currentHeading p { margin-top: var(--gap-hair); }
-
-  .wisdomHead { align-items: flex-start; }
-  .wisdomGap { max-width: 8rem; text-align: right; }
-
-  .rung {
-    min-height: 5.25rem;
-    grid-template-columns: 2.35rem minmax(4.5rem, 0.72fr) minmax(0, 1fr);
-    gap: var(--gap-hair) var(--gap-tight);
-  }
-
-  .rungMarker { grid-column: 1; grid-row: 1 / span 2; margin-left: 0.2rem; }
-  .rung > .stageToggle { grid-column: 1; grid-row: 1 / span 2; margin-left: -0.6rem; }
-  .currentChapter > .stageToggle { margin-left: -0.6rem; }
-  .rungSign { grid-column: 2; grid-row: 1; }
-  .rungState { grid-column: 3; grid-row: 1; justify-self: end; }
-  .rungDesc { grid-column: 2; grid-row: 2; }
-  .rungReq { grid-column: 3; grid-row: 2; justify-self: end; text-align: right; }
-
-  .morphHint { margin-left: 2.35rem; }
-
-  .personaRow { grid-template-columns: minmax(0, 1fr); }
-  .personaCard { min-height: 4.4rem; }
-  .journeyCard { margin-top: 0; }
-}
-
-@media (forced-colors: active) {
-  .currentMarker,
-  .rungMarker,
-  .wisdomFill { background: Highlight; }
-
-  .currentRung,
-  .personaActive { border-color: Highlight; }
-
-  .personaStamp { border-color: Highlight; color: Highlight; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .wisdomFill,
-  .personaCard,
-  .btnSolid { transition: none; }
-
-  .personaCard:hover,
-  .btnSolid:hover { transform: none; }
-}
-
-/* ── 卷二·教学编年史 ── */
+/* ── 教学编年史 ── */
 
 .ledgerMeta {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0 0 var(--gap-loose);
-  border-block: 1px solid var(--line-strong);
+  display: flex;
+  gap: 24px;
+  margin: 0;
 }
 
-.ledgerMeta > div {
-  min-width: 0;
-  padding: 0.75rem var(--gap);
-  border-right: 1px solid var(--paper-edge);
-}
-
-.ledgerMeta > div:first-child { padding-left: 0; }
-.ledgerMeta > div:last-child { border-right: 0; }
+.ledgerMeta > div { min-width: 0; }
 
 .ledgerMeta dt {
-  color: var(--ink-faint);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  font-size: var(--fz-xs);
+  color: var(--text-3);
+  white-space: nowrap;
 }
 
 .ledgerMeta dd {
   display: flex;
   align-items: baseline;
-  gap: 0.3em;
-  margin: 0.18rem 0 0;
-  color: var(--ink-soft);
-  font-size: var(--fs-small);
+  gap: 4px;
+  margin: 0;
+  font-size: var(--fz-xs);
+  color: var(--text-3);
 }
 
 .ledgerMeta b {
-  color: var(--ink);
-  font-family: var(--font-code);
-  font-size: var(--fs-sub);
-  font-weight: 500;
+  font-size: var(--fz-xl);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
 }
 
-.chronicleEmpty {
-  display: grid;
-  grid-template-columns: minmax(8rem, 0.32fr) minmax(0, 1fr);
-  align-items: start;
-  gap: clamp(var(--gap), 4vw, var(--gap-loose));
-  min-height: 9rem;
-  padding: var(--gap) 0 var(--gap-loose);
-  border-bottom: 1px solid var(--line-strong);
-}
-
-.chronicleEmpty > span {
-  color: var(--azure);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  letter-spacing: var(--track-label);
-}
-
-.chronicleEmpty p {
-  max-width: 42rem;
-  color: var(--ink-soft);
-  font-size: var(--fs-small);
-  line-height: 1.9;
-}
-
-.chronicleEmpty strong {
-  display: block;
-  margin-bottom: var(--gap-tight);
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-  font-weight: 500;
+.logCard {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
 }
 
 .logList {
-  --chronicle-rail: 6rem;
+  --chronicle-rail: 76px;
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 4px 20px;
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--line-strong);
 }
 
+/* 契约:编年史条目去卡片化——这条规则不得出现底色与圆角 */
 .logItem,
 .marginItem {
   position: relative;
   display: grid;
-  grid-template-columns: 4.5rem minmax(0, 1fr);
-  column-gap: 3rem;
-  padding: clamp(1.15rem, 2.2vw, 1.65rem) 0;
-  border-bottom: 1px solid var(--paper-edge);
+  grid-template-columns: 52px minmax(0, 1fr);
+  column-gap: 48px;
+  padding: 16px 0;
 }
 
+/* 贯通的时间线 + 每课一个节点 */
 .logItem::after,
 .marginItem::after {
   content: '';
@@ -953,35 +909,39 @@
   bottom: 0;
   left: var(--chronicle-rail);
   width: 1px;
-  background: var(--line-strong);
+  background: var(--border);
 }
+
+.logList > li:first-child::after { top: 22px; }
+.logList > li:last-child::after { bottom: calc(100% - 22px); }
+.logList > li:only-child::after { display: none; }
 
 .logItem::before,
 .marginItem::before {
   content: '';
   position: absolute;
   z-index: 1;
-  top: 1.7rem;
-  left: calc(var(--chronicle-rail) - 0.19rem);
-  width: 0.38rem;
-  height: 0.38rem;
-  border: 1px solid var(--line-strong);
+  top: 21px;
+  left: calc(var(--chronicle-rail) - 4px);
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: var(--paper);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px var(--border-2);
 }
 
 .logMastered::before {
-  border-color: var(--jade);
-  background: var(--jade);
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--ok-soft);
 }
 
 .logDate {
   position: relative;
   z-index: 2;
-  font-family: var(--font-code);
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
-  padding-top: 0.25rem;
+  padding-top: 2px;
+  font-size: var(--fz-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
   text-align: right;
 }
 
@@ -991,142 +951,131 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem var(--gap);
+  gap: 6px 12px;
 }
 
 .logTopic {
   margin: 0;
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-  line-height: 1.4;
+  font: 600 var(--fz-lg)/1.4 var(--ui-font);
+  color: var(--text);
+  overflow-wrap: anywhere;
 }
 
 .logFacts {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.2rem 0.55rem;
-}
-
-.logFacts .chip {
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: none;
-  font-family: var(--font-typewriter);
-  letter-spacing: 0.03em;
-}
-
-.logFacts .chip + .chip::before {
-  content: '·';
-  margin-right: 0.55rem;
-  color: var(--ink-faint);
+  align-items: center;
+  gap: 4px;
 }
 
 .logLine {
-  max-width: 48rem;
-  margin-top: 0.55rem;
-  color: var(--ink-soft);
-  font-size: var(--fs-small);
-  line-height: 1.8;
+  max-width: 46rem;
+  margin: 6px 0 0;
+  font-size: var(--fz-md);
+  line-height: 1.65;
+  color: var(--text-2);
 }
 
+/* 契约:复盘链接热区 ≥ 44px;视觉仍是一行文字链 */
 .logLink {
   display: inline-flex;
   align-items: center;
-  gap: var(--gap-hair);
+  gap: 4px;
   min-height: 2.75rem;
-  margin-top: 0.25rem;
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  color: var(--azure);
+  margin: -4px 0 -14px;
+  border-radius: var(--r-xs);
+  font-size: var(--fz-sm);
+  font-weight: 550;
+  color: var(--accent);
+  text-decoration: none;
+  transition: color var(--dur-1) var(--ease);
 }
 
-.logLink:hover { color: var(--azure-deep); }
+.logLink svg { transition: transform var(--dur-2) var(--ease); }
+.logLink:hover { color: var(--accent-hover); }
+.logLink:hover svg { transform: translateX(3px); }
+.logLink:active { opacity: 0.8; }
+.logLink:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 
-/* 无会话归属的备课/补学作页边眉批,与正文共用一根实线书脊。 */
-.marginItem {
-  padding-block: 0.75rem;
-  font-size: var(--fs-small);
-  color: var(--ink-faint);
+/* 无会话归属的备课/补学:一行小注,与正文共用一根时间线 */
+.marginItem { padding-block: 10px; }
+.marginItem::before { top: 15px; left: calc(var(--chronicle-rail) - 3px); width: 7px; height: 7px; }
+
+.marginRecord {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-width: 0;
 }
 
-.marginItem::before {
-  top: 1.15rem;
-  width: 0.3rem;
-  height: 0.3rem;
-  left: calc(var(--chronicle-rail) - 0.15rem);
-  border-color: var(--dust);
-}
+.marginTag { flex: none; }
+.marginText { font-size: var(--fz-sm); color: var(--text-3); overflow-wrap: anywhere; }
 
-.marginRecord { min-width: 0; }
+/* 契约:翻旧页按钮热区 ≥ 44px */
+.pageTurn { min-height: 2.75rem; }
 
-.marginTag {
-  display: inline-block;
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  color: var(--ink-soft);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  border-bottom: 1px solid var(--line-strong);
-  padding: 0 0 0.12rem;
-  margin-right: var(--gap-tight);
-}
-
-.marginText { color: var(--ink-soft); }
-
-.pageTurn {
-  width: 100%;
-  min-height: 2.75rem;
-  margin-top: var(--gap-tight);
-  background: none;
-  border: 0;
-  border-bottom: 1px solid var(--line-strong);
+.logCard .pageTurn {
   border-radius: 0;
-  color: var(--ink-soft);
-  padding: 0.45rem 0.9rem;
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  cursor: pointer;
+  box-shadow: inset 0 1px 0 var(--border);
+  color: var(--text-2);
 }
 
-.pageTurn:hover { color: var(--azure); }
+.pageTurn svg { transition: transform var(--dur-2) var(--ease); }
+.flip { transform: rotate(180deg); }
 
-@media (max-width: 720px) {
-  .logList { --chronicle-rail: 0.55rem; }
+/* ── 学问星海:筛选 + 深空场景 ── */
 
-  .logItem,
-  .marginItem {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.3rem;
-    padding-left: 2rem;
-  }
-
-  .logItem::before { top: 1.5rem; }
-  .marginItem::before { top: 1.05rem; }
-  .logDate { padding-top: 0; text-align: left; }
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
 }
 
-@media (max-width: 560px) {
-  .ledgerMeta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .ledgerMeta > div:nth-child(2) { border-right: 0; }
-  .ledgerMeta > div:last-child {
-    grid-column: 1 / -1;
-    padding-left: 0;
-    border-top: 1px solid var(--paper-edge);
-  }
-
-  .chronicleEmpty { grid-template-columns: minmax(0, 1fr); }
+.filterRow .filterChip {
+  gap: 6px;
+  padding: 0 11px;
+  box-shadow: inset 0 0 0 1px var(--border-2);
+  color: var(--text-2);
 }
 
-/* ── 卷三·学问星海：连续画布本身响应式，不再依赖横向巡览。 ── */
+.filterRow .filterChip:hover:not(:disabled) { color: var(--text); }
+
+.filterRow .filterChip[aria-pressed='true'] {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 34%, transparent);
+  color: var(--accent);
+}
+
+.filterRow .filterChip:focus-visible { box-shadow: 0 0 0 3px var(--ring); }
+
+.filterCount {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+}
+
+.filterChip[aria-pressed='true'] .filterCount { color: inherit; opacity: 0.75; }
+
+.swatch {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.swJade { background: var(--ok); }
+.swAmber { background: var(--warn); }
+.swAzure { background: transparent; box-shadow: inset 0 0 0 2px var(--accent); }
+.swDust { background: var(--text-3); opacity: 0.7; }
+.swLocked { background: var(--text-3); opacity: 0.3; }
 
 .mapWrap {
   position: relative;
   min-width: 0;
   max-width: 100%;
-  padding-bottom: var(--gap-hair);
   overflow: visible;
 }
 
@@ -1137,767 +1086,18 @@
 
 .chartColumn { min-width: 0; }
 
-.mapSwipeHint {
-  display: none;
-  margin: var(--gap-hair) 0 0;
-  color: var(--ink-faint);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.04em;
-}
+/* 忘了→来信:信笺并排(信本体样式在 components/story/letter.module.css) */
 
-/* 星图坐标与 KnowledgeMap.tsx 几何咬合:VIEW_W=720 / ROW_H=150(=9.375rem),
-   星槽用 % 定位 + rem 负 margin 对星心;槽上只写 margin 不写 transform
-   (global rise 的 to 帧 transform:none 会压死 transform 居中,老坑) */
-.starAtlas {
-  min-width: 44rem;
-  padding-inline: clamp(var(--gap), 3vw, 2.5rem);
-}
-
-/* 砚墨星图立轴:与师道砚墨卡同一装裱工艺(inset 双线),
-   本页深色锚点就此两处(法典上限"一两处");这不是暗色模式,
-   是挂在书斋墙上的一幅星图——深色作为"物件"才成立(黑板同款教训) */
-.skyChart {
-  --sky-lit: color-mix(in oklch, var(--jade) 40%, var(--moon-on-ink));
-  --sky-azure: color-mix(in oklch, var(--azure) 38%, var(--moon-on-ink));
-  --sky-amber: color-mix(in oklch, var(--amber) 52%, var(--moon-on-ink));
-  --sky-dim: color-mix(in oklch, var(--moonsoft-on-ink) 55%, transparent);
-  position: relative;
-  isolation: isolate;
-  padding: var(--gap) clamp(var(--gap), 2.5vw, 2rem) var(--gap-loose);
-  border: 1px solid var(--inkstone-line);
-  border-radius: var(--radius);
-  background:
-    radial-gradient(52rem 20rem at 18% -4%, color-mix(in oklch, var(--azure) 26%, transparent), transparent 62%),
-    radial-gradient(40rem 26rem at 88% 108%, color-mix(in oklch, var(--azure) 14%, transparent), transparent 66%),
-    /* 一道斜贯夜空的银河:丁香—雾白极淡水迹,只让天有层次,不作噪点纹理 */
-    linear-gradient(
-      122deg,
-      transparent 34%,
-      color-mix(in oklch, var(--lilac) 7%, transparent) 45%,
-      color-mix(in oklch, var(--moon-on-ink) 5%, transparent) 50%,
-      color-mix(in oklch, var(--lilac) 7%, transparent) 55%,
-      transparent 66%
-    ),
-    linear-gradient(168deg, var(--inkstone), var(--inkstone-deep));
-  box-shadow:
-    inset 0 0 0 4px color-mix(in oklch, var(--inkstone) 55%, transparent),
-    inset 0 0 0 5px var(--inkstone-line),
-    var(--shadow-paper);
-  overflow: hidden;
-}
-
-.celestialGrid {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  opacity: 0.24;
-}
-
-.celestialOrbit {
-  fill: none;
-  stroke: color-mix(in oklab, var(--lilac) 42%, transparent);
-  stroke-width: 1;
-  stroke-dasharray: 2 7;
-  vector-effect: non-scaling-stroke;
-}
-
-.celestialAxis {
-  fill: none;
-  stroke: color-mix(in oklab, var(--moonsoft-on-ink) 30%, transparent);
-  stroke-width: 0.8;
-  stroke-dasharray: 1 11;
-  vector-effect: non-scaling-stroke;
-}
-
-.celestialEcliptic {
-  fill: none;
-  stroke: color-mix(in oklab, var(--azure) 38%, transparent);
-  stroke-width: 1.1;
-  stroke-dasharray: 8 12;
-  vector-effect: non-scaling-stroke;
-}
-
-.celestialLabels {
-  fill: var(--moonsoft-on-ink);
-  font-family: var(--font-display);
-  font-size: 12px;
-  letter-spacing: 0.18em;
-}
-
-.skyMasthead {
-  position: relative;
-  z-index: 3;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: end;
-  gap: var(--gap);
-  margin-bottom: var(--gap-tight);
-  padding: 0.15rem 0 var(--gap-tight);
-  border-bottom: 1px solid color-mix(in oklch, var(--moonsoft-on-ink) 24%, transparent);
-  color: var(--moonsoft-on-ink);
-}
-
-.skyMasthead > p {
-  max-width: 28rem;
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  line-height: 1.6;
-}
-
-.skyMasthead > span {
-  font-family: var(--font-code);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
-
-.skyKicker {
-  font-family: var(--font-typewriter);
-  font-size: 0.6rem;
-  letter-spacing: 0.15em;
-  color: var(--moonsoft-on-ink);
-}
-
-.skyAtlasTitle {
-  margin-top: 0.12rem;
-  color: var(--moon-on-ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-  letter-spacing: 0.2em;
-}
-
-/* 巡天总览:贴在夜空顶檐的一行真言,quiet 芦色小字,数字走 code 字体 */
-.skySurvey {
-  position: relative;
-  z-index: 3;
-  margin: 0 0 var(--gap-tight);
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.05em;
-  color: var(--moonsoft-on-ink);
-}
-
-.skySurvey b {
-  font-family: var(--font-code);
-  font-weight: 700;
-  color: var(--moon-on-ink);
-}
-
-/* 叙事桥续句:接在巡天总览后,一道中点分隔,窄屏自然折行 */
-.skyBridge { margin-left: 0.5em; color: var(--moonsoft-on-ink); }
-.skyBridge::before { content: '·'; margin: 0 0.45em 0 0; opacity: 0.7; }
-
-.skyActive {
-  display: block;
-  margin-top: 0.28rem;
-  color: var(--moon-on-ink);
-}
-
-/* 三垣共用一片夜空:只留松缓呼吸，不再画课程分隔带。 */
-.skyRealm { position: relative; }
-
-.skyRealm + .skyRealm {
-  margin-top: var(--gap-hair);
-}
-
-.skyHead {
-  position: relative;
-  z-index: 3;
-  display: inline-grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  width: fit-content;
-  max-width: calc(100% - var(--gap));
-  gap: var(--gap-tight);
-  padding: 0.3rem 0.6rem;
-  border: 1px solid color-mix(in oklch, var(--moonsoft-on-ink) 16%, transparent);
-  border-radius: var(--radius-s);
-  background: color-mix(in oklch, var(--inkstone-deep) 78%, transparent);
-}
-
-/* 垣号做成真正的题签:大楷「壹」压住,小「垣」收边,右一道细界与课名分栏 */
-.skyNo {
-  align-self: stretch;
-  display: flex;
-  align-items: baseline;
-  gap: 0.12em;
-  padding-right: var(--gap-tight);
-  border-right: 1px solid color-mix(in oklch, var(--moonsoft-on-ink) 30%, transparent);
-  color: var(--moonsoft-on-ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.08em;
-}
-
-.skyNoChar {
-  font-size: var(--fs-sub);
-  font-weight: 700;
-  line-height: 1;
-  color: var(--moon-on-ink);
-}
-
-.skyTitle {
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  font-weight: 700;
-  color: var(--moon-on-ink);
-  letter-spacing: 0.08em;
-}
-
-.skySub {
-  margin-top: 0.05rem;
-  font-size: var(--fs-tiny);
-  color: var(--moonsoft-on-ink);
-}
-
-.skyHint {
-  max-width: 13rem;
-  padding-left: var(--gap-tight);
-  border-left: 1px solid color-mix(in oklch, var(--moonsoft-on-ink) 18%, transparent);
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  line-height: 1.45;
-  color: var(--moonsoft-on-ink);
-  text-align: left;
-}
-
-/* 满天星点齐:朱文印制式的双线框(内框—细缝—外圈,皆走 sky-lit 芦光),
-   星图里两处法定高光之一,给出师多一分仪轨 */
-.skyDone {
-  justify-self: end;
-  padding: 0.18rem 0.5rem;
-  border: 1px solid var(--sky-lit);
-  border-radius: var(--radius-tag);
-  background: color-mix(in oklch, var(--sky-lit) 8%, transparent);
-  box-shadow:
-    0 0 0 1px var(--inkstone-deep),
-    0 0 0 2px color-mix(in oklch, var(--sky-lit) 42%, transparent);
-  color: var(--sky-lit);
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  font-weight: 700;
-  letter-spacing: 0.12em;
-}
-
-.skyField {
-  position: relative;
-  margin-top: calc(-1 * var(--gap-hair));
-}
-
-/* 三垣微分天色:每垣一层极淡星域辉,给夜空纵深(垫在星轨/星宿之下,不吃指针) */
-.skyTintA { background: radial-gradient(72% 92% at 26% 2%, color-mix(in oklch, var(--lilac) 7%, transparent), transparent 66%); }
-.skyTintB { background: radial-gradient(72% 92% at 74% 2%, color-mix(in oklch, var(--azure) 9%, transparent), transparent 66%); }
-.skyTintC { background: radial-gradient(78% 100% at 50% 100%, color-mix(in oklch, var(--reed) 7%, transparent), transparent 70%); }
-
-.crossLinkOverlay {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-  transition: opacity var(--t-med) var(--ease-out);
-}
-
-/* 星链札记:楷体小字落在弧线中点;paint-order:stroke 先描一圈砚墨底,
-   再填月色字面,深空里也读得清;札记从不吃指针事件 */
-.crossLinkNote {
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  fill: var(--moon-on-ink);
-  stroke: var(--inkstone-deep);
-  stroke-width: 3px;
-  stroke-linejoin: round;
-  paint-order: stroke;
-  pointer-events: none;
-}
-
-/* 巡天筛选态:非聚焦的连线层整体下沉,聚焦那一态的星自然浮出 */
-.skyFocused .skyLines,
-.skyFocused .crossLinkOverlay { opacity: 0.26; }
-
-.crossLink,
-.crossLinkGlow {
-  fill: none;
-  vector-effect: non-scaling-stroke;
-  stroke-linecap: round;
-}
-
-.crossLink {
-  stroke: color-mix(in oklab, var(--lilac) 34%, transparent);
-  stroke-width: 1.1;
-  stroke-dasharray: 3 8;
-  opacity: 0.68;
-  transition:
-    stroke var(--t-fast) var(--ease-out),
-    stroke-width var(--t-fast) var(--ease-out),
-    opacity var(--t-fast) var(--ease-out);
-}
-
-.crossLinkMastered {
-  stroke: color-mix(in oklab, var(--jade) 62%, var(--moon-on-ink));
-  stroke-width: 1.5;
-  stroke-dasharray: none;
-  opacity: 0.9;
-}
-
-.crossLinkActive {
-  stroke: color-mix(in oklab, var(--lilac) 74%, var(--moon-on-ink));
-  stroke-width: 1.8;
-  stroke-dasharray: none;
-  opacity: 1;
-}
-
-.crossLinkMastered.crossLinkActive {
-  stroke: color-mix(in oklab, var(--jade) 78%, var(--moon-on-ink));
-}
-
-.crossLinkGlow {
-  stroke: color-mix(in oklab, var(--lilac) 44%, transparent);
-  stroke-width: 6;
-  opacity: 0.12;
-}
-
-.crossLinkGlowMastered {
-  stroke: color-mix(in oklab, var(--jade) 54%, transparent);
-  opacity: 0.16;
-}
-
-.crossLinkGlowActive {
-  stroke-width: 7;
-  opacity: 0.2;
-}
-
-.skyLines {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-  transition: opacity var(--t-med) var(--ease-out);
-}
-
-/* 铺底星尘:基准亮度由 TSX 内联 --dust-o 下发,呼吸只在基准值上摆动 */
-.dustStar {
-  fill: var(--moonsoft-on-ink);
-  animation: dustTwinkle 5.2s var(--ease-loop) infinite alternate;
-}
-
-@keyframes dustTwinkle {
-  from { opacity: calc(var(--dust-o, 0.2) * 0.35); }
-  to { opacity: var(--dust-o, 0.2); }
-}
-
-/* 星轨三态:preserveAspectRatio=none 会横向拉伸,线宽必须锁死 */
-.segDim,
-.segWalked,
-.segLit,
-.segGlow {
-  fill: none;
-  vector-effect: non-scaling-stroke;
-  stroke-linecap: round;
-}
-
-.segDim {
-  stroke: var(--sky-dim);
-  stroke-width: 1;
-  stroke-dasharray: 2 7;
-}
-
-.segWalked {
-  stroke: var(--moonsoft-on-ink);
-  stroke-width: 1.2;
-  opacity: 0.55;
-}
-
-.segLit {
-  stroke: var(--sky-lit);
-  stroke-width: 1.5;
-  opacity: 0.95;
-}
-
-.segGlow {
-  stroke: var(--sky-lit);
-  stroke-width: 5;
-  opacity: 0.16;
-}
-
-.starList {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.starSlot {
-  position: absolute;
-  width: 7.5rem;
-  margin-left: -3.75rem;
-  /* 星芒盒 3rem,星心在槽顶下 1.5rem */
-  margin-top: -1.5rem;
-  /* 入场步进由 KnowledgeMap.tsx 内联 animationDelay 提供:min(i×45ms, 300ms)(R6) */
-  animation: global(rise) var(--t-med) var(--ease-out) backwards;
-}
-
-.starBtn {
-  position: relative;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0 0 var(--gap-hair);
-  border: 0;
-  background: transparent;
-  color: var(--moon-on-ink);
-  text-align: center;
-  cursor: pointer;
-  transition: opacity var(--t-med) var(--ease-out);
-}
-
-/* 巡天筛选下沉态:非聚焦的星退到低透明度,但仍可点(纯视觉,不禁用不卸载);
-   键盘聚焦/悬停即复明,焦点环不许跟着沉底(WCAG 2.4.7) */
-.starDimmed { opacity: 0.24; }
-
-.starDimmed:focus-visible,
-.starDimmed:hover:not(:disabled) { opacity: 1; }
-
-.starBtn:focus-visible {
-  outline: 2px solid var(--moon-on-ink);
-  outline-offset: 3px;
-  border-radius: var(--radius-s);
-}
-
-/* 星芒:四芒 sparkle,状态只改上色/缩放/辉光,不换形 */
-.starGlyph {
-  position: relative;
-  z-index: 1;
-  width: 3rem;
-  height: 3rem;
-  display: grid;
-  place-items: center;
-  border: 1px solid transparent;
-  border-radius: 50%;
-  transition:
-    transform var(--t-fast) var(--ease-out),
-    border-color var(--t-fast) var(--ease-out),
-    background var(--t-fast) var(--ease-out);
-}
-
-.starGlyph svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  overflow: visible;
-}
-
-/* 命座环:选中时淡入的虚线外环(只 opacity/scale 过渡,绝不长转),
-   在星心外圈一寸处,像命盘上圈出的那一宿 */
-.starGlyph::after {
-  content: '';
-  position: absolute;
-  inset: -0.45rem;
-  border-radius: 50%;
-  border: 1px dashed color-mix(in oklch, var(--moon-on-ink) 52%, transparent);
-  opacity: 0;
-  transform: scale(0.82);
-  transition:
-    opacity var(--t-med) var(--ease-out),
-    transform var(--t-med) var(--ease-out);
-  pointer-events: none;
-}
-
-.glyphRing {
-  fill: none;
-  stroke: var(--sky-lit);
-  stroke-width: 0.8;
-  opacity: 0;
-}
-
-/* --star-mag:星等乘数(由 KnowledgeMap 按星链连接度下发),只缩放内层星形与辉光,
-   不动 3rem 锚盒(冻结契约);缺省 1 时形同旧值 */
-.glyphStar {
-  fill: color-mix(in oklch, var(--moonsoft-on-ink) 26%, transparent);
-  stroke: var(--sky-dim);
-  stroke-width: 1;
-  transform: scale(calc(0.72 * var(--star-mag, 1)));
-  transform-origin: center;
-  transition: transform var(--t-fast) var(--ease-out);
-}
-
-.starBtn:hover:not(:disabled) .starGlyph,
-.starBtn:focus-visible .starGlyph {
-  transform: scale(1.12);
-  border-color: var(--sky-dim);
-  background: color-mix(in oklch, var(--moon-on-ink) 7%, transparent);
-}
-
-.starSelected .starGlyph {
-  border-color: var(--moon-on-ink);
-  background: color-mix(in oklch, var(--moon-on-ink) 10%, transparent);
-}
-
-.starSelected .starGlyph::after {
-  opacity: 0.9;
-  transform: scale(1);
-}
-
-.starLinked .starGlyph {
-  border-color: color-mix(in oklab, var(--lilac) 58%, var(--moon-on-ink));
-  background: color-mix(in oklab, var(--lilac) 12%, transparent);
-  box-shadow: 0 0 1rem color-mix(in oklab, var(--lilac) 28%, transparent);
-}
-
-.starOrder {
-  position: absolute;
-  top: -0.3rem;
-  right: -0.95rem;
-  font-family: var(--font-code);
-  font-size: 0.625rem;
-  letter-spacing: 0.04em;
-  color: var(--moonsoft-on-ink);
-  opacity: 0.75;
-}
-
-.starName {
-  position: relative;
-  z-index: 1;
-  max-width: 100%;
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  font-weight: 700;
-  line-height: 1.35;
-  color: var(--moon-on-ink);
-  overflow-wrap: anywhere;
-  transition: color var(--t-fast) var(--ease-out);
-}
-
-.starState {
-  position: relative;
-  z-index: 1;
-  font-size: var(--fs-tiny);
-  white-space: nowrap;
-}
-
-/* 遗忘雾:垫在星芒后的一小团藤黄雾,慢慢回拢 */
-.starFog {
-  position: absolute;
-  z-index: 0;
-  top: -0.75rem;
-  left: 50%;
-  width: 4.5rem;
-  height: 4.5rem;
-  margin-left: -2.25rem;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, color-mix(in oklch, var(--amber) 34%, transparent), transparent 72%);
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* 出师:亮星 + 命座环 + 辉光——星图点亮是允许的高光时刻 */
-.starMastered .glyphStar {
-  fill: var(--sky-lit);
-  stroke: none;
-  transform: scale(var(--star-mag, 1));
-  animation: starIgnite 720ms var(--ease-out) backwards;
-}
-
-.starMastered .glyphRing { opacity: 0.85; }
-
-@keyframes starIgnite {
-  from { opacity: 0.18; transform: scale(0.42); }
-  60% { opacity: 1; transform: scale(calc(var(--star-mag, 1) * 1.18)); }
-  to { opacity: 1; transform: scale(var(--star-mag, 1)); }
-}
-
-/* 出师星呼吸辉光:长周期(6.5s)小幅辉光起伏,夜空有生气而不喧闹;
-   往复动画走 --ease-loop,reduced-motion 下停 */
-.starMastered .starGlyph {
-  filter: drop-shadow(0 0 calc(7px * var(--star-mag, 1)) color-mix(in oklch, var(--sky-lit) 65%, transparent));
-  animation: starPulse 6.5s var(--ease-loop) infinite alternate;
-}
-
-@keyframes starPulse {
-  from { filter: drop-shadow(0 0 calc(6px * var(--star-mag, 1)) color-mix(in oklch, var(--sky-lit) 52%, transparent)); }
-  to { filter: drop-shadow(0 0 calc(9px * var(--star-mag, 1)) color-mix(in oklch, var(--sky-lit) 80%, transparent)); }
-}
-
-.starMastered .starState { color: var(--sky-lit); }
-
-/* 学习中:青星半明 */
-.starLearning .glyphStar {
-  fill: var(--sky-azure);
-  stroke: none;
-  transform: scale(calc(0.9 * var(--star-mag, 1)));
-}
-
-.starLearning .starGlyph {
-  filter: drop-shadow(0 0 calc(5px * var(--star-mag, 1)) color-mix(in oklch, var(--sky-azure) 45%, transparent));
-}
-
-.starLearning .starState { color: var(--sky-azure); }
-
-/* 衰减:藤黄雾星(全站唯一暖色=衰减语义,在夜空里自然扎眼) */
-.starForgotten .glyphStar {
-  fill: var(--sky-amber);
-  stroke: none;
-  transform: scale(calc(0.88 * var(--star-mag, 1)));
-}
-
-.starForgotten .starGlyph {
-  filter: drop-shadow(0 0 calc(5px * var(--star-mag, 1)) color-mix(in oklch, var(--sky-amber) 50%, transparent));
-}
-
-.starForgotten .starState { color: var(--sky-amber); }
-
-.starForgotten .starFog {
-  opacity: 0.55;
-  animation: starFogDrift 5.5s var(--ease-loop) infinite alternate;
-}
-
-@keyframes starFogDrift {
-  from { transform: translate3d(-5px, 2px, 0); opacity: 0.4; }
-  to { transform: translate3d(5px, -2px, 0); opacity: 0.62; }
-}
-
-/* 未学:暗星轮廓,雾未开;仍可点开看诚实空态 */
-.starUnlearned .starName { color: var(--moonsoft-on-ink); }
-
-/* 未开蒙:一粒最暗的星核,禁用不进 Tab 序 */
-.starLocked { cursor: not-allowed; }
-
-.starLocked .glyphStar {
-  fill: var(--sky-dim);
-  stroke: none;
-  transform: scale(0.4);
-}
-
-.starLocked .starName { opacity: 0.45; }
-
-@media (max-width: 720px) {
-  .starAtlas {
-    min-width: 42rem;
-    padding-inline: var(--gap);
-  }
-
-  .skyMasthead {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .skyMasthead > p { display: none; }
-  .skyHead { grid-template-columns: auto minmax(0, 1fr); }
-  .skyHint { display: none; }
-  .skyDone { grid-column: 2; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dustStar { animation: none; }
-  .starForgotten .starFog { animation: none; }
-  .starMastered .starGlyph { animation: none; }
-  .starMastered .glyphStar { animation: none; }
-  .starGlyph::after,
-  .starBtn,
-  .skyLines,
-  .crossLinkOverlay { transition: none; }
-  .starSelected .starGlyph::after { transform: none; }
-  .starBtn:hover:not(:disabled) .starGlyph,
-  .starBtn:focus-visible .starGlyph { transform: none; }
-}
-
-
-/* 巡天筛选器:图例升为可点小签,一态一签带实时计数,按下即聚焦该态 */
-.filterRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap-tight);
-  margin-top: calc(clamp(1.4rem, 3vw, 2rem) * -0.55);
-  margin-bottom: var(--gap);
-}
-
-.filterChip {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4em;
-  min-height: 2rem;
-  padding: 0 0.7rem;
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius);
-  background: none;
-  color: var(--ink-soft);
-  font-family: var(--font-body);
-  font-size: var(--fs-small);
-  cursor: pointer;
-  touch-action: manipulation;
-  transition:
-    border-color var(--t-fast) var(--ease-out),
-    color var(--t-fast) var(--ease-out),
-    background var(--t-fast) var(--ease-out);
-}
-
-/* 触区补到 ≥40px:视觉不变,负 inset 的透明 ::after 撑开可点面(法典 R8) */
-.filterChip::after {
-  content: '';
-  position: absolute;
-  inset: -0.35rem;
-}
-
-.filterChip:hover { border-color: var(--line-strong); color: var(--ink); }
-
-.filterChip[aria-pressed='true'] {
-  border-color: transparent;
-  background: var(--ink-wash);
-  color: var(--ink);
-}
-
-.filterCount {
-  color: var(--ink-faint);
-  font-family: var(--font-code);
-  font-size: var(--fs-tiny);
-  font-weight: 500;
-}
-
-.filterChip[aria-pressed='true'] .filterCount { color: var(--ink-soft); }
-
-.swatch {
-  display: inline-block;
-  width: 0.65em;
-  height: 0.65em;
-  border-radius: 50%;
-  margin-right: 0.35em;
-}
-
-/* 小签内的色点靠 flex gap 排距,清掉 swatch 自带的右外边距免得双份留白 */
-.filterChip .swatch,
-.starLinkChip .swatch { margin-right: 0; }
-
-.swJade { background: var(--jade); }
-.swAmber { background: var(--amber); }
-.swAzure { background: var(--paper); border: 2px solid var(--azure); }
-.swDust { background: var(--dust); }
-.swLocked { background: var(--dust); opacity: 0.35; }
-
-/* 忘了→来信:信笺一封封竖着叠(信本体样式在 components/story/letter.module.css) */
+.letterBlock { margin-top: 24px; }
 
 .letterFlow {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap);
-  margin-top: var(--gap);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: 16px;
+  margin-top: 12px;
 }
 
-/* 节点详情 + 证据链 */
+/* ── 证据浮卡:住在星海场景里,用场景自己的 --star-sky-* 配色 ── */
 
 .evidenceDock {
   --paper: var(--star-sky-deep);
@@ -1921,6 +1121,23 @@
   --amber-wash: color-mix(in oklch, var(--star-sky-amber) 13%, transparent);
   --dust: color-mix(in oklch, var(--star-sky-muted) 58%, transparent);
   --shadow-paper: 0 14px 38px color-mix(in oklch, var(--star-sky-deep) 72%, transparent);
+  /* 场景内的基础件(按钮、色点)也跟场景走,不随页面皮肤 */
+  --text: var(--star-sky-moon);
+  --text-2: color-mix(in oklch, var(--star-sky-muted) 82%, var(--star-sky-moon));
+  --text-3: var(--star-sky-muted);
+  --inset: color-mix(in oklch, var(--star-sky-moon) 10%, transparent);
+  --hover: color-mix(in oklch, var(--star-sky-moon) 8%, transparent);
+  --active: color-mix(in oklch, var(--star-sky-moon) 16%, transparent);
+  --border: color-mix(in oklch, var(--star-sky-moon) 14%, transparent);
+  --border-2: color-mix(in oklch, var(--star-sky-moon) 26%, transparent);
+  --accent: var(--star-sky-blue);
+  --on-accent: var(--star-sky-deep);
+  --ring: color-mix(in oklch, var(--star-sky-blue) 50%, transparent);
+  --solid: var(--star-sky-moon);
+  --solid-hover: color-mix(in oklch, var(--star-sky-moon) 86%, var(--star-sky-blue));
+  --on-solid: var(--star-sky-deep);
+  --ok: var(--star-sky-jade);
+  --warn: var(--star-sky-amber);
 
   position: absolute;
   top: clamp(0.4rem, 1vw, 0.65rem);
@@ -1932,13 +1149,14 @@
   width: min(18.5rem, calc(100% - 1.1rem));
   overflow: visible;
   overscroll-behavior: auto;
-  scroll-margin-top: calc(var(--header-h) + var(--gap-tight));
+  scroll-margin-top: 24px;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--r-lg);
   background: color-mix(in oklch, var(--paper) 78%, transparent);
   backdrop-filter: blur(16px) saturate(1.18);
   -webkit-backdrop-filter: blur(16px) saturate(1.18);
-  box-shadow: none;
+  box-shadow: 0 0 0 1px var(--paper-edge);
+  color: var(--ink);
   pointer-events: none;
   touch-action: manipulation;
   transform: none;
@@ -1974,92 +1192,9 @@
   overflow: visible;
   overscroll-behavior: auto;
   padding-bottom: 0;
-  scrollbar-width: none;
 }
 
-.evidenceDock .collapse > div::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
-}
-
-.evidenceMore {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 4;
-  display: grid;
-  height: 2.85rem;
-  pointer-events: none;
-  place-items: end center;
-  background: linear-gradient(
-    to top,
-    var(--paper) 0%,
-    color-mix(in oklch, var(--paper) 88%, transparent) 38%,
-    color-mix(in oklch, var(--paper) 28%, transparent) 72%,
-    transparent 100%
-  );
-  box-shadow: inset 0 -1.4rem 1.6rem color-mix(in oklch, var(--paper) 55%, transparent);
-}
-
-.evidenceMore::before {
-  content: '';
-  position: absolute;
-  right: 22%;
-  bottom: 1.45rem;
-  left: 22%;
-  height: 1px;
-  background: color-mix(in oklch, var(--ink) 42%, transparent);
-}
-
-.evidenceMoreChevron {
-  display: block;
-  width: 0;
-  height: 0;
-  margin-bottom: 0.42rem;
-  border-right: 6px solid transparent;
-  border-left: 6px solid transparent;
-  border-top: 7px solid var(--ink);
-  opacity: 0.28;
-  filter: drop-shadow(0 1px 2px var(--paper));
-}
-
-.evidenceDock[data-more] .evidenceMoreChevron {
-  opacity: 0.92;
-  animation: evidenceMoreNudge 1.5s var(--ease-loop) infinite alternate;
-}
-
-@keyframes evidenceMoreNudge {
-  from { transform: translateY(0); }
-  to { transform: translateY(3px); }
-}
-
-.evidenceEmpty {
-  min-height: 12.5rem;
-  display: grid;
-  place-content: center;
-  justify-items: start;
-  padding: var(--gap-loose);
-  background:
-    radial-gradient(circle at 84% 12%, var(--lilac-wash), transparent 36%),
-    linear-gradient(160deg, var(--paper), var(--paper-warm));
-  color: var(--ink-soft);
-}
-
-.evidenceEmpty h3 {
-  margin: var(--gap-tight) 0 var(--gap-hair);
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-}
-
-.evidenceEmpty > p:last-child {
-  max-width: 17rem;
-  font-size: var(--fs-small);
-  line-height: 1.75;
-}
-
+/* 契约保留:星海证据空态轨道是细实线 */
 .evidenceOrbit {
   width: 3rem;
   height: 3rem;
@@ -2071,45 +1206,33 @@
   background: var(--azure-wash);
 }
 
-.evidenceEyebrow {
-  margin-top: var(--gap);
-  color: var(--azure);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.16em;
-}
-
 .collapse {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows var(--t-med) var(--ease-out);
+  transition: grid-template-rows var(--dur-3) var(--ease);
 }
 
 .open { grid-template-rows: 1fr; }
 
 .collapse > div { overflow: hidden; min-height: 0; }
 
-/* 证据链面板改浅卡:卷三落在 shade 带上,warm 底立不住(R3) */
 .nodePanel {
   margin-top: 0;
   background: transparent;
   border: 0;
   border-radius: inherit;
-  padding: var(--gap-tight);
+  padding: 12px;
 }
 
 .panelHead {
   display: flex;
   align-items: baseline;
-  gap: var(--gap);
   flex-wrap: wrap;
-  margin-bottom: var(--gap-tight);
+  gap: 6px 8px;
+  margin-bottom: 12px;
 }
 
-.evidenceDock .panelHead {
-  gap: var(--gap-hair) var(--gap-tight);
-  padding-left: 2.4rem;
-}
+.evidenceDock .panelHead { padding-left: 2.4rem; }
 
 :global([data-corner='right']) .evidenceDock .panelHead {
   padding-left: 0;
@@ -2135,20 +1258,22 @@
   color: var(--ink);
   opacity: 1;
   pointer-events: auto;
+  cursor: pointer;
   filter: drop-shadow(0 0 4px var(--paper)) drop-shadow(0 1px 2px var(--paper));
   transition: none;
 }
 
-.evidenceCloseOn,
-.evidenceClose:focus-visible {
-  opacity: 1;
-  pointer-events: auto;
-}
-
 .evidenceClose:hover {
   background: transparent;
-  color: var(--ink);
+  color: var(--azure);
 }
+
+.evidenceClose:focus-visible {
+  outline: 2px solid var(--azure);
+  outline-offset: -6px;
+}
+
+.dockAction { margin-bottom: 12px; }
 
 .evidenceDock .starLinkChips { width: 100%; }
 
@@ -2157,150 +1282,284 @@
   flex-wrap: wrap;
 }
 
-.evidenceDock .recallCard { padding: var(--gap-tight); }
+.evidenceDock .recallCard { padding: 10px 12px; }
 
 .evidenceDock .recallHead small {
   display: block;
-  margin: var(--gap-hair) 0 0;
+  margin: 2px 0 0;
 }
+
+.h3 { font-size: var(--fs-sub); color: var(--ink); margin: 12px 0 8px; }
 
 .evidenceDock .h3 {
   font-size: var(--fs-tiny);
-  margin-bottom: var(--gap-hair);
+  font-weight: 600;
+  margin-bottom: 6px;
 }
 
 .evidenceDock .timelineTime,
 .evidenceDock .timelineText,
-.evidenceDock .muted {
-  font-size: 0.68rem;
-}
+.evidenceDock .muted { font-size: var(--fs-tiny); }
 
-.evidenceDock .masteryProofHead h3 {
-  font-size: var(--fs-tiny);
-}
-
-.evidenceDock .masteryProofHead > strong {
-  font-size: var(--fs-sub);
-}
+.evidenceDock .masteryProofHead h3 { font-size: var(--fs-small); }
+.evidenceDock .masteryProofHead > strong { font-size: var(--fz-2xl); }
 
 .evidenceDock .masteryFactors dt,
 .evidenceDock .masteryFactors dd,
-.evidenceDock .masteryFormula {
-  font-size: 0.68rem;
-}
-
-.evidenceDock .masteryProof {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
+.evidenceDock .masteryFormula { font-size: var(--fs-tiny); }
 
 .masteryProof {
-  margin-top: var(--gap-tight);
-  padding: var(--gap-tight);
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-s);
-  background:
-    radial-gradient(12rem 7rem at 100% 0%, var(--lilac-wash), transparent 72%),
-    var(--paper-warm);
+  margin-top: 12px;
+  padding: 12px 0 0;
+  box-shadow: inset 0 1px 0 var(--paper-edge);
 }
 
 .masteryProofHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--gap);
-  padding-bottom: var(--gap-tight);
-  border-bottom: 1px solid var(--paper-edge);
+  gap: 12px;
+  padding-bottom: 8px;
 }
 
 .masteryProofHead p {
+  margin: 0;
   color: var(--azure);
-  font-family: var(--font-typewriter);
-  font-size: 0.6rem;
-  letter-spacing: 0.14em;
+  font-size: var(--fs-tiny);
 }
 
 .masteryProofHead h3 {
-  margin-top: 0.15rem;
+  margin: 2px 0 0;
   color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
+  font-weight: 600;
 }
 
 .masteryProofHead > strong {
   color: var(--jade-ink);
-  font-family: var(--font-code);
-  font-size: var(--fs-title);
-  font-weight: 500;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 
 .masteryFactors {
   display: flex;
   flex-direction: column;
-  gap: var(--gap-tight);
-  margin-top: var(--gap-tight);
+  gap: 10px;
+  margin: 4px 0 0;
 }
 
 .masteryFactors > div {
   display: flex;
   flex-direction: column;
-  gap: 0.28rem;
+  gap: 4px;
 }
 
 .masteryFactors dt {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--gap-tight);
+  gap: 8px;
   color: var(--ink);
-  font-size: var(--fs-tiny);
 }
 
 .masteryFactors dt b {
   color: var(--jade-ink);
-  font-family: var(--font-code);
+  font-variant-numeric: tabular-nums;
 }
 
 .masteryFactors dd {
   display: grid;
   grid-template-columns: 4.5rem minmax(0, 1fr);
   align-items: center;
-  gap: var(--gap-hair);
+  gap: 8px;
   margin: 0;
   color: var(--ink-faint);
-  font-size: var(--fs-tiny);
   line-height: 1.45;
 }
 
 .masteryFactors dd > span {
-  height: 0.22rem;
+  height: 4px;
   overflow: hidden;
+  border-radius: var(--r-full);
   background: var(--ink-wash);
-  transform: skewX(-12deg);
 }
 
 .masteryFactors dd i {
   display: block;
   height: 100%;
+  border-radius: inherit;
   background: linear-gradient(90deg, var(--azure), var(--jade));
-  transform-origin: left center;
-  transition: width var(--t-slow) var(--ease-out);
+  transition: width var(--dur-3) var(--ease);
 }
 
 .masteryFormula {
-  margin-top: var(--gap-tight);
-  padding-top: var(--gap-tight);
-  border-top: 1px dashed var(--paper-edge);
+  margin: 10px 0 0;
+  padding-top: 8px;
+  box-shadow: inset 0 1px 0 var(--paper-edge);
   color: var(--ink-soft);
-  font-size: var(--fs-tiny);
   line-height: 1.65;
 }
 
 .masteryFormula b {
   color: var(--ink);
-  font-family: var(--font-code);
+  font-variant-numeric: tabular-nums;
 }
+
+.panelTitle {
+  margin: 0;
+  font-size: var(--fz-lg);
+  font-weight: 650;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+/* 场景内的小签(证据浮卡专用;页面其余处用基础件 Badge) */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--r-full);
+  background: var(--ink-wash);
+  color: var(--ink-soft);
+  font-size: var(--fs-tiny);
+  white-space: nowrap;
+}
+
+.chipJade { color: var(--jade-ink); background: var(--jade-wash); }
+.chipAmber { color: var(--amber-ink); background: var(--amber-wash); }
+.chipAzure { color: var(--azure); background: var(--azure-wash); }
+
+/* 星链行:这颗星牵着的邻星,点一枚即跳选 */
+.starLinkRow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin-bottom: 12px;
+}
+
+.starLinkLabel {
+  flex: none;
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+}
+
+.starLinkChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.starLinkChip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--ink-wash);
+  color: var(--ink-soft);
+  font-family: var(--ui-font);
+  font-size: var(--fs-tiny);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+
+.starLinkChip:hover:not(:disabled) { background: var(--azure-wash); }
+.starLinkChip:active:not(:disabled) { transform: scale(0.985); }
+.starLinkChip:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.starLinkChip:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.starLinkTitle { color: var(--ink); font-weight: 550; }
+.starLinkNote { color: var(--ink-faint); }
+
+.starLinkCluster {
+  padding-left: 6px;
+  box-shadow: inset 1px 0 0 var(--paper-edge);
+  color: var(--azure);
+}
+
+/* 逐星记忆卡:证据链之上的「小白记得」 */
+.recallCard {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--jade-wash);
+}
+
+.recallHead {
+  margin: 0;
+  font-size: var(--fs-small);
+  font-weight: 650;
+  color: var(--jade-ink);
+}
+
+.recallHead small {
+  margin-left: 6px;
+  font-weight: 400;
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+}
+
+.recallOutcome { margin: 6px 0 0; font-size: var(--fs-small); color: var(--ink); }
+
+.recallRow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 6px;
+}
+
+.recallTag {
+  flex: none;
+  font-size: var(--fs-tiny);
+  color: var(--ink-faint);
+}
+
+.recallVals { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.recallChip {
+  font-size: var(--fs-tiny);
+  padding: 1px 8px;
+  border-radius: var(--r-full);
+  color: var(--jade-ink);
+  background: var(--jade-wash);
+}
+
+.recallQuote { font-size: var(--fs-small); color: var(--ink); line-height: 1.6; }
+
+/* 已放下的心魔:一道删线划过 */
+.recallDemon {
+  font-size: var(--fs-tiny);
+  padding: 1px 8px;
+  border-radius: var(--r-full);
+  background: var(--ink-wash);
+  color: var(--ink-soft);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in oklch, var(--star-sky-amber) 70%, transparent);
+}
+
+.recallMeta { margin: 6px 0 0; font-size: var(--fs-tiny); color: var(--ink-soft); }
+.recallMeta .num { color: var(--jade-ink); }
+
+.timeline {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0 0 0 10px;
+  box-shadow: inset 2px 0 0 var(--paper-edge);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.timelineItem { display: flex; gap: 4px 8px; align-items: baseline; flex-wrap: wrap; }
+
+.timelineTime { flex: none; font-variant-numeric: tabular-nums; color: var(--ink-faint); }
+
+.timelineText { flex-basis: 100%; color: var(--ink); line-height: 1.55; }
 
 @media (max-width: 960px) {
   .evidenceDock {
@@ -2312,354 +1571,100 @@
     transform: none;
   }
 
-  .evidenceDockOpen {
-    transform: none;
-  }
-
-  .evidenceEmpty { min-height: 12rem; }
+  .evidenceDockOpen { transform: none; }
 }
 
+/* 窄屏:证据卡落到星图下方,不再悬浮 */
 @media (max-width: 720px) {
   :global([data-corner]) .evidenceDock {
     position: relative;
     inset: auto;
     width: auto;
-    margin: var(--gap) 0.9rem;
+    margin: 12px;
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .evidenceDock,
-  .evidenceDockOpen {
-    transition: none;
-    transform: none;
-  }
-}
-
-@media (max-width: 720px) {
-  .mapSwipeHint { display: none; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .evidenceClose { transition: none; }
-  .evidenceDock[data-more] .evidenceMoreChevron { animation: none; }
-}
-
-.panelTitle { font-size: var(--fs-sub); color: var(--ink); }
-
-.chip {
-  font-size: var(--fs-tiny);
-  padding: 0.05rem 0.5rem;
-  border-radius: var(--radius-s);
-  border: 1px solid var(--paper-edge);
-  color: var(--ink-soft);
-}
-
-.chipJade { color: var(--jade-ink); border-color: var(--jade); background: var(--jade-wash); }
-.chipAmber { color: var(--amber-ink); border-color: var(--amber); background: var(--amber-wash); }
-.chipAzure { color: var(--azure); border-color: var(--azure); background: var(--azure-wash); }
-/* 被带偏是误区语义,朱砂落笔处;金句 chip 钤鎏金,与金印同调(藤黄归还衰减专用) */
-.chipCinnabar { color: var(--cinnabar); border-color: var(--cinnabar); background: var(--cinnabar-wash); }
-.chipGold { color: var(--gold-ink); border-color: var(--gold); background: color-mix(in oklch, var(--gold) 14%, transparent); }
-
-/* 星链行:证据链面板里这颗星牵着的邻星,点一枚即跳选;锐角小签,与 .chip 同族气质 */
-.starLinkRow {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--gap-hair) var(--gap-tight);
-  margin-bottom: var(--gap-tight);
-}
-
-.starLinkLabel {
-  flex: none;
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--ink-faint);
-}
-
-.starLinkChips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap-hair);
-}
-
-.starLinkChip {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4em;
-  padding: 0.18rem 0.5rem;
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-tag);
-  background: none;
-  color: var(--ink-soft);
-  font-family: var(--font-body);
-  font-size: var(--fs-tiny);
-  cursor: pointer;
-  transition:
-    border-color var(--t-fast) var(--ease-out),
-    background var(--t-fast) var(--ease-out);
-}
-
-/* 触区补到 ≥40px:纵向撑够;横向收在 gap-hair 半距内,免得相邻签命中区互叠误触 */
-.starLinkChip::after {
-  content: '';
-  position: absolute;
-  inset: -0.5rem -0.15rem;
-}
-
-.starLinkChip:hover:not(:disabled) {
-  border-color: var(--azure);
-  background: var(--azure-wash);
-}
-
-.starLinkChip:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.starLinkTitle { font-family: var(--font-display); color: var(--ink); }
-
-.starLinkNote { color: var(--ink-faint); }
-
-/* 星官名:札记右侧一道细界后的考据标注(青字楷体),点出这条星链归哪一星官 */
-.starLinkCluster {
-  padding-left: 0.4em;
-  border-left: 1px solid var(--paper-edge);
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.06em;
-  color: var(--azure);
-}
-
-/* 逐星记忆卡:证据链之上的「小白记得」digest —— 芦青左沿,浅暖底,册页语域 */
-.recallCard {
-  margin-top: var(--gap-tight);
-  padding: var(--gap-tight) var(--gap);
-  background: var(--paper-warm);
-  border: 1px solid var(--paper-edge);
-  border-left: 3px solid color-mix(in oklch, var(--jade) 55%, transparent);
-  border-radius: var(--radius-s);
-}
-
-.recallHead {
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  font-weight: 700;
-  color: var(--jade-ink);
-  letter-spacing: 0.1em;
-}
-
-.recallHead small {
-  margin-left: var(--gap-hair);
-  font-weight: 400;
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.02em;
-  color: var(--ink-faint);
-}
-
-.recallOutcome { margin-top: var(--gap-hair); font-family: var(--font-display); font-size: var(--fs-small); color: var(--ink); }
-
-.recallRow {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--gap-hair) var(--gap-tight);
-  margin-top: var(--gap-hair);
-}
-
-.recallTag {
-  flex: none;
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--ink-faint);
-}
-
-.recallVals { display: flex; flex-wrap: wrap; gap: var(--gap-hair); }
-
-.recallChip {
-  font-style: normal;
-  font-size: var(--fs-tiny);
-  padding: 0.05rem 0.5rem;
-  border: 1px solid var(--jade);
-  border-radius: var(--radius-s);
-  color: var(--jade-ink);
-  background: var(--jade-wash);
-}
-
-.recallQuote { font-style: normal; font-family: var(--font-display); font-size: var(--fs-small); color: var(--ink); line-height: 1.7; }
-
-/* 已放下的心魔:误区语义,朱砂一道删线划过(收得极淡,不喧宾) */
-.recallDemon {
-  font-style: normal;
-  font-size: var(--fs-tiny);
-  padding: 0.05rem 0.5rem;
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-s);
-  color: var(--ink-soft);
-  text-decoration: line-through;
-  text-decoration-color: color-mix(in oklch, var(--cinnabar) 55%, transparent);
-}
-
-.recallMeta { margin-top: var(--gap-hair); font-size: var(--fs-tiny); color: var(--ink-soft); /* paper-warm 底上 ink-faint 不达 AA */ }
-.recallMeta .num { color: var(--jade-ink); }
-
-.timeline {
-  list-style: none;
-  margin: var(--gap-tight) 0 0;
-  padding: 0 0 0 var(--gap-tight);
-  border-left: 2px solid var(--paper-edge);
-  display: flex;
-  flex-direction: column;
-  /* 与复盘页证据链时间线同密度(--gap-tight),两处同步义务 */
-  gap: var(--gap-tight);
-}
-
-.timelineItem { display: flex; gap: var(--gap-tight); align-items: baseline; flex-wrap: wrap; }
-
-.timelineTime { flex: none; font-family: var(--font-code); font-size: var(--fs-tiny); color: var(--ink-faint); }
-
-.timelineText { font-size: var(--fs-small); color: var(--ink); }
-
-/* ── 卷四·金句画廊:不对称引文档案墙,不横滚、不堆卡。 ── */
-
-.galleryEmpty {
-  display: grid;
-  grid-template-columns: minmax(8rem, 0.32fr) minmax(0, 1fr);
-  align-items: start;
-  gap: clamp(var(--gap), 4vw, var(--gap-loose));
-  min-height: 10rem;
-  padding: clamp(1.5rem, 4vw, 2.75rem) 0;
-  border-block: 1px solid var(--line-strong);
-}
-
-.galleryEmptyIndex,
-.galleryIndex {
-  color: var(--azure);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
-}
-
-.galleryEmpty p {
-  max-width: 42rem;
-  color: var(--ink-soft);
-  font-size: var(--fs-small);
-  line-height: 1.9;
-}
-
-.galleryEmpty strong {
-  display: block;
-  margin-bottom: var(--gap-tight);
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: clamp(var(--fs-sub), 2.4vw, var(--fs-title));
-  font-weight: 500;
-}
+/* ── 金句画廊:一张张裱好的纸笺,自然排版,不横滚 ── */
 
 .galleryList {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: clamp(var(--gap-loose), 6vw, 5rem);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  gap: 16px;
   margin: 0;
   padding: 0;
-  border-top: 1px solid var(--line-strong);
   list-style: none;
 }
 
-.galleryItem {
-  min-width: 0;
-  border-bottom: 1px solid var(--line-strong);
-}
-
-.galleryItem:first-child { grid-column: 1 / -1; }
+.galleryItem { min-width: 0; }
 
 .galleryFigure {
-  display: grid;
-  grid-template-columns: 5.5rem minmax(0, 1fr);
-  column-gap: clamp(var(--gap), 3vw, var(--gap-loose));
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
   margin: 0;
-  padding: clamp(1.5rem, 4vw, 3rem) 0;
+  padding: 18px 20px 14px;
+  transition: transform var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
 }
 
-.galleryItem:first-child .galleryFigure {
-  grid-template-columns: minmax(7rem, 0.24fr) minmax(0, 1fr);
+.galleryFigure:hover {
+  transform: translateY(-2px) rotate(-0.3deg);
+  box-shadow: 0 0 0 1px var(--line), var(--shadow-lift);
+}
+
+.galleryIndex {
+  color: var(--terra-ink);
+  font-family: var(--font-typewriter);
+  font-size: var(--fz-xs);
+  letter-spacing: 0.12em;
 }
 
 .galleryText {
-  grid-column: 2;
-  max-width: 48rem;
+  flex: 1;
   margin: 0;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: clamp(1.2rem, 2.1vw, 1.75rem);
+  font-size: var(--fz-xl);
   line-height: 1.8;
   overflow-wrap: anywhere;
-}
-
-.galleryItem:first-child .galleryText {
-  font-size: clamp(1.45rem, 2.8vw, 2.25rem);
 }
 
 .galleryText p { margin: 0; }
 
 .galleryFrom {
-  grid-column: 2;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--gap-hair) var(--gap);
-  margin-top: var(--gap);
-  padding-top: var(--gap-tight);
-  border-top: 1px solid var(--paper-edge);
-  color: var(--ink-soft);
-  font-size: var(--fs-tiny);
+  gap: 2px 12px;
+  padding-top: 10px;
+  box-shadow: inset 0 1px 0 var(--line);
+  color: var(--ink-faint);
+  font-size: var(--fz-xs);
 }
 
 .galleryFrom cite {
-  color: var(--azure);
+  color: var(--ink-soft);
   font-family: var(--font-display);
+  font-size: var(--fz-sm);
   font-style: normal;
 }
 
-.galleryFrom time { font-family: var(--font-code); }
+.galleryFrom time { font-variant-numeric: tabular-nums; }
 
-@media (max-width: 720px) {
-  .galleryList { grid-template-columns: minmax(0, 1fr); }
-  .galleryItem:first-child { grid-column: auto; }
+/* ── 小白的记忆:登记册是纸物,外包一层 data-story 作用域 ── */
 
-  .galleryFigure,
-  .galleryItem:first-child .galleryFigure {
-    grid-template-columns: 4.5rem minmax(0, 1fr);
-  }
-}
+.storyWrap { min-width: 0; }
 
-@media (max-width: 560px) {
-  .galleryEmpty { grid-template-columns: minmax(0, 1fr); }
-
-  .galleryFigure,
-  .galleryItem:first-child .galleryFigure {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .galleryText,
-  .galleryFrom { grid-column: 1; }
-  .galleryText { margin-top: var(--gap-tight); }
-}
-
-/* ── 卷尾·小白眼里的你:印象句(楷体)+ 出处小注(code 字体,右侧,窄屏折行到下) ── */
+/* ── 小白眼里的你:一张印象笺 ── */
 
 .memoryList {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 6px 24px;
   display: flex;
   flex-direction: column;
-  gap: var(--gap-hair);
 }
 
 .memoryItem {
@@ -2667,47 +1672,151 @@
   align-items: baseline;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--gap-hair) var(--gap);
-  padding-left: var(--gap);
-  /* 卷尾落在 shade 带上:10% 青 wash 左沿会隐形,提到半浓青(R2) */
-  border-left: 3px solid color-mix(in oklch, var(--azure) 45%, transparent);
+  gap: 2px 24px;
+  padding: 14px 0;
+  box-shadow: inset 0 1px 0 var(--line);
 }
+
+.memoryItem:first-child { box-shadow: none; }
 
 .memoryLine {
   font-family: var(--font-display);
+  font-size: var(--fz-xl);
+  line-height: 1.7;
   color: var(--ink);
-  line-height: 1.8;
 }
 
-/* 出处小注:这句印象凭什么——真实事件计数,不可伪造;数字纪律走 code 字体 */
+/* 出处小注:这句印象凭什么——真实事件计数,不可伪造 */
 .memoryEvidence {
   flex: none;
-  font-family: var(--font-code);
-  font-size: var(--fs-tiny);
+  font-size: var(--fz-xs);
+  font-variant-numeric: tabular-nums;
   color: var(--ink-faint);
 }
 
-/* ── 按钮与角落 ── */
+/* ── 容器断点 ── */
 
-.btnGhost {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--gap-hair);
-  background: none;
-  border: 1px solid var(--azure);
-  color: var(--azure);
-  border-radius: var(--radius-s);
-  padding: 0.35rem 0.9rem;
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+@container (max-width: 900px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'profile'
+      'stats'
+      'rail'
+      'notes';
+  }
+
+  .notesColumn { flex-direction: row; align-items: flex-start; }
+  .notesColumn > * { flex: 1 1 0; min-width: 0; }
 }
 
-.btnGhost:hover:not(:disabled) {
-  transform: translateY(-1px);
-  background: var(--azure-wash);
-}
-.btnGhost:disabled { opacity: 0.45; cursor: not-allowed; }
+@container (max-width: 720px) {
+  .statRow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .notesColumn { flex-direction: column; }
+  .heroTitle { font-size: var(--fz-3xl); }
+  .heroSub { font-size: var(--fz-md); }
 
-a.btnGhost { display: inline-block; text-decoration: none; }
-a.btnGhost:hover { transform: translateY(-1px); background: var(--azure-wash); }
+  .rungHead {
+    grid-template-columns: 44px minmax(0, 1fr) auto 20px;
+    grid-template-areas:
+      'toggle sign state chev'
+      'toggle desc desc desc'
+      'toggle req req req';
+    row-gap: 2px;
+    padding-block: 8px;
+  }
+
+  /* 行变高后圆点贴顶,轨线收口随之下移 */
+  .ladder { --marker-y: 30px; }
+  .rung:not(.currentRung) .stageToggle { align-self: start; }
+  .rungReq { justify-content: flex-start; }
+}
+
+@container (max-width: 560px) {
+  .section { margin-bottom: 40px; }
+  .hero { margin-bottom: 40px; }
+
+  /* 手机:标题在左,档案照缩到右上,性情通栏 */
+  .profileColumn {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'heading portrait'
+      'facts facts';
+    column-gap: 16px;
+  }
+
+  .profileHeading { align-self: center; }
+  .portrait { width: 116px; padding: 6px 6px 8px; }
+  .portraitStage { height: 100px; }
+  .portraitStage > * { zoom: 0.8; }
+  .portraitSeal { display: none; }
+  .profileFacts > .personaFact { flex-basis: 100%; }
+  /* 姓名、科名在标题与数字带里已经出现,手机上不再重复占一行 */
+  .profileFacts > div:not(.personaFact) { display: none; }
+
+  .statTile { padding: 14px; }
+  .chronicleColumn { padding: 16px 12px; }
+  .railHead { padding-inline: 4px; }
+
+  .wisdom,
+  .stagePreview { padding-left: 52px; padding-right: 12px; }
+
+  .dreamThread,
+  .graduationScene { margin-left: 12px; margin-right: 12px; }
+
+  .ledgerMeta { gap: 16px; }
+
+  .logList {
+    --chronicle-rail: 4px;
+    padding-inline: 16px;
+  }
+
+  .logItem,
+  .marginItem {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 4px;
+    padding-left: 24px;
+  }
+
+  .logDate { padding-top: 0; text-align: left; }
+  .logItem::before { top: 20px; }
+  .marginItem::before { top: 14px; }
+
+  .galleryList {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .memoryList { padding-inline: 16px; }
+  .memoryLine { font-size: var(--fz-lg); }
+}
+
+@media (forced-colors: active) {
+  .currentMarker,
+  .rungPast .rungMarker,
+  .wisdomFill { background: Highlight; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .currentMarker { animation: none; }
+
+  .portrait,
+  .statTile,
+  .galleryFigure,
+  .wisdomFill,
+  .rungMarker,
+  .rungChevron { transition: none; }
+
+  .portrait:hover { transform: rotate(-2.2deg); }
+
+  .statTile:hover,
+  .galleryFigure:hover,
+  .rungHead:hover .rungMarker { transform: none; }
+
+  .evidenceDock,
+  .evidenceDockOpen {
+    transition: none;
+    transform: none;
+  }
+}

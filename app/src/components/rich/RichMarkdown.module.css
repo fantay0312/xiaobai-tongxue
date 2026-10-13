@@ -1,0 +1,325 @@
+/* 正文排版：面向中文长文阅读。全部取皮肤令牌，颜色跟随容器。 */
+
+/* 字号与行高放在零权重选择器里，调用方传入的 className 可以直接改写 */
+:where(.markdown) {
+  font-size: var(--fz-lg, 15px);
+  line-height: 1.75;
+}
+
+.markdown {
+  --rm-gap: 0.9em;
+  --rm-tint: color-mix(in srgb, currentColor 8%, transparent);
+  --rm-rule: color-mix(in srgb, currentColor 13%, transparent);
+  --rm-soft: color-mix(in srgb, currentColor 62%, transparent);
+  min-width: 0;
+  max-width: 100%;
+  color: inherit;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  text-align: start;
+  font-weight: 400;
+  letter-spacing: 0.005em;
+}
+
+.markdown[data-compact] {
+  --rm-gap: 0.6em;
+  font-size: var(--fz-md, 14px);
+  line-height: 1.65;
+}
+
+/* ── 块间距：统一由相邻关系决定，首尾不留白 ── */
+.markdown :where(p, ul, ol, dl, blockquote, pre, table, figure, hr, h3, h4, h5, h6) {
+  margin: 0;
+}
+
+/* 只给块级元素加间距：列表项、引用里还会直接出现行内元素（角标、行内代码） */
+.markdown > :where(* + *),
+.markdown :where(blockquote, li, section) > :where(p, ul, ol, dl, blockquote, pre, hr, h3, h4, h5, h6, div, section):where(* + *) {
+  margin-top: var(--rm-gap);
+}
+
+.markdown > :where(:first-child) { margin-top: 0; }
+.markdown > :where(:last-child) { margin-bottom: 0; }
+
+/* 列表项里紧跟文字的代码块、公式、表格：上下各让出一点 */
+.markdown li > :where(div, pre, blockquote) { margin-top: 0.5em; }
+.markdown li > :where(div, pre, blockquote):where(:not(:last-child)) { margin-bottom: 0.5em; }
+
+/* ── 标题 ── */
+.h1,
+.h2,
+.h3,
+.h4 {
+  color: inherit;
+  font-family: inherit;
+  font-weight: 650;
+  line-height: 1.4;
+  letter-spacing: -0.005em;
+  text-wrap: balance;
+}
+
+.markdown .h1 { font-size: 1.46em; letter-spacing: -0.015em; }
+.markdown .h2 { font-size: 1.24em; letter-spacing: -0.01em; }
+.markdown .h3 { font-size: 1.08em; }
+.markdown .h4 { font-size: 1em; color: var(--rm-soft); }
+
+.markdown > * + .h1 { margin-top: 1.5em; }
+.markdown > * + .h2 { margin-top: 1.45em; }
+.markdown > * + .h3 { margin-top: 1.3em; }
+.markdown > * + .h4 { margin-top: 1.2em; }
+
+.markdown > .h1 + *,
+.markdown > .h2 + * { margin-top: 0.6em; }
+.markdown > .h3 + *,
+.markdown > .h4 + * { margin-top: 0.45em; }
+
+.markdown[data-compact] .h1 { font-size: 1.2em; }
+.markdown[data-compact] .h2 { font-size: 1.1em; }
+.markdown[data-compact] .h3 { font-size: 1em; }
+
+/* ── 行内 ── */
+.markdown strong { color: inherit; font-weight: 650; }
+.markdown em { font-style: italic; }
+.markdown del { color: var(--rm-soft); text-decoration-thickness: 1px; }
+
+.link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--accent) 36%, transparent);
+  text-underline-offset: 0.22em;
+  border-radius: 3px;
+  transition: color var(--dur-1) var(--ease), text-decoration-color var(--dur-1) var(--ease);
+}
+
+.link:hover {
+  color: var(--accent-hover, var(--accent));
+  text-decoration-color: currentColor;
+}
+
+.link:active { opacity: 0.75; }
+.link:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+.inlineCode {
+  padding: 0.14em 0.42em;
+  border-radius: var(--r-xs, 6px);
+  background: var(--rm-tint);
+  color: inherit;
+  font-family: var(--ui-mono);
+  font-size: 0.875em;
+  font-variant-ligatures: none;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* 引用标记 [1]：小号角标 */
+.cite {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.55em;
+  height: 1.55em;
+  margin: 0 0.12em;
+  padding: 0 0.38em;
+  border-radius: var(--r-full, 999px);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--ui-font);
+  font-size: max(0.74em, 11px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: 0;
+  vertical-align: baseline;
+  position: relative;
+  top: -0.42em;
+  user-select: none;
+}
+
+.cite + .cite { margin-left: 0; }
+
+/* ── 列表 ── */
+.markdown ul,
+.markdown ol {
+  padding-inline-start: 1.5em;
+}
+
+.markdown li { padding-inline-start: 0.15em; }
+.markdown li + li { margin-top: 0.3em; }
+.markdown li > :where(ul, ol) { margin-top: 0.3em; }
+.markdown li > :where(p + p) { margin-top: 0.5em; }
+.markdown li::marker { color: var(--rm-soft); font-variant-numeric: tabular-nums; }
+.markdown ul ul { list-style-type: circle; }
+
+.markdown :global(ul.contains-task-list) {
+  padding-inline-start: 0.1em;
+  list-style: none;
+}
+
+.markdown :global(li.task-list-item) {
+  position: relative;
+  padding-inline-start: 1.75em;
+  list-style: none;
+}
+
+.check {
+  position: absolute;
+  inset-inline-start: 0;
+  top: calc((1lh - 16px) / 2);
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--border-2);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--on-accent, #fff);
+}
+
+.check[data-checked] {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.markdown :global(li.task-list-item):has(> .check[data-checked]),
+.markdown :global(li.task-list-item):has(> p > .check[data-checked]) {
+  color: var(--rm-soft);
+}
+
+/* ── 引用：柔和的左侧色条 ── */
+.markdown blockquote {
+  padding: 0.6em 1em 0.6em 0.95em;
+  border-inline-start: 3px solid color-mix(in srgb, var(--accent) 46%, transparent);
+  border-radius: 2px var(--r-md, 10px) var(--r-md, 10px) 2px;
+  background: var(--accent-softer);
+  color: color-mix(in srgb, currentColor 86%, transparent);
+}
+
+.markdown blockquote > :where(* + *) { margin-top: 0.5em; }
+
+.markdown hr {
+  height: 1px;
+  border: 0;
+  background: var(--rm-rule);
+}
+
+.markdown > * + hr,
+.markdown > hr + * { margin-top: 1.5em; }
+
+/* ── 表格 ── */
+.tableWrap {
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: var(--r-lg, 14px);
+  box-shadow: inset 0 0 0 1px var(--rm-rule);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-2) transparent;
+}
+
+.tableWrap:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--rm-rule), 0 0 0 3px var(--ring); }
+
+.tableWrap table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  font-size: 0.93em;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+}
+
+.tableWrap th,
+.tableWrap td {
+  min-width: 5em;
+  padding: 0.62em 0.95em;
+  border: 0;
+  border-bottom: 1px solid var(--rm-rule);
+  background: none;
+  text-align: start;
+  vertical-align: top;
+}
+
+.tableWrap th {
+  background: color-mix(in srgb, currentColor 4.5%, transparent);
+  color: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tableWrap th + th,
+.tableWrap td + td { border-inline-start: 1px solid color-mix(in srgb, currentColor 6%, transparent); }
+
+.tableWrap tbody tr { transition: background var(--dur-1) var(--ease); }
+.tableWrap tbody tr:hover { background: color-mix(in srgb, currentColor 3%, transparent); }
+.tableWrap tbody tr:last-child td { border-bottom: 0; }
+
+/* ── 脚注 ── */
+.markdown :global(section.footnotes) {
+  padding-top: 0.9em;
+  border-top: 1px solid var(--rm-rule);
+  color: var(--rm-soft);
+  font-size: 0.9em;
+}
+
+.markdown :global(section.footnotes) > .h2 {
+  margin: 0;
+  font-size: 1em;
+  font-weight: 600;
+}
+
+/* ── 图片 ── */
+.image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+  border-radius: var(--r-md, 10px);
+}
+
+/* ── 公式 ── */
+.mathInline :global(.katex) {
+  font-size: 1.08em;
+  line-height: 1.2;
+}
+
+.mathBlock {
+  max-width: 100%;
+  padding: 0.3em 0.1em;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-2) transparent;
+}
+
+.mathBlock :global(.katex-display) { margin: 0; }
+.mathBlock :global(.katex) { font-size: 1.14em; }
+
+/* 语法有误或流式中途的公式：显示成低调的源码，不用刺眼的红色 */
+.markdown :global(.katex-error) {
+  color: var(--rm-soft) !important;
+  font-family: var(--ui-mono);
+  font-size: 0.86em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* 渲染失败时的纯文本兜底 */
+.plain {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 560px) {
+  .markdown ul,
+  .markdown ol { padding-inline-start: 1.3em; }
+  .tableWrap th,
+  .tableWrap td { padding: 0.55em 0.75em; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link,
+  .tableWrap tbody tr { transition: none; }
+}

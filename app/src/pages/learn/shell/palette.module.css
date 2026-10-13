@@ -1,0 +1,178 @@
+/* ⌘K 命令面板（cmdk）。层级与对话框一致：遮罩 2000，面板 2001 */
+@keyframes paletteIn {
+  from { opacity: 0; transform: translate(-50%, -8px) scale(0.98); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@keyframes paletteFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: var(--overlay);
+  backdrop-filter: blur(2px);
+  animation: paletteFade var(--dur-2) var(--ease);
+}
+
+.dialog {
+  position: fixed;
+  top: min(16vh, 140px);
+  left: 50%;
+  z-index: 2001;
+  width: min(calc(100vw - 24px), 620px);
+  transform: translate(-50%, 0);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-3);
+  font: var(--fz-md)/1.5 var(--ui-font);
+  outline: none;
+  overflow: hidden;
+  animation: paletteIn var(--dur-2) var(--ease);
+}
+
+.root {
+  display: flex;
+  flex-direction: column;
+  max-height: min(64vh, 520px);
+}
+
+.inputRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-3);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: var(--fz-lg)/1.4 var(--ui-font);
+}
+
+.input::placeholder {
+  color: var(--text-4);
+}
+
+.esc {
+  display: inline-grid;
+  place-items: center;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: var(--r-xs);
+  background: var(--inset);
+  color: var(--text-3);
+  font: 500 var(--fz-2xs)/1 var(--ui-font);
+}
+
+.list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-2) transparent;
+  scroll-padding-block: 6px;
+}
+
+.group + .group {
+  margin-top: 4px;
+}
+
+.group :global([cmdk-group-heading]) {
+  padding: 8px 10px 4px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  font-weight: 500;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 10px;
+  border-radius: var(--r-md);
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+
+.item[data-selected='true'] {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.item:active {
+  background: var(--active);
+}
+
+.itemIcon {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  flex: none;
+  color: var(--text-3);
+}
+
+.item[data-selected='true'] .itemIcon {
+  color: var(--text);
+}
+
+.itemText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemHint {
+  flex: none;
+  max-width: 44%;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty {
+  padding: 32px 16px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .dialog {
+    top: 12px;
+  }
+
+  .root {
+    max-height: min(72dvh, 560px);
+  }
+
+  .esc {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .dialog {
+    animation: none;
+  }
+}

@@ -21,7 +21,7 @@ export function XiaobaiLetter({ topicTitle, data, busy, onReply }: Props) {
   if (data.analogy) memoryParts.push(`先生当时打的那个比方——『${data.analogy}』——弟子倒还记得。`);
 
   return (
-    <article className={s.letter} aria-label={`小白关于「${topicTitle}」的来信`}>
+    <article className={s.letter} aria-label={`小白关于「${topicTitle}」的来信`} data-story>
       <p className={s.salute}>先生钧鉴:</p>
       <p className={s.text}>{memoryParts.join('')}</p>
       {/* 情感核:不是干瘪的「该复习了」,而是一处具体的、正在变模糊的点 */}

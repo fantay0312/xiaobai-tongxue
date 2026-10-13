@@ -1,20 +1,20 @@
 /**
- * 备课页 /prep/:topicId —— 自习桌面。
- * 流程:壹 摸底快测(两波:误区判断题 → 多维选择题,均逐题即时反馈,可重新摸底,计分合并)
- *      → 贰 教学任务卡(真实卡片质感)
- *      → 叁 讲课路线图(checklist 教学大纲 + 小白的追问原话)
- *      → 肆 研读材料包(微课讲义 + 一张图看懂 + 例题 + 误区剧本预演 + 视频参考 + 延伸书单,按错题相关展开)
- *      → 伍 自检清单(给自己点头,不锁讲解舱)。
- * 摸完底就可以合上这课回学习终端;进讲解舱是另一条可选的路。状态只经 store(completePrep)。
- * 学法四选一:通读、跟读复述、例题先行、只补不会的。备课夹始终在,只给老师和小砚。
- * 侧栏「备课五步」= 锚点导航:点击平滑滚动到分节,IntersectionObserver 高亮当前在读分节。
- * 右下角常驻备课助教「小砚」(PrepCoach)——只在备课页出现,课堂(/teach)是防作弊红线。
- *
- * 2026-08-29 沉浸轮:小白本人坐在页头等你——表情与一句话随摸底/读材料/自检实时变;
- * 侧栏有备课进度与案头计时;材料翻开几册、连对几题都被看见;小砚(助教)拿到同一份备课情境。
+ * 备课流程 /prep/:topicId —— 学习终端里的「备课流程」视图，费曼四步（备课 → 上课 → 赴考 → 复盘）的第一步。
+ * 五步，一次只摊开一步：
+ *   1 摸底快测（两波：误区判断题 → 多维选择题，逐题即时反馈，可重新摸底，计分合并）
+ *   2 教学任务卡  3 讲课路线图（教学大纲 + 小白的追问原话）
+ *   4 研读材料包（微课讲义、图解、例题、误区剧本、视频、书单）  5 备课自检（给自己点头，不锁讲解舱）
+ * 摸完底就放行：可以去给小白上课，也可以只备课回学习终端。状态只经 store(completePrep)。
+ * 学法四选一：通读、跟读复述、例题先行、只补不会的。备课夹只给老师和小砚。
+ * 顶部吸顶条 = 五步进度 + 备课度；点已解锁的一步直接跳过去。
+ * 右下角常驻备课助教「小砚」(PrepCoach)——只在备课时出现，课堂(/teach)是防作弊红线。
+ * 小白坐在课题旁：表情与一句话随摸底、读材料、自检实时变；小砚拿到同一份备课情境。
  */
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
+import {
+  BookOpen, Check, ClipboardList, Clock, ExternalLink, Flame, Play, RotateCcw, Route, X,
+} from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { useAuthStore } from '../../store/authStore';
 import { getTopic } from '../../data';
@@ -22,7 +22,7 @@ import { hydrateTeacherRuntimeTopic } from '../../data/runtimeTopics';
 import { currentAuthEpoch } from '../../lib/api';
 import { getTeacherCustomTopic } from '../../lib/customContent';
 // 记忆回执:engine/recall 纯派生(不进 barrel),按路径直连
-import { deriveTopicRecall, type TopicRecall } from '../../engine/recall';
+import { deriveTopicRecall } from '../../engine/recall';
 // 学伴记忆:课级长短板与讲课习惯,≤2 行进记忆回执(不进 barrel,按路径直连)
 import { retrieveMemories } from '../../engine/learnerMemory';
 import type { PrepContext } from '../../engine/coach';
@@ -32,20 +32,24 @@ import {
 } from '../../engine/prepDesk';
 import { getSelfTest } from '../../data/selfTest';
 import { getFigures } from '../../components/diagrams';
-import { Md } from '../../components/Md';
+import { CoachMarkdown } from '../../components/coach/CoachMarkdown';
 import { PrepCoach } from '../../components/coach/PrepCoach';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { Tour, type TourStep } from '../../components/tour/Tour';
-import { Icon } from '../../components/ui/Icon';
-import type { Misconception, PrepReference, QuestionLevel, XiaobaiMood } from '../../types';
+import { Badge, Button, Progress, Shimmer, cx, toast } from '../../components/ui';
+import type { Misconception, QuestionLevel, XiaobaiMood } from '../../types';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { useAllTopics } from '../../hooks/useAllTopics';
-import { deriveTeachingFlow } from './flow';
+import { codeLanguage, deriveTeachingFlow, lectureMarkdown } from './flow';
 import {
   ExampleStudy, GapMarks, GapsHold, MethodBar, PrepFolder, RehearseEntry, RetellLecture,
 } from './deskUi';
-import paper from '../../styles/paper.module.css';
+import {
+  Collapse, JourneyBar, PrepExits, RecallCard, StepHead, StepNav, WeakPoints, type StepState,
+} from './flowUi';
 import s from './prep.module.css';
+
+const ICON = { size: 16, strokeWidth: 1.75 } as const;
 
 /** 追问层级 → 路线图徽章文案(checklist 无 L4;L4 = 误区注入,以途中试探标记呈现) */
 const LEVEL_META: Record<QuestionLevel, string> = {
@@ -56,16 +60,19 @@ const LEVEL_META: Record<QuestionLevel, string> = {
   L5: '迁移',
 };
 
-/** 壹-伍分节的稳定锚点;侧栏「备课五步」据此导航与 scrollspy 高亮 */
+/** 五步的稳定锚点;顶部进度条据此跳步,引路也指这些 id */
 const SECTIONS = [
-  { id: 'prep-sec-1', no: '壹', name: '摸底快测' },
-  { id: 'prep-sec-2', no: '贰', name: '教学任务卡' },
-  { id: 'prep-sec-3', no: '叁', name: '讲课路线图' },
-  { id: 'prep-sec-4', no: '肆', name: '研读材料包' },
-  { id: 'prep-sec-5', no: '伍', name: '备课自检' },
+  { id: 'prep-sec-1', name: '摸底快测' },
+  { id: 'prep-sec-2', name: '教学任务卡' },
+  { id: 'prep-sec-3', name: '讲课路线图' },
+  { id: 'prep-sec-4', name: '研读材料包' },
+  { id: 'prep-sec-5', name: '备课自检' },
 ] as const;
 
-/** 备课桌引路(称「先生」):只指首访就在场的三处——贰至伍分节要摸完底才摊开,不硬指 */
+/** 费曼四步:备课是第一步 */
+const LOOP = ['备课', '上课', '赴考', '复盘'] as const;
+
+/** 备课引路(称「先生」):只指首访就在场的三处——后四步要摸完底才解锁,不硬指 */
 const PREP_TOUR: TourStep[] = [
   {
     target: `#${SECTIONS[0].id}`,
@@ -84,21 +91,6 @@ const PREP_TOUR: TourStep[] = [
   },
 ];
 
-/** 延伸书单 kind → 小印用字 */
-const REF_SEAL: Record<PrepReference['kind'], string> = {
-  讲义: '义',
-  官方文档: '官',
-  教程: '教',
-  视频: '视',
-  论文: '论',
-  工具: '工',
-  长文: '长',
-};
-
-const prefersReducedMotion = () =>
-  typeof window !== 'undefined' &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
 /** 视频出处的人话名(域名 → 平台名;未知域名原样给 hostname) */
 function videoHost(url: string): string {
   try {
@@ -116,160 +108,6 @@ function relatedToWrong(text: string, wrong: Misconception[]): boolean {
     (mc) =>
       text.includes(mc.belief) ||
       mc.correctionKeywords.flat().some((kw) => kw.length > 1 && text.includes(kw)),
-  );
-}
-
-function Collapse({ title, tag, tagTone, onOpen, children }: {
-  title: string;
-  tag?: string;
-  tagTone?: 'warn' | 'plain';
-  /** 首次翻开时通知页面(材料翻开几册,进度与小砚都要知道) */
-  onOpen?: (title: string) => void;
-  children: ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
-  const onOpenRef = useRef(onOpen);
-  const openRef = useRef(false);
-  const hoverOpenedAt = useRef(0);
-  onOpenRef.current = onOpen;
-  useEffect(() => {
-    if (open) onOpenRef.current?.(title);
-  }, [open, title]);
-  return (
-    <section
-      className={`${s.collapse} ${open ? s.collapseOn : ''}`}
-      onPointerEnter={(event) => {
-        if (event.pointerType !== 'mouse' || !window.matchMedia('(hover: hover)').matches) return;
-        if (!openRef.current) hoverOpenedAt.current = Date.now();
-        openRef.current = true;
-        setOpen(true);
-      }}
-    >
-      <button
-        type="button"
-        className={s.collapseHead}
-        aria-expanded={open}
-        onClick={() => {
-          // 悬停刚打开时，同一次点击会紧跟着到来，不能把册子又合上
-          if (Date.now() - hoverOpenedAt.current < 500) {
-            hoverOpenedAt.current = 0;
-            return;
-          }
-          hoverOpenedAt.current = 0;
-          openRef.current = !openRef.current;
-          setOpen(openRef.current);
-        }}
-      >
-        <span className={s.collapseChev} aria-hidden="true" />
-        <span className={s.collapseTitle}>{title}</span>
-        {tag ? (
-          <span className={tagTone === 'warn' ? s.collapseTagWarn : s.collapseTag}>{tag}</span>
-        ) : null}
-      </button>
-      {/* inert:收起态把子树(外链/横滚容器)整体移出 Tab 序,0fr 高度动画不受影响 */}
-      <div className={`${s.collapseBody} ${open ? s.collapseOpen : ''}`} inert={!open}>
-        <div className={s.collapseInner}>{children}</div>
-      </div>
-    </section>
-  );
-}
-
-/**
- * 「接着上次讲」记忆回执纸条:小白对这门课的记忆(册页语域,称「先生」)。
- * 只在 deriveTopicRecall 非 null 且有可显示内容时露面——首学该课不渲染。
- * 展示项对齐工单:上次日期 / 结局句 / 记得的要点 / 裱起来的金句 / 清掉的心魔 / 保持度。
- * 评估隐身:仅要点名(prep 页路线图本已展示)、金句原文、心魔策展名与真实衰减数。
- */
-function RecallCard({ recall, memoryLines }: { recall: TopicRecall; memoryLines: string[] }) {
-  const hasContent =
-    !!recall.lastOutcome ||
-    recall.rememberedPoints.length > 0 ||
-    recall.goldenQuotes.length > 0 ||
-    recall.clearedDemons.length > 0 ||
-    recall.retention != null ||
-    memoryLines.length > 0;
-  if (!hasContent) return null;
-
-  const daysAgo =
-    recall.lastStudiedAt != null
-      ? Math.max(0, Math.round((Date.now() - recall.lastStudiedAt) / 86400000))
-      : null;
-  const whenLabel = daysAgo == null ? null : daysAgo === 0 ? '就在今天' : `${daysAgo} 天前`;
-  const pct = recall.retention != null ? Math.round(recall.retention * 100) : null;
-  const fogged = recall.daysToFog != null && recall.daysToFog <= 0;
-
-  return (
-    <aside className={`${s.recall} ${paper.texture}`} aria-label="小白对这门课的记忆">
-      <div className={s.recallHead}>
-        <span className={s.recallLabel}>接着上次讲</span>
-        {whenLabel && <span className={s.recallWhen}>上次温书 · {whenLabel}</span>}
-      </div>
-      {recall.lastOutcome && <p className={s.recallOutcome}>{recall.lastOutcome}</p>}
-
-      {memoryLines.length > 0 && (
-        <div className={s.recallField}>
-          <span className={s.recallFieldLabel}>小白记得</span>
-          <ul className={s.recallMemory}>
-            {memoryLines.map((l, i) => <li key={i}>{l}</li>)}
-          </ul>
-        </div>
-      )}
-
-      {recall.rememberedPoints.length > 0 && (
-        <div className={s.recallField}>
-          <span className={s.recallFieldLabel}>还记得</span>
-          <ul className={s.recallChips}>
-            {recall.rememberedPoints.map((p, i) => (
-              <li key={i} className={s.recallChip}>{p}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {recall.clearedDemons.length > 0 && (
-        <div className={s.recallField}>
-          <span className={s.recallFieldLabel}>清掉的心魔</span>
-          <ul className={s.recallChips}>
-            {recall.clearedDemons.map((d, i) => (
-              <li key={i} className={`${s.recallChip} ${s.recallChipDemon}`}>{d}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {recall.goldenQuotes.length > 0 && (
-        <ul className={s.recallQuotes}>
-          {/* 金句为原文逐字,内容可能重复出现在多处——用稳定索引作 key */}
-          {recall.goldenQuotes.map((q, i) => (
-            <li key={i} className={s.recallQuote}>「{q}」</li>
-          ))}
-        </ul>
-      )}
-
-      {pct != null && (
-        <div className={s.recallRet}>
-          <div className={s.recallRetHead}>
-            <span className={s.recallFieldLabel}>保持度</span>
-            <span className={s.recallRetNote}>
-              {pct}% ·{' '}
-              {recall.daysToFog == null
-                ? '暂稳'
-                : recall.daysToFog === 0
-                  ? '今日起雾'
-                  : fogged
-                    ? `已起雾 ${Math.abs(recall.daysToFog)} 天`
-                    : `再 ${recall.daysToFog} 天起雾`}
-            </span>
-          </div>
-          <div className={s.recallRetTrack} aria-hidden="true">
-            <span
-              className={`${s.recallRetFill} ${fogged ? s.recallRetFillFog : ''}`}
-              style={{ width: `${Math.max(4, pct)}%` }}
-            />
-          </div>
-        </div>
-      )}
-    </aside>
   );
 }
 
@@ -331,42 +169,6 @@ const REACT_BAD: PupilState[] = [
   { mood: 'shy', line: '先生别急,这个坑我课上八成也会掉。' },
   { mood: 'confused', line: '那……到底是哪儿不对呀?' },
 ];
-function PrepExits({
-  canLeave,
-  prepDone,
-  ready,
-  onStay,
-  onTeach,
-}: {
-  canLeave: boolean;
-  prepDone: boolean;
-  /** 自检全勾:主按钮轻呼吸,表示这课可以合上 */
-  ready: boolean;
-  onStay: () => void;
-  onTeach: () => void;
-}) {
-  return (
-    <div className={s.exits}>
-      <button
-        type="button"
-        className={`${s.primaryBtn} ${ready ? s.primaryBtnReady : ''}`}
-        disabled={!canLeave}
-        onClick={onStay}
-      >
-        {prepDone ? '合上，回学习终端' : '备完，回学习终端'} <Icon name="arrow-left" size={17} />
-      </button>
-      <button type="button" className={s.ghostBtn} disabled={!canLeave} onClick={onTeach}>
-        讲给小白听 <Icon name="arrow-right" size={17} />
-      </button>
-      <p className={s.lockHint}>
-        {canLeave
-          ? '只温书也算数。讲解舱要去的时候再进。'
-          : '摸完这一轮底，就可以合上，也可以去讲。'}
-      </p>
-    </div>
-  );
-}
-
 const TEACHER_TOPIC_RETRY_MS = [750, 1_500] as const;
 
 export default function PrepPage() {
@@ -449,8 +251,13 @@ function PrepRoom({ topicId }: { topicId: string }) {
   /** 全对时用户仍选择过一遍材料 */
   const [wantMaterials, setWantMaterials] = useState(false);
   const [checks, setChecks] = useState<boolean[]>([]);
-  /** scrollspy:当前滚入视口阅读带的分节 id */
+  /** 当前摊开的一步(一次只摊开一步) */
   const [currentId, setCurrentId] = useState<string>(SECTIONS[0].id);
+  /** 走到过的最远一步:只读不答的两步(任务卡、路线图)走过了才算完成 */
+  const [reached, setReached] = useState(0);
+  /** 跳步后把新的一步滚到进度条下方,并把焦点交给它的标题 */
+  const [scrollTick, setScrollTick] = useState(0);
+  const scrollTarget = useRef<string | null>(null);
   /** 材料包里翻开过的册子(标题去重) */
   const [opened, setOpened] = useState<string[]>([]);
   /** 小白的即时反应(答题瞬间),2.4s 后清空 */
@@ -462,6 +269,9 @@ function PrepRoom({ topicId }: { topicId: string }) {
   const [desk, setDesk] = useState(() => loadDesk(topicId));
   const [coachAsk, setCoachAsk] = useState<{ mode: 'rehearse'; nonce: number } | null>(null);
   const submittedRef = useRef(false);
+  /** 右下角的小砚会压住内容右缘:量出重叠宽度,给内容让出一条道(窄屏不让,靠底部留白) */
+  const pageRef = useRef<HTMLDivElement>(null);
+  const [petGutter, setPetGutter] = useState(0);
   const lectureBody = topic?.prep.microLecture.body ?? '';
   const lectureSegments = useMemo(() => splitLecture(lectureBody), [lectureBody]);
   useEffect(() => {
@@ -516,35 +326,34 @@ function PrepRoom({ topicId }: { topicId: string }) {
   const packRequested = quizDone && (!allCorrect || wantMaterials);
   const studyOpen = packRequested || (quizDone && desk.method !== 'read');
 
-  /**
-   * scrollspy:观察各分节与视口上部"阅读带"(约 30%~45% 高度)的交叠。
-   * 取带内文档序最靠后者——向下读时新分节一进带即接管高亮;分节增减(studyOpen)时重建。
-   */
+  /* 跳步:整块内容换了,直接跳到新的一步(不做平滑滚动),焦点落到标题上,读屏从这里读起 */
   useEffect(() => {
-    const els = SECTIONS.map((sec) => document.getElementById(sec.id)).filter(
-      (el): el is HTMLElement => el !== null,
-    );
-    if (els.length === 0) return;
-    setCurrentId((prev) => (els.some((el) => el.id === prev) ? prev : SECTIONS[0].id));
-    const inBand = new Set<string>();
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((en) => {
-          if (en.isIntersecting) inBand.add(en.target.id);
-          else inBand.delete(en.target.id);
-        });
-        for (let i = SECTIONS.length - 1; i >= 0; i -= 1) {
-          if (inBand.has(SECTIONS[i].id)) {
-            setCurrentId(SECTIONS[i].id);
-            return;
-          }
-        }
-      },
-      { rootMargin: '-30% 0px -55% 0px' },
-    );
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
-  }, [studyOpen, topicId]);
+    const id = scrollTarget.current;
+    scrollTarget.current = null;
+    if (!id) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ block: 'start' });
+    el.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true });
+  }, [scrollTick]);
+
+  useEffect(() => {
+    const page = pageRef.current;
+    if (!page) return undefined;
+    const measure = () => {
+      const pet = document.querySelector<HTMLElement>('[data-tour="coach"]');
+      const overlap = pet ? page.getBoundingClientRect().right - pet.getBoundingClientRect().left : 0;
+      setPetGutter(overlap > 0 && window.innerWidth >= 900 ? Math.round(overlap) + 8 : 0);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(page);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [usable]);
 
   /* 小白的即时反应 2.4s 后收回 */
   useEffect(() => {
@@ -578,7 +387,11 @@ function PrepRoom({ topicId }: { topicId: string }) {
                 ? '为避免用到缺少评估依据的学生稿，本次没有打开备课台；请稍后重试。'
               : '书架上还有已开放的课在等你,先回学习终端挑一本,回头再来看它。'}
           </p>
-          {!loadingCustom ? <Link to="/learn" className={s.primaryBtn}>回学习终端</Link> : null}
+          {loadingCustom ? (
+            <Shimmer>正在取讲义…</Shimmer>
+          ) : (
+            <Button asChild variant="solid"><Link to="/learn">回学习终端</Link></Button>
+          )}
         </div>
       </div>
     );
@@ -637,19 +450,18 @@ function PrepRoom({ topicId }: { topicId: string }) {
     1 + (figures.length > 0 ? 1 : 0) + topic.prep.examples.length + 1 +
     (videoRefs.length > 0 ? 1 : 0) + (readRefs.length > 0 ? 1 : 0);
 
-  /** 侧栏五步的进度态(done/active 与 scrollspy 的"当前在读"叠加,互不打架) */
-  const stepStates = [
-    { done: quizDone, active: !quizDone, reachable: true },
-    { done: studyOpen, active: false, reachable: studyOpen },
-    { done: studyOpen, active: false, reachable: studyOpen },
-    {
-      done: studyOpen && allChecked,
-      active: studyOpen && !allChecked,
-      reachable: studyOpen,
-    },
-    { done: allChecked, active: false, reachable: studyOpen },
+  /** 后四步要摸完底才解锁;没解锁时一律停在第一步 */
+  const activeId = studyOpen ? currentId : SECTIONS[0].id;
+  const stepIndex = Math.max(0, SECTIONS.findIndex((sec) => sec.id === activeId));
+  /** 五步的进度态:做完打勾;任务卡与路线图是只读的两步,走过了才算完成 */
+  const stepStates: StepState[] = [
+    { done: quizDone, reachable: true },
+    { done: studyOpen && reached > 1, reachable: studyOpen },
+    { done: studyOpen && reached > 2, reachable: studyOpen },
+    { done: studyOpen && (reached > 3 || allChecked), reachable: studyOpen },
+    { done: allChecked, reachable: studyOpen },
   ];
-  const currentSection = SECTIONS.find((sec) => sec.id === currentId)?.name ?? SECTIONS[0].name;
+  const currentSection = SECTIONS[stepIndex].name;
 
   /** 备课进度:摸底 40 · 翻材料 20 · 自检 40。百分数只记真做过的,摸完就能合上。 */
   const readPart = studyOpen ? Math.min(1, opened.length / Math.max(1, materialCount)) : 0;
@@ -701,6 +513,15 @@ function PrepRoom({ topicId }: { topicId: string }) {
     setStreak((n) => (good ? n + 1 : 0));
   };
 
+  /** 摸完底的一声回执(步骤完成反馈;判分与放行逻辑不在这里) */
+  const cheerQuiz = (correct: number) => {
+    toast.success(
+      correct === quizTotal
+        ? `摸底 ${correct}/${quizTotal}，全对。可以去给小白上课了`
+        : `摸底 ${correct}/${quizTotal}，后面四步已解锁`,
+    );
+  };
+
   const answer = (choice: boolean) => {
     if (answers.length >= probes.length) return;
     const mc = probes[answers.length];
@@ -710,6 +531,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
     );
     setAnswers((a) => (a.length >= probes.length ? a : [...a, choice]));
     react(good);
+    if (answers.length + 1 >= probes.length && selfTest.length === 0) cheerQuiz(correctCount + (good ? 1 : 0));
   };
 
   const answerMc = (choice: number) => {
@@ -721,18 +543,31 @@ function PrepRoom({ topicId }: { topicId: string }) {
     );
     setMcAnswers((a) => (a.length >= selfTest.length ? a : [...a, choice]));
     react(good);
+    if (mcAnswers.length + 1 >= selfTest.length) cheerQuiz(correctCount + (good ? 1 : 0));
   };
 
   const markOpened = (title: string) => {
     setOpened((list) => (list.includes(title) ? list : [...list, title]));
   };
 
-  /** 锚点滚动:reduced-motion 直接跳,不做平滑 */
+  /** 跳到某一步:换步、记下走到过的最远一步,再交给上面的 effect 去滚动与聚焦 */
   const jumpTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({
-      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-      block: 'start',
-    });
+    const index = SECTIONS.findIndex((sec) => sec.id === id);
+    if (index < 0) return;
+    setCurrentId(id);
+    setReached((value) => Math.max(value, index));
+    scrollTarget.current = id;
+    setScrollTick((value) => value + 1);
+  };
+
+  /** 自检点头;全部点完给一声回执 */
+  const toggleCheck = (index: number) => {
+    const next = [...checks];
+    next[index] = !next[index];
+    setChecks(next);
+    if (next[index] && topic.prep.selfCheck.every((_, i) => next[i])) {
+      toast.success('自检全部点头，可以去给小白上课了');
+    }
   };
 
   /** 重新摸底:两波作答与"过一遍材料"的选择一并清空;completePrep 仍只在合上或进讲解舱时按当次成绩提交 */
@@ -744,6 +579,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
     setStreak(0);
     setReaction(null);
     jumpTo(SECTIONS[0].id);
+    setReached(0);
   };
 
   const markPrep = () => {
@@ -764,343 +600,390 @@ function PrepRoom({ topicId }: { topicId: string }) {
     navigate(`/teach/${topic.topicId}`);
   };
 
+  const deskLabel = minutesOnDesk === 0 ? '刚坐下' : `案头 ${minutesOnDesk} 分钟`;
+  const progressNote = !quizDone
+    ? '先把摸底做完'
+    : allChecked || prepDone || (allCorrect && !studyOpen)
+      ? '这课可以合上'
+      : '材料随你翻';
+  /** 流程走到头:最后一步,或摸底全对且没打算翻材料——此时出口升为实心主按钮 */
+  const flowEnd = stepIndex === SECTIONS.length - 1 || (quizDone && !studyOpen);
+  const prevLink = stepIndex > 0
+    ? { label: '上一步', onClick: () => jumpTo(SECTIONS[stepIndex - 1].id) }
+    : undefined;
+  const nextLink = studyOpen && stepIndex < SECTIONS.length - 1
+    ? { label: `下一步：${SECTIONS[stepIndex + 1].name}`, onClick: () => jumpTo(SECTIONS[stepIndex + 1].id) }
+    : undefined;
+  const weakBeliefItems = wrongMcs.map((mc) => ({ id: mc.mcId, text: mc.belief }));
+  const weakDimItems = wrongSelfTests.map((q) => ({
+    id: q.id,
+    dimension: q.dimension,
+    point: topic.checklist.find((c) => c.id === q.checklistRef)?.point ?? '这个角度还没答稳',
+  }));
+  const exampleLanguage = codeLanguage(topic.course);
+
   return (
-    <div className={s.page}>
-      <header className={s.head}>
-        <Link to="/learn" className={s.back}><Icon name="arrow-left" size={15} />回学习终端</Link>
-        <div className={s.headGrid}>
-          <div className={s.headText}>
-            <p className={s.course}>{topic.course}</p>
+    <div ref={pageRef} className={s.page} style={petGutter ? { paddingRight: petGutter } : undefined}>
+      <div className={s.shell}>
+        {/* ── 课题 + 小白候教 ── */}
+        <header className={s.hero}>
+          <div>
+            <div className={s.heroMeta}>
+              <ol className={s.loop} aria-label="费曼四步">
+                {LOOP.map((name, i) => (
+                  <li key={name} aria-current={i === 0 ? 'step' : undefined}>{name}</li>
+                ))}
+              </ol>
+              <Badge tone="outline">{topic.course}</Badge>
+              <Badge><Clock size={11} strokeWidth={2} aria-hidden="true" />{deskLabel}</Badge>
+            </div>
             <h1 className={s.title}>{topic.title}</h1>
             <p className={s.tagline}>{topic.tagline}</p>
           </div>
-          {/* 小白坐在页头陪读:表情与一句话随备课进度实时变 */}
+          {/* 小白陪读:表情与一句话随备课进度实时变 */}
           <aside className={s.pupil} aria-label="小白在书桌旁">
-            <p
-              key={pupil.line}
-              className={`${s.pupilBubble} ${reaction ? s.pupilBubbleReact : ''}`}
-              aria-live="polite"
-            >
-              {pupil.line}
-            </p>
             <div className={s.pupilFigure}>
-              <XiaobaiAvatar mood={pupil.mood} level={level} variant="paper" size={132} />
+              <XiaobaiAvatar mood={pupil.mood} level={level} variant="paper" size={84} />
+            </div>
+            <div className={s.pupilSay}>
               <span className={s.pupilName}>小白 · 在书桌旁</span>
+              <p
+                key={pupil.line}
+                className={cx(s.pupilBubble, reaction && s.pupilBubbleReact)}
+                aria-live="polite"
+              >
+                {pupil.line}
+              </p>
             </div>
           </aside>
-        </div>
-      </header>
+        </header>
 
-      <div className={s.layout}>
+        <JourneyBar
+          steps={SECTIONS}
+          states={stepStates}
+          currentId={activeId}
+          onJump={jumpTo}
+          progress={progress}
+          note={progressNote}
+          ready={canLeave}
+        />
+
+        <MethodBar method={desk.method} onChange={(method) => setDesk((prev) => ({ ...prev, method }))} />
+        {/* ── 记忆回执:接着上次讲(首学该课不渲染) ── */}
+        {recall && <RecallCard recall={recall} memoryLines={memoryLines} />}
+
         <main className={s.main}>
-          <MethodBar method={desk.method} onChange={(method) => setDesk((prev) => ({ ...prev, method }))} />
-          {/* ── 记忆回执:接着上次讲(首学该课不渲染) ── */}
-          {recall && <RecallCard recall={recall} memoryLines={memoryLines} />}
-
-          {/* ── 壹 · 摸底快测 ── */}
-          <section
-            id={SECTIONS[0].id}
-            className={`${s.section} ${s.bandShade}`}
-            style={{ animationDelay: '80ms' }}
-          >
-            <div className={s.secHead}>
-              <h2 className={s.sectionTitle}>
-                <span className={s.sectionNum}>{SECTIONS[0].no}</span>摸底快测
-              </h2>
-              {!quizDone && (
-                <span className={s.quizCount}>
-                  已答 {quizAnswered} / {quizTotal}
-                  {streak >= 2 && <em className={s.streak}>连对 {streak}</em>}
-                </span>
-              )}
-            </div>
-            <p className={s.sectionHint}>
-              先看看你现在站在哪。判断下面的说法对不对:
-            </p>
-            {/* 常驻 live region:读屏用户答题后在此听到判分(节点须先于反馈存在,否则首条丢播) */}
-            <p className={s.srOnly} aria-live="polite">{liveMsg}</p>
-            <ol className={s.probeList}>
-              {probes.map((mc, i) => {
-                if (i > answers.length) return null;
-                const answered = i < answers.length;
-                const choice = answers[i];
-                const good = answered && choice === mc.probe.isTrue;
-                return (
-                  <li
-                    key={mc.mcId}
-                    className={`${s.probe} ${answered ? (good ? s.probeGood : s.probeBad) : ''}`}
-                  >
-                    {answered && (
-                      <span className={`${s.probeMark} ${good ? s.probeMarkGood : s.probeMarkBad}`} aria-hidden="true">
-                        {good ? '对' : '错'}
-                      </span>
+          {/* ── 1 · 摸底快测 ── */}
+          {stepIndex === 0 && (
+            <section id={SECTIONS[0].id} className={s.section} aria-labelledby="prep-h-1">
+              <StepHead
+                index={0}
+                total={SECTIONS.length}
+                headingId="prep-h-1"
+                title="摸底快测"
+                hint="先看看你现在站在哪。判断下面的说法对不对。"
+                aside={!quizDone ? (
+                  <>
+                    {streak >= 2 && (
+                      <Badge tone="warn">
+                        <Flame size={11} strokeWidth={2} aria-hidden="true" />
+                        <em className={s.streak}>连对 {streak}</em>
+                      </Badge>
                     )}
-                    <p className={s.probeNo}>第 {i + 1} / {probes.length} 题</p>
-                    <p className={s.probeStatement}>「{mc.probe.statement}」</p>
-                    {/* 答后按钮禁用而不卸载:卸载会把键盘焦点甩回 body,读屏用户直接迷航 */}
-                    <div className={s.probeBtns}>
-                      <button
-                        type="button"
-                        disabled={answered}
-                        className={answered && choice === true ? s.optPicked : undefined}
-                        onClick={() => answer(true)}
-                      >
-                        对
-                      </button>
-                      <button
-                        type="button"
-                        disabled={answered}
-                        className={answered && choice === false ? s.optPicked : undefined}
-                        onClick={() => answer(false)}
-                      >
-                        错
-                      </button>
-                    </div>
-                    {answered && (
-                      <div className={s.probeFb}>
-                        <p className={good ? s.fbGood : s.fbBad}>
-                          {good
-                            ? `答对了——这句话是${mc.probe.isTrue ? '对' : '错'}的。`
-                            : '答错了——这正是一个高频误区。'}
-                        </p>
-                        <p className={s.fbExplain}>{mc.probe.explanation}</p>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-            {/* ── 第二波 · 多方位摸底:判断题答完才登场;题库为空的主题走不到这里 ── */}
-            {probesDone && selfTest.length > 0 && (
-              <div className={s.mcWave}>
-                <p className={s.mcWaveTitle}>第二波 · 多方位摸底</p>
-                <p className={s.mcWaveHint}>
-                  判断只是热身——下面换几个角度出选择题,看你的理解经不经得起转弯。
-                </p>
-                <ol className={s.probeList}>
-                  {selfTest.map((q, i) => {
-                    if (i > mcAnswers.length) return null;
-                    const answered = i < mcAnswers.length;
-                    const pick = mcAnswers[i];
-                    const good = answered && pick === q.answerIndex;
-                    return (
-                      <li
-                        key={q.id}
-                        className={`${s.probe} ${answered ? (good ? s.probeGood : s.probeBad) : ''}`}
-                      >
-                        {answered && (
-                          <span className={`${s.probeMark} ${good ? s.probeMarkGood : s.probeMarkBad}`} aria-hidden="true">
-                            {good ? '对' : '错'}
-                          </span>
-                        )}
-                        <p className={s.probeNo}>第 {i + 1} / {selfTest.length} 题</p>
-                        <p className={s.probeStatement}>{q.question}</p>
-                        {q.code ? (
-                          <pre className={s.code}><code>{q.code}</code></pre>
-                        ) : null}
-                        <div className={s.mcOptions}>
-                          {q.options.map((opt, oi) => (
-                            <button
-                              key={opt}
-                              type="button"
-                              disabled={answered}
-                              className={answered && pick === oi ? s.optPicked : undefined}
-                              onClick={() => answerMc(oi)}
-                            >
-                              <span className={s.mcOptNo} aria-hidden="true">
-                                {String.fromCharCode(65 + oi)}
-                              </span>
-                              {opt}
-                            </button>
-                          ))}
-                        </div>
-                        {answered && (
-                          <div className={s.probeFb}>
-                            <p className={good ? s.fbGood : s.fbBad}>
-                              <span className={s.mcDim}>{q.dimension}</span>
-                              {good
-                                ? '答对了。'
-                                : `答错了——该选「${q.options[q.answerIndex]}」。`}
-                            </p>
-                            <p className={s.fbExplain}>{q.explanation}</p>
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ol>
-              </div>
-            )}
-            {quizDone && (
-              allCorrect ? (
-                <div className={s.verdictGood}>
-                  <p>
-                    摸底 {correctCount}/{quizTotal}，这一课的底你已经摸清了。材料可以再过一遍，也可以先合上。
-                  </p>
-                  {studyOpen ? (
-                    <p className={s.unlockHint}>材料已经摊开。读完可以合上，想讲再进讲解舱。</p>
-                  ) : null}
-                  <div className={s.verdictBtns}>
-                    {!studyOpen && (
-                      <button
-                        type="button"
-                        className={s.primaryBtn}
-                        onClick={() => setWantMaterials(true)}
-                      >
-                        继续把材料过一遍
-                      </button>
-                    )}
-                    <button type="button" className={s.ghostBtnSm} onClick={retakeQuiz}>
-                      重新测一遍
-                    </button>
-                  </div>
-                  {!studyOpen ? (
-                    <PrepExits
-                      canLeave
-                      prepDone={prepDone}
-                      ready={false}
-                      onStay={finishPrep}
-                      onTeach={enterClassroom}
-                    />
-                  ) : null}
-                </div>
-              ) : (
-                <div className={s.verdictBad}>
-                  <p>
-                    摸底 {correctCount}/{quizTotal}——
-                    {wrongMcs.length > 0
-                      ? `有 ${wrongMcs.length} 个误区还没吃透`
-                      : '判断都稳,选择题露了怯'}
-                    {dimReport ? `,${dimReport}` : ''}。
-                    别慌,下面的材料是给你自己读的。读完可以合上，不必进讲解舱。
-                  </p>
-                  <div className={s.verdictBtns}>
-                    <button type="button" className={s.ghostBtnSm} onClick={retakeQuiz}>
-                      重新测一遍
-                    </button>
-                  </div>
-                  <PrepExits
-                    canLeave
-                    prepDone={prepDone}
-                    ready={false}
-                    onStay={finishPrep}
-                    onTeach={enterClassroom}
-                  />
-                </div>
-              )
-            )}
-          </section>
-
-          {quizDone && !studyOpen && (
-            <>
-              <PrepFolder
-                topicId={topic.topicId}
-                folder={desk.folder}
-                onChange={(folder) => setDesk((prev) => ({ ...prev, folder }))}
+                    <span>已答 {quizAnswered} / {quizTotal}</span>
+                  </>
+                ) : undefined}
               />
-              <RehearseEntry onOpen={() => setCoachAsk({ mode: 'rehearse', nonce: Date.now() })} />
-            </>
+              {!quizDone && <Progress value={quizAnswered} max={Math.max(1, quizTotal)} label="摸底进度" />}
+              {/* 常驻 live region:读屏用户答题后在此听到判分(节点须先于反馈存在,否则首条丢播) */}
+              <p className={s.srOnly} aria-live="polite">{liveMsg}</p>
+              <ol className={s.probeList}>
+                {probes.map((mc, i) => {
+                  if (i > answers.length) return null;
+                  const answered = i < answers.length;
+                  const choice = answers[i];
+                  const good = answered && choice === mc.probe.isTrue;
+                  return (
+                    <li
+                      key={mc.mcId}
+                      className={s.probe}
+                      data-result={answered ? (good ? 'good' : 'bad') : undefined}
+                    >
+                      <div className={s.probeTop}>
+                        <p className={s.probeNo}>第 {i + 1} / {probes.length} 题 · 判断</p>
+                        {answered && (
+                          <Badge tone={good ? 'ok' : 'bad'} className={s.probeMark} aria-hidden="true">
+                            {good ? '对' : '错'}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className={s.probeStatement}>「{mc.probe.statement}」</p>
+                      {/* 答后按钮禁用而不卸载:卸载会把键盘焦点甩回 body,读屏用户直接迷航 */}
+                      <div className={s.probeBtns}>
+                        <button
+                          type="button"
+                          disabled={answered}
+                          className={cx(s.choice, answered && choice === true && s.choicePicked)}
+                          onClick={() => answer(true)}
+                        >
+                          <Check {...ICON} aria-hidden="true" />
+                          对
+                        </button>
+                        <button
+                          type="button"
+                          disabled={answered}
+                          className={cx(s.choice, answered && choice === false && s.choicePicked)}
+                          onClick={() => answer(false)}
+                        >
+                          <X {...ICON} aria-hidden="true" />
+                          错
+                        </button>
+                      </div>
+                      {answered && (
+                        <div className={s.probeFb}>
+                          <p className={good ? s.fbGood : s.fbBad}>
+                            {good
+                              ? `答对了——这句话是${mc.probe.isTrue ? '对' : '错'}的。`
+                              : '答错了——这正是一个高频误区。'}
+                          </p>
+                          <p className={s.fbExplain}>{mc.probe.explanation}</p>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+              {/* ── 第二波 · 多方位摸底:判断题答完才登场;题库为空的主题走不到这里 ── */}
+              {probesDone && selfTest.length > 0 && (
+                <div className={s.mcWave}>
+                  <p className={s.mcWaveTitle}>第二波 · 多方位摸底</p>
+                  <p className={s.mcWaveHint}>
+                    判断只是热身——下面换几个角度出选择题,看你的理解经不经得起转弯。
+                  </p>
+                  <ol className={s.probeList}>
+                    {selfTest.map((q, i) => {
+                      if (i > mcAnswers.length) return null;
+                      const answered = i < mcAnswers.length;
+                      const pick = mcAnswers[i];
+                      const good = answered && pick === q.answerIndex;
+                      return (
+                        <li
+                          key={q.id}
+                          className={s.probe}
+                          data-result={answered ? (good ? 'good' : 'bad') : undefined}
+                        >
+                          <div className={s.probeTop}>
+                            <p className={s.probeNo}>第 {i + 1} / {selfTest.length} 题 · {q.dimension}</p>
+                            {answered && (
+                              <Badge tone={good ? 'ok' : 'bad'} className={s.probeMark} aria-hidden="true">
+                                {good ? '对' : '错'}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className={s.probeStatement}>{q.question}</p>
+                          {q.code ? (
+                            <pre className={s.code}><code>{q.code}</code></pre>
+                          ) : null}
+                          <div className={s.mcOptions}>
+                            {q.options.map((opt, oi) => (
+                              <button
+                                key={opt}
+                                type="button"
+                                disabled={answered}
+                                className={cx(s.choice, answered && pick === oi && s.choicePicked)}
+                                data-answer={(answered && oi === q.answerIndex) || undefined}
+                                onClick={() => answerMc(oi)}
+                              >
+                                <span className={s.mcOptNo} aria-hidden="true">
+                                  {String.fromCharCode(65 + oi)}
+                                </span>
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                          {answered && (
+                            <div className={s.probeFb}>
+                              <p className={good ? s.fbGood : s.fbBad}>
+                                {good
+                                  ? '答对了。'
+                                  : `答错了——该选「${q.options[q.answerIndex]}」。`}
+                              </p>
+                              <p className={s.fbExplain}>{q.explanation}</p>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              )}
+              {quizDone && (
+                <div className={s.verdict} data-tone={allCorrect ? 'good' : 'bad'}>
+                  <div className={s.verdictScore} aria-hidden="true">
+                    <b>{correctCount}/{quizTotal}</b>
+                    摸底
+                  </div>
+                  <div className={s.verdictBody}>
+                    {allCorrect ? (
+                      <>
+                        <p>
+                          摸底 {correctCount}/{quizTotal}，这一课的底你已经摸清了。材料可以再过一遍，也可以先合上。
+                        </p>
+                        {studyOpen ? (
+                          <p className={s.unlockHint}>材料已经摊开。读完可以合上，想讲再进讲解舱。</p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p>
+                        摸底 {correctCount}/{quizTotal}——
+                        {wrongMcs.length > 0
+                          ? `有 ${wrongMcs.length} 个误区还没吃透`
+                          : '判断都稳,选择题露了怯'}
+                        {dimReport ? `,${dimReport}` : ''}。
+                        别慌,后面几步的材料是给你自己读的。读完可以合上，不必进讲解舱。
+                      </p>
+                    )}
+                    <div className={s.verdictBtns}>
+                      {allCorrect && !studyOpen && (
+                        <Button
+                          variant="outline"
+                          icon={<BookOpen {...ICON} />}
+                          onClick={() => {
+                            setWantMaterials(true);
+                            jumpTo(SECTIONS[1].id);
+                          }}
+                        >
+                          继续把材料过一遍
+                        </Button>
+                      )}
+                      <Button variant="ghost" icon={<RotateCcw {...ICON} />} onClick={retakeQuiz}>
+                        重新测一遍
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {quizDone && <WeakPoints beliefs={weakBeliefItems} dims={weakDimItems} />}
+            </section>
           )}
 
-          {studyOpen && (
-            <>
-              {/* ── 贰 · 教学任务卡 ── */}
-              <section id={SECTIONS[1].id} className={s.section}>
-                <div className={s.secHead}>
-                  <h2 className={s.sectionTitle}>
-                    <span className={s.sectionNum}>{SECTIONS[1].no}</span>教学任务卡
-                  </h2>
-                </div>
-                <div className={s.taskCard}>
-                  <span className={s.taskPin} aria-hidden="true" />
-                  <span className={s.taskLabel}><Icon name="clipboard" size={16} />教学任务</span>
-                  <p className={s.taskText}>{topic.prep.taskCard.replace(/^[📋🧾]\s*/u, '')}</p>
-                </div>
-              </section>
+          {/* ── 2 · 教学任务卡 ── */}
+          {stepIndex === 1 && (
+            <section id={SECTIONS[1].id} className={s.section} aria-labelledby="prep-h-2">
+              <StepHead
+                index={1}
+                total={SECTIONS.length}
+                headingId="prep-h-2"
+                title="教学任务卡"
+                hint="这一课的靶心。先自己对准，再往下读。"
+              />
+              <div className={s.taskCard} data-story>
+                <span className={s.taskPin} aria-hidden="true" />
+                <span className={s.taskLabel}>
+                  <ClipboardList size={15} strokeWidth={1.75} aria-hidden="true" />
+                  教学任务
+                </span>
+                <p className={s.taskText}>{topic.prep.taskCard.replace(/^[📋🧾]\s*/u, '')}</p>
+              </div>
+            </section>
+          )}
 
-              {/* ── 叁 · 讲课路线图 ── */}
-              <section id={SECTIONS[2].id} className={`${s.section} ${s.bandWarm}`}>
-                <div className={s.secHead}>
-                  <h2 className={s.sectionTitle}>
-                    <span className={s.sectionNum}>{SECTIONS[2].no}</span>讲课路线图
-                  </h2>
-                </div>
-                <p className={s.sectionHint}>
-                  这一课要站稳的 {topic.checklist.length} 件事。若去讲给小白听，他大概会这么问。
-                  {desk.method === 'gaps' ? ' 标上会、模糊、不会。不会的地方，开讲时他会先从那儿问起。' : ''}
-                </p>
-                <div className={s.flowNote}>
-                  <span className={s.flowLabel}>讲课节奏</span>
-                  <p className={s.flowText}>{deriveTeachingFlow(topic)}</p>
-                </div>
-                <ol className={s.roadmap}>
-                  {topic.checklist.map((item, i) => (
-                    <Fragment key={item.id}>
-                      {/* R6:stagger 70ms,同屏最长 delay 封顶 280ms,后排不留白 */}
-                      <li className={s.roadStep} style={{ animationDelay: `${Math.min(i * 70, 280)}ms` }}>
-                        <span className={s.roadBadge}>
-                          <b>{item.level}</b>
-                          {LEVEL_META[item.level]}
+          {/* ── 3 · 讲课路线图 ── */}
+          {stepIndex === 2 && (
+            <section id={SECTIONS[2].id} className={s.section} aria-labelledby="prep-h-3">
+              <StepHead
+                index={2}
+                total={SECTIONS.length}
+                headingId="prep-h-3"
+                title="讲课路线图"
+                hint={(
+                  <>
+                    这一课要站稳的 {topic.checklist.length} 件事。若去讲给小白听，他大概会这么问。
+                    {desk.method === 'gaps' ? ' 标上会、模糊、不会。不会的地方，开讲时他会先从那儿问起。' : ''}
+                  </>
+                )}
+              />
+              <div className={s.flowNote}>
+                <Route {...ICON} aria-hidden="true" />
+                <span className={s.flowLabel}>讲课节奏</span>
+                <p className={s.flowText}>{deriveTeachingFlow(topic)}</p>
+              </div>
+              <ol className={s.roadmap}>
+                {topic.checklist.map((item, i) => (
+                  <Fragment key={item.id}>
+                    {/* stagger 70ms,同屏最长 delay 封顶 280ms,后排不留白 */}
+                    <li className={s.roadStep} style={{ animationDelay: `${Math.min(i * 70, 280)}ms` }}>
+                      <span className={s.roadBadge}>
+                        <b>{item.level}</b>
+                        {LEVEL_META[item.level]}
+                      </span>
+                      <div className={s.roadBody}>
+                        <p className={s.roadPoint}>{item.point}</p>
+                        <p className={s.roadProbe}>
+                          「{item.probeLine}」
+                          <span className={s.roadWho}>—— 小白</span>
+                        </p>
+                        {desk.method === 'gaps' && (
+                          <GapMarks
+                            value={desk.marks[item.id]}
+                            onChange={(mark) => setDesk((prev) => ({
+                              ...prev,
+                              marks: { ...prev.marks, [item.id]: mark },
+                            }))}
+                          />
+                        )}
+                      </div>
+                    </li>
+                    {i === ambushAfter && topic.misconceptions.length > 0 && (
+                      <li
+                        className={s.roadAmbush}
+                        style={{ animationDelay: `${Math.min((i + 1) * 70, 280)}ms` }}
+                      >
+                        <span className={s.roadBadgeWarn}>
+                          <b>L4</b>
+                          试探
                         </span>
-                        <div className={s.roadBody}>
-                          <p className={s.roadPoint}>{item.point}</p>
-                          <p className={s.roadProbe}>
-                            「{item.probeLine}」
-                            <span className={s.roadWho}>—— 小白</span>
-                          </p>
-                          {desk.method === 'gaps' && (
-                            <GapMarks
-                              value={desk.marks[item.id]}
-                              onChange={(mark) => setDesk((prev) => ({
-                                ...prev,
-                                marks: { ...prev.marks, [item.id]: mark },
-                              }))}
-                            />
-                          )}
-                        </div>
+                        <p className={s.roadAmbushText}>
+                          途中它还会用错误直觉试探你 ×{topic.misconceptions.length}
+                          ——剧本在「研读材料包」的「误区剧本」里,也可以叫小砚扮小白先练一遍。
+                        </p>
                       </li>
-                      {i === ambushAfter && topic.misconceptions.length > 0 && (
-                        <li
-                          className={s.roadAmbush}
-                          style={{ animationDelay: `${Math.min((i + 1) * 70, 280)}ms` }}
-                        >
-                          <span className={s.roadBadgeWarn}>
-                            <b>L4</b>
-                            试探
-                          </span>
-                          <p className={s.roadAmbushText}>
-                            途中它还会用错误直觉试探你 ×{topic.misconceptions.length}
-                            ——剧本在下面的「误区剧本」里,也可以叫小砚扮小白先练一遍。
-                          </p>
-                        </li>
-                      )}
-                    </Fragment>
-                  ))}
-                </ol>
-              </section>
+                    )}
+                  </Fragment>
+                ))}
+              </ol>
+            </section>
+          )}
 
-              {/* ── 肆 · 材料包 ── */}
-              <section id={SECTIONS[3].id} className={s.section}>
-                <div className={s.secHead}>
-                  <h2 className={s.sectionTitle}>
-                    <span className={s.sectionNum}>{SECTIONS[3].no}</span>研读材料包
-                  </h2>
-                  <span className={s.readTime}>
+          {/* ── 4 · 研读材料包 ── */}
+          {stepIndex === 3 && (
+            <section id={SECTIONS[3].id} className={s.section} aria-labelledby="prep-h-4">
+              <StepHead
+                index={3}
+                total={SECTIONS.length}
+                headingId="prep-h-4"
+                title="研读材料包"
+                hint={desk.method === 'retell'
+                  ? '微课一段一段来。先用自己的话说一句，下一段才打开。'
+                  : desk.method === 'examples'
+                    ? '先看题目和代码。写下判断，或点「先看讲解」，走查才打开。'
+                    : desk.method === 'gaps'
+                      ? '材料跟着你标的模糊和不会走。和错题相关的例题排在前面。'
+                      : '材料默认收起，移到标题上或点击即可翻开；再点标题收起。带着任务卡上的问题读。'}
+                aside={(
+                  <span>
                     全读约 {readMinutes} 分钟 · 已翻 {Math.min(opened.length, materialCount)}/{materialCount} 册
                   </span>
-                </div>
-                <p className={s.sectionHint}>
-                  {desk.method === 'retell'
-                    ? '微课一段一段来。先用自己的话说一句，下一段才打开。'
-                    : desk.method === 'examples'
-                      ? '先看题目和代码。写下判断，或点「先看讲解」，走查才打开。'
-                      : desk.method === 'gaps'
-                        ? '材料跟着你标的模糊和不会走。和错题相关的例题排在前面。'
-                        : '材料默认收起，移到标题上或点击即可翻开；再点标题收起。带着任务卡上的问题读。'}
-                </p>
-                {desk.method === 'gaps' && !gapState.showCore ? (
-                  <GapsHold view={gapState} onPeek={() => setDesk((prev) => ({ ...prev, peek: true }))} />
-                ) : (
+                )}
+              />
+              <WeakPoints beliefs={weakBeliefItems} dims={weakDimItems} />
+              {desk.method === 'gaps' && !gapState.showCore ? (
+                <GapsHold
+                  view={gapState}
+                  onPeek={() => setDesk((prev) => ({ ...prev, peek: true }))}
+                  onRoadmap={() => jumpTo(SECTIONS[2].id)}
+                />
+              ) : (
                 <div className={s.materials}>
                   {desk.method === 'retell' ? (
                     <div className={s.retellCard}>
@@ -1109,7 +992,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                         segments={lectureSegments}
                         visible={lectureSeen}
                         retells={desk.retells}
-                        className={s.md}
+                        className={s.lecture}
                         onShow={() => markOpened(topic.prep.microLecture.title)}
                         onRetell={(index, text) => setDesk((prev) => {
                           const retells = prev.retells.slice();
@@ -1119,14 +1002,16 @@ function PrepRoom({ topicId }: { topicId: string }) {
                       />
                     </div>
                   ) : (
-                  <Collapse
-                    title={topic.prep.microLecture.title}
-                    tag="微课讲义"
-                    tagTone="plain"
-                    onOpen={markOpened}
-                  >
-                    <Md text={topic.prep.microLecture.body} className={s.md} />
-                  </Collapse>
+                    <Collapse
+                      title={topic.prep.microLecture.title}
+                      tag="微课讲义"
+                      tagTone="plain"
+                      onOpen={markOpened}
+                    >
+                      <div className={s.lecture}>
+                        <CoachMarkdown text={lectureMarkdown(topic.prep.microLecture.body)} />
+                      </div>
+                    </Collapse>
                   )}
                   {figures.length > 0 && (
                     <Collapse
@@ -1158,6 +1043,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                       <ExampleStudy
                         title={row.item.title}
                         code={row.item.code}
+                        language={exampleLanguage}
                         walkthrough={row.item.walkthrough}
                         locked={walkthroughLocked(
                           desk.method,
@@ -1189,15 +1075,10 @@ function PrepRoom({ topicId }: { topicId: string }) {
                       {topic.misconceptions.map((mc) => {
                         const stumbled = wrongMcs.some((w) => w.mcId === mc.mcId);
                         return (
-                          <li
-                            key={mc.mcId}
-                            className={`${s.drill} ${stumbled ? s.drillStumbled : ''}`}
-                          >
+                          <li key={mc.mcId} className={cx(s.drill, stumbled && s.drillStumbled)}>
                             <p className={s.drillBelief}>
                               它会坚信:{mc.belief}
-                              {stumbled && (
-                                <span className={s.drillStumbleTag}>你刚栽在这里</span>
-                              )}
+                              {stumbled && <Badge tone="bad">你刚栽在这里</Badge>}
                             </p>
                             <p className={s.drillLine}>
                               「{mc.triggerLine}」
@@ -1206,7 +1087,10 @@ function PrepRoom({ topicId }: { topicId: string }) {
                             <p className={s.drillCritTitle}>纠正到位的标准</p>
                             <ul className={s.drillCrits}>
                               {mc.correctionCriteria.map((c) => (
-                                <li key={c}>{c}</li>
+                                <li key={c}>
+                                  <Check size={14} strokeWidth={2.2} aria-hidden="true" />
+                                  <span>{c}</span>
+                                </li>
                               ))}
                             </ul>
                           </li>
@@ -1233,17 +1117,15 @@ function PrepRoom({ topicId }: { topicId: string }) {
                               target="_blank"
                               rel="noreferrer noopener"
                             >
-                              <span className={s.videoPlay} aria-hidden="true"><Icon name="play" size={18} /></span>
+                              <span className={s.videoPlay} aria-hidden="true"><Play {...ICON} /></span>
                               <span className={s.videoBody}>
-                                <span className={s.videoTitle}>
-                                  {ref.title}
-                                  <span className={s.refArrow} aria-hidden="true"><Icon name="external" size={14} /></span>
-                                </span>
+                                <span className={s.videoTitle}>{ref.title}</span>
                                 <span className={s.videoNote}>{ref.note}</span>
                                 {videoHost(ref.url) && (
                                   <span className={s.videoHost}>{videoHost(ref.url)}</span>
                                 )}
                               </span>
+                              <ExternalLink className={s.refArrow} size={15} strokeWidth={1.75} aria-hidden="true" />
                             </a>
                           </li>
                         ))}
@@ -1255,177 +1137,96 @@ function PrepRoom({ topicId }: { topicId: string }) {
                       <p className={s.refLead}>想再深挖时再翻，不急。</p>
                       <ul className={s.refList}>
                         {readRefs.map((ref) => (
-                          <li key={ref.url} className={s.refItem}>
-                            <span className={s.refSeal} aria-hidden="true">
-                              {REF_SEAL[ref.kind] ?? ref.kind.slice(0, 1)}
-                            </span>
-                            <div className={s.refBody}>
-                              <p className={s.refTitleRow}>
-                                <a
-                                  className={s.refLink}
-                                  href={ref.url}
-                                  target="_blank"
-                                  rel="noreferrer noopener"
-                                >
+                          <li key={ref.url}>
+                            <a
+                              className={s.refItem}
+                              href={ref.url}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                            >
+                              <span className={s.refIcon} aria-hidden="true"><BookOpen {...ICON} /></span>
+                              <span className={s.refBody}>
+                                <span className={s.refTitle}>
                                   {ref.title}
-                                  <span className={s.refArrow} aria-hidden="true"><Icon name="external" size={14} /></span>
-                                </a>
-                                <span className={s.refKind}>{ref.kind}</span>
-                              </p>
-                              <p className={s.refNote}>{ref.note}</p>
-                            </div>
+                                  <Badge tone="outline">{ref.kind}</Badge>
+                                </span>
+                                <span className={s.refNote}>{ref.note}</span>
+                              </span>
+                              <ExternalLink className={s.refArrow} size={15} strokeWidth={1.75} aria-hidden="true" />
+                            </a>
                           </li>
                         ))}
                       </ul>
                     </Collapse>
                   )}
                 </div>
-                )}
-              </section>
-
-              {/* ── 伍 · 自检清单 ── */}
-              <section id={SECTIONS[4].id} className={`${s.section} ${s.bandShade}`}>
-                <div className={s.secHead}>
-                  <h2 className={s.sectionTitle}>
-                    <span className={s.sectionNum}>{SECTIONS[4].no}</span>备课自检
-                  </h2>
-                  <span className={s.quizCount}>已点头 {checkedCount} / {topic.prep.selfCheck.length}</span>
-                </div>
-                <p className={s.sectionHint}>对着清单问自己。点头是给自己看的，不点也能合上这课。</p>
-                <ul className={s.checkList}>
-                  {topic.prep.selfCheck.map((item, i) => {
-                    const on = !!checks[i];
-                    return (
-                      <li key={item}>
-                        <label className={`${s.checkLabel} ${on ? s.checkOn : ''}`}>
-                          <input
-                            type="checkbox"
-                            checked={on}
-                            onChange={() =>
-                              setChecks((c) => {
-                                const next = [...c];
-                                next[i] = !next[i];
-                                return next;
-                              })
-                            }
-                          />
-                          <span className={s.checkBox} aria-hidden="true">{on ? <Icon name="check" size={15} /> : null}</span>
-                          <span className={s.checkText}>{item}</span>
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <PrepExits
-                  canLeave={canLeave}
-                  prepDone={prepDone}
-                  ready={allChecked}
-                  onStay={finishPrep}
-                  onTeach={enterClassroom}
-                />
-                {allChecked ? (
-                  <p className={s.unlockHint}>案头 {minutesOnDesk === 0 ? '刚坐下' : `${minutesOnDesk} 分钟`}，这课可以合上了。</p>
-                ) : null}
-              </section>
-              <PrepFolder
-                topicId={topic.topicId}
-                folder={desk.folder}
-                onChange={(folder) => setDesk((prev) => ({ ...prev, folder }))}
-              />
-              <RehearseEntry onOpen={() => setCoachAsk({ mode: 'rehearse', nonce: Date.now() })} />
-            </>
+              )}
+            </section>
           )}
-        </main>
 
-        {/* ── 眉批侧注 ── */}
-        <aside className={s.aside}>
+          {/* ── 5 · 备课自检 ── */}
+          {stepIndex === 4 && (
+            <section id={SECTIONS[4].id} className={s.section} aria-labelledby="prep-h-5">
+              <StepHead
+                index={4}
+                total={SECTIONS.length}
+                headingId="prep-h-5"
+                title="备课自检"
+                hint="对着清单问自己。点头是给自己看的，不点也能合上这课。"
+                aside={<span>已点头 {checkedCount} / {topic.prep.selfCheck.length}</span>}
+              />
+              <Progress
+                value={checkedCount}
+                max={Math.max(1, topic.prep.selfCheck.length)}
+                tone="ok"
+                label="自检进度"
+              />
+              <ul className={s.checkList}>
+                {topic.prep.selfCheck.map((item, i) => {
+                  const on = !!checks[i];
+                  return (
+                    <li key={item}>
+                      <label className={cx(s.checkLabel, on && s.checkOn)}>
+                        <input type="checkbox" checked={on} onChange={() => toggleCheck(i)} />
+                        <span className={s.checkBox} aria-hidden="true">
+                          {on ? <Check size={15} strokeWidth={2.6} /> : null}
+                        </span>
+                        <span className={s.checkText}>{item}</span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+              {allChecked ? (
+                <p className={s.unlockHint}>{deskLabel}，这课可以合上了。</p>
+              ) : null}
+            </section>
+          )}
+
+          <StepNav prev={prevLink} next={nextLink} />
           <PrepExits
             canLeave={canLeave}
             prepDone={prepDone}
             ready={allChecked}
+            strong={flowEnd}
             onStay={finishPrep}
             onTeach={enterClassroom}
           />
-          {/* 备课进度:一条细线 + 能不能合上 + 案头计时 */}
-          <div className={s.progressCard} aria-label="备课进度">
-            <div className={s.progressHead}>
-              <span className={s.asideTitle}>备课进度</span>
-              <span className={s.progressPct}>{progress}%</span>
-            </div>
-            <div className={s.progressTrack} aria-hidden="true">
-              <span className={s.progressFill} style={{ transform: `scaleX(${Math.max(0.02, progress / 100)})` }} />
-            </div>
-            <p className={s.progressNote}>
-              {!quizDone
-                ? '先把摸底做完'
-                : allChecked || prepDone || (allCorrect && !studyOpen)
-                  ? '这课可以合上'
-                  : '材料随你翻'}
-              <span className={s.progressDesk}>
-                {' · '}
-                {minutesOnDesk === 0 ? '刚坐下' : `案头 ${minutesOnDesk} 分钟`}
-              </span>
-            </p>
+        </main>
+
+        {quizDone && (
+          <div className={s.tools}>
+            <h2 className={s.toolsTitle}>案头工具</h2>
+            <PrepFolder
+              topicId={topic.topicId}
+              folder={desk.folder}
+              onChange={(folder) => setDesk((prev) => ({ ...prev, folder }))}
+            />
+            <RehearseEntry onOpen={() => setCoachAsk({ mode: 'rehearse', nonce: Date.now() })} />
           </div>
-          <nav aria-label="备课五步" data-tour="prep-steps">
-            <h3 className={s.asideTitle}>备课五步</h3>
-            <ol className={s.stepList}>
-              {SECTIONS.map((sec, i) => {
-                const st = stepStates[i];
-                const current = currentId === sec.id && st.reachable;
-                const cls = [
-                  s.step,
-                  st.done ? s.stepDone : '',
-                  st.active ? s.stepActive : '',
-                  current ? s.stepCurrent : '',
-                ].join(' ');
-                return (
-                  <li key={sec.id}>
-                    {st.reachable ? (
-                      <button
-                        type="button"
-                        className={cls}
-                        aria-current={current ? 'true' : undefined}
-                        onClick={() => jumpTo(sec.id)}
-                      >
-                        <span className={s.stepDot} aria-hidden="true" />
-                        {sec.name}
-                      </button>
-                    ) : (
-                      <span className={`${s.step} ${s.stepLocked}`}>
-                        <span className={s.stepDot} aria-hidden="true" />
-                        {sec.name}
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-          </nav>
-          {(wrongMcs.length > 0 || wrongSelfTests.length > 0) && (
-            <div>
-              <h3 className={s.asideTitle}>摸底暴露的薄弱点</h3>
-              <ul className={s.weakList}>
-                {wrongMcs.map((mc) => (
-                  <li key={mc.mcId} className={s.weakItem}>× {mc.belief}</li>
-                ))}
-                {/* 第二波答错的题:标维度,要点名从路线图 checklist 里查 */}
-                {wrongSelfTests.map((q) => (
-                  <li key={q.id} className={s.weakItem}>
-                    <span className={s.weakDim}>{q.dimension}</span>
-                    {topic.checklist.find((c) => c.id === q.checklistRef)?.point ??
-                      '这个角度还没答稳'}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          <blockquote className={s.asideQuote}>
-            「教然后知困。」
-            <br />
-            带着小白的问题去读,比通读三遍记得牢。
-          </blockquote>
-        </aside>
+        )}
+
+        <p className={s.motto}>「教然后知困。」带着小白的问题去读，比通读三遍记得牢。</p>
       </div>
 
       <PrepCoach topic={topic} ctx={coachCtx} openRequest={coachAsk} />

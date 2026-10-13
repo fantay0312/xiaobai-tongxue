@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import fieldStyles from '../../pages/login/EmailCodeField.module.css';
 import { mapPasswordIssueField, type Issue } from '../../hooks/useAuthForm';
 import { useAuthStore, type AuthField } from '../../store/authStore';
+import { Button, Field, Input } from '../ui';
 import {
   ProfileCredentialFlow,
   ProfileIdentityVerification,
@@ -94,58 +94,55 @@ export function ProfilePasswordChange({
     <ProfileCredentialFlow action="change-password" step={2} onBack={onCancel}>
       <div className={styles.stage} id={ID_PREFIX}>
         <header className={styles.stageHead}>
-          <p className={styles.typeLabel}>NEW CREDENTIAL</p>
           <h3>设置新的登录密码</h3>
           <p>修改成功后，其他设备上的旧会话将失效，请使用新密码重新登录。</p>
         </header>
       <form className={styles.form} noValidate aria-busy={changing} onSubmit={submitChange}>
         <fieldset className={styles.fieldset} disabled={changing}>
-          <label className={fieldStyles.field} htmlFor={`${ID_PREFIX}-new-password`}>
-            <span className={fieldStyles.label}>新密码</span>
-            <input
+          <Field
+            label="新密码"
+            htmlFor={`${ID_PREFIX}-new-password`}
+            hint={<span id={`${ID_PREFIX}-password-hint`}>至少 8 位，且不能与当前密码相同</span>}
+          >
+            <Input
               id={`${ID_PREFIX}-new-password`}
-              className={fieldStyles.input}
               type="password"
               value={newPassword}
               autoComplete="new-password"
               minLength={8}
               maxLength={128}
               required
-              aria-invalid={issue?.field === 'newPassword' || undefined}
+              invalid={issue?.field === 'newPassword'}
               aria-describedby={issue?.field === 'newPassword' ? FEEDBACK_ID : `${ID_PREFIX}-password-hint`}
               onChange={(event) => { setNewPassword(event.target.value); clearIssue('newPassword'); }}
             />
-            <span className={fieldStyles.hint} id={`${ID_PREFIX}-password-hint`}>至少 8 位，且不能与当前密码相同</span>
-          </label>
-          <label className={fieldStyles.field} htmlFor={`${ID_PREFIX}-confirm-password`}>
-            <span className={fieldStyles.label}>再次输入新密码</span>
-            <input
+          </Field>
+          <Field label="再次输入新密码" htmlFor={`${ID_PREFIX}-confirm-password`}>
+            <Input
               id={`${ID_PREFIX}-confirm-password`}
-              className={fieldStyles.input}
               type="password"
               value={confirmPassword}
               autoComplete="new-password"
               maxLength={128}
               required
-              aria-invalid={issue?.field === 'confirmPassword' || undefined}
+              invalid={issue?.field === 'confirmPassword'}
               aria-describedby={issue?.field === 'confirmPassword' ? FEEDBACK_ID : undefined}
               onChange={(event) => { setConfirmPassword(event.target.value); clearIssue('confirmPassword'); }}
             />
-          </label>
+          </Field>
         </fieldset>
         {issue ? <p className={styles.error} id={FEEDBACK_ID} role="alert">{issue.message}</p> : null}
         <div className={styles.actions}>
-          <button
-            className={styles.secondary}
-            type="button"
+          <Button
+            variant="ghost"
             disabled={changing}
             onClick={() => { setVerificationToken(null); setIssue(null); }}
           >
             重新验证
-          </button>
-          <button className={styles.primary} type="submit" disabled={changing}>
+          </Button>
+          <Button type="submit" variant="solid" loading={changing}>
             {changing ? '正在更改…' : '确认修改'}
-          </button>
+          </Button>
         </div>
       </form>
       </div>

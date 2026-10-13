@@ -22,3 +22,45 @@ export function deriveTeachingFlow(topic: TeachingFlowSource): string {
     `最后沿着「${closingPhrase}」${transferPhrase ? `迁移到「${transferPhrase}」` : '作一次迁移'}收束，让整堂课首尾相照。`,
   ].join('');
 }
+
+const FENCE_LINE = /^\s*(```|~~~)/;
+/** 列表、标题、引用、表格、公式块这些行自成一块，不需要也不能加硬换行 */
+const BLOCK_LINE = /^\s*(?:[-*+]\s|\d+[.)]\s|#{1,6}\s|>|\||\$\$|-{3,}\s*$)/;
+
+/**
+ * 讲义正文交给 CoachMarkdown 前的整理：数据层讲义按「单个换行即换行」写成，
+ * 标准 Markdown 会把相邻两行并成一段，这里给普通行补上硬换行（行尾两个空格）。
+ * 代码围栏内原样不动。
+ */
+export function lectureMarkdown(text: string): string {
+  const lines = text.split('\n');
+  let fenced = false;
+  return lines
+    .map((line, index) => {
+      if (FENCE_LINE.test(line)) {
+        fenced = !fenced;
+        return line;
+      }
+      const next = lines[index + 1];
+      if (fenced || next === undefined || !line.trim() || !next.trim()) return line;
+      if (BLOCK_LINE.test(line) || BLOCK_LINE.test(next) || FENCE_LINE.test(next)) return line;
+      return `${line.replace(/\s+$/, '')}  `;
+    })
+    .join('\n');
+}
+
+/** 把例题代码包成围栏代码块；代码里自带三个反引号时改用波浪线围栏 */
+export function codeFence(code: string, language = ''): string {
+  const fence = code.includes('```') ? '~~~' : '```';
+  return `${fence}${language}\n${code.replace(/\n+$/, '')}\n${fence}`;
+}
+
+/** 课程名里看得出语言时给代码块标上，高亮才准；看不出就不标 */
+export function codeLanguage(course: string): string {
+  return /python/i.test(course) ? 'python' : '';
+}
+
+/** 文本里是否带公式或代码块（有才走 Markdown 渲染，纯文本里的下划线、星号不被误当成强调） */
+export function hasRichMarkup(text: string): boolean {
+  return /```|\$\$|\$[^$\n]{1,80}\$/.test(text);
+}

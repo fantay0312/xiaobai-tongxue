@@ -1,0 +1,154 @@
+/* 回答过程折叠件（LearningActivity）：一行摘要 + 可展开的步骤时间线与思考过程 */
+.process {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  font-family: var(--ui-font);
+}
+
+.summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  min-height: var(--ctl-sm);
+  margin-left: -8px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--text-3);
+  font: 500 var(--fz-sm)/1.3 var(--ui-font);
+  text-align: left;
+}
+
+button.summary {
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+button.summary:hover { background: var(--hover); color: var(--text-2); }
+button.summary:active { background: var(--active); }
+button.summary:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+.mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--text-3);
+}
+.process[data-state='running'] .mark { color: var(--accent); }
+.process[data-state='failed'] .mark,
+.process[data-state='failed'] .label { color: var(--bad); }
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clock {
+  flex: none;
+  color: var(--text-4);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.clock::before { content: '·'; margin-right: 7px; }
+
+.chevron {
+  flex: none;
+  color: var(--text-4);
+  transition: transform var(--dur-2) var(--ease);
+}
+.process[data-open] .chevron { transform: rotate(90deg); }
+
+/* 用 grid 行高过渡做展开动画，收起后内容不可聚焦 */
+.panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  width: 100%;
+  transition: grid-template-rows var(--dur-2) var(--ease);
+}
+.process[data-open] .panel { grid-template-rows: 1fr; }
+.panelInner {
+  min-height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity var(--dur-2) var(--ease), visibility 0s linear var(--dur-2);
+}
+.process[data-open] .panelInner {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+.panelBody {
+  display: grid;
+  gap: 12px;
+  margin: 6px 0 4px 7px;
+  padding: 2px 0 2px 16px;
+  border-left: 1.5px solid var(--border);
+}
+
+.steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.5;
+}
+.stepIcon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--inset);
+  color: var(--text-3);
+}
+.step[data-state='done'] .stepIcon { background: var(--ok-soft); color: var(--ok); }
+.step[data-state='running'] .stepIcon { background: var(--accent-soft); color: var(--accent); }
+.step[data-state='error'] .stepIcon { background: var(--bad-soft); color: var(--bad); }
+.step[data-state='running'] .stepLabel { color: var(--text); }
+.step[data-state='stopped'] .stepLabel { color: var(--text-3); }
+.stepLabel { min-width: 0; overflow-wrap: anywhere; }
+.stepNote { flex: none; color: var(--text-4); font-size: var(--fz-xs); }
+.step[data-state='error'] .stepNote { color: var(--bad); }
+
+.reasoning {
+  max-height: min(320px, 46vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 8px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.7;
+  outline: none;
+}
+.reasoning:focus-visible { box-shadow: 0 0 0 3px var(--ring); border-radius: var(--r-sm); }
+.reasoning :is(h3, h4, h5, strong) { color: var(--text-2); }
+.reasoningTitle {
+  margin: 0 0 4px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel, .panelInner, .chevron { transition: none; }
+}

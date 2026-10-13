@@ -1,11 +1,16 @@
+import { Smartphone } from 'lucide-react';
+import { Field, Input } from '../../components/ui';
 import type { AuthField } from '../../store/authStore';
-import { normalizeMainlandPhoneInput } from '../../hooks/useAuthForm';
+import { joinIds, normalizeMainlandPhoneInput } from '../../hooks/useAuthForm';
+import { CodeField, IssueText } from './fields';
 import fs from './EmailCodeField.module.css';
 
 interface PhoneCodeFieldProps {
   phone: string;
   code: string;
   issueField?: AuthField;
+  /** 传入后，手机号或验证码出错时文案就显示在该字段下方；不传则只标红，由外层提示行说明 */
+  issueMessage?: string;
   sending: boolean;
   cooldown: number;
   idPrefix?: string;
@@ -18,85 +23,64 @@ interface PhoneCodeFieldProps {
   onSend: () => void;
 }
 
-const feedbackFor = (field: AuthField, issueField: AuthField | undefined, feedbackId: string) =>
-  field === issueField ? feedbackId : undefined;
-
 export function PhoneCodeField({
-  phone, code, issueField, sending, cooldown,
+  phone, code, issueField, issueMessage, sending, cooldown,
   idPrefix = 'auth', feedbackId = 'auth-feedback', phoneLabel = '手机号',
   autoFocusPhone = false, disabled = false,
   onPhoneChange, onCodeChange, onSend,
 }: PhoneCodeFieldProps) {
   const phoneId = `${idPrefix}-phone`;
-  const codeId = `${idPrefix}-code`;
   const phoneHintId = `${idPrefix}-phone-hint`;
-  const codeHintId = `${idPrefix}-code-hint`;
-  const sendLabel = sending ? '正在发送…' : cooldown > 0 ? `${cooldown} 秒后重发` : '获取验证码';
-  const phoneDescribedBy = [
-    feedbackFor('phone', issueField, feedbackId),
-    phoneHintId,
-  ].filter(Boolean).join(' ');
-  const codeDescribedBy = [
-    feedbackFor('code', issueField, feedbackId),
-    codeHintId,
-  ].filter(Boolean).join(' ');
+  const phoneInvalid = issueField === 'phone';
+  const phoneInline = phoneInvalid && Boolean(issueMessage);
 
   return (
     <>
-      <label className={fs.field} htmlFor={phoneId}>
-        <span className={fs.label}>{phoneLabel}</span>
-        <span className={fs.phoneRow}>
-          <span className={fs.dialCode} aria-hidden="true">+86</span>
-          <input
-            id={phoneId}
-            className={fs.input}
-            type="tel"
-            value={phone}
-            autoFocus={autoFocusPhone}
-            autoComplete="tel-national"
-            inputMode="numeric"
-            pattern="1[3-9][0-9]{9}"
-            maxLength={11}
-            required
-            disabled={disabled || sending}
-            aria-invalid={issueField === 'phone' || undefined}
-            aria-describedby={phoneDescribedBy}
-            aria-label={`${phoneLabel}，中国大陆`}
-            onChange={(event) => onPhoneChange(normalizeMainlandPhoneInput(event.target.value))}
-          />
-        </span>
-        <span className={fs.hint} id={phoneHintId}>仅支持中国大陆 11 位手机号</span>
-      </label>
-      <div className={fs.field}>
-        <label className={fs.label} htmlFor={codeId}>手机验证码</label>
-        <div className={fs.codeRow}>
-          <input
-            id={codeId}
-            className={fs.input}
-            type="text"
-            value={code}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            pattern="[0-9]{6}"
-            maxLength={6}
-            required
-            disabled={disabled}
-            aria-invalid={issueField === 'code' || undefined}
-            aria-describedby={codeDescribedBy}
-            onChange={(event) => onCodeChange(event.target.value.replace(/\D/g, '').slice(0, 6))}
-          />
-          <button
-            type="button"
-            className={fs.sendCode}
-            disabled={disabled || sending || cooldown > 0}
-            aria-describedby={codeHintId}
-            onClick={onSend}
-          >
-            {sendLabel}
-          </button>
-        </div>
-        <span className={fs.hint} id={codeHintId}>6 位数字，十分钟内有效</span>
-      </div>
+      <Field
+        label={phoneLabel}
+        htmlFor={phoneId}
+        hint={<span id={phoneHintId}>仅支持中国大陆 11 位手机号</span>}
+        error={phoneInline ? <IssueText id={feedbackId}>{issueMessage}</IssueText> : undefined}
+      >
+        <Input
+          id={phoneId}
+          wrapClassName={fs.wrap}
+          className={fs.autofill}
+          type="tel"
+          value={phone}
+          autoFocus={autoFocusPhone}
+          autoComplete="tel-national"
+          inputMode="numeric"
+          pattern="1[3-9][0-9]{9}"
+          maxLength={11}
+          required
+          disabled={disabled || sending}
+          invalid={phoneInvalid}
+          placeholder="11 位手机号"
+          leading={(
+            <>
+              <Smartphone size={16} strokeWidth={1.75} />
+              <span className={fs.dialCode} aria-hidden="true">+86</span>
+            </>
+          )}
+          aria-describedby={joinIds(phoneInvalid && feedbackId, !phoneInline && phoneHintId)}
+          aria-label={`${phoneLabel}，中国大陆`}
+          onChange={(event) => onPhoneChange(normalizeMainlandPhoneInput(event.target.value))}
+        />
+      </Field>
+      <CodeField
+        id={`${idPrefix}-code`}
+        label="手机验证码"
+        code={code}
+        invalid={issueField === 'code'}
+        issueMessage={issueMessage}
+        feedbackId={feedbackId}
+        sending={sending}
+        cooldown={cooldown}
+        disabled={disabled}
+        onCodeChange={onCodeChange}
+        onSend={onSend}
+      />
     </>
   );
 }

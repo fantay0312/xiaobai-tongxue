@@ -8,6 +8,7 @@ import {
   type FocusEventHandler,
   type PointerEventHandler,
 } from 'react';
+import { ChevronDown, MessageCircle } from 'lucide-react';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import s from './XiaoyanPet.module.css';
 
@@ -17,6 +18,8 @@ export interface XiaoyanPetProps
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'type'> {
   state: XiaoyanPetState;
   suppressReply?: boolean;
+  /** 脚边显示圆形召唤钮（点开对话面板的场合才用） */
+  launcher?: boolean;
   type?: 'button' | 'submit' | 'reset';
 }
 
@@ -207,6 +210,7 @@ function resolveFrameName(
 export const XiaoyanPet = forwardRef<HTMLButtonElement, XiaoyanPetProps>(function XiaoyanPet({
   state,
   suppressReply = false,
+  launcher = false,
   className,
   type = 'button',
   title = '小砚 · 备课助教',
@@ -223,6 +227,7 @@ export const XiaoyanPet = forwardRef<HTMLButtonElement, XiaoyanPetProps>(functio
   const [focused, setFocused] = useState(false);
   const [assetFailed, setAssetFailed] = useState(false);
   const resolvedState: XiaoyanPetState = Object.hasOwn(STATE_LABELS, state) ? state : 'idle';
+  const expanded = buttonProps['aria-expanded'] === true || buttonProps['aria-expanded'] === 'true';
 
   const motionEnabled = !reducedMotion && pageVisible;
   const engaged = hovered || focused;
@@ -293,6 +298,13 @@ export const XiaoyanPet = forwardRef<HTMLButtonElement, XiaoyanPetProps>(functio
       </span>
       {!suppressReply && (
         <span className={s.reply} aria-hidden="true">{STATE_LABELS[resolvedState]}</span>
+      )}
+      {launcher && (
+        <span className={s.launch} aria-hidden="true">
+          {expanded
+            ? <ChevronDown size={16} strokeWidth={2} />
+            : <MessageCircle size={15} strokeWidth={2} />}
+        </span>
       )}
     </button>
   );

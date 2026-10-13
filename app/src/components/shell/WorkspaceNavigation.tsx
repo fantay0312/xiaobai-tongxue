@@ -1,23 +1,87 @@
-import { Link, NavLink } from 'react-router';
-import { Icon } from '../ui/Icon';
+/**
+ * 应用侧栏 —— 成长册、教师看板、赴考、复盘等二级页面使用。
+ * 与学习终端侧栏同一套导航项与令牌；导航定义在 pages/learn/shell/views.ts，两边共用。
+ */
+import { Link, NavLink, useLocation } from 'react-router';
+import { ClipboardList, LogIn, NotebookText, PanelLeftClose, Settings } from 'lucide-react';
+import { IconButton, cx } from '../ui';
+import { JourneyStatusCard } from '../story/JourneyStatus';
+import { TERMINAL_NAV, terminalViewPath } from '../../pages/learn/shell/views';
+import { useAuthStore } from '../../store/authStore';
+import { profileAccountKey, useProfileStore } from '../../store/profileStore';
+import { ProfileAvatar } from './ProfileAvatar';
 import { Seal } from './Seal';
 import { useShellActions } from './ShellActions';
-import { useAuthStore } from '../../store/authStore';
 import s from './workspace.module.css';
 
+/** 账号入口：已登录显示头像，未登录显示登录 */
+export function AccountButton({ compact = false }: { compact?: boolean }) {
+  const { openProfile } = useShellActions();
+  const status = useAuthStore((state) => state.status);
+  const user = useAuthStore((state) => state.user);
+  const avatar = useProfileStore((state) => state.avatars[profileAccountKey(user)] ?? null);
+  if (status === 'authed') {
+    return (
+      <button type="button" className={cx(s.account, compact && s.accountCompact)} onClick={openProfile} aria-label={`打开 ${user ?? ''} 的个人中心`}>
+        <ProfileAvatar name={user} src={avatar} size="nav" className={s.accountAvatar} />
+        {!compact && <span className={s.accountName}>{user ?? '个人中心'}</span>}
+      </button>
+    );
+  }
+  return (
+    <Link to="/login" className={cx(s.account, compact && s.accountCompact)} aria-label="登录">
+      <span className={s.accountIcon}><LogIn size={16} strokeWidth={1.75} /></span>
+      {!compact && <span className={s.accountName}>登录</span>}
+    </Link>
+  );
+}
+
 export function WorkspaceNavigation({ onClose, onNavigate }: { onClose?: () => void; onNavigate?: () => void }) {
-  const { openSettings, openProfile } = useShellActions();
-  const authed = useAuthStore((state) => state.status === 'authed');
-  return <aside className={s.navigation} aria-label="应用导航">
-    <div className={s.brandRow}><Link to="/learn" className={s.brand}><Seal /><span>小白同学</span></Link>{onClose && <button className={s.iconButton} aria-label="收起应用导航" onClick={onClose}><Icon name="panel-left" size={19} /></button>}</div>
-    <nav className={s.navLinks} aria-label="学习工具" onClick={onNavigate}>
-      <NavLink to="/learn" end><Icon name="message" />新会话</NavLink>
-      <Link to="/learn?view=library"><Icon name="library" />资料库</Link>
-      <Link to="/learn?view=journey"><Icon name="route" />师徒旅程</Link>
-      <NavLink to="/growth"><Icon name="notebook" />学习记录</NavLink>
-      <NavLink to="/teacher"><Icon name="clipboard" />教师看板</NavLink>
-    </nav>
-    <div className={s.navHint}>课程与学习对话<br />都在学习终端中继续。</div>
-    <footer className={s.footer}><button onClick={openSettings}><Icon name="settings" />设置</button>{authed ? <button onClick={openProfile}><Icon name="user" />个人中心</button> : <Link to="/login"><Icon name="user" />登录</Link>}</footer>
-  </aside>;
+  const { openSettings } = useShellActions();
+  const { pathname } = useLocation();
+  const inReview = pathname.startsWith('/exam/') || pathname.startsWith('/review/');
+  return (
+    <aside className={s.navigation} aria-label="应用导航">
+      <div className={s.brandRow}>
+        <Link to="/learn" className={s.brand} onClick={onNavigate}>
+          <Seal />
+          <span>小白同学</span>
+        </Link>
+        {onClose && (
+          <IconButton label="收起侧栏" size="sm" tip="bottom" onClick={onClose}>
+            <PanelLeftClose size={17} strokeWidth={1.75} />
+          </IconButton>
+        )}
+      </div>
+
+      <nav className={s.navLinks} aria-label="学习终端" onClick={onNavigate}>
+        <p className={s.navHeading}>学习终端</p>
+        {TERMINAL_NAV.map(({ view, label, icon: ItemIcon }) => (
+          <Link key={view} to={terminalViewPath(view)} className={s.navItem} data-active={(view === 'feynman' && inReview) || undefined}>
+            <ItemIcon size={17} strokeWidth={1.75} />
+            <span>{label}</span>
+          </Link>
+        ))}
+        <p className={s.navHeading}>记录</p>
+        <NavLink to="/growth" className={s.navItem}>
+          <NotebookText size={17} strokeWidth={1.75} />
+          <span>成长册</span>
+        </NavLink>
+        <NavLink to="/teacher" className={s.navItem}>
+          <ClipboardList size={17} strokeWidth={1.75} />
+          <span>教师看板</span>
+        </NavLink>
+      </nav>
+
+      <div className={s.navFooter}>
+        <JourneyStatusCard compact />
+        <div className={s.footerRow}>
+          <AccountButton />
+          <IconButton label="设置" size="sm" onClick={openSettings}>
+            <Settings size={17} strokeWidth={1.75} />
+          </IconButton>
+        </div>
+      </div>
+    </aside>
+  );
 }

@@ -84,7 +84,8 @@ export default function App() {
   const loadCustomTopics = useAppStore((s) => s.loadCustomTopics);
   const clearCustomTopics = useAppStore((s) => s.clearCustomTopics);
   const customTopicUserRef = useRef<string | null>(null);
-  const businessPath = pathname !== '/' && pathname !== '/login';
+  // 宣传页与登录页是公开入口，任何时候都不被账号确认挡住
+  const businessPath = pathname !== '/' && pathname !== '/about' && pathname !== '/login';
   const resolvingBusinessAccess = authStatus === 'unknown' && businessPath;
   const forcePhoneBinding = authStatus === 'authed' && phoneBindingRequired && businessPath;
 
@@ -93,7 +94,7 @@ export default function App() {
   }, [initAuth]);
 
   useEffect(() => {
-    if (pathname === '/') return;
+    if (pathname === '/' || pathname === '/about') return;
     let active = true;
     void retryModule(() => import('./store/sync')).then(({ initStateSync }) => {
       if (active) initStateSync();
@@ -153,13 +154,13 @@ export default function App() {
         />
       ) : <Suspense fallback={<div className="route-loader" role="status">小白翻书中…</div>}>
         <Routes>
-          <Route path="/" element={<Navigate to="/learn" replace />} />
-          <Route path="/about" element={<LandingPage />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/about" element={<Navigate to="/" replace />} />
           <Route path="/study" element={<Navigate to="/learn" replace />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/custom-content" element={<Navigate to="/learn?view=library" replace />} />
-          <Route path="/learn" element={<LearningPage />} />
-          {/* 使用类页面(备课/讲解)须登录;查看类页面(赴考/复盘/成长/看板)不设门槛 */}
+          {/* 站点根是宣传页；进入学习终端、备课与讲解须登录；查看类页面(赴考/复盘/成长/看板)不设门槛 */}
+          <Route path="/learn" element={<RequireAuth><LearningPage /></RequireAuth>} />
           <Route path="/prep/:topicId" element={<RequireAuth><LearningPage /></RequireAuth>} />
           <Route path="/teach/:topicId" element={<RequireAuth><ClassroomPage /></RequireAuth>} />
           <Route path="/exam/:sessionId" element={<ExamPage />} />

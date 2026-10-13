@@ -1,12 +1,13 @@
+/* 印章册:一本纸质册子(根上 data-story + paperScope),浮在现代页面上 */
 .album {
   position: relative;
   isolation: isolate;
   display: grid;
   grid-template-columns: 4.75rem minmax(0, 1fr);
   overflow: visible;
+  border-radius: var(--r-lg);
   background: var(--paper);
-  border: 1px solid var(--line-strong);
-  box-shadow: var(--shadow-paper);
+  box-shadow: 0 0 0 1px var(--line), var(--shadow-paper);
 }
 
 .album::after {
@@ -21,6 +22,7 @@
     repeating-linear-gradient(2deg, transparent 0 5px, var(--ink-wash) 5px 6px);
   opacity: 0.28;
   mix-blend-mode: multiply;
+  border-radius: inherit;
 }
 
 .textureDefs { position: absolute; width: 0; height: 0; overflow: hidden; }
@@ -37,6 +39,7 @@
   color: var(--moon-on-ink);
   background: var(--inkstone);
   border-right: 1px solid var(--inkstone-line);
+  border-radius: var(--r-lg) 0 0 var(--r-lg);
 }
 
 .spineTitle {
@@ -118,29 +121,8 @@
   padding: var(--gap-tight) 0;
 }
 
-.pageButton {
-  position: relative;
-  display: inline-flex;
-  min-height: 2.75rem;
-  align-items: center;
-  gap: var(--gap-hair);
-  width: fit-content;
-  padding: 0.35rem 0.65rem;
-  border: 0;
-  background: transparent;
-  color: var(--ink-soft);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  transition:
-    color var(--t-fast) var(--ease-out),
-    transform var(--t-fast) var(--ease-out);
-}
-
+.pageButton { justify-self: start; }
 .pageButton:last-child { justify-self: end; }
-.pageButton:hover:not(:disabled) { color: var(--azure); transform: translateX(-2px); }
-.pageButton:last-child:hover:not(:disabled) { transform: translateX(2px); }
-.pageButton:disabled { color: var(--dust); cursor: not-allowed; }
-.pageButton:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
 
 .spreadStatus {
   color: var(--ink-soft);
@@ -261,11 +243,15 @@
   transition: opacity var(--t-fast) var(--ease-out);
 }
 
+/* 实印常驻一层淡淡的印泥晕,像真的盖在纸上;虚印只在悬停时浮出 */
+.earned .sealWash { opacity: 0.55; }
+
 .seal:hover .sealWash,
 .sealOpen .sealWash { opacity: 1; }
 
+.seal { cursor: pointer; }
 .seal:active { transform: scale(0.985); }
-.seal:focus-visible { z-index: 4; outline: 2px solid var(--azure); outline-offset: -3px; }
+.seal:focus-visible { z-index: 4; outline: none; box-shadow: inset 0 0 0 3px var(--ring); }
 .sealOpen { z-index: 2; box-shadow: inset 0 -3px 0 var(--seal-tone); }
 
 .tierink { --seal-tone: var(--ink); }
@@ -290,6 +276,27 @@
 
 .earned .sealMeta span:first-child { color: var(--seal-tone); }
 
+/* 入谱/待落印:实印是实心小签,虚印是虚线小签带锁,一眼分得开 */
+.sealStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: var(--r-full);
+  letter-spacing: 0.04em;
+}
+
+.earned .sealStatus {
+  background: var(--seal-tone);
+  color: var(--paper);
+}
+
+.locked .sealStatus {
+  border: 1px dashed var(--line-strong);
+  color: var(--ink-faint);
+}
+
 .artworkStage {
   position: relative;
   width: clamp(5.7rem, 8vw, 7rem);
@@ -304,7 +311,22 @@
 .seal:nth-child(4n + 3) .artworkStage { transform: rotate(-0.5deg); }
 .seal:nth-child(4n) .artworkStage { transform: rotate(1.35deg); }
 
-.sealArtwork { display: block; width: 100%; height: 100%; overflow: visible; color: var(--seal-tone); }
+.sealArtwork {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: var(--seal-tone);
+  transition: transform var(--t-med) var(--ease-out);
+}
+
+/* 实印可把玩:悬停时印面微微抬起 */
+.earned:hover .sealArtwork { transform: scale(1.07) rotate(-2.5deg); }
+
+/* 虚印是章坯:外框虚线、内容淡出 */
+.locked .outerStroke { stroke-dasharray: 7 6; stroke-width: 3; }
+.locked .innerStroke { opacity: 0.3; }
+.locked .registrationMarks { opacity: 0.25; }
 .outerStroke, .innerStroke, .registrationMarks { fill: none; stroke: currentcolor; }
 .outerStroke { stroke-width: 5.5; }
 .innerStroke { stroke-width: 2; opacity: 0.72; }
@@ -320,7 +342,7 @@
 .wearMarks { fill: var(--paper); stroke: var(--paper); stroke-width: 1.6; stroke-linecap: round; opacity: 0.64; }
 
 .inkedArtwork { opacity: 0.93; filter: url('#achievement-seal-rough'); }
-.carvedArtwork { opacity: 0.5; }
+.carvedArtwork { opacity: 0.42; }
 .locked .sealArtwork {
   filter: drop-shadow(-1px -1px 0 var(--paper)) drop-shadow(1px 1px 0 var(--ink-wash));
 }
@@ -335,6 +357,7 @@
 }
 
 .earned .sealName { color: var(--seal-tone); }
+.locked .sealName { color: var(--ink-soft); }
 
 .sealCriterion {
   min-height: 2.8em;
@@ -358,11 +381,12 @@
   margin-top: auto;
 }
 
-.sealProgressTrack { height: 3px; overflow: hidden; background: var(--ink-wash); transform: skewX(-12deg); }
+.sealProgressTrack { height: 4px; overflow: hidden; border-radius: var(--r-full); background: var(--ink-wash); }
 .sealProgressTrack > span {
   display: block;
   width: 100%;
   height: 100%;
+  border-radius: inherit;
   background: var(--jade);
   transform-origin: left center;
   transition: transform var(--t-slow) var(--ease-out);
@@ -442,7 +466,7 @@
     radial-gradient(18rem 10rem at 0 100%, color-mix(in oklab, var(--seal-tone) 8%, transparent), transparent 74%),
     var(--paper-shade);
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-s);
+  border-radius: var(--r-md);
   box-shadow: var(--shadow-lift);
   scrollbar-width: thin;
 }
@@ -551,11 +575,11 @@
 
 .detailProgressBar {
   display: block;
-  height: 3px;
+  height: 4px;
   margin-top: 0.35rem;
   overflow: hidden;
+  border-radius: var(--r-full);
   background: var(--ink-wash);
-  transform: skewX(-12deg);
 }
 
 .detailProgressBar > span {
@@ -567,11 +591,19 @@
   transition: transform var(--t-slow) var(--ease-out);
 }
 
-.empty { color: var(--ink-faint); font-family: var(--font-display); }
+.empty {
+  margin: 0;
+  padding: 24px;
+  border-radius: var(--r-lg);
+  background: var(--sidebar);
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
 
-@media (max-width: 720px) {
+/* 断点按页面容器(.page)宽度算:侧栏展开时也能及时折行 */
+@container (max-width: 720px) {
   .album { grid-template-columns: 1fr; }
-  .albumSpine { flex-direction: row; justify-content: space-between; padding: var(--gap-tight) var(--gap); border-right: 0; border-bottom: 1px solid var(--inkstone-line); }
+  .albumSpine { flex-direction: row; justify-content: space-between; padding: var(--gap-tight) var(--gap); border-right: 0; border-bottom: 1px solid var(--inkstone-line); border-radius: var(--r-lg) var(--r-lg) 0 0; }
   .spineTitle { writing-mode: horizontal-tb; font-size: var(--fs-body); }
   .spineCount { display: flex; align-items: baseline; gap: var(--gap-hair); margin: 0 0 0 auto; }
   .spineCount b { font-size: var(--fs-sub); }
@@ -582,11 +614,10 @@
   .seal { min-height: 11.5rem; padding-inline: clamp(0.4rem, 1vw, 0.75rem); }
 }
 
-@media (max-width: 560px) {
+@container (max-width: 560px) {
   .albumBody { padding-inline: 0.55rem; }
   .bookNav { grid-template-columns: 1fr auto 1fr; }
-  .pageButton { font-size: 0; }
-  .pageButton svg { width: 1.15rem; height: 1.15rem; }
+  .pageButtonText { display: none; }
   .bookSpread { grid-template-columns: 1fr; gap: var(--gap-tight); filter: none; }
   .pageLeft,
   .pageRight {
@@ -616,8 +647,9 @@
 @media (prefers-reduced-motion: reduce) {
   .turnNext,
   .turnPrev { animation: none; }
-  .pageButton,
+  .sealArtwork,
   .detailClose,
   .detailPopover,
   .detailProgressBar > span { transition: none; }
+  .earned:hover .sealArtwork { transform: none; }
 }
