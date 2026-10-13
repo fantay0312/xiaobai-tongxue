@@ -2,7 +2,8 @@
 import { create } from 'zustand';
 import { advanceAuthEpoch, API_BASE, currentAuthEpoch, gatewayFetch, setGatewayIdentity } from '../lib/api';
 import { broadcastAuthChange } from '../lib/authChannel';
-import { CaptchaError, requestCaptchaProof, type CaptchaProof } from '../lib/tencentCaptcha';
+import { CaptchaError, requestCaptchaProof } from '../lib/tencentCaptcha';
+import { completeResponse } from '../lib/completeResponse';
 import { clearCoachThreads } from '../engine/coach';
 
 export type AuthStatus = 'unknown' | 'standalone' | 'anon' | 'authed' | 'unavailable';
@@ -42,8 +43,8 @@ interface AuthState {
   inviteRequired: boolean;
   init: (preserveResolvedState?: boolean) => Promise<void>;
   refreshSession: (failClosed?: boolean) => Promise<void>;
-  requestEmailCode: (email: string, purpose: EmailCodePurpose, invite?: string) => Promise<AuthResult>;
-  requestEmailBindingCode: (email: string, currentPassword: string) => Promise<AuthResult>;
+  requestEmailCode: (email: string, purpose: EmailCodePurpose, invite?: string, signal?: AbortSignal) => Promise<AuthResult>;
+  requestEmailBindingCode: (email: string, currentPassword: string, signal?: AbortSignal) => Promise<AuthResult>;
   bindEmail: (email: string, code: string, currentPassword: string) => Promise<AuthResult>;
   verifyAccountPassword: (
     currentPassword: string,
@@ -51,9 +52,9 @@ interface AuthState {
   ) => Promise<AuthResult>;
   requestEmailChangeCode: (email: string, verificationToken: string) => Promise<AuthResult>;
   changeEmail: (email: string, code: string, verificationToken: string) => Promise<AuthResult>;
-  requestSmsCode: (phone: string, purpose: SmsCodePurpose) => Promise<AuthResult>;
-  loginWithPhoneCode: (phone: string, code: string) => Promise<AuthResult>;
-  requestPhoneBindingCode: (phone: string, currentPassword: string) => Promise<AuthResult>;
+  requestSmsCode: (phone: string, purpose: SmsCodePurpose, signal?: AbortSignal) => Promise<AuthResult>;
+  loginWithPhoneCode: (phone: string, code: string, signal?: AbortSignal) => Promise<AuthResult>;
+  requestPhoneBindingCode: (phone: string, currentPassword: string, signal?: AbortSignal) => Promise<AuthResult>;
   bindPhone: (phone: string, code: string, currentPassword: string) => Promise<AuthResult>;
   requestPhoneChangeCode: (phone: string, verificationToken: string) => Promise<AuthResult>;
   changePhone: (phone: string, code: string, verificationToken: string) => Promise<AuthResult>;
@@ -62,8 +63,8 @@ interface AuthState {
   requestEmailPasswordResetCode: (email: string) => Promise<AuthResult>;
   resetPasswordWithEmail: (email: string, code: string, newPassword: string) => Promise<AuthResult>;
   changePassword: (verificationToken: string, newPassword: string) => Promise<AuthResult>;
-  login: (identifier: string, password: string) => Promise<AuthResult>;
-  loginWithEmailCode: (email: string, code: string) => Promise<AuthResult>;
+  login: (identifier: string, password: string, signal?: AbortSignal) => Promise<AuthResult>;
+  loginWithEmailCode: (email: string, code: string, signal?: AbortSignal) => Promise<AuthResult>;
   register: (input: RegistrationInput) => Promise<AuthResult>;
   logout: () => Promise<AuthResult>;
 }
@@ -135,13 +136,7 @@ const API_ERRORS: Record<string, ErrorInfo> = {
 const AUTH_TIMEOUT_MS = 10_000;
 
 async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
-  try {
-    return await fetch(input, { ...init, signal: controller.signal });
-  } finally {
-    window.clearTimeout(timer);
-  }
+  return completeResponse((signal) => fetch(input, { ...init, signal }), AUTH_TIMEOUT_MS, init?.signal);
 }
 
 async function gatewayFetchWithTimeout(
@@ -149,15 +144,9 @@ async function gatewayFetchWithTimeout(
   init?: RequestInit,
   expectedUnauthorized = false,
 ): Promise<Response> {
-  const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
-  try {
-    return await gatewayFetch(input, { ...init, signal: controller.signal }, {
+  return completeResponse((signal) => gatewayFetch(input, { ...init, signal }, {
       expectedUnauthorizedErrors: expectedUnauthorized ? ['invalid-credentials'] : undefined,
-    });
-  } finally {
-    window.clearTimeout(timer);
-  }
+    }), AUTH_TIMEOUT_MS, init?.signal);
 }
 
 function networkFailure(error: unknown): AuthResult {
@@ -185,8 +174,8 @@ function captchaFailure(error: unknown): AuthResult | null {
   };
 }
 
-function supersededAuthResult(): AuthResult {
-  queuedRefresh = true;
+function supersededAuthResult(revalidate = true): AuthResult {
+  if (revalidate) queuedRefresh = true;
   return { ok: false, message: '登录状态已发生变化，请重新操作', field: 'form' };
 }
 
@@ -311,11 +300,12 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     let receivedHttpResponse = false;
     let authenticationRejected = false;
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      const controller = new AbortController();
-      const timer = window.setTimeout(() => controller.abort(), 4000);
       try {
-        const response = await fetch(`${API_BASE}/me`, { signal: controller.signal });
-        receivedHttpResponse = true;
+        const response = await completeResponse(async (signal) => {
+          const result = await fetch(`${API_BASE}/me`, { signal });
+          receivedHttpResponse = true;
+          return result;
+        }, 4000);
         if (response.ok) {
           const data = await readPayload(response);
           const user = data.user;
@@ -365,8 +355,6 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         authenticationRejected = response.status === 401 || response.status === 403;
       } catch {
         // 网络错误与超时统一重试；生产环境最终保持关闭态。
-      } finally {
-        window.clearTimeout(timer);
       }
       if (!isCurrent()) return;
       if (authenticationRejected) break;
@@ -404,10 +392,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     await get().init(!failClosed);
   },
 
-  requestEmailCode: async (email, purpose, invite) => {
+  requestEmailCode: async (email, purpose, invite, signal) => {
     try {
-      const captcha = await requestCaptchaProof('email');
+      const captcha = await requestCaptchaProof('email', signal);
       const response = await fetchWithTimeout(`${API_BASE}/auth/email-code`, {
+        signal,
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, purpose, ...(invite ? { invite } : {}), captcha }),
       });
@@ -419,10 +408,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }
   },
 
-  requestEmailBindingCode: async (email, currentPassword) => {
+  requestEmailBindingCode: async (email, currentPassword, signal) => {
     try {
-      const captcha = await requestCaptchaProof('email');
+      const captcha = await requestCaptchaProof('email', signal);
       const response = await gatewayFetchWithTimeout(`${API_BASE}/account/email-code`, {
+        signal,
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, currentPassword, captcha }),
       }, true);
@@ -582,10 +572,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }
   },
 
-  requestSmsCode: async (phone, purpose) => {
+  requestSmsCode: async (phone, purpose, signal) => {
     try {
-      const captcha = await requestCaptchaProof('sms');
+      const captcha = await requestCaptchaProof('sms', signal);
       const response = await fetchWithTimeout(`${API_BASE}/auth/sms-code`, {
+        signal,
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, purpose, captcha }),
       });
@@ -597,16 +588,15 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }
   },
 
-  loginWithPhoneCode: async (phone, code) => {
-    let captcha: CaptchaProof;
-    try {
-      captcha = await requestCaptchaProof('login');
-    } catch (error) {
-      return captchaFailure(error) ?? networkFailure(error);
-    }
+  loginWithPhoneCode: async (phone, code, signal) => {
     const generation = beginAuthMutation();
+    let submitted = false;
     try {
+      const captcha = await requestCaptchaProof('login', signal);
+      if (generation !== currentAuthEpoch()) return supersededAuthResult(false);
+      submitted = true;
       const response = await fetchWithTimeout(`${API_BASE}/login/phone`, {
+        signal,
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, code, captcha }),
       });
@@ -625,17 +615,18 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       broadcastAuthChange();
       return { ok: true };
     } catch (error) {
-      queuedRefresh = true;
-      return networkFailure(error);
+      if (submitted) queuedRefresh = true;
+      return captchaFailure(error) ?? networkFailure(error);
     } finally {
       finishAuthMutation(get);
     }
   },
 
-  requestPhoneBindingCode: async (phone, currentPassword) => {
+  requestPhoneBindingCode: async (phone, currentPassword, signal) => {
     try {
-      const captcha = await requestCaptchaProof('sms');
+      const captcha = await requestCaptchaProof('sms', signal);
       const response = await gatewayFetchWithTimeout(`${API_BASE}/account/phone-code`, {
+        signal,
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, currentPassword, captcha }),
       }, true);
@@ -806,16 +797,15 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }
   },
 
-  login: async (identifier, password) => {
-    let captcha: CaptchaProof;
-    try {
-      captcha = await requestCaptchaProof('login');
-    } catch (error) {
-      return captchaFailure(error) ?? networkFailure(error);
-    }
+  login: async (identifier, password, signal) => {
     const generation = beginAuthMutation();
+    let submitted = false;
     try {
+      const captcha = await requestCaptchaProof('login', signal);
+      if (generation !== currentAuthEpoch()) return supersededAuthResult(false);
+      submitted = true;
       const response = await fetchWithTimeout(`${API_BASE}/login`, {
+        signal,
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier, password, captcha }),
       });
@@ -834,23 +824,22 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       broadcastAuthChange();
       return { ok: true };
     } catch (error) {
-      queuedRefresh = true;
-      return networkFailure(error);
+      if (submitted) queuedRefresh = true;
+      return captchaFailure(error) ?? networkFailure(error);
     } finally {
       finishAuthMutation(get);
     }
   },
 
-  loginWithEmailCode: async (email, code) => {
-    let captcha: CaptchaProof;
-    try {
-      captcha = await requestCaptchaProof('login');
-    } catch (error) {
-      return captchaFailure(error) ?? networkFailure(error);
-    }
+  loginWithEmailCode: async (email, code, signal) => {
     const generation = beginAuthMutation();
+    let submitted = false;
     try {
+      const captcha = await requestCaptchaProof('login', signal);
+      if (generation !== currentAuthEpoch()) return supersededAuthResult(false);
+      submitted = true;
       const response = await fetchWithTimeout(`${API_BASE}/login/email`, {
+        signal,
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code, captcha }),
       });
@@ -866,8 +855,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       broadcastAuthChange();
       return { ok: true };
     } catch (error) {
-      queuedRefresh = true;
-      return networkFailure(error);
+      if (submitted) queuedRefresh = true;
+      return captchaFailure(error) ?? networkFailure(error);
     } finally {
       finishAuthMutation(get);
     }

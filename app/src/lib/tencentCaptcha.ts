@@ -1,4 +1,5 @@
 import { API_BASE } from './api';
+import { completeResponse } from './completeResponse';
 
 const CAPTCHA_SCRIPT_URL = 'https://turing.captcha.qcloud.com/TJCaptcha.js';
 const CAPTCHA_LOAD_TIMEOUT_MS = 15_000;
@@ -130,17 +131,15 @@ function parseChallenge(value: unknown): CaptchaChallenge | null {
   return { captchaAppId, aidEncrypted, aidEncryptedType };
 }
 
-async function requestChallenge(scene: CaptchaScene): Promise<CaptchaChallenge> {
-  const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), CAPTCHA_CHALLENGE_TIMEOUT_MS);
+async function requestChallenge(scene: CaptchaScene, signal?: AbortSignal): Promise<CaptchaChallenge> {
   try {
-    const response = await fetch(`${API_BASE}/captcha/challenge`, {
+    const response = await completeResponse((requestSignal) => fetch(`${API_BASE}/captcha/challenge`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ scene }),
       cache: 'no-store',
-      signal: controller.signal,
-    });
+      signal: requestSignal,
+    }), CAPTCHA_CHALLENGE_TIMEOUT_MS, signal);
     if (response.status === 429) {
       const retryAfterHeader = response.headers.get('Retry-After');
       const seconds = retryAfterHeader === null ? Number.NaN : Number(retryAfterHeader);
@@ -155,10 +154,9 @@ async function requestChallenge(scene: CaptchaScene): Promise<CaptchaChallenge> 
     if (!challenge) throw new CaptchaError('unavailable');
     return challenge;
   } catch (error) {
+    if (signal?.aborted) throw new CaptchaError('cancelled');
     if (error instanceof CaptchaError) throw error;
     throw new CaptchaError('unavailable');
-  } finally {
-    window.clearTimeout(timer);
   }
 }
 
@@ -184,6 +182,7 @@ function callbackFailureReason(result: unknown): CaptchaErrorReason {
 function showCaptcha(
   Constructor: TencentCaptchaConstructor,
   challenge: CaptchaChallenge,
+  signal?: AbortSignal,
 ): Promise<CaptchaProof> {
   return new Promise((resolve, reject) => {
     let instance: TencentCaptchaInstance | null = null;
@@ -192,6 +191,7 @@ function showCaptcha(
 
     const cleanup = (): void => {
       window.clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
       try {
         instance?.destroy();
       } catch {
@@ -216,6 +216,9 @@ function showCaptcha(
       const proof = parseProof(result, challenge.aidEncrypted);
       finish(proof, callbackFailureReason(result));
     };
+    const onAbort = (): void => finish(null, 'cancelled');
+    signal?.addEventListener('abort', onAbort, { once: true });
+    if (signal?.aborted) { onAbort(); return; }
 
     try {
       instance = new Constructor(challenge.captchaAppId, callback, {
@@ -231,12 +234,18 @@ function showCaptcha(
   });
 }
 
-export async function requestCaptchaProof(scene: CaptchaScene): Promise<CaptchaProof> {
+export async function requestCaptchaProof(scene: CaptchaScene, signal?: AbortSignal): Promise<CaptchaProof> {
   try {
-    const Constructor = await loadConstructor();
+    if (signal?.aborted) throw new CaptchaError('cancelled');
+    const Constructor = await new Promise<TencentCaptchaConstructor>((resolve, reject) => {
+      const onAbort = () => reject(new CaptchaError('cancelled'));
+      signal?.addEventListener('abort', onAbort, { once: true });
+      void loadConstructor().then(resolve, reject).finally(() => signal?.removeEventListener('abort', onAbort));
+    });
+    if (signal?.aborted) throw new CaptchaError('cancelled');
     // 第三方 SDK 先加载完成，再申请一次一密 challenge，避免把网络加载时间计入有效期。
-    const challenge = await requestChallenge(scene);
-    return await showCaptcha(Constructor, challenge);
+    const challenge = await requestChallenge(scene, signal);
+    return await showCaptcha(Constructor, challenge, signal);
   } catch (error) {
     if (error instanceof CaptchaError) throw error;
     throw new CaptchaError('unavailable');

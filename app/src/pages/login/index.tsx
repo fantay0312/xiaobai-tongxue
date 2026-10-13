@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Seal } from '../../components/shell/Seal';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
@@ -85,6 +85,8 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [resetFlowBusy, setResetFlowBusy] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
+  const pendingOperation = useRef<AbortController | null>(null);
+  useEffect(() => () => pendingOperation.current?.abort(), []);
   const { cooldown, resetCooldown, startCooldown } = useCooldown();
 
   const bindingEmail = status === 'authed' && emailBindingRequired;
@@ -202,6 +204,7 @@ export default function LoginPage() {
   };
 
   const sendCode = async () => {
+    if (pendingOperation.current && !pendingOperation.current.signal.aborted) return;
     const normalizedEmail = email.trim().toLowerCase();
     if (registering && inviteRequired && !invite.trim()) {
       setIssue({ field: 'invite', message: '请先输入邀请码' }); return;
@@ -216,17 +219,22 @@ export default function LoginPage() {
       setIssue({ field: 'currentPassword', message: '请先输入当前账号密码' }); return;
     }
     setSendingCode(true); setIssue(null); setFeedback(null);
+    const operation = new AbortController();
+    pendingOperation.current = operation;
     const result = bindingPhone
-      ? await requestPhoneBindingCode(mainlandPhoneToE164(phone), currentPassword)
+      ? await requestPhoneBindingCode(mainlandPhoneToE164(phone), currentPassword, operation.signal)
       : phoneCodeLogin
-        ? await requestSmsCode(mainlandPhoneToE164(phone), 'login')
+        ? await requestSmsCode(mainlandPhoneToE164(phone), 'login', operation.signal)
         : bindingEmail
-      ? await requestEmailBindingCode(normalizedEmail, currentPassword)
+      ? await requestEmailBindingCode(normalizedEmail, currentPassword, operation.signal)
       : await requestEmailCode(
         normalizedEmail,
         registering ? 'register' : 'login',
         registering && inviteRequired ? invite.trim() : undefined,
+        operation.signal,
       );
+    if (operation.signal.aborted) return;
+    pendingOperation.current = null;
     setSendingCode(false);
     if (!result.ok) {
       setIssue({ field: result.field ?? 'form', message: result.message ?? '验证码发送失败，请稍后再试' });
@@ -239,10 +247,12 @@ export default function LoginPage() {
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (busy || sendingCode) return;
+    if (busy || sendingCode || pendingOperation.current) return;
     const localIssue = validate();
     if (localIssue) { setIssue(localIssue); setFeedback(null); return; }
     setBusy(true); setIssue(null); setFeedback(null);
+    const operation = new AbortController();
+    pendingOperation.current = operation;
     const normalizedEmail = email.trim().toLowerCase();
     const result = bindingPhone
       ? await bindPhone(mainlandPhoneToE164(phone), code, currentPassword)
@@ -252,10 +262,12 @@ export default function LoginPage() {
         ? await register({ username: username.trim(), password, email: normalizedEmail, code,
           ...(inviteRequired ? { invite: invite.trim() } : {}) })
         : phoneCodeLogin
-          ? await loginWithPhoneCode(mainlandPhoneToE164(phone), code)
+          ? await loginWithPhoneCode(mainlandPhoneToE164(phone), code, operation.signal)
           : emailCodeLogin
-          ? await loginWithEmailCode(normalizedEmail, code)
-          : await login(username.trim(), password);
+          ? await loginWithEmailCode(normalizedEmail, code, operation.signal)
+          : await login(username.trim(), password, operation.signal);
+    if (operation.signal.aborted) return;
+    pendingOperation.current = null;
     setBusy(false);
     if (!result.ok) {
       setIssue({ field: result.field ?? 'form', message: result.message ?? '认证失败，请稍后再试' });
