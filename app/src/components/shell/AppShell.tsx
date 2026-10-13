@@ -24,12 +24,13 @@ import {
   markThemeHintDone,
 } from '../tour/tourState';
 import styles from './AppShell.module.css';
+import { retryModule } from '../../lib/moduleRecovery';
 
 const ProfileDialog = lazy(() =>
-  import('./ProfileDialog').then((module) => ({ default: module.ProfileDialog })),
+  retryModule(() => import('./ProfileDialog')).then((module) => ({ default: module.ProfileDialog })),
 );
 const SettingsDialog = lazy(() =>
-  import('./SettingsDialog').then((module) => ({ default: module.SettingsDialog })),
+  retryModule(() => import('./SettingsDialog')).then((module) => ({ default: module.SettingsDialog })),
 );
 
 interface NavGroup {
@@ -424,14 +425,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       <AmbiencePlayer />
 
       <Suspense fallback={null}>
-        {!landingMode && (
+        {!landingMode && profileOpen && authStatus === 'authed' && (
           <ProfileDialog
             open={profileOpen && authStatus === 'authed'}
             onClose={closeProfile}
             onOpenSettings={openSettingsFromProfile}
           />
         )}
-        <SettingsDialog open={settingsOpen} onClose={closeSettings} />
+        {settingsOpen && <SettingsDialog open={settingsOpen} onClose={closeSettings} />}
       </Suspense>
     </div>
   );

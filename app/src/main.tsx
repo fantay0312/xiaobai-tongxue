@@ -16,11 +16,12 @@ import '@fontsource/dm-sans/500.css';
 import './index.css';
 import './store/themeStore';
 import App from './App';
+import { ModuleRecovery } from './components/shell/ModuleRecovery';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <HashRouter>
+    <ModuleRecovery><HashRouter>
       <App />
-    </HashRouter>
+    </HashRouter></ModuleRecovery>
   </StrictMode>,
 );

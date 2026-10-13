@@ -9,17 +9,18 @@ import {
 } from './lib/api';
 import { subscribeAuthChanges } from './lib/authChannel';
 import { useAppStore } from './store/appStore';
+import { retryModule, recoverModuleLoad } from './lib/moduleRecovery';
 
-const LandingPage = lazy(() => import('./pages/landing'));
-const HomePage = lazy(() => import('./pages/home'));
-const PrepPage = lazy(() => import('./pages/prep'));
-const ClassroomPage = lazy(() => import('./pages/classroom'));
-const ExamPage = lazy(() => import('./pages/exam'));
-const ReviewPage = lazy(() => import('./pages/review'));
-const GrowthPage = lazy(() => import('./pages/growth'));
-const TeacherPage = lazy(() => import('./pages/teacher'));
-const LoginPage = lazy(() => import('./pages/login'));
-const CustomContentPage = lazy(() => import('./pages/custom-content'));
+const LandingPage = lazy(() => retryModule(() => import('./pages/landing')));
+const HomePage = lazy(() => retryModule(() => import('./pages/home')));
+const PrepPage = lazy(() => retryModule(() => import('./pages/prep')));
+const ClassroomPage = lazy(() => retryModule(() => import('./pages/classroom')));
+const ExamPage = lazy(() => retryModule(() => import('./pages/exam')));
+const ReviewPage = lazy(() => retryModule(() => import('./pages/review')));
+const GrowthPage = lazy(() => retryModule(() => import('./pages/growth')));
+const TeacherPage = lazy(() => retryModule(() => import('./pages/teacher')));
+const LoginPage = lazy(() => retryModule(() => import('./pages/login')));
+const CustomContentPage = lazy(() => retryModule(() => import('./pages/custom-content')));
 
 function decodeAnchorId(hash: string): string | null {
   try {
@@ -96,9 +97,9 @@ export default function App() {
   useEffect(() => {
     if (pathname === '/') return;
     let active = true;
-    void import('./store/sync').then(({ initStateSync }) => {
+    void retryModule(() => import('./store/sync')).then(({ initStateSync }) => {
       if (active) initStateSync();
-    });
+    }).catch((error) => { if (active) recoverModuleLoad(error); });
     return () => {
       active = false;
     };
