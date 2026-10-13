@@ -1,0 +1,12 @@
+{
+  "sourceCommit": "88afcb462f3eb65041ed821b68438d269e593f21",
+  "backup": "/var/backups/xiaobai/chunk-upload-20261013T144416Z",
+  "candidateChecks": {
+    "/": 200,
+    "/api/me": 200,
+    "/api/commerce/catalog": 200,
+    "/api/xb/courses": 401
+  },
+  "production": "passed",
+  "tencentCloudConfigChanged": false
+}

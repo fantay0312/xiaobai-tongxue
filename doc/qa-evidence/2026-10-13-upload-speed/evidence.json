@@ -1,0 +1,56 @@
+{
+  "course": [
+    {
+      "id": "3f58f24c-3e92-4e39-a9c7-ed25e0bfa2ee",
+      "title": "上传提速验收-财务管理-1013",
+      "created_at": "2026-10-13T14:46:51.969Z"
+    }
+  ],
+  "assets": [
+    {
+      "filename": "big-lesson.pdf",
+      "byte_size": "7926478",
+      "sha256": "2a21f607584fe54049731d5a1865163681aeb2594e207f7c97598f8d120e8e75",
+      "parse_status": "completed",
+      "enable_status": "enabled",
+      "error_message": null,
+      "created_at": "2026-10-13T14:48:07.098Z",
+      "updated_at": "2026-10-13T14:48:32.725Z"
+    }
+  ],
+  "jobs": [
+    {
+      "id": "a0f903d4-872a-4176-ba87-89bd1b1679a4",
+      "status": "done",
+      "error_code": null,
+      "created_at": "2026-10-13T14:48:43.816Z",
+      "updated_at": "2026-10-13T14:49:51.655Z"
+    }
+  ],
+  "topics": [
+    {
+      "topic_id": "custom-3f58f24c-3e92-4e39-a9c7-ed25e0bfa2ee-a0f903d4-872a-4176-ba87-89bd1b1679a4",
+      "status": "ready",
+      "quality_issues": [],
+      "published_at": "2026-10-13T14:49:51.655Z",
+      "created_at": "2026-10-13T14:49:29.734Z",
+      "updated_at": "2026-10-13T14:49:51.655Z",
+      "tagline": "从资本预算、资本结构与营运资本管理，理解公司理财的三项基本决策。",
+      "checklist_count": 7,
+      "misconception_count": 4,
+      "quiz_count": 8
+    }
+  ],
+  "testedAt": "2026-10-13T14:50:25.634787+00:00",
+  "fixturePages": 62,
+  "sourceCommit": "88afcb462f3eb65041ed821b68438d269e593f21",
+  "uploadTotalMs": 48015,
+  "uploadRequestSpanMs": 47685,
+  "previousUploadMs": 103708,
+  "chunkCount": 8,
+  "chunkRetries": 0,
+  "draftSaveRequests": 1,
+  "publishRequests": 1,
+  "tencentCloudConfigurationChanged": false,
+  "passed": true
+}

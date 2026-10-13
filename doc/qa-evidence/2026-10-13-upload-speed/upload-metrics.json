@@ -1,0 +1,175 @@
+{
+  "origin": 1791902678461.6,
+  "resources": [
+    {
+      "path": "/api/xb/courses/3f58f24c-3e92-4e39-a9c7-ed25e0bfa2ee/uploads",
+      "start": 161140.30000001192,
+      "end": 161654.5,
+      "ms": 514.1999999880791,
+      "status": 201,
+      "server": [
+        {
+          "name": "app",
+          "ms": 8.3
+        },
+        {
+          "name": "auth",
+          "ms": 5.1
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/uploads/555c292e-4451-4d96-84d3-57fc4bbc887e/chunks/0",
+      "start": 161656.39999997616,
+      "end": 184171.60000002384,
+      "ms": 22515.200000047684,
+      "status": 200,
+      "server": [
+        {
+          "name": "app",
+          "ms": 10.2
+        },
+        {
+          "name": "auth",
+          "ms": 5.7
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/uploads/555c292e-4451-4d96-84d3-57fc4bbc887e/chunks/1",
+      "start": 161656.89999997616,
+      "end": 184789.60000002384,
+      "ms": 23132.700000047684,
+      "status": 200,
+      "server": [
+        {
+          "name": "app",
+          "ms": 8.3
+        },
+        {
+          "name": "auth",
+          "ms": 4.6
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/uploads/555c292e-4451-4d96-84d3-57fc4bbc887e/chunks/2",
+      "start": 161657.39999997616,
+      "end": 185695.39999997616,
+      "ms": 24038,
+      "status": 200,
+      "server": [
+        {
+          "name": "app",
+          "ms": 8.6
+        },
+        {
+          "name": "auth",
+          "ms": 4.8
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/uploads/555c292e-4451-4d96-84d3-57fc4bbc887e/chunks/3",
+      "start": 184172.60000002384,
+      "end": 196190.30000001192,
+      "ms": 12017.699999988079,
+      "status": 200,
+      "server": [
+        {
+          "name": "app",
+          "ms": 10.7
+        },
+        {
+          "name": "auth",
+          "ms": 5.9
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/uploads/555c292e-4451-4d96-84d3-57fc4bbc887e/chunks/4",
+      "start": 184790.30000001192,
+      "end": 196245.30000001192,
+      "ms": 11455,
+      "status": 200,
+      "server": [
+        {
+          "name": "app",
+          "ms": 8.6
+        },
+        {
+          "name": "auth",
+          "ms": 4.8
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/uploads/555c292e-4451-4d96-84d3-57fc4bbc887e/chunks/5",
+      "start": 185697,
+      "end": 196443.10000002384,
+      "ms": 10746.100000023842,
+      "status": 200,
+      "server": [
+        {
+          "name": "app",
+          "ms": 22.7
+        },
+        {
+          "name": "auth",
+          "ms": 5.3
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/uploads/555c292e-4451-4d96-84d3-57fc4bbc887e/chunks/6",
+      "start": 196192.80000001192,
+      "end": 207890.89999997616,
+      "ms": 11698.099999964237,
+      "status": 200,
+      "server": [
+        {
+          "name": "app",
+          "ms": 8.3
+        },
+        {
+          "name": "auth",
+          "ms": 5.3
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/uploads/555c292e-4451-4d96-84d3-57fc4bbc887e/chunks/7",
+      "start": 196246.30000001192,
+      "end": 207703.39999997616,
+      "ms": 11457.099999964237,
+      "status": 200,
+      "server": [
+        {
+          "name": "app",
+          "ms": 6.9
+        },
+        {
+          "name": "auth",
+          "ms": 5.1
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/uploads/555c292e-4451-4d96-84d3-57fc4bbc887e/complete",
+      "start": 207893.19999998808,
+      "end": 208825.30000001192,
+      "ms": 932.1000000238419,
+      "status": 202,
+      "server": [
+        {
+          "name": "app",
+          "ms": 474.5
+        },
+        {
+          "name": "auth",
+          "ms": 4.5
+        }
+      ]
+    }
+  ]
+}
