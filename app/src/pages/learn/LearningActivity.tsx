@@ -69,7 +69,8 @@ export function LearningActivity({ run, reasoning, thinkingMs, live, answerStart
   const steps = run?.steps ?? [];
   const thought = reasoning?.trim() ?? '';
   const expandable = steps.length > 0 || thought.length > 0;
-  const open = expandable && (manual ?? (running && !answerStarted));
+  // 默认收起：进行中只显示当前步骤和计时，点开才看步骤明细与模型的思考原文
+  const open = expandable && manual === true;
 
   const elapsed = running
     ? now - (run?.startedAt || startedAt || mountedAt.current)
