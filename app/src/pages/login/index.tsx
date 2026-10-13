@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { Seal } from '../../components/shell/Seal';
-import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
+import { ArrowRight, Ticket, UserRound } from 'lucide-react';
+import {
+  Badge, Button, Field, Input, Segmented, Spinner, type SegmentOption,
+} from '../../components/ui';
 import type { XiaobaiMood } from '../../types';
-import { Icon } from '../../components/ui/Icon';
 import { useAuthStore, type AuthField } from '../../store/authStore';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import {
@@ -13,12 +14,15 @@ import {
 import { EmailCodeField } from './EmailCodeField';
 import { PhoneCodeField } from './PhoneCodeField';
 import { PasswordResetForm } from './PasswordResetForm';
-import paper from '../../styles/paper.module.css';
+import { StoryPanel } from './StoryPanel';
+import { FormFeedback, IssueText, PasswordInput } from './fields';
 import fs from './EmailCodeField.module.css';
 import s from './login.module.css';
 
 type Mode = 'login' | 'register' | 'reset';
 type LoginMethod = 'password' | 'phone-code' | 'email-code';
+
+const FEEDBACK_ID = 'auth-feedback';
 
 function containsControlCharacter(value: string): boolean {
   for (const character of value) {
@@ -33,18 +37,33 @@ function safeNextPath(value: string): string {
     && !value.includes('\\') && !containsControlCharacter(value) ? value : '/learn';
 }
 
-function AuthNotice({ title, text, role, children }: {
-  title: string; text: string; role?: 'status' | 'alert'; children?: ReactNode;
+/** 左故事栏 + 右内容栏。表单与各种状态提示共用同一副骨架，切换时不跳版 */
+function AuthFrame({ mood, voice, labelledBy, children }: {
+  mood: XiaobaiMood; voice: string; labelledBy: string; children: ReactNode;
 }) {
   return (
     <div className={s.page}>
-      <section className={s.notice} role={role} aria-live={role === 'status' ? 'polite' : undefined}>
-        <Seal className={s.noticeSeal} />
-        <h1 className={s.noticeTitle}>{title}</h1>
-        <p className={s.noticeText}>{text}</p>
-        {children}
+      <StoryPanel mood={mood} voice={voice} />
+      <section className={s.panel} aria-labelledby={labelledBy}>
+        <div className={s.sheet}>{children}</div>
       </section>
     </div>
+  );
+}
+
+function AuthNotice({ mood, voice, title, text, role, pending, children }: {
+  mood: XiaobaiMood; voice: string; title: string; text: string;
+  role?: 'status' | 'alert'; pending?: boolean; children?: ReactNode;
+}) {
+  return (
+    <AuthFrame mood={mood} voice={voice} labelledBy="auth-notice-title">
+      <div className={s.notice} role={role} aria-live={role === 'status' ? 'polite' : undefined}>
+        {pending ? <Spinner size={20} className={s.noticeSpinner} /> : null}
+        <h1 className={s.title} id="auth-notice-title">{title}</h1>
+        <p className={s.sub}>{text}</p>
+        {children ? <div className={s.noticeActions}>{children}</div> : null}
+      </div>
+    </AuthFrame>
   );
 }
 
@@ -103,21 +122,23 @@ export default function LoginPage() {
   const usesEmailCode = bindingEmail || registering || emailCodeLogin;
   const usesPhoneCode = bindingPhone || phoneCodeLogin;
   const usesAccountCredentials = !bindingRequired && !emailCodeLogin && !phoneCodeLogin && !resetting;
-  // 卷首小白:表情与台词随当前帖态切换(纯派生,不入 store)
+  // 帖上小白的表情与台词随当前步骤切换（纯派生，不入 store）
   const avatarMood: XiaobaiMood = bindingRequired ? 'thinking'
     : registering ? 'shy'
-    : resetting ? 'thinking'
-    : 'curious';
-  const plateVoice = bindingPhone ? '先生的名帖，还差一枚手机印记。'
+      : resetting ? 'thinking'
+        : 'curious';
+  const voice = bindingPhone ? '名帖还差一枚手机印记。'
     : bindingEmail ? '先生的名帖，还差一笔。'
-    : registering ? '初次递帖？小生这厢有礼。'
-    : resetting ? '先生忘了口令？小生陪先生慢慢寻。'
-    : emailCodeLogin || phoneCodeLogin ? '先生今日也来教小生？'
-    : '先生又来授业了？';
+      : registering ? '初次递帖？小生这厢有礼。'
+        : resetting ? '忘了口令？小生陪先生寻。'
+          : emailCodeLogin || phoneCodeLogin ? '先生今日也来教小生？'
+            : '先生又来授业了？';
+  const title = bindingPhone ? '绑定手机号'
+    : bindingEmail ? '绑定邮箱'
+      : resetting ? '找回密码'
+        : registering ? '注册' : '登录';
   const next = safeNextPath(params.get('next') || '/learn');
-  useDocTitle(bindingPhone ? '绑定验证手机号'
-    : bindingEmail ? '补录验证邮箱'
-      : resetting ? '找回密码' : registering ? '递帖注册' : '登入书斋');
+  useDocTitle(title);
 
   useEffect(() => {
     if (!issue || issue.field === 'form') return;
@@ -226,13 +247,13 @@ export default function LoginPage() {
       : phoneCodeLogin
         ? await requestSmsCode(mainlandPhoneToE164(phone), 'login', operation.signal)
         : bindingEmail
-      ? await requestEmailBindingCode(normalizedEmail, currentPassword, operation.signal)
-      : await requestEmailCode(
-        normalizedEmail,
-        registering ? 'register' : 'login',
-        registering && inviteRequired ? invite.trim() : undefined,
-        operation.signal,
-      );
+          ? await requestEmailBindingCode(normalizedEmail, currentPassword, operation.signal)
+          : await requestEmailCode(
+            normalizedEmail,
+            registering ? 'register' : 'login',
+            registering && inviteRequired ? invite.trim() : undefined,
+            operation.signal,
+          );
     if (operation.signal.aborted) return;
     pendingOperation.current = null;
     setSendingCode(false);
@@ -257,15 +278,17 @@ export default function LoginPage() {
     const result = bindingPhone
       ? await bindPhone(mainlandPhoneToE164(phone), code, currentPassword)
       : bindingEmail
-      ? await bindEmail(normalizedEmail, code, currentPassword)
-      : registering
-        ? await register({ username: username.trim(), password, email: normalizedEmail, code,
-          ...(inviteRequired ? { invite: invite.trim() } : {}) })
-        : phoneCodeLogin
-          ? await loginWithPhoneCode(mainlandPhoneToE164(phone), code, operation.signal)
-          : emailCodeLogin
-          ? await loginWithEmailCode(normalizedEmail, code, operation.signal)
-          : await login(username.trim(), password, operation.signal);
+        ? await bindEmail(normalizedEmail, code, currentPassword)
+        : registering
+          ? await register({
+            username: username.trim(), password, email: normalizedEmail, code,
+            ...(inviteRequired ? { invite: invite.trim() } : {}),
+          })
+          : phoneCodeLogin
+            ? await loginWithPhoneCode(mainlandPhoneToE164(phone), code, operation.signal)
+            : emailCodeLogin
+              ? await loginWithEmailCode(normalizedEmail, code, operation.signal)
+              : await login(username.trim(), password, operation.signal);
     if (operation.signal.aborted) return;
     pendingOperation.current = null;
     setBusy(false);
@@ -298,186 +321,293 @@ export default function LoginPage() {
   };
 
   if (status === 'unknown') {
-    return <AuthNotice title="正在验帖" text="正在确认书斋登录状态…" role="status" />;
+    return (
+      <AuthNotice mood="idle" voice="稍候，小生去看看门牌。" role="status" pending
+        title="正在确认登录状态" text="马上就好。" />
+    );
   }
   if (status === 'unavailable') {
     return (
-      <AuthNotice title="暂时无法验帖" text="认证服务暂时无法连接，请检查网络后重试。" role="alert">
-        <button className={s.noticeAction} type="button" onClick={() => void init()}>重新连接</button>
+      <AuthNotice mood="confused" voice="书斋的门一时推不开。" role="alert"
+        title="暂时连不上" text="认证服务暂时无法连接，请检查网络后重试。">
+        <Button variant="solid" size="lg" onClick={() => void init()}>重新连接</Button>
       </AuthNotice>
     );
   }
   if (status === 'standalone' || (status === 'authed' && !bindingRequired)) {
     const standalone = status === 'standalone';
     return (
-      <AuthNotice title={standalone ? '本地演示模式' : '已在书斋中'}
-        text={standalone ? '当前为本地演示，无需登录即可使用全部功能。' : '你已登录，可以直接给小白开讲。'}>
-        <Link className={s.noticeLink} to={standalone ? '/learn' : next}>
-          {standalone ? '回学习终端' : '继续'} <Icon name="arrow-right" size={16} />
-        </Link>
+      <AuthNotice mood="happy"
+        voice={standalone ? '今日不必递帖，先生请进。' : '先生已在书斋，随时开讲。'}
+        title={standalone ? '本地演示模式' : '你已登录'}
+        text={standalone ? '当前为本地演示，无需登录即可使用全部功能。' : '可以直接去给小白开讲。'}>
+        <Button asChild variant="solid" size="lg" iconRight={<ArrowRight size={16} strokeWidth={1.75} />}>
+          <Link to={standalone ? '/learn' : next}>{standalone ? '进入学习终端' : '继续'}</Link>
+        </Button>
       </AuthNotice>
     );
   }
 
+  const locked = busy || sendingCode;
+  const activeMethod: LoginMethod = emailCodeLogin ? 'email-code' : phoneCodeLogin ? 'phone-code' : 'password';
+  const methodOptions: SegmentOption<LoginMethod>[] = [
+    { value: 'password', label: '密码', disabled: locked },
+    ...(emailAuthAvailable
+      ? [{ value: 'email-code' as const, label: '邮箱验证码', disabled: locked }] : []),
+    ...(smsAuthAvailable
+      ? [{ value: 'phone-code' as const, label: '手机验证码', disabled: locked }] : []),
+  ];
+  const choosingMethod = !bindingRequired && !registering && !resetting && methodOptions.length > 1;
+
+  // 出错字段在当前表单里就地提示；不在表单里的（或表单级错误）落到统一提示行
+  const shownFields: AuthField[] = [
+    ...(registering && inviteRequired ? ['invite' as const] : []),
+    ...(bindingRequired ? ['currentPassword' as const] : []),
+    ...(usesEmailCode ? ['email' as const, 'code' as const] : []),
+    ...(usesPhoneCode ? ['phone' as const, 'code' as const] : []),
+    ...(usesAccountCredentials ? ['username' as const, 'password' as const] : []),
+  ];
+  const fieldIssue = issue && shownFields.includes(issue.field) ? issue : null;
+  const formIssue = issue && !fieldIssue ? issue : null;
+  const errorFor = (field: AuthField) => fieldIssue?.field === field
+    ? <IssueText id={FEEDBACK_ID}>{fieldIssue.message}</IssueText> : undefined;
+  const describedBy = (field: AuthField, hintId?: string) => issue?.field === field ? FEEDBACK_ID : hintId;
+
+  const sub = bindingPhone ? '验证常用手机号并确认当前密码，完成后才能继续使用。'
+    : bindingEmail ? '确认当前密码并验证常用邮箱，完成后才能继续使用。'
+      : resetting ? '优先用已绑定的手机号验证，也可改用已验证邮箱。'
+        : registering ? '验证邮箱，再设置账号和密码。'
+          : phoneCodeLogin ? '输入手机号和短信验证码，无需密码。'
+            : emailCodeLogin ? '输入邮箱和验证码，无需密码。'
+              : '使用邮箱或账号与密码登录。';
+  const footNote = bindingPhone ? '完成手机验证前无法进入学习页面；忘记密码可退出后用已验证邮箱找回'
+    : bindingEmail ? '验证完成前，此账号无法进入学习页面'
+      : resetting ? '仅向已绑定手机号或已验证邮箱发送验证码'
+        : registering ? '邮箱验证为必填项'
+          : canRegister ? null : '新账号注册暂未开放';
+  const submitLabel = busy
+    ? bindingRequired ? '正在核验…' : registering ? '正在注册…' : '正在登录…'
+    : bindingRequired ? '验证并继续' : registering ? '注册' : '登录';
+
   return (
-    <div className={s.page}>
-      <div className={s.split}>
-        <aside className={s.plate}>
-          <p className={s.plateVoice} lang="zh">{plateVoice}</p>
-          <div className={s.plateAvatar} aria-hidden="true">
-            <XiaobaiAvatar mood={avatarMood} level={1} variant="paper" size={150} />
-          </div>
-          <p className={s.plateMotto} lang="zh">教<br />然<br />后<br />知<br />困</p>
-          <p className={s.plateGloss}>把知识讲给会追问的<br />AI 学生「小白」听</p>
-          <Seal className={s.straddleSeal} />
-        </aside>
+    <AuthFrame mood={avatarMood} voice={voice} labelledBy="auth-title">
+      <header className={s.head}>
+        <h1 className={s.title} id="auth-title">{title}</h1>
+        <p className={s.sub}>{sub}</p>
+      </header>
 
-        <section className={s.form} aria-labelledby="auth-title">
-          <span className={s.ticketGrain} aria-hidden="true" />
-          <span className={s.punch} aria-hidden="true" />
-          <span className={`${paper.verticalRail} ${s.rail}`} aria-hidden="true">听课证 · ADMISSION</span>
-          <p className={s.eyebrow}>{bindingRequired ? '补全名帖' : resetting ? '重校名帖' : '凭帖入斋'}</p>
-          <h1 className={s.title} id="auth-title">
-            {bindingPhone ? '绑定验证手机号'
-              : bindingEmail ? '绑定验证邮箱'
-                : resetting ? '找回密码' : registering ? '递帖注册' : '登入书斋'}
-          </h1>
-          <p className={s.sub}>{bindingPhone
-            ? '验证常用手机号并确认当前密码。完成前不能访问书斋业务页面。'
-            : bindingEmail
-            ? '输入当前密码并验证常用邮箱。完成后才能继续使用备课与讲解功能。'
-            : resetting
-            ? '优先用已绑定手机号验证；无法使用手机号时，可切换已验证邮箱找回。'
-            : registering
-            ? '验证邮箱并设置账号，注册成功后即可入斋。'
-            : phoneCodeLogin ? '输入手机号与短信验证码，无需密码即可继续。'
-              : emailCodeLogin ? '输入邮箱验证码，无需密码即可继续。' : '使用邮箱或账号与密码登录。'}</p>
+      {bindingRequired ? (
+        <div className={s.account}>
+          <span className={s.accountIcon} aria-hidden="true">
+            <UserRound size={16} strokeWidth={1.75} />
+          </span>
+          <span className={s.accountText}>
+            <span>当前账号</span>
+            <strong>{user}</strong>
+          </span>
+          <Badge tone="warn" dot>{bindingPhone ? '手机号待验证' : '邮箱待验证'}</Badge>
+        </div>
+      ) : null}
 
-          {bindingRequired ? (
-            <div className={s.bindingAccount} aria-label={`当前账号 ${user ?? ''}`}>
-              <span>当前账号</span>
-              <strong>{user}</strong>
-              <small>{bindingPhone ? '手机号待验证' : '邮箱待验证'}</small>
-            </div>
-          ) : !resetting ? <div className={s.modes} role="group" aria-label="登录或注册">
-            <button type="button" className={s.modeBtn} aria-pressed={!registering}
-              disabled={busy || sendingCode}
-              onClick={() => switchMode('login')}>登录</button>
-            {canRegister ? <button type="button" className={s.modeBtn} aria-pressed={registering}
-              disabled={busy || sendingCode}
-              onClick={() => switchMode('register')}>注册</button> : null}
-          </div> : null}
-          {!bindingRequired && !registering && !resetting ? (
-            <div className={s.loginMethods} role="group" aria-label="登录方式">
-              <button type="button" className={s.methodSwitch} disabled={busy || sendingCode}
-                aria-pressed={loginMethod === 'password'} aria-controls="auth-form"
-                onClick={() => switchLoginMethod('password')}>账号密码</button>
-              {smsAuthAvailable ? <button type="button" className={s.methodSwitch}
-                disabled={busy || sendingCode} aria-pressed={phoneCodeLogin} aria-controls="auth-form"
-                onClick={() => switchLoginMethod('phone-code')}>手机验证码</button> : null}
-              {emailAuthAvailable ? <button type="button" className={s.methodSwitch}
-                disabled={busy || sendingCode} aria-pressed={emailCodeLogin} aria-controls="auth-form"
-                onClick={() => switchLoginMethod('email-code')}>邮箱验证码</button> : null}
-            </div>
-          ) : null}
+      {choosingMethod ? (
+        <Segmented
+          block
+          label="登录方式"
+          value={activeMethod}
+          options={methodOptions}
+          onChange={switchLoginMethod}
+        />
+      ) : null}
 
-          <div className={`${paper.perfLine} ${s.tear}`} aria-hidden="true">
-            <span className={paper.perfNote}>沿此撕开 · 听课存根</span>
-          </div>
+      {resetting ? (
+        <PasswordResetForm
+          onBusyChange={setResetFlowBusy}
+          onSuccess={() => navigate(next, { replace: true })}
+        />
+      ) : (
+        <form className={s.form} id="auth-form" noValidate aria-busy={locked} onSubmit={onSubmit}>
+          <fieldset className={s.fieldset} disabled={busy}>
+            {registering && inviteRequired ? (
+              <Field
+                label="邀请码"
+                htmlFor="auth-invite"
+                hint={<span id="auth-invite-hint">获取注册验证码前需要先核验邀请码</span>}
+                error={errorFor('invite')}
+              >
+                <Input
+                  id="auth-invite"
+                  wrapClassName={fs.wrap}
+                  className={fs.autofill}
+                  type="text"
+                  value={invite}
+                  autoComplete="off"
+                  spellCheck={false}
+                  required
+                  invalid={issue?.field === 'invite'}
+                  leading={<Ticket size={16} strokeWidth={1.75} />}
+                  aria-describedby={describedBy('invite', 'auth-invite-hint')}
+                  onChange={(event) => { setInvite(event.target.value); clearFieldIssue('invite'); }}
+                />
+              </Field>
+            ) : null}
 
-          {resetting ? (
-            <PasswordResetForm
-              onBusyChange={setResetFlowBusy}
-              onSuccess={() => navigate(next, { replace: true })}
-            />
-          ) : <form className={s.fields} id="auth-form" noValidate aria-busy={busy || sendingCode} onSubmit={onSubmit}>
-            <fieldset className={s.fieldset} disabled={busy}>
-              {registering && inviteRequired ? <label className={fs.field} htmlFor="auth-invite">
-                <span className={fs.label}>邀请码</span>
-                <input id="auth-invite" className={fs.input} type="text" value={invite}
-                  autoComplete="off" spellCheck={false} required aria-invalid={issue?.field === 'invite' || undefined}
-                  aria-describedby={issue?.field === 'invite' ? 'auth-feedback' : 'auth-invite-hint'}
-                  onChange={(event) => { setInvite(event.target.value); clearFieldIssue('invite'); }} />
-                <span className={fs.hint} id="auth-invite-hint">获取注册验证码前需要先核验邀请码</span>
-              </label> : null}
-              {bindingRequired ? <label className={fs.field} htmlFor="auth-current-password">
-                <span className={fs.label}>当前账号密码</span>
-                <input id="auth-current-password" className={fs.input} type="password" value={currentPassword}
-                  autoFocus autoComplete="current-password" maxLength={128} required disabled={sendingCode}
-                  aria-invalid={issue?.field === 'currentPassword' || undefined}
-                  aria-describedby={issue?.field === 'currentPassword' ? 'auth-feedback' : 'auth-current-password-hint'}
-                  onChange={(event) => { setCurrentPassword(event.target.value); clearFieldIssue('currentPassword'); }} />
-                <span className={fs.hint} id="auth-current-password-hint">发码与绑定前都需要再次确认</span>
-              </label> : null}
-              {usesEmailCode ? <EmailCodeField email={email} code={code} issueField={issue?.field}
-                sending={sendingCode} cooldown={cooldown} onEmailChange={changeEmail}
+            {bindingRequired ? (
+              <Field
+                label="当前账号密码"
+                htmlFor="auth-current-password"
+                hint={<span id="auth-current-password-hint">发码与绑定前都需要再次确认</span>}
+                error={errorFor('currentPassword')}
+              >
+                <PasswordInput
+                  id="auth-current-password"
+                  value={currentPassword}
+                  autoFocus
+                  autoComplete="current-password"
+                  maxLength={128}
+                  required
+                  disabled={sendingCode}
+                  invalid={issue?.field === 'currentPassword'}
+                  aria-describedby={describedBy('currentPassword', 'auth-current-password-hint')}
+                  onChange={(event) => {
+                    setCurrentPassword(event.target.value);
+                    clearFieldIssue('currentPassword');
+                  }}
+                />
+              </Field>
+            ) : null}
+
+            {usesEmailCode ? (
+              <EmailCodeField
+                email={email}
+                code={code}
+                issueField={issue?.field}
+                issueMessage={fieldIssue?.message}
+                sending={sendingCode}
+                cooldown={cooldown}
+                onEmailChange={changeEmail}
                 onCodeChange={(value) => { setCode(value); clearFieldIssue('code'); }}
-                onSend={() => void sendCode()} /> : null}
-              {usesPhoneCode ? <PhoneCodeField phone={phone} code={code} issueField={issue?.field}
-                sending={sendingCode} cooldown={cooldown} onPhoneChange={changePhone}
+                onSend={() => void sendCode()}
+              />
+            ) : null}
+
+            {usesPhoneCode ? (
+              <PhoneCodeField
+                phone={phone}
+                code={code}
+                issueField={issue?.field}
+                issueMessage={fieldIssue?.message}
+                sending={sendingCode}
+                cooldown={cooldown}
+                onPhoneChange={changePhone}
                 onCodeChange={(value) => { setCode(value); clearFieldIssue('code'); }}
-                onSend={() => void sendCode()} /> : null}
-              {usesAccountCredentials ? <>
-                <label className={fs.field} htmlFor="auth-username">
-                  <span className={fs.label}>{registering ? '账号' : '邮箱或账号'}</span>
-                  <input id="auth-username" className={fs.input} type="text" value={username}
-                    autoComplete="username" autoCapitalize="none" spellCheck={false}
-                    maxLength={registering ? 20 : 254} required
-                    aria-invalid={issue?.field === 'username' || undefined}
-                    aria-describedby={issue?.field === 'username' ? 'auth-feedback' : registering ? 'auth-name-hint' : undefined}
-                    onChange={(event) => { setUsername(event.target.value); clearFieldIssue('username'); }} />
-                  {registering ? <span className={fs.hint} id="auth-name-hint">2–20 字，可用汉字、字母、数字、_ 或 -</span> : null}
-                </label>
-                <label className={fs.field} htmlFor="auth-password">
-                  <span className={fs.label}>密码</span>
-                  <input id="auth-password" className={fs.input} type="password" value={password}
-                    autoComplete={registering ? 'new-password' : 'current-password'} maxLength={128} required
-                    aria-invalid={issue?.field === 'password' || undefined}
-                    aria-describedby={issue?.field === 'password' ? 'auth-feedback' : registering ? 'auth-password-hint' : undefined}
-                    onChange={(event) => { setPassword(event.target.value); clearFieldIssue('password'); }} />
-                  {registering ? <span className={fs.hint} id="auth-password-hint">至少 8 位</span> : null}
-                </label>
+                onSend={() => void sendCode()}
+              />
+            ) : null}
+
+            {usesAccountCredentials ? (
+              <>
+                <Field
+                  label={registering ? '账号' : '邮箱或账号'}
+                  htmlFor="auth-username"
+                  hint={registering
+                    ? <span id="auth-name-hint">2–20 字，可用汉字、字母、数字、_ 或 -</span> : undefined}
+                  error={errorFor('username')}
+                >
+                  <Input
+                    id="auth-username"
+                    wrapClassName={fs.wrap}
+                    className={fs.autofill}
+                    type="text"
+                    value={username}
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    maxLength={registering ? 20 : 254}
+                    required
+                    invalid={issue?.field === 'username'}
+                    leading={<UserRound size={16} strokeWidth={1.75} />}
+                    aria-describedby={describedBy('username', registering ? 'auth-name-hint' : undefined)}
+                    onChange={(event) => { setUsername(event.target.value); clearFieldIssue('username'); }}
+                  />
+                </Field>
+                <Field
+                  label="密码"
+                  htmlFor="auth-password"
+                  hint={registering ? <span id="auth-password-hint">至少 8 位</span> : undefined}
+                  error={errorFor('password')}
+                >
+                  <PasswordInput
+                    id="auth-password"
+                    value={password}
+                    autoComplete={registering ? 'new-password' : 'current-password'}
+                    maxLength={128}
+                    required
+                    invalid={issue?.field === 'password'}
+                    aria-describedby={describedBy('password', registering ? 'auth-password-hint' : undefined)}
+                    onChange={(event) => { setPassword(event.target.value); clearFieldIssue('password'); }}
+                  />
+                </Field>
                 {!registering && (smsAuthAvailable || emailAuthAvailable) ? (
-                  <button className={s.forgotPassword} type="button" onClick={startPasswordReset}>
-                    忘记密码？用验证码找回
-                  </button>
+                  <div className={s.fieldTail}>
+                    <button className={s.link} type="button" onClick={startPasswordReset}>
+                      忘记密码？
+                    </button>
+                  </div>
                 ) : null}
-              </> : null}
-            </fieldset>
+              </>
+            ) : null}
+          </fieldset>
 
-            <div className={s.feedbackSlot}>
-              {issue ? <p className={s.error} id="auth-feedback" role="alert">{issue.message}</p>
-                : feedback ? <p className={s.success} role="status">{feedback}</p> : null}
-            </div>
-            <button className={s.submit} type="submit" data-busy={busy || undefined}
-              disabled={busy || sendingCode}>{busy
-                ? bindingRequired ? '正在核验…' : registering ? '正在注册…' : '正在登录…'
-                : bindingRequired ? '验证并继续' : registering ? '注册并入斋' : '登录'}</button>
-          </form>}
+          <div className={s.actions}>
+            <FormFeedback
+              id={FEEDBACK_ID}
+              error={formIssue?.message}
+              success={issue ? null : feedback}
+            />
+            <Button type="submit" variant="solid" size="lg" block loading={busy} disabled={locked}>
+              {submitLabel}
+            </Button>
+          </div>
+        </form>
+      )}
 
-          <footer className={s.foot}>
-            <p className={s.footSign}>
-              <span className={s.footSeal} aria-hidden="true">问</span>
-              学伴书斋 · 敬候赐教
-            </p>
-            <div className={s.footRow}>
-              <span>{bindingPhone ? '完成手机验证前无法进入业务页；忘记密码可退出后用已验证邮箱找回'
-                : bindingEmail ? '验证完成前，此账号无法进入使用页面'
-                : resetting ? '仅向已绑定手机号或已验证邮箱发送验证码'
-                : registering ? '邮箱验证为必填项' : canRegister ? '新用户可验证邮箱注册' : '新账号注册暂未开放'}</span>
-              {bindingRequired ? (
-                <button className={s.bindingLogout} type="button" disabled={busy || sendingCode}
-                  onClick={() => void exitBinding()}>退出账号</button>
-              ) : resetting ? (
-                <button className={s.bindingLogout} type="button" disabled={resetFlowBusy}
-                  onClick={() => switchMode('login')}>
-                  {resetFlowBusy ? '正在处理…' : '返回密码登录'}
-                </button>
-              ) : <Link className={s.backLink} to="/learn"><Icon name="arrow-left" size={15} />先看看课程</Link>}
-            </div>
-          </footer>
-        </section>
-      </div>
-    </div>
+      {bindingRequired ? (
+        <p className={s.alt}>
+          <button className={s.link} type="button" disabled={locked} onClick={() => void exitBinding()}>
+            退出账号
+          </button>
+        </p>
+      ) : resetting ? (
+        <p className={s.alt}>
+          <button className={s.link} type="button" disabled={resetFlowBusy}
+            onClick={() => switchMode('login')}>
+            {resetFlowBusy ? '正在处理…' : '返回登录'}
+          </button>
+        </p>
+      ) : registering ? (
+        <p className={s.alt}>
+          <span>已有账号？</span>
+          <button className={s.link} type="button" disabled={locked} onClick={() => switchMode('login')}>
+            登录
+          </button>
+        </p>
+      ) : canRegister ? (
+        <p className={s.alt}>
+          <span>还没有账号？</span>
+          <button className={s.link} type="button" disabled={locked} onClick={() => switchMode('register')}>
+            注册
+          </button>
+        </p>
+      ) : null}
+
+      {footNote || !bindingRequired ? (
+        <footer className={s.foot}>
+          {footNote ? <span>{footNote}</span> : null}
+          {!bindingRequired ? (
+            <Link className={`${s.link} ${s.linkQuiet}`} to="/">返回首页</Link>
+          ) : null}
+        </footer>
+      ) : null}
+    </AuthFrame>
   );
 }

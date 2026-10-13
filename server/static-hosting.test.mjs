@@ -103,6 +103,7 @@ test('main and admin SPAs have isolated fallbacks and cache policies', async (co
     'https://turing.captcha.gtimg.com',
   ]);
   assert.deepEqual(directiveSources(mainCsp, 'frame-src'), [
+    "'self'", 'blob:',
     'https://turing.captcha.qcloud.com',
   ]);
   assert.deepEqual(directiveSources(mainCsp, 'media-src'), [

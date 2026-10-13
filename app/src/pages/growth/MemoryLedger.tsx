@@ -1,8 +1,8 @@
 /**
  * 记忆匣·小白记得的事(2026-08-30):学伴记忆的可见可控层(Anthropic 式「逐条可看、可改、可删、可暂停」)。
  * 位于卷五四层记忆登记册之下,自带 store 选择器,不动 MemoryPanorama。
- * 制式:h3 短题 + 一句话;画像走教师页 .roster 同款登记行;条目按种类分组,细线行,动作只用文字钮;
- * 删除/清空两步确认就地展开(不弹窗);唯一动画是新记下的那一行 global(rise)。
+ * 制式:一张纸质记忆册(data-story);h3 短题 + 一句话;画像是登记行;条目按种类分组,细线行,
+ * 动作用基础件图标钮;删除/清空两步确认就地展开(不弹窗);唯一动画是新记下的那一行 global(rise)。
  * bond 类不列行:卷尾「小白眼里的你」已用第一人称讲同一件事(情分只经画像的「情分」一行露面)。
  */
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
@@ -10,8 +10,12 @@ import type { MemoryItem, MemoryKind } from '../../types';
 import { useAppStore } from '../../store/appStore';
 import { getTopic } from '../../data';
 import { MIN_VISIBLE_CONFIDENCE } from '../../engine/learnerMemory';
+import { Check, ChevronDown, Eye, EyeOff, Pause, Pencil, Pin, Play, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { relDay } from '../../lib/relDay';
-import sec from '../../styles/section.module.css';
+import {
+  Badge, Button, IconButton, Input, Menu, MenuContent, MenuItem, MenuTrigger, cx,
+} from '../../components/ui';
+import paperScope from './paperScope.module.css';
 import m from './MemoryLedger.module.css';
 
 const KIND_GROUPS: { kind: MemoryKind; label: string }[] = [
@@ -117,8 +121,15 @@ export function MemoryLedger() {
 
   const empty = items.length === 0 && !hasProfile;
 
+  const scopeLabel = scope ? `《${studiedTopics.find((t) => t.topicId === scope)?.title ?? '所有课'}》` : '所有课';
+
   return (
-    <section id="memory-ledger" className={m.ledger} aria-labelledby="memory-ledger-title">
+    <section
+      id="memory-ledger"
+      className={cx(m.ledger, paperScope.scope, paperScope.sheet)}
+      data-story
+      aria-labelledby="memory-ledger-title"
+    >
       <div className={m.head}>
         <div className={m.headCopy}>
           <h3 id="memory-ledger-title" className={m.h3}>小白记得的事</h3>
@@ -128,18 +139,19 @@ export function MemoryLedger() {
               : '一条一条写下的，先生可以改、可以删。'}
           </p>
         </div>
-        <button
-          type="button"
-          className={`${m.act} ${paused ? m.actOn : ''}`}
+        <Button
+          size="sm"
+          variant={paused ? 'solid' : 'outline'}
           aria-pressed={paused}
+          icon={paused ? <Play size={14} strokeWidth={1.75} /> : <Pause size={14} strokeWidth={1.75} />}
           onClick={() => setMemoryPaused(!paused)}
         >
-          暂停记忆
-        </button>
+          {paused ? '继续记忆' : '暂停记忆'}
+        </Button>
       </div>
 
       {empty && (
-        <p className={sec.empty}>还没记下什么——讲完一课，小白会把先生的讲法、长处和短板记在这里。</p>
+        <p className={m.empty}>还没记下什么——讲完一课，小白会把先生的讲法、长处和短板记在这里。</p>
       )}
 
       {hasProfile && profile && (
@@ -155,7 +167,14 @@ export function MemoryLedger() {
           </dl>
           <p className={m.meta}>
             <span>整理于 {relDay(profile.updatedAt)} · 凭 {profile.basis.itemCount} 条记忆、{profile.basis.sessionCount} 堂课</span>
-            <button type="button" className={m.textBtn} onClick={recomposeProfile}>重新整理</button>
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<RefreshCw size={13} strokeWidth={1.75} />}
+              onClick={recomposeProfile}
+            >
+              重新整理
+            </Button>
           </p>
         </div>
       )}
@@ -177,12 +196,12 @@ export function MemoryLedger() {
                   return (
                     <li
                       key={it.id}
-                      className={`${m.row} ${it.muted ? m.rowMuted : ''} ${freshId === it.id ? m.rowNew : ''}`}
+                      className={cx(m.row, it.muted && m.rowMuted, freshId === it.id && m.rowNew)}
                     >
                       <div className={m.main}>
                         {editing ? (
-                          <input
-                            className={m.input}
+                          <Input
+                            size="sm"
                             maxLength={60}
                             autoFocus
                             aria-label="编辑这条记忆"
@@ -191,13 +210,17 @@ export function MemoryLedger() {
                             onKeyDown={onEditKey}
                           />
                         ) : (
-                          <p className={m.text}>{it.text}</p>
+                          <p className={m.text}>
+                            {it.pinned && <Pin size={13} strokeWidth={2} className={m.pinMark} aria-hidden="true" />}
+                            {it.text}
+                          </p>
                         )}
                         <div className={m.rowMeta}>
                           {scopeTitle && <span>《{scopeTitle}》</span>}
                           <span>{relDay(it.lastSeenAt)}</span>
-                          {it.source === 'explicit' && <span>先生亲笔</span>}
-                          {observing && <span>还在观察</span>}
+                          {it.source === 'explicit' && <Badge tone="accent">先生亲笔</Badge>}
+                          {observing && <Badge tone="warn">还在观察</Badge>}
+                          {it.muted && <Badge tone="outline" aria-hidden="true">已隐藏</Badge>}
                           {it.muted && <span className={m.srOnly}>已隐藏，不会进入小白的提示</span>}
                           {it.evidence.length > 0 && (
                             <details className={m.ev}>
@@ -216,45 +239,52 @@ export function MemoryLedger() {
                       >
                         {editing ? (
                           <>
-                            <button type="button" className={m.act} onClick={commitEdit}>保存</button>
-                            <button type="button" className={m.act} onClick={cancelEdit}>取消</button>
+                            <Button size="sm" variant="solid" icon={<Check size={14} strokeWidth={2} />} onClick={commitEdit}>保存</Button>
+                            <Button size="sm" variant="ghost" onClick={cancelEdit}>取消</Button>
                           </>
                         ) : confirming ? (
                           <>
                             <span key="ask" className={m.confirm} role="status">删掉这条？</span>
-                            <button
+                            <Button
                               key="yes"
-                              type="button"
-                              className={`${m.act} ${m.danger}`}
+                              size="sm"
+                              variant="danger"
                               onClick={() => { deleteMemory(it.id); setConfirmId(null); settleFocus(); }}
                             >
                               删除
-                            </button>
-                            <button key="no" ref={cancelRef} type="button" className={m.act} onClick={() => setConfirmId(null)}>取消</button>
+                            </Button>
+                            <Button key="no" ref={cancelRef} size="sm" variant="ghost" onClick={() => setConfirmId(null)}>取消</Button>
                           </>
                         ) : (
                           <>
-                            <button key="edit" type="button" className={m.act} onClick={() => beginEdit(it)}>编辑</button>
-                            <button
+                            <IconButton key="edit" size="sm" label="编辑" onClick={() => beginEdit(it)}>
+                              <Pencil size={15} strokeWidth={1.75} />
+                            </IconButton>
+                            <IconButton
                               key="pin"
-                              type="button"
-                              className={`${m.act} ${it.pinned ? m.actOn : ''}`}
+                              size="sm"
+                              label={it.pinned ? '取消固定' : '固定'}
                               aria-pressed={it.pinned}
                               onClick={() => pinMemory(it.id, !it.pinned)}
                             >
-                              固定
-                            </button>
-                            <button key="mute" type="button" className={m.act} onClick={() => muteMemory(it.id, !it.muted)}>
-                              {it.muted ? '取消隐藏' : '隐藏'}
-                            </button>
-                            <button
+                              <Pin size={15} strokeWidth={1.75} />
+                            </IconButton>
+                            <IconButton
+                              key="mute"
+                              size="sm"
+                              label={it.muted ? '取消隐藏' : '隐藏'}
+                              onClick={() => muteMemory(it.id, !it.muted)}
+                            >
+                              {it.muted ? <Eye size={15} strokeWidth={1.75} /> : <EyeOff size={15} strokeWidth={1.75} />}
+                            </IconButton>
+                            <IconButton
                               key="del"
-                              type="button"
-                              className={m.act}
+                              size="sm"
+                              label="删除"
                               onClick={() => { setEditingId(null); setConfirmId(it.id); }}
                             >
-                              删除
-                            </button>
+                              <Trash2 size={15} strokeWidth={1.75} />
+                            </IconButton>
                           </>
                         )}
                       </div>
@@ -268,20 +298,39 @@ export function MemoryLedger() {
       )}
 
       <form className={m.add} onSubmit={submitAdd}>
-        <input
+        <Input
           ref={addInputRef}
-          className={m.input}
+          size="sm"
+          wrapClassName={m.addInput}
           maxLength={60}
           placeholder="记一条给小白，比如：先生开讲前爱先问一句"
           aria-label="记一条给小白"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
         />
-        <select className={m.select} aria-label="这条关于" value={scope} onChange={(e) => setScope(e.target.value)}>
-          <option value="">所有课</option>
-          {studiedTopics.map((t) => <option key={t.topicId} value={t.topicId}>《{t.title}》</option>)}
-        </select>
-        <button type="submit" className={m.btn} disabled={!draft.trim()}>记下</button>
+        <Menu>
+          <MenuTrigger asChild>
+            <Button
+              variant="outline"
+              className={m.scopeBtn}
+              aria-label={`这条关于：${scopeLabel}`}
+              iconRight={<ChevronDown size={14} strokeWidth={1.75} />}
+            >
+              <span className={m.scopeText}>{scopeLabel}</span>
+            </Button>
+          </MenuTrigger>
+          <MenuContent align="end">
+            <MenuItem checked={scope === ''} onSelect={() => setScope('')}>所有课</MenuItem>
+            {studiedTopics.map((t) => (
+              <MenuItem key={t.topicId} checked={scope === t.topicId} onSelect={() => setScope(t.topicId)}>
+                《{t.title}》
+              </MenuItem>
+            ))}
+          </MenuContent>
+        </Menu>
+        <Button type="submit" variant="solid" disabled={!draft.trim()} icon={<Plus size={15} strokeWidth={2} />}>
+          记下
+        </Button>
       </form>
 
       {items.length > 0 && (
@@ -293,22 +342,28 @@ export function MemoryLedger() {
           {confirmId === ALL_CONFIRM ? (
             <>
               <span key="ask" className={m.confirm} role="status">清掉全部 {items.length} 条？</span>
-              <button
+              <Button
                 key="yes"
-                type="button"
-                className={`${m.act} ${m.danger}`}
+                size="sm"
+                variant="danger"
                 onClick={() => { resetMemory(); setConfirmId(null); settleFocus(); }}
               >
                 清空
-              </button>
-              <button key="no" ref={cancelRef} type="button" className={m.act} onClick={() => setConfirmId(null)}>取消</button>
+              </Button>
+              <Button key="no" ref={cancelRef} size="sm" variant="ghost" onClick={() => setConfirmId(null)}>取消</Button>
             </>
           ) : (
             <>
-              <span key="count">共 {items.length} 条 · </span>
-              <button key="open" type="button" className={m.textBtn} onClick={() => { setEditingId(null); setConfirmId(ALL_CONFIRM); }}>
+              <span key="count">共 {items.length} 条</span>
+              <Button
+                key="open"
+                size="sm"
+                variant="ghost"
+                icon={<X size={13} strokeWidth={1.75} />}
+                onClick={() => { setEditingId(null); setConfirmId(ALL_CONFIRM); }}
+              >
                 清空记忆
-              </button>
+              </Button>
             </>
           )}
         </p>

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>互动演示</title>
+    <style>html, body { margin: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; }</style>
+  </head>
+  <body>
+    <script>
+      // AI 课堂互动演示的隔离宿主：父页面用 postMessage 送来一份自包含 HTML，在这里整页替换执行。
+      // 网关给本页单独下发 CSP（sandbox、无网络、无同源），页面只在 sandbox="allow-scripts" 的 iframe 里使用。
+      addEventListener('message', function receive(event) {
+        var data = event.data;
+        if (!data || data.type !== 'xiaobai-sandbox' || typeof data.html !== 'string') return;
+        removeEventListener('message', receive);
+        document.open();
+        document.write(data.html);
+        document.close();
+      });
+      parent.postMessage({ type: 'xiaobai-sandbox-ready' }, '*');
+    </script>
+  </body>
+</html>

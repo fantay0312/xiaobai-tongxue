@@ -1,10 +1,13 @@
 /**
  * 考场作答台 —— 一张试卷 + 一个考生席。
- * 左:试卷本体(卷头/题干/作答栏),小白落笔时墨迹在作答栏里写出来,判定章直接盖在卷面上;
- * 右:考生席(心声气泡 + 小白 + 四拍竖轨)。先生只在场外看,页面上没有任何可代答的入口。
+ * 左:试卷本体(卷头/题干/选项/作答栏),小白落笔时墨迹在作答栏里写出来,判定章直接盖在卷面上,
+ *    判定后红笔批出正解与讲评;
+ * 右:考生席(心声气泡 + 小白 + 四拍进度)。先生只在场外看,页面上没有任何可代答的入口。
+ * 小测只记录每题对错,不记录小白选了哪个错项——答错时只说"没选对",不替它编一个选项。
  */
 import type { RefObject } from 'react';
-import { Icon } from '../../components/ui/Icon';
+import { ArrowRight, BookOpenText, CircleCheck, FastForward, Lightbulb, PenLine } from 'lucide-react';
+import { Button, Progress, cx } from '../../components/ui';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import type { Topic, XiaobaiGlobal, XiaobaiQuizResult } from '../../types';
 import { BEAT_INDEX, EXAM_BEATS, type ExamBeat } from './examStory';
@@ -43,6 +46,15 @@ const BEAT_NOTE: Record<ExamBeat, string> = {
   judged: '判定已落卷,看完可翻下一题。',
 };
 
+const BEAT_ICON = {
+  prompt: BookOpenText,
+  thinking: Lightbulb,
+  writing: PenLine,
+  judged: CircleCheck,
+} satisfies Record<ExamBeat, typeof PenLine>;
+
+const optionKey = (index: number) => String.fromCharCode(65 + index);
+
 export function ExamQuestion({
   topic, quiz, answer, questionIndex, level, beat, point, whisper, thoughtMs,
   reducedMotion, headingRef, onWhisperDone, onSkip, onAdvance,
@@ -50,10 +62,14 @@ export function ExamQuestion({
   const question = topic.quizBank.find((item) => item.id === answer.quizId);
   const total = quiz.answers.length;
   const isLast = questionIndex === total - 1;
-  const inking = beat === 'writing' || beat === 'judged';
-  const mood = beat === 'judged'
+  const judged = beat === 'judged';
+  const inking = beat === 'writing' || judged;
+  const mood = judged
     ? (answer.correct ? 'aha' : 'confused')
     : beat === 'prompt' ? 'curious' : 'thinking';
+  const BeatIcon = BEAT_ICON[beat];
+  // 进度:答完的题数 + 当前题四拍走到哪
+  const progress = questionIndex + (judged ? 1 : BEAT_INDEX[beat] / EXAM_BEATS.length);
 
   return (
     <section className={surface.examDesk} aria-labelledby="question-title">
@@ -63,26 +79,40 @@ export function ExamQuestion({
           <h1 className={s.examTitle}>小白正在独自作答</h1>
         </div>
         <div className={s.headSide}>
-          {/* 答题卡:一排小格,答过的落黛绿,当前格描赭 */}
+          {/* 答题卡:一排小格,答过的按对错落色,当前格描边 */}
           <ol className={s.answerCard} aria-label={`共 ${total} 题,当前第 ${questionIndex + 1} 题`}>
-            {quiz.answers.map((item, index) => (
-              <li
-                key={item.quizId}
-                className={`${s.cell} ${index < questionIndex ? s.cellPast : ''} ${index === questionIndex ? s.cellNow : ''}`}
-                aria-current={index === questionIndex ? 'step' : undefined}
-              >
-                <span aria-hidden="true">{index + 1}</span>
-                <span className={surface.srOnly}>第 {index + 1} 题</span>
-              </li>
-            ))}
+            {quiz.answers.map((item, index) => {
+              const revealed = index < questionIndex || (index === questionIndex && judged);
+              return (
+                <li
+                  key={item.quizId}
+                  className={cx(s.cell, index === questionIndex && s.cellNow)}
+                  data-result={revealed ? (item.correct ? 'right' : 'wrong') : undefined}
+                  aria-current={index === questionIndex ? 'step' : undefined}
+                >
+                  <span aria-hidden="true">{index + 1}</span>
+                  <span className={surface.srOnly}>
+                    第 {index + 1} 题{revealed ? (item.correct ? ',答稳了' : ',还没答稳') : ''}
+                  </span>
+                </li>
+              );
+            })}
           </ol>
-          <button type="button" className={s.skipBtn} onClick={onSkip}>直接放榜</button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onSkip}
+            iconRight={<FastForward size={14} strokeWidth={1.75} />}
+          >
+            直接放榜
+          </Button>
         </div>
       </header>
+      <Progress className={s.progress} value={progress} max={total} label="考试进度" />
 
       <div className={s.stage}>
         {/* ── 试卷 ── */}
-        <div key={questionIndex} className={`${s.sheet} ${paper.texture}`}>
+        <div key={questionIndex} className={cx(s.sheet, paper.texture)} data-story>
           <div className={s.sheetHead}>
             <span className={s.sheetSubject}>{topic.title} · 随堂测验</span>
             <span className={s.sheetNo}>第 {questionIndex + 1} 题<small> / 共 {total} 题</small></span>
@@ -92,13 +122,35 @@ export function ExamQuestion({
           </h2>
           {question?.code ? <pre className={s.code}><code>{question.code}</code></pre> : null}
 
+          {question && question.options.length > 0 ? (
+            <ol className={s.options} aria-label="选项">
+              {question.options.map((option, index) => {
+                const isAnswer = judged && index === question.answerIndex;
+                return (
+                  <li
+                    key={`${question.id}-${index}`}
+                    className={cx(s.option, isAnswer && s.optionAnswer, isAnswer && answer.correct && s.optionPicked)}
+                  >
+                    <span className={s.optionKey}>{optionKey(index)}</span>
+                    <span className={s.optionText}>{option}</span>
+                    {isAnswer ? (
+                      <svg className={s.optionTick} viewBox="0 0 22 22" width="20" height="20" aria-hidden="true">
+                        <path d="M3.5 12.5c2 1.6 3.6 3.4 4.8 5.4C10.6 12 14 7.4 19 3.6" />
+                      </svg>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ol>
+          ) : null}
+
           <div className={s.answerArea}>
             <span className={s.answerLabel}>小白作答</span>
             <div className={s.answerLines} aria-hidden="true">
               {INK_LINES.map((d, index) => (
                 <svg
                   key={d}
-                  className={`${s.inkLine} ${inking ? s.inkLineOn : ''} ${beat === 'judged' ? s.inkLineDone : ''}`}
+                  className={cx(s.inkLine, inking && s.inkLineOn, judged && s.inkLineDone)}
                   viewBox="0 0 320 24"
                   preserveAspectRatio="none"
                   style={{ animationDelay: `${index * 420}ms` }}
@@ -112,12 +164,32 @@ export function ExamQuestion({
                 </span>
               ) : null}
             </div>
+            {judged ? (
+              <div className={cx(s.stamp, answer.correct ? s.stampGood : s.stampBad)} role="status">
+                <span className={s.stampGlyph} aria-hidden="true">{answer.correct ? '稳' : '疑'}</span>
+                <span className={s.stampText}>{answer.correct ? '朱印 · 答稳了' : '墨痕 · 还没答稳'}</span>
+              </div>
+            ) : null}
           </div>
 
-          {beat === 'judged' ? (
-            <div className={`${s.stamp} ${answer.correct ? s.stampGood : s.stampBad}`} role="status">
-              <span className={s.stampGlyph} aria-hidden="true">{answer.correct ? '稳' : '疑'}</span>
-              <span className={s.stampText}>{answer.correct ? '朱印 · 答稳了' : '墨痕 · 还没答稳'}</span>
+          {/* 红笔批语:小白答得怎样、正解是哪项、为什么 */}
+          {judged ? (
+            <div className={s.verdict}>
+              <p className={s.verdictRow}>
+                <b>小白</b>
+                <span>
+                  {answer.correct
+                    ? (question ? `选了 ${optionKey(question.answerIndex)},答稳了。` : '答稳了。')
+                    : '没有选对这一题。'}
+                </span>
+              </p>
+              {question ? (
+                <p className={s.verdictRow}>
+                  <b>正解</b>
+                  <span>{optionKey(question.answerIndex)} · {question.options[question.answerIndex]}</span>
+                </p>
+              ) : null}
+              {question?.explanation ? <p className={s.verdictNote}>批:{question.explanation}</p> : null}
             </div>
           ) : null}
           <span className={s.sheetFold} aria-hidden="true" />
@@ -140,13 +212,13 @@ export function ExamQuestion({
             </p>
           </div>
           <div className={s.seatAvatar}>
-            <XiaobaiAvatar mood={mood} level={level} variant="paper" size={150} />
+            <XiaobaiAvatar mood={mood} level={level} variant="paper" size={140} />
           </div>
           <ol className={s.beatRail} aria-label="每题四拍:亮题、心声、落笔、判定">
             {EXAM_BEATS.map((item, index) => (
               <li
                 key={item.key}
-                className={`${s.beat} ${index < BEAT_INDEX[beat] ? s.beatPast : ''} ${item.key === beat ? s.beatNow : ''}`}
+                className={cx(s.beat, index < BEAT_INDEX[beat] && s.beatPast, item.key === beat && s.beatNow)}
                 aria-current={item.key === beat ? 'step' : undefined}
               >
                 <span className={s.beatNo}>{item.no}</span>
@@ -159,13 +231,19 @@ export function ExamQuestion({
 
       <footer className={s.foot}>
         <p className={s.footNote} aria-live="polite">
-          <Icon name={beat === 'prompt' ? 'book-open' : beat === 'thinking' ? 'lightbulb' : beat === 'writing' ? 'pen' : 'circle-check'} size={16} />
+          <BeatIcon size={16} strokeWidth={1.75} aria-hidden="true" />
           {BEAT_NOTE[beat]}
         </p>
-        <button type="button" className={surface.nextBtn} disabled={beat !== 'judged'} onClick={onAdvance}>
+        <Button
+          variant="solid"
+          size="lg"
+          className={s.nextBtn}
+          disabled={!judged}
+          onClick={onAdvance}
+          iconRight={<ArrowRight size={17} strokeWidth={1.75} />}
+        >
           {isLast ? '去放榜' : '看下一题'}
-          <Icon name="arrow-right" size={17} />
-        </button>
+        </Button>
       </footer>
     </section>
   );

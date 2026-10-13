@@ -1,5 +1,6 @@
+import { Download, FileText, FolderOpen, Image as ImageIcon, Trash2, Upload, X } from 'lucide-react';
 import { TRANSCRIPT_ACCEPT, type TranscriptMeta } from '../../lib/transcripts';
-import { Icon } from '../ui/Icon';
+import { Badge, Button, IconButton, Spinner } from '../ui';
 import { useTranscriptUpload } from './useTranscriptUpload';
 import s from './TranscriptUpload.module.css';
 
@@ -33,7 +34,7 @@ export function TranscriptUpload({ enabled = true }: TranscriptUploadProps) {
   if (!enabled) {
     return (
       <div className={s.restricted}>
-        <span className={s.emptyMark} aria-hidden="true">档</span>
+        <span className={s.emptyMark} aria-hidden="true"><FolderOpen size={20} strokeWidth={1.75} /></span>
         <p>完成验证邮箱绑定后，就可以在这里上传与管理自己的成绩单。</p>
       </div>
     );
@@ -42,6 +43,7 @@ export function TranscriptUpload({ enabled = true }: TranscriptUploadProps) {
   const { transcript, action, previewUrl } = model;
   const busy = action !== null;
   const isImage = transcript?.mime.startsWith('image/') ?? false;
+  const FileGlyph = isImage ? ImageIcon : FileText;
   return (
     <div className={s.root} aria-busy={model.loading || busy}>
       <input
@@ -56,13 +58,13 @@ export function TranscriptUpload({ enabled = true }: TranscriptUploadProps) {
 
       {model.loading ? (
         <p className={s.loading} role="status">
-          <span className={s.loadingDot} aria-hidden="true" />正在翻阅你的档案袋…
+          <Spinner size={15} />正在读取你的成绩单…
         </p>
       ) : transcript ? (
         <article className={s.record} aria-label={`已上传成绩单：${transcript.name}`}>
           <div className={s.fileRow}>
             <span className={s.fileGlyph} data-image={isImage || undefined} aria-hidden="true">
-              <Icon name={isImage ? 'image' : 'file'} size={20} />
+              <FileGlyph size={20} strokeWidth={1.75} />
             </span>
             <div className={s.fileCopy}>
               <strong title={transcript.name}>{transcript.name}</strong>
@@ -70,76 +72,87 @@ export function TranscriptUpload({ enabled = true }: TranscriptUploadProps) {
                 {mimeLabel(transcript.mime)} · {formatBytes(transcript.size)} · {formatUpdatedAt(transcript.updatedAt)}
               </span>
             </div>
-            <span className={s.archiveBadge}>已归档</span>
+            <Badge tone="ok" dot className={s.archiveBadge}>已归档</Badge>
           </div>
 
           <div className={s.actions} aria-label="成绩单操作">
-            <button
+            <Button
               ref={model.previewButtonRef}
-              type="button"
-              className={s.actionBtn}
+              variant="outline"
+              size="sm"
+              icon={<FileGlyph size={14} strokeWidth={1.75} />}
               disabled={busy}
               onClick={() => void model.handlePreview()}
             >
-              <Icon name={isImage ? 'image' : 'file'} size={15} />
               {action === 'preview' ? '正在准备…' : previewUrl ? '收起预览' : '预览'}
-            </button>
-            <button type="button" className={s.actionBtn} disabled={busy} onClick={() => void model.handleDownload()}>
-              <Icon name="download" size={15} />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<Download size={14} strokeWidth={1.75} />}
+              disabled={busy}
+              onClick={() => void model.handleDownload()}
+            >
               {action === 'download' ? '正在准备…' : '下载'}
-            </button>
-            <button type="button" className={s.replaceBtn} disabled={busy} onClick={model.chooseFile}>
-              <Icon name="upload" size={15} />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<Upload size={14} strokeWidth={1.75} />}
+              disabled={busy}
+              onClick={model.chooseFile}
+            >
               {action === 'upload' ? '正在上传…' : '替换'}
-            </button>
-            <button
+            </Button>
+            <Button
               ref={model.deleteButtonRef}
-              type="button"
               className={s.deleteBtn}
+              variant="ghost"
+              size="sm"
+              icon={<Trash2 size={14} strokeWidth={1.75} />}
               disabled={busy}
               aria-expanded={model.confirmingDelete}
               aria-controls="transcript-delete-confirm"
               onClick={model.requestDelete}
             >
-              <Icon name="trash" size={15} />删除
-            </button>
+              删除
+            </Button>
           </div>
 
           {model.confirmingDelete ? (
             <div className={s.confirm} id="transcript-delete-confirm" role="group" aria-labelledby="transcript-delete-copy">
               <p id="transcript-delete-copy">删除后无法恢复，之后可以重新上传。</p>
               <div>
-                <button type="button" className={s.cancelBtn} disabled={busy} onClick={model.cancelDelete}>取消</button>
-                <button
+                <Button variant="ghost" size="sm" disabled={busy} onClick={model.cancelDelete}>取消</Button>
+                <Button
                   ref={model.confirmDeleteRef}
-                  type="button"
-                  className={s.confirmDeleteBtn}
+                  variant="danger"
+                  size="sm"
                   disabled={busy}
                   onClick={() => void model.handleDelete()}
                 >
                   {action === 'delete' ? '正在删除…' : '确认删除'}
-                </button>
+                </Button>
               </div>
             </div>
           ) : null}
         </article>
       ) : (
         <div className={s.empty}>
-          <span className={s.emptyMark} aria-hidden="true">档</span>
+          <span className={s.emptyMark} aria-hidden="true"><FolderOpen size={20} strokeWidth={1.75} /></span>
           <div className={s.emptyCopy}>
             <strong>还没有成绩单</strong>
             <p>上传 PDF 或图片，单个文件不超过 8 MB。</p>
           </div>
-          <button
+          <Button
             ref={model.emptyUploadRef}
-            type="button"
-            className={s.uploadBtn}
+            variant="solid"
+            icon={<Upload size={15} strokeWidth={1.75} />}
             disabled={busy}
             onClick={model.chooseFile}
           >
-            <Icon name="upload" size={16} />
             {action === 'upload' ? '正在上传…' : '上传成绩单'}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -150,9 +163,9 @@ export function TranscriptUpload({ enabled = true }: TranscriptUploadProps) {
               <strong id="transcript-preview-title">成绩单预览</strong>
               <span>{transcript.name}</span>
             </div>
-            <button type="button" onClick={() => model.releasePreview(true)} aria-label="收起成绩单预览">
-              <Icon name="x" size={17} />
-            </button>
+            <IconButton label="收起成绩单预览" size="sm" onClick={() => model.releasePreview(true)}>
+              <X size={16} strokeWidth={1.75} />
+            </IconButton>
           </header>
           {isImage ? (
             <img src={previewUrl} alt={`成绩单预览：${transcript.name}`} />

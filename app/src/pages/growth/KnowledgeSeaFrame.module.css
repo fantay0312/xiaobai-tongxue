@@ -1,9 +1,11 @@
-/* 学问星海外框:一块圆角深空,顶部课程页签 + 视图切换,底部一行计数与提示。
-   不再在框内重复页面题头,也不铺双线装裱。 */
+/* 学问星海外框:一块自成一体的圆角深空场景卡,顶部课程页签 + 视图切换,底部一行计数与提示。
+   配色只用 --star-sky-*,不随页面皮肤变;浅色皮肤里是一扇夜窗,深色皮肤里靠蓝色柔光与细边立住。 */
 
 .atlas {
-  overflow: clip;
-  border-radius: var(--radius-l);
+  border-radius: var(--r-xl);
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--star-sky-blue) 22%, transparent),
+    0 18px 44px -20px color-mix(in oklch, var(--star-sky-blue) 55%, transparent);
 }
 
 .chart {
@@ -14,10 +16,9 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border: 1px solid color-mix(in oklch, var(--sky-moon) 12%, transparent);
-  border-radius: var(--radius-l);
+  border: 0;
+  border-radius: var(--r-xl);
   background: var(--sky-deep);
-  box-shadow: var(--shadow-paper);
   color: var(--sky-moon);
 }
 
@@ -91,9 +92,19 @@
   background: color-mix(in oklch, var(--sky-moon) 11%, transparent);
 }
 
+.courseNav button:active,
+.viewSwitch button:active { transform: scale(0.97); }
+
+.courseNav button:focus-visible,
+.viewSwitch button:focus-visible,
+.listRealm button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--sky-blue) 70%, transparent);
+}
+
 .courseNav small {
-  font-family: var(--font-code);
-  font-size: 0.7rem;
+  font-size: var(--fs-tiny);
+  font-variant-numeric: tabular-nums;
   opacity: 0.6;
 }
 
@@ -262,7 +273,7 @@
 .listRealm small {
   display: block;
   margin-top: 0.1rem;
-  font-size: 0.68rem;
+  font-size: var(--fs-tiny);
 }
 
 @media (max-width: 720px) {

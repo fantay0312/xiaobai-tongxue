@@ -8,7 +8,8 @@ import {
   type CommercePrice,
   type CommerceSummary,
 } from '../../lib/commerce';
-import { Icon } from '../ui/Icon';
+import { CircleAlert, CircleCheck, Ticket } from 'lucide-react';
+import { Badge, Button, Input, Skeleton } from '../ui';
 import styles from './ProfileCommerce.module.css';
 import sections from './ProfileCommerceSections.module.css';
 
@@ -126,9 +127,11 @@ export function ProfileCommerce() {
 
   if (loading) {
     return (
-      <div className={styles.loading} role="status">
-        <span />
-        <p><strong>正在翻阅订阅账簿</strong><small>核对套餐、权益与用量积分…</small></p>
+      <div className={styles.loading} role="status" aria-label="正在读取订阅与用量">
+        <Skeleton height={92} radius="var(--r-lg)" />
+        <Skeleton width="38%" height={12} />
+        <Skeleton height={44} />
+        <Skeleton height={44} />
       </div>
     );
   }
@@ -137,29 +140,25 @@ export function ProfileCommerce() {
     <div className={styles.root}>
       {issue ? (
         <div className={styles.issue} role="alert">
-          <Icon name="circle-x" size={18} />
+          <CircleAlert size={17} strokeWidth={1.75} />
           <p>{issue}</p>
-          <button type="button" onClick={() => void load()}>重新读取</button>
+          <Button variant="outline" size="sm" onClick={() => void load()}>重新读取</Button>
         </div>
       ) : null}
 
       <section className={styles.account} aria-labelledby="commerce-account-title">
-        <div className={styles.accountHead}>
-          <div>
-            <p>USAGE LEDGER · 用量账簿</p>
-            <h3 id="commerce-account-title">
-              {summary?.subscription?.planName ?? '基础套餐'}
-            </h3>
-            <span>
-              {summary?.subscription
-                ? `有效至 ${formatDate(summary.subscription.endsAt)}`
-                : '当前未开通付费订阅'}
-            </span>
-          </div>
-          <div className={styles.balance}>
-            <span>可用积分</span>
-            <strong>{formatPoints(summary?.wallet.available ?? '0')}</strong>
-          </div>
+        <div className={styles.plan}>
+          <span className={styles.eyebrow}>当前套餐</span>
+          <h4 id="commerce-account-title">{summary?.subscription?.planName ?? '基础套餐'}</h4>
+          <span className={styles.planNote}>
+            {summary?.subscription
+              ? `有效至 ${formatDate(summary.subscription.endsAt)}`
+              : '当前未开通付费订阅'}
+          </span>
+        </div>
+        <div className={styles.balance}>
+          <span className={styles.eyebrow}>可用积分</span>
+          <strong>{formatPoints(summary?.wallet.available ?? '0')}</strong>
         </div>
         <p className={styles.boundary}>
           用量积分只用于 AI 能力与服务权益，不计入学习等级、成长评价或排名。
@@ -167,19 +166,22 @@ export function ProfileCommerce() {
       </section>
 
       <section className={sections.section} aria-labelledby="effective-title">
-        <header>
+        <header className={sections.head}>
           <div>
-            <h3 id="effective-title">当前生效权益</h3>
+            <h4 id="effective-title">当前生效权益</h4>
             <p>由套餐、CDK 与临时授权合并计算，以服务端结果为准。</p>
           </div>
-          <span>{activeFeatures.length} 项能力可用</span>
+          <Badge tone={activeFeatures.length ? 'accent' : 'neutral'}>{activeFeatures.length} 项能力可用</Badge>
         </header>
         {summary?.entitlements.length ? (
           <ul className={sections.entitlements}>
             {summary.entitlements.map((entitlement) => (
               <li key={`${entitlement.key}-${entitlement.expiresAt ?? 'lasting'}`}>
-                <Icon name="circle-check" size={17} />
-                <span><strong>{entitlement.name}</strong><small>{entitlement.key}</small></span>
+                <CircleCheck size={16} strokeWidth={1.75} />
+                <span className={sections.entitlementCopy}>
+                  <strong>{entitlement.name}</strong>
+                  <small>{entitlement.key}</small>
+                </span>
                 <em>
                   {formatEntitlementValue(entitlement.value)}
                   {' · '}
@@ -197,9 +199,9 @@ export function ProfileCommerce() {
       </section>
 
       <section className={sections.section} aria-labelledby="plans-title">
-        <header>
+        <header className={sections.head}>
           <div>
-            <h3 id="plans-title">开放套餐</h3>
+            <h4 id="plans-title">开放套餐</h4>
             <p>
               目录由运营后台发布；首版由运营授予或 CDK 开通，价格仅作套餐展示。
               历史订阅始终保留开通时的权益快照。
@@ -210,13 +212,13 @@ export function ProfileCommerce() {
           <div className={sections.plans}>
             {catalog.plans.map((plan) => (
               <article key={plan.id}>
-                <div>
-                  <p>{plan.code || 'PLAN'}</p>
-                  <h4>{plan.name}</h4>
-                  <span>{plan.tagline || plan.description}</span>
+                <span className={sections.planCode}>{plan.code || 'PLAN'}</span>
+                <h5>{plan.name}</h5>
+                <p>{plan.tagline || plan.description}</p>
+                <div className={sections.planFoot}>
+                  <strong>{plan.prices[0] ? priceLabel(plan.prices[0]) : '待公布'}</strong>
+                  <small>{plan.entitlements.length} 项权益</small>
                 </div>
-                <strong>{plan.prices[0] ? priceLabel(plan.prices[0]) : '待公布'}</strong>
-                <small>{plan.entitlements.length} 项权益</small>
               </article>
             ))}
           </div>
@@ -229,35 +231,36 @@ export function ProfileCommerce() {
       </section>
 
       <section className={sections.section} aria-labelledby="redeem-title">
-        <header>
+        <header className={sections.head}>
           <div>
-            <h3 id="redeem-title">兑换权益</h3>
+            <h4 id="redeem-title">兑换权益</h4>
             <p>CDK 可发放用量积分、订阅时长或指定功能权益。</p>
           </div>
         </header>
         <form className={sections.redeem} onSubmit={(event) => void submitCode(event)}>
-          <label htmlFor="commerce-cdk">兑换码</label>
-          <div>
-            <input
+          <label className={sections.srOnly} htmlFor="commerce-cdk">兑换码</label>
+          <div className={sections.redeemRow}>
+            <Input
               id="commerce-cdk"
+              className={sections.codeInput}
               value={code}
               onChange={(event) => setCode(event.target.value)}
+              leading={<Ticket size={16} strokeWidth={1.75} />}
               autoComplete="off"
               spellCheck={false}
               maxLength={96}
               placeholder="XXXX-XXXX-XXXX"
               aria-describedby="commerce-cdk-note"
             />
-            <button type="submit" disabled={redeeming || !code.trim()}>
-              <Icon name="ticket" size={17} />
-              {redeeming ? '正在核销…' : '兑换 CDK'}
-            </button>
+            <Button type="submit" variant="solid" size="lg" loading={redeeming} disabled={!code.trim()}>
+              {redeeming ? '正在核销…' : '兑换'}
+            </Button>
           </div>
           <small id="commerce-cdk-note">每个兑换请求都由服务器原子核销，重复提交不会重复到账。</small>
         </form>
         {redemptionNotice ? (
           <p className={styles.success} role="status">
-            <Icon name="circle-check" size={18} />
+            <CircleCheck size={17} strokeWidth={1.75} />
             {redemptionNotice}
           </p>
         ) : null}

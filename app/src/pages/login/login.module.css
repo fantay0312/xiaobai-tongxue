@@ -1,648 +1,488 @@
+/* 登录 / 注册 / 找回密码 / 绑定
+   宽屏：左故事栏（品牌 + 拜师帖）+ 右表单栏；窄屏：单列，故事栏缩成页头。
+   外层只用皮肤令牌；拜师帖在 data-story 里用老学堂的纸墨与楷体。 */
+
 .page {
-  flex: 1;
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: minmax(380px, 0.9fr) minmax(480px, 1.1fr);
   width: 100%;
-  display: grid;
-  place-items: center;
-  padding: var(--gap-loose) var(--gap);
-  background:
-    radial-gradient(85% 80% at 88% 12%, color-mix(in oklch, var(--lilac) 34%, transparent), transparent 62%),
-    radial-gradient(80% 72% at 6% 96%, color-mix(in oklch, var(--reed) 30%, transparent), transparent 64%);
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--ui-font);
 }
 
-/* 双栏册页卡:左卷首(plate)+右拜师帖(form),骑缝印压接缝成破格瞬间 */
-.split {
-  position: relative;
-  isolation: isolate;
-  display: grid;
-  grid-template-columns: minmax(17rem, 0.72fr) minmax(25rem, 1fr);
-  align-items: stretch;
-  width: min(920px, 100%);
-  background: var(--paper);
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-l);
-  box-shadow: var(--shadow-lift);
-  overflow: hidden;
-  animation: global(rise) var(--t-slow) var(--ease-out) backwards;
-}
+/* 外壳若还带着页头，就由外壳的 flex 分配剩余高度，不再强占整屏 */
+header ~ main .page { min-height: 0; }
 
-/* 宣纸纤维:交错低透明细线,只在无子背景处(帖身/form)透出,plate 自带底纹遮住 */
-.split::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    repeating-linear-gradient(94deg, transparent 0 4px, color-mix(in oklch, var(--ink) 4%, transparent) 4px 5px),
-    repeating-linear-gradient(-88deg, transparent 0 7px, color-mix(in oklch, var(--lilac-ink) 4%, transparent) 7px 8px);
-  mix-blend-mode: multiply;
-}
-
-.plate {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto minmax(7rem, 1fr) auto;
-  align-items: center;
-  gap: var(--gap-tight);
-  padding: clamp(1.5rem, 3vw, 2.5rem);
-  background:
-    radial-gradient(120% 90% at 14% 92%, var(--reed-wash), transparent 62%),
-    radial-gradient(110% 82% at 92% 8%, var(--lilac-wash), transparent 66%),
-    linear-gradient(155deg, var(--paper-warm), var(--paper-blush));
-  border-right: 1px solid var(--paper-edge);
-}
-
-.plate::after {
-  content: '';
-  position: absolute;
-  top: 1.5rem;
-  right: -1px;
-  bottom: 1.5rem;
-  width: 2px;
-  background: linear-gradient(var(--lilac), var(--reed), transparent);
-}
-
-/* 小白台词丝带:楷体一句,左侧丁香缎带边,随 mode 切换语气 */
-.plateVoice {
-  grid-column: 1;
-  grid-row: 1;
-  justify-self: start;
-  max-width: 14rem;
-  padding: 0.3rem 0.7rem 0.35rem;
-  background: color-mix(in oklch, var(--paper) 78%, transparent);
-  border-left: 2.5px solid var(--lilac);
-  border-radius: 0 var(--radius-tag) var(--radius-tag) 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  line-height: 1.7;
-  letter-spacing: 0.03em;
-  color: var(--ink-soft);
-}
-
-.plateAvatar {
-  grid-column: 1;
-  grid-row: 2;
-  justify-self: center;
-  align-self: center;
-  filter: drop-shadow(0 0.7rem 1rem color-mix(in oklch, var(--lilac) 24%, transparent));
-}
-
-/* 《学记》精神锚点「教然后知困」:竖排宋体(serif 声部),题头档 */
-.plateMotto {
-  grid-column: 2;
-  grid-row: 1 / -1;
-  align-self: start;
-  font-family: var(--font-serif);
-  font-size: clamp(1.65rem, 3vw, 2.2rem);
-  font-weight: 600;
-  line-height: 1.28;
-  letter-spacing: 0.05em;
-  color: var(--ink);
-}
-
-.plateGloss {
-  grid-column: 1;
-  grid-row: 3;
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  line-height: 1.9;
-  letter-spacing: 0.04em;
-  color: var(--ink-soft);
-}
-
-/* 骑缝印:品牌章绝对定位压过 plate/form 接缝竖线,落印般轻旋入位——本页唯一破格 */
-.straddleSeal {
-  position: absolute;
-  right: 0;
-  bottom: clamp(1.8rem, 20%, 3.6rem);
-  z-index: 4;
-  width: 3.35rem;
-  height: 3.35rem;
-  transform: translate(50%, 0) rotate(-8deg);
-  /* 章已换成小白同学(靛蓝),投影随之从朱砂改走墨调,否则蓝章配红影发脏 */
-  filter: drop-shadow(0 4px 10px color-mix(in oklch, var(--ink) 18%, transparent));
-  animation: sealDrop var(--t-slow) var(--ease-out) 200ms backwards;
-}
-
-@keyframes sealDrop {
-  from { opacity: 0; transform: translate(50%, -0.5rem) rotate(-26deg) scale(1.12); }
-  to { opacity: 1; transform: translate(50%, 0) rotate(-8deg) scale(1); }
-}
-
-/* 帖身:信封双框 + 右上折角 + 帖首眉批 + 底部落款(技法借 story/letter,勿跨模块 import) */
-.form {
-  position: relative;
-  isolation: isolate;
+/* ── 故事栏 ── */
+.story {
+  /* 帖子两侧缺口要露出「桌面」的颜色，跟着所在底色走 */
+  --desk: var(--sidebar);
   display: flex;
   flex-direction: column;
-  padding: clamp(1.75rem, 3.6vw, 2.9rem);
+  min-width: 0;
+  padding: 20px 32px 40px;
+  border-right: 1px solid var(--border);
+  background: var(--desk);
 }
 
-/* 信封双框:1px 界框 + 3px 纸垫 + 内衬细线,压在文本层下(z-index:-1) */
-.form::before {
-  content: '';
-  position: absolute;
-  inset: clamp(0.75rem, 1.5vw, 1.15rem);
-  z-index: -1;
-  pointer-events: none;
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-s);
-  box-shadow: inset 0 0 0 3px var(--paper), inset 0 0 0 4px var(--paper-edge);
-  animation: letterIn var(--t-slow) var(--ease-out) 200ms backwards;
-}
-
-/* 右上折角:外半片露页色(像裁掉的角),内半片压深一档折翼 */
-.form::after {
-  content: '';
-  position: absolute;
-  top: clamp(0.75rem, 1.5vw, 1.15rem);
-  right: clamp(0.75rem, 1.5vw, 1.15rem);
-  z-index: -1;
-  pointer-events: none;
-  width: 1.3rem;
-  height: 1.3rem;
-  background: linear-gradient(225deg, var(--paper) 48%, var(--paper-edge) 48%);
-}
-
-/* 展信:自上沿揭开轻轻落定(borrow letter :31-42);仅界框动,文本不位移 */
-@keyframes letterIn {
-  from {
-    opacity: 0;
-    clip-path: inset(0 0 62% 0 round var(--radius-s));
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    clip-path: inset(0 0 0 0 round var(--radius-s));
-    transform: none;
-  }
-}
-
-/* ── 听课证工艺:纸纹 / 检票挂孔 / 贴边索票号 / 撕票线 ── */
-
-/* 票纸颗粒:帖身自带的分形噪点(form::before 已占用作信封框,故独立浮层铺纹) */
-.ticketGrain {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' fill='white'/%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.15'/%3E%3C/svg%3E");
-  opacity: 0.32;
-  mix-blend-mode: multiply;
-}
-
-/* 检票挂孔:票顶缘中央的半圆钥匙卡挂孔(内容左对齐,顶心留白不压字) */
-.punch {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  z-index: 2;
-  width: 4.6rem;
-  height: 1.5rem;
-  transform: translateX(-50%);
-  background: var(--paper);
-  border: 1px solid var(--paper-edge);
-  border-top: 0;
-  border-radius: 0 0 999px 999px;
-  box-shadow: inset 0 -2px 5px var(--ink-wash);
-  pointer-events: none;
-}
-
-/* 贴边索票号:票右缘竖排铅字小字(verticalRail 供排版,本类只定位) */
-.rail {
-  position: absolute;
-  top: 50%;
-  right: clamp(0.35rem, 1vw, 0.7rem);
-  z-index: 2;
-  transform: translateY(-50%);
-  color: var(--ink-faint);
-  pointer-events: none;
-}
-
-/* 撕票线:票根(题头+双签)与正票(填帖)之间的虚线裁切位,配 perfNote 小字 */
-.tear {
-  margin: var(--gap-tight) 0 var(--gap);
-  padding-top: 0.5rem;
-}
-
-/* 票首眉批:打字机小签(编号/眉批档)+ 赭陶裁票短划,压在衬线票名之上 */
-.eyebrow {
+.brand {
+  align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
-  margin-bottom: 0.5rem;
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  text-transform: uppercase;
-  letter-spacing: var(--track-label);
-  color: var(--azure);
+  gap: 10px;
+  margin-left: -8px;
+  padding: 6px 12px 6px 8px;
+  border-radius: var(--r-md);
+  color: var(--text);
+  font: 600 var(--fz-lg) / 1 var(--ui-font);
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  transition: background var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
 }
 
-.eyebrow::before {
-  content: '';
-  flex: none;
-  width: 0.9rem;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--lilac);
+.brand:hover { background: var(--hover); }
+.brand:active { background: var(--active); transform: scale(0.98); }
+.brand:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+.brandMark {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  object-fit: cover;
+  box-shadow: var(--shadow-1);
 }
 
-/* 票名:衬线题头(宋体/加拉蒙),weight 600 —— 题头一律走 serif 声部 */
-.title {
+.storyBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding-block: 32px;
+}
+
+.pitch,
+.card {
+  width: min(384px, 100%);
+}
+
+.pitchTitle {
+  color: var(--text);
+  font: 600 var(--fz-3xl) / 1.25 var(--ui-font);
+  letter-spacing: -0.01em;
+}
+
+.pitchText {
+  margin-top: 8px;
+  color: var(--text-3);
+  font-size: var(--fz-lg);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+/* ── 拜师帖（data-story：以下颜色与字体均为故事岛内的纸墨变量） ── */
+.card {
+  position: relative;
+  padding: 20px 24px 24px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  background: linear-gradient(165deg, var(--paper), var(--paper-warm));
+  box-shadow: var(--shadow-paper);
   font-family: var(--font-serif);
-  font-size: var(--fs-title);
-  font-weight: 600;
-  letter-spacing: 0.02em;
+}
+
+.cardHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.cardKind {
   color: var(--ink);
+  font: 700 var(--fz-xl) / 1 var(--font-display);
+  letter-spacing: 0.2em;
+}
+
+.cardSerial {
+  color: var(--ink-faint);
+  font: var(--fz-xs) / 1 var(--font-typewriter);
+  letter-spacing: 0.08em;
+}
+
+.lead {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* 头像组件按 px 定尺寸；这里用变量接管，窄屏才能缩小 */
+.portrait {
+  --portrait: 104px;
+  flex: none;
+  display: block;
+}
+
+.portrait > div {
+  width: var(--portrait) !important;
+  height: var(--portrait) !important;
+}
+
+.leadText { min-width: 0; }
+
+.motto {
+  color: var(--ink);
+  font: 700 var(--fz-3xl) / 1.3 var(--font-display);
+  letter-spacing: 0.16em;
+  white-space: nowrap;
+}
+
+.voice {
+  margin-top: 8px;
+  color: var(--terra-ink);
+  font: var(--fz-lg) / 1.6 var(--font-display);
+}
+
+.gloss {
+  margin-top: 16px;
+  color: var(--ink-soft);
+  font-size: var(--fz-sm);
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+
+/* 撕线：虚线 + 两侧半圆缺口。缺口是压在帖边上的半个圆，填桌面色，连边线一起盖住 */
+.perf {
+  position: relative;
+  height: 0;
+  margin: 20px -24px;
+  border-top: 1px dashed var(--line-strong);
+}
+
+.perf::before,
+.perf::after {
+  content: '';
+  position: absolute;
+  top: -11px;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--desk);
+}
+
+.perf::before {
+  left: -11px;
+  clip-path: inset(0 0 0 50%);
+}
+
+.perf::after {
+  right: -11px;
+  clip-path: inset(0 50% 0 0);
+}
+
+.stepsTitle {
+  margin-bottom: 12px;
+  color: var(--ink-faint);
+  font: var(--fz-xs) / 1 var(--font-typewriter);
+  letter-spacing: 0.14em;
+}
+
+.steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.steps li {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 12px;
+  padding-right: 56px;
+  color: var(--ink-soft);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+
+.steps b {
+  color: var(--ink);
+  font: 700 var(--fz-lg) / 1.4 var(--font-display);
+}
+
+/* 朱印：压在帖子右下角 */
+.stamp {
+  position: absolute;
+  right: 22px;
+  bottom: 22px;
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border: 2px solid var(--story-seal);
+  border-radius: var(--radius-s);
+  color: var(--story-seal);
+  font: 700 var(--fz-lg) / 1.15 var(--font-display);
+  letter-spacing: 0.08em;
+  writing-mode: vertical-rl;
+  opacity: 0.86;
+  transform: rotate(-5deg);
+}
+
+/* ── 表单栏 ──
+   顶端定位而不是垂直居中：切换登录方式、冒出错误提示时，标题不跟着上下跳 */
+.panel {
+  display: grid;
+  place-items: start center;
+  min-width: 0;
+  padding: clamp(48px, 16vh, 180px) 32px 48px;
+}
+
+.sheet {
+  display: grid;
+  gap: 24px;
+  width: min(400px, 100%);
+  animation: sheetIn var(--dur-3) var(--ease) backwards;
+}
+
+@keyframes sheetIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.head {
+  display: grid;
+  gap: 8px;
+}
+
+.title {
+  color: var(--text);
+  font: 600 var(--fz-3xl) / 1.2 var(--ui-font);
+  letter-spacing: -0.01em;
 }
 
 .sub {
-  max-width: 27em;
-  margin: 0.45rem 0 var(--gap);
-  color: var(--ink-soft);
-  font-size: var(--fs-small);
-  line-height: 1.75;
+  color: var(--text-3);
+  font-size: var(--fz-md);
+  line-height: 1.6;
+  text-wrap: pretty;
 }
 
-/* 双签纸签制式:选中态如贴上一枚带丁香签头的纸签,远处一眼可辨 */
-.modes {
+/* 绑定步骤：当前账号一行 */
+.account {
   display: flex;
-  gap: var(--gap-hair);
-  margin-bottom: var(--gap);
-  border-bottom: 1px solid var(--paper-edge);
-}
-
-.modeBtn {
-  position: relative;
-  min-height: 44px;
-  padding: 0.5rem 1.05rem 0.6rem;
-  border: 1px solid transparent;
-  border-bottom: 0;
-  border-radius: var(--radius-s) var(--radius-s) 0 0;
-  background: none;
-  color: var(--ink-faint);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-small);
-  text-transform: uppercase;
-  letter-spacing: var(--track-label);
-  transition: color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
-}
-
-.modeBtn:hover { color: var(--ink-soft); background: color-mix(in oklch, var(--paper) 55%, transparent); }
-
-.modeBtn[aria-pressed='true'] {
-  color: var(--ink);
-  background: var(--paper);
-  border-color: var(--paper-edge);
-  box-shadow: inset 0 2.5px 0 var(--lilac);
-  cursor: default;
-}
-
-/* 签脚压住 modes 基线,让选中签与帖身连成一片 */
-.modeBtn[aria-pressed='true']::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  bottom: -1px;
-  left: 0;
-  height: 2px;
-  background: var(--paper);
-}
-
-.modeBtn:disabled { cursor: wait; opacity: 0.58; }
-
-.loginMethods {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap-hair);
-  margin: calc(-1 * var(--gap-hair)) 0 0.15rem;
-}
-
-.methodSwitch {
-  min-height: 44px;
-  padding: 0.45rem 0.7rem;
-  border: 1px solid transparent;
-  border-radius: var(--radius-tag);
-  background: transparent;
-  color: var(--ink-faint);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.04em;
-}
-
-.methodSwitch:hover { color: var(--ink); background: var(--ink-wash); }
-.methodSwitch[aria-pressed='true'] {
-  border-color: color-mix(in oklab, var(--azure) 38%, var(--paper-edge));
-  background: var(--azure-wash);
-  color: var(--azure-deep);
-}
-.methodSwitch:disabled { color: var(--ink-faint); cursor: wait; }
-
-.forgotPassword {
-  align-self: flex-end;
-  min-height: 44px;
-  margin-top: calc(-1 * var(--gap-hair));
-  padding: 0.35rem 0;
-  border: 0;
-  background: transparent;
-  color: var(--azure-deep);
-  font-size: var(--fs-small);
-  text-decoration: underline dotted;
-  text-underline-offset: 0.25em;
-}
-
-.forgotPassword:hover { color: var(--ink); }
-.forgotPassword:disabled { color: var(--ink-faint); cursor: wait; }
-
-.bindingAccount {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--gap-tight);
-  margin: 0.15rem 0 var(--gap);
-  padding: 0.75rem 0;
-  border-block: 1px solid var(--paper-edge);
-  color: var(--ink-faint);
-  font-size: var(--fs-tiny);
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-lg);
+  background: var(--inset);
 }
 
-.bindingAccount strong {
+.accountIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-2);
+  box-shadow: var(--shadow-1);
+}
+
+.accountText {
+  flex: 1;
+  display: grid;
+  gap: 2px;
   min-width: 0;
+}
+
+.accountText span {
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.3;
+}
+
+.accountText strong {
   overflow: hidden;
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  letter-spacing: 0.06em;
+  color: var(--text);
+  font: 600 var(--fz-md) / 1.3 var(--ui-font);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.bindingAccount small {
-  padding-left: var(--gap-tight);
-  border-left: 1px solid var(--cinnabar-wash);
-  color: var(--cinnabar);
-  font-size: var(--fs-tiny);
-  white-space: nowrap;
-}
-
-.fields,
-.fieldset {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-tight);
+.form {
+  display: grid;
+  gap: 20px;
 }
 
 .fieldset {
+  display: grid;
+  gap: 16px;
   min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
 }
 
-.feedbackSlot {
-  min-height: 1.55rem;
-  margin-top: 0.25rem;
+/* 「忘记密码？」贴在密码框右下 */
+.fieldTail {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -8px;
 }
 
-/* 朱批:反馈行左侧一道朱笔竖线(错误朱砂/成功芦青),feedbackSlot 已留位不抖版 */
-.error,
-.success {
-  position: relative;
-  margin: 0;
-  padding-left: 0.85rem;
-  font-size: var(--fs-small);
-  animation: global(rise) var(--t-med) var(--ease-out) backwards;
-}
+.actions { min-width: 0; }
 
-.error::before,
-.success::before {
-  content: '';
-  position: absolute;
-  top: 0.12em;
-  bottom: 0.12em;
-  left: 0;
-  width: 3px;
-  border-radius: 1px;
-}
-
-.error { color: var(--cinnabar); }
-.error::before { background: linear-gradient(var(--cinnabar), color-mix(in oklch, var(--cinnabar) 32%, transparent)); }
-
-.success { color: var(--jade-ink); }
-.success::before { background: linear-gradient(var(--jade), color-mix(in oklch, var(--jade) 32%, transparent)); }
-
-/* 落印入斋:印泥色钤章按钮,悬停轻旋落定(仅 transform/背景色)。
-   [登记破格] 本页第二处破格(另一处=骑缝印 straddleSeal):submit 按「落印」隐喻走印泥红,
-   属印章豁免的刻意延伸,与全站 azure 主 CTA 约定的分叉经审查确认保留——审查勿再报警。 */
-.submit {
-  position: relative;
-  min-height: 44px;
-  margin-top: 0.2rem;
-  padding: 0.72rem;
+/* 文字链：次要动作一律用它，不再另起按钮 */
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: -2px -6px;
+  padding: 2px 6px;
   border: 0;
-  border-radius: var(--radius-tag);
-  background: color-mix(in oklch, var(--seal-red) 80%, var(--ink) 20%);
-  box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--paper) 32%, transparent);
-  color: var(--paper);
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-indent: 0.22em;
-  transition: background var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
+  border-radius: var(--r-xs);
+  background: none;
+  color: var(--accent);
+  font: 500 var(--fz-sm) / 1.5 var(--ui-font);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
 }
 
-.submit:hover:not(:disabled) {
-  background: color-mix(in oklch, var(--seal-red) 68%, var(--ink) 32%);
-  transform: rotate(-1.2deg) translateY(-1px);
+.link:hover:not(:disabled) {
+  background: var(--accent-softer);
+  color: var(--accent-hover);
 }
 
-.submit:active:not(:disabled) { transform: rotate(0deg) translateY(1px) scale(0.99); }
-.submit:disabled { opacity: 0.55; cursor: not-allowed; }
-.submit[data-busy='true'] { opacity: 1; cursor: progress; }
+.link:active:not(:disabled) { background: var(--accent-soft); }
+.link:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 
-/* 底部落款区:小白私章 + 学伴书斋署名,与提示/返回行分层 */
-/* 底部落款区:票券底缝细则走打字机小签(页脚小字档);footSign 另立署名声部 */
+.link:disabled {
+  color: var(--text-4);
+  cursor: not-allowed;
+}
+
+.linkQuiet { color: var(--text-3); }
+
+.linkQuiet:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.linkQuiet:active:not(:disabled) { background: var(--active); }
+
+.alt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.5;
+}
+
 .foot {
   display: flex;
-  flex-direction: column;
-  gap: var(--gap-tight);
-  margin-top: var(--gap);
-  padding-top: var(--gap-tight);
-  border-top: 1px solid var(--paper-edge);
-  color: var(--ink-faint);
-  font-family: var(--font-typewriter);
-  letter-spacing: 0.04em;
-  font-size: var(--fs-tiny);
-}
-
-.footSign {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--gap-hair);
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  letter-spacing: 0.14em;
-  color: var(--ink-soft);
-}
-
-.footSeal {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 1.6rem;
-  height: 1.6rem;
-  border: 1.5px solid var(--seal-red);
-  border-radius: var(--radius-tag);
-  color: var(--seal-red);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  font-weight: 700;
-  transform: rotate(-4deg);
-}
-
-.footRow {
-  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--gap-tight);
+  gap: 8px 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.6;
 }
 
-.backLink,
-.noticeLink,
-.noticeAction {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  color: var(--azure-deep);
-  font-family: var(--font-display);
-  text-decoration: none;
-}
+.foot .link { font-size: var(--fz-xs); }
 
-.backLink { gap: var(--gap-hair); white-space: nowrap; }
-.backLink:hover { color: var(--ink); }
-
-.bindingLogout {
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--ink-faint);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  text-decoration: underline dotted;
-  text-underline-offset: 0.25em;
-  white-space: nowrap;
-}
-
-.bindingLogout:hover:not(:disabled) { color: var(--cinnabar); }
-.bindingLogout:disabled { cursor: wait; opacity: 0.55; }
-
+/* 状态提示（确认登录态 / 连不上 / 已登录 / 本地演示） */
 .notice {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+
+.noticeSpinner {
+  margin-bottom: 8px;
+  color: var(--text-3);
+}
+
+.noticeActions {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--gap-tight);
-  width: min(420px, 100%);
-  padding: clamp(1.75rem, 4vw, 2.75rem);
-  background: var(--paper);
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-l);
-  box-shadow: var(--shadow-paper);
-  animation: global(rise) var(--t-slow) var(--ease-out) backwards;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
 }
 
-.noticeSeal { width: 2.75rem; height: 2.75rem; transform: rotate(-3deg); }
-.noticeTitle { margin-top: 0.25rem; color: var(--ink); font-family: var(--font-serif); font-weight: 600; font-size: var(--fs-title); }
-.noticeText { color: var(--ink-soft); font-size: var(--fs-small); line-height: 1.8; }
-.noticeLink { gap: var(--gap-hair); }
-.noticeLink:hover { text-decoration: underline; }
+/* ── 窄屏：单列，故事栏只留品牌行和帖子的头一行 ── */
+@media (max-width: 899px) {
+  .page {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
 
-.noticeAction {
-  padding: 0;
-  border: 0;
-  background: none;
-  font-size: var(--fs-body);
-}
-
-.noticeAction:hover { color: var(--ink); text-decoration: underline; }
-
-@media (max-width: 720px) {
-  .split { grid-template-columns: minmax(0, 1fr); }
-  /* 单栏时票右缘吃紧,索票号竖签让位 */
-  .rail { display: none; }
-  /* 中屏保帖:卷首横向压条,仍留住帖首箴言 + 一句台词,帖身不塌 */
-  .plate {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-rows: auto auto;
-    align-items: center;
-    column-gap: var(--gap);
-    row-gap: var(--gap-hair);
-    min-height: 5.5rem;
-    padding: var(--gap-tight) var(--gap);
+  .story {
+    --desk: var(--bg);
+    padding: 12px 20px 0;
     border-right: 0;
-    border-bottom: 1px solid var(--paper-edge);
   }
-  .plate::after { display: none; }
-  .plateVoice {
-    grid-column: 2;
-    grid-row: 1;
-    align-self: end;
-    max-width: none;
+
+  .storyBody {
+    flex: none;
+    gap: 0;
+    padding-block: 12px 0;
   }
-  .plateAvatar {
-    grid-column: 1;
-    grid-row: 1 / -1;
+
+  .pitch,
+  .cardHead,
+  .gloss,
+  .perf,
+  .stepsTitle,
+  .steps,
+  .stamp {
+    display: none;
   }
-  .plateAvatar > * { width: 70px !important; height: 70px !important; }
-  .plateMotto {
-    grid-column: 3;
-    grid-row: 1 / -1;
-    align-self: center;
-    margin-left: auto;
-    font-size: var(--fs-sub);
+
+  .card {
+    width: min(400px, 100%);
+    padding: 10px 14px;
   }
-  .plateMotto br { display: none; }
-  .plateGloss {
-    grid-column: 2;
-    grid-row: 2;
-    align-self: start;
-    font-size: var(--fs-tiny);
-    line-height: 1.5;
+
+  .lead { gap: 12px; }
+  .portrait { --portrait: 52px; }
+
+  .motto {
+    font-size: var(--fz-xl);
+    letter-spacing: 0.12em;
   }
-  .plateGloss br { display: none; }
-  /* 骑缝印改骑横向接缝(卷首下沿);落印关键帧只写竖向straddle,改随卡片入场即可 */
-  .straddleSeal {
-    top: auto;
-    bottom: 0;
-    right: var(--gap);
-    width: 2.5rem;
-    height: 2.5rem;
-    transform: translate(0, 50%) rotate(-8deg);
-    animation: none;
+
+  .voice {
+    margin-top: 2px;
+    font-size: var(--fz-sm);
   }
+
+  .panel { padding: 24px 20px 40px; }
 }
 
-@media (max-width: 560px) {
-  .page { place-items: start center; padding: var(--gap-tight); padding-bottom: max(var(--gap-tight), env(safe-area-inset-bottom)); }
-  .split { border-radius: var(--radius-s); }
-  .plate { column-gap: var(--gap-tight); padding: var(--gap-hair) var(--gap-tight); }
-  .plateVoice { padding: 0.2rem 0.5rem; font-size: var(--fs-tiny); }
-  .plateAvatar > * { width: 58px !important; height: 58px !important; }
-  .plateMotto { font-size: var(--fs-small); letter-spacing: 0.03em; }
-  .plateGloss { display: none; }
-  .straddleSeal { right: var(--gap-tight); width: 2.1rem; height: 2.1rem; }
-  .form { padding: 1.4rem var(--gap); }
-  .form::before,
-  .form::after { inset: 0.6rem; }
-  .form::after { inset: auto; top: 0.6rem; right: 0.6rem; }
-  .sub { margin-bottom: var(--gap-tight); }
-  .bindingAccount { gap: var(--gap-hair); margin-bottom: var(--gap-tight); }
-  .bindingAccount small { padding-left: var(--gap-hair); }
-  .footRow { align-items: flex-start; flex-wrap: wrap; }
+@media (prefers-reduced-motion: reduce) {
+  .sheet { animation: none; }
+
+  .brand,
+  .link {
+    transition: none;
+  }
 }

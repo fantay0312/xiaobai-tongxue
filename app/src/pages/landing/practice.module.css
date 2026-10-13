@@ -1,0 +1,488 @@
+/* 第三章「练与记」：工作台工具条、四格小件、双记忆。 */
+
+/* 工具条：工作台六件工具的页签碎片 */
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tools li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 8px 0 14px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-md);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tools li span {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--r-full);
+  background: var(--bg);
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.tools li[data-on] {
+  background: var(--solid);
+  color: var(--on-solid);
+}
+
+.tools li[data-on] span {
+  background: color-mix(in srgb, var(--on-solid) 18%, transparent);
+  color: var(--on-solid);
+}
+
+/* ── 四格 ── */
+.bento {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: clamp(12px, 1.6vw, 20px);
+  margin-top: 20px;
+}
+
+.span7,
+.span5 {
+  display: grid;
+}
+
+.span7 {
+  grid-column: span 7;
+}
+
+.span5 {
+  grid-column: span 5;
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(16px, 2vw, 24px);
+}
+
+.cellHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
+
+.cellHead svg {
+  flex: none;
+}
+
+.cellHead strong {
+  color: var(--text);
+  font-size: var(--fz-lg);
+  font-weight: 600;
+}
+
+.cellHead span {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 闪卡 ── */
+@keyframes cardIn {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes backIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.card {
+  display: grid;
+  flex: 1;
+  align-content: center;
+  gap: 12px;
+  min-height: 148px;
+  padding: 20px 22px;
+  border-radius: var(--r-lg);
+  background: var(--sidebar);
+  animation: cardIn var(--dur-3) var(--ease) backwards;
+}
+
+.cardFront {
+  font-size: clamp(17px, 1.7vw, 20px);
+  font-weight: 600;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+}
+
+.cardBack {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: var(--fz-lg);
+  line-height: 1.7;
+  animation: backIn var(--dur-3) var(--ease) backwards;
+}
+
+.deckFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  min-height: 52px;
+  margin-top: 14px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
+
+.ratings {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.rating {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  height: 52px;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--inset);
+  color: var(--text-3);
+  font: 400 var(--fz-xs) / 1.2 var(--ui-font);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+
+.rating strong {
+  color: var(--text);
+  font-size: var(--fz-md);
+  font-weight: 600;
+}
+
+.rating:hover {
+  background: var(--active);
+}
+
+.rating:active {
+  transform: scale(0.97);
+}
+
+.rating:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* ── 思维导图 ── */
+.map {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: auto 0;
+  font-family: var(--ui-font);
+  font-size: 13px;
+}
+
+.map text {
+  text-anchor: middle;
+  fill: var(--text);
+}
+
+.mapLinks path {
+  fill: none;
+  stroke: var(--border-2);
+  stroke-width: 1.5;
+}
+
+.mapRoot rect {
+  fill: var(--solid);
+}
+
+.mapRoot text {
+  fill: var(--on-solid);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mapNode rect {
+  fill: var(--inset);
+}
+
+.mapNodeOn rect {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+  stroke-width: 1.2;
+}
+
+.mapNodeOn text {
+  fill: var(--accent);
+  font-weight: 600;
+}
+
+.mapLeaf rect {
+  fill: var(--surface);
+  stroke: var(--border-2);
+  stroke-width: 1;
+}
+
+.mapLeaf text {
+  fill: var(--text-2);
+  font-size: 12px;
+}
+
+/* ── 待办 ── */
+.todos {
+  display: grid;
+  gap: 2px;
+  margin-inline: -8px;
+}
+
+.todo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--text);
+  font: 400 var(--fz-md) / 1.4 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+
+.todo:hover {
+  background: var(--hover);
+}
+
+.todo:active {
+  background: var(--active);
+}
+
+.todo:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.todo > i {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--border-2);
+  color: var(--on-accent);
+  transition: background var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+
+.todo > span:first-of-type {
+  flex: 1;
+  min-width: 0;
+}
+
+.todo em {
+  flex: none;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  font-style: normal;
+}
+
+.todo[aria-checked='true'] {
+  color: var(--text-3);
+}
+
+.todo[aria-checked='true'] > i {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+.todo[aria-checked='true'] > span:first-of-type {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-4);
+}
+
+/* ── 翻译批改 ── */
+.source {
+  color: var(--text-3);
+  font-size: var(--fz-md);
+}
+
+.draft {
+  margin-top: 10px;
+  font-size: clamp(16px, 1.6vw, 19px);
+  line-height: 1.9;
+}
+
+.draft del {
+  margin-right: 3px;
+  color: var(--bad);
+  text-decoration-thickness: 1.5px;
+}
+
+.draft ins {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--ok-soft);
+  color: var(--ok);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.remark {
+  margin-top: auto;
+  padding-top: 14px;
+  color: var(--text-2);
+  font-size: var(--fz-md);
+}
+
+/* ── 双记忆 ── */
+.memory {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  align-items: start;
+  gap: 24px clamp(32px, 5vw, 72px);
+  margin-top: clamp(64px, 10vh, 112px);
+  padding-top: clamp(32px, 5vh, 56px);
+  border-top: 1px solid var(--border);
+}
+
+.memoryIntro h3 {
+  font-size: clamp(22px, 2.6vw, 30px);
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+
+.memoryIntro p {
+  margin-top: 12px;
+  color: var(--text-2);
+  font-size: var(--fz-lg);
+  line-height: 1.8;
+}
+
+.memoryCards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(12px, 1.6vw, 20px);
+}
+
+.memoryCard {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(16px, 2vw, 22px);
+  border-radius: var(--r-xl);
+  background: var(--sidebar);
+}
+
+.memoryHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.memoryHead > div {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.memoryHead strong {
+  font-size: var(--fz-lg);
+  font-weight: 600;
+}
+
+.memoryHead span {
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
+
+.tutor {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--fz-lg);
+  font-weight: 650;
+}
+
+.memoryCard ul {
+  display: grid;
+  gap: 6px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.memoryCard li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  font-size: var(--fz-md);
+  line-height: 1.45;
+}
+
+.memoryCard li > :first-child {
+  flex: none;
+}
+
+.memoryCard > p {
+  margin-top: auto;
+  padding-top: 14px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
+
+@media (max-width: 960px) {
+  .span7,
+  .span5 {
+    grid-column: span 12;
+  }
+
+  .memory {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .tools li {
+    height: 32px;
+    padding-left: 12px;
+    font-size: var(--fz-sm);
+  }
+
+  .memoryCards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ratings {
+    gap: 6px;
+  }
+}

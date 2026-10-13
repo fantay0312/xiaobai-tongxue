@@ -5,7 +5,7 @@
 /* 版心由复盘页 .page 统一约束,这里只管自己的下边距 */
 .roll {
   margin-bottom: var(--gap-loose);
-  padding: var(--gap) var(--gap-loose);
+  padding: var(--gap) clamp(var(--gap), 3vw, 2rem);
   background: var(--paper-warm);
   border: 1px solid var(--line-strong);
   border-left: 3px solid var(--seal-red);

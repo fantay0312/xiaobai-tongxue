@@ -4,9 +4,10 @@ import {
   CODE_RE, EMAIL_RE, MAINLAND_PHONE_RE, mainlandPhoneToE164, mapPasswordIssueField,
   useCooldown, type Issue,
 } from '../../hooks/useAuthForm';
+import { Button, Field, Segmented, type SegmentOption } from '../../components/ui';
 import { EmailCodeField } from './EmailCodeField';
 import { PhoneCodeField } from './PhoneCodeField';
-import fs from './EmailCodeField.module.css';
+import { FormFeedback, IssueText, PasswordInput } from './fields';
 import s from './login.module.css';
 
 interface PasswordResetFormProps {
@@ -172,89 +173,108 @@ export function PasswordResetForm({ onBusyChange, onSuccess }: PasswordResetForm
     onSuccess();
   };
 
+  const methodOptions: SegmentOption<ResetMethod>[] = [
+    { value: 'phone', label: '手机验证', disabled: busy },
+    { value: 'email', label: '邮箱验证', disabled: busy },
+  ];
+  // 当前表单里出现的字段出错时就地提示，其余落到统一提示行
+  const shownFields: AuthField[] = [method, 'code', 'newPassword', 'confirmPassword'];
+  const fieldIssue = issue && shownFields.includes(issue.field) ? issue : null;
+  const formIssue = issue && !fieldIssue ? issue : null;
+  const errorFor = (field: AuthField) => fieldIssue?.field === field
+    ? <IssueText id={FEEDBACK_ID}>{fieldIssue.message}</IssueText> : undefined;
+
   return (
-    <form className={s.fields} id="password-reset-form" noValidate aria-busy={busy} onSubmit={submitReset}>
+    <form className={s.form} id="password-reset-form" noValidate aria-busy={busy} onSubmit={submitReset}>
       {smsAuthAvailable && emailAuthAvailable ? (
-        <div className={s.loginMethods} role="group" aria-label="密码找回方式">
-          <button type="button" className={s.methodSwitch} disabled={busy}
-            aria-pressed={method === 'phone'} onClick={() => switchMethod('phone')}>
-            手机验证（优先）
-          </button>
-          <button type="button" className={s.methodSwitch} disabled={busy}
-            aria-pressed={method === 'email'} onClick={() => switchMethod('email')}>
-            已验证邮箱
-          </button>
-        </div>
+        <Segmented
+          block
+          label="密码找回方式"
+          value={method}
+          options={methodOptions}
+          onChange={switchMethod}
+        />
       ) : null}
       <fieldset className={s.fieldset} disabled={busy}>
-        {method === 'phone' ? <PhoneCodeField
-          phone={phone}
-          code={code}
-          issueField={issue?.field}
-          sending={sending}
-          cooldown={cooldown}
-          idPrefix={ID_PREFIX}
-          feedbackId={FEEDBACK_ID}
-          phoneLabel="已绑定手机号"
-          autoFocusPhone
-          onPhoneChange={changePhone}
-          onCodeChange={(value) => { setCode(value); clearIssue('code'); }}
-          onSend={() => void sendCode()}
-        /> : <EmailCodeField
-          email={email}
-          code={code}
-          issueField={issue?.field}
-          sending={sending}
-          cooldown={cooldown}
-          idPrefix={ID_PREFIX}
-          feedbackId={FEEDBACK_ID}
-          emailLabel="已验证邮箱"
-          autoFocusEmail
-          onEmailChange={changeEmail}
-          onCodeChange={(value) => { setCode(value); clearIssue('code'); }}
-          onSend={() => void sendCode()}
-        />}
-        <label className={fs.field} htmlFor={`${ID_PREFIX}-new-password`}>
-          <span className={fs.label}>新密码</span>
-          <input
+        {method === 'phone' ? (
+          <PhoneCodeField
+            phone={phone}
+            code={code}
+            issueField={issue?.field}
+            issueMessage={fieldIssue?.message}
+            sending={sending}
+            cooldown={cooldown}
+            idPrefix={ID_PREFIX}
+            feedbackId={FEEDBACK_ID}
+            phoneLabel="已绑定手机号"
+            autoFocusPhone
+            onPhoneChange={changePhone}
+            onCodeChange={(value) => { setCode(value); clearIssue('code'); }}
+            onSend={() => void sendCode()}
+          />
+        ) : (
+          <EmailCodeField
+            email={email}
+            code={code}
+            issueField={issue?.field}
+            issueMessage={fieldIssue?.message}
+            sending={sending}
+            cooldown={cooldown}
+            idPrefix={ID_PREFIX}
+            feedbackId={FEEDBACK_ID}
+            emailLabel="已验证邮箱"
+            autoFocusEmail
+            onEmailChange={changeEmail}
+            onCodeChange={(value) => { setCode(value); clearIssue('code'); }}
+            onSend={() => void sendCode()}
+          />
+        )}
+        <Field
+          label="新密码"
+          htmlFor={`${ID_PREFIX}-new-password`}
+          hint={<span id={`${ID_PREFIX}-password-hint`}>至少 8 位；重设成功后会自动登录</span>}
+          error={errorFor('newPassword')}
+        >
+          <PasswordInput
             id={`${ID_PREFIX}-new-password`}
-            className={fs.input}
-            type="password"
             value={newPassword}
             autoComplete="new-password"
             minLength={8}
             maxLength={128}
             required
-            aria-invalid={issue?.field === 'newPassword' || undefined}
+            invalid={issue?.field === 'newPassword'}
             aria-describedby={issue?.field === 'newPassword' ? FEEDBACK_ID : `${ID_PREFIX}-password-hint`}
             onChange={(event) => { setNewPassword(event.target.value); clearIssue('newPassword'); }}
           />
-          <span className={fs.hint} id={`${ID_PREFIX}-password-hint`}>至少 8 位；重设成功后会自动登录</span>
-        </label>
-        <label className={fs.field} htmlFor={`${ID_PREFIX}-confirm-password`}>
-          <span className={fs.label}>再次输入新密码</span>
-          <input
+        </Field>
+        <Field
+          label="再次输入新密码"
+          htmlFor={`${ID_PREFIX}-confirm-password`}
+          error={errorFor('confirmPassword')}
+        >
+          <PasswordInput
             id={`${ID_PREFIX}-confirm-password`}
-            className={fs.input}
-            type="password"
             value={confirmPassword}
             autoComplete="new-password"
             maxLength={128}
             required
-            aria-invalid={issue?.field === 'confirmPassword' || undefined}
+            invalid={issue?.field === 'confirmPassword'}
             aria-describedby={issue?.field === 'confirmPassword' ? FEEDBACK_ID : undefined}
             onChange={(event) => { setConfirmPassword(event.target.value); clearIssue('confirmPassword'); }}
           />
-        </label>
+        </Field>
       </fieldset>
 
-      <div className={s.feedbackSlot}>
-        {issue ? <p className={s.error} id={FEEDBACK_ID} role="alert">{issue.message}</p>
-          : feedback ? <p className={s.success} role="status">{feedback}</p> : null}
+      <div className={s.actions}>
+        <FormFeedback
+          id={FEEDBACK_ID}
+          error={formIssue?.message}
+          success={issue ? null : feedback}
+        />
+        <Button type="submit" variant="solid" size="lg" block loading={resetting} disabled={busy}>
+          {resetting ? '正在重设…' : '验证并重设密码'}
+        </Button>
       </div>
-      <button className={s.submit} type="submit" data-busy={busy || undefined} disabled={busy}>
-        {resetting ? '正在重设…' : '验证并重设密码'}
-      </button>
     </form>
   );
 }

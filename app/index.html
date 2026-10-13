@@ -4,18 +4,12 @@
     <meta charset="UTF-8" />
     <script>
       (function () {
+        // 首屏绘制前先落皮肤，避免深色皮肤用户每次刷新先闪一帧浅色
         try {
-          var raw = localStorage.getItem('xiaobai-ui-theme-v1');
-          if (!raw) return;
-          var parsed = JSON.parse(raw);
-          var theme = parsed && parsed.state && parsed.state.theme;
-          var tone = parsed && parsed.state && parsed.state.tone;
-          if (theme === 'anime' || theme === 'paper' || theme === 'tech') {
-            document.documentElement.dataset.theme = theme;
-          }
-          if (theme === 'anime' && (tone === 'day' || tone === 'night')) {
-            document.documentElement.dataset.tone = tone;
-          }
+          var raw = localStorage.getItem('xiaobai-skin-v1');
+          var state = raw && JSON.parse(raw).state;
+          var skin = state && state.skin;
+          if (typeof skin === 'string' && /^[a-z]{3,12}$/.test(skin)) document.documentElement.dataset.skin = skin;
         } catch (e) {}
       })();
     </script>
@@ -23,10 +17,10 @@
     <link rel="icon" type="image/png" sizes="192x192" href="%BASE_URL%favicon-192.png" />
     <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f0f7fa" />
+    <meta name="theme-color" content="#ffffff" />
     <meta
       name="description"
-      content="小白同学：你来当老师，把知识讲明白。备课、讲解、纠正误区，小白独自去考试；哪里没讲明白，课后一页看清。"
+      content="小白同学：先跟小砚把资料学懂，再讲给 AI 学生小白听。讲得明白，才算学会。"
     />
     <!-- 首屏立即出现的小白精灵图集:预载让首次绘制不必等 JS 求值后再发图片请求(备课教练小砚图集为 prep 专用,不预载) -->
     <link rel="preload" as="image" type="image/webp" href="%BASE_URL%xiaobai-book-boy-atlas.webp" />

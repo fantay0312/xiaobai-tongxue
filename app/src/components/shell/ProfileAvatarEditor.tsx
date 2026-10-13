@@ -1,7 +1,9 @@
-/** 头像编辑行:左圆头像,中标签与状态,右上传/移除;与个人中心其他设置行同一制式 */
+/** 头像编辑行：左圆头像，中标签与状态，右上传 / 移除；与个人中心其他设置行同一制式 */
 import { useRef, useState, type ReactNode } from 'react';
+import { Camera } from 'lucide-react';
 import { prepareProfileAvatar, PROFILE_AVATAR_ACCEPT, ProfileAvatarError } from '../../lib/profileAvatar';
 import { profileAccountKey, useProfileStore } from '../../store/profileStore';
+import { Button } from '../ui';
 import { ProfileAvatar } from './ProfileAvatar';
 import styles from './ProfileAvatarEditor.module.css';
 
@@ -52,6 +54,9 @@ export function ProfileAvatarEditor({ account, children }: { account: string; ch
         aria-label={avatar ? '更换头像' : '上传头像'}
       >
         <ProfileAvatar name={account} src={avatar} size="hero" />
+        <span className={styles.avatarBadge} aria-hidden="true">
+          <Camera size={12} strokeWidth={2} />
+        </span>
       </button>
       <div className={styles.copy}>
         <span className={styles.label}>{children}</span>
@@ -63,9 +68,9 @@ export function ProfileAvatarEditor({ account, children }: { account: string; ch
       </div>
       <div className={styles.actions}>
         {avatar ? (
-          <button
-            type="button"
-            className={styles.ghostButton}
+          <Button
+            variant="ghost"
+            size="sm"
             disabled={busy}
             onClick={() => {
               removeAvatar(account);
@@ -74,11 +79,11 @@ export function ProfileAvatarEditor({ account, children }: { account: string; ch
             }}
           >
             移除
-          </button>
+          </Button>
         ) : null}
-        <button type="button" className={styles.button} onClick={chooseAvatar} disabled={busy}>
+        <Button variant="outline" size="sm" loading={busy} onClick={chooseAvatar}>
           {busy ? '处理中…' : avatar ? '更换' : '上传'}
-        </button>
+        </Button>
       </div>
     </div>
   );

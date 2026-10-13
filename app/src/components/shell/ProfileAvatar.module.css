@@ -1,4 +1,4 @@
-/* 共享头像:圆形、平贴、不倾斜。文字头像用主色实底 + 亮白首字,图片头像贴一圈极淡描边 */
+/* 共享头像：圆形、平贴。文字头像用强调色实底 + 反白首字，图片头像贴一圈极淡描边 */
 
 .avatar {
   position: relative;
@@ -7,36 +7,38 @@
   place-items: center;
   overflow: hidden;
   border-radius: 50%;
-  background: var(--terra-ink);
+  /* 旧令牌名保留给界面契约检查；在这里桥接到皮肤的强调色前景，深浅皮肤都不发灰 */
+  --ink-on-seal: var(--on-accent);
+  background: var(--accent);
   color: var(--ink-on-seal);
   -webkit-text-fill-color: var(--ink-on-seal);
-  font-family: var(--font-body);
+  font-family: var(--ui-font);
   font-weight: 600;
   line-height: 1;
   text-transform: uppercase;
 }
 
 .avatar[data-size='nav'] {
-  width: 2rem;
-  height: 2rem;
-  font-size: 0.8125rem;
+  width: 32px;
+  height: 32px;
+  font-size: var(--fz-sm);
 }
 
 .avatar[data-size='rail'] {
-  width: 2.5rem;
-  height: 2.5rem;
-  font-size: var(--fs-body);
+  width: 40px;
+  height: 40px;
+  font-size: var(--fz-lg);
 }
 
 .avatar[data-size='hero'] {
-  width: 4rem;
-  height: 4rem;
-  font-size: 1.5rem;
+  width: 56px;
+  height: 56px;
+  font-size: var(--fz-2xl);
 }
 
 .avatar[data-image='true'] {
-  background: var(--paper-shade);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ink) 12%, transparent);
+  background: var(--inset);
+  box-shadow: inset 0 0 0 1px var(--border-2);
 }
 
 .avatar img {

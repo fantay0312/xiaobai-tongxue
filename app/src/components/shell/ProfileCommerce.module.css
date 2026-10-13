@@ -1,187 +1,129 @@
+/* 订阅与用量：套餐卡 + 权益 / 套餐 / 兑换三段。只引用 styles/skins.css 的语义令牌。 */
+
 .root {
   display: flex;
   flex-direction: column;
-  gap: var(--gap-loose);
+  gap: 28px;
 }
 
 .loading {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: var(--gap);
-  min-height: 10rem;
-  padding: var(--gap);
-  border-block: 1px solid var(--paper-edge);
-}
-
-.loading > span {
-  width: 2.5rem;
-  height: 2.5rem;
-  border: 2px solid var(--paper-edge);
-  border-top-color: var(--azure);
-  border-radius: 50%;
-  animation: commerce-spin 900ms linear infinite;
-}
-
-.loading p {
   display: flex;
   flex-direction: column;
-  gap: 0.16rem;
+  gap: 14px;
 }
 
-.loading strong {
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-}
-
-.loading small {
-  color: var(--ink-faint);
-  font-size: var(--fs-tiny);
-}
-
-@keyframes commerce-spin {
-  to { transform: rotate(1turn); }
-}
-
-.issue,
-.success {
+.issue {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--gap-tight);
-  padding: var(--gap-tight);
-  border: 1px solid color-mix(in oklab, var(--cinnabar) 36%, var(--paper-edge));
-  background: var(--cinnabar-wash);
-  color: var(--cinnabar);
-  font-size: var(--fs-small);
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--bad-soft);
+  color: var(--bad);
 }
 
-.issue button {
-  min-height: 2.5rem;
-  padding-inline: var(--gap-tight);
-  border: 1px solid currentColor;
-  border-radius: var(--radius-tag);
-  background: var(--paper);
-  color: inherit;
+.issue p {
+  margin: 0;
+  font-size: var(--fz-sm);
+  line-height: 1.5;
 }
+
+/* ── 套餐卡 ── */
 
 .account {
-  position: relative;
-  padding: clamp(var(--gap), 4vw, var(--gap-loose));
-  overflow: hidden;
-  border: 1px solid var(--inkstone-line);
-  border-radius: var(--radius-s);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 16px 24px;
+  padding: 18px 20px;
+  border-radius: var(--r-lg);
   background:
-    repeating-linear-gradient(
-      90deg,
-      transparent 0 calc(2rem - 1px),
-      color-mix(in oklab, var(--inkstone-line) 38%, transparent) calc(2rem - 1px) 2rem
-    ),
-    var(--inkstone);
-  color: var(--moon-on-ink);
+    linear-gradient(120deg, var(--accent-softer), transparent 62%),
+    var(--inset);
 }
 
-.account::after {
-  position: absolute;
-  width: 6.5rem;
-  height: 6.5rem;
-  border: 1px dashed var(--inkstone-line);
-  border-radius: 50%;
-  content: '';
-  right: -1.25rem;
-  bottom: -2.5rem;
-  opacity: 0.7;
-  transform: rotate(-12deg);
-}
-
-.accountHead {
-  position: relative;
-  z-index: 1;
+.plan,
+.balance {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--gap);
-}
-
-.accountHead > div:first-child {
+  flex-direction: column;
+  gap: 4px;
   min-width: 0;
 }
 
-.accountHead p {
-  color: var(--moonsoft-on-ink);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  letter-spacing: var(--track-label);
-}
-
-.accountHead h3 {
-  margin-top: 0.24rem;
-  color: var(--moon-on-ink);
-  font-family: var(--font-serif);
-  font-size: var(--fs-title);
-  font-weight: 600;
-}
-
-.accountHead > div:first-child > span {
-  display: block;
-  margin-top: 0.2rem;
-  color: var(--moonsoft-on-ink);
-  font-size: var(--fs-tiny);
-}
-
 .balance {
-  display: flex;
-  flex: none;
-  flex-direction: column;
   align-items: flex-end;
 }
 
-.balance span {
-  color: var(--moonsoft-on-ink);
-  font-size: var(--fs-tiny);
+.eyebrow {
+  color: var(--text-2);
+  font: 500 var(--fz-xs) / 1.4 var(--ui-font);
+}
+
+.plan h4 {
+  margin: 0;
+  color: var(--text);
+  font: 600 var(--fz-2xl) / 1.25 var(--ui-font);
+  letter-spacing: -0.01em;
+}
+
+.planNote {
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.4;
 }
 
 .balance strong {
-  color: var(--mustard);
-  font-family: var(--font-serif);
-  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  color: var(--text);
+  font: 600 var(--fz-3xl) / 1.1 var(--ui-font);
   font-variant-numeric: tabular-nums;
-  line-height: 1;
+  letter-spacing: -0.02em;
 }
 
 .boundary {
-  position: relative;
-  z-index: 1;
-  max-width: 64ch;
-  margin-top: var(--gap);
-  padding-top: var(--gap-tight);
-  border-top: 1px solid var(--inkstone-line);
-  color: var(--moonsoft-on-ink);
-  font-size: var(--fs-tiny);
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text-3);
+  font-size: var(--fz-xs);
   line-height: 1.6;
 }
 
 .success {
-  grid-template-columns: auto minmax(0, 1fr);
-  margin-top: var(--gap-tight);
-  border-color: color-mix(in oklab, var(--jade) 42%, var(--paper-edge));
-  background: var(--jade-wash);
-  color: var(--jade-ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--ok-soft);
+  color: var(--ok);
+  font-size: var(--fz-sm);
+  line-height: 1.5;
+}
+
+.success svg,
+.issue svg {
+  flex: none;
 }
 
 @media (max-width: 560px) {
-  .accountHead {
-    flex-direction: column;
+  .account {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
   }
 
   .balance {
     align-items: flex-start;
   }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  .loading > span {
-    animation-duration: 1.8s;
+  .issue {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .issue > :last-child {
+    grid-column: 2;
+    justify-self: start;
   }
 }

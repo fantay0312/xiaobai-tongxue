@@ -3,10 +3,12 @@
  * 每一个数字都从本机事件流(events)/复盘报告(reports)/重放态(topicStates)实时派生,
  * 页面自身不写任何状态:总览带数事件、盲区榜聚合全部报告、学情表逐主题重放、
  * 误区台账数 misconception_* 事件(不用快照,快照会吃掉历史次数)。
- * 语言纪律:盲区永远说「小白还没懂」,不说「你错了」;朱砂只落在盲区/被带偏。
+ * 语言纪律:盲区永远说「小白还没懂」,不说「你错了」;警示色只落在盲区/被带偏。
+ * 版式:现代数据页——总览数字带、盲区横条榜、可排序学情表、误区台账、近期会话。
  */
 import { useMemo, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router';
+import { ArrowDown, ArrowRight, ArrowUp, ChevronsUpDown, ClipboardList, GraduationCap, ListChecks, Radar as RadarIcon, ShieldAlert } from 'lucide-react';
 import type {
   BlindSpot, KnowledgeState, McState, SessionMode, SessionReport, Topic, TopicState,
 } from '../../types';
@@ -18,7 +20,7 @@ import { getStageMeta } from '../../engine/evolution';
 import { topicCourseKey } from '../../data/runtimeTopics';
 import { demonName } from '../../engine/story';
 import { Radar } from '../review/Radar';
-import { Icon } from '../../components/ui/Icon';
+import { Badge, Button, Empty, Segmented, cx, type Tone } from '../../components/ui';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { useAllTopics } from '../../hooks/useAllTopics';
 import s from './teacher.module.css';
@@ -32,19 +34,12 @@ const MODE_LABEL: Record<SessionMode, string> = {
 type Severity = BlindSpot['severity'];
 const SEV_RANK: Record<Severity, number> = { low: 0, medium: 1, high: 2 };
 const SEV_LABEL: Record<Severity, string> = { high: '被带偏', medium: '还没讲到', low: '小测暴露' };
+const SEV_TONE: Record<Severity, Tone> = { high: 'bad', medium: 'warn', low: 'neutral' };
 
-const KS_CHIP: Record<KnowledgeState, string> = { 没懂: 'chipDust', 半懂: 'chipAmber', 出师: 'chipJade' };
-const MC_CHIP: Record<McState, string> = {
-  待注入: 'chipDust', 已注入: 'chipAmber', 已纠正: 'chipJade', 被带偏: 'chipCinnabar',
+const KS_TONE: Record<KnowledgeState, Tone> = { 没懂: 'neutral', 半懂: 'warn', 出师: 'ok' };
+const MC_TONE: Record<McState, Tone> = {
+  待注入: 'neutral', 已注入: 'warn', 已纠正: 'ok', 被带偏: 'bad',
 };
-const MC_EDGE: Record<McState, string> = {
-  待注入: 'mcEdgeDust', 已注入: 'mcEdgeAmber', 已纠正: 'mcEdgeJade', 被带偏: 'mcEdgeCinnabar',
-};
-/* 心魔名小印按结局分色:击退黛绿/被拐走朱砂/在身上藤黄/未照面灰(事后揭示面,允许点名) */
-const MC_DEMON: Record<McState, string> = {
-  待注入: 'demonDust', 已注入: 'demonAmber', 已纠正: 'demonJade', 被带偏: 'demonCinnabar',
-};
-
 
 // ── 小工具 ──
 
@@ -56,8 +51,8 @@ const fmtWhen = (iso: string) =>
     month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
   });
 
-/* 入场阶梯 75ms;同屏最长 delay 封顶 300ms(R6),后排区块不许白屏等场 */
-const rise = (i: number) => ({ animationDelay: `${Math.min(i * 75, 300)}ms` });
+/* 入场阶梯 60ms;同屏最长 delay 封顶 240ms,后排区块不许白屏等场 */
+const rise = (i: number) => ({ animationDelay: `${Math.min(i * 60, 240)}ms` });
 
 type TopicRow = {
   topic: Topic;
@@ -70,7 +65,44 @@ type TopicRow = {
   pending: number;
 };
 
-/** 学情表的课程筛选是界面态,不写入学习档案。点标签只显示该课,长表关在原区域内竖滚。 */
+// ── 学情表排序:纯界面态,不写入学习档案 ──
+
+type SortKey = 'mastery' | 'coverage' | 'quiz' | 'sessions' | 'active';
+type SortState = { key: SortKey; dir: 'asc' | 'desc' } | null;
+
+const SORT_VALUE: Record<SortKey, (row: TopicRow) => number> = {
+  mastery: (row) => row.st.mastery,
+  coverage: (row) => (row.topic.checklist.length > 0 ? row.st.hitChecklist.length / row.topic.checklist.length : 0),
+  quiz: (row) => row.lastQuiz ?? -1,
+  sessions: (row) => row.sessions,
+  active: (row) => (row.lastActive ? Date.parse(row.lastActive) : 0),
+};
+
+function SortHead({ label, sortKey, sort, onSort }: {
+  label: string;
+  sortKey: SortKey;
+  sort: SortState;
+  onSort: (key: SortKey) => void;
+}) {
+  const dir = sort?.key === sortKey ? sort.dir : null;
+  return (
+    <th className={s.thNum} aria-sort={dir === 'asc' ? 'ascending' : dir === 'desc' ? 'descending' : 'none'}>
+      <button
+        type="button"
+        className={s.sortBtn}
+        data-active={dir !== null || undefined}
+        onClick={() => onSort(sortKey)}
+      >
+        {label}
+        {dir === 'asc' ? <ArrowUp size={13} strokeWidth={2} />
+          : dir === 'desc' ? <ArrowDown size={13} strokeWidth={2} />
+            : <ChevronsUpDown size={13} strokeWidth={1.75} />}
+      </button>
+    </th>
+  );
+}
+
+/** 学情表的课程筛选是界面态,不写入学习档案。选一门课只显示该课,长表关在原区域内竖滚。 */
 function TopicProgressTable({ topicRows }: { topicRows: TopicRow[] }) {
   const courseIdentities = [...new Map(topicRows.map((row) => [
     topicCourseKey(row.topic),
@@ -84,29 +116,39 @@ function TopicProgressTable({ topicRows }: { topicRows: TopicRow[] }) {
     return { ...course, label: `${course.label} · 自选 ${index}` };
   });
   const [selected, setSelected] = useState(courses[0]?.key ?? '');
-  const visibleRows = topicRows.filter((row) => topicCourseKey(row.topic) === selected);
+  const [sort, setSort] = useState<SortState>(null);
+
+  const visibleRows = useMemo(() => {
+    const rows = topicRows.filter((row) => topicCourseKey(row.topic) === selected);
+    if (!sort) return rows;
+    const value = SORT_VALUE[sort.key];
+    const sign = sort.dir === 'asc' ? 1 : -1;
+    return [...rows].sort((a, b) => (value(a) - value(b)) * sign);
+  }, [topicRows, selected, sort]);
+
+  // 点表头:降序 → 升序 → 还原书架顺序
+  const cycleSort = (key: SortKey) => {
+    setSort((current) => {
+      if (current?.key !== key) return { key, dir: 'desc' };
+      return current.dir === 'desc' ? { key, dir: 'asc' } : null;
+    });
+  };
 
   return (
     <>
-      <div className={s.tagBar} role="toolbar" aria-label="按课程筛选知识点学情">
-        {courses.map((course) => {
-          const on = course.key === selected;
-          return (
-            <button
-              key={course.key}
-              type="button"
-              className={`${s.tagBtn} ${on ? s.tagOn : ''}`}
-              aria-pressed={on}
-              aria-controls="topic-progress-table"
-              onClick={() => setSelected(course.key)}
-            >
-              {course.label}
-            </button>
-          );
-        })}
-      </div>
+      {courses.length > 1 && (
+        <div className={s.courseBar}>
+          <Segmented
+            size="sm"
+            label="按课程筛选知识点学情"
+            value={selected}
+            onChange={setSelected}
+            options={courses.map((course) => ({ value: course.key, label: course.label }))}
+          />
+        </div>
+      )}
       <div
-        className={`${s.tableWrap} ${s.tableScroll}`}
+        className={s.tableScroll}
         tabIndex={0}
         role="region"
         aria-label="知识点学情表滚动区"
@@ -116,49 +158,44 @@ function TopicProgressTable({ topicRows }: { topicRows: TopicRow[] }) {
             <tr>
               <th>知识点</th>
               <th>状态</th>
-              <th>掌握度</th>
-              <th>要点覆盖</th>
+              <SortHead label="掌握度" sortKey="mastery" sort={sort} onSort={cycleSort} />
+              <SortHead label="要点覆盖" sortKey="coverage" sort={sort} onSort={cycleSort} />
               <th>误区</th>
-              <th>最近小测</th>
-              <th>会话</th>
-              <th>最近活动</th>
+              <SortHead label="最近小测" sortKey="quiz" sort={sort} onSort={cycleSort} />
+              <SortHead label="会话" sortKey="sessions" sort={sort} onSort={cycleSort} />
+              <SortHead label="最近活动" sortKey="active" sort={sort} onSort={cycleSort} />
             </tr>
           </thead>
           <tbody>
-            {visibleRows.map((row) => (
-              <tr key={row.topic.topicId} className={row.adopted > 0 ? s.rowAdopted : undefined}>
-                <td className={s.titleCell}>{row.topic.title}</td>
-                <td>
-                  <span className={`${s.chip} ${s[KS_CHIP[row.st.knowledgeState]]}`}>
-                    {row.st.knowledgeState}
-                  </span>
-                </td>
-                <td>
-                  <span className={s.masteryCell}>
-                    <span className={s.numInline}>{Math.round(row.st.mastery * 100)}</span>
-                    <span className={s.masteryTrack}>
-                      <span
-                        className={s.masteryFill}
-                        style={{ width: `${Math.round(row.st.mastery * 100)}%` }}
-                      />
+            {visibleRows.map((row) => {
+              const mastery = Math.round(row.st.mastery * 100);
+              return (
+                <tr key={row.topic.topicId} className={row.adopted > 0 ? s.rowAdopted : undefined}>
+                  <td className={s.titleCell}>{row.topic.title}</td>
+                  <td><Badge tone={KS_TONE[row.st.knowledgeState]}>{row.st.knowledgeState}</Badge></td>
+                  <td className={s.numCell}>
+                    <span className={s.masteryCell}>
+                      <span className={s.masteryTrack} aria-hidden="true">
+                        <span
+                          className={cx(s.masteryFill, row.st.knowledgeState === '出师' && s.masteryDone)}
+                          style={{ width: `${mastery}%` }}
+                        />
+                      </span>
+                      <span className={s.masteryNum}>{mastery}</span>
                     </span>
-                  </span>
-                </td>
-                <td className={s.numCell}>{row.st.hitChecklist.length}/{row.topic.checklist.length}</td>
-                <td className={s.mcSummary}>
-                  纠正 <span className={s.numInline}>{row.corrected}</span>
-                  {' · '}
-                  <span className={row.adopted > 0 ? s.mcAdopted : undefined}>
-                    带偏 <span className={s.numInline}>{row.adopted}</span>
-                  </span>
-                  {' · '}
-                  待试 <span className={s.numInline}>{row.pending}</span>
-                </td>
-                <td className={s.numCell}>{row.lastQuiz ?? '—'}</td>
-                <td className={s.numCell}>{row.sessions}</td>
-                <td className={s.numCell}>{row.lastActive ? fmtWhen(row.lastActive) : '—'}</td>
-              </tr>
-            ))}
+                  </td>
+                  <td className={s.numCell}>{row.st.hitChecklist.length}/{row.topic.checklist.length}</td>
+                  <td className={s.mcSummary}>
+                    <span>纠正 <b>{row.corrected}</b></span>
+                    <span className={row.adopted > 0 ? s.mcAdopted : undefined}>带偏 <b>{row.adopted}</b></span>
+                    <span>待试 <b>{row.pending}</b></span>
+                  </td>
+                  <td className={s.numCell}>{row.lastQuiz ?? '—'}</td>
+                  <td className={s.numCell}>{row.sessions}</td>
+                  <td className={s.numCell}>{row.lastActive ? fmtWhen(row.lastActive) : '—'}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -202,13 +239,12 @@ export default function TeacherPage() {
   const blindCount = [...latestByTopic.values()].reduce((n, r) => n + r.blindSpots.length, 0);
   const hasArchive = events.length > 0;
 
-  const stats: { label: string; value: string; unit?: string; tone?: string; sealed?: boolean }[] = [
+  const stats: { label: string; value: string; unit?: string; tone?: 'ok' | 'bad' }[] = [
     { label: '累计会话', value: String(sessionCount), unit: '次' },
     { label: '累计讲解', value: String(totalTurns), unit: '轮' },
-    // 出师卡上钤一方小黛绿印:只有真出过师才落印
-    { label: '已出师', value: `${masteredCount}/${openTopics.length}`, tone: masteredCount > 0 ? s.statJade : undefined, sealed: masteredCount > 0 },
+    { label: '已出师', value: String(masteredCount), unit: `/ ${openTopics.length} 讲`, tone: masteredCount > 0 ? 'ok' : undefined },
     { label: '平均掌握度', value: String(avgMastery), unit: '%' },
-    { label: '现存盲区', value: String(blindCount), unit: '处', tone: blindCount > 0 ? s.statCinnabar : undefined },
+    { label: '现存盲区', value: String(blindCount), unit: '处', tone: blindCount > 0 ? 'bad' : undefined },
     { label: '金句收录', value: String(global.goldenAnalogies.length), unit: '句' },
   ];
 
@@ -264,18 +300,23 @@ export default function TeacherPage() {
   // ── ⑤ 近期会话:最近 4 份报告,雷达组件与复盘页共用同一份 SVG ──
   const recentReports = reports.slice(-4).reverse();
 
+  const courseNames = [...new Set(allTopics.map((t) => t.course))];
+
   return (
     <div className={s.page}>
-      <header id="teacher-overview" className={`${s.head} ${s.rise}`} style={rise(0)}>
+      <header id="teacher-overview" className={cx(s.head, s.rise)} style={rise(0)}>
         <div className={s.headMain}>
           <h1 className={s.title}>教师看板</h1>
-          <p className={s.demoNote}>
-            {[...new Set(allTopics.map((t) => t.course))].join(' · ')}。数据来自你的学习记录，每上完一课自动更新。
+          <p className={s.lead}>
+            {courseNames.join(' · ')}。数据来自你的学习记录，每上完一课自动更新。
           </p>
         </div>
-        {/* 学籍卡:一张登记簿式的小卡,先生是谁、走到哪一阶、小白如今什么科名 */}
+        {/* 学籍卡:先生是谁、走到哪一阶、小白如今什么科名 */}
         <dl className={s.roster} aria-label="学籍卡">
-          <div><dt>先生</dt><dd>{authUser ?? '本机先生'}</dd></div>
+          <div>
+            <dt>先生</dt>
+            <dd>{authUser ?? '本机先生'}</dd>
+          </div>
           <div>
             <dt>师道</dt>
             <dd>
@@ -285,40 +326,60 @@ export default function TeacherPage() {
               ) : <small>履历 {rank.score} 分</small>}
             </dd>
           </div>
-          <div><dt>小白</dt><dd>{stage.name}<small>{stage.description}</small></dd></div>
-          <div><dt>最近</dt><dd>{lastEventAt ? fmtWhen(lastEventAt) : '尚未开课'}</dd></div>
+          <div>
+            <dt>小白</dt>
+            <dd>{stage.name}<small>{stage.description}</small></dd>
+          </div>
+          <div>
+            <dt>最近活动</dt>
+            <dd className={s.rosterNum}>{lastEventAt ? fmtWhen(lastEventAt) : '尚未开课'}</dd>
+          </div>
         </dl>
       </header>
 
       {/* ① 档案总览带 */}
       {hasArchive ? (
-        <section className={`${s.ledger} ${s.rise}`} style={rise(1)} aria-label="档案总览">
+        <section className={cx(s.stats, s.rise)} style={rise(1)} aria-label="档案总览">
           {stats.map((it) => (
-            <div key={it.label} className={s.cell}>
-              <span className={s.cellLabel}>{it.label}</span>
-              <span className={s.cellValue}>
-                <b className={it.tone ?? ''}>{it.value}</b>
+            <div key={it.label} className={s.stat}>
+              <span className={s.statLabel}>{it.label}</span>
+              <span className={s.statValue}>
+                <b className={it.tone === 'ok' ? s.toneOk : it.tone === 'bad' ? s.toneBad : undefined}>{it.value}</b>
                 {it.unit && <small>{it.unit}</small>}
               </span>
-              {it.sealed && <span className={s.cellSeal} aria-hidden="true">出师</span>}
             </div>
           ))}
         </section>
       ) : (
-        <section className={`${s.emptyHero} ${s.rise}`} style={rise(1)}>
-          <p className={s.emptyLead}>
-            还没有记录。去书斋给小白开讲，这里的每一个数字都会随课堂长出来。
-          </p>
-          <Link to="/learn" className={s.btnGhost}>去学习终端开讲 <Icon name="arrow-right" size={16} /></Link>
+        <section className={cx(s.panel, s.rise)} style={rise(1)} aria-label="档案总览">
+          <Empty
+            className={s.emptyCompact}
+            icon={<GraduationCap size={22} strokeWidth={1.75} />}
+            title="还没有课堂记录"
+            description="去学习终端给小白开讲，这里的每一个数字都会随课堂长出来。"
+            action={(
+              <Button asChild variant="solid" iconRight={<ArrowRight size={16} strokeWidth={1.75} />}>
+                <Link to="/learn">去学习终端开讲</Link>
+              </Button>
+            )}
+          />
         </section>
       )}
 
       <div className={s.grid}>
-        {/* ② 「讲不清」盲区榜:行式墨条,每行=知识点 + 出处 + 条 + 次数 + 程度签 */}
-        <section id="blind-spots" className={`${s.section} ${s.rise}`} style={rise(2)}>
-          <header className={s.secHead}><h2 className={s.h2}>「讲不清」盲区榜</h2><p className={s.secNote}>复盘里小白还没听懂的地方，按出现次数排。</p></header>
+        {/* ② 「讲不清」盲区榜:每行 = 名次 + 知识点 + 出处 + 横条 + 次数 + 程度 */}
+        <section id="blind-spots" className={cx(s.panel, s.rise)} style={rise(2)}>
+          <header className={s.secHead}>
+            <h2 className={s.h2}>「讲不清」盲区榜</h2>
+            <p className={s.secNote}>复盘里小白还没听懂的地方，按出现次数排。</p>
+          </header>
           {blindRows.length === 0 ? (
-            <p className={s.emptyNote}>还没有盲区记录。开讲之后，这里会记下小白没听懂的地方。</p>
+            <Empty
+              className={s.emptyCompact}
+              icon={<ShieldAlert size={20} strokeWidth={1.75} />}
+              title="还没有盲区记录"
+              description="开讲之后，这里会记下小白没听懂的地方。"
+            />
           ) : (
             <>
               <ol className={s.blindList} aria-label="讲不清盲区计频">
@@ -326,10 +387,10 @@ export default function TeacherPage() {
                   <li
                     key={r.point}
                     className={s.blindRow}
-                    /* 行入场与墨条研出共用同一阶梯延迟(45ms,封顶 300ms),条通过 --d 自定义属性继承 */
+                    /* 行入场与横条展开共用同一阶梯延迟(45ms,封顶 300ms),条通过 --d 自定义属性继承 */
                     style={{ animationDelay: `${Math.min(120 + i * 45, 300)}ms`, '--d': `${Math.min(120 + i * 45, 300)}ms` } as CSSProperties}
                   >
-                    <span className={s.blindRank} aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+                    <span className={s.blindRank} aria-hidden="true">{i + 1}</span>
                     <div className={s.blindMain}>
                       <p className={s.blindLabel}>
                         <span className={s.blindPoint}>{r.point}</span>
@@ -337,89 +398,127 @@ export default function TeacherPage() {
                       </p>
                       <span className={s.blindTrack} aria-hidden="true">
                         <span
-                          className={`${s.blindBar} ${r.severity === 'high' ? s.blindBarHigh : ''}`}
+                          className={cx(s.blindBar, r.severity === 'high' && s.blindBarHigh, r.severity === 'medium' && s.blindBarMid)}
                           style={{ width: `${Math.max((r.count / maxCount) * 100, 6)}%` }}
                         />
                       </span>
                     </div>
                     <span className={s.blindCount}><b>{r.count}</b> 次</span>
-                    <span className={`${s.chip} ${r.severity === 'high' ? s.chipCinnabar : r.severity === 'medium' ? s.chipAmber : s.chipDust}`}>
-                      {SEV_LABEL[r.severity]}
-                    </span>
+                    <Badge tone={SEV_TONE[r.severity]} className={s.blindSev}>{SEV_LABEL[r.severity]}</Badge>
                   </li>
                 ))}
               </ol>
-              <p className={s.chartFoot}>
-                按该盲区在复盘档案中出现的次数排序;<span className={s.youMark}>朱砂条 = 曾把你带偏的高危处</span>。
-                盲区只说明小白还没懂,证据链在各自的复盘档案里。
+              <p className={s.foot}>
+                按该盲区在复盘档案中出现的次数排序；<span className={s.toneBad}>红色条是曾把你带偏的高危处</span>。
+                盲区只说明小白还没懂，证据链在各自的复盘档案里。
               </p>
             </>
           )}
         </section>
 
         {/* ⑤ 近期会话 */}
-        <section id="recent-sessions" className={`${s.section} ${s.rise}`} style={rise(2)}>
-          <header className={s.secHead}><h2 className={s.h2}>近期会话</h2><p className={s.secNote}>最近四课的五维画像，点开看完整批注。</p></header>
+        <section id="recent-sessions" className={cx(s.panel, s.rise)} style={rise(2)}>
+          <header className={s.secHead}>
+            <h2 className={s.h2}>近期会话</h2>
+            <p className={s.secNote}>最近四课的五维画像，点开看完整批注。</p>
+          </header>
           {recentReports.length === 0 ? (
-            <p className={s.emptyNote}>还没有会话记录。第一课下课后，这里会收好每一份复盘。</p>
+            <Empty
+              className={s.emptyCompact}
+              icon={<RadarIcon size={20} strokeWidth={1.75} />}
+              title="还没有会话记录"
+              description="第一课下课后，这里会收好每一份复盘。"
+            />
           ) : (
-            <div className={s.sessionList}>
+            <ul className={s.sessionList}>
               {recentReports.map((r) => (
-                <article key={r.sessionId} className={s.sessionCard}>
-                  <div className={s.miniRadar}>
-                    <Radar radar={r.radar} delta={r.radarDelta} compact />
-                  </div>
-                  <header className={s.sessionHead}>
-                    <span className={s.sessionTopic}>{getTopic(r.topicId)?.title ?? r.topicId}</span>
-                    <span className={`${s.chip} ${s.chipAzure}`}>{MODE_LABEL[r.mode]}</span>
-                    {r.masteredNow && <span className={`${s.chip} ${s.chipJade}`}>本次出师</span>}
-                  </header>
-                  <p className={s.sessionMeta}>
-                    <span className={s.numInline}>{fmtWhen(r.startedAt)}</span> · 共{' '}
-                    <span className={s.numInline}>{r.turnCount}</span> 轮
-                    {' · '}{r.highlights.length} 处高光 · {r.blindSpots.length} 处盲区
-                  </p>
-                  <Link to={`/review/${r.sessionId}`} className={s.sessionLink}>查看复盘 <Icon name="arrow-right" size={15} /></Link>
-                </article>
+                <li key={r.sessionId}>
+                  <article className={s.sessionCard}>
+                    <div className={s.miniRadar}>
+                      <Radar radar={r.radar} delta={r.radarDelta} compact />
+                    </div>
+                    <div className={s.sessionBody}>
+                      <header className={s.sessionHead}>
+                        <h3 className={s.sessionTopic}>{getTopic(r.topicId)?.title ?? r.topicId}</h3>
+                        <Badge tone="accent">{MODE_LABEL[r.mode]}</Badge>
+                        {r.masteredNow && <Badge tone="ok">本次出师</Badge>}
+                      </header>
+                      <p className={s.sessionMeta}>
+                        <span>{fmtWhen(r.startedAt)}</span>
+                        <span>共 {r.turnCount} 轮</span>
+                        <span>{r.highlights.length} 处高光</span>
+                        <span>{r.blindSpots.length} 处盲区</span>
+                      </p>
+                    </div>
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="ghost"
+                      className={s.sessionLink}
+                      iconRight={<ArrowRight size={14} strokeWidth={1.75} />}
+                    >
+                      <Link to={`/review/${r.sessionId}`}>查看复盘</Link>
+                    </Button>
+                  </article>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </section>
       </div>
 
-      {/* ③ 知识点学情:通栏册页表 */}
-      <section id="topic-progress" className={`${s.section} ${s.rise}`} style={rise(3)}>
-        <header className={s.secHead}><h2 className={s.h2}>知识点学情</h2><p className={s.secNote}>每一行都由该知识点的课堂记录得出。</p></header>
-        <TopicProgressTable topicRows={topicRows} />
-        <p className={s.tableFoot}>
-          标红的行还留着没纠正回来的误区，先补学，再回讲台重讲。
-        </p>
+      {/* ③ 知识点学情:通栏表 */}
+      <section id="topic-progress" className={cx(s.panel, s.rise)} style={rise(3)}>
+        <header className={s.secHead}>
+          <h2 className={s.h2}>知识点学情</h2>
+          <p className={s.secNote}>每一行都由该知识点的课堂记录得出，点表头可排序。</p>
+        </header>
+        {topicRows.length === 0 ? (
+          <Empty
+            className={s.emptyCompact}
+            icon={<ListChecks size={20} strokeWidth={1.75} />}
+            title="还没有开放的知识点"
+            description="课程开放后，这里会逐讲列出掌握情况。"
+          />
+        ) : (
+          <>
+            <TopicProgressTable topicRows={topicRows} />
+            <p className={s.foot}>
+              标红的行还留着没纠正回来的误区，先补学，再回讲台重讲。
+            </p>
+          </>
+        )}
       </section>
 
-      {/* ④ 心魔台账 —— 事后揭示面,可以点心魔名、引 belief 与注入台词 */}
-      <section id="misconceptions" className={`${s.section} ${s.rise}`} style={rise(4)}>
-        <header className={s.secHead}><h2 className={s.h2}>误区台账</h2><p className={s.secNote}>小白在课堂上说出的每一条误区，以及你当时纠正了还是认同了。</p></header>
+      {/* ④ 误区台账 —— 事后揭示面,可以点心魔名、引 belief 与注入台词 */}
+      <section id="misconceptions" className={cx(s.panel, s.rise)} style={rise(4)}>
+        <header className={s.secHead}>
+          <h2 className={s.h2}>误区台账</h2>
+          <p className={s.secNote}>小白在课堂上说出的每一条误区，以及你当时纠正了还是认同了。</p>
+        </header>
         {mcRows.length === 0 ? (
-          <p className={s.emptyNote}>台账还空着。要点讲到位后，小白才会开始拿错误说法试探你。</p>
+          <Empty
+            className={s.emptyCompact}
+            icon={<ClipboardList size={20} strokeWidth={1.75} />}
+            title="台账还空着"
+            description="要点讲到位后，小白才会开始拿错误说法试探你。"
+          />
         ) : (
           <ul className={s.mcList}>
             {mcRows.map((r) => (
-              <li key={r.mc.mcId} className={`${s.mcItem} ${s[MC_EDGE[r.state]]}`}>
+              <li key={r.mc.mcId} className={s.mcItem} data-state={r.state}>
                 <div className={s.mcHead}>
-                  <span className={`${s.demonChip} ${s[MC_DEMON[r.state]]}`}>{demonName(r.mc)}</span>
-                  <span className={s.mcBelief}>「{r.mc.belief}」</span>
-                  <span className={`${s.chip} ${s[MC_CHIP[r.state]]}`}>{r.state}</span>
-                </div>
-                <p className={s.mcTrigger}>注入台词:“{r.mc.triggerLine}”</p>
-                <p className={s.mcCounts}>
-                  注入 <span className={s.numInline}>{r.injected}</span> 次
-                  {' · '}纠正 <span className={s.numInline}>{r.corrected}</span> 次
-                  {' · '}
-                  <span className={r.adopted > 0 ? s.mcAdopted : undefined}>
-                    被带偏 <span className={s.numInline}>{r.adopted}</span> 次
-                  </span>
+                  <Badge tone="outline">{demonName(r.mc)}</Badge>
+                  <Badge tone={MC_TONE[r.state]} dot>{r.state}</Badge>
                   <span className={s.mcFrom}>出自「{r.topicTitle}」</span>
-                </p>
+                </div>
+                <p className={s.mcBelief}>「{r.mc.belief}」</p>
+                <p className={s.mcTrigger}>注入台词：“{r.mc.triggerLine}”</p>
+                <dl className={s.mcCounts}>
+                  <div><dt>注入</dt><dd>{r.injected}</dd></div>
+                  <div><dt>纠正</dt><dd>{r.corrected}</dd></div>
+                  <div className={r.adopted > 0 ? s.mcAdopted : undefined}><dt>被带偏</dt><dd>{r.adopted}</dd></div>
+                </dl>
               </li>
             ))}
           </ul>

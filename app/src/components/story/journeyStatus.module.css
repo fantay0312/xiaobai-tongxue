@@ -1,0 +1,190 @@
+/* 师徒进度卡：侧栏底部常驻。只用皮肤令牌，深浅皮肤同一套写法。 */
+
+.card {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border), var(--shadow-1);
+  color: var(--text);
+  font: var(--fz-sm)/1.4 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    box-shadow var(--dur-2) var(--ease),
+    transform var(--dur-2) var(--ease),
+    background var(--dur-1) var(--ease);
+}
+
+.card:hover {
+  box-shadow: inset 0 0 0 1px var(--border-2), var(--shadow-2);
+  transform: translateY(-1px);
+}
+
+.card:active {
+  transform: translateY(0) scale(0.99);
+  background: var(--inset);
+}
+
+.card:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--border-2), 0 0 0 3px var(--ring);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.face {
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-full);
+  background: var(--accent-softer);
+  box-shadow: inset 0 0 0 1px var(--border);
+  overflow: hidden;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.nameRow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.stage {
+  font-size: var(--fz-sm);
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.level {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--fz-xs);
+  color: var(--text-3);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.go {
+  flex: none;
+  color: var(--text-4);
+  transition: transform var(--dur-2) var(--ease), color var(--dur-1) var(--ease);
+}
+
+.card:hover .go {
+  color: var(--text-2);
+  transform: translateX(2px);
+}
+
+.barRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.track {
+  position: relative;
+  flex: 1;
+  display: block;
+  height: 5px;
+  min-width: 0;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  overflow: hidden;
+}
+
+.track > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width var(--dur-3) var(--ease);
+}
+
+.count {
+  flex: none;
+  font-size: var(--fz-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fz-xs);
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.chip b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+
+.chip[data-on] svg {
+  color: var(--warn);
+  fill: var(--warn-soft);
+}
+
+.chip[data-done],
+.chip[data-done] b {
+  color: var(--ok);
+}
+
+/* 紧凑：一行排完，科名在上、学识条在下 */
+.compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+}
+
+.compact .main {
+  gap: 5px;
+}
+
+.compact .track {
+  flex: none;
+  width: 100%;
+  height: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .go,
+  .track > i {
+    transition: none;
+  }
+
+  .card:hover {
+    transform: none;
+  }
+}

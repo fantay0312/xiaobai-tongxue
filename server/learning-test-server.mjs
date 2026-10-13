@@ -17,6 +17,8 @@ import { createStaticHandler } from './static-hosting.mjs';
 import { createLearningChat } from './learning-chat.mjs';
 import { createLearningAnswerService } from './learning-answer.mjs';
 import { createLearningAnswerRouter } from './learning-answer-router.mjs';
+import { createModelCatalog } from './model-catalog.mjs';
+import { createModelGatewayService, createModelGatewayRouter } from './model-gateway.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const cfg = JSON.parse(readFileSync(process.env.LEARNING_TEST_CONFIG ?? '/etc/xiaobai/learning-test.json', 'utf8'));
@@ -82,17 +84,18 @@ async function resolveOwner(req, res) {
 const limit = (input) => redis.rateLimit({ ...input, scope: `learning-test-${input.scope}` });
 const customRouter = createCustomContentRouter({ service: custom, resolveOwner, send, readRaw, readJson, hasJsonContentType, rateLimit: limit, rateLimitMany: (inputs) => redis.rateLimitMany(inputs.map((input) => ({ ...input, scope: `learning-test-${input.scope}` }))) });
 const library = createFileLibraryService({ metadata: postgresFileLibraryStore(postgres), blobs: cos, customContent: custom });
-const learningAnswers = createLearningAnswerService({ fileLibrary: library, customContent: custom, baseUrl: cfg.upstreamBaseUrl, apiKey: cfg.apiKey, model: cfg.upstreamModelCoach || cfg.upstreamModel });
-const learningAnswerRouter = createLearningAnswerRouter({service:learningAnswers,resolveOwner,send,readJson,hasJsonContentType,
-  reserveCalls:async(owner,res)=>{
-    const result=await redis.rateLimitMany([
-      {scope:'learning-test-chat-minute',subject:owner.id,limit:15,windowSeconds:60},
-      {scope:'learning-test-chat-day',subject:owner.id,limit:200,windowSeconds:86400},
-    ]);
-    if(!result.allowed)send(res,429,{error:'rate-limited'});
-    return result.allowed;
-  },
-});
+const modelCatalog = createModelCatalog(cfg);
+const learningAnswers = createLearningAnswerService({ fileLibrary: library, customContent: custom, baseUrl: cfg.upstreamBaseUrl, apiKey: cfg.apiKey, model: cfg.upstreamModelCoach || cfg.upstreamModel, catalog: modelCatalog });
+const reserveLearningCalls = async(owner,res)=>{
+  const result=await redis.rateLimitMany([
+    {scope:'learning-test-chat-minute',subject:owner.id,limit:15,windowSeconds:60},
+    {scope:'learning-test-chat-day',subject:owner.id,limit:200,windowSeconds:86400},
+  ]);
+  if(!result.allowed)send(res,429,{error:'rate-limited'});
+  return result.allowed;
+};
+const learningAnswerRouter = createLearningAnswerRouter({service:learningAnswers,resolveOwner,send,readJson,hasJsonContentType,reserveCalls:reserveLearningCalls});
+const modelGatewayRouter = createModelGatewayRouter({ service: createModelGatewayService({ baseUrl: cfg.upstreamBaseUrl, apiKey: cfg.apiKey, catalog: modelCatalog }), resolveOwner, send, readJson, hasJsonContentType, reserveCalls: reserveLearningCalls });
 const libraryRouter = createFileLibraryRouter({ service: library, resolveOwner, send, readRaw, readJson, rateLimit: (owner) => limit({ scope: 'upload', subject: owner.id, limit: 60, windowSeconds: 86400 }) });
 const studyRouter = createStudyTutorRouter({ provider: createDeepTutorProvider({ enabled: process.env.DEEPTUTOR_ENABLED === '1', model: cfg.upstreamModelCoach || cfg.upstreamModel, baseUrl: cfg.upstreamBaseUrl, apiKey: cfg.apiKey }), fileLibrary: library, customContent: custom, resolveOwner, send, readJson, hasJsonContentType,
   reserveCalls: async (owner, res, units) => { const result = await limit({ scope: 'deep', subject: owner.id, limit: 80, windowSeconds: 86400, amount: units }); if (!result.allowed) send(res,429,{error:'rate-limited'}); return result.allowed; } });
@@ -113,6 +116,7 @@ const server = http.createServer(async (req,res) => {
     if (!['GET','HEAD'].includes(req.method) && req.headers.origin !== origin) return send(res,403,{error:'invalid-origin'});
     if (pathname === '/api/health') return send(res,200,{ok:true,deployment:'learning-test',parser:'WeKnora',model:cfg.upstreamModelCoach || cfg.upstreamModel});
     if (pathname.startsWith('/api/learning/')) return await learningAnswerRouter.handle(req,res,pathname);
+    if (pathname.startsWith('/api/model/')) return await modelGatewayRouter.handle(req,res,pathname);
     if (pathname === '/api/chat') {
       if (req.method !== 'POST') return send(res,405,{error:'method-not-allowed'});
       const owner = await resolveOwner(req,res); if (!owner) return;

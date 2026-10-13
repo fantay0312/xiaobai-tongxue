@@ -6,6 +6,10 @@
   "upstreamBaseUrl": "https://api.deepseek.com",
   "upstreamModel": "deepseek-v4-flash",
   "upstreamModelCoach": "deepseek-v4-pro",
+  "models": [
+    { "id": "deepseek-v4-flash", "label": "DeepSeek V4 Flash", "provider": "DeepSeek", "description": "回答快，适合日常答疑", "badge": "快速", "efforts": ["none", "low", "high", "max"], "defaultEffort": "low" },
+    { "id": "deepseek-v4-pro", "label": "DeepSeek V4 Pro", "provider": "DeepSeek", "description": "推理更强，适合推导与难题", "badge": "深度", "efforts": ["none", "low", "high", "max"], "defaultEffort": "high" }
+  ],
   "apiKey": "sk-填入真实密钥(此文件只放在服务器,勿入库)",
   "visionUpstreamUrl": "",
   "upstreamModelVision": "",

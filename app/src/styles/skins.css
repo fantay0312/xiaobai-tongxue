@@ -1,0 +1,384 @@
+/* ─────────────────────────────────────────────────────────
+   小白同学 · 设计令牌 v3（2026-10-14）
+   语义令牌 + 皮肤。组件只引用语义令牌；皮肤只改变量值。
+   用户自定义（强调色、圆角、字号、字体、壁纸）由 store/skinStore.ts 写到 <html> 内联变量。
+   旧页面仍在用的 --paper/--ink/--azure 等历史变量，在 workspace 与 marketing 场景下桥接到这里。
+   故事物件（拜师帖、证书、日记、印章）加 data-story 属性，回到老学堂纸墨与四声部字体。
+   ───────────────────────────────────────────────────────── */
+:root {
+  color-scheme: light;
+
+  /* 可由用户调节的三个比例 */
+  --radius-scale: 1;
+  --font-scale: 1;
+  --density: 1;
+
+  /* 面 */
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --sidebar: #f7f7f8;
+  --inset: #f2f3f5;
+  --hover: rgba(15, 23, 42, 0.05);
+  --active: rgba(15, 23, 42, 0.09);
+
+  /* 字 */
+  --text: #1b1d21;
+  --text-2: #4b5059;
+  --text-3: #7a808a;
+  --text-4: #a6abb4;
+
+  /* 线 */
+  --border: rgba(15, 23, 42, 0.08);
+  --border-2: rgba(15, 23, 42, 0.15);
+
+  /* 强调：选择态、链接、进度。主按钮用 --solid（墨黑），不用强调色 */
+  --accent: #3b72e6;
+  --on-accent: #ffffff;
+  --accent-hover: color-mix(in oklab, var(--accent) 86%, black);
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+  --accent-softer: color-mix(in srgb, var(--accent) 7%, transparent);
+  --ring: color-mix(in srgb, var(--accent) 45%, transparent);
+
+  --solid: #16181c;
+  --solid-hover: #2b2e35;
+  --on-solid: #ffffff;
+
+  /* 状态 */
+  --ok: #1f9d6b;
+  --ok-soft: color-mix(in srgb, var(--ok) 13%, transparent);
+  --warn: #c0810c;
+  --warn-soft: color-mix(in srgb, var(--warn) 15%, transparent);
+  --bad: #d5483f;
+  --bad-soft: color-mix(in srgb, var(--bad) 12%, transparent);
+
+  --overlay: rgba(15, 18, 24, 0.38);
+
+  /* 影：一档贴面、二档浮卡、三档弹层 */
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-2: 0 0 0 1px rgba(15, 23, 42, 0.05), 0 4px 14px rgba(15, 23, 42, 0.08);
+  --shadow-3: 0 0 0 1px rgba(15, 23, 42, 0.06), 0 2px 6px rgba(15, 23, 42, 0.06), 0 14px 44px rgba(15, 23, 42, 0.16);
+
+  /* 形 */
+  --r-xs: calc(6px * var(--radius-scale));
+  --r-sm: calc(8px * var(--radius-scale));
+  --r-md: calc(10px * var(--radius-scale));
+  --r-lg: calc(14px * var(--radius-scale));
+  --r-xl: calc(20px * var(--radius-scale));
+  --r-2xl: calc(26px * var(--radius-scale));
+  --r-full: 999px;
+
+  /* 字体与字号 */
+  --ui-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'DM Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --ui-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+  --fz-2xs: calc(11px * var(--font-scale));
+  --fz-xs: calc(12px * var(--font-scale));
+  --fz-sm: calc(13px * var(--font-scale));
+  --fz-md: calc(14px * var(--font-scale));
+  --fz-lg: calc(15px * var(--font-scale));
+  --fz-xl: calc(17px * var(--font-scale));
+  --fz-2xl: calc(20px * var(--font-scale));
+  --fz-3xl: calc(26px * var(--font-scale));
+  --fz-4xl: calc(34px * var(--font-scale));
+
+  /* 控件高度 */
+  --ctl-sm: calc(28px * var(--density));
+  --ctl-md: calc(34px * var(--density));
+  --ctl-lg: calc(42px * var(--density));
+
+  /* 动 */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 320ms;
+
+  /* 壁纸（终端背景图，可选） */
+  --wallpaper: none;
+  --wallpaper-dim: 0.55;
+
+  /* 故事物件专用：老学堂纸墨与四声部字体 */
+  --story-serif: 'Cormorant Garamond', 'Songti SC', 'STSong', 'Noto Serif SC', 'SimSun', serif;
+  --story-hand: 'LXGW WenKai Screen', 'Kaiti SC', 'STKaiti', 'KaiTi', serif;
+  --story-type: 'Courier Prime', 'Courier New', 'Songti SC', 'STSong', monospace;
+  --story-paper: #f4f1ea;
+  --story-paper-warm: #f2ecd8;
+  --story-ink: #1f1f1f;
+  --story-terra: #9e4526;
+  --story-seal: #b23a2e;
+  --story-gold: #ffc233;
+}
+
+/* ── 皮肤 ── */
+html[data-skin='dark'] {
+  color-scheme: dark;
+  --bg: #17181b;
+  --surface: #1f2125;
+  --sidebar: #111214;
+  --inset: #26282d;
+  --hover: rgba(255, 255, 255, 0.06);
+  --active: rgba(255, 255, 255, 0.11);
+  --text: #ececef;
+  --text-2: #b6bac2;
+  --text-3: #878c96;
+  --text-4: #5e636d;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-2: rgba(255, 255, 255, 0.16);
+  --accent: #6f9dff;
+  --on-accent: #0b1020;
+  --accent-hover: color-mix(in oklab, var(--accent) 86%, white);
+  --solid: #f1f2f4;
+  --solid-hover: #ffffff;
+  --on-solid: #15171a;
+  --ok: #43c08d;
+  --warn: #e0a83c;
+  --bad: #f0736a;
+  --overlay: rgba(0, 0, 0, 0.56);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 6px 18px rgba(0, 0, 0, 0.4);
+  --shadow-3: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 18px 50px rgba(0, 0, 0, 0.6);
+}
+
+html[data-skin='paper'] {
+  --bg: #fbf8f1;
+  --surface: #fffdf8;
+  --sidebar: #f3eee2;
+  --inset: #eee8da;
+  --hover: rgba(70, 48, 22, 0.06);
+  --active: rgba(70, 48, 22, 0.1);
+  --text: #2a2520;
+  --text-2: #5a5148;
+  --text-3: #85796b;
+  --text-4: #ada293;
+  --border: rgba(70, 48, 22, 0.1);
+  --border-2: rgba(70, 48, 22, 0.19);
+  --accent: #a8502c;
+  --solid: #2a2520;
+  --solid-hover: #413a32;
+}
+
+html[data-skin='sage'] {
+  --bg: #fbfcfa;
+  --surface: #ffffff;
+  --sidebar: #eff3ee;
+  --inset: #e7ede6;
+  --hover: rgba(24, 56, 40, 0.06);
+  --active: rgba(24, 56, 40, 0.1);
+  --text: #1c2520;
+  --text-2: #48554d;
+  --text-3: #74827a;
+  --text-4: #a2ada6;
+  --border: rgba(24, 56, 40, 0.1);
+  --border-2: rgba(24, 56, 40, 0.18);
+  --accent: #2f8562;
+  --solid: #1c2520;
+  --solid-hover: #2f3b34;
+}
+
+html[data-skin='ocean'] {
+  --bg: #fbfcfe;
+  --surface: #ffffff;
+  --sidebar: #eef3fa;
+  --inset: #e5edf7;
+  --hover: rgba(20, 50, 100, 0.06);
+  --active: rgba(20, 50, 100, 0.1);
+  --text: #172033;
+  --text-2: #445069;
+  --text-3: #707c95;
+  --text-4: #a0aabd;
+  --border: rgba(20, 50, 100, 0.1);
+  --border-2: rgba(20, 50, 100, 0.18);
+  --accent: #2a6fdb;
+  --solid: #172033;
+  --solid-hover: #283450;
+}
+
+html[data-skin='sakura'] {
+  --bg: #fffbfb;
+  --surface: #ffffff;
+  --sidebar: #fbeff1;
+  --inset: #f6e5e9;
+  --hover: rgba(110, 30, 55, 0.06);
+  --active: rgba(110, 30, 55, 0.1);
+  --text: #2a1c21;
+  --text-2: #5c4850;
+  --text-3: #8a737c;
+  --text-4: #b5a2a9;
+  --border: rgba(110, 30, 55, 0.1);
+  --border-2: rgba(110, 30, 55, 0.18);
+  --accent: #cf4d77;
+  --solid: #2a1c21;
+  --solid-hover: #443038;
+}
+
+html[data-skin='midnight'] {
+  color-scheme: dark;
+  --bg: #0f1626;
+  --surface: #162035;
+  --sidebar: #0b111e;
+  --inset: #1b2740;
+  --hover: rgba(160, 195, 255, 0.08);
+  --active: rgba(160, 195, 255, 0.14);
+  --text: #e6ebf5;
+  --text-2: #aab6cd;
+  --text-3: #7b89a4;
+  --text-4: #55617a;
+  --border: rgba(160, 195, 255, 0.1);
+  --border-2: rgba(160, 195, 255, 0.2);
+  --accent: #5eb0ff;
+  --on-accent: #061223;
+  --accent-hover: color-mix(in oklab, var(--accent) 86%, white);
+  --solid: #e6ebf5;
+  --solid-hover: #ffffff;
+  --on-solid: #0f1626;
+  --ok: #4cc79a;
+  --warn: #e3ae48;
+  --bad: #f27d75;
+  --overlay: rgba(2, 6, 14, 0.62);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 0 0 1px rgba(160, 195, 255, 0.08), 0 6px 18px rgba(0, 0, 0, 0.42);
+  --shadow-3: 0 0 0 1px rgba(160, 195, 255, 0.1), 0 18px 50px rgba(0, 0, 0, 0.62);
+}
+
+html[data-skin='terminal'] {
+  color-scheme: dark;
+  --bg: #0b0f0c;
+  --surface: #101711;
+  --sidebar: #070a08;
+  --inset: #141d16;
+  --hover: rgba(61, 220, 132, 0.08);
+  --active: rgba(61, 220, 132, 0.15);
+  --text: #d8f5de;
+  --text-2: #9dc8a8;
+  --text-3: #6b9577;
+  --text-4: #456250;
+  --border: rgba(61, 220, 132, 0.13);
+  --border-2: rgba(61, 220, 132, 0.26);
+  --accent: #3ddc84;
+  --on-accent: #06140b;
+  --accent-hover: color-mix(in oklab, var(--accent) 86%, white);
+  --solid: #3ddc84;
+  --solid-hover: #62e89d;
+  --on-solid: #06140b;
+  --ok: #3ddc84;
+  --warn: #e6c14a;
+  --bad: #ff7a6b;
+  --overlay: rgba(0, 0, 0, 0.66);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-2: 0 0 0 1px rgba(61, 220, 132, 0.12), 0 6px 18px rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 0 0 1px rgba(61, 220, 132, 0.16), 0 18px 50px rgba(0, 0, 0, 0.7);
+  --ui-font: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, 'PingFang SC', monospace;
+}
+
+/* ── 场景基线：workspace（应用）与 marketing（宣传页、登录）共用新令牌 ── */
+html[data-surface='workspace'],
+html[data-surface='marketing'] {
+  /* 历史变量桥接：旧页面无需改名即可跟随皮肤 */
+  --paper: var(--bg);
+  --paper-warm: var(--sidebar);
+  --paper-blush: var(--sidebar);
+  --paper-shade: var(--inset);
+  --paper-edge: var(--border-2);
+  --ink: var(--text);
+  --ink-soft: var(--text-2);
+  --ink-faint: var(--text-3);
+  --ink-wash: var(--hover);
+  --line: var(--border);
+  --line-strong: var(--border-2);
+  --azure: var(--accent);
+  --azure-deep: var(--accent-hover);
+  --azure-wash: var(--accent-soft);
+  --terra: var(--accent);
+  --terra-ink: var(--accent);
+  --terra-deep: var(--accent-hover);
+  --terra-wash: var(--accent-soft);
+  --lilac: var(--accent);
+  --lilac-ink: var(--accent);
+  --lilac-deep: var(--accent-hover);
+  --lilac-wash: var(--accent-soft);
+  --jade: var(--ok);
+  --jade-ink: var(--ok);
+  --jade-wash: var(--ok-soft);
+  --reed-ink: var(--ok);
+  --reed-wash: var(--ok-soft);
+  --amber-ink: var(--warn);
+  --amber-wash: var(--warn-soft);
+  --cinnabar: var(--bad);
+  --cinnabar-wash: var(--bad-soft);
+  --inkstone: var(--solid);
+  --inkstone-deep: var(--solid);
+  --moon-on-ink: var(--on-solid);
+  --shadow-paper: var(--shadow-2);
+  --shadow-lift: var(--shadow-3);
+  --font-body: var(--ui-font);
+  --font-serif: var(--ui-font);
+  --font-display: var(--ui-font);
+  --font-typewriter: var(--ui-font);
+  --font-code: var(--ui-mono);
+  --track-label: 0;
+  --radius-s: var(--r-xs);
+  --radius: var(--r-md);
+  --radius-l: var(--r-lg);
+  --radius-tag: var(--r-xs);
+}
+
+html[data-surface='workspace'] body,
+html[data-surface='marketing'] body {
+  background-color: var(--bg);
+  background-image: none;
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: var(--fz-md);
+  line-height: 1.6;
+}
+html[data-surface='workspace'] body::after,
+html[data-surface='marketing'] body::after { display: none; }
+
+/* ── 故事岛：拜师帖、证书、日记、来信、印章等纸质物件保留老学堂工艺 ── */
+[data-story] {
+  color-scheme: light;
+  --paper: #f4f1ea;
+  --paper-warm: #f2ecd8;
+  --paper-blush: #f3e8df;
+  --paper-shade: #e7e4d9;
+  --paper-edge: #d1d1c9;
+  --ink: #1f1f1f;
+  --ink-soft: #565550;
+  --ink-faint: #6b6963;
+  --ink-wash: rgba(31, 31, 31, 0.08);
+  --line: #dcd9cd;
+  --line-strong: #b8b6ac;
+  --terra: #c65d3b;
+  --terra-ink: #9e4526;
+  --terra-deep: #8f3d20;
+  --terra-wash: rgba(198, 93, 59, 0.14);
+  --azure: #9e4526;
+  --azure-deep: #8f3d20;
+  --azure-wash: rgba(198, 93, 59, 0.14);
+  --lilac: #c65d3b;
+  --lilac-ink: #9e4526;
+  --lilac-deep: #8f3d20;
+  --lilac-wash: rgba(198, 93, 59, 0.14);
+  --jade: #6a6e3f;
+  --jade-ink: #5c6136;
+  --jade-wash: rgba(169, 165, 120, 0.22);
+  --reed-ink: #5c6136;
+  --reed-wash: rgba(169, 165, 120, 0.22);
+  --amber-ink: #8a6226;
+  --amber-wash: rgba(217, 164, 65, 0.16);
+  --cinnabar: #a3392a;
+  --cinnabar-wash: rgba(163, 57, 42, 0.1);
+  --inkstone: #3a362f;
+  --inkstone-deep: #2b2823;
+  --moon-on-ink: #f4f1ea;
+  --shadow-paper: 0 1px 2px rgba(31, 31, 31, 0.08), 0 6px 20px rgba(31, 31, 31, 0.09);
+  --shadow-lift: 0 4px 10px rgba(31, 31, 31, 0.12), 0 24px 60px rgba(31, 31, 31, 0.16);
+  --font-serif: var(--story-serif);
+  --font-display: var(--story-hand);
+  --font-typewriter: var(--story-type);
+  --track-label: 0.18em;
+  --radius-s: 4px;
+  --radius: 10px;
+  --radius-l: 18px;
+  --radius-tag: 2px;
+  color: #1f1f1f;
+}

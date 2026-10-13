@@ -1,160 +1,201 @@
+/* 考场 —— 送考 / 作答 / 放榜 三幕。
+   外壳走应用令牌(随皮肤);准考证、试卷、榜文是纸质故事物件(TSX 挂 data-story),
+   在它们内部用老学堂纸墨变量(--paper / --ink / --font-display …)。 */
+
 .page {
-  position: relative;
-  isolation: isolate;
-  flex: 1;
-  min-height: 42rem;
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px clamp(16px, 4vw, 32px) 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  color: var(--text);
+  font-family: var(--ui-font);
+  font-size: var(--fz-md);
+  line-height: 1.6;
+  scroll-margin-top: 0;
+}
+
+/* 侧栏收起时左上角浮着还原钮,页头让出一行 */
+:global([data-navigation-collapsed]) .page { padding-top: 60px; }
+
+/* ── 页头:位置 + 三幕进程 ── */
+.pageHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+.crumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
+.crumb a {
+  margin: -2px -4px;
+  padding: 2px 4px;
+  border-radius: var(--r-xs);
+  color: var(--text-3);
+  text-decoration: none;
+  transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+.crumb a:hover { background: var(--hover); color: var(--text); }
+.crumb a:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.crumb svg { flex: none; color: var(--text-4); }
+
+.phaseRail {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 3px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+}
+.phaseStep {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 12px 0 4px;
+  border-radius: var(--r-full);
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  font-weight: 500;
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
+}
+.phaseStep i {
   display: grid;
   place-items: center;
-  overflow: visible;
-  padding: clamp(var(--gap), 4vw, var(--gap-section));
-  background:
-    radial-gradient(circle at 50% 36%, color-mix(in oklch, var(--paper) 72%, transparent), transparent 44%),
-    radial-gradient(50rem 28rem at 4% 100%, color-mix(in oklch, var(--reed) 22%, transparent), transparent 72%),
-    radial-gradient(48rem 28rem at 96% 0%, color-mix(in oklch, var(--lilac) 20%, transparent), transparent 70%),
-    repeating-linear-gradient(0deg, transparent 0 35px, color-mix(in oklch, var(--ink) 4%, transparent) 36px),
-    var(--paper-shade);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--hover);
+  font-size: var(--fz-2xs);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+.phaseStep[data-state='now'] {
+  background: var(--surface);
+  box-shadow: var(--shadow-1), 0 0 0 1px var(--border);
+  color: var(--text);
+}
+.phaseStep[data-state='now'] i { background: var(--solid); color: var(--on-solid); }
+.phaseStep[data-state='done'] { color: var(--text-2); }
+.phaseStep[data-state='done'] i { background: var(--ok-soft); color: var(--ok); }
+
+/* 章节眉批 */
+.kicker {
+  margin: 0;
+  color: var(--accent);
+  font-size: var(--fz-sm);
+  font-weight: 500;
 }
 
-.watermark {
-  position: absolute;
-  z-index: -1;
-  right: 0;
-  bottom: -0.34em;
-  font-family: var(--font-display);
-  font-size: clamp(18rem, 43vw, 38rem);
-  line-height: 1;
-  color: var(--ink-wash);
-  user-select: none;
-}
-
+/* ── 三幕共用的舞台卡 ── */
 .sendoff,
-.examDesk,
-.result,
-.empty {
-  width: min(100%, 62rem);
-  background: var(--paper);
-  border: 1px solid var(--line-strong);
-  box-shadow:
-    inset 0 0 0 5px var(--paper),
-    inset 0 0 0 6px var(--line-strong),
-    var(--shadow-lift);
-  animation: global(rise) var(--t-slow) var(--ease-out) backwards;
+.examDesk {
+  border: 1px solid var(--border);
+  border-radius: var(--r-2xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  animation: global(rise) var(--dur-3) var(--ease) backwards;
 }
 
+/* ── 送考 ── */
 .sendoff {
   display: grid;
-  grid-template-columns: minmax(15rem, 0.8fr) minmax(0, 1.35fr);
+  grid-template-columns: minmax(15rem, 0.8fr) minmax(0, 1.3fr);
+  overflow: hidden;
 }
-
 .avatarSide {
-  position: relative;
-  min-height: 29rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--gap-tight);
-  overflow: hidden;
-  border-right: 1px solid var(--line-strong);
-  background:
-    radial-gradient(circle at 50% 42%, color-mix(in oklch, var(--paper) 90%, transparent), transparent 58%),
-    linear-gradient(155deg, transparent 24%, var(--azure-wash)),
-    linear-gradient(160deg, var(--paper-warm) 10%, var(--paper-shade) 84%);
+  gap: 12px;
+  min-height: 27rem;
+  padding: 32px 24px;
+  background: var(--sidebar);
 }
-
-.gateMark {
-  position: absolute;
-  top: var(--gap);
-  left: var(--gap);
-  display: grid;
-  place-items: center;
-  width: 2.7rem;
-  height: 2.7rem;
-  color: var(--azure-deep);
-  border: 1px solid var(--azure);
-  border-radius: 50%;
-}
-
 .satchel {
-  padding: 0.28rem 0.85rem;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-tag);
-  background: var(--paper);
-  box-shadow: var(--shadow-paper);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  color: var(--ink-soft);
-  letter-spacing: 0.12em;
+  padding: 3px 12px;
+  border-radius: var(--r-full);
+  background: var(--surface);
+  box-shadow: var(--shadow-1), 0 0 0 1px var(--border);
+  color: var(--text-2);
+  font-size: var(--fz-xs);
+  letter-spacing: 0.06em;
 }
 
-/* 准考证:别在小白身侧的一张小卡,微斜像随手塞进书箱的 */
+/* 准考证:别在小白身侧的一张小卡,微斜像随手塞进书箱的(data-story) */
 .ticket {
-  width: min(13.5rem, 82%);
-  margin-top: var(--gap-hair);
-  padding: var(--gap-tight) var(--gap);
+  width: min(14rem, 100%);
+  margin-top: 4px;
+  padding: 12px 16px 10px;
   background: var(--paper);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-tag);
   box-shadow: var(--shadow-paper);
   transform: rotate(-1.6deg);
+  transition: transform var(--dur-3) var(--ease);
 }
-
+.ticket:hover { transform: rotate(-0.6deg) translateY(-2px); }
 .ticketHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: var(--gap-hair);
+  padding-bottom: 6px;
   border-bottom: 1px dashed var(--line-strong);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  letter-spacing: 0.3em;
   color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fz-md);
+  letter-spacing: 0.3em;
 }
-
-/* 印章语境:准考证角上的小朱印走 --seal-red(豁免制度) */
+/* 印章语境:准考证角上的小朱印 */
 .ticketStamp {
   display: grid;
   place-items: center;
-  width: 1.45rem;
-  height: 1.45rem;
-  border: 1.5px solid var(--seal-red);
-  color: var(--seal-red);
-  background: var(--seal-red-wash);
-  font-size: var(--fs-tiny);
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--story-seal);
+  background: color-mix(in srgb, var(--story-seal) 9%, transparent);
+  color: var(--story-seal);
+  font-size: var(--fz-xs);
   letter-spacing: 0;
   transform: rotate(6deg);
 }
-
 .ticketRows {
-  margin: var(--gap-hair) 0 0;
   display: grid;
-  gap: 2px;
+  gap: 3px;
+  margin: 8px 0 0;
 }
-
 .ticketRows > div {
   display: flex;
-  gap: var(--gap-tight);
-  font-size: var(--fs-tiny);
+  gap: 12px;
+  font-size: var(--fz-xs);
 }
-
 .ticketRows dt {
   flex: none;
   min-width: 3.4em;
-  font-family: var(--font-typewriter);
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
   color: var(--ink-faint);
+  font-family: var(--font-typewriter);
+  letter-spacing: 0.14em;
 }
-.ticketRows dd { margin: 0; color: var(--ink-soft); }
-
-/* 准考证票根:底缘撕票虚线 + 验讫小字,坐实"听课证/准考证"制式 */
+.ticketRows dd { margin: 0; color: var(--ink-soft); overflow-wrap: anywhere; }
+/* 票根:底缘撕票虚线 + 验讫小字 */
 .ticketAdmit {
-  margin-top: var(--gap-tight);
-  padding-top: var(--gap-hair);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--gap-tight);
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 6px;
 }
 
 .sendoffBody {
@@ -162,209 +203,267 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  padding: clamp(var(--gap-loose), 6vw, var(--gap-section));
+  padding: clamp(28px, 5vw, 56px);
 }
-
-/* 入场节奏(R6):正文五件套 70ms 阶梯,封顶 280ms */
-.sendoffBody > *,
-.resultMain > * {
-  animation: global(rise) var(--t-med) var(--ease-out) backwards;
-}
-
-.sendoffBody > :nth-child(2), .resultMain > :nth-child(2) { animation-delay: 70ms; }
-.sendoffBody > :nth-child(3), .resultMain > :nth-child(3) { animation-delay: 140ms; }
-.sendoffBody > :nth-child(4), .resultMain > :nth-child(4) { animation-delay: 210ms; }
-.sendoffBody > :nth-child(n + 5), .resultMain > :nth-child(n + 5) { animation-delay: 280ms; }
-
-/* 章节眉批:打字机小签(编号/分区题签一律走这一档) */
-.kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--gap-hair);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  text-transform: uppercase;
-  color: var(--azure-deep);
-  letter-spacing: var(--track-label);
-}
-
-/* 双线书版式的短墨线:给章节 kicker 一点骨(R2) */
-.kicker::before {
-  content: '';
-  flex: none;
-  width: 1.75rem;
-  height: 2px;
-  background: linear-gradient(90deg, var(--lilac-ink), var(--reed));
-}
+/* 入场节奏:正文几件 70ms 阶梯,封顶 280ms */
+.sendoffBody > * { animation: global(rise) var(--dur-3) var(--ease) backwards; }
+.sendoffBody > :nth-child(2) { animation-delay: 70ms; }
+.sendoffBody > :nth-child(3) { animation-delay: 140ms; }
+.sendoffBody > :nth-child(4) { animation-delay: 210ms; }
+.sendoffBody > :nth-child(n + 5) { animation-delay: 280ms; }
 
 .title {
-  margin-top: var(--gap-tight);
-  font-size: var(--fs-hero);
-  color: var(--ink);
+  margin: 8px 0 0;
+  color: var(--text);
+  font: 650 var(--fz-4xl)/1.2 var(--ui-font);
+  letter-spacing: -0.02em;
 }
-
+.title:focus { outline: none; }
 .lead {
-  margin-top: var(--gap);
   max-width: 34rem;
-  color: var(--ink-soft);
-  line-height: 2;
+  margin: 16px 0 0;
+  color: var(--text-2);
+  font-size: var(--fz-lg);
+  line-height: 1.9;
 }
-
-.lead b { font-family: var(--font-code); color: var(--ink); }
-
-/* 考场警示带:警示语义走朱砂(--cinnabar),不得写印章别名 */
+.lead b { color: var(--text); font-variant-numeric: tabular-nums; }
+/* 考场规矩:警示语义 */
 .rule {
-  margin: var(--gap-loose) 0;
-  padding: var(--gap-tight) var(--gap);
-  border-left: 3px solid var(--cinnabar);
-  background: var(--cinnabar-wash);
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-}
-
-/* 主按钮规范(全站对齐):hover 变深上浮 / active 下压 / disabled 半透明 */
-.primaryBtn,
-.nextBtn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: var(--gap-hair);
-  border: none;
-  border-radius: var(--radius-s);
-  background: var(--azure);
-  color: var(--paper);
-  padding: 0.64rem 1.25rem;
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+  gap: 8px;
+  margin: 24px 0 28px;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--warn-soft);
+  color: var(--text);
+  font-size: var(--fz-md);
+  font-weight: 500;
 }
+.rule svg { flex: none; color: var(--warn); }
 
-.primaryBtn:hover:not(:disabled),
-.nextBtn:hover:not(:disabled) { transform: translateY(-1px); background: var(--azure-deep); }
+/* ── 作答台 ── */
+.examDesk { padding: clamp(16px, 3vw, 28px); }
 
-.primaryBtn:active:not(:disabled),
-.nextBtn:active:not(:disabled) { transform: translateY(1px); }
-
-.primaryBtn:disabled { opacity: 0.55; cursor: not-allowed; }
-
-.examDesk {
-  align-self: start;
-  padding: clamp(var(--gap), 4vw, var(--gap-loose));
-  background: var(--paper-warm);
-}
-
-/* 判卷等待态是时序而非禁用,沿用 0.55 但保留 wait 光标 */
-.nextBtn:disabled { opacity: 0.55; cursor: wait; }
-
-/* 放榜:全页唯一砚墨锚点(R1)——榜文压卷,像一张深色的放榜帖 */
+/* ── 放榜 ── */
 .result {
-  position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--gap-loose);
-  padding: clamp(var(--gap-loose), 5vw, var(--gap-section));
-  border-color: var(--inkstone-deep);
-  background: linear-gradient(160deg, var(--inkstone), var(--inkstone-deep));
-  box-shadow:
-    inset 0 0 0 5px var(--inkstone-deep),
-    inset 0 0 0 6px var(--inkstone-line),
-    var(--shadow-lift);
+  gap: 20px;
+  animation: global(rise) var(--dur-3) var(--ease) backwards;
 }
 
-.result .kicker { color: var(--moonsoft-on-ink); }
-.result .kicker::before { background: var(--moonsoft-on-ink); }
-
-/* 放榜朱印:双圈官戳制式(外实圈+内虚圈),红戳走 --seal-red 豁免 —— 两处铺张之一 */
-.resultSeal {
+/* 榜文:一张贴出来的纸榜(data-story),双线内框,朱印压角 */
+.board {
   position: relative;
-  align-self: start;
-  width: 4rem;
-  height: 4rem;
+  padding: clamp(28px, 5vw, 52px) clamp(20px, 5vw, 56px);
+  padding-right: clamp(20px, 22vw, 15rem);
+  background: var(--paper-warm);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow:
+    inset 0 0 0 5px var(--paper-warm),
+    inset 0 0 0 6px var(--paper-edge),
+    var(--shadow-lift);
+  color: var(--ink);
+}
+.board > * { animation: global(rise) var(--dur-3) var(--ease) backwards; }
+.board > :nth-child(3) { animation-delay: 80ms; }
+.board > :nth-child(4) { animation-delay: 160ms; }
+.board > :nth-child(5) { animation-delay: 240ms; }
+.board > :nth-child(n + 6) { animation-delay: 320ms; }
+
+/* 放榜朱印:双圈官戳(外实圈 + 内虚圈),盖章式落下 */
+.resultSeal {
+  position: absolute;
+  top: clamp(18px, 3vw, 30px);
+  right: clamp(18px, 3vw, 34px);
   display: grid;
   place-items: center;
-  border: 2px solid var(--seal-red);
+  width: 64px;
+  height: 64px;
+  border: 2px solid var(--story-seal);
   border-radius: 50%;
-  color: var(--seal-red);
-  background: var(--seal-red-wash);
+  background: color-mix(in srgb, var(--story-seal) 8%, transparent);
+  color: var(--story-seal);
   font-family: var(--font-serif);
+  font-size: 1.7rem;
   font-weight: 600;
-  font-size: var(--fs-title);
-  transform: rotate(-6deg);
+  transform: rotate(-8deg);
+  animation: sealDrop 520ms var(--ease) 420ms backwards;
 }
-
 .resultSeal::before {
   content: '';
   position: absolute;
   inset: 4px;
-  border: 1px dashed var(--seal-red);
+  border: 1px dashed var(--story-seal);
   border-radius: 50%;
   opacity: 0.6;
 }
+@keyframes sealDrop {
+  from { opacity: 0; transform: rotate(-16deg) scale(1.5); }
+  to { opacity: 1; transform: rotate(-8deg); }
+}
 
-.resultTitle { margin-top: var(--gap-hair); font-size: var(--fs-hero); color: var(--moon-on-ink); }
-.resultMeta { color: var(--moonsoft-on-ink); }
-
-.resultQuote {
-  margin: var(--gap-loose) 0 var(--gap);
-  padding-left: var(--gap);
-  border-left: 2px solid var(--inkstone-line);
-  color: var(--moon-on-ink);
+.boardKicker {
+  margin: 0;
+  color: var(--ink-faint);
+  font-family: var(--font-typewriter);
+  font-size: var(--fz-xs);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+.resultTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 20px;
+  margin: 12px 0 0;
+  color: var(--ink);
+}
+.resultTitle:focus { outline: none; }
+.resultName {
   font-family: var(--font-display);
-  font-size: var(--fs-sub);
+  font-size: var(--fz-2xl);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+}
+.resultScore {
+  color: var(--story-seal);
+  font-family: var(--font-serif);
+  font-size: clamp(3.4rem, 9vw, 5.2rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.resultScore small {
+  margin-left: 6px;
+  font-family: var(--font-display);
+  font-size: var(--fz-xl);
+  font-weight: 400;
+}
+.resultMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 12px 0 0;
+  color: var(--ink-soft);
+  font-size: var(--fz-md);
+}
+.resultMeta b {
+  padding: 1px 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius-tag);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+}
+.resultQuote {
+  max-width: 36rem;
+  margin: 24px 0 0;
+  padding-left: 16px;
+  border-left: 2px solid var(--line-strong);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--fz-xl);
   line-height: 1.9;
 }
-
-/* 出师喜报:砚墨榜上唯一一线黛绿,指向批注页的结业证书 */
+/* 出师喜报:榜上唯一一线橄榄绿,指向批注页的结业证书 */
 .resultMastered {
   display: flex;
-  align-items: center;
-  gap: var(--gap-hair);
-  margin-bottom: var(--gap);
-  padding: var(--gap-tight) var(--gap);
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 36rem;
+  margin: 20px 0 0;
+  padding: 10px 14px;
   border-left: 3px solid var(--jade);
   background: var(--jade-wash);
-  color: var(--moon-on-ink);
+  color: var(--ink);
   font-family: var(--font-display);
-  font-size: var(--fs-body);
+  font-size: var(--fz-md);
+  line-height: 1.7;
 }
-
-.resultMastered svg { flex: none; color: var(--jade); }
-
-.resultNote { margin-bottom: var(--gap); color: var(--moonsoft-on-ink); font-size: var(--fs-small); }
-
-/* 砚墨榜上的 CTA 反白成月色,hover 提亮上浮(深底上"变深"方向失效) */
-.result .primaryBtn {
-  background: var(--moon-on-ink);
-  color: var(--inkstone-deep);
-}
-
-.result .primaryBtn:hover:not(:disabled) { background: var(--paper); transform: translateY(-1px); }
-
-/* 画像贴纸窗:纸质小白别贴到砚墨榜上,像钉在榜边的一帧小像 */
+.resultMastered svg { flex: none; margin-top: 4px; color: var(--jade); }
+/* 小像:钉在榜边的一帧 */
 .resultAvatar {
-  padding: var(--gap-tight);
+  position: absolute;
+  right: clamp(20px, 4vw, 44px);
+  bottom: clamp(20px, 4vw, 40px);
+  padding: 8px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-s);
   background: var(--paper);
   box-shadow: var(--shadow-paper);
   transform: rotate(2deg);
+  /* 自带斜置,不吃榜文的统一入场(rise 的终帧会把旋转压平) */
+  animation: none;
 }
 
-.empty {
-  max-width: 34rem;
+/* 逐题判定:每题一枚小章 */
+.resultDetail {
+  padding: 20px 24px;
+  border-radius: var(--r-xl);
+  background: var(--sidebar);
+}
+.detailTitle {
+  margin: 0 0 8px;
+  color: var(--text);
+  font: 600 var(--fz-lg)/1.4 var(--ui-font);
+}
+.resultList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.resultItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  animation: global(rise) var(--dur-3) var(--ease) backwards;
+}
+.resultItem + .resultItem { border-top: 1px solid var(--border); }
+.miniStamp {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid currentColor;
+  border-radius: var(--r-xs);
+  font-family: var(--story-hand);
+  font-size: var(--fz-md);
+  font-weight: 700;
+  transform: rotate(-5deg);
+}
+.miniGood { background: var(--ok-soft); color: var(--ok); }
+.miniBad { background: var(--bad-soft); color: var(--bad); }
+.resultQ {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: var(--gap);
-  padding: var(--gap-loose);
+  gap: 2px;
+  min-width: 0;
+  color: var(--text);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
+.resultQ small { color: var(--text-3); font-size: var(--fz-xs); }
 
-.empty h1 { font-size: var(--fs-title); }
-.empty p { color: var(--ink-soft); }
+.resultFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+}
+.resultNote {
+  flex: 1 1 18rem;
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
 
 .srOnly {
   position: absolute;
@@ -379,18 +478,25 @@
 }
 
 @media (max-width: 720px) {
-  .page { place-items: start center; min-height: 100%; }
   .sendoff { grid-template-columns: 1fr; }
-  .avatarSide { min-height: 16rem; border-right: 0; border-bottom: 1px solid var(--line-strong); }
-  .sendoffBody { padding: var(--gap-loose); }
-  .result { grid-template-columns: auto minmax(0, 1fr); }
+  .avatarSide { min-height: 0; padding: 24px 16px; }
+  .sendoffBody { padding: 24px 20px 28px; }
+  .title { font-size: var(--fz-3xl); }
+  .board { padding-right: clamp(20px, 5vw, 56px); }
   .resultAvatar { display: none; }
+  .resultTitle { padding-right: 72px; }
 }
 
 @media (max-width: 560px) {
-  .page { padding: var(--gap); }
-  .examDesk { padding: var(--gap); }
-  .nextBtn { width: 100%; }
-  .result { grid-template-columns: 1fr; padding: var(--gap-loose); }
-  .resultSeal { margin-bottom: calc(-1 * var(--gap)); }
+  .page { padding-top: 16px; padding-bottom: 40px; gap: 16px; }
+  .pageHead { gap: 10px; }
+  .avatarSide > div:first-child { width: 132px !important; height: 132px !important; }
+  .sendoffBody > :global(button) { width: 100%; }
+  .rule { margin: 20px 0 24px; }
+  .resultDetail { padding: 16px; }
+  .resultFoot > a { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticket { transition: none; }
 }

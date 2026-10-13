@@ -4,10 +4,15 @@
  *  - 答疑:问讲法(情境化快捷问 + 答完可追问「再短一点 / 换个类比 / 给我示范句」);
  *  - 试讲:小砚扮小白抛一个误区,老师现场接,小砚再点评接没接住(摸底未完成不开放——剧本就是摸底答案);
  *  - 草稿:讲稿草稿本(按知识点落 localStorage),一键让小砚逐句挑毛病;小砚的回答也能一键记进草稿。
- * 外观(2026-08-29 重做):一张从桌宠脚边升起的纸面卡——头像圆像 + 呼吸状态点、分段页签滑块、
- * 无边框气泡、建议卡列表、胶囊输入;开合/切页/消息入场都有动效,reduced-motion 全部关掉。
+ * 外观(2026-10-14):终端风格的助教侧面板——头像 + 连线状态、分段切换、消息气泡、
+ * 建议问法、圆形发送钮;挂到 body,不受终端栏位布局影响。reduced-motion 关掉全部动效。
  */
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  ArrowUp, BookmarkPlus, ChevronRight, Eye, Info, Lightbulb, PenLine, Sparkles, Swords, X,
+  type LucideIcon,
+} from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import {
   appendCoachMessage, askCoach, COACH_FOLLOW_UPS, critiqueDraft, deriveQuickAsks, getCoachThread,
@@ -15,7 +20,7 @@ import {
   splitRehearsal, subscribeDraft, type CoachMessage, type PrepContext,
 } from '../../engine/coach';
 import type { Misconception, Topic } from '../../types';
-import { Icon, type IconName } from '../ui/Icon';
+import { Badge, Button, IconButton, Segmented, Shimmer, Textarea, ThinkingDots, cx } from '../ui';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { CoachMarkdownMessage } from './CoachMarkdown';
 import { markdownToPlainText } from './coachMarkdownText';
@@ -30,10 +35,10 @@ export interface CoachOpenRequest {
   mode: CoachMode;
   nonce: number;
 }
-const MODES: { id: CoachMode; label: string; icon: IconName }[] = [
-  { id: 'ask', label: '答疑', icon: 'lightbulb' },
-  { id: 'rehearse', label: '试讲', icon: 'swords' },
-  { id: 'draft', label: '草稿', icon: 'pen' },
+const MODES: { id: CoachMode; label: string; Icon: LucideIcon }[] = [
+  { id: 'ask', label: '答疑', Icon: Lightbulb },
+  { id: 'rehearse', label: '试讲', Icon: Swords },
+  { id: 'draft', label: '草稿', Icon: PenLine },
 ];
 
 /** 小砚头像:从桌宠图集里裁出第一帧的头部(纯 CSS 背景裁切,不另出资源) */
@@ -370,7 +375,6 @@ export function PrepCoach({
       : mode === 'rehearse'
         ? (rehearseMc ? '对小白说:先重复它的话,再翻过来…' : '先挑一个误区,小白就开口')
         : '问小砚:这一段怎么讲?';
-  const modeIndex = MODES.findIndex((m) => m.id === mode);
   /** 切页会重挂正文:正在放映的打字机记为已放映,免得回来整条重放 */
   const switchMode = (next: CoachMode) => {
     if (animatingId) revealedIds.add(animatingId);
@@ -378,7 +382,17 @@ export function PrepCoach({
   };
   const emptyThread = messages.length === 0 && !busy;
 
-  return (
+  const modeOptions = MODES.map((m) => ({
+    value: m.id,
+    icon: <m.Icon size={14} strokeWidth={1.75} aria-hidden="true" />,
+    label: m.id === 'draft' && draftText.trim()
+      ? <>{m.label}<i className={s.segDot} aria-hidden="true" /></>
+      : m.label,
+  }));
+  const submitLabel = mode === 'rehearse' ? '接住' : '递上';
+
+  /* 挂到 body：终端栏位里可能有 transform / 容器查询，会改掉 fixed 的参照物 */
+  return createPortal(
     <div className={s.root}>
       {open && (
         <section
@@ -391,58 +405,37 @@ export function PrepCoach({
             if (e.key === 'Escape' && !e.nativeEvent.isComposing) close();
           }}
         >
-          {/* ── 头:圆像 + 名号 + 呼吸状态点 ── */}
+          {/* ── 头：圆像 + 名号 + 连线状态 ── */}
           <header className={s.head}>
             <span className={s.portrait} style={portraitStyle} aria-hidden="true" />
             <div className={s.headText}>
               <span className={s.name}>小砚</span>
-              <span className={s.role}>
-                备课助教
-                <span className={`${s.status} ${live ? s.statusLive : s.statusOffline}`}>
-                  <i className={s.statusDot} aria-hidden="true" />
-                  {live ? '已连线' : '离线锦囊'}
-                </span>
-              </span>
+              <span className={s.role}>备课助教 · 《{topic.title}》</span>
             </div>
-            <button type="button" className={s.closeBtn} onClick={close} aria-label="收起助教面板">
-              <Icon name="x" size={16} />
-            </button>
+            <Badge tone={live ? 'ok' : 'neutral'} dot>{live ? '已连线' : '本地演示'}</Badge>
+            <IconButton label="收起助教面板" size="sm" round tip={false} onClick={close}>
+              <X size={16} strokeWidth={1.75} />
+            </IconButton>
           </header>
 
-          {/* ── 案头便签:一行细字,小砚知道老师备到哪 ── */}
+          {/* ── 案头便签：小砚知道老师备到哪 ── */}
           <p className={s.ctx}>
-            <span className={s.ctxTopic}>《{topic.title}》</span>
             {contextBits(ctx).map((b) => (
               <span key={b} className={s.ctxBit}>{b}</span>
             ))}
           </p>
 
-          {/* ── 分段页签:滑块跟着走 ── */}
-          <div className={s.seg} role="tablist" aria-label="助教用法" style={{ '--i': modeIndex } as CSSProperties}>
-            <span className={s.segThumb} aria-hidden="true" />
-            {MODES.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                role="tab"
-                aria-selected={mode === m.id}
-                className={`${s.segBtn} ${mode === m.id ? s.segOn : ''}`}
-                onClick={() => switchMode(m.id)}
-              >
-                <Icon name={m.icon} size={14} />
-                {m.label}
-                {m.id === 'draft' && draftText.trim() && <i className={s.segDot} aria-hidden="true" />}
-              </button>
-            ))}
+          <div className={s.modes}>
+            <Segmented block value={mode} onChange={switchMode} options={modeOptions} label="助教用法" />
           </div>
 
           {mode === 'draft' ? (
-            <div key="draft" className={`${s.body} ${s.draftPad}`}>
+            <div key="draft" className={cx(s.body, s.draftPad)}>
               <div className={s.draftHead}>
                 <span className={s.draftTitle}>讲稿草稿</span>
-                <span className={s.draftCount}>{draftText.length} / 3000 字 · 和备课夹是同一份 · 不进课堂记录</span>
+                <span className={s.draftCount}>{draftText.length} / 3000 字</span>
               </div>
-              <textarea
+              <Textarea
                 className={s.draftArea}
                 value={draftText}
                 maxLength={3000}
@@ -450,32 +443,38 @@ export function PrepCoach({
                 placeholder={`比如:开场先抛小白的第一问——「${topic.checklist[0]?.probeLine ?? ''}」,再用一个生活里的画面接住它…`}
                 onChange={(e) => updateDraft(e.target.value)}
               />
+              <p className={s.draftNote}>
+                {draftText.trim().length < 20
+                  ? '写满 20 个字，小砚才好挑毛病。和备课夹里的讲稿是同一份，不进课堂记录。'
+                  : '和备课夹里的讲稿是同一份，不进课堂记录。'}
+              </p>
               <div className={s.draftBar}>
-                <button
-                  type="button"
-                  className={s.ghostBtn}
-                  disabled={!draftText.trim()}
-                  onClick={() => updateDraft('')}
-                >
+                <Button variant="ghost" disabled={!draftText.trim()} onClick={() => updateDraft('')}>
                   清空
-                </button>
-                <button
-                  type="button"
-                  className={s.primaryBtn}
+                </Button>
+                <Button
+                  variant="solid"
+                  icon={<Sparkles size={15} strokeWidth={1.75} />}
                   disabled={inputLocked || draftText.trim().length < 20}
                   onClick={() => void critique()}
                 >
-                  <Icon name="sparkles" size={14} />让小砚挑毛病
-                </button>
+                  让小砚挑毛病
+                </Button>
               </div>
             </div>
           ) : (
             <div key={mode} className={s.body}>
               <div className={s.list} ref={listRef}>
-                {/* 空态:小砚自报家门 + 建议卡 */}
+                {!live && (
+                  <p className={s.notice}>
+                    <Info size={14} strokeWidth={1.75} aria-hidden="true" />
+                    <span>本地演示：没有连上模型，小砚先按这一课的备课材料作答。</span>
+                  </p>
+                )}
+                {/* 空态：小砚自报家门 + 建议问法 */}
                 {emptyThread && (
                   <div className={s.empty}>
-                    <span className={`${s.portrait} ${s.portraitLg}`} style={portraitStyle} aria-hidden="true" />
+                    <span className={cx(s.portrait, s.portraitLg)} style={portraitStyle} aria-hidden="true" />
                     <p className={s.emptyTitle}>老师好,我是小砚。</p>
                     <p className={s.emptyText}>
                       {mode === 'rehearse'
@@ -488,27 +487,27 @@ export function PrepCoach({
                   const delay = { animationDelay: `${Math.min(i, 6) * 35}ms` };
                   if (m.role === 'teacher') {
                     return (
-                      <div key={m.id} className={`${s.row} ${s.rowTeacher}`} style={delay}>
-                        <div className={`${s.bubble} ${s.bubbleTeacher}`}>{m.text}</div>
+                      <div key={m.id} className={cx(s.row, s.rowTeacher)} style={delay}>
+                        <div className={cx(s.bubble, s.bubbleTeacher)}>{m.text}</div>
                       </div>
                     );
                   }
                   const isProbe = m.kind === 'rehearsal-probe';
                   const isVerdict = m.kind === 'rehearsal-verdict';
                   return (
-                    <div key={m.id} className={`${s.row} ${s.rowCoach}`} style={delay}>
+                    <div key={m.id} className={cx(s.row, s.rowCoach)} style={delay}>
                       {isProbe ? (
                         <span className={s.whoXiaobai} aria-hidden="true">白</span>
                       ) : (
-                        <span className={`${s.portrait} ${s.portraitSm}`} style={portraitStyle} aria-hidden="true" />
+                        <span className={cx(s.portrait, s.portraitSm)} style={portraitStyle} aria-hidden="true" />
                       )}
                       <div className={s.rowBody}>
                         {(isProbe || isVerdict || m.kind === 'critique') && (
-                          <span className={`${s.who} ${isProbe ? s.whoWarn : ''}`}>
+                          <span className={cx(s.who, isProbe && s.whoWarn)}>
                             {isProbe ? '小白 · 试探' : isVerdict ? '小砚 · 点评' : '小砚 · 挑毛病'}
                           </span>
                         )}
-                        <div className={`${s.bubble} ${isProbe ? s.bubbleXiaobai : s.bubbleCoach}`}>
+                        <div className={cx(s.bubble, isProbe ? s.bubbleXiaobai : s.bubbleCoach)}>
                           {isProbe ? (
                             `「${m.text}」`
                           ) : (
@@ -521,39 +520,45 @@ export function PrepCoach({
                           )}
                         </div>
                         {!isProbe && m.id !== animatingId && (
-                          <button
-                            type="button"
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className={s.keepBtn}
+                            icon={<BookmarkPlus size={13} strokeWidth={1.75} />}
                             onClick={() => keepToDraft(m)}
                             aria-label="把这条记进草稿"
                           >
-                            <Icon name="notebook" size={12} />记进草稿
-                          </button>
+                            记进草稿
+                          </Button>
                         )}
                       </div>
                     </div>
                   );
                 })}
                 {busy && (
-                  <div className={`${s.row} ${s.rowCoach}`}>
-                    <span className={`${s.portrait} ${s.portraitSm}`} style={portraitStyle} aria-hidden="true" />
-                    <div className={`${s.bubble} ${s.bubbleCoach} ${s.typing}`}>
-                      <span className={s.thinkDots}><i /><i /><i /></span>
-                      <span key={thinkIdx} className={s.thinkText}>{thinkLines[thinkIdx]}</span>
+                  <div className={cx(s.row, s.rowCoach)}>
+                    <span className={cx(s.portrait, s.portraitSm)} style={portraitStyle} aria-hidden="true" />
+                    <div className={cx(s.bubble, s.bubbleCoach, s.typing)} aria-hidden="true">
+                      <ThinkingDots label="小砚思考中" />
+                      <Shimmer key={thinkIdx} className={s.thinkText}>{thinkLines[thinkIdx]}</Shimmer>
                     </div>
                   </div>
                 )}
 
-                {/* 建议卡:答疑空态给情境化快捷问;试讲给误区名单 */}
+                {/* 建议问法：答疑空态给情境化快捷问；试讲给误区名单 */}
                 {mode === 'ask' && emptyThread && (
                   <ul className={s.suggest}>
                     {quickAsks.map((q, i) => (
                       <li key={q} style={{ animationDelay: `${120 + i * 45}ms` }}>
-                        <button type="button" className={s.suggestBtn} disabled={inputLocked}
-                          onClick={() => void send(q)}>
-                          <span className={s.suggestMark} aria-hidden="true">✦</span>
+                        <button
+                          type="button"
+                          className={s.suggestBtn}
+                          disabled={inputLocked}
+                          onClick={() => void send(q)}
+                        >
+                          <Sparkles className={s.suggestMark} size={14} strokeWidth={1.75} aria-hidden="true" />
                           <span className={s.suggestText}>{q}</span>
-                          <Icon name="arrow-right" size={14} />
+                          <ChevronRight className={s.suggestGo} size={15} strokeWidth={1.75} aria-hidden="true" />
                         </button>
                       </li>
                     ))}
@@ -562,8 +567,8 @@ export function PrepCoach({
                 {mode === 'rehearse' && (
                   rehearseLocked ? (
                     <p className={s.notice}>
-                      <Icon name="eye" size={14} />
-                      摸完底再试讲——误区剧本就是摸底题的答案,小砚不剧透。
+                      <Eye size={14} strokeWidth={1.75} aria-hidden="true" />
+                      <span>摸完底再试讲——误区剧本就是摸底题的答案,小砚不剧透。</span>
                     </p>
                   ) : (
                     <div className={s.pick}>
@@ -578,14 +583,14 @@ export function PrepCoach({
                             <li key={mc.mcId} style={{ animationDelay: `${120 + i * 45}ms` }}>
                               <button
                                 type="button"
-                                className={`${s.pickBtn} ${on ? s.pickOn : ''}`}
+                                className={cx(s.pickBtn, on && s.pickOn)}
                                 disabled={inputLocked}
                                 onClick={() => startRehearsal(mc)}
                                 aria-pressed={on}
                               >
-                                <span className={`${s.pickRing} ${stumbled ? s.pickRingWarn : ''}`} aria-hidden="true" />
+                                <span className={s.pickRing} aria-hidden="true" />
                                 <span className={s.pickText}>{mc.belief}</span>
-                                {stumbled && <span className={s.pickTag}>栽过</span>}
+                                {stumbled && <Badge tone="bad">栽过</Badge>}
                               </button>
                             </li>
                           );
@@ -607,14 +612,20 @@ export function PrepCoach({
               {mode === 'ask' && showFollowUps && (
                 <div className={s.followUps}>
                   {COACH_FOLLOW_UPS.map((f) => (
-                    <button key={f.label} type="button" className={s.followBtn}
-                      disabled={inputLocked} onClick={() => void send(f.ask)}>
+                    <Button
+                      key={f.label}
+                      variant="outline"
+                      size="sm"
+                      pill
+                      disabled={inputLocked}
+                      onClick={() => void send(f.ask)}
+                    >
                       {f.label}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               )}
-              <form className={`${s.composer} ${composerLocked ? s.composerLocked : ''}`} onSubmit={onSubmit}>
+              <form className={cx(s.composer, composerLocked && s.composerLocked)} onSubmit={onSubmit}>
                 <textarea
                   ref={inputRef}
                   className={s.field}
@@ -629,15 +640,16 @@ export function PrepCoach({
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={onKeyDown}
                 />
-                <button
+                <IconButton
                   type="submit"
+                  label={submitLabel}
+                  variant="solid"
+                  round
                   className={s.send}
                   disabled={composerLocked || !input.trim()}
-                  aria-label={mode === 'rehearse' ? '接住' : '递上'}
-                  title={mode === 'rehearse' ? '接住' : '递上'}
                 >
-                  <Icon name="send" size={15} />
-                </button>
+                  <ArrowUp size={17} strokeWidth={2} />
+                </IconButton>
               </form>
             </div>
           )}
@@ -648,7 +660,9 @@ export function PrepCoach({
       )}
       <XiaoyanPet
         ref={petBtnRef}
-        state={petState} suppressReply={hintOn}
+        state={petState}
+        suppressReply={hintOn}
+        launcher
         data-tour="coach"
         onClick={toggle}
         aria-expanded={open}
@@ -657,6 +671,7 @@ export function PrepCoach({
         aria-label={open ? '收起备课助教' : '召唤备课助教小砚'}
         title="小砚 · 备课助教"
       />
-    </div>
+    </div>,
+    document.body,
   );
 }

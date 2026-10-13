@@ -1,41 +1,51 @@
-.section > header {
+/* 订阅与用量的三段：生效权益、开放套餐、兑换。只引用 styles/skins.css 的语义令牌。 */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.section {
+  min-width: 0;
+}
+
+.head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--gap);
-  margin-bottom: var(--gap-tight);
-  padding-bottom: var(--gap-tight);
-  border-bottom: 1px solid var(--line-strong);
+  gap: 8px 16px;
+  margin-bottom: 10px;
 }
 
-.section h3 {
-  color: var(--ink);
-  font-family: var(--font-serif);
-  font-size: var(--fs-body);
-  font-weight: 600;
-  letter-spacing: 0.04em;
+.head h4 {
+  margin: 0;
+  color: var(--text);
+  font: 600 var(--fz-lg) / 1.4 var(--ui-font);
 }
 
-.section header p {
-  margin-top: 0.2rem;
-  color: var(--ink-faint);
-  font-size: var(--fs-tiny);
+.head p {
+  max-width: 52ch;
+  margin: 2px 0 0;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
   line-height: 1.55;
 }
 
-.section header > span {
-  flex: none;
-  padding: 0.2rem 0.5rem;
-  border-radius: var(--radius-tag);
-  background: var(--jade-wash);
-  color: var(--jade-ink);
-  font-size: var(--fs-tiny);
-}
+/* ── 生效权益 ── */
 
 .entitlements {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--paper-edge);
+  margin: 0;
+  padding: 0;
   list-style: none;
 }
 
@@ -43,179 +53,162 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--gap-tight);
-  min-height: 3.75rem;
-  padding: var(--gap-tight) var(--gap-hair);
-  border-bottom: 1px solid var(--paper-edge);
+  gap: 10px;
+  min-height: 48px;
+  padding: 9px 0;
 }
 
-.entitlements li > svg {
-  color: var(--jade-ink);
+.entitlements li + li {
+  border-top: 1px solid var(--border);
 }
 
-.entitlements li > span {
+.entitlements svg {
+  color: var(--ok);
+}
+
+.entitlementCopy {
   display: flex;
-  min-width: 0;
   flex-direction: column;
+  gap: 1px;
+  min-width: 0;
 }
 
-.entitlements strong {
-  color: var(--ink);
-  font-size: var(--fs-small);
-}
-
-.entitlements small {
+.entitlementCopy strong {
   overflow: hidden;
-  color: var(--ink-faint);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
+  color: var(--text);
+  font: 500 var(--fz-md) / 1.4 var(--ui-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entitlementCopy small {
+  overflow: hidden;
+  color: var(--text-3);
+  font: var(--fz-xs) / 1.4 var(--ui-mono);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .entitlements em {
-  color: var(--ink-faint);
-  font-size: var(--fs-tiny);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
   font-style: normal;
-}
-
-.plans {
-  display: grid;
-  gap: var(--gap-tight);
-}
-
-.plans article {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0 var(--gap);
-  min-height: 5rem;
-  padding: var(--gap);
-  border: 1px solid var(--paper-edge);
-  background: var(--paper-warm);
-}
-
-.plans article > div {
-  min-width: 0;
-}
-
-.plans article p {
-  color: var(--azure-deep);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  letter-spacing: var(--track-label);
-}
-
-.plans article h4 {
-  margin-top: 0.1rem;
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-}
-
-.plans article span {
-  display: block;
-  margin-top: 0.12rem;
-  overflow: hidden;
-  color: var(--ink-faint);
-  font-size: var(--fs-tiny);
-  text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.plans article > strong {
-  color: var(--ink);
-  font-family: var(--font-serif);
-  font-size: var(--fs-sub);
-  font-variant-numeric: tabular-nums;
-}
-
-.plans article > small {
-  grid-column: 2;
-  color: var(--ink-faint);
-  font-size: var(--fs-tiny);
-  text-align: right;
 }
 
 .empty {
   display: flex;
-  min-height: 6rem;
   flex-direction: column;
-  justify-content: center;
-  gap: 0.18rem;
-  padding: var(--gap);
-  border-block: 1px solid var(--paper-edge);
+  gap: 2px;
+  padding: 16px;
+  border-radius: var(--r-lg);
+  background: var(--inset);
 }
 
 .empty strong {
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
+  color: var(--text-2);
+  font: 500 var(--fz-md) / 1.4 var(--ui-font);
 }
 
 .empty span {
-  color: var(--ink-faint);
-  font-size: var(--fs-tiny);
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.5;
 }
+
+/* ── 开放套餐 ── */
+
+.plans {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.plans article {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--border), var(--shadow-1);
+  transition: box-shadow var(--dur-2) var(--ease), transform var(--dur-2) var(--ease);
+}
+
+.plans article:hover {
+  box-shadow: var(--shadow-2);
+  transform: translateY(-1px);
+}
+
+.planCode {
+  color: var(--accent);
+  font: 600 var(--fz-xs) / 1.4 var(--ui-mono);
+  letter-spacing: 0.04em;
+}
+
+.plans h5 {
+  margin: 0;
+  color: var(--text);
+  font: 600 var(--fz-lg) / 1.35 var(--ui-font);
+}
+
+.plans p {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.5;
+}
+
+.planFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.planFoot strong {
+  color: var(--text);
+  font: 600 var(--fz-md) / 1.3 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+}
+
+.planFoot small {
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+
+/* ── 兑换 ── */
 
 .redeem {
   display: flex;
   flex-direction: column;
-  gap: var(--gap-hair);
+  gap: 8px;
 }
 
-.redeem label {
-  color: var(--ink);
-  font-size: var(--fs-small);
-  font-weight: 600;
-}
-
-.redeem > div {
+.redeemRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--gap-tight);
+  gap: 8px;
 }
 
-.redeem input {
-  width: 100%;
-  min-height: 2.85rem;
-  padding: 0.65rem var(--gap-tight);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-tag);
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-typewriter);
-  font-size: 1rem;
-  letter-spacing: 0.08em;
+.codeInput {
+  font-family: var(--ui-mono) !important;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
-.redeem button {
-  display: inline-flex;
-  min-height: 2.85rem;
-  align-items: center;
-  justify-content: center;
-  gap: var(--gap-hair);
-  padding-inline: var(--gap);
-  border: 1px solid var(--azure-deep);
-  border-radius: var(--radius-tag);
-  background: var(--azure-deep);
-  color: var(--paper);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
+.codeInput::placeholder {
+  letter-spacing: 0.06em;
 }
 
-.redeem button:disabled {
-  border-color: var(--paper-edge);
-  background: var(--paper-edge);
-  color: var(--ink-faint);
-  cursor: not-allowed;
-}
-
-.redeem > small {
-  color: var(--ink-faint);
-  font-size: var(--fs-tiny);
-  line-height: 1.55;
+.redeem small {
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.5;
 }
 
 @media (max-width: 560px) {
@@ -227,22 +220,17 @@
     grid-column: 2;
   }
 
+  .redeemRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
   .plans article {
-    grid-template-columns: 1fr;
+    transition: none;
   }
 
-  .plans article > strong,
-  .plans article > small {
-    grid-column: 1;
-    margin-top: var(--gap-hair);
-    text-align: left;
-  }
-
-  .redeem > div {
-    grid-template-columns: 1fr;
-  }
-
-  .redeem button {
-    width: 100%;
+  .plans article:hover {
+    transform: none;
   }
 }

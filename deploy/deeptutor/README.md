@@ -33,6 +33,9 @@ Python / uv 版本由 `mise.toml` 固定，依赖由 `requirements.lock` 固定�
 - 自选课先在服务端确认当前账号拥有已发布课题，再从原有 WeKnora 获取该课题的片段；仅白名单投影后的材料进入框架。资料检索暂不可用时如实注明本轮只用已发布讲义。
 - 内置课资料由构建阶段生成的 `server/study-catalog.json` 解析，未知课题拒绝，客户端正文不能覆盖目录。自选课仍从服务端已发布记录读取。补充文本明确属于用户输入，只按所选内容使用，不作为系统指令。
 - 每个深入请求先从现有聊天配额保守预留 4 次调用；SDK 关闭自动重试，实际创建调用最多 4 次，每次最多 2200 输出 token。全局最多 2 个深入请求，每账号最多 1 个。总等待约 115 秒；取消、断开或超时会终止子进程并释放占用。
+- 调用带 `reasoning_effort: none`。线上助教模型是推理模型，思考与正文共用输出上限；2026-10-14 实测不设时前两轮思考占满 2200 token、正文为空，四次调用用完仍到不了 FINISH，设为 `none` 后三轮约 6–10 秒完成。上游不接受该参数（HTTP 400）时，本次请求余下的调用自动去掉它，重发同样计入四次上限。
+- 进度：runner 每完成一轮向 stdout 写一行 `{"progress": "PLAN" | "CHECK" | "FINISH"}`（只有标签，没有正文），最后一行是结果。请求带 `Accept: text/event-stream` 时，`POST /api/study/chat` 以事件流返回：`stage`（`{id,label,status}`，依次为读取所选资料、拟定讲解提纲、核对资料依据、组织解释与自检题）、`done`（与一次性响应相同的内容）或 `error`；不带时仍是一次性 JSON。
+- 勾选资料时，展示用来源最多 5 条、每条 550 字；给模型的正文更完整（讲义至多 3000 字，其余每项 1500 字，资料库文件另带一段全文抽样，合计不超过 8000 字）。课程原始资料与资料库文件都按问题检索片段，两类来源交替占位。
 - 原有聊天配额是网关进程内计数，本适配器继续共用它；没有借此宣称实现跨网关分布式配额。
 
 ## OpenMAIC 思路的落点
@@ -41,4 +44,18 @@ Python / uv 版本由 `mise.toml` 固定，依赖由 `requirements.lock` 固定�
 
 本项目场景是 explain / example / quiz / reflect；上游原始场景类型为 slide / quiz / interactive / pbl，二者不是同一套类型。学习步骤、跳过、回答和解释按账号与课题留在本机，材料版本变化会重置对应进度。完成阅读步骤不改变正式掌握度；“教小白”继续进入原有课堂。
 
-本轮只完成本地实现与本地测试。生产未启用、未部署，真实模型质量和线上资料检索需单独验收。
+## 生产服务器上的运行时
+
+服务器没有 uv / mise，系统 Python 3.13 也没有 `ensurepip`，安装方式与本地不同：
+
+```sh
+install -d -o root -g xiaobai -m 750 /opt/xiaobai/deploy/deeptutor/.runtime
+# 从本机同步固定提交的上游源码（不含 .git、__pycache__），再放 runner.py 与 requirements.lock
+python3 -m venv --without-pip /opt/xiaobai/deploy/deeptutor/.runtime/venv
+# 从镜像下载 pip 的 wheel 并校验 sha256，仅用于引导，不装进 venv
+.runtime/venv/bin/python pip.whl/pip install --no-cache-dir --only-binary=:all: \
+  -i https://mirrors.cloud.tencent.com/pypi/simple -r requirements.lock
+chown -hR root:xiaobai /opt/xiaobai/deploy && chmod -R u+rwX,g+rX,g-w,o-rwx /opt/xiaobai/deploy
+```
+
+2026-10-14 已按此装在 `/opt/xiaobai/deploy/deeptutor`（网关按 `<server 目录>/../deploy/deeptutor` 解析）。以服务账号 `xiaobai` 运行 `runner.py --check` 通过；用线上助教模型跑通真实请求（三轮，约 6–10 秒），并在与 `xiaobai.service` 相同的沙箱属性下经 `deeptutor-provider.mjs` 跑通。发布新网关代码并给服务设置 `DEEPTUTOR_ENABLED=1` 之后入口才可用；`runner.py` 须与 `server/deeptutor-provider.mjs` 同步更新，发布时不要删除 `.runtime/`。线上资料检索与页面入口仍需在发布后验收。

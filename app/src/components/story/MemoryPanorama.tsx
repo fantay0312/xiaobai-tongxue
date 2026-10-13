@@ -174,10 +174,11 @@ export function MemoryPanorama({ layers }: Props) {
       className={`${r.panorama} ${paper.texture}`}
       role="group"
       aria-label="小白的四层记忆存续登记册"
+      data-story
     >
       <header className={r.registryHead}>
         <div className={r.registryCopy}>
-          <p className={`${r.eyebrow} ${paper.typeLabel}`}>MEMORY REGISTER · VOLUME 05</p>
+          <p className={`${r.eyebrow} ${paper.typeLabel}`}>记忆登记册 · 卷五</p>
           <p className={r.registryLead}>越往下，记得越久。</p>
         </div>
         <div className={r.depthLegend} aria-hidden="true">
@@ -248,7 +249,7 @@ export function MemoryPanorama({ layers }: Props) {
 
       <footer className={r.registryFoot}>
         <p>每一次开讲、纠错与复习，都会在这里留下可回查的一笔。</p>
-        <span className={paper.typeLabel}>EVENT-DERIVED · TRACEABLE</span>
+        <span className={paper.typeLabel}>逐条来自课堂记录 · 可追溯</span>
       </footer>
     </div>
   );

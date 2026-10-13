@@ -5,11 +5,14 @@
  * 形态:门厅位只留一条「案头信封条」,信本体做成自动展开的弹层——
  * 每次页面加载自动展帖一次(模块级标志,同 PrepCoach 的 revealedIds 纪律,不进 localStorage),
  * 之后由条上的「展帖重读」再唤起。CTA 不自作主张:走 journey.nextStep,与旅程带同一条路由逻辑。
+ * 嵌入用法(「教小白」故事匣):embedded 不自动展帖、不向首页引路广播;renderTrigger 换掉案头条。
+ * 弹层挂到 body:外层若有 transform / container 也不会把 fixed 定位困在局部。
  */
 import {
   useCallback, useEffect, useMemo, useRef, useState,
-  type KeyboardEvent, type MouseEvent,
+  type KeyboardEvent, type MouseEvent, type ReactNode, type RefObject,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router';
 import { useAppStore } from '../../store/appStore';
 import { useAllTopics } from '../../hooks/useAllTopics';
@@ -32,7 +35,16 @@ let autoOpenedThisLoad = false;
 const FOCUSABLE = 'a[href], button:not([disabled])';
 const LETTER_EXIT_MS = 240;
 
-export function MentorLetter() {
+export interface MentorLetterProps {
+  /** 嵌在别的页面里:不自动展帖,开合也不向首页引路广播 */
+  embedded?: boolean;
+  /** 自定义入口,替换案头信封条;ref 交给触发按钮,关帖后焦点还回去 */
+  renderTrigger?: (api: { open: () => void; ref: RefObject<HTMLButtonElement | null> }) => ReactNode;
+  /** 点「收下」时通知外层 */
+  onAccept?: () => void;
+}
+
+export function MentorLetter({ embedded = false, renderTrigger, onAccept }: MentorLetterProps = {}) {
   const events = useAppStore((st) => st.events);
   const reports = useAppStore((st) => st.reports);
   const topicStates = useAppStore((st) => st.topicStates);
@@ -60,14 +72,14 @@ export function MentorLetter() {
     }
     setClosing(false);
     setOpen(true);
-    window.dispatchEvent(new CustomEvent(LETTER_OPEN_EVENT));
-  }, []);
+    if (!embedded) window.dispatchEvent(new CustomEvent(LETTER_OPEN_EVENT));
+  }, [embedded]);
 
   /* 自动展帖:等 hero 先画完(~450ms)再弹。
      StrictMode 会「装载→清理→再装载」跑两遍:首跑若还没弹出就被清理,必须把名额还回去,
      否则第二跑(真正存活的那次)会误判"已弹过"而永不自动展开 */
   useEffect(() => {
-    if (autoOpenedThisLoad) return;
+    if (embedded || autoOpenedThisLoad) return;
     autoOpenedThisLoad = true;
     let fired = false;
     const id = window.setTimeout(() => {
@@ -78,7 +90,7 @@ export function MentorLetter() {
       window.clearTimeout(id);
       if (!fired) autoOpenedThisLoad = false;
     };
-  }, [openLetter]);
+  }, [embedded, openLetter]);
 
   useEffect(() => () => {
     if (exitTimerRef.current !== null) window.clearTimeout(exitTimerRef.current);
@@ -115,15 +127,17 @@ export function MentorLetter() {
       等顶栏气泡收掉再放行门厅引路,两层不会叠上。 */
   const close = useCallback((opts?: { offerThemeHint?: boolean }) => {
     if (!open || closing) return;
-    const offerThemeHint = opts?.offerThemeHint === true && !isThemeHintDone();
+    const offerThemeHint = !embedded && opts?.offerThemeHint === true && !isThemeHintDone();
 
     const finish = () => {
       exitTimerRef.current = null;
       setOpen(false);
       setClosing(false);
-      window.dispatchEvent(
-        new CustomEvent(offerThemeHint ? THEME_HINT_EVENT : LETTER_CLOSED_EVENT),
-      );
+      if (!embedded) {
+        window.dispatchEvent(
+          new CustomEvent(offerThemeHint ? THEME_HINT_EVENT : LETTER_CLOSED_EVENT),
+        );
+      }
       if (stripBtnRef.current?.isConnected) stripBtnRef.current.focus();
     };
 
@@ -134,12 +148,12 @@ export function MentorLetter() {
 
     setClosing(true);
     exitTimerRef.current = window.setTimeout(finish, LETTER_EXIT_MS);
-  }, [closing, open, reducedMotion]);
+  }, [closing, embedded, open, reducedMotion]);
 
   const leaveForJourney = useCallback(() => {
-    window.dispatchEvent(new CustomEvent(LETTER_CLOSED_EVENT));
+    if (!embedded) window.dispatchEvent(new CustomEvent(LETTER_CLOSED_EVENT));
     setOpen(false);
-  }, []);
+  }, [embedded]);
 
   /** 点淡墨罩关帖:只认罩本身,信纸内的点击不算 */
   const onBackdrop = (e: MouseEvent<HTMLDivElement>) => {
@@ -173,22 +187,24 @@ export function MentorLetter() {
 
   return (
     <>
-      {/* 案头信封条:门厅位的常驻痕迹,与旅程带同一高度族 */}
-      <section className={s.letterStrip} aria-label="案头的拜师帖" data-tour="story">
-        <span className={s.stripSeal} aria-hidden="true">白</span>
-        <p className={s.stripLine}>小白递来一封拜师帖,收在案头</p>
-        <button
-          ref={stripBtnRef}
-          type="button"
-          className={s.stripBtn}
-          aria-haspopup="dialog"
-          onClick={openLetter}
-        >
-          展帖重读
-        </button>
-      </section>
+      {renderTrigger ? renderTrigger({ open: openLetter, ref: stripBtnRef }) : (
+        /* 案头信封条:门厅位的常驻痕迹,与旅程带同一高度族 */
+        <section className={s.letterStrip} aria-label="案头的拜师帖" data-tour="story" data-story>
+          <span className={s.stripSeal} aria-hidden="true">白</span>
+          <p className={s.stripLine}>小白递来一封拜师帖,收在案头</p>
+          <button
+            ref={stripBtnRef}
+            type="button"
+            className={s.stripBtn}
+            aria-haspopup="dialog"
+            onClick={openLetter}
+          >
+            展帖重读
+          </button>
+        </section>
+      )}
 
-      {open && (
+      {open && createPortal(
         <div
           className={`${s.overlay} ${closing ? s.overlayClosing : ''}`}
           onClick={onBackdrop}
@@ -201,6 +217,7 @@ export function MentorLetter() {
             aria-modal="true"
             aria-label="小白的拜师帖"
             tabIndex={-1}
+            data-story
           >
             <button type="button" className={s.modalClose} onClick={() => close()} aria-label="关上拜师帖">
               <Icon name="x" size={19} />
@@ -240,13 +257,21 @@ export function MentorLetter() {
                 <Link className={s.letterCta} to={step.to} onClick={leaveForJourney}>
                   {step.cta}
                 </Link>
-                <button type="button" className={s.dismissBtn} onClick={() => close({ offerThemeHint: true })}>
+                <button
+                  type="button"
+                  className={s.dismissBtn}
+                  onClick={() => {
+                    onAccept?.();
+                    close({ offerThemeHint: true });
+                  }}
+                >
                   收下
                 </button>
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

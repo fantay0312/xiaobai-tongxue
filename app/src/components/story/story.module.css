@@ -69,9 +69,17 @@
   transition: background var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
 }
 
+.stripBtn {
+  cursor: pointer;
+}
+
 .stripBtn:hover {
   background: var(--azure-wash);
   transform: translateY(-2px);
+}
+
+.stripBtn:active {
+  transform: translateY(0) scale(0.98);
 }
 
 .stripBtn:focus-visible {
@@ -81,17 +89,19 @@
 
 /* ── 拜师帖 · 弹层:淡墨罩 + 信笺展开(doc §7 信笺展开动效) ── */
 
-/* z-index 60:盖过 AppShell 粘性顶栏(40)与课堂抽屉(50),让位于设置抽屉(80/90) */
+/* z-index 2000:与全站对话框同层,盖过终端侧栏与顶栏。
+   罩色走皮肤的 --overlay:深色皮肤里 --ink 是浅字色,拿它调罩会发白 */
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 2000;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow-y: auto;
   padding: clamp(var(--gap), 4vw, var(--gap-loose));
-  background: color-mix(in oklab, var(--ink) 40%, transparent);
+  background: var(--overlay);
+  backdrop-filter: blur(2px);
   animation: scrimIn var(--t-med) var(--ease-out) backwards;
 }
 
@@ -120,7 +130,8 @@
   margin: auto;
   display: flex;
   flex-direction: column;
-  padding: var(--gap-loose) clamp(var(--gap), 4vw, var(--gap-loose));
+  padding: clamp(1.75rem, 4vw, 2.75rem) clamp(var(--gap), 4vw, 2.75rem);
+  outline: none;
   background: var(--paper-warm);
   border: 1px solid var(--paper-edge);
   border-radius: var(--radius);
@@ -189,7 +200,8 @@
   font-size: var(--fs-title);
   line-height: 1;
   border-radius: var(--radius-s);
-  transition: color var(--t-fast) var(--ease-out);
+  cursor: pointer;
+  transition: color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
 }
 
 /* 视觉不变,命中区扩到 ≥40px */
@@ -201,6 +213,11 @@
 
 .modalClose:hover {
   color: var(--ink);
+  background: var(--ink-wash);
+}
+
+.modalClose:active {
+  transform: scale(0.94);
 }
 
 .modalClose:focus-visible {
@@ -347,9 +364,18 @@
   transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
 
+.dismissBtn {
+  cursor: pointer;
+}
+
 .dismissBtn:hover {
   color: var(--ink);
-  border-color: var(--dust);
+  border-color: var(--line-strong);
+  background: var(--ink-wash);
+}
+
+.dismissBtn:active {
+  transform: scale(0.98);
 }
 
 .dismissBtn:focus-visible {
@@ -523,6 +549,12 @@
 .stepCta:focus-visible {
   outline: 2px solid var(--azure);
   outline-offset: 3px;
+}
+
+/* 按下回落:写在各自 hover 之后,两态同时成立时以按下为准 */
+.letterCta:active,
+.stepCta:active {
+  transform: translateY(0) scale(0.98);
 }
 
 /* ── 窄屏 ── */

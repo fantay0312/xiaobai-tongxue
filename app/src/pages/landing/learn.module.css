@@ -1,0 +1,569 @@
+/* 第一章「学」的界面碎片：可互动的回答、资料勾选、思考强度。 */
+
+.answer {
+  padding: clamp(14px, 2vw, 20px);
+}
+
+.answer .formTabs {
+  flex-wrap: wrap;
+}
+
+.ask {
+  width: fit-content;
+  max-width: 88%;
+  margin: 16px 0 0 auto;
+  padding: 8px 14px;
+  border-radius: var(--r-xl) var(--r-xl) var(--r-xs) var(--r-xl);
+  background: var(--inset);
+  font-size: var(--fz-md);
+}
+
+@keyframes formIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.formBody {
+  display: grid;
+  align-content: center;
+  min-height: 236px;
+  margin-top: 14px;
+  animation: formIn var(--dur-3) var(--ease) backwards;
+}
+
+.formTitle {
+  font-size: var(--fz-lg);
+  font-weight: 600;
+}
+
+.formFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  min-height: 24px;
+  margin-top: 12px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+
+.linkButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--accent);
+  font: 500 var(--fz-sm) / 1.4 var(--ui-font);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+
+.linkButton:hover {
+  background: var(--accent-softer);
+}
+
+.linkButton:active {
+  background: var(--accent-soft);
+}
+
+.linkButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* ── 测验 ── */
+.quizOptions {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.quizOption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border-2);
+  color: var(--text);
+  font: 400 var(--fz-md) / 1.45 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease), transform var(--dur-1) var(--ease), opacity var(--dur-2) var(--ease);
+}
+
+.quizOption span {
+  flex: 1;
+}
+
+.quizOption b {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--inset);
+  color: var(--text-3);
+  font: 600 var(--fz-xs) / 1 var(--ui-mono);
+}
+
+.quizOption:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.quizOption:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.quizOption:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--border-2), 0 0 0 3px var(--ring);
+}
+
+.quizOption:disabled {
+  cursor: default;
+}
+
+.quizOption[data-state='right'] {
+  background: var(--ok-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 45%, transparent);
+}
+
+.quizOption[data-state='right'] b {
+  background: var(--ok);
+  color: var(--bg);
+}
+
+.quizOption[data-state='right'] svg {
+  color: var(--ok);
+}
+
+.quizOption[data-state='wrong'] {
+  background: var(--bad-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bad) 40%, transparent);
+}
+
+.quizOption[data-state='wrong'] svg {
+  color: var(--bad);
+}
+
+.quizOption[data-state='rest'] {
+  opacity: 0.55;
+}
+
+/* ── 闪卡 ── */
+.cardForm {
+  display: grid;
+}
+
+.flashcard {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-height: 168px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: 600 var(--fz-xl) / 1.6 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+  perspective: 1200px;
+}
+
+.flashcard:focus-visible {
+  outline: none;
+}
+
+.face {
+  grid-area: 1 / 1;
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  padding: 20px 22px;
+  border-radius: var(--r-lg);
+  background: var(--sidebar);
+  box-shadow: inset 0 0 0 1px var(--border);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transition: transform 520ms var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+
+.face small {
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  font-weight: 500;
+}
+
+.faceBack {
+  background: var(--accent-softer);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent);
+  font-weight: 500;
+  transform: rotateX(-180deg);
+}
+
+.flashcard[data-flipped] .face {
+  transform: rotateX(180deg);
+}
+
+.flashcard[data-flipped] .faceBack {
+  transform: rotateX(0deg);
+}
+
+.flashcard:hover .face {
+  box-shadow: inset 0 0 0 1px var(--border-2);
+}
+
+.flashcard:focus-visible .face {
+  box-shadow: inset 0 0 0 1px var(--border-2), 0 0 0 3px var(--ring);
+}
+
+/* ── 对比表 ── */
+.tableWrap {
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fz-md);
+  line-height: 1.5;
+}
+
+.table th,
+.table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.table tbody tr:last-child th,
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table thead th {
+  background: var(--sidebar);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  font-weight: 600;
+}
+
+.table tbody th {
+  width: 28%;
+  color: var(--text-3);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.table td:last-child {
+  background: var(--accent-softer);
+  font-weight: 500;
+}
+
+/* ── 计划 ── */
+.plan ol,
+.steps {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plan li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fz-md);
+  line-height: 1.5;
+}
+
+.plan li > i {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1.5px var(--border-2);
+  color: var(--on-accent);
+}
+
+.plan li[data-done] > i {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+.plan li > span {
+  flex: none;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.plan li[data-done] {
+  color: var(--text-3);
+}
+
+.planAdd {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  height: 30px;
+  margin-top: 14px;
+  padding: 0 12px;
+  border-radius: var(--r-md);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  font-weight: 500;
+}
+
+/* ── 公式推导 ── */
+.steps {
+  counter-reset: step;
+  gap: 8px;
+}
+
+.steps li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 12px 14px 12px 44px;
+  border-radius: var(--r-md);
+  background: var(--sidebar);
+  color: var(--text-2);
+  font-size: var(--fz-md);
+  counter-increment: step;
+  position: relative;
+}
+
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  top: 13px;
+  left: 14px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--border-2);
+  color: var(--text-2);
+  font: 600 var(--fz-xs) / 1 var(--ui-mono);
+}
+
+.steps i,
+.math i {
+  font-family: KaTeX_Math, KaTeX_Main, 'Times New Roman', serif;
+  font-style: italic;
+}
+
+.math {
+  color: var(--text);
+  font-family: KaTeX_Main, 'Times New Roman', var(--ui-font);
+  font-size: 19px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.math sup,
+.math sub {
+  font-size: 0.7em;
+}
+
+/* ── 图表 ── */
+.chart {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+}
+
+.bar {
+  display: grid;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+}
+
+.barTrack {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+@keyframes barGrow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.barTrack i {
+  width: calc((100% - 64px) * var(--w));
+  min-width: 6px;
+  height: 26px;
+  border-radius: var(--r-xs);
+  background: var(--text-4);
+  transform-origin: left;
+  animation: barGrow 700ms var(--ease) backwards;
+}
+
+.barTrack i[data-accent] {
+  background: var(--accent);
+}
+
+.barTrack b {
+  color: var(--text);
+  font-size: var(--fz-md);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── 资料与强度两张小卡 ── */
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(10px, 1.6vw, 16px);
+  margin-top: clamp(10px, 1.6vw, 16px);
+}
+
+.small {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px 16px;
+}
+
+.smallHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 22px;
+  margin-bottom: 10px;
+}
+
+.count {
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.materials {
+  display: grid;
+  gap: 2px;
+  margin-inline: -8px;
+}
+
+.material {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--text-3);
+  font: 400 var(--fz-sm) / 1.3 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+
+.material:hover {
+  background: var(--hover);
+}
+
+.material:active {
+  background: var(--active);
+}
+
+.material:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.material > i {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1.5px var(--border-2);
+  color: var(--on-accent);
+  transition: background var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+
+.material > svg {
+  flex: none;
+}
+
+.material > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.material[aria-checked='true'] {
+  color: var(--text);
+}
+
+.material[aria-checked='true'] > i {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+.effortNow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+  font-size: var(--fz-md);
+  font-weight: 650;
+}
+
+.effortHint {
+  margin-top: 12px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  /* 六个页签排成三列两行，不留孤行 */
+  .answer .formTabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .formBody {
+    min-height: 0;
+  }
+
+  .flashcard {
+    font-size: var(--fz-lg);
+  }
+}

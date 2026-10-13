@@ -17,13 +17,16 @@ import '@fontsource/dm-sans/400.css';
 import '@fontsource/dm-sans/500.css';
 import './index.css';
 import './store/themeStore';
+import './store/skinStore';
 import App from './App';
 import { ModuleRecovery } from './components/shell/ModuleRecovery';
+import { TipProvider, Toaster } from './components/ui';
+import 'katex/dist/katex.min.css';
 
 const router = createHashRouter([{ path: '*', element: <App /> }]);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ModuleRecovery><RouterProvider router={router} /></ModuleRecovery>
+    <ModuleRecovery><TipProvider><RouterProvider router={router} /><Toaster /></TipProvider></ModuleRecovery>
   </StrictMode>,
 );

@@ -1,162 +1,181 @@
+/* 性情选择器:现代下拉控件(触发器 + 浮层 listbox)。
+   契约(scripts/growth-hero-contract):触发器热区 ≥ 2.75rem;桌面向右展开;菜单限制在视口内。 */
+
 .picker {
   position: relative;
   width: 100%;
   min-width: 0;
-  font-family: var(--font-body);
+  font-family: var(--ui-font);
 }
 
 .trigger {
   display: flex;
   width: 100%;
   min-width: 0;
-  min-height: 3rem;
+  min-height: 2.75rem;
   align-items: center;
   justify-content: space-between;
-  gap: var(--gap-tight);
-  padding: 0.55rem 0.65rem;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-s);
-  background: var(--paper-warm);
-  color: var(--ink);
+  gap: 12px;
+  padding: 8px 10px 8px 14px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  color: var(--text);
+  font-weight: 400;
   text-align: left;
-  transition: transform var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out);
+  cursor: pointer;
+  transition:
+    background var(--dur-1) var(--ease),
+    border-color var(--dur-1) var(--ease),
+    box-shadow var(--dur-1) var(--ease),
+    transform var(--dur-1) var(--ease);
+}
+
+.trigger:active { transform: scale(0.99); }
+
+.trigger:focus-visible,
+.picker[data-open] .trigger {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
 .triggerCopy {
   display: grid;
-  min-width: 0;
   flex: 1;
-  gap: 0.4rem;
-  text-align: center;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'label value'
+    'line line';
+  align-items: baseline;
+  gap: 1px 8px;
+  min-width: 0;
 }
 
-.triggerLabel,
-.menuLabel {
-  color: var(--azure);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  letter-spacing: var(--track-label);
-  text-transform: uppercase;
+.triggerLabel {
+  grid-area: label;
+  font-size: var(--fz-xs);
+  color: var(--text-3);
 }
 
 .trigger strong {
+  grid-area: value;
   min-width: 0;
-  overflow-wrap: anywhere;
-  font-family: var(--font-display);
-  font-size: 1rem;
-  line-height: 1.25;
+  font-size: var(--fz-md);
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .triggerLine {
-  display: none;
-  color: var(--ink-soft);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  line-height: 1.55;
+  grid-area: line;
+  overflow: hidden;
+  font-size: var(--fz-sm);
+  line-height: 1.5;
+  color: var(--text-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .arrow {
-  width: 0.58rem;
-  height: 0.58rem;
   flex: none;
-  border-right: 1.5px solid var(--azure);
-  border-bottom: 1.5px solid var(--azure);
-  transform: rotate(45deg) translate(-0.08rem, 0.08rem);
-  transition: transform var(--t-fast) var(--ease-out);
+  color: var(--text-3);
+  transition: color var(--dur-1) var(--ease);
 }
 
-.arrowOpen { transform: rotate(225deg) translate(-0.08rem, 0.08rem); }
+.arrowOpen { color: var(--accent); }
 
-.trigger:active { transform: translateY(1px); }
-
-.trigger:focus-visible,
-.option:focus-visible {
-  outline: 2px solid var(--azure);
-  outline-offset: 3px;
+@keyframes personaPop {
+  from { opacity: 0; transform: scale(0.97) translateY(4px); }
 }
 
 .menu {
   position: absolute;
   z-index: 30;
-  top: calc(100% + var(--gap-hair));
-  right: 0;
-  width: min(19rem, calc(100vw - 2rem));
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(20rem, calc(100vw - 2rem));
   max-width: calc(100vw - 2rem);
-  overflow: hidden;
-  padding: var(--gap-tight);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-s);
-  background: var(--paper-warm);
-  box-shadow: var(--shadow-paper);
+  padding: 6px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-3);
+  animation: personaPop var(--dur-2) var(--ease);
 }
 
 .menuLabel {
-  margin: 0 0 var(--gap-hair);
-  padding: 0 var(--gap-hair) var(--gap-hair);
-  border-bottom: 1px solid var(--paper-edge);
+  margin: 0;
+  padding: 6px 10px 4px;
+  font-size: var(--fz-xs);
+  color: var(--text-3);
 }
 
 .menuList {
   display: grid;
+  gap: 2px;
 }
 
 .option {
   display: block;
   width: 100%;
-  min-height: 4.4rem;
-  padding: var(--gap-tight);
+  padding: 8px 10px;
   border: 0;
-  border-left: 2px solid transparent;
-  border-bottom: 1px dotted var(--paper-edge);
-  border-radius: 0;
+  border-radius: var(--r-sm);
   background: transparent;
-  color: var(--ink);
+  color: var(--text);
+  font-weight: 400;
   text-align: left;
-  transition: transform var(--t-fast) var(--ease-out), opacity var(--t-fast) var(--ease-out);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
 }
 
-.option:last-child { border-bottom: 0; }
+/* 选项靠程序聚焦(方向键巡选),:focus 即高亮 */
+.option:focus {
+  outline: none;
+  background: var(--hover);
+}
 
-.optionSelected { border-left-color: var(--azure); }
+.option:focus-visible { box-shadow: inset 0 0 0 2px var(--ring); }
+
+.option:active { background: var(--active); }
+
+.optionSelected { background: var(--accent-softer); }
 
 .optionHead {
   display: flex;
   align-items: center;
-  position: relative;
-  justify-content: center;
-  gap: var(--gap-hair);
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .optionHead strong {
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: 1.08rem;
-  line-height: 1.3;
+  font-size: var(--fz-md);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text);
 }
 
-.optionSelected .optionHead strong { color: var(--azure-deep); }
+.optionSelected .optionHead strong { color: var(--accent); }
 
 .currentMark {
-  position: absolute;
-  right: 0;
+  display: inline-flex;
   flex: none;
-  padding: 0 0.3rem;
-  border: 1px solid var(--azure-deep);
-  border-radius: var(--radius-tag);
-  color: var(--azure-deep);
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.1em;
-  transform: rotate(3deg);
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--r-full);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--fz-2xs);
+  font-weight: 500;
 }
 
 .optionLine {
   display: block;
-  margin-top: var(--gap-hair);
-  color: var(--ink-soft);
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  line-height: 1.65;
+  margin-top: 2px;
+  font-size: var(--fz-sm);
+  line-height: 1.55;
+  color: var(--text-3);
   overflow-wrap: anywhere;
 }
 
@@ -173,75 +192,41 @@
 }
 
 @media (hover: hover) {
-  .trigger:hover,
-  .option:hover {
-    opacity: 0.86;
-    transform: translateX(2px);
+  .trigger:hover { background: color-mix(in srgb, var(--surface), var(--text) 4%); }
+  .option:hover { background: var(--hover); }
+  .optionSelected:hover { background: var(--accent-soft); }
+}
+
+/* 桌面:菜单贴着触发器向右展开 */
+@media (min-width: 961px) {
+  .menu {
+    top: 0;
+    left: calc(100% + 8px);
   }
 }
 
-@media (min-width: 561px) {
+/* 页面容器不够宽(侧栏展开的小屏)时改回向下展开,免得撑出横向滚动 */
+@container (max-width: 899px) {
   .menu {
-    right: auto;
+    top: calc(100% + 6px);
     left: 0;
   }
 }
 
-@media (min-width: 961px) {
-  .arrow {
-    border-bottom: 0;
-    border-top: 1.5px solid var(--azure);
-    border-right: 1.5px solid var(--azure);
-    transform: rotate(45deg);
-  }
-
-  .arrowOpen {
-    transform: rotate(225deg);
-  }
-
-  .trigger {
-    min-height: 5rem;
-    padding: 0.8rem 0.9rem;
-  }
-
-  .trigger strong { font-size: clamp(1.2rem, 1.45vw, 1.42rem); }
-  .triggerLine { display: block; }
-
-  .menu {
-    top: 50%;
-    transform: translateY(-50%);
-    left: calc(100% + var(--gap-tight));
-    width: clamp(17rem, 22vw, 20rem);
-  }
-  .menuLabel { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
-
-  .option {
-    min-height: 5.2rem;
-    padding: 0.78rem 0.85rem;
-  }
-  .optionLine { text-align: center; line-height: 1.8; letter-spacing: 0.04em; }
-
-  .optionHead strong { font-size: 1.28rem; }
-  .optionLine { font-size: 1rem; }
-}
-
 @media (pointer: coarse) {
-  .trigger { min-height: 3.25rem; }
-  .option { min-height: 4.75rem; }
+  .trigger { min-height: 3rem; }
+  .option { min-height: 3rem; }
 }
 
 @media (forced-colors: active) {
-  .optionSelected,
-  .currentMark { border-color: Highlight; }
+  .optionSelected { outline: 1px solid Highlight; }
   .currentMark { color: Highlight; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .trigger,
-  .option,
-  .arrow { transition: none; }
+  .option { transition: none; }
 
-  .trigger:hover,
-  .option:hover,
   .trigger:active { transform: none; }
+  .menu { animation: none; }
 }

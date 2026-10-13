@@ -1,648 +1,28 @@
-/* 备课页 —— 自习桌面:宣纸底,内容列 + 眉批侧注,教学任务卡是一张真实的"卡片"
-   侧栏「备课五步」兼任锚点导航:进度态(done/active)与 scrollspy 当前在读态叠加 */
+/* 备课流程 —— 学习终端里的一个视图（不是整页）。
+   版式：课题与小白 → 吸顶的五步进度条 + 备课度 → 一次只摊开一步 → 去上课 / 只备课。
+   颜色只用 styles/skins.css 的语义令牌；两件故事物件（记忆回执、教学任务卡）挂 data-story 保留纸墨。
+   响应式用容器查询：视图宽度由终端栏位决定，不看窗口。 */
 
 .page {
-  /* width 必须显式给满:外壳 .main 是纵向 flexbox,子项一旦带 margin:auto 就不再被
-     align-items:stretch 拉伸,会退化成 shrink-to-fit(内容多窄页面就多窄)——
-     双栏版心被压瘦、右侧留出大片死白正是这么来的 */
-  position: relative;
   width: 100%;
-  max-width: var(--page-max);
+  padding: 16px clamp(8px, 2.4vw, 28px) 0;
+}
+
+/* 内容壳是查询容器；小砚与引路浮层不放进来（layout 包含会改掉 fixed 的参照物） */
+.shell {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 920px;
   margin: 0 auto;
-  padding: clamp(1.5rem, 4vw, 3rem) clamp(1.25rem, 4vw, 3rem) var(--gap-section);
-}
-/* 灯下温书:页头上方落一团暖灯晕(静态,不动画;芥末暖光只此一处) */
-.page::before {
-  content: '';
-  position: absolute;
-  inset: -6rem 0 auto 0;
-  height: 26rem;
-  background: radial-gradient(55% 60% at 22% 0%, var(--mustard-wash), transparent 70%);
-  pointer-events: none;
-  z-index: -1;
+  /* 底部留白：右下角站着小砚，末尾的按钮要能滚到它上面 */
+  padding-bottom: 168px;
+  color: var(--text);
+  font: var(--fz-md) / 1.6 var(--ui-font);
 }
 
-/* 空态与复盘页同规格:标题 + 一句叙事 + 主按钮 */
-.notFound {
-  padding: var(--gap-section) 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--gap-tight);
-}
-.notFoundTitle {
-  font-size: var(--fs-title);
-  color: var(--ink);
-  font-family: var(--font-serif);
-  font-weight: 600;
-}
-.notFoundText {
-  color: var(--ink-soft);
-  font-family: var(--font-display);
-  max-width: 36em;
-  line-height: 1.9;
-}
-
-/* ── 页头 ── */
-.head {
-  position: relative;
-  animation: global(rise) var(--t-med) var(--ease-out) backwards;
-}
-.back { display: inline-flex; align-items: center; gap: var(--gap-hair); font-size: var(--fs-small); color: var(--ink-faint); }
-.back:hover { color: var(--azure); }
-.headGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--gap-loose);
-  align-items: center;
-  margin-top: var(--gap);
-}
-.headText { min-width: 0; }
-.course {
-  font-size: var(--fs-small);
-  letter-spacing: 0.08em;
-  color: var(--ink-faint);
-}
-/* 小白候教:页头右侧,一句话气泡在上、书童在下——先生一动它就有反应 */
-.pupil {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.35rem;
-  justify-self: end;
-  max-width: 24rem;
-}
-.pupilBubble {
-  position: relative;
-  margin: 0;
-  /* 固定两行高:反应句短、状态句长,气泡换句时页头不跳 */
-  min-height: calc(1.85em * 2 + 1.3rem);
-  min-width: 16rem;
-  padding: 0.65rem 0.95rem;
-  background: var(--paper);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius) var(--radius) 4px var(--radius);
-  box-shadow: var(--shadow-paper);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  line-height: 1.85;
-  color: var(--ink);
-  animation: prep-bubble var(--t-med) var(--ease-out) backwards;
-}
-/* 气泡尾:指向下方的书童 */
-.pupilBubble::after {
-  content: '';
-  position: absolute;
-  right: 3.2rem;
-  bottom: -0.42rem;
-  width: 0.75rem;
-  height: 0.75rem;
-  background: var(--paper);
-  border-right: 1px solid var(--line-strong);
-  border-bottom: 1px solid var(--line-strong);
-  transform: rotate(45deg);
-}
-/* 答题瞬间的反应句:带一点点上浮弹入,与状态句区分 */
-.pupilBubbleReact { border-color: var(--azure); }
-@keyframes prep-bubble {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.pupilFigure {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.1rem;
-  margin-right: 0.6rem;
-}
-.pupilName {
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
-  letter-spacing: 0.14em;
-}
-/* 题头衬线:全站题头一律 --font-serif 600(题头/大字声部) */
-.title {
-  font-size: var(--fs-title);
-  margin-top: var(--gap-hair);
-  font-family: var(--font-serif);
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-.tagline {
-  color: var(--ink-soft);
-  font-family: var(--font-display);
-  margin-top: var(--gap-hair);
-}
-
-@media (max-width: 760px) {
-  .headGrid { grid-template-columns: 1fr; gap: var(--gap); }
-  /* 单列后小白靠左,气泡与书童并排,免得把页头拉太高 */
-  .pupil {
-    justify-self: start;
-    flex-direction: row-reverse;
-    align-items: flex-end;
-    max-width: none;
-  }
-  .pupilBubble { min-width: 0; border-radius: var(--radius) var(--radius) var(--radius) 4px; }
-  .pupilBubble::after { right: auto; left: -0.42rem; bottom: 1rem; transform: rotate(135deg); }
-  .pupilFigure { margin-right: 0; }
-}
-
-/* ── 记忆回执「接着上次讲」:一张收据票根 —— 上缘撕票虚线 + 存根小字,册页语域称「先生」 ── */
-.recall {
-  animation: global(rise) var(--t-med) var(--ease-out) backwards;
-  margin-bottom: var(--gap-tight);
-  background: var(--paper-warm);
-  border: 1px solid var(--line-strong);
-  /* 撕票线:上缘裁切位,一眼是从上次那叠里撕下来的票根 */
-  border-top: 2px dashed var(--ink-wash);
-  border-radius: var(--radius-s);
-  padding: calc(var(--gap-tight) + 0.1rem) clamp(var(--gap-tight), 3vw, var(--gap-loose)) var(--gap);
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-tight);
-}
-.recallHead {
-  display: flex;
-  align-items: baseline;
-  gap: var(--gap-tight);
-  flex-wrap: wrap;
-}
-.recallLabel {
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-  color: var(--azure-deep);
-  letter-spacing: 0.08em;
-}
-/* 「接着上次讲」旁的小落款:上次温书距今多久 */
-.recallWhen {
-  font-size: var(--fs-tiny);
-  color: var(--ink-soft); /* paper-warm 卡底上 ink-faint 不达 AA */
-  letter-spacing: 0.1em;
-}
-.recallOutcome {
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  color: var(--ink);
-  line-height: 1.9;
-}
-.recallField {
-  display: flex;
-  align-items: baseline;
-  gap: var(--gap-tight);
-  flex-wrap: wrap;
-}
-.recallFieldLabel {
-  flex: 0 0 auto;
-  font-size: var(--fs-tiny);
-  color: var(--ink-soft); /* paper-warm 卡底上 ink-faint 不达 AA */
-  letter-spacing: 0.16em;
-  padding-top: 0.15rem;
-}
-.recallChips {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap-hair);
-}
-/* 记得的要点:芦苇绿细签(掌握/生长语义) */
-.recallChip {
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  color: var(--jade-ink);
-  background: var(--jade-wash);
-  border: 1px solid color-mix(in oklab, var(--jade) 34%, transparent);
-  border-radius: var(--radius-tag);
-  padding: 0.06rem 0.5rem;
-  line-height: 1.7;
-}
-/* 清掉的心魔:墨色细签(已收服,不再示警朱砂) */
-.recallChipDemon {
-  color: var(--ink-soft);
-  background: var(--ink-wash);
-  border-color: var(--paper-edge);
-}
-.recallQuotes {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-hair);
-}
-/* 小白记得:学伴记忆的课级长短板/习惯,楷体、无左沿(丁香细线只留给逐字引文) */
-.recallMemory {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  line-height: 1.9;
-  color: var(--ink);
-}
-/* 裱起来的金句:楷体,左沿丁香细线(引文语义) */
-.recallQuote {
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  color: var(--ink-soft);
-  line-height: 1.9;
-  padding-left: var(--gap-tight);
-  border-left: 2px solid var(--lilac-ink);
-}
-.recallRet {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-.recallRetHead {
-  display: flex;
-  align-items: baseline;
-  gap: var(--gap-tight);
-  flex-wrap: wrap;
-}
-.recallRetNote {
-  font-size: var(--fs-tiny);
-  color: var(--ink-soft); /* paper-warm 卡底上 ink-faint 不达 AA */
-  letter-spacing: 0.04em;
-}
-/* 槽 + 条:一次性派生渲染,不做 width 过渡(只 transform/opacity 纪律) */
-.recallRetTrack {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--paper-shade);
-  border: 1px solid var(--paper-edge);
-  overflow: hidden;
-}
-.recallRetFill {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  /* 芦苇绿 = 尚清晰 */
-  background: var(--jade);
-}
-/* 藤黄 = 已衰减(语义唯一暖色) */
-.recallRetFillFog { background: var(--amber); }
-
-/* ── 不对称双列:内容 + 眉批 ── */
-.layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 230px;
-  gap: var(--gap-loose);
-  align-items: start;
-  margin-top: var(--gap-loose);
-}
-.main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-loose);
-  min-width: 0;
-}
-
-.section {
-  animation: global(rise) var(--t-med) var(--ease-out) backwards;
-  /* 锚点落点让出吸顶导航栏的高度 */
-  scroll-margin-top: calc(var(--header-h) + var(--gap-tight));
-}
-/* 纸色分层节奏(R2 + 诊断 c):壹 shade / 贰 paper / 叁 warm / 肆 paper / 伍 shade,
-   负外距 + 等量内距让分区带向两侧破格,而内容与未着色区块保持同一左缘 */
-.bandWarm,
-.bandShade {
-  margin-inline: calc(-1 * var(--gap));
-  padding: var(--gap) var(--gap) calc(var(--gap) + 0.5rem);
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-s);
-}
-.bandWarm {
-  background:
-    radial-gradient(90% 130% at 100% 0%, var(--lilac-wash), transparent 72%),
-    var(--paper-warm);
-}
-.bandShade {
-  background:
-    radial-gradient(90% 140% at 0% 100%, var(--reed-wash), transparent 74%),
-    var(--paper-shade);
-}
-/* 区块题头(2026-08-29 极简制式,与全站题头件同源):序号 + 短标题在左,计数在右;
-   不带打字机眉批、界栏 hairline 与 2px 墨骨,不盖章、不旋转 */
-.secHead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--gap-tight);
-  flex-wrap: wrap;
-}
-.sectionTitle {
-  font-family: var(--font-serif);
-  font-weight: 600;
-  font-size: clamp(1.25rem, 2vw, 1.5rem);
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  letter-spacing: 0.015em;
-  line-height: 1.3;
-}
-/* 壹—伍:衬线序号,弱一档墨色 */
-.sectionNum {
-  flex: 0 0 auto;
-  font-family: var(--font-serif);
-  font-weight: 600;
-  font-size: 0.8em;
-  color: var(--ink-faint);
-  letter-spacing: 0.1em;
-}
-.sectionHint {
-  color: var(--ink-soft);
-  font-size: var(--fs-small);
-  margin-top: var(--gap-hair);
-  max-width: 64ch;
-  line-height: 1.9;
-}
-
-/* 题头右侧的计数小字:阅读量 / 已翻几册 */
-.readTime {
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-  flex: 0 0 auto;
-}
-
-/* ── 摸底快测 ── */
-.probeList {
-  list-style: none;
-  margin: var(--gap) 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-tight);
-}
-/* 题卡(R3 + 诊断 b):浅卡落深带——纸底 + 强边线,不再是"淡卡白底" */
-.probe {
-  position: relative;
-  background: var(--paper);
-  border: 1px solid var(--line-strong);
-  border-left: 3px solid var(--line-strong);
-  border-radius: var(--radius-s);
-  padding: var(--gap-tight) var(--gap);
-  box-shadow: var(--shadow-paper);
-  animation: global(rise) var(--t-med) var(--ease-out) backwards;
-}
-.probeGood { border-left-color: var(--jade); }
-.probeBad { border-left-color: var(--cinnabar); }
-/* 判分落款:题卡右上角一枚圆印,答题瞬间落下(印章语境:对=橄榄 / 错=绛红,只用描边) */
-.probeMark {
-  position: absolute;
-  top: 0.7rem;
-  right: 0.8rem;
-  width: 1.9rem;
-  height: 1.9rem;
-  display: grid;
-  place-items: center;
-  border: 1.5px solid currentColor;
-  border-radius: 50%;
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  line-height: 1;
-  transform: rotate(-8deg);
-  animation: prep-stamp var(--t-med) var(--ease-out) backwards;
-}
-.probeMarkGood { color: var(--jade-ink); }
-.probeMarkBad { color: var(--cinnabar); }
-@keyframes prep-stamp {
-  from { opacity: 0; transform: rotate(-8deg) scale(1.6); }
-  to { opacity: 1; transform: rotate(-8deg) scale(1); }
-}
-.probeNo {
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
-  letter-spacing: 0.1em;
-}
-.probeStatement {
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-  line-height: 1.8;
-  margin-top: 2px;
-}
-.probeBtns {
-  display: flex;
-  gap: var(--gap-tight);
-  margin-top: var(--gap-tight);
-}
-/* 判断题「对/错」→ 票据小签(锐角 radius-tag) */
-.probeBtns button {
-  width: 4.5rem;
-  min-height: 2.5rem;
-  padding: 0.5rem 0;
-  border: 1px solid var(--azure);
-  background: none;
-  color: var(--azure);
-  border-radius: var(--radius-tag);
-  font-size: var(--fs-body);
-  font-family: var(--font-display);
-  transition:
-    background var(--t-fast) var(--ease-out),
-    color var(--t-fast) var(--ease-out),
-    border-color var(--t-fast) var(--ease-out),
-    transform var(--t-fast) var(--ease-out);
-}
-.probeBtns button:hover {
-  background: var(--azure);
-  color: var(--paper);
-  transform: translateY(-1px);
-}
-.probeBtns button:active:not(:disabled) { transform: translateY(1px); }
-/* 答后禁用不卸载(保键盘焦点):降为静默态,选中项留内侧标记 */
-.probeBtns button:disabled {
-  cursor: default;
-  border-color: var(--paper-edge);
-  color: var(--ink-soft);
-  background: none;
-  transform: none;
-}
-.probeFb { margin-top: var(--gap-tight); }
-.fbGood { color: var(--jade-ink); font-weight: 600; font-size: var(--fs-small); }
-.fbBad { color: var(--cinnabar); font-weight: 600; font-size: var(--fs-small); }
-.fbExplain {
-  color: var(--ink-soft);
-  font-size: var(--fs-small);
-  line-height: 1.9;
-  margin-top: 2px;
-}
-
-.verdictGood,
-.verdictBad {
-  margin-top: var(--gap);
-  border-radius: var(--radius-s);
-  padding: var(--gap-tight) var(--gap);
-  animation: global(rise) var(--t-med) var(--ease-out) backwards;
-  line-height: 1.9;
-}
-/* 判词落在 shade 带上:wash 底叠不透明纸底,再描一圈同族细边框住 */
-.verdictGood {
-  background: linear-gradient(var(--jade-wash), var(--jade-wash)) var(--paper);
-  border: 1px solid color-mix(in oklab, var(--jade) 38%, transparent);
-}
-.verdictBad {
-  background: linear-gradient(var(--cinnabar-wash), var(--cinnabar-wash)) var(--paper);
-  border: 1px solid color-mix(in oklab, var(--cinnabar) 32%, transparent);
-}
-.verdictBtns {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-tight);
-  margin-top: var(--gap-tight);
-  flex-wrap: wrap;
-}
-
-/* ── 按钮(主按钮规范:hover 变深上浮 / active 下压 / disabled 半透明,与全站对齐) ── */
-.primaryBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--gap-hair);
-  background: var(--azure);
-  color: var(--paper);
-  border: none;
-  border-radius: var(--radius-s);
-  padding: 0.55rem 1.4rem;
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  transition: background var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
-}
-.primaryBtn:hover:not(:disabled) { background: var(--azure-deep); transform: translateY(-1px); }
-.primaryBtn:active:not(:disabled) { transform: translateY(1px); }
-.primaryBtn:disabled { opacity: 0.55; cursor: not-allowed; }
-/* 次级幽灵钮:青描边一族(与成长页/看板对齐) */
-.ghostBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--gap-hair);
-  background: none;
-  border: 1px solid var(--azure);
-  color: var(--azure);
-  border-radius: var(--radius-s);
-  padding: 0.55rem 1.2rem;
-  font-size: var(--fs-body);
-  white-space: nowrap;
-  transition: background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
-}
-.ghostBtn:hover:not(:disabled) { background: var(--azure-wash); }
-.ghostBtn:disabled { opacity: 0.55; cursor: not-allowed; }
-/* 小号幽灵钮:重新摸底等低优先操作 */
-.ghostBtnSm {
-  background: none;
-  border: 1px dashed var(--paper-edge);
-  color: var(--ink-faint);
-  border-radius: var(--radius-s);
-  min-height: 2.5rem;
-  padding: 0.4rem 0.85rem;
-  font-size: var(--fs-small);
-  transition: color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
-}
-.ghostBtnSm:hover { border-color: var(--azure); color: var(--azure); }
-
-.quizCount {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
-  letter-spacing: 0.1em;
-  white-space: nowrap;
-}
-/* 连对:橄榄绿小字,弹一下 */
-.streak {
-  font-style: normal;
-  color: var(--jade-ink);
-  animation: prep-pop var(--t-med) var(--ease-out) backwards;
-}
-@keyframes prep-pop {
-  from { opacity: 0; transform: scale(0.8); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-/* ── 摸底第二波:多维选择题(分波小题头 + 竖排选项按钮 + 维度徽章) ── */
-.mcWave {
-  margin-top: var(--gap);
-  animation: global(rise) var(--t-med) var(--ease-out) backwards;
-}
-.mcWaveTitle {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-tight);
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  letter-spacing: 0.12em;
-  color: var(--ink);
-}
-/* 题头右侧接一段虚线,把"换波"在版面上画出来(shade 带上细线换强边线才立得住) */
-.mcWaveTitle::after {
-  content: '';
-  flex: 1;
-  border-top: 1px dashed var(--line-strong);
-}
-.mcWaveHint {
-  margin-top: var(--gap-hair);
-  font-size: var(--fs-small);
-  color: var(--ink-soft);
-  line-height: 1.9;
-}
-.mcOptions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-hair);
-  margin-top: var(--gap-tight);
-}
-.mcOptions button {
-  display: flex;
-  align-items: baseline;
-  gap: var(--gap-tight);
-  width: 100%;
-  /* 触控目标底线 ≥40px */
-  min-height: 2.5rem;
-  text-align: left;
-  background: var(--paper);
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-tag);
-  padding: 0.45rem 0.8rem;
-  color: var(--ink);
-  font-size: var(--fs-body);
-  line-height: 1.7;
-  cursor: pointer;
-  transition: border-color var(--t-fast) var(--ease-out),
-    background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
-}
-.mcOptions button:active:not(:disabled) { border-color: var(--azure-deep); }
-.mcOptions button:hover {
-  border-color: var(--azure);
-  background: var(--azure-wash);
-  color: var(--azure-deep);
-}
-.mcOptions button:disabled {
-  cursor: default;
-  border-color: var(--paper-edge);
-  background: var(--paper);
-  color: var(--ink-soft);
-}
-/* 你按下的那一项:内侧竖标 + 描边加墨 + 淡墨晕底(对错由所在题卡的左沿色说话)
-   —— 答后态比旧版更咬得住版面(诊断 b) */
-.optPicked,
-.probeBtns button:disabled.optPicked,
-.mcOptions button:disabled.optPicked {
-  border-color: var(--ink-soft);
-  box-shadow: inset 3px 0 0 var(--ink-soft);
-  color: var(--ink);
-  background: var(--ink-wash);
-}
-
-/* 读屏专用:视觉隐藏但保留在无障碍树(同 coach 的 srOnly) */
 .srOnly {
   position: absolute;
   width: 1px;
@@ -654,982 +34,1675 @@
   white-space: nowrap;
   border: 0;
 }
-.mcOptNo {
-  flex: 0 0 auto;
-  font-family: var(--font-code);
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
+
+@keyframes prepRise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
 }
-/* 维度徽章:细边小胶囊,答完后标记这道题在探哪个方位(信息义,走墨青) */
-.mcDim {
-  display: inline-block;
-  margin-right: 0.5em;
-  font-family: var(--font-body);
-  font-size: var(--fs-tiny);
-  font-weight: 400;
-  color: var(--azure-deep);
-  background: var(--azure-wash);
-  border: 1px solid var(--azure);
-  border-radius: 999px;
-  padding: 0 8px;
-  letter-spacing: 0.08em;
-  vertical-align: 0.1em;
-  white-space: nowrap;
+@keyframes prepPop {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+@keyframes prepGlow {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 0 0 var(--ring); }
+  50% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 0 6px transparent; }
 }
 
-/* ── 讲课路线图:先用双线纸条串起节奏,再落竖排大纲与小白追问 ── */
-.flowNote {
+/* ── 不可用 / 加载态 ── */
+.notFound {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: var(--gap);
-  align-items: start;
-  margin-top: var(--gap);
-  padding: var(--gap-tight) var(--gap-hair);
-  border-block: 3px double var(--line-strong);
+  justify-items: start;
+  gap: 8px;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 64px 0;
 }
-/* 打字机小签:铅字大写宽距(小字走深赭 azure-deep 保 AA) */
-.flowLabel {
-  padding-top: 0.2rem;
-  color: var(--azure-deep);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
+.notFoundTitle {
+  margin: 0;
+  font: 650 var(--fz-2xl) / 1.3 var(--ui-font);
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.notFoundText {
+  margin: 0 0 12px;
+  color: var(--text-2);
+  line-height: 1.7;
+}
+
+/* ── 课题区 ── */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 340px);
+  align-items: end;
+  gap: 24px;
+}
+.heroMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+/* 费曼四步：备课是第一步 */
+.loop {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-4);
+  font-size: var(--fz-xs);
+}
+.loop li {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.loop li + li::before {
+  content: '›';
+  margin: 0 4px;
+  color: var(--text-4);
+}
+.loop li[aria-current] {
+  color: var(--text);
+  font-weight: 600;
+}
+.title {
+  margin: 10px 0 0;
+  font: 650 var(--fz-3xl) / 1.25 var(--ui-font);
+  letter-spacing: -0.02em;
+  color: var(--text);
+  text-wrap: balance;
+}
+.tagline {
+  margin: 6px 0 0;
+  max-width: 60ch;
+  color: var(--text-2);
+  font-size: var(--fz-lg);
+  line-height: 1.6;
+}
+
+/* 小白候教：头像 + 一句话，随备课进度变 */
+.pupil {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+.pupilFigure {
+  flex: none;
+  display: grid;
+}
+.pupilSay {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.pupilName {
+  padding-left: 4px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+.pupilBubble {
+  margin: 0;
+  /* 固定两行高：反应句短、状态句长，换句时课题区不跳 */
+  min-height: calc(1.55em * 2 + 20px);
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg) var(--r-lg) var(--r-lg) var(--r-xs);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  color: var(--text);
+  font-size: var(--fz-sm);
+  line-height: 1.55;
+  animation: prepRise var(--dur-3) var(--ease) backwards;
+}
+.pupilBubbleReact {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-softer), var(--shadow-1);
+}
+
+/* ── 吸顶进度条：五步 + 备课度 ── */
+.journey {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 14px 8px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  backdrop-filter: blur(14px) saturate(1.3);
+  box-shadow: var(--shadow-1);
+}
+.stepper {
+  flex: 1;
+  min-width: 0;
+}
+.stepList {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.stepItem {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.stepItem + .stepItem {
+  /* 按内容起步，余量全给连线：当前步的名字不被挤成省略号 */
+  flex: 1 1 auto;
+}
+/* 两步之间的连线，前一步做完就点亮 */
+.stepItem + .stepItem::before {
+  content: '';
+  flex: 1 1 8px;
+  min-width: 6px;
+  height: 2px;
+  margin: 0 2px;
+  border-radius: 2px;
+  background: var(--border-2);
+  transition: background var(--dur-3) var(--ease);
+}
+.stepItem[data-linked]::before {
+  background: var(--ok);
+}
+.step {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: var(--ctl-md);
+  padding: 0 12px 0 6px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-3);
+  font: 500 var(--fz-sm) / 1 var(--ui-font);
+  white-space: nowrap;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+button.step {
+  cursor: pointer;
+}
+button.step:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+button.step:active {
+  transform: scale(0.97);
+}
+button.step:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+.stepDot {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--inset);
+  box-shadow: inset 0 0 0 1px var(--border-2);
+  color: var(--text-3);
+  font: 600 var(--fz-xs) / 1 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
+}
+.stepItem[data-done] .step {
+  color: var(--text-2);
+}
+.stepItem[data-done] .stepDot {
+  background: var(--ok);
+  box-shadow: none;
+  color: var(--bg);
+  animation: prepPop var(--dur-3) var(--ease);
+}
+.stepItem[data-current] .step,
+.stepItem[data-current] button.step:hover {
+  background: var(--accent-soft);
+  color: var(--text);
+  font-weight: 600;
+}
+.stepItem[data-current]:not([data-done]) .stepDot {
+  background: var(--accent);
+  box-shadow: none;
+  color: var(--on-accent);
+}
+.stepItem[data-locked] .step {
+  color: var(--text-4);
+}
+.stepItem[data-locked] .stepDot {
+  background: transparent;
+  color: var(--text-4);
+}
+
+.meter {
+  flex: none;
+  display: grid;
+  gap: 6px;
+  width: 196px;
+}
+.meterTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.2;
+}
+.meterLabel {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
   white-space: nowrap;
 }
-.flowText {
-  color: var(--ink-soft);
-  font-family: var(--font-display);
-  line-height: 2;
+.meterPct {
+  color: var(--text);
+  font: 650 var(--fz-md) / 1 var(--ui-font);
+  font-variant-numeric: tabular-nums;
 }
-.roadmap {
-  list-style: none;
-  margin: var(--gap) 0 0;
+.meterNote {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.meter[data-ready] .meterNote {
+  color: var(--ok);
+  font-weight: 500;
+}
+
+/* ── 学法条 ── */
+.methodBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.methodLabel {
+  flex: none;
+  color: var(--text-2);
+  font: 500 var(--fz-sm) / 1.4 var(--ui-font);
+}
+.methodSeg {
+  max-width: 100%;
+  /* 给聚焦环留 3px，不被横滚裁掉 */
+  margin: -3px;
+  padding: 3px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.methodHint {
+  flex: 1 1 260px;
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.5;
+}
+
+/* ── 记忆回执：小白留在案头的一张便笺（故事物件，data-story 内回到纸墨） ── */
+.recall {
+  display: grid;
+  gap: 12px;
+  padding: 16px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper-warm);
+  box-shadow: var(--shadow-paper);
+  color: var(--ink);
+  font-family: var(--font-display);
+  animation: prepRise var(--dur-3) var(--ease) backwards;
+}
+.recallHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+.recallLabel {
+  font: 600 1.05rem / 1.3 var(--font-serif);
+  letter-spacing: 0.04em;
+}
+.recallWhen {
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+}
+.recallOutcome {
+  margin: 0;
+  line-height: 1.8;
+}
+.recallField {
+  display: grid;
+  grid-template-columns: 5.5em minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.recallFieldLabel {
+  color: var(--ink-faint);
+  font-size: 0.8125rem;
+}
+.recallMemory,
+.recallChips,
+.recallQuotes {
+  margin: 0;
   padding: 0;
-  position: relative;
+  list-style: none;
+}
+.recallMemory {
+  display: grid;
+  gap: 2px;
+  line-height: 1.7;
+}
+.recallChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.recallChip {
+  padding: 2px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--paper);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.recallChipDemon {
+  border-color: color-mix(in srgb, var(--jade-ink) 45%, transparent);
+  color: var(--jade-ink);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--jade-ink) 50%, transparent);
+}
+.recallQuotes {
+  display: grid;
+  gap: 4px;
+}
+.recallQuote {
+  padding-left: 12px;
+  border-left: 2px solid var(--terra);
+  color: var(--ink-soft);
+  line-height: 1.8;
+}
+.recallRet {
+  display: grid;
+  gap: 6px;
+}
+.recallRetHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.recallRetNote {
+  color: var(--ink-soft);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+.recallRetTrack {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--paper-shade);
+}
+.recallRetFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--jade);
+  transition: width var(--dur-3) var(--ease);
+}
+.recallRetFillFog {
+  background: var(--ink-faint);
+}
+
+/* ── 步骤面板 ── */
+.main {
   display: flex;
   flex-direction: column;
-  gap: var(--gap-tight);
+  gap: 16px;
+  min-width: 0;
 }
-.roadmap::before {
-  content: '';
-  position: absolute;
-  left: 2.1rem;
-  top: 0.9rem;
-  bottom: 0.9rem;
-  border-left: 1px dashed var(--line-strong);
-}
-.roadStep,
-.roadAmbush {
-  position: relative;
+.section {
   display: flex;
-  gap: var(--gap);
-  align-items: flex-start;
-  animation: global(rise) var(--t-med) var(--ease-out) backwards;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: clamp(16px, 3.2cqi, 28px);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  /* 跳步时落在吸顶进度条下面 */
+  scroll-margin-top: 84px;
+  animation: prepRise var(--dur-3) var(--ease) backwards;
 }
-/* 路线图徽章 → 小听课证/票据小签:锐角(radius-tag)+ 打字机层级号 */
-.roadBadge,
-.roadBadgeWarn {
-  flex: 0 0 auto;
-  width: 4.2rem;
+.stepHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.stepHeadText {
+  min-width: 0;
+}
+.stepHeadAside {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 2px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.eyebrow {
+  margin: 0 0 4px;
+  color: var(--accent);
+  font: 600 var(--fz-xs) / 1.4 var(--ui-font);
+}
+.sectionTitle {
+  margin: 0;
+  color: var(--text);
+  font: 650 var(--fz-2xl) / 1.3 var(--ui-font);
+  letter-spacing: -0.01em;
+  outline: none;
+}
+.sectionHint {
+  margin: 6px 0 0;
+  max-width: 64ch;
+  color: var(--text-2);
+  font-size: var(--fz-md);
+  line-height: 1.65;
+}
+.streak {
+  font-style: normal;
+}
+
+/* ── 摸底快测 ── */
+.probeList {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.probe {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid transparent;
+  border-radius: var(--r-lg);
+  background: var(--sidebar);
+  transition: background var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease);
+  animation: prepRise var(--dur-3) var(--ease) backwards;
+}
+.probe[data-result='good'] {
+  border-color: color-mix(in srgb, var(--ok) 24%, transparent);
+  background: color-mix(in srgb, var(--ok) 6%, var(--surface));
+}
+.probe[data-result='bad'] {
+  border-color: color-mix(in srgb, var(--bad) 24%, transparent);
+  background: color-mix(in srgb, var(--bad) 5%, var(--surface));
+}
+.probeTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 20px;
+}
+.probeNo {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  font-variant-numeric: tabular-nums;
+}
+.probeMark {
+  animation: prepPop var(--dur-3) var(--ease);
+}
+.probeStatement {
+  margin: 0;
+  color: var(--text);
+  font: 550 var(--fz-xl) / 1.55 var(--ui-font);
+  overflow-wrap: anywhere;
+}
+.probeBtns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-width: 340px;
+}
+.mcOptions {
+  display: grid;
+  gap: 8px;
+}
+/* 作答按钮：判断题两枚、选择题一列 */
+.choice {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 0.22rem 0;
-  margin-top: 0.35rem;
-  border-radius: var(--radius-tag);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  background: var(--paper);
-  border: 1px solid var(--azure);
-  color: var(--azure);
-}
-.roadBadge b,
-.roadBadgeWarn b {
-  font-family: var(--font-code);
-  font-weight: 600;
-  font-size: 0.9em;
-}
-.roadBadgeWarn {
-  border-color: var(--cinnabar);
-  color: var(--cinnabar);
-  border-style: dashed;
-}
-/* 路线卡落在 warm 带上:纸底 + 强边线(R3 浅卡深底) */
-.roadBody {
+  gap: 8px;
   min-width: 0;
-  background: var(--paper);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-s);
-  padding: var(--gap-tight) var(--gap);
-  flex: 1;
+  min-height: var(--ctl-lg);
+  padding: 8px 14px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  color: var(--text);
+  font: 500 var(--fz-md) / 1.45 var(--ui-font);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
 }
-.roadPoint {
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
+.choice svg {
+  flex: none;
+}
+.mcOptions .choice {
+  justify-content: flex-start;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.choice:hover:enabled {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+}
+.choice:active:enabled {
+  transform: scale(0.985);
+}
+.choice:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+.choice:disabled {
+  border-color: var(--border);
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-3);
+  cursor: default;
+}
+.probe[data-result='good'] .choicePicked {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+  color: var(--ok);
+  font-weight: 600;
+}
+.probe[data-result='bad'] .choicePicked {
+  border-color: var(--bad);
+  background: var(--bad-soft);
+  color: var(--bad);
+  font-weight: 600;
+}
+/* 选择题答错后，把该选的那项标出来 */
+.choice[data-answer]:disabled {
+  border-color: color-mix(in srgb, var(--ok) 55%, transparent);
+  color: var(--ok);
+}
+.mcOptNo {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-xs);
+  background: var(--inset);
+  color: var(--text-2);
+  font: 600 var(--fz-xs) / 1 var(--ui-mono);
+}
+.choice:disabled .mcOptNo {
+  background: transparent;
+  color: inherit;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+.probeFb {
+  display: grid;
+  gap: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  animation: prepRise var(--dur-2) var(--ease) backwards;
+}
+.fbGood,
+.fbBad {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font: 600 var(--fz-sm) / 1.5 var(--ui-font);
+}
+.fbGood { color: var(--ok); }
+.fbBad { color: var(--bad); }
+.fbExplain {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fz-md);
   line-height: 1.7;
 }
-.roadProbe {
-  margin-top: var(--gap-hair);
-  color: var(--ink-soft);
-  font-size: var(--fs-small);
-  line-height: 1.9;
-  padding-left: var(--gap-tight);
-  border-left: 2px solid var(--azure);
+.code {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  border-radius: var(--r-md);
+  background: var(--inset);
+  color: var(--text);
+  font: var(--fz-sm) / 1.7 var(--ui-mono);
+  tab-size: 4;
 }
-.roadWho {
-  display: inline-block;
-  margin-left: 0.5em;
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
-  letter-spacing: 0.08em;
-  white-space: nowrap;
+.mcWave {
+  display: grid;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  animation: prepRise var(--dur-3) var(--ease) backwards;
 }
-.roadAmbushText {
-  flex: 1;
-  min-width: 0;
-  margin-top: 0.3rem;
-  color: var(--cinnabar);
-  font-size: var(--fs-small);
-  line-height: 1.8;
-  font-family: var(--font-display);
+.mcWaveTitle {
+  margin: 0;
+  color: var(--text);
+  font: 600 var(--fz-lg) / 1.4 var(--ui-font);
+}
+.mcWaveHint {
+  margin: -8px 0 0;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
 }
 
-/* ── 试探预演:误区剧本 ── */
-.drillLead {
-  color: var(--cinnabar);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  line-height: 1.9;
-  margin-bottom: var(--gap-tight);
+/* 摸底结论 */
+.verdict {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px 16px;
+  padding: 16px;
+  border-radius: var(--r-lg);
+  background: var(--sidebar);
+  animation: prepRise var(--dur-3) var(--ease) backwards;
 }
-.drillList {
-  list-style: none;
+.verdict[data-tone='good'] {
+  background: color-mix(in srgb, var(--ok) 8%, var(--surface));
+}
+.verdict[data-tone='bad'] {
+  background: color-mix(in srgb, var(--warn) 9%, var(--surface));
+}
+.verdictScore {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  min-width: 68px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  animation: prepPop var(--dur-3) var(--ease);
+}
+.verdictScore b {
+  color: var(--text);
+  font: 700 var(--fz-2xl) / 1 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+}
+.verdict[data-tone='good'] .verdictScore b { color: var(--ok); }
+.verdictBody {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.verdictBody > p {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.7;
+}
+.verdictBody .unlockHint {
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+}
+.verdictBtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.unlockHint {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+
+/* 薄弱点 */
+.weak {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--r-lg);
+  background: var(--inset);
+}
+.weakTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--text-2);
+  font: 600 var(--fz-sm) / 1.4 var(--ui-font);
+}
+.weakTitle svg {
+  color: var(--warn);
+}
+.weakList {
+  display: grid;
+  gap: 6px;
   margin: 0;
   padding: 0;
+  list-style: none;
+}
+.weakItem {
   display: flex;
-  flex-direction: column;
-  gap: var(--gap-tight);
+  align-items: baseline;
+  gap: 8px;
+  color: var(--text);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
 }
-.drill {
-  border: 1px solid var(--paper-edge);
-  border-left: 3px solid var(--paper-edge);
-  border-radius: var(--radius-s);
-  background: var(--paper);
-  padding: var(--gap-tight) var(--gap);
+.weakItem > span:first-child {
+  flex: none;
 }
-.drillStumbled {
-  border-left-color: var(--cinnabar);
-  background: var(--cinnabar-wash);
-}
-.drillBelief {
-  font-family: var(--font-display);
-  line-height: 1.8;
-}
-.drillStumbleTag {
-  display: inline-block;
-  margin-left: 0.6em;
-  font-size: var(--fs-tiny);
-  color: var(--cinnabar);
-  border: 1px solid currentColor;
-  border-radius: var(--radius-tag);
-  padding: 0 0.35rem;
-  vertical-align: 0.15em;
-  white-space: nowrap;
-}
-.drillLine {
-  margin-top: var(--gap-hair);
-  color: var(--ink-soft);
-  font-size: var(--fs-small);
-  line-height: 1.9;
-  padding-left: var(--gap-tight);
-  border-left: 2px solid var(--cinnabar);
-}
-.drillCritTitle {
-  margin-top: var(--gap-tight);
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.2em;
-  color: var(--ink-faint);
-}
-.drillCrits {
-  margin: var(--gap-hair) 0 0;
-  padding-left: 1.2em;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: var(--fs-small);
-  line-height: 1.8;
-  color: var(--ink);
-}
-.drillCrits li::marker { color: var(--jade); }
 
-/* ── 教学任务卡:一张真实的卡片,图钉钉着、微微出栏(不旋转) ── */
+/* ── 教学任务卡：钉在案头的一张卡（故事物件） ── */
 .taskCard {
   position: relative;
-  width: calc(100% + 2.75rem);
-  margin: calc(var(--gap) + 0.5rem) 0 0 -1.4rem;
-  background: var(--paper-warm);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-s);
-  box-shadow: var(--shadow-lift);
-  padding: calc(var(--gap) + 0.4rem) var(--gap-loose) var(--gap-loose);
+  display: grid;
+  gap: 10px;
+  max-width: 640px;
+  padding: 28px 28px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(var(--paper-warm), var(--paper-warm)) padding-box;
+  box-shadow: var(--shadow-paper);
+  color: var(--ink);
 }
 .taskPin {
   position: absolute;
-  top: -8px;
+  top: 10px;
   left: 50%;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--azure-deep);
-  box-shadow: var(--shadow-paper);
+  background: var(--story-seal);
+  box-shadow: inset -2px -2px 3px rgba(0, 0, 0, 0.22), 0 2px 3px rgba(0, 0, 0, 0.22);
+  transform: translateX(-50%);
 }
 .taskLabel {
   display: inline-flex;
   align-items: center;
-  gap: var(--gap-hair);
-  position: absolute;
-  top: -0.75rem;
-  left: 1.2rem;
-  background: var(--azure);
-  color: var(--paper);
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  text-transform: uppercase;
-  letter-spacing: 0.3em;
-  padding: 2px 8px 2px 12px;
-  border-radius: var(--radius-tag);
+  gap: 6px;
+  color: var(--terra-ink);
+  font: 600 0.8125rem / 1.4 var(--font-serif);
+  letter-spacing: 0.12em;
 }
 .taskText {
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-  line-height: 2;
+  margin: 0;
+  font: 1.125rem / 1.9 var(--font-display);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
-/* ── 材料包(卷宗式折叠:一册装订,条目细线分隔,不再一节一盒) ── */
-.materials {
-  margin-top: var(--gap);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-s);
-  background: var(--paper-warm);
-  overflow: hidden;
+/* ── 讲课路线图 ── */
+.flowNote {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-lg);
+  background: var(--inset);
 }
-.collapse { background: none; }
-.collapse + .collapse { border-top: 1px solid var(--paper-edge); }
-.collapseOn { background: var(--paper); }
+.flowNote > svg {
+  margin-top: 2px;
+  color: var(--accent);
+}
+.flowLabel {
+  color: var(--text);
+  font: 600 var(--fz-sm) / 1.5 var(--ui-font);
+}
+.flowText {
+  grid-column: 2;
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.7;
+}
+.roadmap {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.roadStep,
+.roadAmbush {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px 0;
+  animation: prepRise var(--dur-3) var(--ease) backwards;
+}
+.roadStep + .roadStep,
+.roadStep + .roadAmbush,
+.roadAmbush + .roadStep {
+  border-top: 1px solid var(--border);
+}
+.roadBadge,
+.roadBadgeWarn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  align-self: start;
+  height: 24px;
+  border-radius: var(--r-full);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 500 var(--fz-xs) / 1 var(--ui-font);
+  white-space: nowrap;
+}
+.roadBadge b,
+.roadBadgeWarn b {
+  font: 700 var(--fz-2xs) / 1 var(--ui-mono);
+  opacity: 0.75;
+}
+.roadBadgeWarn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.roadBody {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.roadPoint {
+  margin: 0;
+  color: var(--text);
+  font: 600 var(--fz-lg) / 1.5 var(--ui-font);
+}
+.roadProbe {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fz-md);
+  line-height: 1.65;
+}
+.roadWho {
+  margin-left: 6px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  white-space: nowrap;
+}
+.roadAmbushText {
+  margin: 0;
+  align-self: center;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.65;
+}
+
+/* 会 / 模糊 / 不会 三态标记 */
+.gapMarks {
+  display: inline-flex;
+  gap: 2px;
+  width: fit-content;
+  margin-top: 2px;
+  padding: 3px;
+  border-radius: var(--r-md);
+  background: var(--inset);
+}
+.gapMark {
+  height: calc(var(--ctl-sm) - 2px);
+  padding: 0 12px;
+  border: 0;
+  border-radius: calc(var(--r-md) - 3px);
+  background: transparent;
+  color: var(--text-3);
+  font: 500 var(--fz-xs) / 1 var(--ui-font);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.gapMark:hover {
+  color: var(--text);
+}
+.gapMark:active {
+  transform: scale(0.96);
+}
+.gapMark:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+.gapOn {
+  background: var(--surface);
+  box-shadow: var(--shadow-1), 0 0 0 1px var(--border);
+  font-weight: 600;
+}
+.gapKnow.gapOn { color: var(--ok); }
+.gapFuzzy.gapOn { color: var(--warn); }
+.gapGap.gapOn { color: var(--bad); }
+
+.gapsNote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-md);
+  line-height: 1.65;
+}
+.gapsNote p {
+  flex: 1 1 280px;
+  margin: 0;
+}
+
+/* ── 研读材料包：可翻开的册子 ── */
+.materials {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.collapse {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  transition: border-color var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease), background var(--dur-2) var(--ease);
+}
+.collapse:hover {
+  border-color: var(--border-2);
+}
+.collapseOn {
+  border-color: var(--border-2);
+  box-shadow: var(--shadow-1);
+}
 .collapseHead {
-  width: 100%;
   display: flex;
   align-items: center;
-  gap: var(--gap-tight);
-  background: none;
-  border: none;
-  padding: 0.95rem var(--gap);
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--text);
+  font: 550 var(--fz-md) / 1.45 var(--ui-font);
   text-align: left;
-  color: var(--ink);
   cursor: pointer;
-  transition: background var(--t-fast) var(--ease-out);
+  transition: background var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
 }
-.collapseHead:hover { background: var(--ink-wash); }
+.collapseHead:hover {
+  background: var(--hover);
+}
+.collapseHead:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
 .collapseChev {
-  flex: 0 0 auto;
-  width: 0.5em;
-  height: 0.5em;
-  margin-inline: 0.15em 0.35em;
-  border-right: 1.5px solid var(--azure);
-  border-bottom: 1.5px solid var(--azure);
-  transform: rotate(-45deg);
-  transition: transform var(--t-fast) var(--ease-out);
+  flex: none;
+  color: var(--text-3);
+  transition: transform var(--dur-2) var(--ease);
 }
-.collapseOn .collapseChev { transform: rotate(45deg); }
-.collapseTitle { font-family: var(--font-display); font-size: var(--fs-sub); }
-.collapseTag,
-.collapseTagWarn {
-  margin-left: auto;
-  font-size: var(--fs-tiny);
-  border: 1px solid currentColor;
-  border-radius: var(--radius-tag);
-  padding: 0 0.35rem;
-  flex: 0 0 auto;
-  letter-spacing: 0.08em;
+.collapseOn .collapseChev {
+  transform: rotate(90deg);
 }
-.collapseTag { color: var(--ink-faint); }
-.collapseTagWarn { color: var(--cinnabar); }
+.collapseTitle {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* 0fr → 1fr 的高度过渡 */
 .collapseBody {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows var(--t-med) var(--ease-out);
-  /* auto 才能跟着后加的走查长高;1fr 会把按钮裁进下一节标题的点击区 */
-  interpolate-size: allow-keywords;
+  transition: grid-template-rows var(--dur-3) var(--ease);
 }
-.collapseOpen { grid-template-rows: auto; }
-/* 垂直留白全部用可被 0fr 轨道裁剪的"内容型" spacer(::before/::after),
-   不用 padding —— border-box 下 padding 压不到 0,闭合时会露出一条内容边 */
+.collapseOpen {
+  grid-template-rows: 1fr;
+}
 .collapseInner {
-  overflow: hidden;
   min-height: 0;
-  padding: 0 var(--gap);
-  margin-left: 1.45rem;
-  border-left: 2px solid var(--paper-edge);
+  overflow: hidden;
 }
-.collapseInner::before { content: ''; display: block; height: 0.15rem; }
-.collapseInner::after { content: ''; display: block; height: 1rem; }
+.collapseOpen .collapseInner {
+  padding: 4px 16px 16px;
+}
 
-.md p { margin: 0 0 0.9em; line-height: 1.9; }
-/* 讲义内代码与例题代码同一制式(全站课程代码块规范:ink-wash 底 + paper-edge 描边 + 0.7/0.9 内距) */
-.md pre,
-.code {
-  background: var(--ink-wash);
-  border: 1px solid var(--paper-edge);
-  padding: 0.7rem 0.9rem;
-  border-radius: var(--radius-s);
-  overflow-x: auto;
-  font-size: var(--fs-small);
-  line-height: 1.7;
-  tab-size: 4;
-  margin: 0 0 0.9em;
+/* 讲义正文：比对话气泡更松的行距 */
+.lecture {
+  min-width: 0;
+  color: var(--text);
+  font-size: var(--fz-lg);
+  line-height: 1.8;
 }
-.md code { background: var(--ink-wash); padding: 0 4px; border-radius: var(--radius-tag); font-size: 0.92em; }
-.md pre code { background: none; padding: 0; }
-.code { margin-bottom: var(--gap-tight); }
+.retellCard {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.retellTitle {
+  margin: 0;
+  color: var(--text);
+  font: 600 var(--fz-lg) / 1.45 var(--ui-font);
+}
+.retell {
+  display: grid;
+  gap: 16px;
+}
+.retellSeg {
+  display: grid;
+  gap: 10px;
+  animation: prepRise var(--dur-3) var(--ease) backwards;
+}
+.retellSeg + .retellSeg {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.retellNo {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  font-variant-numeric: tabular-nums;
+}
+.retellWait {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
+.deskFieldSm {
+  min-height: 64px;
+}
+.exampleStudy {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.exampleGate {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+}
+.exampleGate > :first-child {
+  width: 100%;
+}
 .walkthrough {
-  color: var(--ink-soft);
-  font-size: var(--fs-small);
-  line-height: 1.9;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-md);
+  line-height: 1.75;
+  white-space: pre-line;
+  animation: prepRise var(--dur-2) var(--ease) backwards;
 }
 
-/* ── 一张图看懂(图解):小标 + 全宽 SVG(宽图在自己的容器里横滚) + 眉批小字 ── */
-.figItem { margin: 0 0 var(--gap); }
-.figItem:last-child { margin-bottom: 0; }
-.figTitle {
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  color: var(--ink);
-  margin-bottom: var(--gap-hair);
+/* 图解 */
+.figItem {
+  margin: 0 0 16px;
 }
-.figScroll { overflow-x: auto; }
-.figScroll:focus-visible { outline: 2px solid var(--azure); outline-offset: 2px; }
+.figItem:last-child {
+  margin-bottom: 0;
+}
+.figTitle {
+  margin: 0 0 6px;
+  color: var(--text);
+  font: 600 var(--fz-md) / 1.5 var(--ui-font);
+}
+.figScroll {
+  overflow-x: auto;
+  border-radius: var(--r-md);
+}
+.figScroll:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
 .figSvg {
   display: block;
   width: 100%;
-  /* 底线宽:窄屏走 figScroll 横滚而不是整图等比缩小——13px 注文缩到 ~8.7px 就没法读了 */
+  /* 窄栏走横滚而不是整图缩小：注文缩到 9px 就没法读了 */
   min-width: 640px;
   height: auto;
 }
 .figCaption {
-  margin-top: var(--gap-hair);
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
-  letter-spacing: 0.08em;
-  line-height: 1.8;
-}
-
-/* ── 延伸书单(选读外链) ── */
-.refLead {
-  color: var(--ink-faint);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  line-height: 1.9;
-  margin-bottom: var(--gap-tight);
-}
-.refList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-tight);
-}
-/* 延伸书单 → 借书卡/索引卡:细边卡片,朱文小印钤在卡角 */
-.refItem {
-  display: flex;
-  gap: var(--gap-tight);
-  align-items: flex-start;
-  padding: var(--gap-tight);
-  background: var(--paper);
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius);
-  transition: border-color var(--t-fast) var(--ease-out);
-}
-.refItem:hover { border-color: var(--line-strong); }
-/* kind 徽章:朱文小印(红字白底、方寸一枚)——印章语境走 --seal-red 别名 */
-.refSeal {
-  flex: 0 0 auto;
-  width: 1.65rem;
-  height: 1.65rem;
-  margin-top: 0.12rem;
-  display: grid;
-  place-items: center;
-  background: var(--paper);
-  border: 1px solid var(--seal-red);
-  border-radius: 3px;
-  box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--seal-red) 18%, transparent);
-  color: var(--seal-red);
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  line-height: 1;
-}
-.refBody { flex: 1; min-width: 0; }
-.refTitleRow { line-height: 1.7; }
-.refLink {
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  color: var(--azure);
-  text-decoration: none;
-  text-underline-offset: 3px;
-  overflow-wrap: anywhere;
-}
-.refLink:hover {
-  color: var(--azure-deep);
-  text-decoration: underline;
-}
-.refArrow {
-  display: inline-flex;
-  vertical-align: -0.15em;
-  margin-left: 0.3em;
-  transition: transform var(--t-fast) var(--ease-out);
-}
-.refLink:hover .refArrow { transform: translate(2px, -2px); }
-.refKind {
-  display: inline-block;
-  margin-left: 0.6em;
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-tag);
-  padding: 0 0.35rem;
-  vertical-align: 0.12em;
-  white-space: nowrap;
-}
-/* 导读一句话:宋体小字,与楷体标题拉开层次 */
-.refNote {
-  margin-top: 2px;
-  font-family: var(--font-serif);
-  font-size: var(--fs-small);
-  color: var(--ink-soft);
-  line-height: 1.85;
-}
-
-/* ── 视频参考(选看外链):可点整卡,播放印 + 楷体题 + 宋体看点 ── */
-.videoList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
-  gap: var(--gap-tight);
-}
-.videoCard {
-  display: flex;
-  gap: var(--gap-tight);
-  align-items: flex-start;
-  height: 100%;
-  padding: var(--gap-tight);
-  background: var(--paper);
-  border: 1px solid var(--paper-edge);
-  border-radius: var(--radius-s);
-  text-decoration: none;
-  transition: border-color var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out),
-    box-shadow var(--t-fast) var(--ease-out);
-}
-.videoCard:hover {
-  border-color: var(--azure);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-paper);
-}
-.videoPlay {
-  flex: 0 0 auto;
-  width: 1.9rem;
-  height: 1.9rem;
-  margin-top: 0.1rem;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--azure);
-  border-radius: 50%;
-  color: var(--azure);
-  transition: background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
-}
-.videoCard:hover .videoPlay {
-  background: var(--azure);
-  color: var(--paper);
-}
-.videoBody {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.videoTitle {
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  color: var(--azure);
+  margin-top: 6px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
   line-height: 1.7;
+}
+
+/* 误区剧本 */
+.drillLead,
+.refLead {
+  margin: 0 0 12px;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.65;
+}
+.drillList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.drill {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: var(--r-md);
+  background: var(--sidebar);
+}
+.drillStumbled {
+  background: color-mix(in srgb, var(--bad) 6%, var(--surface));
+  box-shadow: inset 3px 0 0 var(--bad);
+}
+.drillBelief {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 0;
+  color: var(--text);
+  font: 600 var(--fz-md) / 1.55 var(--ui-font);
+}
+.drillLine {
+  margin: 0;
+  color: var(--text-2);
+  line-height: 1.65;
+}
+.drillCritTitle {
+  margin: 4px 0 0;
+  color: var(--text-3);
+  font: 500 var(--fz-xs) / 1.4 var(--ui-font);
+}
+.drillCrits {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.drillCrits li {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 8px;
+  color: var(--text);
+  font-size: var(--fz-sm);
+  line-height: 1.65;
+}
+.drillCrits svg {
+  margin-top: 4px;
+  color: var(--ok);
+}
+
+/* 视频与书单 */
+.videoList,
+.refList {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.videoCard,
+.refItem {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  color: var(--text);
+  text-decoration: none;
+  transition: background var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+.videoCard:hover,
+.refItem:hover {
+  background: var(--hover);
+}
+.videoCard:focus-visible,
+.refItem:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+.videoPlay,
+.refIcon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  background: var(--inset);
+  color: var(--text-2);
+}
+.videoBody,
+.refBody {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.videoTitle,
+.refTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font: 550 var(--fz-md) / 1.45 var(--ui-font);
   overflow-wrap: anywhere;
 }
-.videoCard:hover .videoTitle { color: var(--azure-deep); }
-.videoCard:hover .refArrow { transform: translate(2px, -2px); }
-.videoNote {
-  font-family: var(--font-serif);
-  font-size: var(--fs-small);
-  color: var(--ink-soft);
-  line-height: 1.85;
+.videoNote,
+.refNote {
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.55;
 }
 .videoHost {
-  font-family: var(--font-typewriter);
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+.refArrow {
+  color: var(--text-4);
+  transition: color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.videoCard:hover .refArrow,
+.refItem:hover .refArrow {
+  color: var(--text-2);
+  transform: translate(1px, -1px);
+}
+.refLink {
+  width: fit-content;
+  max-width: 100%;
+  color: var(--accent);
+  font-size: var(--fz-sm);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+  border-radius: var(--r-xs);
+}
+.refLink:hover {
+  text-decoration: underline;
+}
+.refLink:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
-/* ── 自检清单 ── */
+/* ── 备课自检 ── */
 .checkList {
-  list-style: none;
-  margin: var(--gap) 0 0;
+  display: grid;
+  gap: 6px;
+  margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-hair);
+  list-style: none;
 }
-/* 自检条目落在 shade 带上:纸底 + 强边线(R3) */
 .checkLabel {
   position: relative;
-  display: flex;
-  gap: var(--gap-tight);
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
   cursor: pointer;
-  padding: 0.5rem var(--gap-tight);
-  border-radius: var(--radius-s);
-  background: var(--paper);
-  border: 1px solid var(--line-strong);
+  transition: background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.checkLabel:hover {
+  border-color: var(--border-2);
+  background: var(--hover);
+}
+.checkLabel:active {
+  transform: scale(0.995);
 }
 .checkLabel input {
   position: absolute;
   opacity: 0;
-  pointer-events: none;
+  width: 1px;
+  height: 1px;
 }
 .checkBox {
-  flex: 0 0 auto;
-  width: 1.05rem;
-  height: 1.05rem;
-  margin-top: 0.3rem;
-  border: 1.5px solid var(--ink-faint);
-  border-radius: var(--radius-tag);
   display: grid;
   place-items: center;
-  font-size: var(--fs-tiny);
-  color: var(--paper);
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: var(--r-xs);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px var(--border-2);
+  color: var(--bg);
+  transition: background var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
 }
-.checkOn { border-color: var(--jade); }
-.checkOn .checkBox { background: var(--jade); border-color: var(--jade); }
-.checkText { line-height: 1.9; }
+.checkLabel input:focus-visible + .checkBox {
+  box-shadow: inset 0 0 0 1.5px var(--accent), 0 0 0 3px var(--ring);
+}
+.checkOn {
+  border-color: color-mix(in srgb, var(--ok) 28%, transparent);
+  background: color-mix(in srgb, var(--ok) 6%, var(--surface));
+}
+.checkOn .checkBox {
+  background: var(--ok);
+  box-shadow: none;
+  animation: prepPop var(--dur-3) var(--ease);
+}
+.checkText {
+  color: var(--text);
+  font-size: var(--fz-md);
+  line-height: 1.6;
+}
+.checkOn .checkText {
+  color: var(--text-2);
+}
 
-.unlockRow {
+/* ── 上一步 / 下一步 ── */
+.stepNav {
   display: flex;
   align-items: center;
-  gap: var(--gap);
-  margin-top: var(--gap);
-  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
 }
+
+/* ── 出口：去上课 / 只备课 ── */
 .exits {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--gap-tight);
-  margin-top: var(--gap);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 12px 16px;
+  border: 1px dashed var(--border-2);
+  border-radius: var(--r-lg);
 }
-.aside > .exits { margin-top: 0; }
-.exits .primaryBtn,
-.exits .ghostBtn { width: 100%; }
-.exits .lockHint { margin: 0; }
-.lockHint { font-size: var(--fs-small); color: var(--ink-faint); }
-.unlockHint { font-size: var(--fs-small); color: var(--jade-ink); font-family: var(--font-display); }
-/* 自检全勾:惊堂木钮醒来——两轮轻呼吸(box-shadow 晕),之后静止 */
-.primaryBtnReady { animation: prep-ready 1.6s var(--ease-loop) 2; }
-@keyframes prep-ready {
-  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--azure) 35%, transparent); }
-  50% { box-shadow: 0 0 0 8px color-mix(in oklab, var(--azure) 0%, transparent); }
-}
-
-/* ── 备课进度(侧栏首件):一条细线 + 百分数 + 还差几步 / 案头计时 ── */
-.progressCard {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-.progressHead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--gap-tight);
-}
-.progressPct {
-  font-family: var(--font-serif);
-  font-weight: 600;
-  font-size: var(--fs-sub);
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-.progressTrack {
-  height: 4px;
-  border-radius: 999px;
-  background: var(--paper-shade);
-  overflow: hidden;
-}
-.progressFill {
-  display: block;
-  height: 100%;
-  width: 100%;
-  border-radius: 999px;
-  background: var(--jade);
-  transform-origin: left center;
-  transition: transform var(--t-slow) var(--ease-out);
-}
-.progressNote {
-  font-size: var(--fs-tiny);
-  color: var(--ink-soft);
-  letter-spacing: 0.06em;
-  line-height: 1.7;
-}
-.progressDesk { color: var(--ink-faint); }
-
-/* ── 眉批侧注 ── */
-.aside {
-  position: sticky;
-  /* 让出吸顶导航栏,再留一口气 */
-  top: calc(var(--header-h) + var(--gap-tight));
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap);
-  font-size: var(--fs-small);
-  color: var(--ink-soft);
-  border-left: 1px solid var(--paper-edge);
-  padding-left: var(--gap);
-  animation: global(rise) var(--t-med) var(--ease-out) backwards;
-  animation-delay: 160ms;
-}
-.asideTitle {
-  font-family: var(--font-serif);
-  font-weight: 600;
-  font-size: var(--fs-sub);
-  color: var(--ink);
-  letter-spacing: 0.04em;
-}
-.stepList {
-  list-style: none;
-  margin: var(--gap-hair) 0 0 -0.55rem;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.stepList > li { position: relative; }
-.stepList > li:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  top: calc(50% + 4px);
-  bottom: calc(-50% + 2px);
-  left: calc(0.55rem + 3.5px);
-  border-left: 1px dashed var(--line-strong);
-  pointer-events: none;
-}
-/* 五步条目:既是进度指示,也是锚点跳转按钮 */
-.step {
+.exitsNote {
+  flex: 1 1 220px;
   display: flex;
   align-items: center;
-  gap: var(--gap-tight);
-  width: 100%;
-  background: none;
-  border: none;
-  font: inherit;
-  font-size: var(--fs-small);
-  text-align: left;
-  color: var(--ink-faint);
-  min-height: 2.25rem;
-  padding: 0.4rem 0.55rem;
-  border-radius: var(--radius-s);
-  transition: background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
-}
-button.step { cursor: pointer; }
-button.step:hover { color: var(--ink); background: var(--ink-wash); }
-/* 锁定态只暗圆点,不再整行叠 opacity:ink-faint 再打七二折就跌破 2.4:1 了 */
-.stepLocked { cursor: default; }
-.stepLocked .stepDot { opacity: 0.5; }
-.stepDot {
-  position: relative;
-  z-index: 1;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--dust);
-  flex: 0 0 auto;
-  transition: box-shadow var(--t-fast) var(--ease-out);
-}
-/* 进度态(与原语义一致):active=该做,done=已完成 */
-.stepActive { color: var(--ink); }
-.stepActive .stepDot { background: var(--azure); }
-.stepDone { color: var(--ink-soft); }
-.stepDone .stepDot { background: var(--jade); }
-/* scrollspy 当前在读态:青底晕染 + 圆点外圈,叠在进度态之上而不覆盖圆点本色 */
-.stepCurrent { background: var(--azure-wash); color: var(--ink); }
-button.stepCurrent:hover { background: var(--azure-wash); }
-.stepCurrent .stepDot { box-shadow: 0 0 0 3px color-mix(in oklab, var(--azure) 25%, transparent); }
-
-.miniRoute {
-  list-style: none;
-  margin: var(--gap-hair) 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-hair);
-  counter-reset: mini;
-}
-.miniRouteItem {
-  display: flex;
-  align-items: baseline;
-  gap: var(--gap-tight);
-  line-height: 1.7;
-  color: var(--ink-soft);
-}
-.miniRouteItem::before {
-  counter-increment: mini;
-  content: counter(mini);
-  flex: 0 0 auto;
-  font-family: var(--font-code);
-  font-size: var(--fs-tiny);
-  color: var(--ink-faint);
-}
-.miniRouteLevel {
-  flex: 0 0 auto;
-  font-size: var(--fs-tiny);
-  color: var(--azure);
-  border: 1px solid currentColor;
-  border-radius: var(--radius-tag);
-  padding: 0 0.35rem;
-}
-.weakList {
-  list-style: none;
-  margin: var(--gap-hair) 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-hair);
-}
-.weakItem { color: var(--cinnabar); line-height: 1.7; }
-/* 薄弱点条目上的维度小签(朱砂细边——盲区语义,随 weakItem 的 currentColor) */
-.weakDim {
-  display: inline-block;
-  margin-right: 0.45em;
-  font-size: var(--fs-tiny);
-  border: 1px solid currentColor;
-  border-radius: var(--radius-tag);
-  padding: 0 0.35rem;
-  white-space: nowrap;
-}
-.doneLink { display: inline-flex; align-items: center; gap: var(--gap-hair); color: var(--azure); }
-
-.methodBar {
-  margin: 0 0 var(--gap);
-  padding: var(--gap-tight);
-  border: 1px dashed var(--paper-edge);
-  background: var(--paper);
-}
-.methodRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap-hair);
-}
-.methodBtn {
-  font-family: var(--font-display);
-  font-size: var(--fs-small);
-  background: none;
-  border: 1px solid var(--paper-edge);
-  color: var(--ink);
-  border-radius: var(--radius-s);
-  padding: 0.4rem 0.85rem;
-  min-height: 2.4rem;
-}
-.methodOn {
-  border-color: var(--azure);
-  background: var(--azure-wash);
-  color: var(--azure);
-}
-.methodHint {
-  margin: var(--gap-hair) 0 0;
-  color: var(--ink-soft);
-  font-size: var(--fs-small);
-  line-height: 1.7;
-}
-.gapMarks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap-hair);
-  margin-top: var(--gap-hair);
-}
-.gapMark {
-  font-family: var(--font-display);
-  font-size: var(--fs-tiny);
-  background: none;
-  border: 1px solid var(--paper-edge);
-  color: var(--ink-soft);
-  border-radius: var(--radius-s);
-  min-height: 2rem;
-  padding: 0.15rem 0.7rem;
-}
-.gapKnow.gapOn { border-color: var(--jade); color: var(--jade); background: var(--jade-wash); }
-.gapFuzzy.gapOn { border-color: var(--mustard); color: var(--ink); background: var(--mustard-wash); }
-.gapGap.gapOn { border-color: var(--cinnabar); color: var(--cinnabar); background: var(--cinnabar-wash); }
-.deskField,
-.deskInput {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  margin-top: 0.35rem;
-  border: 1px solid var(--paper-edge);
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-body);
-  font-size: var(--fs-body);
-  border-radius: var(--radius-s);
-  padding: 0.55rem 0.7rem;
-  line-height: 1.7;
-}
-.deskField { min-height: 4.5rem; resize: vertical; }
-.folder {
-  margin: var(--gap) 0;
-  padding-bottom: var(--gap);
-  border-bottom: 1px solid var(--paper-edge);
-}
-.folderLabel,
-.retellLabel {
-  display: block;
-  margin-top: var(--gap-tight);
-  font-size: var(--fs-small);
-  color: var(--ink-soft);
-}
-.folderNote,
-.retellWait,
-.gapsNote,
-.folderWarn {
-  margin-top: var(--gap-hair);
-  color: var(--ink-soft);
-  font-size: var(--fs-small);
-  line-height: 1.7;
-}
-.folderWarn { color: var(--cinnabar); }
-.gapsNote .ghostBtnSm { margin-top: var(--gap-hair); }
-.retellCard {
-  padding: var(--gap-tight) var(--gap) var(--gap);
-}
-.retellTitle {
-  margin: 0 0 var(--gap-tight);
-  font-family: var(--font-display);
-  font-size: var(--fs-sub);
-}
-.retellNo {
-  font-size: var(--fs-tiny);
-  letter-spacing: 0.08em;
-  color: var(--ink-faint);
-}
-.retellSeg + .retellSeg {
-  margin-top: var(--gap);
-  padding-top: var(--gap-tight);
-  border-top: 1px dashed var(--paper-edge);
-}
-.exampleGate {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--gap-tight);
-  margin-top: var(--gap-tight);
-}
-.exampleStudy .ghostBtnSm { margin-top: var(--gap-tight); }
-.rehearseEntry { margin-top: var(--gap); }
-.asideQuote {
+  gap: 8px;
   margin: 0;
-  font-family: var(--font-display);
-  color: var(--ink-soft);
-  line-height: 2;
-  border-top: 1px solid var(--paper-edge);
-  padding-top: var(--gap-tight);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.55;
+}
+.exitsNote svg {
+  flex: none;
+  color: var(--text-3);
+}
+.exitsBtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+/* 终点：一枚实心主按钮 */
+.finale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 24px;
+  padding: clamp(16px, 3.2cqi, 24px);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2xl);
+  background: var(--sidebar);
+  animation: prepRise var(--dur-3) var(--ease) backwards;
+}
+.finale[data-ready] {
+  border-color: color-mix(in srgb, var(--ok) 30%, transparent);
+  background: color-mix(in srgb, var(--ok) 7%, var(--surface));
+}
+.finaleIcon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  color: var(--text);
+}
+.finale[data-ready] .finaleIcon {
+  color: var(--ok);
+}
+.finaleText {
+  flex: 1 1 240px;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.finaleTitle {
+  margin: 0;
+  color: var(--text);
+  font: 650 var(--fz-xl) / 1.35 var(--ui-font);
+}
+.lockHint {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.55;
+}
+.finaleBtns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ctaReady {
+  animation: prepGlow 2.4s var(--ease-in-out) infinite;
 }
 
-/* 双栏收拢统一走 960px 档(tokens.css 断点约定) */
-@media (max-width: 960px) {
-  .layout { grid-template-columns: 1fr; }
-  .aside {
-    position: static;
-    border-left: none;
-    padding-left: 0;
-    border-top: 1px solid var(--paper-edge);
-    padding-top: var(--gap);
-  }
-  .taskCard { width: 100%; margin-left: 0; }
+/* ── 案头工具：备课夹 + 试讲 ── */
+.tools {
+  display: grid;
+  gap: 12px;
+}
+.toolsTitle {
+  margin: 8px 0 0;
+  color: var(--text-3);
+  font: 500 var(--fz-xs) / 1.4 var(--ui-font);
+}
+.folder,
+.rehearseEntry {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.toolHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+button.toolHead {
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+button.toolHead:hover {
+  background: var(--hover);
+}
+button.toolHead:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+.toolIcon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-md);
+  background: var(--inset);
+  color: var(--text-2);
 }
 
-@media (max-width: 560px) {
-  .sectionTitle { flex-wrap: wrap; row-gap: var(--gap-hair); }
-  .readTime { margin-left: 0; }
-  /* 窄屏分区带收窄破格量,与页边距对齐,不挤出横滚 */
-  .bandWarm,
-  .bandShade {
-    margin-inline: calc(-1 * var(--gap-tight));
-    padding-inline: var(--gap-tight);
+.rehearseEntry .toolHead {
+  flex-wrap: wrap;
+}
+.toolText {
+  flex: 1 1 200px;
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.toolName {
+  margin: 0;
+  color: var(--text);
+  font: 600 var(--fz-md) / 1.4 var(--ui-font);
+}
+.toolHint {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.5;
+}
+.toolChev {
+  flex: none;
+  color: var(--text-3);
+  transition: transform var(--dur-2) var(--ease);
+}
+.toolHead[aria-expanded='true'] .toolChev {
+  transform: rotate(90deg);
+}
+.folderBody {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+  padding: 4px 14px 16px;
+  animation: prepRise var(--dur-2) var(--ease) backwards;
+}
+.folderWide {
+  grid-column: 1 / -1;
+}
+.folderLead {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+
+.motto {
+  margin: 8px 0 0;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.7;
+  text-align: center;
+}
+
+/* ── 窄栏 ── */
+@container (max-width: 880px) {
+  .stepName { display: none; }
+  .step { padding: 0 6px; }
+  .stepItem[data-current] .stepName { display: inline; }
+  .stepItem[data-current] .step { padding-right: 12px; }
+  .meter { width: 168px; }
+}
+
+@container (max-width: 620px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
   }
-  .probeBtns button { width: auto; flex: 1 1 0; }
-  .verdictBtns { align-items: stretch; }
-  .verdictBtns .primaryBtn,
-  .verdictBtns .ghostBtn { flex: 1 1 100%; }
-  .unlockRow .primaryBtn,
-  .exits .primaryBtn,
-  .exits .ghostBtn { width: 100%; }
-  .taskCard { padding: var(--gap) var(--gap) calc(var(--gap) + 0.25rem); }
-  .collapseHead { padding: 0.8rem var(--gap-tight); }
-  .collapseInner { padding: 0 var(--gap-tight); margin-left: 0.85rem; }
-  .flowNote { grid-template-columns: 1fr; gap: var(--gap-hair); }
-  .roadmap::before { display: none; }
+  .title { font-size: var(--fz-2xl); }
+  .journey {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  .stepper { flex: 1 1 100%; }
+  .meter { width: 100%; }
+  .section {
+    border-radius: var(--r-xl);
+    scroll-margin-top: 128px;
+  }
+  .stepHead { flex-wrap: wrap; }
+  .probeStatement { font-size: var(--fz-lg); }
+  .probeBtns { max-width: none; }
+  .verdict { grid-template-columns: minmax(0, 1fr); }
+  .verdictScore {
+    grid-auto-flow: column;
+    justify-content: start;
+    align-items: baseline;
+    gap: 8px;
+    width: fit-content;
+  }
   .roadStep,
   .roadAmbush {
-    flex-direction: column;
-    gap: var(--gap-hair);
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
   }
   .roadBadge,
-  .roadBadgeWarn { margin-top: 0; }
-  .roadAmbushText { margin-top: 0; }
-  .roadBody { padding: var(--gap-tight); }
-  .drill { padding: var(--gap-tight); }
-  .methodBtn { flex: 1 1 calc(50% - var(--gap-hair)); }
+  .roadBadgeWarn {
+    width: fit-content;
+    padding: 0 10px;
+  }
+  .taskCard { padding: 28px 18px 20px; }
+  .taskText { font-size: 1rem; }
+  .collapseOpen .collapseInner { padding: 4px 12px 14px; }
+  .folderBody { grid-template-columns: minmax(0, 1fr); }
+  .finaleBtns,
+  .finaleBtns > * { width: 100%; }
+  .stepNav > :nth-child(2) { flex: 1; }
+}
+
+@container (max-width: 330px) {
+  .stepItem[data-current] .stepName { display: none; }
+  .stepItem[data-current] .step { padding-right: 6px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .head,
+  .pupilBubble,
   .recall,
   .section,
-  .aside,
   .probe,
-  .verdictGood,
-  .verdictBad,
+  .probeMark,
+  .probeFb,
+  .mcWave,
+  .verdict,
+  .verdictScore,
   .roadStep,
   .roadAmbush,
-  .mcWave,
-  .pupilBubble,
-  .streak,
-  .probeMark,
-  .primaryBtnReady {
+  .retellSeg,
+  .walkthrough,
+  .finale,
+  .folderBody,
+  .ctaReady,
+  .stepItem[data-done] .stepDot,
+  .checkOn .checkBox {
     animation: none;
   }
-  .progressFill { transition: none; }
-  .collapseBody { transition: none; }
-  .collapseChev { transition: none; }
-  .collapseHead { transition: none; }
-  .refArrow,
+  .collapseBody,
+  .collapseChev,
+  .toolChev,
+  .choice,
   .step,
-  .stepDot,
-  .videoCard,
-  .videoPlay,
-  .mcOptions button { transition: none; }
+  .gapMark,
+  .checkLabel {
+    transition: none;
+  }
 }

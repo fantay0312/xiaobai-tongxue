@@ -1,0 +1,42 @@
+/* 纸质物件作用域:与 data-story 配套使用。
+   data-story(skins.css)找回老学堂纸墨与楷体;这里把新语义令牌也映到纸墨上,
+   物件内的基础件(按钮、输入框、徽标)就不会随深色皮肤翻黑。
+   全部由 data-story 的纸墨变量派生,不写死颜色。 */
+.scope {
+  --bg: var(--paper);
+  --surface: var(--paper);
+  --sidebar: var(--paper-warm);
+  --inset: var(--paper-shade);
+  --hover: var(--ink-wash);
+  --active: color-mix(in srgb, var(--ink) 14%, transparent);
+  --text: var(--ink);
+  --text-2: var(--ink-soft);
+  --text-3: var(--ink-faint);
+  --text-4: color-mix(in srgb, var(--ink-faint) 72%, transparent);
+  --border: var(--line);
+  --border-2: var(--line-strong);
+  --accent: var(--terra-ink);
+  --accent-hover: var(--terra-deep);
+  --accent-soft: var(--terra-wash);
+  --accent-softer: color-mix(in srgb, var(--terra) 8%, transparent);
+  --on-accent: var(--paper);
+  --ring: color-mix(in srgb, var(--terra) 40%, transparent);
+  --solid: var(--inkstone);
+  --solid-hover: var(--inkstone-deep);
+  --on-solid: var(--moon-on-ink);
+  --ok: var(--jade-ink);
+  --ok-soft: var(--jade-wash);
+  --warn: var(--amber-ink);
+  --warn-soft: var(--amber-wash);
+  --bad: var(--cinnabar);
+  --bad-soft: var(--cinnabar-wash);
+  --shadow-1: 0 1px 2px var(--ink-wash);
+  color: var(--ink);
+}
+
+/* 一张浮在页面上的纸:浅色皮肤靠柔影托起,深色皮肤靠纸色自身立住 */
+.sheet {
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  box-shadow: 0 0 0 1px var(--line), var(--shadow-paper);
+}

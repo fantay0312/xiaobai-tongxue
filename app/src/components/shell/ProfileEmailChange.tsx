@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { EmailCodeField } from '../../pages/login/EmailCodeField';
 import { CODE_RE, EMAIL_RE, useCooldown, type Issue } from '../../hooks/useAuthForm';
 import { useAuthStore } from '../../store/authStore';
+import { Button } from '../ui';
 import {
+  ProfileCodeFields,
   ProfileCredentialFlow,
   ProfileIdentityVerification,
 } from './ProfileCredentialFlow';
@@ -118,22 +119,22 @@ export function ProfileEmailChange({
     <ProfileCredentialFlow action="change-email" step={2} onBack={onCancel}>
       <div className={styles.stage} id={ID_PREFIX}>
         <header className={styles.stageHead}>
-          <p className={styles.typeLabel}>NEW CREDENTIAL</p>
           <h3>设置新的验证邮箱</h3>
           <p>验证码通过后，新邮箱会立即接替当前邮箱，用于登录与账号找回。</p>
         </header>
       <form className={styles.form} noValidate aria-busy={busy} onSubmit={submitChange}>
         <fieldset className={styles.fieldset} disabled={busy}>
-          <EmailCodeField
-            email={email}
+          <ProfileCodeFields
+            kind="email"
+            value={email}
             code={code}
             issueField={issue?.field}
             sending={sending}
             cooldown={cooldown}
             idPrefix={ID_PREFIX}
             feedbackId={FEEDBACK_ID}
-            emailLabel="新邮箱"
-            onEmailChange={changeDraftEmail}
+            label="新邮箱"
+            onValueChange={changeDraftEmail}
             onCodeChange={(value) => {
               setCode(value);
               setIssue((current) => current?.field === 'code' || current?.field === 'form' ? null : current);
@@ -144,17 +145,16 @@ export function ProfileEmailChange({
         {issue ? <p className={styles.error} id={FEEDBACK_ID} role="alert">{issue.message}</p>
           : feedback ? <p className={styles.success} role="status">{feedback}</p> : null}
         <div className={styles.actions}>
-          <button
-            className={styles.secondary}
-            type="button"
+          <Button
+            variant="ghost"
             disabled={busy}
             onClick={() => { setVerificationToken(null); setIssue(null); setFeedback(null); }}
           >
             重新验证
-          </button>
-          <button className={styles.primary} type="submit" disabled={busy}>
+          </Button>
+          <Button type="submit" variant="solid" loading={changing} disabled={busy}>
             {changing ? '正在更换…' : '确认更换邮箱'}
-          </button>
+          </Button>
         </div>
       </form>
       </div>

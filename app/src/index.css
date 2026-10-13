@@ -1,6 +1,7 @@
 @import './styles/tokens.css';
 @import './styles/theme-anime.css';
 @import './styles/theme-tech.css';
+@import './styles/skins.css';
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -51,9 +52,9 @@ a { color: var(--azure); text-decoration: none; }
   min-height: min(68dvh, 42rem);
   display: grid;
   place-items: center;
-  color: var(--ink-faint);
-  font-family: var(--font-typewriter);
-  letter-spacing: var(--track-label);
+  color: var(--text-3, var(--ink-faint));
+  font-family: var(--ui-font, var(--font-body));
+  font-size: 14px;
 }
 
 ::selection { background: var(--terra); color: var(--paper); }

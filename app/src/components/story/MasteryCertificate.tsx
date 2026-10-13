@@ -27,7 +27,7 @@ export function MasteryCertificate({ topic, report }: { topic: Topic; report: Se
   const teacherName = user ?? '先生';
 
   return (
-    <section className={`${s.cert} ${paper.texture}`} aria-label="结业证书">
+    <section className={`${s.cert} ${paper.texture}`} aria-label="结业证书" data-story>
       <div className={s.officialWrap} aria-hidden="true">
         <div className={paper.stamp}>
           <div className={paper.stampInner}>官凭<br />出师<br />OFFICIAL</div>

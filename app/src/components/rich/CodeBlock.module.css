@@ -1,0 +1,212 @@
+/* 代码块与图表。高亮配色由皮肤令牌混出，明暗皮肤下都保持可读。 */
+
+.host {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.block {
+  /* 语法配色：在正文色里掺入强调色 / 状态色，随皮肤变化 */
+  --tk-plain: var(--text);
+  --tk-comment: color-mix(in srgb, var(--text) 48%, transparent);
+  --tk-meta: color-mix(in srgb, var(--text) 64%, transparent);
+  --tk-keyword: color-mix(in oklab, var(--accent) 84%, var(--text));
+  --tk-string: color-mix(in oklab, var(--ok) 82%, var(--text));
+  --tk-number: color-mix(in oklab, var(--warn) 84%, var(--text));
+  --tk-function: color-mix(in oklab, color-mix(in oklab, var(--accent) 52%, var(--bad)) 82%, var(--text));
+  --tk-type: color-mix(in oklab, color-mix(in oklab, var(--ok) 55%, var(--accent)) 80%, var(--text));
+  --tk-tag: color-mix(in oklab, var(--bad) 80%, var(--text));
+  --tk-attr: color-mix(in oklab, color-mix(in oklab, var(--warn) 70%, var(--bad)) 78%, var(--text));
+
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: var(--r-lg, 14px);
+  background: var(--inset);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--tk-plain);
+  font-size: var(--fz-sm, 13px);
+  line-height: 1.5;
+  text-align: start;
+  white-space: normal;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 38px;
+  padding: 5px 6px 5px 14px;
+}
+
+.lang {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-3);
+  font-family: var(--ui-font);
+  font-size: var(--fz-xs, 12px);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+
+.copy[data-state='copied'] { color: var(--ok); }
+.copy[data-state='failed'] { color: var(--bad); }
+
+.block .pre {
+  margin: 0;
+  padding: 2px 16px 14px;
+  overflow-x: auto;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font-family: var(--ui-mono);
+  font-size: inherit;
+  line-height: 1.68;
+  tab-size: 4;
+  white-space: pre;
+  overflow-wrap: normal;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-2) transparent;
+}
+
+.block .pre:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ring);
+}
+
+.block[data-wrap] .pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.block .code {
+  display: block;
+  min-height: 1.68em;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-variant-ligatures: none;
+  letter-spacing: 0;
+  white-space: inherit;
+}
+
+/* ── highlight.js token ── */
+.code :global(.hljs-comment),
+.code :global(.hljs-quote) {
+  color: var(--tk-comment);
+  font-style: italic;
+}
+
+.code :global(.hljs-meta),
+.code :global(.hljs-doctag),
+.code :global(.hljs-punctuation),
+.code :global(.hljs-operator) {
+  color: var(--tk-meta);
+}
+
+.code :global(.hljs-keyword),
+.code :global(.hljs-selector-tag),
+.code :global(.hljs-literal),
+.code :global(.hljs-section),
+.code :global(.hljs-link),
+.code :global(.hljs-meta) :global(.hljs-keyword) {
+  color: var(--tk-keyword);
+}
+
+.code :global(.hljs-string),
+.code :global(.hljs-regexp),
+.code :global(.hljs-char),
+.code :global(.hljs-addition),
+.code :global(.hljs-meta) :global(.hljs-string) {
+  color: var(--tk-string);
+}
+
+.code :global(.hljs-number),
+.code :global(.hljs-symbol),
+.code :global(.hljs-bullet),
+.code :global(.hljs-variable.constant_) {
+  color: var(--tk-number);
+}
+
+.code :global(.hljs-title),
+.code :global(.hljs-title.function_),
+.code :global(.hljs-selector-id),
+.code :global(.hljs-selector-class) {
+  color: var(--tk-function);
+}
+
+.code :global(.hljs-type),
+.code :global(.hljs-built_in),
+.code :global(.hljs-title.class_),
+.code :global(.hljs-class) :global(.hljs-title) {
+  color: var(--tk-type);
+}
+
+.code :global(.hljs-tag),
+.code :global(.hljs-name),
+.code :global(.hljs-deletion) {
+  color: var(--tk-tag);
+}
+
+.code :global(.hljs-attr),
+.code :global(.hljs-attribute),
+.code :global(.hljs-property),
+.code :global(.hljs-variable),
+.code :global(.hljs-template-variable),
+.code :global(.hljs-selector-attr),
+.code :global(.hljs-selector-pseudo) {
+  color: var(--tk-attr);
+}
+
+.code :global(.hljs-params),
+.code :global(.hljs-subst) {
+  color: var(--tk-plain);
+}
+
+.code :global(.hljs-emphasis) { font-style: italic; }
+.code :global(.hljs-strong) { font-weight: 650; }
+
+.code :global(.hljs-addition) { background: color-mix(in srgb, var(--ok) 12%, transparent); }
+.code :global(.hljs-deletion) { background: color-mix(in srgb, var(--bad) 12%, transparent); }
+
+/* ── mermaid 图 ── */
+.diagram {
+  padding: 8px 16px 18px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-2) transparent;
+}
+
+.diagram:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ring);
+}
+
+.diagram :global(svg) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}
+
+@media (max-width: 560px) {
+  .bar { padding-left: 12px; }
+  .block .pre { padding: 2px 12px 12px; }
+  .diagram { padding: 6px 10px 14px; }
+}

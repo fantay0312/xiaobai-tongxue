@@ -62,7 +62,7 @@ export function StudyCompanion({ identity, onChange, topic, busy, reading, withC
     : !identity.acceptedAt ? '我给你留了拜师帖，要拆开看看吗？' : topic ? '等你学懂了，试着讲给我听吧。' : '先生，今天我们学点什么？';
   const style: CSSProperties | undefined = position && !identity.minimized ? { left: position.x, top: position.y, right: 'auto', bottom: 'auto' } : undefined;
 
-  if (identity.minimized) return <button className={s.restore} style={{ '--mobile-restore-bottom': withComposer ? '205px' : '16px' } as CSSProperties} onClick={() => onChange({ minimized: false })} aria-label={`唤回学习伙伴${name}`}><Icon name="users-round" size={15} />唤回{name}</button>;
+  if (identity.minimized) return <button className={s.restore} style={{ '--mobile-restore-bottom': withComposer ? 'calc(216px + env(safe-area-inset-bottom))' : 'calc(72px + env(safe-area-inset-bottom))' } as CSSProperties} onClick={() => onChange({ minimized: false })} aria-label={`唤回学习伙伴${name}`}><Icon name="users-round" size={15} />唤回{name}</button>;
   return <aside ref={panel} className={`${s.companion} ${position ? s.floating : ''}`} style={style} aria-label="常驻学习伙伴" data-menu-side={menuSide} data-menu-below={Boolean(position && position.y < 160) || undefined} data-expanded={expanded || undefined} data-has-composer={withComposer || undefined} data-dragging={dragging || undefined} data-reduced-motion={reducedMotion || undefined}>
     <div className={s.controls}><button className={s.dragHandle} aria-label="拖动学习伙伴，可用方向键移动" title="拖动；方向键移动；Home 放回侧栏" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onKeyDown={(event) => {
       if (event.key === 'Home') { setPosition(null); onChange({ position: null }); event.preventDefault(); return; }

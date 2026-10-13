@@ -1,0 +1,796 @@
+/* 首屏迷你终端。零件的尺寸与配色对齐真实终端（侧栏、对话流、输入框、模型胶囊）。 */
+
+.window {
+  position: relative;
+  border-radius: var(--r-2xl);
+  background: var(--bg);
+  box-shadow: var(--shadow-3);
+  overflow: hidden;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.frame {
+  display: grid;
+  grid-template-columns: 244px minmax(0, 1fr);
+  color: var(--text);
+  font-size: var(--fz-md);
+  line-height: 1.6;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── 侧栏 ── */
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 14px 10px 10px;
+  border-right: 1px solid var(--border);
+  background: var(--sidebar);
+  font-size: var(--fz-sm);
+}
+
+.sideHead {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 2px 8px 10px;
+  color: var(--text-3);
+  font-size: var(--fz-md);
+}
+
+.sideHead span {
+  flex: 1;
+  color: var(--text);
+  font-weight: 650;
+}
+
+.sideSeal {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  margin-bottom: 6px;
+  padding: 0 10px;
+  border-radius: var(--r-md);
+  background: var(--inset);
+  color: var(--text-3);
+}
+
+.groupLabel {
+  padding: 12px 8px 4px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  font-weight: 500;
+}
+
+.project,
+.log {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.project svg {
+  flex: none;
+  color: var(--text-3);
+}
+
+.project[data-open] {
+  color: var(--text);
+  font-weight: 550;
+}
+
+.log {
+  display: block;
+  padding-left: 37px;
+  overflow: hidden;
+  line-height: 30px;
+  text-overflow: ellipsis;
+}
+
+.log[data-active] {
+  background: var(--active);
+  color: var(--text);
+}
+
+.sideFoot {
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.journey {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-1), 0 0 0 1px var(--border);
+}
+
+.journeyText {
+  display: grid;
+  flex: 1;
+  gap: 5px;
+  min-width: 0;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.2;
+}
+
+.journeyText strong {
+  color: var(--text);
+  font-size: var(--fz-sm);
+  font-weight: 600;
+}
+
+.journeyBar {
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--r-full);
+  background: var(--inset);
+}
+
+.journeyBar i {
+  display: block;
+  width: 62%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+/* ── 主区 ── */
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 52px;
+  padding: 0 16px 0 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.crumb {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.crumb svg {
+  flex: none;
+}
+
+.crumb strong {
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.barChip,
+.barTeach,
+.toolChip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--r-md);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.barTeach {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.feed {
+  position: relative;
+  flex: 1;
+  padding: 24px 22px 8px;
+}
+
+.welcome {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  padding: 20px;
+  opacity: 0;
+  transform: scale(0.985);
+  transition: opacity var(--dur-3) var(--ease), transform var(--dur-3) var(--ease);
+}
+
+.welcome strong {
+  font-size: clamp(22px, 2.6vw, 30px);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.suggestions span {
+  padding: 7px 14px;
+  border-radius: var(--r-full);
+  box-shadow: inset 0 0 0 1px var(--border-2);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+}
+
+.turn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(100%, 700px);
+  margin-inline: auto;
+}
+
+/* 逐件入场：占位不变，只切显隐 */
+.ask,
+.replyHead,
+.formula,
+.sources,
+.quiz {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity var(--dur-3) var(--ease), transform var(--dur-3) var(--ease);
+}
+
+.welcome[data-on],
+.ask[data-on],
+.replyHead[data-on],
+.formula[data-on],
+.sources[data-on],
+.quiz[data-on] {
+  opacity: 1;
+  transform: none;
+}
+
+.ask {
+  align-self: flex-end;
+  max-width: 88%;
+  padding: 9px 15px;
+  border-radius: var(--r-xl) var(--r-xl) var(--r-xs) var(--r-xl);
+  background: var(--inset);
+}
+
+.replyHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.replyHead strong {
+  font-weight: 600;
+}
+
+.tutor {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--fz-xs);
+  font-weight: 650;
+}
+
+.status {
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
+
+.answer {
+  font-size: var(--fz-lg);
+  line-height: 1.8;
+}
+
+.ghost {
+  visibility: hidden;
+}
+
+.cite {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  margin: 0 3px;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 650 11px / 1 var(--ui-mono);
+  vertical-align: 2px;
+  opacity: 0;
+  transition: opacity var(--dur-2) var(--ease);
+}
+
+.cite[data-on] {
+  opacity: 1;
+}
+
+.formula {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px 28px;
+  padding: 14px 18px;
+  border-radius: var(--r-lg);
+  background: var(--sidebar);
+}
+
+/* 手排的公式，借用全站已载入的 KaTeX 字体 */
+.math {
+  font-family: KaTeX_Main, 'Times New Roman', serif;
+  font-size: 22px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.math i,
+.formulaNote i {
+  font-family: KaTeX_Math, KaTeX_Main, 'Times New Roman', serif;
+  font-style: italic;
+}
+
+.math sub {
+  font-size: 0.7em;
+}
+
+.formulaNote {
+  color: var(--text-2);
+  font-family: KaTeX_Main, 'Times New Roman', var(--ui-font);
+  font-size: var(--fz-md);
+}
+
+.formulaNote sup {
+  font-size: 0.7em;
+}
+
+.sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sources span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  padding: 4px 10px 4px 5px;
+  border-radius: var(--r-full);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--text-2);
+  font-size: var(--fz-xs);
+  white-space: nowrap;
+}
+
+.sources b {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 650 11px / 1 var(--ui-mono);
+}
+
+.quiz {
+  padding: 14px 16px 16px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
+
+.quizHead {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  font-weight: 500;
+}
+
+.quizQuestion {
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.quizOptions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.quizOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 6px 10px;
+  border-radius: var(--r-md);
+  box-shadow: inset 0 0 0 1px var(--border-2);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.35;
+  transition: background var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+}
+
+.quizOption b {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--inset);
+  color: var(--text-3);
+  font: 600 var(--fz-xs) / 1 var(--ui-mono);
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+}
+
+.quizCheck {
+  flex: none;
+  margin-left: auto;
+  color: var(--ok);
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity var(--dur-2) var(--ease), transform var(--dur-3) var(--ease);
+}
+
+.quizOption[data-right] {
+  background: var(--ok-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 45%, transparent);
+  color: var(--text);
+}
+
+.quizOption[data-right] b {
+  background: var(--ok);
+  color: var(--bg);
+}
+
+.quizOption[data-right] .quizCheck {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── 输入区 ── */
+.dock {
+  position: relative;
+  width: min(100% - 28px, 728px);
+  margin: 0 auto;
+  padding: 10px 0 16px;
+}
+
+.composer {
+  padding: 12px 12px 10px 16px;
+  border-radius: var(--r-2xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  transition: box-shadow var(--dur-2) var(--ease);
+}
+
+.composer[data-typing] {
+  box-shadow: var(--shadow-2), 0 0 0 3px var(--ring);
+}
+
+.input {
+  position: relative;
+  min-height: 26px;
+  font-size: var(--fz-lg);
+  line-height: 26px;
+}
+
+.placeholder {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: var(--text-4);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes caretBlink {
+  0%, 55% { opacity: 1; }
+  56%, 100% { opacity: 0; }
+}
+
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin: 0 1px;
+  border-radius: 1px;
+  background: var(--accent);
+  vertical-align: -0.16em;
+  animation: caretBlink 1s steps(1) infinite;
+}
+
+.tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.tool {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-left: -6px;
+  border-radius: var(--r-md);
+  color: var(--text-3);
+}
+
+.model {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  min-width: 0;
+  margin-left: auto;
+  padding: 0 9px;
+  border-radius: var(--r-md);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background var(--dur-2) var(--ease);
+}
+
+.model[data-open] {
+  background: var(--active);
+}
+
+.model svg {
+  flex: none;
+}
+
+.model svg:first-child {
+  color: var(--text);
+}
+
+.model em {
+  color: var(--text-3);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.send {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--inset);
+  color: var(--text-4);
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease), transform var(--dur-2) var(--ease);
+}
+
+.send[data-ready] {
+  background: var(--solid);
+  color: var(--on-solid);
+  transform: scale(1.04);
+}
+
+/* 思考强度弹层：从模型胶囊上方弹出，圆点分档、白色拇指，与终端里的同款 */
+.effortPop {
+  position: absolute;
+  right: 48px;
+  bottom: 64px;
+  z-index: 2;
+  width: min(100% - 48px, 272px);
+  padding: 14px;
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-3);
+  opacity: 0;
+  transform: translateY(6px) scale(0.96);
+  transform-origin: 80% 100%;
+  transition: opacity var(--dur-2) var(--ease), transform var(--dur-2) var(--ease);
+}
+
+.effortPop[data-on] {
+  opacity: 1;
+  transform: none;
+}
+
+.effortHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+}
+
+.effortHead strong {
+  font-size: var(--fz-lg);
+  font-weight: 650;
+}
+
+.effortHead span {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+
+.effortTrack {
+  --h: 30px;
+  position: relative;
+  height: var(--h);
+  margin-top: 10px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+}
+
+.effortFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--h) + (100% - var(--h)) * var(--p));
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 520ms var(--ease);
+}
+
+.effortStop {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--h) / 2 + (100% - var(--h)) * var(--i));
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: var(--text-4);
+}
+
+.effortStop[data-on] {
+  background: color-mix(in srgb, var(--on-accent) 62%, transparent);
+}
+
+.effortThumb {
+  position: absolute;
+  top: 3px;
+  left: calc((100% - var(--h)) * var(--p) + 3px);
+  width: calc(var(--h) - 6px);
+  height: calc(var(--h) - 6px);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22), 0 4px 10px rgba(0, 0, 0, 0.18);
+  transition: left 520ms var(--ease);
+}
+
+.effortPop p {
+  margin-top: 10px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.5;
+}
+
+/* ── 窄屏：收起侧栏，只留一轮问答 ── */
+@media (max-width: 860px) {
+  .frame {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .window {
+    border-radius: var(--r-xl);
+  }
+
+  .bar {
+    height: 48px;
+    padding: 0 10px 0 14px;
+  }
+
+  .crumb > span,
+  .crumb svg,
+  .barTeach span {
+    display: none;
+  }
+
+  .barTeach {
+    padding: 0 8px;
+  }
+
+  .feed {
+    padding: 16px 14px 4px;
+  }
+
+  .answer {
+    font-size: var(--fz-md);
+  }
+
+  .math {
+    font-size: 19px;
+  }
+
+  .formula {
+    justify-content: flex-start;
+    padding: 12px 14px;
+  }
+
+  .formulaNote {
+    font-size: var(--fz-sm);
+  }
+
+  .quizOptions {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .dock {
+    width: calc(100% - 20px);
+    padding-bottom: 10px;
+  }
+
+  .composer {
+    padding: 10px 10px 8px 14px;
+    border-radius: var(--r-xl);
+  }
+
+  .input {
+    font-size: var(--fz-md);
+  }
+
+  .toolChip {
+    display: none;
+  }
+
+  .modelName {
+    display: none;
+  }
+}

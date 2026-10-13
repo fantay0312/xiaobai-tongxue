@@ -5,6 +5,8 @@ import path from 'node:path';
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.wasm': 'application/wasm',
   '.css': 'text/css; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.json': 'application/json',
@@ -14,6 +16,8 @@ const MIME = {
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2',
   '.woff': 'font/woff',
+  '.ttf': 'font/ttf',
+  '.txt': 'text/plain; charset=utf-8',
   '.mp3': 'audio/mpeg',
   '.ogg': 'audio/ogg',
   '.wav': 'audio/wav',
@@ -54,11 +58,29 @@ function mainCsp(inlineScripts) {
     "font-src 'self' data:",
     // 浏览器直连模式允许用户配置任意 OpenAI 兼容 HTTPS LLM / ASR 端点。
     "connect-src 'self' https:",
-    "frame-src https://turing.captcha.qcloud.com",
+    // blob: 给资料库的 PDF 内嵌预览；'self' 给课堂互动演示的隔离宿主页 /sandbox.html
+    "frame-src 'self' blob: https://turing.captcha.qcloud.com",
     `media-src 'self' blob: ${CAPTCHA_PRIMARY_ORIGINS}`,
     "worker-src 'self' blob:",
   ].join('; ');
 }
+
+/**
+ * /sandbox.html 专用：AI 课堂的互动演示是模型生成的自包含页面，只能在这里执行。
+ * sandbox 指令让它即使被直接打开也没有同源身份；除内联脚本与样式外一律不放行，不能联网。
+ */
+const SANDBOX_CSP = [
+  'sandbox allow-scripts',
+  "default-src 'none'",
+  "script-src 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'unsafe-inline'",
+  'img-src data: blob:',
+  'media-src data: blob:',
+  'font-src data:',
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'self'",
+].join('; ');
 
 /* 只匹配无 src 的内联 <script>;带 src 的外链由 'self' 覆盖。 */
 const INLINE_SCRIPT = /<script(?![^>]*\ssrc[\s=])[^>]*>([\s\S]*?)<\/script>/gi;
@@ -86,6 +108,7 @@ function serve(req, res, send, urlPath, {
   fallback = 'index.html',
   immutableAssets = true,
   admin = false,
+  frameOptions = 'DENY',
 }) {
   let relative;
   try {
@@ -119,7 +142,7 @@ function serve(req, res, send, urlPath, {
         ? 'camera=(), geolocation=(), microphone=(), payment=(), usb=()'
         : 'camera=(self), geolocation=(), microphone=(self), payment=(), usb=()',
       'X-Content-Type-Options': 'nosniff',
-      'X-Frame-Options': 'DENY',
+      'X-Frame-Options': frameOptions,
     });
     res.end(req.method === 'HEAD' ? undefined : data);
   } catch {
@@ -156,6 +179,10 @@ export function createStaticHandler({
         immutableAssets: isAsset,
         admin: true,
       });
+      return;
+    }
+    if (pathname === '/sandbox.html') {
+      serve(req, res, send, pathname, { root: mainDist, csp: SANDBOX_CSP, fallback: null, frameOptions: 'SAMEORIGIN' });
       return;
     }
     serve(req, res, send, pathname === '/' ? '/index.html' : pathname, {
