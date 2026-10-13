@@ -6,7 +6,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
 import { getTopic } from '../../data';
 import { hydrateTeacherRuntimeTopic, topicCourseKey } from '../../data/runtimeTopics';
-import { currentAuthEpoch } from '../../lib/api';
+import { isCurrentAccount } from '../../lib/api';
 import { saveBlob } from '../../lib/notebookMedia';
 import { LibraryPicker } from '../library/LibraryPicker';
 import { prepareLibrarySources, readLibrarySources, downloadLibraryFile } from '../../lib/fileLibrary';
@@ -57,13 +57,12 @@ function useStudyTopic(topicId: string, owner: string | null) {
   useEffect(() => {
     if (!custom) return;
     const controller = new AbortController();
-    const epoch = currentAuthEpoch();
     setState({});
     void getTeacherCustomTopic(topicId, controller.signal).then((record) => {
-      if (controller.signal.aborted || epoch !== currentAuthEpoch()) return;
+      if (controller.signal.aborted || !isCurrentAccount(owner, useAuthStore.getState())) return;
       const topic = record.topicId === topicId ? hydrateTeacherRuntimeTopic(record.payload) : null;
       setState(topic?.topicId === topicId ? { topic } : { error: true });
-    }).catch(() => { if (!controller.signal.aborted && epoch === currentAuthEpoch()) setState({ error: true }); });
+    }).catch(() => { if (!controller.signal.aborted && isCurrentAccount(owner, useAuthStore.getState())) setState({ error: true }); });
     return () => controller.abort();
   }, [custom, topicId, owner, retry]);
   return { topic: custom ? state.topic : getTopic(topicId), loading: custom && !state.topic && !state.error, error: state.error, retry: () => setRetry((value) => value + 1) };
@@ -143,12 +142,12 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: { topicId: str
   const artifact = artifacts.find((item) => item.id === params.get('artifact'));
   const customCards = includesLecture ? undefined : sourceEvidence(selectedSources).map((source) => ({ id: `${scopeKey}:${source.id}`, front: `请用自己的话解释：${source.title}`, back: source.excerpt }));
   useEffect(() => {
-    const controller = new AbortController(); materialsRequest.current = controller; const epoch = currentAuthEpoch();
+    const controller = new AbortController(); materialsRequest.current = controller;
     setLibrarySources([]); setMaterialsError('');
     if (!attachmentKey) { setMaterialsBusy(false); return () => controller.abort(); }
     setMaterialsBusy(true);
     void prepareLibrarySources(attachmentKey.split(','), controller.signal, (message) => { if (!controller.signal.aborted) setPhase(message); }, materialsRetry > 0).then((result) => {
-      if (!controller.signal.aborted && epoch === currentAuthEpoch()) setLibrarySources(result.sources);
+      if (!controller.signal.aborted && isCurrentAccount(owner, useAuthStore.getState())) setLibrarySources(result.sources);
     }).catch((error) => { if (!controller.signal.aborted) setMaterialsError(error.message || '资料读取失败，请重试。'); }).finally(() => { if (!controller.signal.aborted) { setMaterialsBusy(false); setPhase(''); } });
     return () => controller.abort();
   }, [attachmentKey, conversation.id, owner, materialsRetry]);
@@ -261,10 +260,9 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: { topicId: str
     if (view !== 'ask') switchView('ask');
     const question = `${input.trim()}${activeScene ? `\n\n${sceneQuestionContext(activeScene)}` : ''}`.slice(0, 3000);
     const chatId = conversation.id;
-    const epoch = currentAuthEpoch();
     const serial = ++requestSerial.current;
     const controller = new AbortController(); requestRef.current = controller;
-    const currentRequest = () => serial === requestSerial.current && !controller.signal.aborted && epoch === currentAuthEpoch();
+    const currentRequest = () => serial === requestSerial.current && !controller.signal.aborted && isCurrentAccount(owner, useAuthStore.getState());
     const history = conversation.messages.filter((message) => message.scopeKey === scopeKey);
     updateWorkspace((current) => ({ ...current, conversations: current.conversations.map((chat) => chat.id === chatId ? { ...chat, title: chat.messages.length ? chat.title : question.slice(0, 28), messages: [...chat.messages, { id: studyId(), role: 'user', text: question, sources: [], scopeKey }] } : chat) }));
     setInput(''); setNotice(''); setBusy(true); pinnedRef.current = true;
@@ -351,11 +349,11 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: { topicId: str
     if (['guided', 'read', 'practice', 'cards'].includes(kind)) { switchView(kind as View); return; }
     if (libraryBlocked || busy) return;
     const controller = new AbortController(); requestRef.current = controller;
-    const serial = ++requestSerial.current; const epoch = currentAuthEpoch();
+    const serial = ++requestSerial.current;
     setBusy(true); setPhase('正在核对资料来源…');
     try {
       const verified = await verifiedSelection(controller.signal);
-      if (serial !== requestSerial.current || controller.signal.aborted || epoch !== currentAuthEpoch()) return;
+      if (serial !== requestSerial.current || controller.signal.aborted || !isCurrentAccount(owner, useAuthStore.getState())) return;
       const existing = artifacts.find((item) => item.kind === kind && item.scopeKey === notebookScopeKey(verified));
       if (existing) { openArtifact(existing.id); return; }
       const created = { ...createStudyArtifact(kind as StudioKind, studyTopic.title, verified), conversationId: conversation.id };
@@ -381,12 +379,12 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: { topicId: str
   };
   const enhanceArtifact = async () => {
     if (!artifact || busy) return;
-    const serial = ++requestSerial.current; const epoch = currentAuthEpoch(); const controller = new AbortController(); requestRef.current = controller;
+    const serial = ++requestSerial.current; const controller = new AbortController(); requestRef.current = controller;
     setBusy(true); setPhase('小砚正在根据所选资料整理内容…'); setNotice('');
     try {
       const verified = await verifiedSelection(controller.signal);
       const updated = await enrichStudyArtifact(artifact, verified, settings, controller.signal);
-      if (serial === requestSerial.current && epoch === currentAuthEpoch() && !controller.signal.aborted) updateArtifact(updated);
+      if (serial === requestSerial.current && isCurrentAccount(owner, useAuthStore.getState()) && !controller.signal.aborted) updateArtifact(updated);
     } catch (error) {
       if (serial === requestSerial.current && !controller.signal.aborted) setNotice(error instanceof Error ? error.message : '整理未完成，原稿已保留。');
     } finally { if (serial === requestSerial.current) { setBusy(false); setPhase(''); } }
@@ -442,7 +440,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: { topicId: str
           {(busy || materialsBusy) && !activeStream.current && <div className={s.thinking} role="status"><span /><span>{phase}</span></div>}<div ref={endRef} />
         </div>
       </> : <div className={n.mainScroll}>
-        {view === 'source' && sourcePreview && <article className={n.sourceDocument}><h1>{sourcePreview.title}</h1><p>当前查看的是资料正文或本轮保存的引用片段。</p><CoachMarkdown text={sourcePreview.excerpt} />{sourcePreview.fileId && <button className={s.textButton} onClick={async () => { try { const epoch = currentAuthEpoch(); const blob = await downloadLibraryFile(sourcePreview.fileId!); if (epoch === currentAuthEpoch()) saveBlob(sourcePreview.title, blob); } catch { setNotice('原件暂不可用，请检查文件是否已移入回收站。'); } }}><Icon name="download" size={14} />下载原件</button>}<button className={s.textButton} onClick={() => askAbout(`请解释这份资料中的关键概念：${sourcePreview.title}`)}>带着这份资料提问<Icon name="arrow-right" size={14} /></button></article>}
+        {view === 'source' && sourcePreview && <article className={n.sourceDocument}><h1>{sourcePreview.title}</h1><p>当前查看的是资料正文或本轮保存的引用片段。</p><CoachMarkdown text={sourcePreview.excerpt} />{sourcePreview.fileId && <button className={s.textButton} onClick={async () => { try { const blob = await downloadLibraryFile(sourcePreview.fileId!); if (isCurrentAccount(owner, useAuthStore.getState())) saveBlob(sourcePreview.title, blob); } catch { setNotice('原件暂不可用，请检查文件是否已移入回收站。'); } }}><Icon name="download" size={14} />下载原件</button>}<button className={s.textButton} onClick={() => askAbout(`请解释这份资料中的关键概念：${sourcePreview.title}`)}>带着这份资料提问<Icon name="arrow-right" size={14} /></button></article>}
         {view === 'notes' && <div className={n.notesEditor}><h1>学习便笺</h1><textarea aria-label="学习便笺" value={workspace.note} maxLength={20000} placeholder="记下你自己的理解，也可以从回答中保存内容…" onChange={(event) => updateWorkspace((current) => ({ ...current, note: event.target.value }))} /><p className={n.quiet}>{saveFailed ? '本机保存失败，请立即导出内容。' : '自动保存在当前浏览器，按账号和课程分开。'}</p><button disabled={!workspace.note.trim()} onClick={() => downloadStudyFile(`${studyTopic.title}-学习便笺.md`, workspace.note)}><Icon name="download" size={15} />导出便笺</button></div>}
         {view === 'studio' && (artifact ? <ArtifactPanel key={artifact.id + artifact.kind} artifact={artifact} onUpdate={updateArtifact} onEnhance={() => void enhanceArtifact()} busy={busy} saveFailed={saveFailed} onSource={openSource} /> : <p>在学习工坊创建一份内容，或打开已保存的产物。</p>)}
         {!selectedSources.length && ['read', 'practice', 'cards', 'guided'].includes(view) ? <div className={s.panelEmpty}><h2>先选择学习资料</h2><p>在资料栏勾选想学习的内容，再继续。</p></div> : scopedTopic && <>
