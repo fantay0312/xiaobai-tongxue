@@ -1,4 +1,5 @@
 import { hasBlockingIssues, normalizeTopicDraft, validateTopicDraft } from './topic-contract.mjs';
+import { sourceCacheOptions } from './source-cache.mjs';
 
 export const TOPIC_PROMPT_VERSION = 'custom-topic-v2';
 const MAX_SOURCE_CHARS = 72_000;
@@ -357,7 +358,7 @@ export function createTopicCompiler({ weknora, llm } = {}) {
 
   async function loadChunkLists(assets, requestId) {
     return Promise.all(assets.map(async (asset) => {
-      const chunks = await weknora.listChunks(asset.wkKnowledgeId, requestId, 500);
+      const chunks = await weknora.listChunks(asset.wkKnowledgeId, requestId, 500, sourceCacheOptions(asset));
       return chunks.map((value) => ({
         id: chunkId(value),
         content: chunkContent(value),

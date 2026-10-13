@@ -177,7 +177,10 @@ test('semantic evaluation has atomic burst limits and an owner inflight gate', a
     { subject: 'owner-id', limit: 2_000, windowSeconds: 86_400 },
     { subject: 'global', limit: 20_000, windowSeconds: 86_400 },
   ]);
-  assert.deepEqual(responses, [{
+  assert.match(responses[0].headers['Server-Timing'], /^app;dur=\d+\.\d,auth;dur=\d+\.\d$/);
+  assert.deepEqual(responses.map(({ headers, ...response }) => ({
+    ...response, headers: { 'Retry-After': headers['Retry-After'] },
+  })), [{
     status: 429,
     body: { error: 'evaluator-busy', retryAfter: 1 },
     headers: { 'Retry-After': '1' },

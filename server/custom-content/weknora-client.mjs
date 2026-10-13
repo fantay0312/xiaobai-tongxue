@@ -94,10 +94,25 @@ export function createWeKnoraClient({
   fetchImpl = globalThis.fetch,
   timeoutMs = 30_000,
   uploadTimeoutMs = 180_000,
+  chunkCacheTtlMs = 5 * 60_000,
+  chunkReadTimeoutMs = 12_000,
+  statusTimeoutMs = 5_000,
 } = {}) {
   const root = normalizeWeKnoraBaseUrl(baseUrl);
   if (typeof apiKey !== 'string' || apiKey.trim() === '') throw new Error('weknora-api-key-required');
   const token = apiKey.trim();
+  const chunkCache = new Map();
+  const chunkReads = new Map();
+  const statusReads = new Map();
+  const chunkGenerations = new Map();
+  let cacheChars = 0;
+  function invalidateChunks(id) {
+    chunkGenerations.set(id, (chunkGenerations.get(id) ?? 0) + 1);
+    for (const [key, entry] of chunkCache) if (entry.id === id) {
+      cacheChars -= entry.size;
+      chunkCache.delete(key);
+    }
+  }
   if (typeof fetchImpl !== 'function') throw new Error('fetch-required');
 
   async function request(operation, method, pathname, {
@@ -247,24 +262,38 @@ export function createWeKnoraClient({
     },
 
     getKnowledge(id, requestId) {
-      return json('get-knowledge', 'GET', `/knowledge/${encodeURIComponent(id)}`, undefined, { requestId });
+      if (statusReads.has(id)) return statusReads.get(id);
+      const pending = json('get-knowledge', 'GET', `/knowledge/${encodeURIComponent(id)}`, undefined, { requestId, timeout: Math.min(timeoutMs, statusTimeoutMs) })
+        .finally(() => statusReads.delete(id));
+      statusReads.set(id, pending);
+      return pending;
     },
 
     reparseKnowledge(id, processConfig, requestId) {
+      invalidateChunks(id);
       return json('reparse-knowledge', 'POST', `/knowledge/${encodeURIComponent(id)}/reparse`, processConfig ?? {}, { requestId });
     },
 
     deleteKnowledge(id, requestId) {
+      invalidateChunks(id);
       return json('delete-knowledge', 'DELETE', `/knowledge/${encodeURIComponent(id)}`, undefined, { requestId });
     },
 
-    async listChunks(knowledgeId, requestId, maximum = 1_000) {
+    async listChunks(knowledgeId, requestId, maximum = 1_000, { cacheKey } = {}) {
       if (!Number.isInteger(maximum) || maximum < 1 || maximum > 5_000) {
         throw new Error('weknora-chunk-limit-invalid');
       }
+      const generation = chunkGenerations.get(knowledgeId) ?? 0;
+      const key = cacheKey ? JSON.stringify([knowledgeId, maximum, cacheKey, generation]) : null;
+      const cached = key && chunkCache.get(key);
+      if (cached && cached.expires > Date.now()) return structuredClone(cached.chunks);
+      if (key && chunkReads.has(key)) return structuredClone(await chunkReads.get(key));
+      const read = (async () => {
+      const deadline = Date.now() + Math.min(timeoutMs, chunkReadTimeoutMs);
       const chunks = [];
       const pageSize = 200;
       for (let page = 1; page <= 100; page += 1) {
+        if (Date.now() >= deadline) throw new WeKnoraError('weknora-timeout', { operation: 'list-chunks', retryable: true });
         const requested = Math.min(pageSize, maximum - chunks.length);
         if (requested <= 0) break;
         const data = await json(
@@ -272,7 +301,7 @@ export function createWeKnoraClient({
           'GET',
           `/chunks/${encodeURIComponent(knowledgeId)}?page=${page}&page_size=${requested}`,
           undefined,
-          { requestId },
+          { requestId, timeout: Math.max(1, deadline - Date.now()) },
         );
         const batch = asArray(data);
         chunks.push(...batch);
@@ -283,6 +312,27 @@ export function createWeKnoraClient({
         if (Number.isFinite(total) && chunks.length >= total) break;
       }
       return chunks.slice(0, maximum);
+      })();
+      if (key) chunkReads.set(key, read);
+      try {
+        const chunks = await read;
+        if (key && chunks.length && generation === (chunkGenerations.get(knowledgeId) ?? 0)) {
+          const size = JSON.stringify(chunks).length;
+          if (size <= 4_000_000) {
+            for (const [oldKey, entry] of chunkCache) if (entry.expires <= Date.now() || oldKey === key) {
+              cacheChars -= entry.size; chunkCache.delete(oldKey);
+            }
+            while (chunkCache.size >= 64 || cacheChars + size > 4_000_000) {
+              const oldest = chunkCache.entries().next().value;
+              if (!oldest) break;
+              cacheChars -= oldest[1].size; chunkCache.delete(oldest[0]);
+            }
+            chunkCache.set(key, { id: knowledgeId, chunks: structuredClone(chunks), size, expires: Date.now() + chunkCacheTtlMs });
+            cacheChars += size;
+          }
+        }
+        return chunks;
+      } finally { if (key) chunkReads.delete(key); }
     },
 
     async findKnowledgeByMetadata({ kbId, key, value, requestId, maximumWaitMs = 3_000 }) {
@@ -363,14 +413,14 @@ export function createWeKnoraClient({
           'GET',
           `/faq/import/progress/${encodeURIComponent(taskId)}`,
           undefined,
-          { requestId },
+          { requestId, timeout: Math.max(1, Math.min(timeoutMs, deadline - Date.now())) },
         );
         const status = String(data?.status ?? data?.state ?? '').toLowerCase();
         if (status === 'completed' || status === 'success') return data;
         if (status === 'failed') throw new WeKnoraError('weknora-faq-import-failed', {
           operation: 'faq-import-progress',
         });
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, Math.min(500, Math.max(0, deadline - Date.now()))));
       }
       throw new WeKnoraError('weknora-faq-import-timeout', {
         operation: 'faq-import-progress',

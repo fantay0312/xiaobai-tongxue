@@ -122,7 +122,7 @@ async function multipartUpload(req, readRaw, limit) {
 export function createCustomContentRouter({
   service,
   resolveOwner,
-  send,
+  send: sendResponse,
   readJson,
   readRaw,
   hasJsonContentType,
@@ -131,10 +131,18 @@ export function createCustomContentRouter({
   clientIp = (req) => req?.socket?.remoteAddress ?? 'unknown',
   logger = console,
 } = {}) {
-  if (!service || !resolveOwner || !send || !readJson || !readRaw) {
+  if (!service || !resolveOwner || !sendResponse || !readJson || !readRaw) {
     throw new Error('custom-content-router-dependencies-required');
   }
   let uploadInflight = 0;
+  const timings = new WeakMap();
+  function send(res, status, data, headers = {}) {
+    const timing = timings.get(res);
+    return sendResponse(res, status, data, {
+      ...headers,
+      ...(timing ? { 'Server-Timing': `app;dur=${(performance.now() - timing.start).toFixed(1)},auth;dur=${(timing.auth ?? 0).toFixed(1)}` } : {}),
+    });
+  }
   const uploadOwners = new Set();
   let evaluatorInflight = 0;
   const evaluatorOwners = new Map();
@@ -215,9 +223,12 @@ export function createCustomContentRouter({
   }
 
   async function withOwner(req, res, operation, task) {
+    const timing = { start: performance.now(), auth: 0 };
+    timings.set(res, timing);
     let owner;
     try {
       owner = await resolveOwner(req, res, operation);
+      timing.auth = performance.now() - timing.start;
     } catch (error) {
       req.resume();
       logger.error?.(`[custom-content] ${operation} owner resolution failed:`, errorCode(error));

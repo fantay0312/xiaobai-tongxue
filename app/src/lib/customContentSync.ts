@@ -11,6 +11,8 @@ export function watchCustomContent<T>(options: {
   let disposed = false;
   let stopped = false;
   let completed = false;
+  let resumeRequested = false;
+  let recoveryDelay = 0;
   let failures = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let controller: AbortController | undefined;
@@ -21,32 +23,41 @@ export function watchCustomContent<T>(options: {
   };
   const run = async () => {
     if (disposed || stopped || completed || controller || !available()) return;
-    controller = new AbortController();
+    const active = new AbortController();
+    controller = active;
     try {
-      const data = await options.load(controller.signal);
-      if (disposed) return;
+      const data = await options.load(active.signal);
+      if (disposed || active.signal.aborted) return;
       failures = 0;
+      recoveryDelay = 0;
       options.onData(data);
       completed = !options.shouldPoll?.(data);
       if (!completed) schedule(options.intervalMs ?? 4_000);
     } catch (error) {
-      if (disposed) return;
+      if (disposed || active.signal.aborted) return;
       failures += 1;
       const retryable = !(error instanceof CustomContentError)
         || error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500;
-      stopped = !retryable || failures >= 3;
+      stopped = !retryable;
+      recoveryDelay = error instanceof CustomContentError ? error.retryAfter * 1_000 : 0;
       options.onError(error, stopped);
       if (!stopped) schedule(Math.max(
-        Math.min(15_000, 1_000 * (2 ** failures)),
+        failures >= 3 ? 30_000 : 1_000 * (2 ** failures),
         error instanceof CustomContentError ? error.retryAfter * 1_000 : 0,
       ));
     } finally {
       controller = undefined;
+      if (resumeRequested) { resumeRequested = false; schedule(0); }
     }
   };
   const resume = () => {
     clearTimeout(timer);
-    if (available()) void run();
+    if (!available()) { controller?.abort(); return; }
+    if (!stopped) failures = 0;
+    if (stopped || completed) return;
+    if (controller) { if (controller.signal.aborted) resumeRequested = true; return; }
+    if (recoveryDelay > 0) schedule(recoveryDelay);
+    else void run();
   };
   window.addEventListener('online', resume);
   window.addEventListener('offline', resume);

@@ -75,7 +75,7 @@ test('malformed asset lists fail as recoverable contract errors', async () => {
   } finally { env.restore(); }
 });
 
-test('polling backs off, honors retry-after and stops after three failures', async () => {
+test('polling backs off, honors retry-after and probes slowly after repeated transient failures', async () => {
   const env = environment();
   let calls = 0;
   const errors: boolean[] = [];
@@ -90,8 +90,9 @@ test('polling backs off, honors retry-after and stops after three failures', asy
     await env.tick(9_999); assert.equal(calls, 1);
     await env.tick(1); assert.equal(calls, 2);
     await env.tick(10_000); assert.equal(calls, 3);
-    await env.tick(60_000); assert.equal(calls, 3);
-    assert.deepEqual(errors, [false, false, true]);
+    await env.tick(29_999); assert.equal(calls, 3);
+    await env.tick(1); assert.equal(calls, 4);
+    assert.deepEqual(errors, [false, false, false, false]);
   } finally { stop(); env.restore(); }
 });
 
@@ -141,4 +142,37 @@ test('disposing a poll aborts its pending read and ignores stale data', async ()
     stop(); resolveRead!(1); await flush();
     assert.equal(signal!.aborted, true); assert.equal(updates, 0); assert.equal(env.timers.size, 0);
   } finally { env.restore(); }
+});
+
+test('online recovers a paused transient poll', async () => {
+  const env = environment();
+  let calls = 0;
+  const stop = watchCustomContent({
+    load: async () => { if (++calls <= 3) throw new CustomContentError('offline', 0); return 'done'; },
+    onData: () => {}, onError: () => {},
+  });
+  try {
+    await flush(); await env.tick(2_000); await env.tick(4_000);
+    assert.equal(calls, 3);
+    env.nav.onLine = false; env.win.dispatchEvent(new Event('offline'));
+    env.nav.onLine = true; env.win.dispatchEvent(new Event('online'));
+    await flush(); assert.equal(calls, 4);
+    env.win.dispatchEvent(new Event('online')); await flush(); assert.equal(calls, 4);
+  } finally { stop(); env.restore(); }
+});
+
+test('hiding aborts an in-flight read without consuming retry budget', async () => {
+  const env = environment();
+  let calls = 0;
+  let errors = 0;
+  const stop = watchCustomContent({
+    load: (signal) => { calls++; return new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(new DOMException('pause', 'AbortError')))); },
+    onData: () => {}, onError: () => { errors++; }, shouldPoll: () => true,
+  });
+  try {
+    env.doc.visibilityState = 'hidden'; env.doc.dispatchEvent(new Event('visibilitychange'));
+    env.doc.visibilityState = 'visible'; env.doc.dispatchEvent(new Event('visibilitychange'));
+    await flush(); await env.tick(0);
+    assert.equal(calls, 2); assert.equal(errors, 0);
+  } finally { stop(); env.restore(); }
 });

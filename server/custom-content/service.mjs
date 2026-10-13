@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { sourceCacheOptions } from './source-cache.mjs';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';
 import { inflateRawSync } from 'node:zlib';
@@ -1052,7 +1053,7 @@ export function createCustomContentService({
       assetRole: asset.assetRole,
     }));
     const chunkLists = await Promise.all(
-      assets.map((asset) => weknora.listChunks(asset.wkKnowledgeId, requestId, 500)),
+      assets.map((asset) => weknora.listChunks(asset.wkKnowledgeId, requestId, 500, sourceCacheOptions(asset))),
     );
     const chunks = chunkLists.flat().map((value) => ({ id: chunkId(value), content: chunkContent(value) }))
       .filter((chunk) => chunk.id && chunk.content);
@@ -1560,7 +1561,7 @@ export function createCustomContentService({
         ? await repository.assets.findManyByCourse(current.courseId, sourceIds)
         : [];
       const chunkLists = await Promise.all(assets.map(async (asset) => (
-        (await weknora.listChunks(asset.wkKnowledgeId, requestId, 500)).map((value) => ({
+        (await weknora.listChunks(asset.wkKnowledgeId, requestId, 500, sourceCacheOptions(asset))).map((value) => ({
           id: chunkId(value),
           content: chunkContent(value),
           assetId: asset.id,

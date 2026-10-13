@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { once } from 'node:events';
 import { createWeKnoraClient } from './custom-content/weknora-client.mjs';
+import { sourceCacheOptions } from './custom-content/source-cache.mjs';
 
 async function withServer(handler, task) {
   const server = http.createServer(handler);
@@ -150,5 +151,81 @@ test('WeKnora FAQ import wait accepts underscored task ids and resolves on compl
   });
   assert.equal(polls.length, 2);
   assert.equal(polls[0], '/api/v1/faq/import/progress/faq_import_10000_1788102686874_bc594e7e_1f07dec6e6e');
+});
+
+test('versioned source reads share work and are invalidated by reparse', async () => {
+  let reads = 0;
+  await withServer(async (req, res) => {
+    const chunks = req.url.startsWith('/api/v1/chunks/');
+    if (chunks) reads++;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true, data: chunks ? [{ id: 'c1', content: 'source' }] : {} }));
+  }, async (baseUrl) => {
+    const client = createWeKnoraClient({ baseUrl, apiKey: 'test' });
+    const options = { cacheKey: 'course-a:asset-a:revision-1' };
+    const [first] = await Promise.all([client.listChunks('k1', 'a', 500, options), client.listChunks('k1', 'b', 500, options)]);
+    assert.equal(reads, 1);
+    first[0].content = 'browser-forgery';
+    assert.equal((await client.listChunks('k1', 'c', 500, options))[0].content, 'source');
+    await client.listChunks('k1', 'd', 500, { cacheKey: 'course-b:asset-b:revision-1' });
+    assert.equal(reads, 2, 'different source scopes must not share cached evidence');
+    await client.reparseKnowledge('k1', {});
+    await client.listChunks('k1', 'e', 500, options);
+    assert.equal(reads, 3);
+  });
+});
+
+test('a failed source read is not cached and pagination shares one deadline', async () => {
+  let reads = 0;
+  await withServer(async (_req, res) => {
+    reads++;
+    res.writeHead(reads === 1 ? 503 : 200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: reads !== 1, data: [{ id: 'c1', content: 'source' }] }));
+  }, async (baseUrl) => {
+    const client = createWeKnoraClient({ baseUrl, apiKey: 'test' });
+    await assert.rejects(client.listChunks('k1', '', 500, { cacheKey: 'v1' }));
+    assert.equal((await client.listChunks('k1', '', 500, { cacheKey: 'v1' })).length, 1);
+    assert.equal(reads, 2);
+  });
+  await withServer(async (_req, res) => {
+    await new Promise((resolve) => setTimeout(resolve, 70));
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true, data: { items: Array.from({length:200},(_,i)=>({id:String(i),content:'s'})), total:400 } }));
+  }, async (baseUrl) => {
+    const client = createWeKnoraClient({ baseUrl, apiKey: 'test', chunkReadTimeoutMs: 100 });
+    const start = Date.now();
+    await assert.rejects(client.listChunks('slow', '', 500), /weknora-timeout/);
+    assert.ok(Date.now() - start < 190, 'the second page cannot acquire another full request budget');
+  });
+});
+
+test('only completed source versions are cacheable and status reads share in-flight work', async () => {
+  assert.deepEqual(sourceCacheOptions({ parseStatus: 'processing', enableStatus: 'enabled' }), {});
+  const asset = { id:'a',courseId:'course-a',parseStatus:'completed',enableStatus:'enabled',statusRevision:'3' };
+  assert.notDeepEqual(sourceCacheOptions(asset),sourceCacheOptions({...asset,statusRevision:'4'}));
+  assert.notDeepEqual(sourceCacheOptions(asset),sourceCacheOptions({...asset,courseId:'course-b'}));
+  let calls=0;
+  await withServer(async (_req,res)=>{
+    calls++; await new Promise(resolve=>setTimeout(resolve,20));
+    res.end(JSON.stringify({success:true,data:{id:'k1',parse_status:'completed'}}));
+  },async baseUrl=>{
+    const client=createWeKnoraClient({baseUrl,apiKey:'test'});
+    await Promise.all([client.getKnowledge('k1'),client.getKnowledge('k1')]);
+    assert.equal(calls,1);
+    await client.getKnowledge('k1'); assert.equal(calls,2);
+  });
+});
+
+test('FAQ progress response body stays within the whole wait budget', async () => {
+  await withServer(async (_req,res)=>{
+    res.writeHead(200,{'Content-Type':'application/json'}); res.flushHeaders();
+    await new Promise(resolve=>setTimeout(resolve,100));
+    res.end(JSON.stringify({success:true,data:{status:'processing'}}));
+  },async baseUrl=>{
+    const client=createWeKnoraClient({baseUrl,apiKey:'test'});
+    const start=Date.now();
+    await assert.rejects(client.waitForFaqImport('faq_task','trace',30),/weknora-timeout/);
+    assert.ok(Date.now()-start<120);
+  });
 });
 

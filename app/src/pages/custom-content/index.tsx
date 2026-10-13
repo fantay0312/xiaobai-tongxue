@@ -736,8 +736,12 @@ export default function CustomContentPage() {
     void (async () => {
       let finalState: 'unhealthy' | 'unavailable' = 'unhealthy';
       for (let attempt = 0; attempt <= CUSTOM_BOOTSTRAP_RETRY_MS.length; attempt += 1) {
+        const attemptController = new AbortController();
+        const abortAttempt = () => attemptController.abort();
+        controller.signal.addEventListener('abort', abortAttempt, { once: true });
+        if (controller.signal.aborted) abortAttempt();
         try {
-          const [status, nextCourses] = await Promise.all([customContentStatus(controller.signal), listCustomCourses(controller.signal)]);
+          const [status, nextCourses] = await Promise.all([customContentStatus(attemptController.signal), listCustomCourses(attemptController.signal)]);
           if (!active || authUserRef.current !== authUser) return;
           if (status.healthy) {
             setService('ready');
@@ -749,9 +753,12 @@ export default function CustomContentPage() {
           }
           finalState = 'unhealthy';
         } catch (error) {
+          abortAttempt();
           if (!active || authUserRef.current !== authUser) return;
           finalState = error instanceof CustomContentError && error.status === 503 ? 'unavailable' : 'unhealthy';
           setNotice(errorHint(error));
+        } finally {
+          controller.signal.removeEventListener('abort', abortAttempt);
         }
         const delay = CUSTOM_BOOTSTRAP_RETRY_MS[attempt];
         if (delay === undefined) break;
@@ -849,7 +856,7 @@ export default function CustomContentPage() {
       },
       onError: (error, stopped) => {
         setJobError(`${errorHint(error)}${stopped ? ' 请点击重新同步找回已有草稿。' : ' 正在重新连接…'}`);
-        if (stopped) setRecoveringJob(false);
+        setRecoveringJob(false);
       },
     });
   }, [authUser, courseId, jobRefreshToken]);
@@ -1072,7 +1079,7 @@ export default function CustomContentPage() {
     setPublishing(true);
     setNotice('');
     try {
-      const saved = await saveTopicDraft(draftRecord.id, draftRecord.payload);
+      const saved = draftEdited ? await saveTopicDraft(draftRecord.id, draftRecord.payload) : draftRecord;
       if (!workspaceIsCurrent(ownerAtPublish, generationAtPublish, courseAtPublish)) return;
       setDraftRecord(saved);
       setDraftEdited(false);
@@ -1086,10 +1093,11 @@ export default function CustomContentPage() {
     } catch (error) {
       if (!workspaceIsCurrent(ownerAtPublish, generationAtPublish, courseAtPublish)) return;
       if (error instanceof Error && error.message === 'topic-quality-gate-failed') {
-        // 服务端发布前会重新找出处再校验一遍,可能拦下浏览器里没看到的条目:再存一次取回清单,跳到第一处
+        // 服务端已保存最新校验结果，只读取清单，不重复提交草稿。
         try {
-          const refreshed = await saveTopicDraft(draftRecord.id, draftRecord.payload);
+          const refreshed = (await getCourseCompileJob(courseAtPublish))?.topic;
           if (!workspaceIsCurrent(ownerAtPublish, generationAtPublish, courseAtPublish)) return;
+          if (!refreshed || refreshed.id !== draftRecord.id) throw error;
           setDraftRecord(refreshed);
           if (announceBlocking(refreshed)) return;
         } catch {
