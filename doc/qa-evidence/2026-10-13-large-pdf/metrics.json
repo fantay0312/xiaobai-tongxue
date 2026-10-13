@@ -1,0 +1,630 @@
+{
+  "times": {
+    "started": 1791901633047,
+    "uploadStarted": 1791901673331,
+    "assetReady": 1791901816525,
+    "compileStarted": 1791901816830,
+    "saveStarted": 1791901898775,
+    "saveConfirmed": 1791901901429,
+    "publishStarted": 1791901907103,
+    "published": 1791901927773,
+    "prepVisible": 1791901935107
+  },
+  "resources": [
+    {
+      "path": "/api/xb/topics",
+      "status": 200,
+      "ms": 622,
+      "server": [
+        {
+          "name": "app",
+          "ms": 19.2
+        },
+        {
+          "name": "auth",
+          "ms": 16.6
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/status",
+      "status": 200,
+      "ms": 502,
+      "server": [
+        {
+          "name": "app",
+          "ms": 9.5
+        },
+        {
+          "name": "auth",
+          "ms": 6.2
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses",
+      "status": 200,
+      "ms": 587,
+      "server": [
+        {
+          "name": "app",
+          "ms": 12.8
+        },
+        {
+          "name": "auth",
+          "ms": 7
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses/8d019f94-bf44-4154-85ad-54c63b27caa7/assets",
+      "status": 200,
+      "ms": 499,
+      "server": [
+        {
+          "name": "app",
+          "ms": 6.9
+        },
+        {
+          "name": "auth",
+          "ms": 4.6
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses/8d019f94-bf44-4154-85ad-54c63b27caa7/compile-job",
+      "status": 200,
+      "ms": 492,
+      "server": [
+        {
+          "name": "app",
+          "ms": 10.1
+        },
+        {
+          "name": "auth",
+          "ms": 7.9
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses",
+      "status": 201,
+      "ms": 1642,
+      "server": [
+        {
+          "name": "app",
+          "ms": 55
+        },
+        {
+          "name": "auth",
+          "ms": 20.1
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses",
+      "status": 200,
+      "ms": 578,
+      "server": [
+        {
+          "name": "app",
+          "ms": 10.6
+        },
+        {
+          "name": "auth",
+          "ms": 6.1
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses/a9535d05-377f-4dba-8624-e230d9a27639/assets",
+      "status": 200,
+      "ms": 639,
+      "server": [
+        {
+          "name": "app",
+          "ms": 20.2
+        },
+        {
+          "name": "auth",
+          "ms": 18.5
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses/a9535d05-377f-4dba-8624-e230d9a27639/compile-job",
+      "status": 200,
+      "ms": 625,
+      "server": [
+        {
+          "name": "app",
+          "ms": 7.3
+        },
+        {
+          "name": "auth",
+          "ms": 5.5
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses/a9535d05-377f-4dba-8624-e230d9a27639/assets",
+      "status": 202,
+      "ms": 103708,
+      "server": [
+        {
+          "name": "app",
+          "ms": 535.9
+        },
+        {
+          "name": "auth",
+          "ms": 4.7
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses",
+      "status": 200,
+      "ms": 1189,
+      "server": [
+        {
+          "name": "app",
+          "ms": 6.5
+        },
+        {
+          "name": "auth",
+          "ms": 5.1
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses/a9535d05-377f-4dba-8624-e230d9a27639/assets",
+      "status": 200,
+      "ms": 1177,
+      "server": [
+        {
+          "name": "app",
+          "ms": 15
+        },
+        {
+          "name": "auth",
+          "ms": 5
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses/a9535d05-377f-4dba-8624-e230d9a27639/assets",
+      "status": 200,
+      "ms": 508,
+      "server": [
+        {
+          "name": "app",
+          "ms": 11.9
+        },
+        {
+          "name": "auth",
+          "ms": 4.6
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses/a9535d05-377f-4dba-8624-e230d9a27639/assets",
+      "status": 200,
+      "ms": 509,
+      "server": [
+        {
+          "name": "app",
+          "ms": 12.4
+        },
+        {
+          "name": "auth",
+          "ms": 5.2
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses/a9535d05-377f-4dba-8624-e230d9a27639/assets",
+      "status": 200,
+      "ms": 1087,
+      "server": [
+        {
+          "name": "app",
+          "ms": 10.5
+        },
+        {
+          "name": "auth",
+          "ms": 4.6
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses/a9535d05-377f-4dba-8624-e230d9a27639/assets",
+      "status": 200,
+      "ms": 510,
+      "server": [
+        {
+          "name": "app",
+          "ms": 10.8
+        },
+        {
+          "name": "auth",
+          "ms": 4.7
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses/a9535d05-377f-4dba-8624-e230d9a27639/assets",
+      "status": 200,
+      "ms": 520,
+      "server": [
+        {
+          "name": "app",
+          "ms": 18.4
+        },
+        {
+          "name": "auth",
+          "ms": 9.2
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses/a9535d05-377f-4dba-8624-e230d9a27639/assets",
+      "status": 200,
+      "ms": 523,
+      "server": [
+        {
+          "name": "app",
+          "ms": 13.1
+        },
+        {
+          "name": "auth",
+          "ms": 5.3
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses/a9535d05-377f-4dba-8624-e230d9a27639/assets",
+      "status": 200,
+      "ms": 520,
+      "server": [
+        {
+          "name": "app",
+          "ms": 11.1
+        },
+        {
+          "name": "auth",
+          "ms": 4.5
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/topics/compile",
+      "status": 202,
+      "ms": 480,
+      "server": [
+        {
+          "name": "app",
+          "ms": 12.3
+        },
+        {
+          "name": "auth",
+          "ms": 4.6
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/compile-jobs/d6129fba-ab7d-4021-af40-de6a25a65cbe",
+      "status": 200,
+      "ms": 486,
+      "server": [
+        {
+          "name": "app",
+          "ms": 6.1
+        },
+        {
+          "name": "auth",
+          "ms": 4.9
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/compile-jobs/d6129fba-ab7d-4021-af40-de6a25a65cbe",
+      "status": 200,
+      "ms": 493,
+      "server": [
+        {
+          "name": "app",
+          "ms": 5.2
+        },
+        {
+          "name": "auth",
+          "ms": 4.4
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/compile-jobs/d6129fba-ab7d-4021-af40-de6a25a65cbe",
+      "status": 200,
+      "ms": 1067,
+      "server": [
+        {
+          "name": "app",
+          "ms": 5.6
+        },
+        {
+          "name": "auth",
+          "ms": 4.7
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/compile-jobs/d6129fba-ab7d-4021-af40-de6a25a65cbe",
+      "status": 200,
+      "ms": 476,
+      "server": [
+        {
+          "name": "app",
+          "ms": 6.2
+        },
+        {
+          "name": "auth",
+          "ms": 5.5
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/compile-jobs/d6129fba-ab7d-4021-af40-de6a25a65cbe",
+      "status": 200,
+      "ms": 510,
+      "server": [
+        {
+          "name": "app",
+          "ms": 5.5
+        },
+        {
+          "name": "auth",
+          "ms": 4.7
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/compile-jobs/d6129fba-ab7d-4021-af40-de6a25a65cbe",
+      "status": 200,
+      "ms": 495,
+      "server": [
+        {
+          "name": "app",
+          "ms": 5.5
+        },
+        {
+          "name": "auth",
+          "ms": 4.7
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/compile-jobs/d6129fba-ab7d-4021-af40-de6a25a65cbe",
+      "status": 200,
+      "ms": 515,
+      "server": [
+        {
+          "name": "app",
+          "ms": 6.1
+        },
+        {
+          "name": "auth",
+          "ms": 5.2
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/compile-jobs/d6129fba-ab7d-4021-af40-de6a25a65cbe",
+      "status": 200,
+      "ms": 498,
+      "server": [
+        {
+          "name": "app",
+          "ms": 5.4
+        },
+        {
+          "name": "auth",
+          "ms": 4.6
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/compile-jobs/d6129fba-ab7d-4021-af40-de6a25a65cbe",
+      "status": 200,
+      "ms": 1385,
+      "server": [
+        {
+          "name": "app",
+          "ms": 5.4
+        },
+        {
+          "name": "auth",
+          "ms": 4.6
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/compile-jobs/d6129fba-ab7d-4021-af40-de6a25a65cbe",
+      "status": 200,
+      "ms": 504,
+      "server": [
+        {
+          "name": "app",
+          "ms": 5.1
+        },
+        {
+          "name": "auth",
+          "ms": 4.4
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/compile-jobs/d6129fba-ab7d-4021-af40-de6a25a65cbe",
+      "status": 200,
+      "ms": 510,
+      "server": [
+        {
+          "name": "app",
+          "ms": 6.2
+        },
+        {
+          "name": "auth",
+          "ms": 5.3
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/compile-jobs/d6129fba-ab7d-4021-af40-de6a25a65cbe",
+      "status": 200,
+      "ms": 507,
+      "server": [
+        {
+          "name": "app",
+          "ms": 5.3
+        },
+        {
+          "name": "auth",
+          "ms": 4.6
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/compile-jobs/d6129fba-ab7d-4021-af40-de6a25a65cbe",
+      "status": 200,
+      "ms": 492,
+      "server": [
+        {
+          "name": "app",
+          "ms": 5.7
+        },
+        {
+          "name": "auth",
+          "ms": 4.9
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/compile-jobs/d6129fba-ab7d-4021-af40-de6a25a65cbe",
+      "status": 200,
+      "ms": 711,
+      "server": [
+        {
+          "name": "app",
+          "ms": 5.6
+        },
+        {
+          "name": "auth",
+          "ms": 4.9
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/compile-jobs/d6129fba-ab7d-4021-af40-de6a25a65cbe",
+      "status": 200,
+      "ms": 507,
+      "server": [
+        {
+          "name": "app",
+          "ms": 7.1
+        },
+        {
+          "name": "auth",
+          "ms": 6.3
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/compile-jobs/d6129fba-ab7d-4021-af40-de6a25a65cbe",
+      "status": 200,
+      "ms": 1565,
+      "server": [
+        {
+          "name": "app",
+          "ms": 27.7
+        },
+        {
+          "name": "auth",
+          "ms": 10.1
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/topics/25f79f99-59ac-464b-8a7d-e86262178203/draft",
+      "status": 200,
+      "ms": 2346,
+      "server": [
+        {
+          "name": "app",
+          "ms": 39.3
+        },
+        {
+          "name": "auth",
+          "ms": 4.3
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/topics/25f79f99-59ac-464b-8a7d-e86262178203/publish",
+      "status": 200,
+      "ms": 5025,
+      "server": [
+        {
+          "name": "app",
+          "ms": 3553.8
+        },
+        {
+          "name": "auth",
+          "ms": 5.1
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/topics",
+      "status": 200,
+      "ms": 659,
+      "server": [
+        {
+          "name": "app",
+          "ms": 6.7
+        },
+        {
+          "name": "auth",
+          "ms": 4.4
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/courses",
+      "status": 200,
+      "ms": 520,
+      "server": [
+        {
+          "name": "app",
+          "ms": 5.4
+        },
+        {
+          "name": "auth",
+          "ms": 4.3
+        }
+      ]
+    },
+    {
+      "path": "/api/xb/topics/custom-a9535d05-377f-4dba-8624-e230d9a27639-d6129fba-ab7d-4021-af40-de6a25a65cbe/teacher",
+      "status": 200,
+      "ms": 548,
+      "server": [
+        {
+          "name": "app",
+          "ms": 5.7
+        },
+        {
+          "name": "auth",
+          "ms": 4.2
+        }
+      ]
+    }
+  ]
+}

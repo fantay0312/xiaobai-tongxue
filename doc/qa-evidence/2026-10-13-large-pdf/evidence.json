@@ -1,0 +1,46 @@
+{
+  "testedAt": "2026-10-13T14:33:00Z",
+  "environment": "production",
+  "course": {
+    "id": "a9535d05-377f-4dba-8624-e230d9a27639",
+    "title": "大PDF验收-财务管理-1013",
+    "created_at": "2026-10-13T14:12:43.941Z"
+  },
+  "fixture": {
+    "bytes": 7926478,
+    "pages": 62,
+    "sha256": "2a21f607584fe54049731d5a1865163681aeb2594e207f7c97598f8d120e8e75"
+  },
+  "asset": {
+    "filename": "big-lesson.pdf",
+    "parse_status": "completed",
+    "enable_status": "enabled",
+    "error_message": null,
+    "created_at": "2026-10-13T14:29:37.158Z",
+    "updated_at": "2026-10-13T14:30:10.519Z"
+  },
+  "job": {
+    "id": "d6129fba-ab7d-4021-af40-de6a25a65cbe",
+    "status": "done",
+    "error_code": null,
+    "created_at": "2026-10-13T14:30:17.525Z",
+    "updated_at": "2026-10-13T14:31:51.779Z"
+  },
+  "topic": {
+    "record_id": "25f79f99-59ac-464b-8a7d-e86262178203",
+    "topic_id": "custom-a9535d05-377f-4dba-8624-e230d9a27639-d6129fba-ab7d-4021-af40-de6a25a65cbe",
+    "status": "ready",
+    "quality_issues": [],
+    "published_at": "2026-10-13T14:31:51.779Z",
+    "created_at": "2026-10-13T14:31:21.364Z",
+    "updated_at": "2026-10-13T14:31:51.779Z",
+    "tagline": "从资本预算、资本结构与营运资本管理出发，辨析财务目标和现金流量。",
+    "checklist_count": 6,
+    "misconception_count": 5,
+    "quiz_count": 5
+  },
+  "draftSaveRequestCount": 1,
+  "publishRequestCount": 1,
+  "tencentCloudConfigurationChanged": false,
+  "passed": true
+}

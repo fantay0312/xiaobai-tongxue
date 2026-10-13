@@ -1,0 +1,44 @@
+{
+  "candidate": {
+    "kbId": "9061a739-8843-4ecf-9947-0ded21da3277",
+    "knowledgeId": "74270d1f-b3c7-47dd-89fd-cdf40e4efd8b",
+    "bytes": 7926478,
+    "oldChunks": 5,
+    "coldMs": 12,
+    "cachedMs": 1,
+    "uploadMs": 145,
+    "startedAt": 1791901576002,
+    "faqVerified": true,
+    "parseStatus": "completed",
+    "enableStatus": "enabled",
+    "newChunks": 33,
+    "parseElapsedMs": 25963,
+    "passed": true
+  },
+  "production": {
+    "version": "v0.8.2",
+    "images": {
+      "app": "sha256:e2e41bdf2f7f66390a625c5a7b9ee278b6e6c882a8cd034c9f937289a950b118",
+      "docreader": "sha256:ed1245f7d4bd2d75e81d836623ab45d90fee99a168d61bccaa046e22374e08fb"
+    },
+    "backup": "/var/backups/xiaobai/weknora-upgrade-20261013T135821Z/final",
+    "pausedSeconds": 16.61,
+    "bffPidPreserved": true
+  },
+  "containers": [
+    {
+      "name": "xiaobai-weknora-app-1",
+      "version": "v0.8.2",
+      "source": "3e8b0bfc80b845b2d4b2ed683994748741450a97",
+      "health": "healthy",
+      "image": "sha256:e2e41bdf2f7f66390a625c5a7b9ee278b6e6c882a8cd034c9f937289a950b118"
+    },
+    {
+      "name": "xiaobai-weknora-docreader-1",
+      "version": "v0.8.2",
+      "source": "3e8b0bfc80b845b2d4b2ed683994748741450a97",
+      "health": "healthy",
+      "image": "sha256:ed1245f7d4bd2d75e81d836623ab45d90fee99a168d61bccaa046e22374e08fb"
+    }
+  ]
+}

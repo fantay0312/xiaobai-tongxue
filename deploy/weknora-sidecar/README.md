@@ -18,9 +18,9 @@
 
 ## 版本与许可
 
-当前升级目标为官方最新正式版 [v0.8.2](https://github.com/Tencent/WeKnora/releases/tag/v0.8.2)（2026-09-24，源码 `3e8b0bfc80b845b2d4b2ed683994748741450a97`）。`app` 与 `docreader` 必须使用同一版本；生产 `.env` 使用验收过的 RepoDigest，不能使用浮动 `latest`。数据库与 Redis 沿用原持久化版本，不随应用升级跨大版本迁移。
+生产已于 2026-10-13 从 v0.7.2 升级到官方当日最新正式版 [v0.8.2](https://github.com/Tencent/WeKnora/releases/tag/v0.8.2)（2026-09-24 发布，源码 `3e8b0bfc80b845b2d4b2ed683994748741450a97`），完成备份恢复演练、既有资料读取、7.9 MB PDF 入库和网站完整发布验收，见[验收记录](../../doc/qa-evidence/2026-10-13-large-pdf/README.md)。`app` 与 `docreader` 必须使用同一版本；生产 `.env` 使用验收过的不可变镜像摘要，不能使用浮动 `latest`。数据库与 Redis 沿用原持久化版本，不随应用升级跨大版本迁移。
 
-本生产环境为 linux/amd64，官方分平台摘要及 image ID 记录在 `image-lock.json`。拉取或离线导入后运行 `node verify-images.mjs <app镜像> <docreader镜像>`，同时核对内容 ID、架构和源码提交。离线导入没有 RepoDigest 时，生产可使用锁文件中的不可变 image ID；不得只信任可移动的版本 tag。
+本生产环境为 linux/amd64，官方分平台摘要、原始配置摘要及规范化内容指纹记录在 `image-lock.json`。拉取或离线导入后运行 `node verify-images.mjs <app镜像> <docreader镜像>`，核对文件层、运行配置、架构和源码提交。Docker/containerd 离线导入可能重建清单，因此本机 image ID 可以不同；只有上述内容核对通过后，才可把该服务器实际导入的不可变 image ID 写入生产 `.env`。本次实际安装 ID 记录在验收证据中，不得只信任可移动的版本 tag。
 
 升级前保存 `.env`、`compose.yml`、`config.yaml`、数据库逻辑备份、解析文件与 Redis 队列；先在隔离数据库恢复备份并启动新版，通过 API Key、既有分块读取和文档解析检查，再暂停生产写入完成最终备份并切换。回滚必须恢复匹配旧镜像的数据库、文件与队列，不能仅退回旧镜像。保持 `SYSTEM_AES_KEY`、JWT 和 gRPC 密钥原值，避免已保存模型凭据失效。沙箱默认关闭，sidecar 不挂载 Docker socket。
 
