@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type KeyboardEvent } from 'react';
+import { useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { ArrowUp, BookOpen, CalendarClock, CalendarDays, ChevronDown, Files, Layers, ListChecks, NotebookPen, Search, type LucideIcon } from 'lucide-react';
 import { Button, IconButton, Menu, MenuContent, MenuItem, MenuLabel, MenuTrigger, Segmented, Switch, Tip } from '../../../../components/ui';
 import { STEP_BUDGETS, type RunOptions } from '../../../../engine/agent';
@@ -37,10 +37,16 @@ interface Props {
   onSchedule: () => void;
   /** 手机版式：选项收成一行，「开始」通栏，模板横向滑动 */
   compact?: boolean;
+  /** 附加的资料与内容：小签和添加按钮，排在上下文一行里 */
+  attach?: ReactNode;
+  /** 已附加了几份（有附加时不再提示「没有资料」） */
+  attachedCount?: number;
+  /** 正在读取附加内容、准备开始 */
+  starting?: boolean;
 }
 
 /** 目标输入：一段目标 + 当前上下文 + 运行选项 + 模板 */
-export function GoalComposer({ draft, onDraft, options, onOptions, topicTitle, sourceTitles, onStart, onSchedule, compact = false }: Props) {
+export function GoalComposer({ draft, onDraft, options, onOptions, topicTitle, sourceTitles, onStart, onSchedule, compact = false, attach, attachedCount = 0, starting = false }: Props) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // 输入框随内容长高
@@ -51,7 +57,7 @@ export function GoalComposer({ draft, onDraft, options, onOptions, topicTitle, s
     input.style.height = `${Math.min(280, input.scrollHeight)}px`;
   }, [draft]);
 
-  const subject = topicTitle ?? (sourceTitles.length ? '已选资料' : '我想学的主题');
+  const subject = topicTitle ?? (sourceTitles.length ? '已选资料' : attachedCount ? '附上的内容' : '我想学的主题');
 
   const start = () => {
     if (draft.trim()) onStart();
@@ -95,7 +101,8 @@ export function GoalComposer({ draft, onDraft, options, onOptions, topicTitle, s
               <span className={s.contextChip}><Files size={13} strokeWidth={1.75} /><span>{sourceTitles.length} 份已选资料</span></span>
             </Tip>
           )}
-          {!topicTitle && sourceTitles.length === 0 && <span className={s.contextHint}>没有资料时助理只能用通用知识，建议先打开一门课。</span>}
+          {attach}
+          {!topicTitle && sourceTitles.length === 0 && attachedCount === 0 && <span className={s.contextHint}>没有资料时助理只能用通用知识，可以打开一门课，或附上文件和你做过的内容。</span>}
         </div>
         <div className={s.composerBar}>
           <div className={s.options}>
@@ -157,7 +164,7 @@ export function GoalComposer({ draft, onDraft, options, onOptions, topicTitle, s
             ) : (
               <Button variant="ghost" icon={<CalendarClock size={15} strokeWidth={1.75} />} onClick={onSchedule}>定时</Button>
             )}
-            <Button variant="solid" size={compact ? 'lg' : 'md'} block={compact} icon={<ArrowUp size={compact ? 17 : 15} strokeWidth={2} />} disabled={!draft.trim()} onClick={start}>开始</Button>
+            <Button variant="solid" size={compact ? 'lg' : 'md'} block={compact} icon={<ArrowUp size={compact ? 17 : 15} strokeWidth={2} />} disabled={!draft.trim() || starting} loading={starting} onClick={start}>开始</Button>
           </div>
         </div>
       </section>

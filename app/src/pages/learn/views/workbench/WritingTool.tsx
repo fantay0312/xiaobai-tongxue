@@ -1,16 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Languages, MessageCircleQuestion, PenLine, RefreshCw, Wand2 } from 'lucide-react';
+import { Check, Languages, PenLine, RefreshCw, Wand2 } from 'lucide-react';
 import { CoachMarkdown } from '../../../../components/coach/CoachMarkdown';
 import { Badge, Button, Field, Progress, Segmented, Textarea, toast } from '../../../../components/ui';
+import { IconSpark } from '../../../../components/ui/icons';
+import { logActivity } from '../../../../engine/activityLog';
 import { studyData, useStudyData, type WritingDoc } from '../../../../store/studyData';
 import { errorText, isAbort } from './actions';
+import { ItemOrigin, SendMenu } from './AiKit';
+import { useAiFocus } from './AskPanel';
+import { parseSuggestions } from './ai';
 import { diffText, feedbackSection, reviewEssay, reviewTranslation } from './generate';
 import { createItem } from './registry';
-import { DetailHead, GenRunning, ICON_SM, OriginBadge, ToolFrame, type ToolProps } from './shared';
+import { DetailHead, GenRunning, ICON_SM, ToolFrame, type ToolProps } from './shared';
 import { clip, countWords, useAutosave, useWorkbenchNav } from './util';
 import s from './workbench.module.css';
 import w from './writing.module.css';
-import { IconSpark } from '../../../../components/ui/icons';
+import a from './ai.module.css';
 
 type Kind = WritingDoc['kind'];
 const COPY: Record<Kind, {
@@ -55,7 +60,7 @@ const SAMPLES: Record<Kind, { title: string; source: string; draft: string }> = 
 };
 
 export default function WritingTool(props: ToolProps) {
-  const { owner, onAsk } = props;
+  const { owner } = props;
   const { go } = useWorkbenchNav();
   const { writings } = useStudyData(owner);
   const create = (kind: Kind) => go('writing', createItem('writing', owner, undefined, kind));
@@ -85,13 +90,14 @@ export default function WritingTool(props: ToolProps) {
     >
       {(id) => {
         const doc = writings.find((item) => item.id === id);
-        return doc ? <WritingEditor key={doc.id} doc={doc} owner={owner} onAsk={onAsk} /> : null;
+        return doc ? <WritingEditor key={doc.id} doc={doc} view={props} /> : null;
       }}
     </ToolFrame>
   );
 }
 
-function WritingEditor({ doc, owner, onAsk }: { doc: WritingDoc; owner: string | null; onAsk: (text: string) => void }) {
+function WritingEditor({ doc, view }: { doc: WritingDoc; view: ToolProps }) {
+  const { owner, askHere } = view;
   const kind: Kind = doc.kind === 'translation' ? 'translation' : 'essay';
   const copy = COPY[kind];
   const [title, setTitle] = useState(doc.title);
@@ -100,7 +106,13 @@ function WritingEditor({ doc, owner, onAsk }: { doc: WritingDoc; owner: string |
   const [dirty, setDirty] = useState(false);
   const [state, setState] = useState<'idle' | 'running' | 'error'>('idle');
   const [error, setError] = useState('');
-  const [tab, setTab] = useState<'feedback' | 'compare'>('feedback');
+  const [tab, setTab] = useState<'sentences' | 'feedback' | 'compare'>('sentences');
+  /** 逐句建议的处理结果：下标 → 已采纳 / 已忽略。重新批改后清空 */
+  const [resolved, setResolved] = useState<Record<number, 'done' | 'skipped'>>({});
+  const latest = useRef({ title, source, draft, feedback: doc.feedback });
+  useEffect(() => { latest.current = { title, source, draft, feedback: doc.feedback }; });
+  useEffect(() => { setResolved({}); }, [doc.feedback]);
+  const suggestions = useMemo(() => parseSuggestions(doc.feedback, kind), [doc.feedback, kind]);
   const abort = useRef<AbortController | null>(null);
   const value = useMemo(() => ({ title, source, draft }), [title, source, draft]);
 
@@ -141,8 +153,15 @@ function WritingEditor({ doc, owner, onAsk }: { doc: WritingDoc; owner: string |
       studyData.saveWriting(owner, { id: doc.id, kind, title: name, source, draft, feedback: result.data.feedback, score: result.data.score });
       setTitle(name);
       setDirty(false);
-      setTab('feedback');
+      setTab('sentences');
       setState('idle');
+      logActivity(owner, {
+        source: 'writing',
+        summary: `${kind === 'essay' ? '作文' : '翻译练习'}《${clip(name, 24)}》${kind === 'essay' ? '批改' : '讲评'}完成：${Math.round(result.data.score)} 分${result.local ? '（本地规则检查）' : ''}`,
+        signal: result.data.score >= 80 ? 'success' : result.data.score < 60 ? 'struggle' : 'neutral',
+        detail: clip(feedbackSection(result.data.feedback, '总评').replace(/\s+/g, ' '), 200),
+        ref: { kind: 'writing', id: doc.id, title: name },
+      });
       if (result.local) toast('已完成规则检查（本地演示）', { description: '当前没有可用模型，讲评按规则给出。' });
       else toast.success(kind === 'essay' ? '批改完成' : '讲评完成');
     } catch (reason) {
@@ -159,9 +178,38 @@ function WritingEditor({ doc, owner, onAsk }: { doc: WritingDoc; owner: string |
     setDraft(sample.draft);
     setDirty(true);
   };
-  const ask = () => onAsk(
-    `${kind === 'essay' ? '这是我的作文和批改意见' : '这是我的译文和讲评'}，请挑最要紧的一个问题，带我一步步改：\n\n【${copy.source}】\n${clip(source, 600)}\n\n【${copy.draft}】\n${clip(draft, 1200)}${doc.feedback ? `\n\n【讲评摘要】\n${clip(feedbackSection(doc.feedback, '总评') || doc.feedback, 500)}` : ''}`,
-  );
+  const docText = () => {
+    const now = latest.current;
+    return `【${copy.source}】\n${clip(now.source, 1200)}\n\n【${copy.draft}】\n${clip(now.draft, 3000)}${now.feedback ? `\n\n【讲评】\n${clip(now.feedback, 1500)}` : ''}`;
+  };
+  useAiFocus({ kind: 'writing', id: doc.id, label: copy.name, title, getText: docText });
+
+  /** 采纳一条逐句建议：把草稿里的原句换成改写后的句子 */
+  const acceptSuggestion = (index: number) => {
+    const item = suggestions[index];
+    const now = latest.current.draft;
+    if (!item || !now.includes(item.original)) return;
+    setDraft(now.replace(item.original, item.revised));
+    setDirty(true);
+    setResolved((current) => ({ ...current, [index]: 'done' }));
+  };
+  const pending = suggestions.map((item, index) => ({ item, index })).filter(({ item, index }) => !resolved[index] && draft.includes(item.original));
+  const acceptAll = () => {
+    let next = latest.current.draft;
+    const marks: Record<number, 'done'> = {};
+    for (const { item, index } of pending) {
+      if (!next.includes(item.original)) continue;
+      next = next.replace(item.original, item.revised);
+      marks[index] = 'done';
+    }
+    const before = latest.current.draft;
+    const beforeMarks = resolved;
+    setDraft(next);
+    setDirty(true);
+    setResolved((current) => ({ ...current, ...marks }));
+    toast.success(`已采纳 ${Object.keys(marks).length} 处修改`, { action: { label: '撤销', onClick: () => { setDraft(before); setDirty(true); setResolved(beforeMarks); } } });
+  };
+  const shownTab = tab === 'sentences' && !suggestions.length ? 'feedback' : tab;
 
   const score = typeof doc.score === 'number' ? Math.round(doc.score) : null;
   const blank = !source.trim() && !draft.trim();
@@ -171,10 +219,11 @@ function WritingEditor({ doc, owner, onAsk }: { doc: WritingDoc; owner: string |
       <DetailHead
         title={title}
         onTitle={touch(setTitle)}
-        badges={<><Badge tone="accent">{copy.name}</Badge><OriginBadge origin={doc.origin} /></>}
+        badges={<><Badge tone="accent">{copy.name}</Badge><ItemOrigin owner={owner} kind="writing" id={doc.id} origin={doc.origin} /></>}
       >
         {blank && <Button variant="ghost" size="sm" icon={<Wand2 {...ICON_SM} />} onClick={fillSample}>填入示例</Button>}
         <span className={s.saved}>{dirty ? '正在保存…' : '已保存'}</span>
+        {!blank && <SendMenu view={view} item={{ kind: 'writing', id: doc.id, label: copy.name, title, text: docText }} />}
       </DetailHead>
 
       <div className={w.body}>
@@ -215,19 +264,53 @@ function WritingEditor({ doc, owner, onAsk }: { doc: WritingDoc; owner: string |
                   </div>
                 )}
                 <div className={w.scoreTools}>
-                  {reference && (
+                  {(reference || suggestions.length > 0) && (
                     <Segmented
                       size="sm"
                       label="讲评视图"
-                      value={tab}
+                      value={shownTab}
                       onChange={setTab}
-                      options={[{ value: 'feedback', label: '讲评' }, { value: 'compare', label: '对照' }]}
+                      options={[
+                        ...(suggestions.length ? [{ value: 'sentences' as const, label: `逐句 ${pending.length || ''}`.trim() }] : []),
+                        { value: 'feedback' as const, label: '讲评' },
+                        ...(reference ? [{ value: 'compare' as const, label: '对照' }] : []),
+                      ]}
                     />
                   )}
-                  <Button variant="ghost" size="sm" icon={<MessageCircleQuestion {...ICON_SM} />} onClick={ask}>问小砚</Button>
+                  <Button variant="ghost" size="sm" icon={<IconSpark size={16} />} onClick={() => askHere(doc.feedback ? '这一篇最该先改哪一处？带我一步步改。' : undefined)}>问小砚</Button>
                 </div>
               </div>
-              {tab === 'compare' && reference ? (
+              {shownTab === 'sentences' ? (
+                <div className={w.sentences}>
+                  <div className={a.sugFoot}>
+                    <span>{pending.length ? `还有 ${pending.length} 处可以直接改进草稿，逐条看过再采纳。` : '这些建议都处理过了。改完可以重新提交。'}</span>
+                    {pending.length > 1 && <Button variant="soft" size="sm" onClick={acceptAll}>全部采纳</Button>}
+                  </div>
+                  <ul className={a.sugList}>
+                    {suggestions.map((item, index) => {
+                      const state = resolved[index];
+                      const found = draft.includes(item.original);
+                      return (
+                        <li key={index} className={a.sug} data-state={state}>
+                          <p className={a.sugOld}>{item.original}</p>
+                          <p className={a.sugNew}>{item.revised}</p>
+                          {item.reason && item.reason !== '—' && <p className={a.sugWhy}>{item.reason}</p>}
+                          <div className={a.sugFoot}>
+                            {state === 'done' ? <span><Check size={13} strokeWidth={2} /> 已采纳</span>
+                              : state === 'skipped' ? <><span>已忽略</span><Button variant="ghost" size="sm" onClick={() => setResolved((current) => { const next = { ...current }; delete next[index]; return next; })}>恢复</Button></>
+                                : found ? (
+                                  <>
+                                    <Button variant="solid" size="sm" onClick={() => acceptSuggestion(index)}>采纳</Button>
+                                    <Button variant="ghost" size="sm" onClick={() => setResolved((current) => ({ ...current, [index]: 'skipped' }))}>忽略</Button>
+                                  </>
+                                ) : <span>草稿里已经找不到这一句了，可能已经改过。</span>}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ) : shownTab === 'compare' && reference ? (
                 <div className={w.compare}>
                   <p className={w.legend}>{copy.compare}<span><del>删去</del><ins>改为</ins></span></p>
                   <div className={w.diff}>

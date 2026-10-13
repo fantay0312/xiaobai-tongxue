@@ -8,7 +8,7 @@
  */
 import type { ChatMessage, Topic, TopicState, TurnTrace, XiaobaiMood } from '../types';
 import { XIAOBAI_EXAM_READY_LINE } from '../data/xiaobaiLines';
-import { DEFLECTION_LINE } from './guard';
+import { DEFLECTION_LINE, LEGACY_DEFLECTION_LINES } from './guard';
 
 export interface SessionBrief {
   /** 本轮轮次(1 起,= traces.length + 1) */
@@ -48,7 +48,7 @@ export function isBlockedTeacherMessage(messages: ChatMessage[], index: number):
   if (m.role !== 'teacher') return false;
   if (m.blocked) return true;
   const next = messages[index + 1];
-  return next?.role === 'xiaobai' && next.text === DEFLECTION_LINE;
+  return next?.role === 'xiaobai' && (next.text === DEFLECTION_LINE || LEGACY_DEFLECTION_LINES.includes(next.text));
 }
 
 function clip(text: string, max: number): string {

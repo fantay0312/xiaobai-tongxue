@@ -4,9 +4,12 @@
  * 导航在终端侧栏（新建一堂课 / 我的课程 / 本课场景），主区只放一样东西：生成器，或打开着的课堂。
  * 侧栏收起或在手机上看不到侧栏时，主区自带课程库和幕导航。
  */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { NO_ATTACHMENTS, type Attachments } from '../../../components/handoff/AttachBar';
+import { handoffSource } from '../../../components/handoff/materials';
 import { Button, Dialog, Segmented, toast } from '../../../components/ui';
+import { useArtifacts } from '../../../lib/artifacts';
 import { XiaobaiAvatar } from '../../../components/xiaobai/XiaobaiAvatar';
 import type { GenerateProgress, Lesson } from '../../../engine/lessonStudio';
 import { useAppStore } from '../../../store/appStore';
@@ -34,7 +37,32 @@ export default function CourseStudioView(props: TerminalViewProps) {
   const phone = useMediaQuery('(max-width: 760px)') && !sidebarSlot;
   const [pane, setPane] = useState<'new' | 'library'>('new');
   const [searchParams] = useSearchParams();
-  const [activeId, setActiveId] = useState<string | null>(() => searchParams.get('lesson'));
+  const lessonParam = searchParams.get('lesson');
+  const fromParam = searchParams.get('from');
+  const handoffParam = searchParams.get('handoff');
+  const [activeId, setActiveId] = useState<string | null>(() => (fromParam || handoffParam ? null : lessonParam));
+  // 从命令面板、资料库、成果来源跳进来时地址里的课会变：跟着打开
+  useEffect(() => { if (lessonParam && !fromParam && !handoffParam) setActiveId(lessonParam); }, [lessonParam, fromParam, handoffParam]);
+  /** 别处带来的材料：from=<成果登记键> 是一份已有成果，handoff=<短号> 是一段刚交过来的内容 */
+  const artifacts = useArtifacts(owner);
+  const fromArtifact = fromParam ? artifacts.find((item) => item.key === fromParam) : undefined;
+  const fromKey = fromArtifact?.key;
+  const fromTitle = fromArtifact?.title;
+  const preload = useMemo(() => {
+    if (!fromKey && !handoffParam) return null;
+    const carried = handoffSource(handoffParam);
+    const artifact = fromKey ? { key: fromKey, title: fromTitle } : undefined;
+    const attachments: Attachments = {
+      ...NO_ATTACHMENTS,
+      selection: { fileIds: [], artifactKeys: artifact ? [artifact.key] : [] },
+      carried: carried ? [carried] : [],
+    };
+    const name = artifact?.title ?? carried?.title;
+    if (!name) return null;
+    return { key: `${fromKey ?? ''}|${handoffParam ?? ''}`, attachments, prompt: `把「${name}」讲成一堂课` };
+  }, [fromKey, fromTitle, handoffParam]);
+  // 带着材料进来：回到生成器，而不是停在上次打开的课
+  useEffect(() => { if (preload) { setActiveId(null); setPane('new'); } }, [preload]);
   const [pendingDelete, setPendingDelete] = useState<Lesson | null>(null);
   const [progress, setProgress] = useState<GenerateProgress | null>(null);
   const xiaobaiLevel = useAppStore((state) => state.global.learningLevel);
@@ -123,7 +151,16 @@ export default function CourseStudioView(props: TerminalViewProps) {
 
         {/* 切到课程库时生成器只是藏起来，生成不中断 */}
         <div className={st.pane} hidden={phone && pane !== 'new'}>
-          <LessonComposer owner={owner} topic={props.topic} selectedSources={props.selectedSources} onCreated={onCreated} onProgress={setProgress} compact={phone} />
+          <LessonComposer
+            owner={owner}
+            topic={props.topic}
+            selectedSources={props.selectedSources}
+            onCreated={onCreated}
+            onProgress={setProgress}
+            compact={phone}
+            preload={preload}
+            onManageLibrary={() => props.onView('library')}
+          />
 
           <ul className={st.features}>
             {FEATURES.map((item) => (

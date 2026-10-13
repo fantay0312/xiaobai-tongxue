@@ -41,8 +41,12 @@ import type { PreparedImageAttachment } from '../lib/imageAttachment';
 import { describeTeachingImage } from '../lib/vision';
 import { listPublishedCustomTopics } from '../lib/customContent';
 import { hydrateRuntimeTopic, registerRuntimeTopics } from '../data/runtimeTopics';
+// 小白的角色卡(性格文字 + 对老师的称呼):按账号存在本机,请台词时读出来传给渲染层
+import { personaCard } from './personaCard';
+import { normalizeLlmSettings } from '../lib/providers/settings';
+import { logActivity } from '../engine/activityLog';
 
-const uid = () => (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
+const uid =() => (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
 const now = () => new Date().toISOString();
 let customTopicsLoadSequence = 0;
 const CUSTOM_TOPICS_RETRY_MS = [750, 1_500] as const;
@@ -52,6 +56,8 @@ let memoryPiiProvider: () => string[] = () => [];
 export function setMemoryPiiProvider(provider: () => string[]): void {
   memoryPiiProvider = provider;
 }
+/** 当前账号的小白角色卡;账号名与梦境提示同源(sync 注入的 provider),未登录为 null */
+const currentPersonaCard = () => personaCard.get(memoryPiiProvider()[0] ?? null);
 /** 课堂里「小白翻了翻小本子」的系统旁注前缀(mock 模式下记忆影响的可见证据,一场只出一次) */
 const MEMORY_NOTE_PREFIX = '小白翻了翻小本子：';
 
@@ -81,13 +87,14 @@ const ENV_LLM_DEFAULT: LlmSettings | null = ENV_KEY
 
 // 无注入凭据时默认 proxy(部署形态走服务器网关);本地无网关时 llmCall 快速失败,
 // 引擎按既有纪律静默降级 mock —— 离线演示体验与从前一致
-const DEFAULT_SETTINGS: LlmSettings = ENV_LLM_DEFAULT ?? {
+// normalizeLlmSettings 补齐自定义线路的协议(缺省 openai-chat)与勾选模型列表
+const DEFAULT_SETTINGS: LlmSettings = normalizeLlmSettings(ENV_LLM_DEFAULT ?? {
   mode: 'proxy',
   baseUrl: '',
   apiKey: '',
   model: '',
   temperature: 0.8,
-};
+});
 
 function stamp(drafts: EventDraft[], sessionId: string | null): LearnEvent[] {
   return drafts.map((d) => ({ ...d, id: uid(), t: now(), sessionId }));
@@ -358,6 +365,7 @@ export const useAppStore = create<AppState>()(
         const speak = await speakOpening({
           mode, card: opening.card, topic, state, settings: get().settings, seed: openingSeed,
           hour: new Date().getHours(), memoryHints, sessionBrief, recall, dreamHint,
+          personaCard: currentPersonaCard(),
         });
         // api 模式下渲染可能耗时数秒,期间用户可能已退出/切换会话 —— 续体只允许写回本会话
         if (get().live?.sessionId !== sessionId) return;
@@ -468,6 +476,7 @@ export const useAppStore = create<AppState>()(
               recentMessages: [...live.messages, teacherMsg],
               settings,
               seed: live.traces.length + 1,
+              personaCard: currentPersonaCard(),
             });
             if (get().live?.sessionId !== sessionId) return { accepted: true };
             set((s) => {
@@ -549,6 +558,7 @@ export const useAppStore = create<AppState>()(
             card: privateCard, topic, state: stateAfter,
             recentMessages: privateMessages,
             settings, seed: live.traces.length + 1, memoryHints, sessionBrief,
+            personaCard: currentPersonaCard(),
           });
           if (get().live?.sessionId !== sessionId) return { accepted: true };
 
@@ -680,6 +690,28 @@ export const useAppStore = create<AppState>()(
         get().memorizeSession({
           sessionId: live.sessionId, topicId: topic.topicId, messages: live.messages, traces: live.traces, report,
         });
+
+        // 讲课和小测也是学习行为:记进行为日志,学伴的记忆据此更新(记忆不只来自对话)
+        const activityOwner = memoryPiiProvider()[0] ?? null;
+        const spots = report.blindSpots.slice(0, 4).map((spot) => spot.knowledgePoint).filter(Boolean);
+        const ref = { kind: 'report', id: report.sessionId, title: topic.title };
+        logActivity(activityOwner, {
+          source: 'teach', topicId: topic.topicId, topicTitle: topic.title, ref,
+          summary: report.masteredNow
+            ? `把「${topic.title}」给小白讲通了,这一课出师`
+            : spots.length ? `给小白讲「${topic.title}」时有 ${spots.length} 处没讲清` : `给小白讲了「${topic.title}」,共 ${live.traces.length} 轮`,
+          signal: report.masteredNow ? 'success' : spots.length ? 'struggle' : 'neutral',
+          ...(spots.length ? { detail: `没讲清:${spots.join('、')}` } : report.goldenAnalogies[0] ? { detail: `用过的好比方:${report.goldenAnalogies[0]}` } : {}),
+        });
+        if (quiz) {
+          const missed = quiz.failedChecklist.slice(0, 4).map((id) => topic.checklist.find((item) => item.id === id)?.point ?? id);
+          logActivity(activityOwner, {
+            source: 'exam', topicId: topic.topicId, topicTitle: topic.title, ref,
+            summary: `小白考「${topic.title}」得 ${quiz.score} 分${quiz.failedChecklist.length ? `,错了 ${quiz.failedChecklist.length} 处` : ',全对'}`,
+            signal: quiz.failedChecklist.length ? 'struggle' : 'success',
+            ...(missed.length ? { detail: `小白没学会:${missed.join('、')}` } : {}),
+          });
+        }
 
         set((s) => ({ reports: [...s.reports, report], live: null }));
         revokeLiveImages(live);
@@ -845,6 +877,9 @@ export const useAppStore = create<AppState>()(
         if (ENV_LLM_DEFAULT && !merged.settings?.apiKey) {
           merged.settings = { ...ENV_LLM_DEFAULT, temperature: merged.settings?.temperature ?? 0.8 };
         }
+        // 线路设置每次加载都整理一遍(幂等):「演示」不再是可选线路,旧存档的 mock 改走服务器线路;
+        // 协议缺省 openai-chat;勾选模型去重、限长,并保证包含默认模型
+        merged.settings = normalizeLlmSettings({ ...DEFAULT_SETTINGS, ...merged.settings });
         // 记忆切片每次加载都过校验:手工改坏/损坏的存档不得让记忆匣白屏
         merged.memory = sanitizeMemoryState(merged.memory) ?? EMPTY_MEMORY;
         return merged;

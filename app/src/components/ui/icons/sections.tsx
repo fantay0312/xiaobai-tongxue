@@ -130,3 +130,18 @@ export function IconGrowth(props: XbIconProps) {
     </Svg>
   );
 }
+
+/** 科研台：一只圆底烧瓶，瓶里有墨 */
+export function IconResearch(props: XbIconProps) {
+  return (
+    <Svg {...props}>
+      <Wash d="M10.2 9.4L5.3 17.7A2.3 2.3 0 0 0 7.3 21.2h9.4a2.3 2.3 0 0 0 2-3.5L13.8 9.4z" />
+      <path className={keyStroke} d="M9.2 2.8h5.6" />
+      <path d="M10.2 2.8v6.6L5.3 17.7A2.3 2.3 0 0 0 7.3 21.2h9.4a2.3 2.3 0 0 0 2-3.5L13.8 9.4V2.8" />
+      <path {...INK} d="M8.3 15.4h7.4l1.4 2.5a.9.9 0 0 1-.8 1.4H7.7a.9.9 0 0 1-.8-1.4z" />
+      <Move kind="lift" origin="12px 12px">
+        <circle {...INK} cx="12.9" cy="12.6" r=".8" />
+      </Move>
+    </Svg>
+  );
+}

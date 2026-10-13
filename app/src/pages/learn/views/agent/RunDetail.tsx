@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Check, Circle, Play, RotateCw, Square, Trash2 } from 'lucide-react';
 import { Badge, Button, IconButton, Progress } from '../../../../components/ui';
 import { hasPendingAutoContinue, type AgentRun, type ProducedItem } from '../../../../engine/agent';
@@ -15,9 +15,11 @@ interface Props {
   onOpen: (item: ProducedItem) => void;
   /** 手机版式：动作吸在页面底部，一只手够得着 */
   compact?: boolean;
+  /** 任务办完后把小结交给别的板块的入口 */
+  sendTo?: ReactNode;
 }
 
-export function RunDetail({ run, onStop, onContinue, onRerun, onDelete, onOpen, compact = false }: Props) {
+export function RunDetail({ run, onStop, onContinue, onRerun, onDelete, onOpen, compact = false, sendTo }: Props) {
   const status = STATUS_META[run.status];
   const progress = goalProgress(run);
   const running = run.status === 'running';
@@ -51,6 +53,7 @@ export function RunDetail({ run, onStop, onContinue, onRerun, onDelete, onOpen, 
       {!running && (
         <Button variant={canContinue ? 'ghost' : 'soft'} icon={<RotateCw size={14} strokeWidth={1.75} />} onClick={onRerun}>重新运行</Button>
       )}
+      {sendTo}
       <IconButton label="删除这次记录" onClick={onDelete}><Trash2 size={16} strokeWidth={1.75} /></IconButton>
     </>
   );

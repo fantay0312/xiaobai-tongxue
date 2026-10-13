@@ -265,6 +265,49 @@ export function sceneDigest(scene: LessonScene): string {
   }
 }
 
+/** 一幕写成 Markdown：标题、目标、这一幕的内容和老师的讲稿。带去别的板块（笔记、闪卡、出题）时用 */
+export function sceneMarkdown(scene: LessonScene, index?: number): string {
+  const lines: string[] = [`## ${index === undefined ? '' : `${index + 1}. `}${scene.title}（${SCENE_LABELS[scene.type]}）`];
+  if (scene.goal.trim()) lines.push(`目标：${scene.goal.trim()}`);
+  switch (scene.type) {
+    case 'slide':
+      lines.push(scene.bullets.map((item) => `- ${item}`).join('\n'));
+      if (scene.figure) lines.push(scene.figure.kind === 'formula' ? `$$${scene.figure.content}$$` : `\`\`\`${scene.figure.kind === 'mermaid' ? 'mermaid' : ''}\n${scene.figure.content}\n\`\`\``);
+      break;
+    case 'whiteboard':
+      lines.push(scene.strokes.map((stroke) => (stroke.kind === 'formula' ? `$$${stroke.content}$$` : stroke.kind === 'diagram' ? `\`\`\`mermaid\n${stroke.content}\n\`\`\`` : `- ${stroke.content}`)).join('\n'));
+      break;
+    case 'quiz':
+      lines.push(scene.questions.map((question, i) => [
+        `${i + 1}. ${question.stem}`,
+        ...question.options.map((option, optionIndex) => `   ${optionLetter(optionIndex)}. ${option}`),
+        `   答案：${question.answer.map(optionLetter).join('、')}`,
+        question.explanation ? `   解析：${question.explanation}` : '',
+      ].filter(Boolean).join('\n')).join('\n\n'));
+      break;
+    case 'interactive':
+      if (scene.instructions.trim()) lines.push(`动手试一试：${scene.instructions.trim()}`);
+      break;
+    case 'pbl':
+      lines.push(scene.brief, `交付物：${scene.deliverable}`, scene.milestones.map((item, i) => `${i + 1}. ${item.title}：${item.detail}`).join('\n'));
+      if (scene.rubric.length) lines.push(`评价标准：\n${scene.rubric.map((item) => `- ${item.criterion}：${item.levels}`).join('\n')}`);
+      break;
+  }
+  if (scene.script.trim()) lines.push(`讲稿：${scene.script.trim()}`);
+  return lines.filter((line) => line.trim()).join('\n\n');
+}
+
+/** 整堂课写成 Markdown：简介、学习目标、大纲、逐幕内容与讲稿 */
+export function lessonMarkdown(lesson: Lesson): string {
+  return [
+    `# ${lesson.title}`,
+    lesson.summary.trim(),
+    lesson.objectives.length ? `## 学习目标\n\n${lesson.objectives.map((item) => `- ${item}`).join('\n')}` : '',
+    `## 大纲\n\n${lesson.scenes.map((scene, index) => `${index + 1}. ${scene.title}（${SCENE_LABELS[scene.type]}）`).join('\n')}`,
+    ...lesson.scenes.map((scene, index) => sceneMarkdown(scene, index)),
+  ].filter((part) => part.trim()).join('\n\n');
+}
+
 // ───────────────────────── 互动模拟文档 ─────────────────────────
 
 /** 互动页可用的颜色变量；播放器里换成当前皮肤的实际颜色，导出时用这组浅色默认值 */

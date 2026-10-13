@@ -33,6 +33,8 @@
 .scoreTools { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .feedback { padding: 4px 22px 28px; min-width: 0; font-size: var(--fz-md); overflow-wrap: anywhere; }
 .compare { display: grid; gap: 12px; padding: 4px 22px 28px; }
+.sentences { display: grid; gap: 10px; padding: 4px 22px 28px; font-size: var(--fz-md); line-height: 1.7; }
+.sentences svg { vertical-align: -2px; }
 .legend { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0; color: var(--text-3); font-size: var(--fz-xs); }
 .legend span { display: inline-flex; gap: 8px; }
 .diff {
@@ -65,7 +67,7 @@
   .body { grid-template-columns: minmax(0, 1fr); }
   .pane { border-left: 0; border-top: 1px solid var(--border); border-bottom-left-radius: var(--r-xl); }
   .inputs { padding: 16px 16px 20px; }
-  .score, .feedback, .compare { padding-inline: 16px; }
+  .score, .feedback, .compare, .sentences { padding-inline: 16px; }
   .intro { min-height: 160px; }
 }
 
@@ -83,7 +85,7 @@
   }
   .run > button:first-child { flex: 1; height: 48px; font-size: 16px; }
   .run > span { flex: 1 1 100%; order: -1; text-align: center; }
-  .score, .feedback, .compare { padding-inline: 14px; }
+  .score, .feedback, .compare, .sentences { padding-inline: 14px; }
   .scoreTools { width: 100%; justify-content: space-between; }
   .diff { padding: 14px; font-size: 16px; }
 }

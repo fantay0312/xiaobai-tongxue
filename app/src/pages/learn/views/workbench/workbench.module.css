@@ -13,6 +13,53 @@
 }
 .root[data-wide='false'] { max-width: 960px; }
 
+/* ── 外框：主区 + 右侧「问小砚」 ── */
+.shell { display: flex; align-items: stretch; width: 100%; min-height: 100%; }
+.shell > .root { flex: 1 1 auto; min-width: 0; }
+.aiPane {
+  flex: none;
+  align-self: flex-start;
+  position: sticky;
+  top: 12px;
+  width: clamp(320px, 27vw, 392px);
+  height: calc(var(--wb-view-h, 100dvh) - 24px);
+  margin: 12px 14px 12px 0;
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+  animation: aiPaneIn var(--dur-2) var(--ease);
+}
+@keyframes aiPaneIn { from { opacity: 0; transform: translateX(12px); } }
+/* 收起时右下角留一个入口：不占版面宽度，跟着滚动停在视口底部 */
+.aiFabSlot { flex: none; align-self: flex-end; position: sticky; bottom: 20px; z-index: 5; width: 0; height: 0; }
+.aiFab {
+  position: absolute;
+  right: 20px;
+  bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 16px 0 13px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--surface);
+  box-shadow: var(--shadow-3), 0 0 0 1px var(--border);
+  color: var(--text);
+  font: 500 var(--fz-md)/1 var(--ui-font);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--dur-1) var(--ease), box-shadow var(--dur-2) var(--ease), background var(--dur-1) var(--ease);
+}
+.aiFab svg { color: var(--accent); }
+.aiFab:hover { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); transform: translateY(-1px); }
+.aiFab:active { transform: scale(0.97); }
+.aiFab:focus-visible { outline: none; box-shadow: var(--shadow-3), 0 0 0 3px var(--ring); }
+.aiSheet { padding-bottom: 0; }
+/* 笔记的 AI 条停在底部时，入口让开 */
+.shell:has([data-note-ai]) .aiFabSlot { display: none; }
+
 /* ── 工具导航 ── */
 .nav {
   display: flex;
@@ -439,6 +486,12 @@
     box-shadow: none;
   }
 }
+@media (max-width: 760px) {
+  /* 手机：入口让开底部钉着的提交条；练习、复习占满一屏时收起（那里有就地的 AI 入口） */
+  .aiFabSlot { bottom: 84px; }
+  .aiFab { right: 14px; height: 46px; padding: 0 15px 0 12px; box-shadow: var(--shadow-2), 0 0 0 1px var(--border); }
+  .shell:has([data-wb-focus]) .aiFabSlot { display: none; }
+}
 /* 触屏：分段切换加高一档，标题输入框留足点按高度 */
 @media (pointer: coarse) {
   .detailActions [role='radio'],
@@ -455,6 +508,8 @@
   .navItem:hover:not([aria-current='page']) { background: none; color: var(--text-3); }
 }
 @media (prefers-reduced-motion: reduce) {
+  .aiPane { animation: none; }
+  .aiFab { transition: none; }
   .tile, .todayItem, .navItem, .chip { transition: none; }
   .tile:hover { transform: none; }
 }

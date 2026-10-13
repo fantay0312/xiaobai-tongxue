@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon } from '../../components/ui/Icon';
 import { CoachMarkdown } from '../../components/coach/CoachMarkdown';
 import { artifactMarkdown, artifactSlidesHtml, artifactSvg, STUDIO_LABELS, type StudyArtifact, type StudioKind } from '../../engine/studyStudio';
@@ -6,9 +6,11 @@ import { downloadStudyFile } from '../../engine/studyWorkspace';
 import { exportCaptionVideo, saveBlob, videoExportSupported } from '../../lib/notebookMedia';
 import n from './notebook.module.css';
 
-export function ArtifactPanel({ artifact, onUpdate, onEnhance, onSource, busy, saveFailed = false }: {
+export function ArtifactPanel({ artifact, onUpdate, onEnhance, onSource, busy, saveFailed = false, sendTo }: {
   artifact: StudyArtifact; onUpdate: (artifact: StudyArtifact) => void; onEnhance: () => void;
   onSource: (source: { id: string; title: string; excerpt: string }) => void; busy: boolean; saveFailed?: boolean;
+  /** 「发送到」入口：把这份产物交给工作台、助理或 AI 课堂 */
+  sendTo?: ReactNode;
 }) {
   const [page, setPage] = useState(0); const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(artifact);
@@ -25,7 +27,7 @@ export function ArtifactPanel({ artifact, onUpdate, onEnhance, onSource, busy, s
   const svg = artifact.kind === 'mindmap' || artifact.kind === 'infographic' ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(artifactSvg(artifact, artifact.kind === 'infographic'))}` : '';
   return <article className={n.artifactViewer}>
     <div className={n.artifactHeading}><div><span>{STUDIO_LABELS[artifact.kind]} · {artifact.method === 'model' ? '小砚整理' : '资料摘编'}</span><h1>{artifact.title}</h1><p>依据保存时的 {artifact.sources.length} 份来源片段。当前选择改变后，已有内容和引用仍保留。</p></div></div>
-    <div className={n.artifactTools}><button onClick={download}><Icon name="download" size={15} />{artifact.kind === 'slides' || artifact.kind === 'video' ? '导出 HTML 课件' : artifact.kind === 'table' ? '导出 CSV' : artifact.kind === 'mindmap' || artifact.kind === 'infographic' ? '导出 SVG' : '导出文稿'}</button><button disabled={busy} onClick={() => { setDraft(artifact); setEditing((value) => !value); }}><Icon name="pen" size={15} />{editing ? '收起编辑' : '编辑内容'}</button><button disabled={busy || editing} onClick={onEnhance}><Icon name="sparkles" size={15} />{busy ? '正在整理…' : '请小砚整理'}</button><label>查看形式<select aria-label="产物展示形式" value={artifact.kind} onChange={(event) => onUpdate({ ...artifact, kind: event.target.value as StudioKind })}>{Object.entries(STUDIO_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label></div>
+    <div className={n.artifactTools}><button onClick={download}><Icon name="download" size={15} />{artifact.kind === 'slides' || artifact.kind === 'video' ? '导出 HTML 课件' : artifact.kind === 'table' ? '导出 CSV' : artifact.kind === 'mindmap' || artifact.kind === 'infographic' ? '导出 SVG' : '导出文稿'}</button>{sendTo}<button disabled={busy} onClick={() => { setDraft(artifact); setEditing((value) => !value); }}><Icon name="pen" size={15} />{editing ? '收起编辑' : '编辑内容'}</button><button disabled={busy || editing} onClick={onEnhance}><Icon name="sparkles" size={15} />{busy ? '正在整理…' : '请小砚整理'}</button><label>查看形式<select aria-label="产物展示形式" value={artifact.kind} onChange={(event) => onUpdate({ ...artifact, kind: event.target.value as StudioKind })}>{Object.entries(STUDIO_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label></div>
     {editing ? <div className={n.artifactEditor}><input aria-label="产物标题" value={draft.title} maxLength={160} onChange={(event) => { const next = { ...draft, title: event.target.value }; setDraft(next); onUpdate(next); }} />{draft.sections.map((item, i) => <label key={i}>{item.title}<textarea aria-label={`编辑第 ${i + 1} 节`} value={item.text} maxLength={1600} rows={4} onChange={(event) => { const next = { ...draft, sections: draft.sections.map((s, index) => index === i ? { ...s, text: event.target.value } : s) }; setDraft(next); onUpdate(next); }} /></label>)}<p className={n.quiet}>{saveFailed ? '本机保存失败，当前修改仅保留在页面中，请先导出备份。' : '编辑会自动保存到当前浏览器。'}</p><button onClick={() => setEditing(false)}>完成编辑</button></div> : <>
       {(artifact.kind === 'mindmap' || artifact.kind === 'infographic') && <><img className={n.diagram} src={svg} alt={`${artifact.title}，${artifact.sections.length} 个章节`} /><details className={n.diagramText}><summary>查看文字大纲</summary>{artifact.sections.map((item, i) => <details key={i}><summary>{item.title}</summary><CoachMarkdown text={item.text} /></details>)}</details></>}
       {artifact.kind === 'table' && <div className={n.tableScroll}><table><thead><tr><th>要点</th><th>内容</th><th>来源</th></tr></thead><tbody>{artifact.sections.map((item, i) => <tr key={i}><th>{item.title}</th><td>{item.text}</td><td>{item.sourceIds.map((id) => { const source = artifact.sources.find((s) => s.id === id); return source && <button key={id} onClick={() => onSource(source)}>{source.title}</button>; })}</td></tr>)}</tbody></table></div>}

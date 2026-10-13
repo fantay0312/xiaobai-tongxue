@@ -7,8 +7,8 @@ import {
   type FormEvent, type KeyboardEvent, type MouseEvent, type ReactNode,
 } from 'react';
 import {
-  ArrowUp, BookOpen, ChevronDown, FileText, FolderOpen, LayoutGrid,
-  MessageCircleQuestion, Mic, Plus, Square, SquareSlash, Telescope, X,
+  ArrowUp, AtSign, BookOpen, ChevronDown, FileText, FolderOpen, LayoutGrid,
+  MessageCircleQuestion, Mic, Plus, Sparkles, Square, SquareSlash, Telescope, X,
 } from 'lucide-react';
 import { IconChat, IconFlashcard, IconGuide, IconMindmap, IconQuiz, IconRead } from '../../../components/ui/icons';
 import {
@@ -73,7 +73,7 @@ function slashQuery(input: string): string | null {
 
 export function Composer({
   input, onInput, mode, onMode, answerFormat, onAnswerFormat, busy, onStop, onSubmit, inputRef,
-  deepAvailable, intelligentAvailable, demo, sourceCount, freeChat, attachments, onRemoveAttachment, onAttach, onOpenSources, placeholder,
+  deepAvailable, intelligentAvailable, demo, sourceCount, freeChat, attachments, onRemoveAttachment, onAttach, onAttachContent, onOpenSources, placeholder,
 }: ComposerProps) {
   const listId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -172,6 +172,15 @@ export function Composer({
   // 筛选词一变就回到第一项，并重新打开被 Esc / 失焦收起的列表
   useEffect(() => { setActive(0); setDismissed(false); }, [query]);
 
+  /** 在词首敲 @：打开「我的内容」挑一份带进对话，@ 本身不留在输入里 */
+  const onType = (value: string) => {
+    if (onAttachContent && value.length === input.length + 1 && value.endsWith('@') && value.startsWith(input) && /(^|\s)@$/.test(value)) {
+      onAttachContent();
+      return;
+    }
+    onInput(value);
+  };
+
   const runCommand = (command: SlashCommand) => {
     onInput(command.prompt);
     focusInput(true);
@@ -265,10 +274,10 @@ export function Composer({
 
       <form ref={boxRef} className={s.box} data-listening={dictation.listening || undefined} onSubmit={submit} onClick={focusFromBlank}>
         {attachments.length > 0 && (
-          <ul className={s.attachments} aria-label="已附加的文件">
+          <ul className={s.attachments} aria-label="已附加的文件与内容">
             {attachments.map((file) => (
-              <li key={file.id} className={s.attachment}>
-                <FileText size={14} strokeWidth={1.75} />
+              <li key={file.id} className={s.attachment} data-kind={file.kind ?? 'file'}>
+                {file.kind === 'artifact' ? <Sparkles size={14} strokeWidth={1.75} /> : <FileText size={14} strokeWidth={1.75} />}
                 <span title={file.title}>{file.title}</span>
                 <button type="button" aria-label={`移除 ${file.title}`} onClick={() => onRemoveAttachment(file.id)}>
                   <X size={13} strokeWidth={2} />
@@ -288,9 +297,9 @@ export function Composer({
           aria-autocomplete="list"
           aria-controls={commandsOpen ? listId : undefined}
           aria-activedescendant={commandsOpen ? `${listId}-${activeIndex}` : undefined}
-          placeholder={placeholder ?? (needsSources ? '先选好资料，再向小砚提问' : '向小砚提问，输入 / 使用快捷指令')}
+          placeholder={placeholder ?? (needsSources ? '先选好资料，再向小砚提问' : '向小砚提问，/ 用快捷指令，@ 引用我的内容')}
           enterKeyHint="send"
-          onChange={(event) => onInput(event.target.value)}
+          onChange={(event) => onType(event.target.value)}
           onKeyDown={onKeyDown}
           onFocus={() => { setDismissed(false); setEngaged(true); }}
           onBlur={() => { if (query !== null) setDismissed(true); }}
@@ -304,6 +313,9 @@ export function Composer({
               </MenuTrigger>
               <MenuContent side="top" align="start" onCloseAutoFocus={returnFocus}>
                 <MenuItem icon={<FolderOpen {...ICON} />} hint="把资料库里的文件加入这次对话" onSelect={onAttach}>从资料库选择文件</MenuItem>
+                {onAttachContent && (
+                  <MenuItem icon={<AtSign {...ICON} />} hint="笔记、导图、题目、AI 课、助理成果…" shortcut="@" onSelect={onAttachContent}>引用我的内容</MenuItem>
+                )}
                 <MenuItem icon={<BookOpen {...ICON} />} hint={sourceCount ? `已选 ${sourceCount} 份` : '还没有选资料'} onSelect={onOpenSources}>查看本课资料</MenuItem>
                 {phone && (
                   <>

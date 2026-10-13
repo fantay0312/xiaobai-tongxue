@@ -1,5 +1,6 @@
 import type { LlmSettings } from '../types';
 import { API_BASE, gatewayFetch } from './api';
+import { ProviderError, connectionOf, runProvider } from './providers';
 
 const TIMEOUT_MS = 60_000;
 const DESCRIPTION_MAX_CHARS = 2_400;
@@ -14,11 +15,6 @@ const VISION_SYSTEM = [
   '用简洁中文输出一段描述，不要加标题或前缀。',
 ].join('\n');
 
-function chatCompletionsUrl(baseUrl: string): string {
-  const root = baseUrl.trim().replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
-  return `${root}/chat/completions`;
-}
-
 function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -28,17 +24,6 @@ function blobToDataUrl(blob: Blob): Promise<string> {
       : reject(new Error('vision-read'));
     reader.readAsDataURL(blob);
   });
-}
-
-function responseText(data: unknown): string {
-  const content = (data as { choices?: { message?: { content?: unknown } }[] })
-    ?.choices?.[0]?.message?.content;
-  if (typeof content === 'string') return content;
-  if (!Array.isArray(content)) return '';
-  return content
-    .map((part) => typeof part === 'object' && part !== null
-      ? String((part as { text?: unknown }).text ?? '') : '')
-    .join('');
 }
 
 function cleanDescription(value: unknown): string {
@@ -78,26 +63,28 @@ async function directVision(blob: Blob, settings: LlmSettings, signal: AbortSign
     throw new Error('vision-unconfigured');
   }
   const imageUrl = await blobToDataUrl(blob);
-  const response = await fetch(chatCompletionsUrl(settings.baseUrl), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.apiKey}` },
-    body: JSON.stringify({
+  const match = imageUrl.match(/^data:([^;,]+);base64,(.+)$/);
+  if (!match) throw new Error('vision-read');
+  // 自定义线路按设置里的协议走适配器，四种协议的图片写法各不相同
+  try {
+    const result = await runProvider({
+      connection: connectionOf(settings),
       model: ENV_VISION_MODEL || settings.model,
-      temperature: 0,
-      max_tokens: 700,
       messages: [
         { role: 'system', content: VISION_SYSTEM },
-        { role: 'user', content: [
-          { type: 'text', text: '请转述这张课堂辅助图片。' },
-          { type: 'image_url', image_url: { url: imageUrl } },
-        ] },
+        { role: 'user', content: '请转述这张课堂辅助图片。', images: [{ mime: match[1], base64: match[2] }] },
       ],
-    }),
-    signal,
-  });
-  const data: unknown = await response.json().catch(() => null);
-  if (!response.ok) throw httpError(response.status, data);
-  return cleanDescription(responseText(data));
+      effort: 'none',
+      maxTokens: 700,
+      temperature: 0,
+      stream: false,
+      signal,
+    });
+    return cleanDescription(result.text);
+  } catch (error) {
+    if (error instanceof ProviderError && error.status) throw httpError(error.status);
+    throw error;
+  }
 }
 
 /** 图片仅在本调用内转为临时识别文本，调用方不得将描述持久化。 */

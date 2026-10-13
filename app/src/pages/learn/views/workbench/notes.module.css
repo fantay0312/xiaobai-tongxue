@@ -52,6 +52,8 @@
   border-bottom: 1px solid var(--border);
   background: var(--sidebar);
 }
+.askAi { flex: none; display: inline-flex; }
+.askAi svg { color: var(--accent); }
 .marks { flex: 1; min-width: 0; display: flex; align-items: center; gap: 1px; overflow-x: auto; scrollbar-width: none; transition: opacity var(--dur-2) var(--ease); }
 .marks::-webkit-scrollbar { display: none; }
 .marks[data-off='true'] { opacity: 0.5; }
@@ -63,6 +65,40 @@
   height: clamp(420px, calc(100dvh - 330px), 860px);
 }
 .body[data-mode='split'] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+/* 文本框外面套一层：下面垫「等待改写的那段」的高亮，上面放空行提示 */
+.areaWrap { position: relative; min-width: 0; height: 100%; }
+.areaWrap .area { position: relative; z-index: 1; }
+.marksLayer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.marksLayer > div { position: absolute; top: 0; left: 0; }
+.marksLayer i { position: absolute; border-radius: 3px; background: color-mix(in srgb, var(--accent) 20%, transparent); }
+.lineHint {
+  position: absolute;
+  z-index: 2;
+  color: var(--text-4);
+  font: var(--fz-lg)/1.8 var(--ui-font);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+/* 手机与触屏：AI 条、斜杠菜单、问 AI 和结果都停在编辑区底部（键盘上方） */
+.dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+  background: var(--surface);
+}
+.dock > * { width: 100%; max-width: none; border-radius: var(--r-lg); box-shadow: none; }
+.dock[data-kind='bar'] { padding-inline: 4px; }
+.dock[data-kind='slash'] > * { max-height: calc(var(--app-vh, 100dvh) * 0.42); background: var(--sidebar); }
+.dock[data-kind='block'] > * { max-height: calc(var(--app-vh, 100dvh) * 0.5); padding: 4px 6px; }
+.dock[data-kind='prompt'] > * { padding: 4px 4px 4px 6px; }
+.body[data-docked] .area { padding-bottom: 72px; }
 .area,
 .preview {
   min-width: 0;
@@ -115,6 +151,7 @@
   .bar { position: sticky; top: var(--wb-nav-h, 0px); z-index: 3; gap: 8px; padding: 6px 8px 6px 12px; }
   .marks { gap: 2px; scroll-snap-type: x proximity; overscroll-behavior-x: contain; }
   .marks > * { scroll-snap-align: start; }
+  .dock { margin: 0; border-radius: 0; box-shadow: 0 -1px 0 var(--border); }
   .tag { height: 28px; }
   .tag button { position: relative; width: 22px; height: 22px; }
   .tag button::before { content: ''; position: absolute; inset: -9px -5px; }

@@ -5,9 +5,10 @@
  * speakXiaobai 是唯一出口:渲染 → 泄漏检测 → 重试(≤2) → 兜底。
  * speakOpening 是一堂课第一句话的入口(内部仍走 speakXiaobai 的守门与重试)。
  * 口吻:模板按轮次轮转并避开上一句的开头;api 路径把小白前两句的开头几个字交给提示词,要求换开头、换句式。
+ * 角色卡:性格文字只进 api 提示词;对老师的称呼与活泼程度(settings.temperature 分档)两条路径都认。
  */
 import type {
-  ChatMessage, InstructionCard, LlmSettings, SessionMode, Topic, TopicState, XiaobaiGlobal, XiaobaiMood,
+  ChatMessage, InstructionCard, LlmSettings, Persona, SessionMode, Topic, TopicState, XiaobaiGlobal, XiaobaiMood,
 } from '../types';
 import {
   XIAOBAI_DREAM_LINES, XIAOBAI_EXAM_READY_LINE, XIAOBAI_LINES, XIAOBAI_OPENING_BRIDGES,
@@ -19,8 +20,12 @@ import { FALLBACK_LINE, leakageCheck } from './leakage';
 import { llmCall } from './llm';
 import { mockQuestionClarificationReply, repeatsQuestionVerbatim } from './conversationRepair';
 import { parseMoodTag } from './moodTag';
-import { buildXiaobaiSystem, buildXiaobaiUser, recentOwnOpeners } from './prompts';
-import type { OpeningContext, QuestionClarificationCard, RuntimeInstructionCard } from './prompts';
+import {
+  buildXiaobaiSystem, buildXiaobaiUser, livelinessBand, recentOwnOpeners, teacherAddressOf,
+} from './prompts';
+import type {
+  LivelinessBand, OpeningContext, QuestionClarificationCard, RuntimeInstructionCard, XiaobaiPersonaCard,
+} from './prompts';
 import type { SessionBrief } from './sessionBrief';
 
 /** 按动作查表的心情(mock 路径唯一来源;api 路径在模型没给标签时的兜底) */
@@ -86,12 +91,25 @@ function pickParaphrase(source: string, topic: Topic): string {
   return best.length > 50 ? `${best.slice(0, 50)}…` : best;
 }
 
-function fillTemplate(tpl: string, card: InstructionCard, topic: Topic): string {
+/**
+ * 把模板里对老师的称呼换成角色卡指定的叫法。只动小白自己的话:
+ * 『』和“”里是引用的原话(往事里老师打过的比方等),不改;老师讲解的复述素材不经过这里。
+ */
+function withAddress(text: string, address: string): string {
+  if (!address) return text;
+  return text
+    .split(/(『[^』]*』|“[^”]*”)/)
+    .map((part, i) => (i % 2 === 1 ? part : part.replaceAll('老师', address)))
+    .join('');
+}
+
+function fillTemplate(tpl: string, card: InstructionCard, topic: Topic, address = ''): string {
   const item = card.targetChecklistId
     ? topic.checklist.find((c) => c.id === card.targetChecklistId)
     : undefined;
-  return tpl
-    .replaceAll('{probe}', item?.probeLine ?? '能再从头给我讲讲吗?')
+  // 称呼只换模板骨架和小白自己的追问;{term}/{paraphrase} 是老师的原话,原样填入
+  return withAddress(tpl, address)
+    .replaceAll('{probe}', withAddress(item?.probeLine ?? '能再从头给我讲讲吗?', address))
     .replaceAll('{point}', item?.point ?? '这里')
     .replaceAll('{term}', card.recentTeacherTerms[0] ?? '那个')
     .replaceAll('{belief}', card.mcBelief ?? '')
@@ -131,14 +149,42 @@ function pickFresh(lines: readonly string[], seed: number, lastOwnLine: string):
   return lines[start];
 }
 
+/**
+ * 活泼程度对本地模板的影响:沉稳去掉最长的几条(话少),跳脱去掉最短的几条(话多);
+ * 平和/活泼不动(默认 0.8 落在活泼,行为与从前一致)。不足三条时不筛;四条以内只去一条,免得轮转时老撞上同一句。
+ * 保持原顺序,仍按 seed 轮转。
+ */
+function biasByBand(lines: readonly string[], band: LivelinessBand): readonly string[] {
+  if (lines.length < 3 || band === '平和' || band === '活泼') return lines;
+  const byLength = [...lines].sort((a, b) => a.length - b.length);
+  const count = lines.length <= 4 ? lines.length - 1 : Math.ceil(lines.length * 0.6);
+  const keep = new Set(band === '沉稳' ? byLength.slice(0, count) : byLength.slice(-count));
+  return lines.filter((line) => keep.has(line));
+}
+
+/** 跳脱档偶数轮在句首添一个叹词(三型各两个,互不相同) */
+const LIVELY_INTERJECTIONS: Record<Persona, readonly string[]> = {
+  好奇型: ['诶诶,', '哇,'],
+  严谨型: ['咦,', '等等等等,'],
+  杠精型: ['嘿,', '哟,'],
+};
+
+function enliven(text: string, persona: Persona, seed: number): string {
+  if (seed % 2 !== 0 || /^[诶哦啊咦嘿哟哇嗯唔…]/.test(text)) return text;
+  const pool = LIVELY_INTERJECTIONS[persona];
+  return `${pool[(seed >> 1) % pool.length]}${text}`;
+}
+
 function mockRender(
   card: RuntimeInstructionCard, topic: Topic, seed: number,
-  opts: { lastOwnLine?: string; opening?: boolean } = {},
+  opts: { lastOwnLine?: string; opening?: boolean; address?: string; band?: LivelinessBand } = {},
 ): { text: string; mood: XiaobaiMood } {
   const lastOwnLine = opts.lastOwnLine ?? '';
+  const address = opts.address ?? '';
+  const band = opts.band ?? '活泼';
   if (card.action === 'rephrase_question') {
     return {
-      text: mockQuestionClarificationReply(card.questionSource, card.style.persona),
+      text: withAddress(mockQuestionClarificationReply(card.questionSource, card.style.persona), address),
       mood: 'shy',
     };
   }
@@ -146,8 +192,8 @@ function mockRender(
   if (opts.opening && card.action === 'ask_clarify' && card.targetChecklistId) {
     const first = topic.checklist.find((c) => c.id === card.targetChecklistId);
     if (first) {
-      const bridges = XIAOBAI_OPENING_BRIDGES[card.style.persona];
-      return { text: fillTemplate(bridges[seed % bridges.length], card, topic), mood: 'curious' };
+      const bridges = biasByBand(XIAOBAI_OPENING_BRIDGES[card.style.persona], band);
+      return { text: fillTemplate(bridges[seed % bridges.length], card, topic, address), mood: 'curious' };
     }
   }
   // 同一问上一句刚问过、老师这轮没答到:不装作第一次问,用「再问」的说法把同一句追问续上
@@ -155,8 +201,9 @@ function mockRender(
     const probe = card.targetChecklistId
       ? topic.checklist.find((c) => c.id === card.targetChecklistId)?.probeLine
       : undefined;
-    if (probe && lastOwnLine.includes(probe)) {
-      const lines = XIAOBAI_REASK_LINES[card.style.persona].map((tpl) => fillTemplate(tpl, card, topic));
+    if (probe && (lastOwnLine.includes(probe) || lastOwnLine.includes(withAddress(probe, address)))) {
+      const lines = biasByBand(XIAOBAI_REASK_LINES[card.style.persona], band)
+        .map((tpl) => fillTemplate(tpl, card, topic, address));
       return { text: pickFresh(lines, seed, lastOwnLine), mood: ACTION_MOOD[card.action] ?? 'curious' };
     }
   }
@@ -165,7 +212,8 @@ function mockRender(
     card.action === 'express_understanding' && !card.paraphraseSource &&
     !card.mcBelief && !card.targetChecklistId
   ) {
-    return { text: pickFresh(XIAOBAI_TANGENT_ACKS[card.style.persona], seed, lastOwnLine), mood: 'happy' };
+    const acks = biasByBand(XIAOBAI_TANGENT_ACKS[card.style.persona], band).map((line) => withAddress(line, address));
+    return { text: pickFresh(acks, seed, lastOwnLine), mood: 'happy' };
   }
   // inject_misconception 直接使用误区库触发话术(误区库即剧本);
   // 若带 paraphraseSource(纠正成功后同轮衔接注入),先复述开窍再抛新误区。
@@ -174,31 +222,34 @@ function mockRender(
     if (mc) {
       const aha = card.paraphraseSource
         ? CHAIN_AHA[seed % CHAIN_AHA.length].replace('{p}', pickParaphrase(card.paraphraseSource, topic)) : '';
-      return { text: `${aha}${mc.triggerLine}`, mood: aha ? 'curious' : 'confused' };
+      return { text: `${aha}${withAddress(mc.triggerLine, address)}`, mood: aha ? 'curious' : 'confused' };
     }
   }
   // stay_confused 无误区语境时分两种:R4 收场(带 targetChecklistId 标记)/ 偏题拉回
   if (card.action === 'stay_confused' && !card.mcBelief && card.targetChecklistId) {
-    return { text: R4_LINE, mood: 'shy' };
+    return { text: withAddress(R4_LINE, address), mood: 'shy' };
   }
   const pool = XIAOBAI_LINES[card.style.persona]?.[card.action] ?? [];
   const usable = pool.filter((tpl) => slotUsable(tpl, card));
   if (usable.length === 0 && card.action === 'stay_confused' && !card.mcBelief) {
-    return { text: OFFTOPIC_LINE, mood: 'confused' };
+    return { text: withAddress(OFFTOPIC_LINE, address), mood: 'confused' };
   }
   // 坚持观点的 stay_confused 只用带 {belief} 的模板(否则会把「这跟今天没关系」说给正在纠正误区的老师)
   const fitting = card.action === 'stay_confused' && card.mcBelief
     ? usable.filter((tpl) => tpl.includes('{belief}'))
     : usable;
   const list = fitting.length ? fitting : usable.length ? usable : pool;
-  const candidates = (list.length ? list : ['{probe}']).map((tpl) => fillTemplate(tpl, card, topic));
+  const candidates = biasByBand(list.length ? list : ['{probe}'], band)
+    // 跳脱档:模板骨架里的第一个句号换成感叹号(只动骨架,不碰追问底稿与老师原话)
+    .map((tpl) => fillTemplate(band === '跳脱' ? tpl.replace('。', '!') : tpl, card, topic, address));
   let text = pickFresh(candidates, seed, lastOwnLine);
+  if (band === '跳脱') text = enliven(text, card.style.persona, seed);
   // 开窍复述后衔接下一问:追问目标的 probeLine 直接续上(probeLine 本身过泄漏纪律)
   if (card.action === 'express_understanding' && card.targetChecklistId) {
     const next = topic.checklist.find((c) => c.id === card.targetChecklistId);
     if (next) {
       const bridges = XIAOBAI_PROBE_BRIDGES[card.style.persona];
-      text = `${text}${fillTemplate(bridges[seed % bridges.length], card, topic)}`;
+      text = `${text}${fillTemplate(bridges[seed % bridges.length], card, topic, address)}`;
     }
   }
   return { text, mood: ACTION_MOOD[card.action] ?? 'idle' };
@@ -217,7 +268,8 @@ function isReask(card: RuntimeInstructionCard, recent: readonly ChatMessage[]): 
   if (!card.targetChecklistId) return false;
   const last = [...recent].reverse()
     .find((m) => m.role === 'xiaobai' && m.text !== XIAOBAI_EXAM_READY_LINE);
-  return !!last?.action && ASKING_ACTIONS.has(last.action) && /[??]/.test(last.text);
+  // 半角与全角问号都算(模型多用全角;写成转义,免得输入法把两个字符打成一样)
+  return !!last?.action && ASKING_ACTIONS.has(last.action) && /[?\uFF1F]/.test(last.text);
 }
 
 /**
@@ -227,10 +279,12 @@ function isReask(card: RuntimeInstructionCard, recent: readonly ChatMessage[]): 
 async function apiRender(
   card: RuntimeInstructionCard, topic: Topic, recent: ChatMessage[], settings: LlmSettings,
   bannedTerms: string[], memoryHints: string[], sessionBrief: SessionBrief | null,
-  opening: OpeningContext | null,
+  opening: OpeningContext | null, personaCard: XiaobaiPersonaCard | null,
 ): Promise<{ text: string; mood: XiaobaiMood | null }> {
   const system = buildXiaobaiSystem({
     card, topic, bannedTerms, memoryHints, sessionBrief, opening,
+    // 角色卡(性格文字 + 称呼)与活泼程度:卡文里的未教术语由提示词层按 bannedTerms 抹掉
+    personaCard, liveliness: settings.temperature,
     // 只取小白前两句各自的开头几个字,提醒「别再这样起头」;整句不进 system
     ownOpeners: recentOwnOpeners(recent),
     reask: isReask(card, recent),
@@ -268,13 +322,19 @@ export async function speakXiaobai(input: {
   sessionBrief?: SessionBrief | null;
   /** 开场白上下文(只由 speakOpening 传入);api 路径据此让模型一口气说完招呼与第一问 */
   opening?: OpeningContext | null;
+  /** 用户的角色卡(性格文字 + 对老师的称呼);由 store 读出后传入。卡文不算「老师说过的词」,泄漏守门照旧 */
+  personaCard?: XiaobaiPersonaCard | null;
 }): Promise<SpeakResult> {
   const { card, topic, state, recentMessages, settings, seed, memoryHints, sessionBrief } = input;
   const opening = input.opening ?? null;
+  const personaCard = input.personaCard ?? null;
+  // 称呼(与本课术语相撞则退回「老师」)与活泼档:模板与提示词共用同一口径
+  const address = teacherAddressOf(personaCard, topic);
+  const band = livelinessBand(settings.temperature);
   // mock 路径「别和上一句同一个开头」的依据:小白自己的上一句(不算送考提示)
   const lastOwnLine = [...recentMessages].reverse()
     .find((m) => m.role === 'xiaobai' && m.text !== XIAOBAI_EXAM_READY_LINE)?.text ?? '';
-  const mockOpts = { lastOwnLine, opening: opening !== null };
+  const mockOpts = { lastOwnLine, opening: opening !== null, address, band };
 
   // api 模式预告违禁词:未解锁 checklist 的术语(泄漏检测的 banned 集),先说清比事后拦截省一次重试
   const allowedNow = new Set(card.recentTeacherTerms);
@@ -300,6 +360,7 @@ export async function speakXiaobai(input: {
       try {
         const rendered = await apiRender(
           card, topic, recentMessages, settings, banned, memoryHints ?? [], sessionBrief ?? null, opening,
+          personaCard,
         );
         text = rendered.text.trim();
         source = 'api';
@@ -331,12 +392,12 @@ export async function speakXiaobai(input: {
     });
     if (leaks.length === 0) return { text, mood, leakageRetries: attempt, leaked: [], source, moodSource };
     if (attempt === 2) {
-      return { text: FALLBACK_LINE, mood: 'confused', leakageRetries: 3, leaked: leaks, source: 'mock', moodSource: 'table' };
+      return { text: withAddress(FALLBACK_LINE, address), mood: 'confused', leakageRetries: 3, leaked: leaks, source: 'mock', moodSource: 'table' };
     }
     // 把实际泄漏词并入违禁清单,下次重试时明确点名
     for (const t of leaks) if (!banned.includes(t)) banned.push(t);
   }
-  return { text: FALLBACK_LINE, mood: 'confused', leakageRetries: 3, leaked: [], source: 'mock', moodSource: 'table' };
+  return { text: withAddress(FALLBACK_LINE, address), mood: 'confused', leakageRetries: 3, leaked: [], source: 'mock', moodSource: 'table' };
 }
 
 /** 开场白里的一条旧笔记(梦里惦记的一句)要过和学伴记忆提示同一道泄漏守门:白名单 = 已讲明白的要点,老师词 = 空 */
@@ -380,8 +441,12 @@ export async function speakOpening(input: {
   recall?: string | null;
   /** 梦里还惦记着的一句(xiaobaiDreamHint);在这里过泄漏守门,不过就丢 */
   dreamHint?: string | null;
+  /** 用户的角色卡;开场白同样按它的性格、称呼来 */
+  personaCard?: XiaobaiPersonaCard | null;
 }): Promise<SpeakResult> {
   const { mode, card, topic, state, settings, seed, memoryHints, sessionBrief } = input;
+  const personaCard = input.personaCard ?? null;
+  const address = teacherAddressOf(personaCard, topic);
   const recall = input.recall?.trim() || null;
   const dream = guardedNote(input.dreamHint, topic, state);
   const timeOfDay = timeOfDayOf(input.hour);
@@ -392,14 +457,14 @@ export async function speakOpening(input: {
   const speak = await speakXiaobai({
     // 开场要容得下「起个头 + 第一问」,句数上限放到 3
     card: { ...card, style: { ...card.style, maxSentences: Math.max(3, card.style.maxSentences) } },
-    topic, state, recentMessages: [], settings, seed, memoryHints, sessionBrief, opening,
+    topic, state, recentMessages: [], settings, seed, memoryHints, sessionBrief, opening, personaCard,
   });
   if (speak.source === 'api') return speak;
 
   // 本地开场:招呼(时段 × 头一回/再来/补课/复习)+ 梦 + 第一问 + 往事。课名与往事由代码拼接,同从前一样在守门之外
   const kind: OpeningKind = mode === 'teach' ? (heardBefore ? 'again' : 'first') : mode;
   const hellos = XIAOBAI_TIME_HELLOS[timeOfDay];
-  const greetings = XIAOBAI_OPENING_GREETINGS[card.style.persona][kind];
+  const greetings = biasByBand(XIAOBAI_OPENING_GREETINGS[card.style.persona][kind], livelinessBand(settings.temperature));
   const hello = hellos[seed % hellos.length];
   // 往事那句已经在说这门课时,招呼只留时段那半句,免得同一件事说两遍
   const greeting = recall?.includes(topic.title)
@@ -409,8 +474,10 @@ export async function speakOpening(input: {
     ? XIAOBAI_DREAM_LINES[seed % XIAOBAI_DREAM_LINES.length].replaceAll('{dream}', dream)
     : '';
   // 泄漏重试耗尽落到的兜底句说的是「你刚说的我没跟上」,开场时老师还没开口,换成一句中性的
-  const first = speak.text === FALLBACK_LINE ? '今天这课,老师打算从哪儿讲起?' : speak.text;
-  return { ...speak, text: [greeting, recall ?? '', dreamLine, first].filter(Boolean).join('\n') };
+  const first = speak.text === withAddress(FALLBACK_LINE, address) ? '今天这课,老师打算从哪儿讲起?' : speak.text;
+  // 招呼、往事、梦里那句都是代码拼的,称呼在这里统一换(往事里『』引的老师原话不动);第一问已在渲染时换过
+  const lead = [greeting, recall ?? '', dreamLine].filter(Boolean).map((line) => withAddress(line, address));
+  return { ...speak, text: [...lead, withAddress(first, address)].join('\n') };
 }
 
 /** 元对话专用出口：只让小白重述自己的上一问，不进入教学导演与事件流。 */
@@ -422,6 +489,8 @@ export function speakQuestionClarification(input: {
   recentMessages: ChatMessage[];
   settings: LlmSettings;
   seed: number;
+  /** 用户的角色卡;换说法时口气与称呼不变 */
+  personaCard?: XiaobaiPersonaCard | null;
 }): Promise<SpeakResult> {
   const { questionSource, topic, state, global, recentMessages, settings, seed } = input;
   const card: QuestionClarificationCard = {
@@ -442,5 +511,5 @@ export function speakQuestionClarification(input: {
     },
     paraphraseSource: null,
   };
-  return speakXiaobai({ card, topic, state, recentMessages, settings, seed });
+  return speakXiaobai({ card, topic, state, recentMessages, settings, seed, personaCard: input.personaCard });
 }

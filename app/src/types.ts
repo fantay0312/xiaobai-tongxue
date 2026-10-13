@@ -341,13 +341,21 @@ export interface LiveSession {
 
 // ───────────────────────── LLM 配置 ─────────────────────────
 
+/** 自定义线路支持的接口协议 */
+export type LlmProtocol = 'openai-chat' | 'openai-responses' | 'anthropic-messages' | 'gemini';
+
 export interface LlmSettings {
-  /** mock=本地模板 api=浏览器直连自配端点 proxy=服务器网关代管密钥(部署形态默认) */
+  /** api=浏览器直连自配端点 proxy=服务器网关代管密钥(部署形态默认)。
+   *  mock=本地模板,只作线路失败时的内部降级,设置界面不再提供这个选项 */
   mode: 'mock' | 'api' | 'proxy';
-  baseUrl: string;        // OpenAI 兼容端点,如 https://api.deepseek.com/v1(仅 api 模式)
+  baseUrl: string;        // 自配端点根地址,如 https://api.deepseek.com/v1(仅 api 模式)
   apiKey: string;         // 仅 api 模式;proxy 模式密钥永不下发到浏览器
-  model: string;
-  temperature: number;    // 评估固定 0,此项只作用于小白台词
+  model: string;          // api 模式的默认模型
+  temperature: number;    // 小白说话的活泼程度(0–1);评估固定 0
+  /** api 模式用哪种协议;缺省按 openai-chat */
+  protocol?: LlmProtocol;
+  /** api 模式下勾选启用的模型(来自自动获取或手动添加);输入框的模型选择器列出这些 */
+  models?: string[];
 }
 
 /** 语音转文字(课堂口述输入)配置。与 LlmSettings 同构分档:

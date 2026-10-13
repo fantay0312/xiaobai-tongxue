@@ -76,6 +76,8 @@
 .row:hover .rowActions,
 .row:focus-within .rowActions { opacity: 1; }
 @media (hover: none) { .rowActions { opacity: 1; } }
+.row[data-ai] { background: var(--accent-softer); }
+.rowAi { margin: 4px 4px 8px; min-width: 0; }
 .addBranch { align-self: flex-start; }
 .keys { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 0; padding: 0 4px; color: var(--text-3); font-size: var(--fz-xs); }
 .keys span { display: inline-flex; align-items: center; gap: 5px; }

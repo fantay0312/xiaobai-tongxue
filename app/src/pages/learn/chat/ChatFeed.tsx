@@ -4,6 +4,7 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown } from 'lucide-react';
+import type { ArtifactOrigin } from '../../../lib/artifacts';
 import { AssistantMessage, PendingMessage, UserMessage, type FeedHandlers } from './Message';
 import { stopSpeaking, useSpeakingId } from './speech';
 import type { ChatFeedProps } from './types';
@@ -14,8 +15,24 @@ import s from './feed.module.css';
 const NEAR_BOTTOM = 32;
 
 export function ChatFeed(props: ChatFeedProps) {
-  const { conversation, busy, phase, streamingId, empty } = props;
+  const { conversation, busy, phase, streamingId, empty, handoff } = props;
   const messages = conversation.messages;
+  // 从这段对话交出去的内容，来源都指回这段对话
+  const origin = useMemo<ArtifactOrigin>(() => ({
+    section: 'chat',
+    label: `对话：${conversation.title}`,
+    open: { view: 'ask', params: { chat: conversation.id }, ...(handoff?.topicId ? { topicId: handoff.topicId } : {}) },
+  }), [conversation.id, conversation.title, handoff?.topicId]);
+  /** 每条回答对应的那句提问 */
+  const askedBy = useMemo(() => {
+    const result = new Map<string, string>();
+    let question = '';
+    for (const message of messages) {
+      if (message.role === 'user') question = message.text;
+      else result.set(message.id, question);
+    }
+    return result;
+  }, [messages]);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const columnRef = useRef<HTMLDivElement>(null);
@@ -154,6 +171,9 @@ export function ChatFeed(props: ChatFeedProps) {
                 speaking={speakingId === message.id}
                 modelLabel={modelLabel(message.model)}
                 handlers={handlers}
+                handoff={handoff}
+                origin={origin}
+                asked={askedBy.get(message.id)}
               />
             )))}
             {busy && !streamingId && <PendingMessage phase={phase} />}

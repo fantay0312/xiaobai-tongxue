@@ -1,0 +1,180 @@
+/* 交接件：发送到菜单、附加选择器、最近成果行。只用皮肤变量。 */
+
+/* ── 发送到：手机上的底部面板列表 ── */
+.sheetList { display: grid; gap: 2px; margin: 0 -6px; padding: 0; list-style: none; }
+.sheetLabel { padding: 10px 10px 4px; color: var(--text-3); font-size: var(--fz-xs); }
+.sheetItem {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 8px 10px;
+  border: 0; border-radius: var(--r-md); background: none; color: var(--text);
+  font: var(--fz-lg)/1.4 var(--ui-font); text-align: left; cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+.sheetItem:active { background: var(--active); }
+.sheetItem:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.sheetIcon { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: var(--r-md); background: var(--inset); color: var(--text-2); }
+.sheetText { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.sheetText small { color: var(--text-3); font-size: var(--fz-xs); }
+
+/* ── 文字触发钮（收进工作台、发送到） ── */
+.trigger {
+  display: inline-flex; align-items: center; gap: 6px; height: var(--ctl-sm); padding: 0 10px;
+  border: 0; border-radius: var(--r-full); background: none; color: var(--text-2);
+  font: 500 var(--fz-xs)/1 var(--ui-font); white-space: nowrap; cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.trigger:hover { background: var(--hover); color: var(--text); }
+.trigger:active { background: var(--active); transform: scale(0.97); }
+.trigger:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.trigger:disabled { opacity: 0.45; cursor: not-allowed; }
+.trigger[data-tone='accent'] { background: var(--accent-softer); color: var(--accent); }
+.trigger[data-tone='accent']:hover { background: var(--accent-soft); }
+
+/* ── 附加选择器 ── */
+.picker { display: grid; gap: 12px; padding-top: 2px; min-width: 0; }
+.pickerTools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.pickerTools > :first-child { flex: none; }
+.pickerSearch { flex: 1; min-width: 180px; }
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; min-width: 0; margin-left: -6px; color: var(--text-3); font-size: var(--fz-sm); }
+.crumbs > span { display: inline-flex; align-items: center; gap: 2px; min-width: 0; }
+.crumbs svg { flex: none; color: var(--text-4); }
+.crumbs button {
+  max-width: 220px; height: 28px; padding: 0 6px; overflow: hidden; border: 0; border-radius: var(--r-sm);
+  background: none; color: var(--text-3); font: inherit; white-space: nowrap; text-overflow: ellipsis; cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.crumbs button:hover { background: var(--hover); color: var(--text); }
+.crumbs button:active { background: var(--active); }
+.crumbs button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+.list {
+  display: grid; align-content: start; gap: 2px; min-height: 240px; max-height: min(48dvh, 440px);
+  margin: 0 -10px; padding: 0 10px 4px; overflow: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: var(--border-2) transparent;
+}
+.groupLabel {
+  position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px;
+  padding: 10px 10px 6px; background: var(--surface); color: var(--text-3); font-size: var(--fz-xs);
+}
+.groupLabel i { font-style: normal; color: var(--text-4); font-variant-numeric: tabular-nums; }
+.row {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 54px; padding: 7px 10px;
+  border: 0; border-radius: var(--r-md); background: none; color: var(--text);
+  font: var(--fz-sm)/1.4 var(--ui-font); text-align: left; cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+.row:hover:not(:disabled) { background: var(--hover); }
+.row:active:not(:disabled) { background: var(--active); }
+.row:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.row[aria-checked='true'] { background: var(--accent-softer); }
+.row:disabled { opacity: 0.45; cursor: not-allowed; }
+.check {
+  display: grid; place-items: center; flex: none; width: 18px; height: 18px;
+  border: 1.5px solid var(--border-2); border-radius: var(--r-xs); background: var(--surface); color: var(--on-accent);
+  transition: background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
+}
+.check[data-checked='true'] { border-color: var(--accent); background: var(--accent); }
+.lead { flex: none; width: 18px; }
+.kindIcon { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: var(--r-md); background: var(--inset); color: var(--text-2); }
+.rowText { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.rowText strong { overflow: hidden; font-weight: 500; font-size: var(--fz-md); white-space: nowrap; text-overflow: ellipsis; }
+.rowText small { overflow: hidden; color: var(--text-3); font-size: var(--fz-xs); white-space: nowrap; text-overflow: ellipsis; }
+.rowMeta { flex: none; color: var(--text-3); font-size: var(--fz-xs); font-variant-numeric: tabular-nums; }
+.rowArrow { flex: none; color: var(--text-4); }
+.note { margin: 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--warn-soft); color: var(--text-2); font-size: var(--fz-sm); line-height: 1.5; }
+.skeletons { display: grid; }
+.skeletons > div { display: flex; align-items: center; gap: 12px; height: 54px; padding: 0 10px; }
+.skeletons > div > span:last-child { flex: 1; display: grid; gap: 7px; }
+.foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; width: 100%; }
+.foot > span { margin-right: auto; color: var(--text-3); font-size: var(--fz-sm); font-variant-numeric: tabular-nums; }
+
+/* ── 已附加的小签（AI 课堂、助理任务的输入区共用） ── */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; margin: 0; padding: 0; list-style: none; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 240px; height: 28px; padding: 0 4px 0 9px;
+  border-radius: var(--r-full); background: var(--inset); color: var(--text-2); font-size: var(--fz-xs);
+}
+.chip > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.chip svg { flex: none; color: var(--text-3); }
+.chip button {
+  display: grid; place-items: center; flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: var(--r-full);
+  background: none; color: var(--text-3); cursor: pointer; transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.chip button:hover { background: var(--active); color: var(--text); }
+.chip button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.chip button:disabled { opacity: 0.45; cursor: not-allowed; }
+.chipAdd {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px;
+  border: 1px dashed var(--border-2); border-radius: var(--r-full); background: none; color: var(--text-2);
+  font: var(--fz-xs)/1 var(--ui-font); cursor: pointer;
+  transition: background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.chipAdd:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-softer); color: var(--accent); }
+.chipAdd:active:not(:disabled) { background: var(--accent-soft); }
+.chipAdd:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.chipAdd:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── 最近：对话与成果混排的一行 ── */
+.recent { display: grid; gap: 10px; min-width: 0; }
+.recentHead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.recentHead h2 { margin: 0; font: 600 var(--fz-md)/1.3 var(--ui-font); color: var(--text); }
+.recentHead button {
+  padding: 4px 6px; border: 0; border-radius: var(--r-sm); background: none; color: var(--text-3);
+  font: var(--fz-xs)/1 var(--ui-font); cursor: pointer; transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
+}
+.recentHead button:hover { background: var(--hover); color: var(--text); }
+.recentHead button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.recentRow { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.recentCard {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%; height: 100%; min-height: 68px; padding: 12px;
+  border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); color: var(--text);
+  font: var(--fz-sm)/1.4 var(--ui-font); text-align: left; cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-2) var(--ease), transform var(--dur-1) var(--ease);
+}
+.recentCard:hover { border-color: var(--border-2); box-shadow: var(--shadow-1); }
+.recentCard:active { transform: scale(0.985); }
+.recentCard:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.recentIcon { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: var(--r-md); background: var(--inset); color: var(--text-2); }
+.recentText { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.recentText strong { display: -webkit-box; overflow: hidden; font-weight: 500; font-size: var(--fz-md); -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.recentText small { overflow: hidden; color: var(--text-3); font-size: var(--fz-xs); white-space: nowrap; text-overflow: ellipsis; }
+
+@media (max-width: 640px) {
+  .list { max-height: 52dvh; min-height: 200px; }
+  .row { min-height: 56px; }
+  .rowMeta { display: none; }
+  .pickerTools > :first-child { display: flex; flex: 1 1 100%; }
+  .pickerTools > :first-child > * { flex: 1; }
+  .pickerSearch { min-width: 0; flex-basis: 100%; }
+  .foot > span { flex-basis: 100%; }
+  .foot > button { flex: 1; }
+  /* 手机：最近一行横向滑动，不把下面的内容挤走 */
+  .recentRow {
+    display: flex; gap: 10px; margin: 0 -16px; padding: 2px 16px 6px; overflow-x: auto;
+    scroll-snap-type: x proximity; scroll-padding-inline: 16px; overscroll-behavior-x: contain;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .recentRow::-webkit-scrollbar { display: none; }
+  .recentRow > li { flex: none; width: min(72vw, 260px); scroll-snap-align: start; }
+  .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chips > * { flex: none; }
+}
+/* 手机上小签与添加钮加高到好点按（不依赖是否触屏） */
+@media (max-width: 760px) {
+  .chip { height: 34px; font-size: var(--fz-sm); }
+  .chip button { width: 28px; height: 28px; }
+  .chipAdd { height: 34px; padding: 0 12px; font-size: var(--fz-sm); }
+}
+@media (pointer: coarse) {
+  .trigger { height: 36px; padding: 0 12px; font-size: var(--fz-sm); }
+  .chip { height: 34px; }
+  .chip button { width: 28px; height: 28px; }
+  .chipAdd { height: 34px; font-size: var(--fz-sm); }
+  .check { width: 20px; height: 20px; }
+}
+@media (hover: none) {
+  .recentCard:hover { border-color: var(--border); box-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .recentCard, .trigger, .row, .sheetItem { transition: none; }
+}

@@ -1,13 +1,19 @@
-import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type KeyboardEvent, type Ref } from 'react';
+import { Fragment, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type KeyboardEvent, type Ref } from 'react';
 import {
   ChevronRight, ChevronsDownUp, ChevronsUpDown, Columns2, CornerDownRight, Download, FileImage, FileText, ListTree, Maximize,
-  MessageCircleQuestion, Network, Plus, Trash2, ZoomIn, ZoomOut,
+  Network, Plus, Trash2, ZoomIn, ZoomOut,
 } from 'lucide-react';
 import { Button, IconButton, Kbd, Menu, MenuContent, MenuItem, MenuTrigger, Segmented, Shimmer, toast } from '../../../../components/ui';
+import { IconNote } from '../../../../components/ui/icons';
 import { useSkinStore } from '../../../../store/skinStore';
 import { mindNode, newId, studyData, useStudyData, type MindMap, type MindNode } from '../../../../store/studyData';
-import { DetailHead, ICON_SM, OriginBadge, ToolFrame, type ToolProps } from './shared';
-import { download, safeName, useAutosave, useNarrow } from './util';
+import { AiBlock, AiMenu, ItemOrigin, SendMenu, useAiRun, useCross, type AiMenuEntry } from './AiKit';
+import { useAiFocus } from './AskPanel';
+import { MAP_ACTIONS, mapMarkdown, parseOutline, reuseNodes, runMapAction, type MapAction } from './ai';
+import { itemKey, setItemOrigin } from './origins';
+import { DetailHead, ICON_SM, ToolFrame, type ToolProps } from './shared';
+import { clip, download, safeName, useAutosave, useNarrow, useWorkbenchNav } from './util';
+import a from './ai.module.css';
 import s from './workbench.module.css';
 import m from './mindmap.module.css';
 
@@ -26,6 +32,16 @@ function sanitize(raw: MindNode | undefined, depth = 0): MindNode {
     ...(typeof node.note === 'string' && node.note ? { note: node.note } : {}),
     children: depth < 12 && Array.isArray(node.children) ? node.children.map((child) => sanitize(child, depth + 1)) : [],
   };
+}
+/** 从中心主题走到某个节点，一路上的文字 */
+function pathTo(node: MindNode, id: string, trail: string[] = []): string[] | null {
+  const here = [...trail, node.text || '未命名'];
+  if (node.id === id) return here;
+  for (const child of node.children) {
+    const hit = pathTo(child, id, here);
+    if (hit) return hit;
+  }
+  return null;
 }
 function locate(node: MindNode, id: string, parent: MindNode | null = null, index = 0): { node: MindNode; parent: MindNode | null; index: number } | null {
   if (node.id === id) return { node, parent, index };
@@ -239,7 +255,7 @@ function MapCanvas({ root, folded, onToggleFold, onFoldAll, onExpandAll, ref }: 
 }
 
 export default function MindMapTool(props: ToolProps) {
-  const { owner, onAsk } = props;
+  const { owner } = props;
   const { mindmaps } = useStudyData(owner);
   const [view, setView] = useState<View>(() => (typeof window !== 'undefined' && window.innerWidth < 900 ? 'map' : 'both'));
 
@@ -257,19 +273,21 @@ export default function MindMapTool(props: ToolProps) {
     >
       {(id) => {
         const map = mindmaps.find((item) => item.id === id);
-        return map ? <MapEditor key={map.id} map={map} owner={owner} view={view} onView={setView} onAsk={onAsk} /> : null;
+        return map ? <MapEditor key={map.id} map={map} tool={props} view={view} onView={setView} /> : null;
       }}
     </ToolFrame>
   );
 }
 
-function MapEditor({ map, owner, view: pickedView, onView, onAsk }: {
+function MapEditor({ map, tool, view: pickedView, onView }: {
   map: MindMap;
-  owner: string | null;
+  tool: ToolProps;
   view: View;
   onView: (view: View) => void;
-  onAsk: (text: string) => void;
 }) {
+  const { owner, topic, topics, askHere } = tool;
+  const { go } = useWorkbenchNav();
+  const { notes } = useStudyData(owner);
   // 手机上画布要占满宽度：大纲单独一个页签，不和导图并排
   const narrow = useNarrow();
   const view: View = narrow && pickedView === 'both' ? 'map' : pickedView;
@@ -281,6 +299,25 @@ function MapEditor({ map, owner, view: pickedView, onView, onAsk }: {
   const inputs = useRef(new Map<string, HTMLInputElement>());
   const canvas = useRef<CanvasHandle>(null);
   const draft = useMemo(() => ({ title, root }), [title, root]);
+
+  /* ── AI：针对某个节点的建议，先给出来，接受了才改图 ── */
+  const ai = useAiRun();
+  const cross = useCross(owner);
+  const [task, setTask] = useState<{ nodeId: string; action: MapAction } | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const rootRef = useRef(root);
+  useEffect(() => { rootRef.current = root; });
+  const course = map.topicId ? topics.find((item) => item.topicId === map.topicId) ?? (topic?.topicId === map.topicId ? topic : undefined) : topic;
+  const selectedNode = selected && selected !== root.id ? locate(root, selected)?.node : undefined;
+  useAiFocus({
+    kind: 'mindmap',
+    id: map.id,
+    label: '思维导图',
+    title,
+    ...(selectedNode?.text ? { detail: selectedNode.text } : {}),
+    ...(map.topicId ? { topicId: map.topicId } : {}),
+    getText: () => mapMarkdown(rootRef.current),
+  });
 
   const save = useCallback((value: typeof draft) => {
     if (!studyData.get(owner).mindmaps.some((item) => item.id === map.id)) return;
@@ -388,6 +425,104 @@ function MapEditor({ map, owner, view: pickedView, onView, onAsk }: {
     else if (event.key === 'ArrowDown') { event.preventDefault(); if (event.altKey) move(id, 1); else focusOn(rows[index + 1]?.node.id); }
   };
 
+  const runNode = (nodeId: string, action: MapAction) => {
+    const hit = locate(root, nodeId);
+    if (!hit) return;
+    if ((action === 'prune' || action === 'reorder') && hit.node.children.length < 2) { toast('这个节点下面至少要有两个子节点'); return; }
+    setTask({ nodeId, action });
+    unfold(nodeId);
+    void ai.start((call) => runMapAction(action, {
+      mapTitle: title,
+      path: pathTo(root, nodeId) ?? [hit.node.text],
+      node: hit.node,
+      root,
+      context: { ...(course ? { topic: course } : {}) },
+    }, call));
+  };
+  const closeTask = () => { ai.reset(); setTask(null); };
+  /** 接受建议：改图，并给一个撤销 */
+  const acceptTask = () => {
+    if (!task) return;
+    const text = ai.state.text.trim();
+    const before = root;
+    const { nodeId, action } = task;
+    if (action === 'note') {
+      change((tree) => { const hit = locate(tree, nodeId); if (hit) hit.node.note = clip(text.replace(/\s+/g, ' '), 200); });
+    } else {
+      const parsed = parseOutline(text);
+      if (!parsed.length) { toast('没有读出可用的节点，可以重试一次'); return; }
+      change((tree) => {
+        const hit = locate(tree, nodeId);
+        if (!hit) return;
+        if (action === 'expand') hit.node.children.push(...parsed);
+        else hit.node.children = reuseNodes(parsed, hit.node.children);
+      });
+    }
+    closeTask();
+    toast(action === 'expand' ? '已加为子节点' : action === 'note' ? '已设为这个节点的说明' : '已更新这一支', {
+      action: { label: '撤销', onClick: () => { setRoot(before); setDirty(true); } },
+    });
+  };
+  const taskNode = task ? locate(root, task.nodeId)?.node : undefined;
+  // 建议出现在节点下面：大纲较长时把它带进视野
+  const taskRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (task && ai.state.status !== 'streaming') taskRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [task, ai.state.status]);
+  const taskBlock = task && (
+    <AiBlock
+      state={ai.state}
+      title={`${MAP_ACTIONS[task.action].label.replace(/^AI /, '')} · ${clip(taskNode?.text || '未命名', 14)}`}
+      doing={MAP_ACTIONS[task.action].doing}
+      actions={[{ label: MAP_ACTIONS[task.action].accept, primary: true, onClick: acceptTask }]}
+      onRetry={() => void ai.retry()}
+      onStop={ai.stop}
+      onDiscard={closeTask}
+    />
+  );
+  const nodeEntries = (node: MindNode): AiMenuEntry[] => [
+    { key: 'expand', label: MAP_ACTIONS.expand.label, hint: '补几个下一级的要点', onSelect: () => runNode(node.id, 'expand') },
+    { key: 'note', label: MAP_ACTIONS.note.label, hint: '一句话讲清这个节点', onSelect: () => runNode(node.id, 'note') },
+    ...(node.children.length >= 2 ? [
+      { key: 'prune', label: MAP_ACTIONS.prune.label, hint: '合并重复，去掉枝节', onSelect: () => runNode(node.id, 'prune') },
+      { key: 'reorder', label: MAP_ACTIONS.reorder.label, hint: '先基础后进阶', onSelect: () => runNode(node.id, 'reorder') },
+    ] : []),
+  ];
+
+  const origin = { section: 'workbench' as const, label: `思维导图：${clip(title || root.text || '未命名导图', 24)}`, open: { view: 'workbench', params: { tool: 'mindmap', id: map.id } } };
+  /** 导图本来就是一份提纲：原样转成笔记，不经过模型 */
+  const toNote = () => {
+    const name = `${title || root.text || '未命名导图'} · 提纲`;
+    const saved = studyData.saveNote(owner, { title: name, body: mapMarkdown(root), ...(map.topicId ? { topicId: map.topicId } : {}) });
+    setItemOrigin(owner, itemKey('note', saved.id), origin);
+    toast.success(`已转成笔记《${clip(name, 18)}》`, { action: { label: '打开', onClick: () => go('notes', saved.id) } });
+  };
+  const fromNote = async (noteId: string) => {
+    const note = studyData.get(owner).notes.find((item) => item.id === noteId);
+    if (!note?.body.trim()) { toast('这篇笔记还是空的'); return; }
+    const made = await cross('make-mindmap', {
+      text: `# ${note.title || '未命名笔记'}\n\n${note.body}`,
+      title: note.title || '未命名笔记',
+      origin: { section: 'workbench', label: `笔记：${clip(note.title || '未命名笔记', 24)}`, open: { view: 'workbench', params: { tool: 'notes', id: note.id } } },
+      ...(note.topicId ? { topicId: note.topicId } : {}),
+    });
+    const id = made?.artifactKey.split(':')[1];
+    if (id) go('mindmap', id);
+  };
+  // 同一门课的笔记排前面
+  const noteChoices = [...notes].filter((note) => note.body.trim())
+    .sort((x, y) => Number(y.topicId === map.topicId) - Number(x.topicId === map.topicId) || y.updatedAt.localeCompare(x.updatedAt))
+    .slice(0, 5);
+  const mapEntries: AiMenuEntry[] = [
+    { key: 'h1', heading: selectedNode ? `节点「${clip(selectedNode.text || '未命名', 10)}」` : '整张图' },
+    ...nodeEntries(selectedNode ?? root),
+    { key: 's1', separator: true },
+    { key: 'ask', label: '问小砚', hint: selectedNode ? '带着这个节点去问' : '带着这张图去问', onSelect: () => askHere() },
+    { key: 'toNote', label: '转成笔记提纲', hint: '按层级原样转写', icon: <IconNote size={15} />, onSelect: toNote },
+    ...(noteChoices.length ? [{ key: 'h2', heading: '从笔记生成新导图' }] : []),
+    ...noteChoices.map((note) => ({ key: `n:${note.id}`, label: clip(note.title || '未命名笔记', 18), icon: <IconNote size={15} />, onSelect: () => void fromNote(note.id) })),
+  ];
+
   const foldAll = useCallback(() => setFolded(new Set(root.children.filter((child) => child.children.length).map((child) => child.id))), [root]);
   const expandAll = useCallback(() => setFolded(new Set()), []);
 
@@ -399,7 +534,7 @@ function MapEditor({ map, owner, view: pickedView, onView, onAsk }: {
 
   return (
     <div className={`${s.card} ${m.editor}`}>
-      <DetailHead title={title} onTitle={(value) => { setTitle(value); setDirty(true); }} badges={<OriginBadge origin={map.origin} />}>
+      <DetailHead title={title} onTitle={(value) => { setTitle(value); setDirty(true); }} badges={<ItemOrigin owner={owner} kind="mindmap" id={map.id} origin={map.origin} />}>
         <Segmented
           size="sm"
           label="视图"
@@ -411,13 +546,8 @@ function MapEditor({ map, owner, view: pickedView, onView, onAsk }: {
             { value: 'outline' as const, label: '大纲', icon: <ListTree {...ICON_SM} /> },
           ]}
         />
-        <IconButton
-          label="问小砚"
-          size="sm"
-          onClick={() => onAsk(`请看看我这张思维导图《${title || root.text}》的结构：有没有放错位置或漏掉的要点？\n\n${toMarkdown(root).slice(0, 1800)}`)}
-        >
-          <MessageCircleQuestion {...ICON_SM} />
-        </IconButton>
+        <AiMenu entries={mapEntries} label="AI" />
+        <SendMenu view={tool} item={{ kind: 'mindmap', id: map.id, label: '思维导图', title: title || root.text, ...(map.topicId ? { topicId: map.topicId } : {}), text: () => mapMarkdown(rootRef.current) }} />
         <Menu>
           <MenuTrigger asChild>
             <IconButton label="导出" size="sm" tip={false}><Download {...ICON_SM} /></IconButton>
@@ -437,7 +567,8 @@ function MapEditor({ map, owner, view: pickedView, onView, onAsk }: {
                 const { node, depth } = row;
                 const hasChildren = node.children.length > 0;
                 return (
-                  <div key={node.id} className={m.row} data-root={depth === 0} style={{ paddingLeft: 6 + depth * 18 }} role="treeitem" aria-level={depth + 1} aria-expanded={hasChildren ? !folded.has(node.id) : undefined}>
+                  <Fragment key={node.id}>
+                  <div className={m.row} data-root={depth === 0} data-ai={task?.nodeId === node.id || undefined} style={{ paddingLeft: 6 + depth * 18 }} role="treeitem" aria-level={depth + 1} aria-expanded={hasChildren ? !folded.has(node.id) : undefined}>
                     {hasChildren && depth > 0 ? (
                       <button type="button" className={m.fold} data-open={!folded.has(node.id)} aria-label={folded.has(node.id) ? '展开' : '收起'} onClick={() => toggleFold(node.id)}>
                         <ChevronRight size={14} strokeWidth={2} />
@@ -449,14 +580,19 @@ function MapEditor({ map, owner, view: pickedView, onView, onAsk }: {
                       value={node.text}
                       placeholder={depth === 0 ? '中心主题' : '写一个要点'}
                       aria-label={depth === 0 ? '中心主题' : `第 ${depth} 级节点`}
+                      title={node.note}
                       onChange={(event) => rename(node.id, event.target.value)}
                       onKeyDown={(event) => onKey(event, row, index)}
+                      onFocus={() => setSelected(node.id)}
                     />
                     <span className={m.rowActions}>
+                      <AiMenu entries={nodeEntries(node)} label="让小砚处理这个节点" iconOnly />
                       <IconButton label="添加子节点" size="sm" tip={false} onClick={() => addChild(node.id)}><CornerDownRight size={14} strokeWidth={1.75} /></IconButton>
                       {depth > 0 && <IconButton label="删除节点" size="sm" tip={false} onClick={() => removeNode(node.id)}><Trash2 size={14} strokeWidth={1.75} /></IconButton>}
                     </span>
                   </div>
+                  {task?.nodeId === node.id && <div ref={taskRef} className={m.rowAi} style={{ marginLeft: Math.min(6 + depth * 18, 42) }}>{taskBlock}</div>}
+                  </Fragment>
                 );
               })}
             </div>
@@ -473,6 +609,7 @@ function MapEditor({ map, owner, view: pickedView, onView, onAsk }: {
           <MapCanvas ref={canvas} root={root} folded={folded} onToggleFold={toggleFold} onFoldAll={foldAll} onExpandAll={expandAll} />
         )}
       </div>
+      {view === 'map' && task && <div className={a.aiSlot} style={{ paddingTop: 12 }}>{taskBlock}</div>}
       <div className={m.foot}>
         <span>{countNodes(root)} 个节点</span>
         <span className={s.saved}>{dirty ? '正在保存…' : '已保存'}</span>

@@ -6,6 +6,8 @@ import s from './memory.module.css';
 
 export interface MemoryRowProps {
   text: string;
+  /** 展示用的内容（比如把 [[链接]] 渲染成可点的）；不传就显示 text。编辑的始终是 text */
+  display?: ReactNode;
   /** 文字下方的一行说明：来源、时间、关联课程等 */
   meta?: ReactNode;
   pinned?: boolean;
@@ -31,7 +33,7 @@ export interface MemoryRowProps {
 
 /** 一条记忆：就地编辑、置顶、隐藏、删除。小砚与小白两份记忆共用。 */
 export function MemoryRow({
-  text, meta, pinned = false, muted = false, fresh, maxLength = 80,
+  text, display, meta, pinned = false, muted = false, fresh, maxLength = 80,
   onEdit, onPin, onMute, onDelete, confirmDelete, extra, actionsOpen, menuExtra,
 }: MemoryRowProps) {
   // 手机和触屏没有悬停：一颗始终可见的「更多」，置顶、隐藏、编辑、删除都在菜单里
@@ -90,7 +92,7 @@ export function MemoryRow({
         ) : (
           <p className={s.rowText}>
             {pinned && <Pin size={13} strokeWidth={2} className={s.pinMark} aria-label="已置顶" />}
-            {text}
+            {display ?? text}
           </p>
         )}
         {meta && <div className={s.rowMeta}>{meta}</div>}

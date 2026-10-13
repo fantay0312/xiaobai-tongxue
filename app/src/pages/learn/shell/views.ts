@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  IconAgent, IconChat, IconClassroom, IconFlashcard, IconGuide, IconLibrary, IconMemory, IconPrep, IconQuiz, IconRead, IconTeach,
+  IconAgent, IconChat, IconResearch, IconClassroom, IconFlashcard, IconGuide, IconLibrary, IconMemory, IconPrep, IconQuiz, IconRead, IconTeach,
   IconWorkbench, type XbIconType,
 } from '../../../components/ui/icons';
 
@@ -20,6 +20,7 @@ export const TERMINAL_NAV: TerminalNavItem[] = [
   { view: 'feynman', label: '教小白', hint: '把学懂的讲给小白听', icon: IconTeach },
   { view: 'classroom', label: 'AI 课堂', hint: '生成一堂可以播放的课', icon: IconClassroom },
   { view: 'agent', label: '助理任务', hint: '交给小砚去办的事', icon: IconAgent },
+  { view: 'research', label: '科研台', hint: '查文献、跑分析、写报告', icon: IconResearch },
   { view: 'memory', label: '记忆', hint: '小砚记住的你', icon: IconMemory },
   { view: 'library', label: '资料库', hint: '上传与管理学习资料', icon: IconLibrary },
 ];
@@ -30,14 +31,14 @@ export const terminalViewPath = (view: string) => (view === 'ask' ? '/learn' : `
 export const VIEWS = [
   'ask', 'guided', 'read', 'practice', 'cards', 'prepare',
   'library', 'journey', 'studio', 'source', 'notes',
-  'workbench', 'feynman', 'classroom', 'agent', 'memory',
+  'workbench', 'feynman', 'classroom', 'agent', 'memory', 'research',
 ] as const;
 export type View = (typeof VIEWS)[number];
 
 export const isView = (value: string | null | undefined): value is View => VIEWS.includes(value as View);
 
 /** 独立的功能视图：不依赖当前课程，由 views/ 下的懒加载组件实现 */
-export const TOOL_VIEWS = ['workbench', 'feynman', 'classroom', 'agent', 'memory'] as const;
+export const TOOL_VIEWS = ['workbench', 'feynman', 'classroom', 'agent', 'memory', 'research'] as const;
 export type ToolView = (typeof TOOL_VIEWS)[number];
 export const isToolView = (view: View): view is ToolView => TOOL_VIEWS.includes(view as ToolView);
 
@@ -54,7 +55,7 @@ export const STUDY_TABS: { id: View; label: string; icon: XbIconType }[] = [
 export const VIEW_LABELS: Record<View, string> = {
   ask: '问小砚', guided: '带我学', read: '读讲义', practice: '练一练', cards: '闪卡', prepare: '备课流程',
   library: '资料库', journey: '师徒旅程', studio: '学习产物', source: '资料原文', notes: '学习便笺',
-  workbench: '工作台', feynman: '教小白', classroom: 'AI 课堂', agent: '助理任务', memory: '记忆',
+  workbench: '工作台', feynman: '教小白', classroom: 'AI 课堂', agent: '助理任务', memory: '记忆', research: '科研台',
 };
 
 /** 当前视图在导轨上点亮哪一项 */

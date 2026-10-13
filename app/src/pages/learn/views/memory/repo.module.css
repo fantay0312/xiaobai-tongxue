@@ -1,0 +1,367 @@
+/* 记忆库浏览器：文件视图、来源、变更历史、待确认的改动、手机上的文件抽屉。只用 skins.css 语义令牌。 */
+
+.file { display: grid; gap: 20px; min-width: 0; }
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+}
+.path {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-3);
+  font: 500 var(--fz-xs)/1.4 var(--ui-mono);
+  overflow-wrap: anywhere;
+}
+.raw {
+  margin: 0;
+  padding: 16px 18px;
+  overflow-x: auto;
+  border-radius: var(--r-lg);
+  background: var(--inset);
+  color: var(--text);
+  font: var(--fz-sm)/1.75 var(--ui-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.entryLink {
+  display: inline;
+  padding: 0 2px;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--accent) 40%, transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+.entryLink:hover { background: var(--accent-softer); }
+.entryLink:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+.sourceChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  height: 22px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font: 500 var(--fz-xs)/1 var(--ui-font);
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.sourceChip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sourceChip svg { flex: none; }
+button.sourceChip { cursor: pointer; }
+button.sourceChip:hover { background: var(--accent-softer); color: var(--accent); }
+button.sourceChip:active { transform: scale(0.97); }
+button.sourceChip:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+.emptyFile {
+  margin: 0;
+  padding: 18px 20px;
+  border: 1px dashed var(--border-2);
+  border-radius: var(--r-lg);
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.7;
+}
+
+/* ── 索引 ── */
+.index {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.indexLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--text);
+  font: var(--fz-md)/1.4 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+.indexLink:hover { background: var(--hover); }
+.indexLink:active { background: var(--active); }
+.indexLink:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.indexLink svg { flex: none; color: var(--text-3); }
+.indexLink strong { flex: 1; min-width: 0; overflow: hidden; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.indexLink code { flex: none; max-width: 40%; overflow: hidden; color: var(--text-3); font: var(--fz-xs)/1 var(--ui-mono); text-overflow: ellipsis; white-space: nowrap; }
+.indexLink em { flex: none; color: var(--text-3); font-size: var(--fz-xs); font-style: normal; font-variant-numeric: tabular-nums; }
+
+/* ── 来源 ── */
+.sources {
+  display: grid;
+  gap: 10px;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.sources h3 { margin: 0; font: 600 var(--fz-md)/1.4 var(--ui-font); }
+.sources p { margin: 0; color: var(--text-3); font-size: var(--fz-sm); line-height: 1.6; }
+.sourceRow { display: flex; flex-wrap: wrap; gap: 6px; }
+.sourceCount {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 26px;
+}
+.sourceCount b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.sourceCount[data-outside] { background: var(--accent-softer); color: var(--accent); }
+.sourceCount[data-outside] b { color: inherit; }
+
+/* ── 变更历史 ── */
+.history { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.commit {
+  display: grid;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.commit[data-reverted] { opacity: 0.6; }
+.commitHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+.commitToggle {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.commitToggle:focus-visible { outline: none; border-radius: var(--r-sm); box-shadow: 0 0 0 3px var(--ring); }
+.commitTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text);
+  font: 500 var(--fz-md)/1.5 var(--ui-font);
+}
+.commitTitle svg { flex: none; color: var(--text-3); transition: transform var(--dur-2) var(--ease); }
+.commitToggle[aria-expanded='true'] .commitTitle svg { transform: rotate(90deg); }
+.commitTitle span { min-width: 0; overflow-wrap: anywhere; }
+.commitMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px 10px;
+  flex-wrap: wrap;
+  padding-left: 24px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+.diff { display: grid; gap: 10px; }
+.diffFile { display: grid; gap: 4px; min-width: 0; }
+.diffPath {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-3);
+  font: 500 var(--fz-xs)/1.5 var(--ui-mono);
+  text-align: left;
+  cursor: pointer;
+}
+.diffPath:hover { color: var(--accent); }
+.diffPath:focus-visible { outline: none; border-radius: var(--r-xs); box-shadow: 0 0 0 3px var(--ring); }
+.diffLines {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: var(--fz-sm)/1.65 var(--ui-mono);
+}
+.diffLine {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--r-xs);
+  overflow-wrap: anywhere;
+}
+.diffLine[data-sign='+'] { background: var(--ok-soft); color: var(--text); }
+.diffLine[data-sign='-'] { background: var(--bad-soft); color: var(--text-2); }
+.diffLine b { font-weight: 600; }
+.diffLine[data-sign='+'] b { color: var(--ok); }
+.diffLine[data-sign='-'] b { color: var(--bad); }
+
+/* ── 等我确认的改动 ── */
+.proposal {
+  display: grid;
+  gap: 12px;
+  padding: 16px 20px;
+  border: 1px solid color-mix(in oklab, var(--warn) 40%, var(--border));
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.proposalHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+}
+.proposalHead h3 { margin: 0; font: 600 var(--fz-lg)/1.4 var(--ui-font); }
+.proposalHead p { margin: 2px 0 0; color: var(--text-3); font-size: var(--fz-sm); }
+.proposalActions { display: flex; gap: 8px; }
+.proposalList { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.proposalItem {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--inset);
+}
+.proposalTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.proposalNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text);
+  font-size: var(--fz-sm);
+  line-height: 1.5;
+}
+
+.reviewRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-radius: var(--r-lg);
+  background: var(--sidebar);
+}
+.reviewRow strong { display: block; font: 550 var(--fz-md)/1.4 var(--ui-font); }
+.reviewRow span { display: block; color: var(--text-3); font-size: var(--fz-sm); line-height: 1.5; }
+
+/* ── 手机：文件抽屉（从底部滑出） ── */
+.sheetOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: var(--overlay);
+  animation: sheetFade var(--dur-2) var(--ease) both;
+}
+.sheet {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2001;
+  display: flex;
+  flex-direction: column;
+  max-height: min(78vh, 640px);
+  padding: 8px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-radius: var(--r-2xl) var(--r-2xl) 0 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-3);
+  animation: sheetUp var(--dur-3) var(--ease) both;
+}
+.sheet:focus { outline: none; }
+.sheetGrip {
+  flex: none;
+  width: 36px;
+  height: 4px;
+  margin: 2px auto 8px;
+  border-radius: var(--r-full);
+  background: var(--border-2);
+}
+.sheetTitle { margin: 0; padding: 4px 8px 8px; font: 600 var(--fz-lg)/1.4 var(--ui-font); }
+.sheetBody { display: grid; gap: 2px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.sheetFolder { margin: 0; padding: 10px 8px 4px; color: var(--text-3); font: 500 var(--fz-xs)/1 var(--ui-font); }
+.sheetItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--text);
+  font: var(--fz-md)/1.4 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+.sheetItem:active { background: var(--active); }
+.sheetItem:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.sheetItem[aria-current='page'] { background: var(--active); font-weight: 550; }
+.sheetItem svg { flex: none; color: var(--text-3); }
+.sheetItem span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheetItem em { flex: none; color: var(--text-3); font-size: var(--fz-xs); font-style: normal; font-variant-numeric: tabular-nums; }
+.sheetItem[data-indent] { padding-left: 28px; }
+
+@keyframes sheetUp {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes sheetFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 720px) {
+  .sources, .proposal { padding: 14px 16px; }
+  .indexLink code { display: none; }
+  .commitMeta { padding-left: 0; }
+  .proposalActions { width: 100%; }
+  .proposalActions > button { flex: 1; min-height: 40px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet, .sheetOverlay { animation: none; }
+  .commitTitle svg, .sourceChip, .entryLink, .indexLink, .sheetItem { transition: none; }
+}
