@@ -1,0 +1,52 @@
+{
+  "course": [
+    {
+      "id": "8d019f94-bf44-4154-85ad-54c63b27caa7",
+      "title": "线上验收-栈与函数调用-1013-2140",
+      "created_at": "2026-10-13T13:41:58.197Z"
+    }
+  ],
+  "assets": [
+    {
+      "filename": "lesson.md",
+      "byte_size": "4238",
+      "parse_status": "completed",
+      "enable_status": "enabled",
+      "error_message": null,
+      "created_at": "2026-10-13T13:44:53.288Z",
+      "updated_at": "2026-10-13T13:50:13.461Z"
+    },
+    {
+      "filename": "lesson.pdf",
+      "byte_size": "6663",
+      "parse_status": "completed",
+      "enable_status": "enabled",
+      "error_message": null,
+      "created_at": "2026-10-13T13:44:54.001Z",
+      "updated_at": "2026-10-13T13:50:13.460Z"
+    }
+  ],
+  "jobs": [
+    {
+      "id": "ad63b9e8-3841-48c5-bbb0-c77098d01148",
+      "status": "done",
+      "error_code": null,
+      "created_at": "2026-10-13T13:50:22.202Z",
+      "updated_at": "2026-10-13T13:52:37.008Z"
+    }
+  ],
+  "topics": [
+    {
+      "topic_id": "custom-8d019f94-bf44-4154-85ad-54c63b27caa7-ad63b9e8-3841-48c5-bbb0-c77098d01148",
+      "status": "ready",
+      "quality_issues": [],
+      "published_at": "2026-10-13T13:52:37.008Z",
+      "created_at": "2026-10-13T13:51:02.370Z",
+      "updated_at": "2026-10-13T13:52:37.008Z",
+      "tagline": "用栈帧的压入与返回，串起后进先出、函数调用和递归终止。",
+      "checklist_count": 5,
+      "misconception_count": 4,
+      "quiz_count": 5
+    }
+  ]
+}

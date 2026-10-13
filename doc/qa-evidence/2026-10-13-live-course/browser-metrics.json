@@ -1,0 +1,150 @@
+{
+  "times": {
+    "uploadStarted": 1791899089687,
+    "recheckUploadStarted": 1791899332108,
+    "compileStarted": 1791899421871,
+    "fixedUploadStarted": 1791899491997,
+    "draftVisible": 1791899507008,
+    "saveStarted": 1791899510241,
+    "publishStarted": 1791899542201,
+    "publishedVisible": 1791899565269,
+    "prepVisible": 1791899583505
+  },
+  "resources": [
+    {
+      "path": "/api/xb/topics",
+      "ms": 2401,
+      "bytes": 11839
+    },
+    {
+      "path": "/api/xb/status",
+      "ms": 575,
+      "bytes": 358
+    },
+    {
+      "path": "/api/xb/courses",
+      "ms": 10304,
+      "bytes": 0
+    },
+    {
+      "path": "/api/xb/status",
+      "ms": 19959,
+      "bytes": 0
+    },
+    {
+      "path": "/api/xb/courses",
+      "ms": 4481,
+      "bytes": 615
+    },
+    {
+      "path": "/api/xb/status",
+      "ms": 5191,
+      "bytes": 358
+    },
+    {
+      "path": "/api/xb/courses",
+      "ms": 5549,
+      "bytes": 615
+    },
+    {
+      "path": "/api/xb/courses/8d019f94-bf44-4154-85ad-54c63b27caa7/assets",
+      "ms": 1100,
+      "bytes": 1097
+    },
+    {
+      "path": "/api/xb/courses/8d019f94-bf44-4154-85ad-54c63b27caa7/compile-job",
+      "ms": 1134,
+      "bytes": 312
+    },
+    {
+      "path": "/api/xb/topics/compile",
+      "ms": 546,
+      "bytes": 676
+    },
+    {
+      "path": "/api/xb/compile-jobs/ad63b9e8-3841-48c5-bbb0-c77098d01148",
+      "ms": 2244,
+      "bytes": 690
+    },
+    {
+      "path": "/api/xb/compile-jobs/ad63b9e8-3841-48c5-bbb0-c77098d01148",
+      "ms": 531,
+      "bytes": 690
+    },
+    {
+      "path": "/api/xb/compile-jobs/ad63b9e8-3841-48c5-bbb0-c77098d01148",
+      "ms": 1178,
+      "bytes": 690
+    },
+    {
+      "path": "/api/xb/compile-jobs/ad63b9e8-3841-48c5-bbb0-c77098d01148",
+      "ms": 1098,
+      "bytes": 690
+    },
+    {
+      "path": "/api/xb/compile-jobs/ad63b9e8-3841-48c5-bbb0-c77098d01148",
+      "ms": 585,
+      "bytes": 690
+    },
+    {
+      "path": "/api/xb/compile-jobs/ad63b9e8-3841-48c5-bbb0-c77098d01148",
+      "ms": 6980,
+      "bytes": 690
+    },
+    {
+      "path": "/api/xb/compile-jobs/ad63b9e8-3841-48c5-bbb0-c77098d01148",
+      "ms": 1080,
+      "bytes": 690
+    },
+    {
+      "path": "/api/xb/compile-jobs/ad63b9e8-3841-48c5-bbb0-c77098d01148",
+      "ms": 1138,
+      "bytes": 690
+    },
+    {
+      "path": "/api/xb/compile-jobs/ad63b9e8-3841-48c5-bbb0-c77098d01148",
+      "ms": 20002,
+      "bytes": 300
+    },
+    {
+      "path": "/api/xb/compile-jobs/ad63b9e8-3841-48c5-bbb0-c77098d01148",
+      "ms": 10829,
+      "bytes": 300
+    },
+    {
+      "path": "/api/xb/courses/8d019f94-bf44-4154-85ad-54c63b27caa7/compile-job",
+      "ms": 4930,
+      "bytes": 25020
+    },
+    {
+      "path": "/api/xb/topics/9968768a-e824-43ef-aed3-8a969aa982db/draft",
+      "ms": 23791,
+      "bytes": 23921
+    },
+    {
+      "path": "/api/xb/topics/9968768a-e824-43ef-aed3-8a969aa982db/draft",
+      "ms": 9736,
+      "bytes": 23921
+    },
+    {
+      "path": "/api/xb/topics/9968768a-e824-43ef-aed3-8a969aa982db/publish",
+      "ms": 5138,
+      "bytes": 23943
+    },
+    {
+      "path": "/api/xb/topics",
+      "ms": 1052,
+      "bytes": 26920
+    },
+    {
+      "path": "/api/xb/courses",
+      "ms": 2457,
+      "bytes": 615
+    },
+    {
+      "path": "/api/xb/topics/custom-8d019f94-bf44-4154-85ad-54c63b27caa7-ad63b9e8-3841-48c5-bbb0-c77098d01148/teacher",
+      "ms": 1077,
+      "bytes": 23943
+    }
+  ]
+}
