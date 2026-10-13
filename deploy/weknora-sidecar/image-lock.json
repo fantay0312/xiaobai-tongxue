@@ -1,0 +1,17 @@
+{
+  "version": "v0.8.2",
+  "platform": "linux/amd64",
+  "sourceCommit": "3e8b0bfc80b845b2d4b2ed683994748741450a97",
+  "images": {
+    "app": {
+      "reference": "wechatopenai/weknora-app@sha256:c58836f2b161d33133d4e952a5b0c0f3c6b1332bb9d119da2911bd1e122977db",
+      "configDigest": "sha256:befcfff3a849b72fc860209aecc38c4326cbf18cddbefc3c694dc18c19582688",
+      "identitySha256": "f1b3e39a287fbbdc07f6d650781a163f974377184337e2f2f0578a58090e321c"
+    },
+    "docreader": {
+      "reference": "wechatopenai/weknora-docreader@sha256:179fdb979298e83387b68f5a3c54a98fd36a35c7eeec03776981e4693618e887",
+      "configDigest": "sha256:d304b662c649c1278a563d6f5c7bf640de033ebf612772189aaca1367ac49018",
+      "identitySha256": "b403bf48f8a8258f81e080b43566d7143fd6703be8861d44b674df580e7782ff"
+    }
+  }
+}

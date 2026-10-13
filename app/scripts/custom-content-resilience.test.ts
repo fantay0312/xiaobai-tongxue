@@ -104,7 +104,12 @@ test('permission failures stop immediately', async () => {
     load: async () => { calls += 1; throw new CustomContentError('forbidden', 403); },
     onData: () => {}, onError: (_error, value) => { stopped = value; },
   });
-  try { await flush(); await env.tick(60_000); assert.equal(calls, 1); assert.equal(stopped, true); }
+  try {
+    await flush(); await env.tick(60_000);
+    env.win.dispatchEvent(new Event('online'));
+    env.doc.dispatchEvent(new Event('visibilitychange'));
+    await flush(); assert.equal(calls, 1); assert.equal(stopped, true);
+  }
   finally { stop(); env.restore(); }
 });
 
