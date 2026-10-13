@@ -15,7 +15,7 @@ export function FinalCallout() {
           挑一课，开讲吧
         </h2>
         <p className={styles.note}>先做几道摸底题，再把它讲给小白听。</p>
-        <Link className={styles.action} to="/study">
+        <Link className={styles.action} to="/learn">
           开始讲课
           <Icon name="arrow-right" size={17} />
         </Link>

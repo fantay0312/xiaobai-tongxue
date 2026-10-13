@@ -5,6 +5,11 @@ import {
   splitMarkdownTableRow,
 } from '../src/components/coach/markdownTable';
 import { markdownToPlainText } from '../src/components/coach/coachMarkdownText';
+import { INLINE_MARKDOWN_RE } from '../src/components/coach/markdownInline';
+
+assert.deepEqual('d_k=64; sqrt(d_k)=8'.split(INLINE_MARKDOWN_RE).filter(Boolean), ['d_k=64; sqrt(d_k)=8']);
+assert.deepEqual('show _emphasis_ here'.split(INLINE_MARKDOWN_RE).filter(Boolean), ['show ', '_emphasis_', ' here']);
+assert.deepEqual(String.raw`\(d_k\) and \(\sqrt{d_k}\)`.split(INLINE_MARKDOWN_RE).filter(Boolean), [String.raw`\(d_k\) and \(\sqrt{d_k}\)`]);
 
 assert.deepEqual(
   splitMarkdownTableRow('| expression | a \\| b |'),

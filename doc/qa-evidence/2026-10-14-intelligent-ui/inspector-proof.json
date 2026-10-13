@@ -1,0 +1,11 @@
+{
+  "local": {
+    "inspectorHosts": 0,
+    "inspectorButtons": 0
+  },
+  "server": {
+    "inspectorHosts": 0,
+    "inspectorButtons": 0
+  },
+  "productionContainsInspector": false
+}

@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-13T19:45:11.261628+00:00",
+  "release": "/opt/xiaobai-learning-test/releases/20261014-intelligent-v8",
+  "contentSha256": "464d79db8057694bec35870876a791874be22994ad836b932d0e07432e28ca4d",
+  "checks": {
+    "terminal": 200,
+    "anonymous_learning": 401,
+    "anonymous_library": 401,
+    "primary_auth": 200
+  },
+  "defaultEntryMatchesTerminal": true,
+  "primaryPid": "2137063",
+  "testService": "active"
+}

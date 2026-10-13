@@ -68,12 +68,16 @@ export async function llmCall(
   role: LlmRole,
   payload: LlmPayload,
   settings: LlmSettings,
+  signal?: AbortSignal,
 ): Promise<string> {
-  if (settings.mode === 'proxy') return proxyCall(role, payload, settings);
+  if (settings.mode === 'proxy') return proxyCall(role, payload, settings, signal);
   if (settings.mode !== 'api' || !settings.baseUrl || !settings.apiKey) {
     throw new Error('llm-api-unavailable');
   }
   const ctrl = new AbortController();
+  const abort = () => ctrl.abort();
+  signal?.addEventListener('abort', abort, { once: true });
+  if (signal?.aborted) abort();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(chatCompletionsUrl(settings.baseUrl), {
@@ -108,12 +112,16 @@ export async function llmCall(
     throw e;
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
   }
 }
 
 /** proxy 模式:走同源网关 /api/chat,密钥在服务器侧,浏览器只传对话内容 */
-async function proxyCall(role: LlmRole, payload: LlmPayload, settings: LlmSettings): Promise<string> {
+async function proxyCall(role: LlmRole, payload: LlmPayload, settings: LlmSettings, signal?: AbortSignal): Promise<string> {
   const ctrl = new AbortController();
+  const abort = () => ctrl.abort();
+  signal?.addEventListener('abort', abort, { once: true });
+  if (signal?.aborted) abort();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
     const res = await gatewayFetch(`${API_BASE}/chat`, {
@@ -141,5 +149,6 @@ async function proxyCall(role: LlmRole, payload: LlmPayload, settings: LlmSettin
     throw e;
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
   }
 }

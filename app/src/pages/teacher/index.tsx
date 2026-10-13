@@ -309,7 +309,7 @@ export default function TeacherPage() {
           <p className={s.emptyLead}>
             还没有记录。去书斋给小白开讲，这里的每一个数字都会随课堂长出来。
           </p>
-          <Link to="/study" className={s.btnGhost}>去书斋开讲 <Icon name="arrow-right" size={16} /></Link>
+          <Link to="/learn" className={s.btnGhost}>去学习终端开讲 <Icon name="arrow-right" size={16} /></Link>
         </section>
       )}
 

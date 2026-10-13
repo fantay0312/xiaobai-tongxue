@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node scripts/check-build-artifacts.mjs dist --label app/dist",
+    "build": "tsx scripts/export-study-catalog.ts && tsc -b && vite build && node scripts/check-build-artifacts.mjs dist --label app/dist",
     "lint": "oxlint",
     "test:commerce": "tsx scripts/commerce-contract.test.ts",
     "test:auth": "tsx scripts/auth-state.test.ts && tsx scripts/auth-lifecycle.test.ts",
@@ -22,6 +22,7 @@
     "test:qa-evidence": "tsx scripts/qa-evidence.test.ts",
     "test:sync": "tsx scripts/pending-sync.test.ts",
     "test:theme": "tsx scripts/theme-contract.test.ts",
+    "test:study": "tsx scripts/study-workspace.test.ts && tsx scripts/guided-study.test.ts && tsx scripts/study-tutor.test.ts && tsx scripts/notebook-workspace.test.ts && tsx scripts/file-library.test.ts && tsx scripts/intelligent-answer.test.ts && tsx scripts/scoped-storage.test.ts",
     "preview": "vite preview",
     "simulate": "tsx scripts/simulate.ts",
     "livetest": "tsx scripts/livetest.ts"
@@ -30,11 +31,13 @@
     "@fontsource/cormorant-garamond": "^5.3.0",
     "@fontsource/courier-prime": "^5.3.0",
     "@fontsource/dm-sans": "^5.3.0",
+    "@openuidev/react-lang": "1.0.0",
     "lucide-react": "^1.24.0",
     "lxgw-wenkai-screen-webfont": "^1.7.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router": "8.3.0",
+    "zod": "4.6.7",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

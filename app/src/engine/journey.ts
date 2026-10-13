@@ -52,8 +52,8 @@ export function nextStep(input: JourneyInput): JourneyStep {
     return {
       key: 'first-prep', title: '开馆',
       line: '小白搬好了小板凳,眼巴巴等着你的第一堂课。',
-      to: '/study#shelf',
-      cta: '去书架选课',
+      to: '/learn',
+      cta: '在左栏选择课程',
     };
   }
 

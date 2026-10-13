@@ -127,6 +127,16 @@ export function createPrivateCosStore({
     createCustomCourseAssetKey({ userId, courseId }) {
       return customCourseAssetKey(userId, courseId);
     },
+    createLibraryFileKey({ userId }) {
+      const random = randomBytes(16);
+      if (!Buffer.isBuffer(random) || random.length !== 16) throw new Error('cos-random-source-failed');
+      return `${safePrefix}/${userPrefix(userId)}library-files/${random.toString('hex')}`;
+    },
+    uploadLibraryFile({ userId, key, body, contentType }) {
+      const safeKey = assertOwnedKey(userId, safePrefix, key);
+      if (!safeKey.startsWith(`${safePrefix}/${userPrefix(userId)}library-files/`)) throw new Error('invalid-cos-key');
+      return put(safeKey, body, contentType);
+    },
     uploadCustomCourseAsset({ userId: rawUserId, courseId: rawCourseId, key, body, contentType }) {
       const userId = assertUuid(rawUserId, 'user-id');
       const courseId = assertUuid(rawCourseId, 'course-id');

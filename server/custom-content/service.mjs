@@ -13,6 +13,8 @@ import {
   validateTopicDraft,
 } from './topic-contract.mjs';
 import { TOPIC_PROMPT_VERSION } from './topic-compiler.mjs';
+import { rankStudySources } from './study-sources.mjs';
+import { searchSelectedSources } from './source-search.mjs';
 
 const COURSE_TITLE_MAX = 120;
 const TOPIC_TITLE_MAX = 160;
@@ -737,6 +739,8 @@ function sourceOverlap(query, content) {
 
 function bestGroundedChunk(item, chunks) {
   const query = `${item.point} ${item.groundTruth} ${(item.terms ?? []).join(' ')}`;
+  const ranked = rankStudySources(query, [{ asset: { id: 'authorized', filename: '' }, chunks }]);
+  if (ranked.length) return chunks.find((chunk) => chunk.id === ranked[0].chunkId);
   let best = null;
   let bestScore = 0;
   for (const chunk of chunks) {
@@ -1070,15 +1074,16 @@ export function createCustomContentService({
     await Promise.all(normalized.checklist.map(async (item) => {
       const query = `${item.point} ${item.groundTruth} ${(item.terms ?? []).join(' ')}`;
       const validIds = item.sourceChunkIds.filter((id) => chunkMap.has(id));
-      const supportedId = validIds.find((id) => sourceOverlap(query, chunkMap.get(id) ?? '') >= 0.15);
+      const rankedIds = new Set(rankStudySources(query, [{ asset: { id: 'authorized', filename: '' }, chunks }]).map((hit) => hit.chunkId));
+      const supportedId = validIds.find((id) => rankedIds.has(id) || sourceOverlap(query, chunkMap.get(id) ?? '') >= 0.15);
       let selected = supportedId
         ? { id: supportedId, content: chunkMap.get(supportedId) }
         : bestGroundedChunk(item, chunks);
 
       if (!selected && knowledgeIds.length > 0) {
         try {
-          const hits = await weknora.search({
-            kbId: course.wkDocKbId,
+          const hits = await searchSelectedSources(weknora, {
+            assets, fallbackKb: course.wkDocKbId, chunks,
             query,
             knowledgeIds,
             requestId,
@@ -1100,8 +1105,10 @@ export function createCustomContentService({
     const sourceCorpus = [...new Set(chunkMap.values())].join('\n');
     const issues = validateTopicDraft(normalized, { sourceCorpus });
     for (const [index, item] of normalized.checklist.entries()) {
+      const query = `${item.point} ${item.groundTruth} ${(item.terms ?? []).join(' ')}`;
+      const rankedIds = new Set(rankStudySources(query, [{ asset: { id: 'authorized', filename: '' }, chunks }]).map((hit) => hit.chunkId));
       const supported = item.sourceChunkIds.some((id) => (
-        sourceOverlap(`${item.point} ${item.groundTruth}`, chunkMap.get(id) ?? '') >= 0.15
+        rankedIds.has(id) || sourceOverlap(query, chunkMap.get(id) ?? '') >= 0.15
       ));
       if (!supported) {
         issues.push({
@@ -1287,6 +1294,127 @@ export function createCustomContentService({
 
     async listCourses(owner) {
       return (await repository.courses.listByOwner(owner.id)).map(publicCourse);
+    },
+
+    async validateLibraryCourse(owner, courseId) { await requireCourse(owner.id, courseId); },
+
+    async parseLibraryFile(owner, input) {
+      const existing = await repository.assets.findLibraryFile(owner.id, input.fileId);
+      if (existing) return publicAsset(await refreshAsset(existing, input.requestId));
+      const validated = await validateUploadedFile({ bytes: input.bytes, filename: cleanFilename(input.filename), maximum: maxFileBytes, validateInProcess: validateFileInProcess });
+      const space = await repository.assets.ensureLibrarySpace(owner.id);
+      if (!space.ready) {
+        try { await weknora.createKnowledgeBase({ id: space.id, ...kbBase('小白·统一资料库', 'document') }, input.requestId); }
+        catch (error) { if (error.status !== 409 && !String(error.message).startsWith('weknora-conflict')) throw error; }
+        await repository.assets.readyLibrarySpace(owner.id);
+      }
+      const found = await weknora.findKnowledgeByMetadata({ kbId: space.id, key: 'xiaobai_library_file_id', value: input.fileId, requestId: input.requestId, maximumWaitMs: 0 });
+      const uploaded = found ? upstreamKnowledge(found) : upstreamKnowledge(await weknora.uploadFile(space.id, {
+        bytes: validated.bytes, filename: input.filename, contentType: validated.contentType,
+        metadata: { xiaobai_library_file_id: input.fileId, sha256: input.sha256 },
+        processConfig: { parser_engine_rules: [{ file_types: ['.pdf','.ppt','.pptx','.docx','.md','.txt'], engine: 'builtin' }], chunking_config: kbBase('', '').chunking_config, enable_multimodel: false, graph_enabled: false, question_generation_config: { enabled: false } },
+        requestId: input.requestId,
+      }));
+      try {
+        const asset = await repository.assets.create({ ownerId: owner.id, courseId: null, libraryFileId: input.fileId, wkKbId: space.id,
+          assetRole: 'lecture', filename: input.filename, contentType: validated.contentType, byteSize: validated.bytes.length,
+          sha256: input.sha256, cosKey: input.objectKey, wkKnowledgeId: uploaded.id,
+          parseStatus: uploaded.parseStatus, enableStatus: uploaded.enableStatus, errorMessage: uploaded.errorMessage });
+        return publicAsset(asset);
+      } catch (error) {
+        const committed = await repository.assets.findLibraryFile(owner.id, input.fileId);
+        if (committed) return publicAsset(committed);
+        throw error;
+      }
+    },
+
+    async findLibraryAsset(owner, fileId) {
+      const asset = await repository.assets.findLibraryFile(owner.id, fileId);
+      return asset ? publicAsset(await refreshAsset(asset, `library-${fileId}`)) : null;
+    },
+
+    async adoptLibraryAsset(owner, assetId, fileId) {
+      const asset = await repository.assets.adoptLibraryFile(owner.id, assetId, fileId);
+      if (!asset) throw publicError('asset-not-found', 404);
+      return publicAsset(await refreshAsset(asset, `library-${fileId}`));
+    },
+
+    async attachLibraryAsset(owner, courseId, assetId, role = 'lecture') {
+      if (!ASSET_ROLES.has(role)) throw publicError('asset-role-invalid');
+      if (!await repository.assets.attach(owner.id, courseId, assetId, role)) throw publicError('asset-not-found', 404);
+      return this.getAsset(owner, assetId, `library-bind-${assetId}`);
+    },
+
+    async detachLibraryAsset(owner, courseId, assetId) {
+      if (!await repository.assets.detach(owner.id, courseId, assetId)) throw publicError('asset-in-use', 409);
+    },
+
+    async deleteLibraryAsset(owner, assetId) {
+      const asset = await repository.assets.findOwned(owner.id, assetId);
+      if (!asset) return;
+      const claimed = asset.parseStatus === 'deleting' ? asset : await repository.assets.claimDelete(owner.id, assetId);
+      if (!claimed) throw publicError('asset-in-use', 409);
+      await finishAssetDeletion(claimed, owner.id, `library-delete-${assetId}`);
+    },
+
+    async deleteLibraryFile(owner, fileId) {
+      const asset = await repository.assets.findLibraryFile(owner.id, fileId);
+      if (asset) return this.deleteLibraryAsset(owner, asset.id);
+      const space = await repository.assets.getLibrarySpace(owner.id);
+      if (!space?.ready) return;
+      const orphan = await weknora.findKnowledgeByMetadata({ kbId: space.id, key: 'xiaobai_library_file_id', value: fileId, maximumWaitMs: 0, requestId: 'library-cleanup-' + fileId });
+      const id = orphan?.id ?? orphan?.knowledge_id;
+      if (id) await weknora.deleteKnowledge(id, 'library-cleanup-' + fileId);
+    },
+
+    async readLibrarySources(owner, refs, query = '') {
+      const groups = [];
+      for (const ref of refs) {
+        const asset = await repository.assets.findOwned(owner.id, ref.assetId);
+        if (!asset || asset.libraryFileId !== ref.fileId) throw publicError('asset-not-found', 404);
+        const fresh = await refreshAsset(asset, `library-read-${ref.fileId}`);
+        if (fresh.parseStatus !== 'completed' || fresh.enableStatus !== 'enabled') throw publicError('assets-not-ready', 409);
+        const chunks = await weknora.listChunks(fresh.wkKnowledgeId, `library-read-${ref.fileId}`, 500, sourceCacheOptions(fresh));
+        groups.push({ asset: fresh, chunks, ref });
+      }
+      const sources = groups.map(({ asset, chunks, ref }) => {
+        const usable = chunks.map((chunk) => ({ id: chunkId(chunk), content: chunkContent(chunk) })).filter((chunk) => chunk.id && chunk.content);
+        const sampled = usable.length <= 20 ? usable : Array.from({ length: 20 }, (_, i) => usable[Math.floor(i * (usable.length - 1) / 19)]);
+        return { id: `library:${ref.fileId}`, libraryFileId: ref.fileId, assetId: asset.id, title: ref.name, kind: 'library', version: `${asset.sha256}:${asset.statusRevision}`,
+          content: sampled.map((chunk) => chunk.content.slice(0, 800)).join('\n\n'), limited: usable.length > sampled.length };
+      });
+      const ranked = query ? rankStudySources(query, groups) : [];
+      const evidence = ranked.length ? ranked.map((hit) => {
+        const group = groups.find((entry) => entry.asset.id === hit.assetId);
+        return { id: `library:${group.ref.fileId}:${hit.chunkId}`, fileId: group.ref.fileId, assetId: hit.assetId, chunkId: hit.chunkId, title: group.ref.name, excerpt: hit.excerpt.slice(0, 550) };
+      }) : groups.flatMap(({ chunks, asset, ref }) => chunks.slice(0, 1).map((chunk) => ({ id: `library:${ref.fileId}:${chunkId(chunk)}`, fileId: ref.fileId, assetId: asset.id, chunkId: chunkId(chunk), title: ref.name, excerpt: chunkContent(chunk).slice(0, 550) })));
+      return { sources, evidence: evidence.slice(0, 5) };
+    },
+
+    async listLibraryFiles(owner) {
+      const courses = await repository.courses.listByOwner(owner.id);
+      const files = [];
+      for (const course of courses) {
+        const assets = await repository.assets.listOwned(owner.id, course.id);
+        for (const asset of assets) {
+          if (asset.parseStatus === 'deleting') continue;
+          files.push({ assetId: asset.id, courseId: course.id, courseTitle: course.title,
+            name: asset.filename.split(/[\\/]/).at(-1), byteSize: asset.byteSize,
+            contentType: asset.contentType, sha256: asset.sha256, createdAt: asset.createdAt });
+        }
+      }
+      return files;
+    },
+
+    async readLibraryFile(owner, assetId) {
+      const asset = await repository.assets.findOwned(owner.id, assetId);
+      if (!asset || asset.parseStatus === 'deleting') throw publicError('asset-not-found', 404);
+      const stored = await cos.read({ userId: owner.id, key: asset.cosKey });
+      const bytes = Buffer.from(stored.body);
+      if (bytes.length !== asset.byteSize || crypto.createHash('sha256').update(bytes).digest('hex') !== asset.sha256) {
+        throw publicError('library-file-integrity', 502);
+      }
+      return bytes;
     },
 
     async getCourse(owner, courseId) {
@@ -1494,6 +1622,7 @@ export function createCustomContentService({
     async deleteAsset(owner, assetId, requestId) {
       const asset = await repository.assets.findOwned(owner.id, assetId).catch(() => null);
       if (!asset) throw publicError('asset-not-found', 404);
+      if (asset.libraryFileId) throw publicError('asset-library-managed', 409);
       const claimed = await repository.assets.claimDelete(owner.id, asset.id);
       if (!claimed) throw publicError('asset-in-use', 409);
       await finishAssetDeletion(claimed, owner.id, requestId);
@@ -1565,6 +1694,40 @@ export function createCustomContentService({
       });
     },
 
+    async listStudyMaterials(owner, topicId, requestId) {
+      const topic = await repository.topics.findReadyOwnedByTopicId(owner.id, topicId);
+      if (!topic) throw publicError('topic-not-found', 404);
+      await requireCourse(owner.id, topic.courseId);
+      const all = await repository.assets.listOwned(owner.id, topic.courseId);
+      const assets = (await Promise.all(all.slice(0, 24).map((asset) => refreshAsset(asset, requestId)))).filter((asset) => asset.parseStatus === 'completed' && asset.enableStatus !== 'disabled');
+      return Promise.all(assets.map(async (asset) => {
+        const chunks = await weknora.listChunks(asset.wkKnowledgeId, requestId, 500, sourceCacheOptions(asset));
+        return { id: `asset:${asset.id}`, assetId: asset.id, title: asset.filename, kind: 'asset', content: chunks.slice(0, 6).map(chunkContent).filter(Boolean).join('\n\n').slice(0, 6000) };
+      }));
+    },
+
+    async findStudySources(owner, topicId, input, requestId) {
+      const query = cleanText(input?.query, 1200);
+      if (query.length < 2) throw publicError('study-query-invalid');
+      const topic = await repository.topics.findReadyOwnedByTopicId(owner.id, topicId);
+      if (!topic) throw publicError('topic-not-found', 404);
+      await requireCourse(owner.id, topic.courseId);
+      const all = await repository.assets.listOwned(owner.id, topic.courseId);
+      const ids = (await Promise.all(all.slice(0, 24).map((asset) => refreshAsset(asset, requestId)))).filter((asset) => asset.parseStatus === 'completed' && asset.enableStatus !== 'disabled').map((asset) => asset.id);
+      if (Array.isArray(input?.assetIds)) {
+        if (input.assetIds.some((id) => typeof id !== 'string' || !ids.includes(id))) throw publicError('study-source-invalid');
+        const selectedIds = new Set(input.assetIds);
+        ids.splice(0, ids.length, ...ids.filter((id) => selectedIds.has(id)));
+      }
+      if (!ids.length) return [];
+      const assets = (await repository.assets.findManyByCourse(topic.courseId, ids))
+        .filter((asset) => ids.includes(asset.id) && asset.parseStatus === 'completed' && asset.enableStatus !== 'disabled');
+      const groups = await Promise.all(assets.map(async (asset) => ({ asset,
+        chunks: await weknora.listChunks(asset.wkKnowledgeId, requestId, 500, sourceCacheOptions(asset)),
+      })));
+      return rankStudySources(query, groups);
+    },
+
     async findSourceCandidates(owner, id, input, requestId) {
       const current = await loadOwnedTopic(owner.id, id);
       if (current.status !== 'draft') throw publicError('topic-not-editable', 409);
@@ -1584,18 +1747,7 @@ export function createCustomContentService({
         }))
       )));
       const query = `${point} ${groundTruth}`;
-      return chunkLists.flat()
-        .filter((chunk) => chunk.id && chunk.content)
-        .map((chunk) => ({ ...chunk, score: sourceOverlap(query, chunk.content) }))
-        .filter((chunk) => chunk.score >= 0.15)
-        .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))
-        .slice(0, 5)
-        .map((chunk) => ({
-          chunkId: chunk.id,
-          assetId: chunk.assetId,
-          filename: chunk.filename,
-          excerpt: chunk.content.replace(/\s+/g, ' ').slice(0, 800),
-        }));
+      return rankStudySources(query, assets.map((asset, index) => ({ asset, chunks: chunkLists[index] })));
     },
 
     async evaluateTopic(owner, topicId, input, requestId) {

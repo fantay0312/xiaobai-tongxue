@@ -1,0 +1,19 @@
+[tools]
+python = "3.13.15"
+uv = "0.12.18"
+
+[tasks.setup]
+description = "Install the pinned DeepTutor core adapter in an isolated local runtime"
+run = "python bootstrap.py"
+
+[tasks.check]
+description = "Verify the installed DeepTutor core without a model request"
+run = ".runtime/venv/bin/python runner.py --check"
+
+[tasks.test]
+description = "Run the real DeepTutor scheduler against a local test model"
+run = ".runtime/venv/bin/python test_runner.py"
+
+[tasks.fixture]
+description = "Run the explicitly local-only SSE model fixture"
+run = ".runtime/venv/bin/python test_runner.py --serve 8797"

@@ -12,15 +12,13 @@ import { useAppStore } from './store/appStore';
 import { retryModule, recoverModuleLoad } from './lib/moduleRecovery';
 
 const LandingPage = lazy(() => retryModule(() => import('./pages/landing')));
-const HomePage = lazy(() => retryModule(() => import('./pages/home')));
-const PrepPage = lazy(() => retryModule(() => import('./pages/prep')));
+const LearningPage = lazy(() => retryModule(() => import('./pages/learn')));
 const ClassroomPage = lazy(() => retryModule(() => import('./pages/classroom')));
 const ExamPage = lazy(() => retryModule(() => import('./pages/exam')));
 const ReviewPage = lazy(() => retryModule(() => import('./pages/review')));
 const GrowthPage = lazy(() => retryModule(() => import('./pages/growth')));
 const TeacherPage = lazy(() => retryModule(() => import('./pages/teacher')));
 const LoginPage = lazy(() => retryModule(() => import('./pages/login')));
-const CustomContentPage = lazy(() => retryModule(() => import('./pages/custom-content')));
 
 function decodeAnchorId(hash: string): string | null {
   try {
@@ -155,12 +153,14 @@ export default function App() {
         />
       ) : <Suspense fallback={<div className="route-loader" role="status">小白翻书中…</div>}>
         <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/study" element={<HomePage />} />
+          <Route path="/" element={<Navigate to="/learn" replace />} />
+          <Route path="/about" element={<LandingPage />} />
+          <Route path="/study" element={<Navigate to="/learn" replace />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/custom-content" element={<RequireAuth><CustomContentPage /></RequireAuth>} />
+          <Route path="/custom-content" element={<Navigate to="/learn?view=library" replace />} />
+          <Route path="/learn" element={<LearningPage />} />
           {/* 使用类页面(备课/讲解)须登录;查看类页面(赴考/复盘/成长/看板)不设门槛 */}
-          <Route path="/prep/:topicId" element={<RequireAuth><PrepPage /></RequireAuth>} />
+          <Route path="/prep/:topicId" element={<RequireAuth><LearningPage /></RequireAuth>} />
           <Route path="/teach/:topicId" element={<RequireAuth><ClassroomPage /></RequireAuth>} />
           <Route path="/exam/:sessionId" element={<ExamPage />} />
           <Route path="/review/:sessionId" element={<ReviewPage />} />

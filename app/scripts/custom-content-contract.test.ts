@@ -140,9 +140,12 @@ const apiSource = await readFile(new URL('../src/lib/customContent.ts', import.m
 const evaluatorSource = await readFile(new URL('../src/engine/evaluator.ts', import.meta.url), 'utf8');
 const storeSource = await readFile(new URL('../src/store/appStore.ts', import.meta.url), 'utf8');
 const prepSource = await readFile(new URL('../src/pages/prep/index.tsx', import.meta.url), 'utf8');
+const learnSource = await readFile(new URL('../src/pages/learn/index.tsx', import.meta.url), 'utf8');
+const librarySource = await readFile(new URL('../src/pages/library/LibraryPage.tsx', import.meta.url), 'utf8');
 const shellCss = await readFile(new URL('../src/components/shell/AppShell.module.css', import.meta.url), 'utf8');
 assert.match(appSource, /path="\/custom-content"/);
-assert.match(pageSource, /自选讲义/);
+assert.match(librarySource, /ProjectCompiler[\s\S]*compilerOnly/, '统一资料库必须直接承载课题解析与校订');
+assert.doesNotMatch(librarySource, /setMode\('courses'\)/, '不得重新分出课程资料页面');
 assert.match(pageSource, /getCourseCompileJob/);
 assert.match(pageSource, /考小白的随堂题/);
 assert.match(pageSource, /重编题号/);
@@ -170,6 +173,8 @@ assert.match(evaluatorSource, /mode === 'mock' && !customTopic/);
 assert.match(storeSource, /learningLevel:\s*deriveEvolution\(state\.events, getAllTopics\(\)\)\.stage/);
 assert.match(storeSource, /CUSTOM_TOPICS_RETRY_MS\[attempt\]/);
 assert.match(prepSource, /TEACHER_TOPIC_RETRY_MS\[attempt\]/);
+assert.match(appSource, /path="\/prep\/:topicId"[^\n]*<LearningPage/, '备课路由必须使用统一学习终端');
+assert.match(learnSource, /hydrateTeacherRuntimeTopic/, '完整备课稿仍由统一终端加载');
 assert.match(shellCss, /@media \(max-width: 520px\)[\s\S]*navGroup:has\(\.linkActive\) \.menuButton/);
 assert.doesNotMatch(apiSource, /X-API-Key|WK_API_KEY|WeKnora.*key/i, '浏览器 API 层不得持有 WeKnora 凭据');
 

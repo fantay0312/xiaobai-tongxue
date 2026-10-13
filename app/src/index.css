@@ -33,6 +33,9 @@ body::after {
 
 #root { min-height: 100dvh; }
 
+html[data-surface='workspace'] body { background-image: none; }
+html[data-surface='workspace'] body::after { display: none; }
+
 /* 题头一律 serif(西文加拉蒙+中文宋体);楷体(--font-display)退位为
    小白台词/手写批注专用声部,模块内需要手写感时自取 */
 h1, h2, h3, h4 { font-family: var(--font-serif); font-weight: 600; line-height: 1.3; margin: 0; }

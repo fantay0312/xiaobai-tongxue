@@ -8,7 +8,7 @@ import {
   type ChangeEvent,
   type DragEvent,
 } from 'react';
-import { Link } from 'react-router';
+import { Link, useBlocker } from 'react-router';
 import { Icon } from '../../components/ui/Icon';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import {
@@ -598,8 +598,14 @@ const DraftEditor = memo(function DraftEditor({
   );
 });
 
-export default function CustomContentPage() {
-  useDocTitle('自选讲义');
+export default function CustomContentPage({ embedded = false, compilerOnly = false, initialCourseId, initialAssetIds, onLeaveGuardChange }: {
+  embedded?: boolean;
+  compilerOnly?: boolean;
+  initialCourseId?: string;
+  initialAssetIds?: string[];
+  onLeaveGuardChange?: (blocked: boolean) => void;
+} = {}) {
+  useDocTitle(embedded ? '学习终端 · 资料库' : '资料库');
   const authUser = useAuthStore((state) => state.user);
   const refreshRuntimeTopics = useAppStore((state) => state.loadCustomTopics);
   const [service, setService] = useState<'checking' | 'ready' | 'unhealthy' | 'unavailable'>('checking');
@@ -615,7 +621,12 @@ export default function CustomContentPage() {
   const [assetError, setAssetError] = useState('');
   const [jobError, setJobError] = useState('');
   const [assetQuery, setAssetQuery] = useState('');
-  const [assetFilter, setAssetFilter] = useState<'all' | 'completed' | 'failed'>('all');
+  const [assetFilter, setAssetFilter] = useState<'all' | 'completed' | 'processing' | 'failed'>('all');
+  const [roleFilter, setRoleFilter] = useState<AssetRole | 'all'>('all');
+  const [assetLayout, setAssetLayout] = useState<'list' | 'grid'>('list');
+  const [assetSort, setAssetSort] = useState<'updated' | 'name'>('updated');
+  const [uploadPanelOpen, setUploadPanelOpen] = useState(false);
+  const [compilerPanelOpen, setCompilerPanelOpen] = useState(false);
   const [online, setOnline] = useState(() => navigator.onLine);
   const [pendingAssetIds, setPendingAssetIds] = useState<Set<string>>(() => new Set());
   const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(() => new Set());
@@ -667,10 +678,11 @@ export default function CustomContentPage() {
   );
   const visibleAssets = useMemo(() => assets.filter((asset) => (
     (!assetQuery.trim() || asset.filename.toLocaleLowerCase().includes(assetQuery.trim().toLocaleLowerCase()))
+    && (roleFilter === 'all' || asset.assetRole === roleFilter)
     && (assetFilter === 'all' || (assetFilter === 'failed'
       ? asset.parseStatus === 'failed' || asset.parseStatus === 'cancelled'
-      : asset.parseStatus === 'completed'))
-  )), [assets, assetQuery, assetFilter]);
+      : assetFilter === 'processing' ? ['pending', 'processing', 'finalizing'].includes(asset.parseStatus) : asset.parseStatus === 'completed'))
+  )).sort((a, b) => assetSort === 'name' ? a.filename.localeCompare(b.filename, 'zh-CN') : (Date.parse(b.updatedAt || b.createdAt) || 0) - (Date.parse(a.updatedAt || a.createdAt) || 0)), [assets, assetQuery, assetFilter, roleFilter, assetSort]);
   const readyAssets = assets.filter((asset) => asset.parseStatus === 'completed');
   const failedAssets = assets.filter((asset) => asset.parseStatus === 'failed' || asset.parseStatus === 'cancelled');
   const parsingCount = assets.filter((asset) => ['pending', 'processing', 'finalizing'].includes(asset.parseStatus)).length;
@@ -689,12 +701,21 @@ export default function CustomContentPage() {
     return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
   }, []);
 
+  const navigationBlocked = workspaceOwner === authUser && Boolean(authUser)
+    && (draftEdited || Boolean(uploading) || startingCompile || saving || publishing || discarding);
+  const navigationBlocker = useBlocker(navigationBlocked);
   useEffect(() => {
-    if (!draftEdited) return;
+    if (navigationBlocker.state !== 'blocked') return;
+    setNotice('当前有未保存的校订或正在提交的资料。请先保存校订，或等待提交完成，再离开资料台。');
+    navigationBlocker.reset();
+  }, [navigationBlocker]);
+
+  useEffect(() => {
+    if (!draftEdited && !uploading && !startingCompile && !saving && !publishing && !discarding) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [draftEdited]);
+  }, [draftEdited, uploading, startingCompile, saving, publishing, discarding]);
 
   const refreshCourses = useCallback(async (preferredId?: string) => {
     const ownerAtRequest = authUserRef.current;
@@ -748,7 +769,8 @@ export default function CustomContentPage() {
             setService('ready');
             setMaxFileBytes(status.maxFileBytes);
             setCourses(nextCourses);
-            setCourseId(nextCourses[0]?.id ?? '');
+            setCourseId(initialCourseId ? nextCourses.find((course) => course.id === initialCourseId)?.id ?? '' : nextCourses[0]?.id ?? '');
+            setSelectedAssetIds(new Set(initialAssetIds ?? []));
             setWorkspaceOwner(authUser);
             return;
           }
@@ -771,7 +793,7 @@ export default function CustomContentPage() {
       }
     })();
     return () => { active = false; controller.abort(); };
-  }, [authUser, bootstrapToken]);
+  }, [authUser, bootstrapToken, initialCourseId, initialAssetIds]);
 
   useEffect(() => {
     if (!courseId) {
@@ -787,7 +809,7 @@ export default function CustomContentPage() {
         setAssetsLoading(false);
         setAssetError('');
         setAssets((current) => JSON.stringify(current) === JSON.stringify(next) ? current : next);
-        setSelectedAssetIds((current) => new Set([...current].filter((id) => next.some((asset) => asset.id === id && asset.parseStatus === 'completed'))));
+        setSelectedAssetIds((current) => new Set([...current].filter((id) => next.some((asset) => asset.id === id && asset.parseStatus !== 'deleting'))));
       },
       shouldPoll: (next) => {
         const parsing = next.some((asset) => (
@@ -1193,6 +1215,10 @@ export default function CustomContentPage() {
   });
   const compileLocked = startingCompile || recoveringJob || !!jobError || !online
     || job?.status === 'queued' || job?.status === 'running' || job?.status === 'needs_review';
+  useEffect(() => {
+    onLeaveGuardChange?.(draftEdited || Boolean(uploading) || startingCompile || saving || publishing || discarding);
+  }, [draftEdited, uploading, startingCompile, saving, publishing, discarding, onLeaveGuardChange]);
+  useEffect(() => () => onLeaveGuardChange?.(false), [onLeaveGuardChange]);
   const retryableUploads = uploadQueue.filter((item) => item.status === 'failed' && item.file.size > 0
     && item.file.size <= maxFileBytes && /\.(pdf|pptx?|docx|md|txt)$/i.test(item.file.name));
 
@@ -1204,16 +1230,11 @@ export default function CustomContentPage() {
   const step3: 'done' | 'now' | 'todo' = publishedTopicId ? 'done' : draftRecord ? 'now' : 'todo';
 
   return (
-    <div className={s.page}>
-      <header id="custom-overview" className={`${s.head} ${s.rise}`}>
-        <h1 className={sec.titleLg}>自选课</h1>
-        <p className={sec.note}>把你的讲义，变成可以讲给小白听的一堂课。</p>
-        <ol className={s.steps} aria-label="自定义课程三步流程">
-          <li data-state={step1}>资料入库<small>{readyAssets.length ? `${readyAssets.length} 份可用` : '上传自己的讲义'}</small></li>
-          <li data-state={step2}>编成课题<small>{job ? JOB_LABEL[job.status] : '选择资料生成草稿'}</small></li>
-          <li data-state={step3}>校订发布<small>{publishedTopicId ? '可以去备课了' : '确认内容，再开讲'}</small></li>
-        </ol>
-      </header>
+    <div className={`${s.page}${embedded ? ` ${s.embedded}` : ''}${compilerOnly ? ` ${s.compilerOnly}` : ''}`}>
+      {!compilerOnly && <header id="custom-overview" className={`${s.head} ${s.libraryHeader}`}>
+        <div className={s.libraryHeading}><h1>资料库</h1><p>课程资料、学习课题和校订工作，统一收在这里。</p></div>
+        <div className={s.libraryHeaderTools}><label className={s.assetSearch}><Icon name="search" size={16} /><input value={assetQuery} onChange={(event) => setAssetQuery(event.target.value)} aria-label="按文件名查找资料" placeholder="搜索资料" /></label><details className={s.newMenu}><summary>新建<Icon name="chevron-down" size={13} /></summary><div><button onClick={focusNewCourse}><Icon name="plus" size={15} />课程空间</button><button disabled={!selectedCourse || Boolean(uploading)} onClick={() => { setUploadPanelOpen(true); fileInputRef.current?.click(); }}><Icon name="upload" size={15} />上传资料</button></div></details></div>
+      </header>}
 
       {visibleNotice ? <p ref={noticeRef} className={s.notice} role="status"><Icon name="circle-help" size={16} />{visibleNotice}</p> : null}
       {!online ? <p className={s.syncMessage} role="status">网络已断开，自动同步已暂停。已显示的内容会保留，联网后继续同步。</p> : null}
@@ -1225,8 +1246,10 @@ export default function CustomContentPage() {
         </section>
       ) : (
         <div className={`${s.workspace} ${s.rise}`} style={{ animationDelay: '90ms' }}>
-          <aside className={s.aside} aria-label="自定义课程">
-            <h2 className={s.asideTitle}>课程</h2>
+          {!compilerOnly && <aside className={s.aside} aria-label="自定义课程">
+            <h2 className={s.asideTitle}>分类</h2>
+            <nav className={s.categoryNav} aria-label="资料类型"><button aria-current={roleFilter === 'all' ? 'page' : undefined} onClick={() => setRoleFilter('all')}><Icon name="library" size={17} />全部资料<span>{assets.length}</span></button>{Object.entries(ROLE_LABEL).map(([role, label]) => <button key={role} aria-current={roleFilter === role ? 'page' : undefined} onClick={() => setRoleFilter(role as AssetRole)}><Icon name={role === 'lab' ? 'clipboard' : role === 'reading' ? 'book-open' : 'file'} size={17} />{label}<span>{assets.filter((asset) => asset.assetRole === role).length}</span></button>)}</nav>
+            <h2 className={s.asideTitle}>课程空间</h2>
             <div className={s.courseList}>
               {courses.map((course) => (
                 <button key={course.id} type="button" className={`${s.courseRow}${course.id === courseId ? ` ${s.courseActive}` : ''}`} aria-current={course.id === courseId ? 'true' : undefined} disabled={Boolean(uploading) || creatingCourse || startingCompile || saving || publishing || discarding || pendingAssetIds.size > 0} onClick={() => { if (course.id === courseId) return; if (draftEdited) { setNotice('这份草稿还有未保存的校订，请先保存校订或放弃草稿，再切换课程。'); return; } setCourseId(course.id); setAssets([]); setSelectedAssetIds(new Set()); setDeleteArmedId(null); setJob(null); setDraftRecord(null); setPublishedTopicId(null); setDiscardArmed(false); }}>
@@ -1244,9 +1267,16 @@ export default function CustomContentPage() {
               <button className={s.btnText} type="submit" disabled={creatingCourse || !!uploading || !online || newCourseTitle.trim().length < 2}>{creatingCourse ? '新建中…' : '新建课程'} <Icon name="plus" size={15} /></button>
             </form>
             </details>
-          </aside>
+          </aside>}
 
           <main className={s.main}>
+            {!compilerOnly && <>
+            <div className={s.libraryTabs} role="group" aria-label="资料状态">{[['all','全部'],['completed','可用'],['processing','处理中'],['failed','需处理']].map(([value,label]) => <button key={value} aria-pressed={assetFilter === value} onClick={() => setAssetFilter(value as typeof assetFilter)}>{label}</button>)}</div>
+            <section className={s.starterSection}><div><h2>从资料开始学习</h2><p>选择一个操作，继续你的课程工作。</p></div><div className={s.starterRow}>
+              <button data-state={step1} onClick={() => { if (!selectedCourse) { focusNewCourse(); return; } setUploadPanelOpen(true); fileInputRef.current?.click(); }}><Icon name="upload" size={21} /><strong>上传课程资料</strong><small>{readyAssets.length ? `${readyAssets.length} 份已准备好` : '讲义、课件与阅读材料'}</small></button>
+              <button data-state={step2} onClick={() => { setCompilerPanelOpen(true); requestAnimationFrame(() => document.getElementById('custom-compiler')?.scrollIntoView({ block: 'start', behavior: 'smooth' })); }}><Icon name="graduation" size={21} /><strong>生成学习课题</strong><small>{job ? JOB_LABEL[job.status] : '从勾选资料整理课程'}</small></button>
+              <button data-state={step3} disabled={!draftRecord && !job} onClick={() => { setCompilerPanelOpen(true); requestAnimationFrame(() => document.getElementById('custom-compiler')?.scrollIntoView({ block: 'start', behavior: 'smooth' })); }}><Icon name="notebook" size={21} /><strong>校订与发布</strong><small>{draftRecord ? '继续当前草稿' : '有草稿后可继续'}</small></button>
+            </div></section>
             <section id="custom-assets" className={s.section}>
               <header className={`${sec.head} ${s.sectionHead}`}>
                 <div><h2 className={sec.title}>{selectedCourse ? selectedCourse.title : '资料'}</h2>
@@ -1255,6 +1285,7 @@ export default function CustomContentPage() {
               </header>
               {selectedCourse ? (
                 <>
+                  <details className={s.uploadPanel} open={uploadPanelOpen || Boolean(uploading)} onToggle={(event) => setUploadPanelOpen(event.currentTarget.open)}><summary><Icon name="upload" size={15} />上传与入库<Icon name="chevron-down" size={13} /></summary>
                   <div
                     className={`${s.stage} ${s.drop}${dragging ? ` ${s.dropActive}` : ''}`}
                     onDragEnter={(event) => { event.preventDefault(); setDragging(true); }}
@@ -1272,6 +1303,7 @@ export default function CustomContentPage() {
                     </div>
                     <input ref={fileInputRef} type="file" accept={ACCEPT} multiple onChange={onFiles} tabIndex={-1} aria-hidden="true" />
                   </div>
+                  </details>
 
                   {uploadQueue.length > 0 ? <section className={s.uploadQueue} aria-label="本次上传" aria-live="polite">
                     <div className={s.queueHead}><strong>{uploading ? `正在处理 ${uploading.index} / ${uploading.total}` : `本次上传 · ${uploadQueue.filter((item) => item.status === 'done').length} / ${uploadQueue.length} 份已接收`}</strong>
@@ -1287,11 +1319,14 @@ export default function CustomContentPage() {
                   {assets.length > 0 ? (
                     <>
                     <div className={s.assetToolbar}>
-                      <label className={s.assetSearch}><Icon name="search" size={16} /><input value={assetQuery} onChange={(event) => setAssetQuery(event.target.value)} aria-label="按文件名查找资料" placeholder="查找资料" /></label>
-                      <select className={s.filterSelect} aria-label="筛选资料状态" value={assetFilter} onChange={(event) => setAssetFilter(event.target.value as typeof assetFilter)}><option value="all">全部资料</option><option value="completed">可用资料</option><option value="failed">需处理</option></select>
+                      <span className={s.resultCount}>{visibleAssets.length} 份资料 · 已选 {selectedAssetIds.size}</span>
+                      <select className={s.filterSelect} aria-label="资料排序" value={assetSort} onChange={(event) => setAssetSort(event.target.value as typeof assetSort)}><option value="updated">最近更新</option><option value="name">文件名</option></select>
                       <button className={s.btnText} disabled={!visibleAssets.some((asset) => asset.parseStatus === 'completed')} onClick={selectVisible}>{allVisibleSelected ? '取消本页选择' : '全选可用资料'}</button>
+                      <div className={s.viewSwitcher} role="group" aria-label="资料显示方式"><button aria-label="列表视图" aria-pressed={assetLayout === 'list'} onClick={() => setAssetLayout('list')}><Icon name="clipboard" size={17} /></button><button aria-label="卡片视图" aria-pressed={assetLayout === 'grid'} onClick={() => setAssetLayout('grid')}><Icon name="library" size={17} /></button></div>
                     </div>
-                    <div className={s.assetList}>
+                    <div className={s.assetTableScroll}>
+                    {assetLayout === 'list' && <div className={s.assetTableHeader}><span /><span /><span>名称</span><span>来源</span><span>最近更新</span><span>状态</span><span /></div>}
+                    <div className={`${s.assetList} ${assetLayout === 'grid' ? s.assetGrid : s.assetTable}`}>
                       {visibleAssets.map((asset) => {
                         const ready = asset.parseStatus === 'completed';
                         const lockedByJob = Boolean(
@@ -1305,7 +1340,10 @@ export default function CustomContentPage() {
                               <input type="checkbox" checked={selectedAssetIds.has(asset.id)} disabled={!ready} onChange={() => toggleAsset(asset.id)} aria-label={`选用 ${asset.filename}`} />
                               <span aria-hidden="true">{selectedAssetIds.has(asset.id) ? <Icon name="check" size={13} /> : null}</span>
                             </label>
+                            <span className={s.fileTypeIcon} data-type={asset.filename.split('.').pop()?.toLowerCase()}><Icon name="file" size={18} /><small>{asset.filename.split('.').pop()?.toUpperCase().slice(0, 4)}</small></span>
                             <div className={s.assetName}><strong>{asset.filename}</strong><small>{ROLE_LABEL[asset.assetRole]} · {fileSize(asset.byteSize)}</small>{asset.parseStatus === 'failed' || asset.parseStatus === 'cancelled' ? <small className={s.assetFailure}>{parseErrorHint(asset.errorMessage)}</small> : null}</div>
+                            <span className={s.assetOrigin}>{selectedCourse.title}<small>{ROLE_LABEL[asset.assetRole]}</small></span>
+                            <time className={s.assetUpdated} dateTime={asset.updatedAt || asset.createdAt}>{Number.isFinite(Date.parse(asset.updatedAt || asset.createdAt)) ? new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(asset.updatedAt || asset.createdAt)) : '—'}</time>
                             <span className={s.assetStatus} data-state={asset.parseStatus}>{STATUS_LABEL[asset.parseStatus]}</span>
                             <span className={s.assetActions}>
                               {asset.parseStatus === 'failed' || asset.parseStatus === 'cancelled' ? <button className={s.btnText} type="button" disabled={pendingAssetIds.has(asset.id) || !online} onClick={() => void reparseAsset(asset.id)}>{pendingAssetIds.has(asset.id) ? '处理中…' : '重新解析'}</button> : null}
@@ -1323,6 +1361,7 @@ export default function CustomContentPage() {
                       })}
                       {visibleAssets.length === 0 ? <p className={s.emptyText}>没有找到匹配的资料，试试其他文件名或状态。</p> : null}
                     </div>
+                    </div>
                     </>
                   ) : (
                     <p className={s.emptyText}>{assetsLoading ? '正在读取这门课的资料…' : assetError ? '资料暂未取回，重新同步后可继续。' : '资料还是空的。先放一份讲义，小白才知道这门课要讲什么。'}</p>
@@ -1335,18 +1374,24 @@ export default function CustomContentPage() {
                   <button className={s.btnGhost} type="button" onClick={focusNewCourse}>去写课程名</button>
                 </div>
               )}
-            </section>
+            </section></>}
 
+            <details className={s.compilerPanel} open={compilerOnly || compilerPanelOpen || Boolean(job) || draftEdited} onToggle={(event) => { if (!compilerOnly) setCompilerPanelOpen(event.currentTarget.open); }}><summary><span><Icon name="graduation" size={17} />{compilerOnly ? selectedCourse?.title ?? '学习项目' : '课题工作台'}</span><small>{selectedReadyAssets.length} 份资料已就绪</small><Icon name="chevron-down" size={15} /></summary>
             <section id="custom-compiler" className={s.section}>
               <header className={sec.head}>
-                <h2 className={sec.title}>课题</h2>
-                <p className={sec.note}>选择资料，让小砚整理要点、误区、随堂题与备课包。确认草稿后，再发布到书架。</p>
+                <h2 className={sec.title}>从资料生成学习课题</h2>
+                <p className={sec.note}>小砚会根据所选文件整理讲解、误区和练习。检查草稿后，添加到学习终端。</p>
               </header>
+              {compilerOnly && <div className={s.parseSources}>
+                <div><span>项目文件 · {assets.length} 份</span><button className={s.btnText} disabled={assetsLoading || !online} onClick={() => setAssetRefreshToken((value) => value + 1)}>{assetsLoading ? '同步中…' : '刷新解析状态'}</button></div>
+                {assets.map((asset) => <label key={asset.id}><input type="checkbox" checked={selectedAssetIds.has(asset.id)} disabled={compileLocked || asset.parseStatus === 'deleting'} onChange={() => toggleAsset(asset.id)} /><span>{asset.filename}<small>{asset.errorMessage || (asset.parseStatus === 'completed' ? '解析完成，可用于生成课题' : ['failed', 'cancelled'].includes(asset.parseStatus) ? '解析失败' : '正在解析，完成后即可使用')}</small></span>{['failed', 'cancelled'].includes(asset.parseStatus) && <button type="button" className={s.btnText} disabled={pendingAssetIds.has(asset.id)} onClick={() => void reparseAsset(asset.id)}>重新解析</button>}</label>)}
+                {assetError && <p role="status">{assetError}</p>}
+              </div>}
               {selectedCourse ? (
                 <div className={s.compileRow}>
                   <label><span>课题名<small>　可留空，由小砚拟题</small></span><input className={s.field} value={topicTitle} maxLength={160} onChange={(event) => setTopicTitle(event.target.value)} placeholder="例如：栈与函数调用" /></label>
-                  <button className={s.btn} type="button" onClick={() => void beginCompile()} disabled={!courseId || compileLocked || selectedReadyAssets.length === 0 || pendingAssetIds.size > 0}>{startingCompile ? '正在提交…' : recoveringJob ? '正在找回草稿…' : '生成课题草稿'}</button>
-                  <p className={s.compileMeta}>已选 <strong>{selectedReadyAssets.length} / 12</strong> 份可用资料{selectedReadyAssets.length === 0 ? '，在上方勾选或全选即可开始' : job?.status === 'needs_review' ? '，先校订或放弃现有草稿' : ''}</p>
+                  <button className={s.btn} type="button" onClick={() => void beginCompile()} disabled={!courseId || compileLocked || selectedReadyAssets.length === 0 || selectedReadyAssets.length !== selectedAssetIds.size || pendingAssetIds.size > 0}>{startingCompile ? '正在提交…' : recoveringJob ? '正在找回草稿…' : '生成课题草稿'}</button>
+                  <p className={s.compileMeta}>已选 <strong>{selectedReadyAssets.length} / 12</strong> 份可用资料{selectedReadyAssets.length !== selectedAssetIds.size ? '，请等待所选文件解析完成，或取消选择失败文件' : selectedReadyAssets.length === 0 ? '，勾选文件即可开始' : job?.status === 'needs_review' ? '，先校订或放弃现有草稿' : ''}</p>
                 </div>
               ) : (
                 <p className={s.emptyLine}>先建一门课程、放一份讲义，这里才会亮起来。</p>
@@ -1357,14 +1402,14 @@ export default function CustomContentPage() {
               {job ? (
                 <div className={`${s.jobRow}${job.status === 'failed' ? ` ${s.jobFailed}` : ''}`} role="status">
                   <span>{job.status === 'running' || job.status === 'queued' ? <span className={s.jobDot} /> : <Icon name={job.status === 'failed' ? 'circle-x' : 'circle-check'} size={17} />}</span>
-                  <p><strong>{JOB_LABEL[job.status]}</strong><small>{job.status === 'running' ? '正在读取资料、编写讲稿并核对出处。可以先离开此页，回来后会找回进度。' : job.status === 'queued' ? '正在等待空闲的编写席位，可以先去学习其他课程。' : job.status === 'failed' ? errorHint(new Error(job.errorCode ?? '')) : '草稿不会自动发布，要经你校订。'}</small></p>
+                  <p><strong>{JOB_LABEL[job.status]}</strong><small>{job.status === 'running' ? '正在读取资料、编写讲稿并核对出处。可以先离开此页，回来后会找回进度。' : job.status === 'queued' ? '正在等待空闲的编写席位，可以先去学习其他课程。' : job.status === 'failed' ? errorHint(new Error(job.errorCode ?? '')) : job.status === 'done' ? '课题已加入学习项目，可以开始学习。' : '草稿不会自动发布，要经你校订。'}</small></p>
                 </div>
               ) : null}
 
               {draftRecord ? (
                 <div className={s.review}>
                   <aside className={s.gate} aria-label="发布前校验">
-                    <div className={s.gateHead}><h3>发布前校验</h3><p className={s.gateNote}>保存时会重新读取课件分块核对出处，不能在浏览器里伪造。点任一条可跳到那一处修改。</p></div>
+                    <div className={s.gateHead}><h3>内容与出处检查</h3><p className={s.gateNote}>保存时会重新核对资料出处。点击待处理项，可跳到对应内容修改。</p></div>
                     <Issues issues={draftRecord.qualityIssues} draft={draftRecord.payload} onJump={jumpToDraftPath} />
                   </aside>
                   <div className={s.reviewMain}>
@@ -1379,13 +1424,13 @@ export default function CustomContentPage() {
                       ) : <span className={s.actionsLead}><button className={`${s.btnText} ${s.btnDanger}`} type="button" onClick={() => setDiscardArmed(true)} disabled={saving || publishing}>放弃这份草稿</button></span> : null}
                       <span className={s.saveState} role="status">{draftEdited ? '有未保存的校订' : '校订已保存'}</span>
                       <button className={s.btnGhost} type="button" onClick={() => void saveDraft()} disabled={saving || publishing || discarding || !online || draftRecord.status !== 'draft'}>{saving ? '正在核对出处…' : '保存校订'}</button>
-                      <button className={s.btn} type="button" onClick={() => void publish()} disabled={saving || publishing || discarding || !online || draftRecord.status !== 'draft'}>{publishing ? '发布中…' : '发布到书架'} <Icon name="arrow-right" size={16} /></button>
+                      <button className={s.btn} type="button" onClick={() => void publish()} disabled={saving || publishing || discarding || !online || draftRecord.status !== 'draft'}>{publishing ? '添加中…' : '添加到学习终端'} <Icon name="arrow-right" size={16} /></button>
                     </footer>
-                    {publishedTopicId ? <p className={s.published}><Icon name="circle-check" size={17} />课题已经上架。<Link to={`/prep/${publishedTopicId}`}>去备这门新课 <Icon name="arrow-right" size={15} /></Link></p> : null}
+                    {publishedTopicId ? <p className={s.published}><Icon name="circle-check" size={17} />课题已加入项目。<Link to={`/prep/${publishedTopicId}`}>开始学习 <Icon name="arrow-right" size={15} /></Link></p> : null}
                   </div>
                 </div>
               ) : null}
-            </section>
+            </section></details>
           </main>
         </div>
       )}

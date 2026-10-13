@@ -169,6 +169,10 @@ PostgreSQL 与 Redis 的明文连接只允许 RFC1918 私网地址，并且必�
 
 ## 本地运行与验证
 
+### 可选 DeepTutor 深入答疑
+
+学习终端可通过 `DEEPTUTOR_ENABLED=1` 使用隔离安装的 DeepTutor 核心循环，安装与边界见 [接入说明](../deploy/deeptutor/README.md)。`/api/study/status` 与 `/api/study/chat` 继承现有 chat 门禁；未安装或未启用时不影响原来的课堂与普通答疑。真实模型和生产启用需另行验收。
+
 未配置生产存储环境变量时，网关自动使用 `/var/lib/xiaobai` 兼容文件存储，便于本地测试。
 
 ```bash
@@ -240,3 +244,22 @@ npm run build
 - 回滚必须同时恢复完整服务包、配置与兼容状态；数据库迁移采用只增不改的版本化 SQL。
 - 当前后台与主站同源，身份域独立但浏览器安全 origin 尚未隔离；下一阶段应配置独立后台 DNS/TLS
   并将 `ADMIN_PUBLIC_ORIGIN` 切换到该 origin。
+
+### Unified file library
+
+`/api/library` owns account-private file metadata and folder trees. Apply migration `010_unified_file_library.sql`; production uses the existing PostgreSQL and private COS adapter. `FILE_LIBRARY_LOCAL_DIR` enables explicit local storage only outside production. Upload limits are 80 MiB/file, 512 MiB/account and 2 simultaneous operations globally / 1 per account; upload and parsing imports share admission limits.
+
+Existing custom-course assets appear as file references through owner-scoped `listLibraryFiles` and `readLibraryFile`. No old object is moved or deleted during sync. Removing a legacy reference leaves its original course asset intact. New file originals are independent of course parsing assets. Permanent removal records a durable `purging` intent before deleting bytes; maintenance retries interrupted cleanup. The list endpoint isolates legacy-sync failures and still returns saved files with a retry notice.
+
+`POST /api/library/files/:id/course` reuses a valid existing binding or imports a parsing asset into an owned course. The browser continues through the existing compile/draft/quality/publish APIs. No COS keys or WeKnora credentials are exposed by this API.
+
+### Shared parsed sources (migration 011)
+
+Apply `011_shared_library_sources.sql` after 010. Assets now have canonical `owner_id`, original `wk_kb_id` and optional `library_file_id`; `custom_course_assets` supplies course membership/role. Legacy IDs and storage references are retained. New library parsing uploads only to WeKnora from the existing private original, with an idempotent file marker; it does not write a second COS object. File-only conversations use `/api/library/files/:id/parse` and `/api/library/sources`, with ownership and readiness rechecked on every request. Course association is metadata-only; source search groups by original KB and filters all hits against the enumerated authorized chunks.
+
+The file-only study path accepts library IDs and re-resolves evidence on the server, never client-supplied file contents. Q&A and artifact generation keep the actual bounded excerpts used. Course unlinks retain the original; canonical deletion respects active references and has recoverable catalog/parse cleanup. The previous per-course copied-import behavior is superseded by this shared source path.
+# 学习终端的生成式回答
+
+常规网关与隔离测试部署共同使用 `learning-answer-router.mjs` 和 `learning-answer.mjs`，提供经过鉴权的 `GET /api/learning/status` 与 `POST /api/learning/answer`。客户端只提交问题、课题 ID 和资料选择；服务器重新校验归属并生成有限来源，模型、系统提示、输出上限和调用额度由服务器控制。
+
+回答使用 SSE 发送检索、生成、校验状态及正文，完整校验后才交付交互组件。断开连接会取消上游；未知组件、无效引用、截断或缺失终态不能成为成功回答。`server/shared/learning-ui.mjs` 是前后端共用的组件数据契约。未配置真实文件存储或模型时状态返回不可用，不提供伪造结果。

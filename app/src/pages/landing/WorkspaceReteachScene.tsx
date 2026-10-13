@@ -149,7 +149,7 @@ export function ReteachScene({
             <small>{open ? '补完后再形成正式记录' : '规则、例子和小白复述会一起留下证据'}</small>
           </p>
         </div>
-        <Link to="/study">
+        <Link to="/learn">
           去课程书架实际开讲
           <Icon name="arrow-right" size={15} />
         </Link>

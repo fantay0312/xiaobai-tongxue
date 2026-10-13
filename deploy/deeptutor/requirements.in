@@ -1,0 +1,12 @@
+# Only imports reached by the restricted core scheduler; no full Web app/RAG install.
+openai>=1.30,<3
+PyYAML>=6,<7
+pydantic>=2,<3
+pydantic-settings>=2,<3
+jinja2>=3,<4
+requests>=2.32,<3
+httpx>=0.27,<1
+loguru>=0.7,<1
+tenacity>=8,<10
+jsonschema>=4,<5
+aiohttp>=3.9,<4

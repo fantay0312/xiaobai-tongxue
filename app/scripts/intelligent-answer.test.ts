@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';
+import '../src/lib/disableOpenUIDevtools';
+import { validateLearningUi, restoreLearningInteraction } from '../../server/shared/learning-ui.mjs';
+import { emptyWorkspace, loadWorkspace, saveWorkspace } from '../src/engine/studyWorkspace';
+import { streamLearningAnswer } from '../src/lib/learningAnswer';
+
+const data=new Map<string,string>();
+assert.equal((globalThis as typeof globalThis & {[key:symbol]:unknown})[Symbol.for('openui.devtools.autoMount')],true,'OpenUI must not auto-mount its developer inspector in the product preview');
+Object.defineProperty(globalThis,'localStorage',{value:{getItem:(key:string)=>data.get(key)??null,setItem:(key:string,value:string)=>data.set(key,value)}});
+const ui=validateLearningUi({version:1,summary:'来自真实资料的解释',blocks:[{id:'q1',type:'quiz',title:'检查理解',question:'选择正确项',options:['甲','乙'],answerIndex:1,explanation:'依据原文',sourceIds:['S1']}],followUps:['再解释一次']},[{id:'S1'}]);
+const base=emptyWorkspace();
+base.conversations[0].messages=[{id:'answer',role:'assistant',text:'解释',sources:[{id:'S1',title:'来源',excerpt:'证据'}],ui,interaction:{q1:{choice:1,revealed:true}},run:{status:'complete',startedAt:1,elapsedMs:20,steps:[]}}];
+saveWorkspace('alice','course',base);
+assert.equal(loadWorkspace('alice','course').conversations[0].messages[0].interaction?.q1.choice,1);
+assert.equal(loadWorkspace('bob','course').conversations[0].messages.length,0);
+assert.deepEqual(restoreLearningInteraction(ui,{q1:{choice:99,revealed:false},unknown:{checked:[1]}}),{q1:{revealed:false}});
+base.conversations[0].messages[0].run!.status='running';saveWorkspace('alice','course',base);
+assert.equal(loadWorkspace('alice','course').conversations[0].messages[0].run?.status,'stopped');
+
+const events: unknown[]=[];
+const original=globalThis.fetch;
+globalThis.fetch=async()=>new Response('event: stage\ndata: {"id":"sources","label":"已核对资料","status":"done"}\n\nevent: done\ndata: '+JSON.stringify({text:'解释',ui,sources:[{id:'S1',title:'来源',excerpt:'证据'}]})+'\n\n',{headers:{'content-type':'text/event-stream'}});
+await streamLearningAnswer({question:'解释',topicId:'library',sources:[],history:[],mode:'ask',format:'auto',signal:new AbortController().signal,onEvent:(event)=>events.push(event)});
+assert.equal(events.length,2);
+globalThis.fetch=async()=>new Response('event: text\ndata: {"text":"未完成"}\n\n',{headers:{'content-type':'text/event-stream'}});
+await assert.rejects(streamLearningAnswer({question:'解释',topicId:'library',sources:[],history:[],mode:'ask',format:'auto',signal:new AbortController().signal,onEvent:()=>{}}),/incomplete/);
+globalThis.fetch=original;
+console.log('Intelligent answers: persistence, owner isolation, interrupted restore and stream completion verified.');

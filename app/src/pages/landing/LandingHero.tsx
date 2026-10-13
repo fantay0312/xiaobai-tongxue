@@ -20,8 +20,8 @@ export function LandingHero({ onFlowClick }: LandingHeroProps) {
         哪里没讲明白，课后一页看清。
       </p>
       <div className={`${styles.actions} ${styles.enter}`} style={{ animationDelay: '140ms' }}>
-        <Link className={styles.primary} to="/study">
-          开始讲课
+        <Link className={styles.primary} to="/learn">
+          开始学习
           <Icon name="arrow-right" size={17} />
         </Link>
         <a className={styles.secondary} href="#product" onClick={onFlowClick}>

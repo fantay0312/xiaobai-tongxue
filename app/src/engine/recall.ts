@@ -365,7 +365,7 @@ export function deriveMemoryPanorama(input: {
       empty: true,
       stats: [],
       lines: ['此刻不在课上——下课后,这一层会清空,要紧的都往下面三层里存。'],
-      anchor: { label: '去开讲', to: '/study' },
+      anchor: { label: '去开讲', to: '/learn' },
     };
   }
 

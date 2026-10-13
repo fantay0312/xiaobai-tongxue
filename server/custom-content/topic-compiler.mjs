@@ -1,5 +1,7 @@
 import { hasBlockingIssues, normalizeTopicDraft, validateTopicDraft } from './topic-contract.mjs';
 import { sourceCacheOptions } from './source-cache.mjs';
+import { searchSelectedSources } from './source-search.mjs';
+import { rankStudySources } from './study-sources.mjs';
 
 export const TOPIC_PROMPT_VERSION = 'custom-topic-v2';
 const MAX_SOURCE_CHARS = 72_000;
@@ -54,9 +56,11 @@ function overlapScore(query, content) {
 }
 
 function bestLocalSource(checklistItem, chunks) {
+  const query = [checklistItem.point, checklistItem.groundTruth, ...(checklistItem.terms ?? [])].join(' ');
+  const ranked = rankStudySources(query, [{ asset: { id: 'authorized', filename: '' }, chunks }]);
+  if (ranked.length) return chunks.find((chunk) => chunk.id === ranked[0].chunkId);
   let best = null;
   let score = 0;
-  const query = [checklistItem.point, checklistItem.groundTruth, ...(checklistItem.terms ?? [])].join(' ');
   for (const chunk of chunks) {
     const current = overlapScore(query, chunk.content);
     if (current > score) {
@@ -368,11 +372,11 @@ export function createTopicCompiler({ weknora, llm } = {}) {
     }));
   }
 
-  async function titleHitsFor({ course, requestedTitle, knowledgeIds, chunksById, requestId }) {
+  async function titleHitsFor({ course, assets, requestedTitle, knowledgeIds, chunksById, requestId }) {
     if (typeof requestedTitle !== 'string' || !requestedTitle.trim()) return [];
     try {
-      const results = await weknora.search({
-        kbId: course.wkDocKbId,
+      const results = await searchSelectedSources(weknora, {
+        assets, fallbackKb: course.wkDocKbId, chunks: [...chunksById.values()],
         query: requestedTitle.trim(),
         knowledgeIds,
         requestId,
@@ -394,12 +398,12 @@ export function createTopicCompiler({ weknora, llm } = {}) {
   }
 
   /** 逐条要点找出处(检索优先,本地分块兜底),并把课件里没出现的术语剔掉 */
-  async function groundChecklist(topic, { course, knowledgeIds, chunks, sourceText, requestId }) {
+  async function groundChecklist(topic, { course, assets, knowledgeIds, chunks, sourceText, requestId }) {
     await Promise.all(topic.checklist.map(async (item) => {
       let hit = null;
       try {
-        const results = await weknora.search({
-          kbId: course.wkDocKbId,
+        const results = await searchSelectedSources(weknora, {
+          assets, fallbackKb: course.wkDocKbId, chunks,
           query: `${item.point}\n${item.groundTruth}`,
           knowledgeIds,
           requestId,
@@ -408,9 +412,9 @@ export function createTopicCompiler({ weknora, llm } = {}) {
       } catch {
         // 本地分块证据仍可作为编译闸门；检索服务故障会由 sidecar 健康检查另行暴露。
       }
-      const local = hit ? null : bestLocalSource(item, chunks);
-      const selectedId = hit ? chunkId(hit) : local?.id ?? '';
-      const selectedContent = hit ? chunkContent(hit) : local?.content ?? '';
+      const local = bestLocalSource(item, chunks);
+      const selectedId = local?.id ?? (hit ? chunkId(hit) : '');
+      const selectedContent = local?.content ?? (hit ? chunkContent(hit) : '');
       item.sourceChunkIds = selectedId ? [selectedId] : [];
       item.sourceExcerpt = excerpt(selectedContent);
       item.terms = item.terms.filter((term) => sourceText.toLowerCase().includes(term.toLowerCase()));
@@ -442,7 +446,7 @@ export function createTopicCompiler({ weknora, llm } = {}) {
       promptVersion: TOPIC_PROMPT_VERSION,
       model: llm.model,
     });
-    await groundChecklist(repaired, { course, knowledgeIds, chunks, sourceText, requestId });
+    await groundChecklist(repaired, { course, assets, knowledgeIds, chunks, sourceText, requestId });
     return { topic: repaired, qualityIssues: validateTopicDraft(repaired, { sourceCorpus: sourceText }) };
   }
 
@@ -454,7 +458,7 @@ export function createTopicCompiler({ weknora, llm } = {}) {
 
       const knowledgeIds = assets.map((asset) => asset.wkKnowledgeId);
       const chunksById = new Map(chunks.map((chunk) => [chunk.id, chunk]));
-      const titleHits = await titleHitsFor({ course, requestedTitle, knowledgeIds, chunksById, requestId });
+      const titleHits = await titleHitsFor({ course, assets, requestedTitle, knowledgeIds, chunksById, requestId });
       const sourceText = boundedSourceText([
         ...titleHits,
         ...fairChunkOrder(chunkLists),
@@ -472,7 +476,7 @@ export function createTopicCompiler({ weknora, llm } = {}) {
         promptVersion: TOPIC_PROMPT_VERSION,
         model: llm.model,
       });
-      await groundChecklist(topic, { course, knowledgeIds, chunks, sourceText, requestId });
+      await groundChecklist(topic, { course, assets, knowledgeIds, chunks, sourceText, requestId });
       let qualityIssues = validateTopicDraft(topic, { sourceCorpus: sourceText });
       let best = topic;
 
@@ -501,7 +505,7 @@ export function createTopicCompiler({ weknora, llm } = {}) {
       const knowledgeIds = assets.map((asset) => asset.wkKnowledgeId);
       const chunksById = new Map(chunks.map((chunk) => [chunk.id, chunk]));
       const titleHits = await titleHitsFor({
-        course, requestedTitle: topic.title, knowledgeIds, chunksById, requestId,
+        course, assets, requestedTitle: topic.title, knowledgeIds, chunksById, requestId,
       });
       const sourceText = boundedSourceText([...titleHits, ...fairChunkOrder(chunkLists)]);
       return repairWithSources({

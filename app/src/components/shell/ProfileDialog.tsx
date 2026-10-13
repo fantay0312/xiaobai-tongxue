@@ -301,8 +301,8 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
 
               <h3 className={styles.groupTitle} id="quick-entry-title">常用入口</h3>
               <nav className={styles.rows} aria-labelledby="quick-entry-title">
-                <Link className={styles.entry} to="/study" onClick={onClose}>
-                  <span className={styles.entryCopy}><span>回到书斋</span><small>继续选择课程与知识点</small></span>
+                <Link className={styles.entry} to="/learn" onClick={onClose}>
+                  <span className={styles.entryCopy}><span>回到学习终端</span><small>继续选择课程与知识点</small></span>
                   <Icon name="chevron-right" size={16} className={styles.entryChevron} />
                 </Link>
                 <Link className={styles.entry} to="/growth" onClick={onClose}>

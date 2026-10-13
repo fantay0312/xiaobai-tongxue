@@ -1,0 +1,63 @@
+{
+  "at": "2026-10-13T19:31:53.089Z",
+  "files": [
+    {
+      "id": "be8247b4-a1a0-4652-a575-aa1287b22e2f",
+      "name": "Attention-Is-All-You-Need.pdf",
+      "bytes": 2215244,
+      "sha256": "bdfaa68d8984f0dc02beaca527b76f207d99b666d31d1da728ee0728182df697",
+      "phase": "ready",
+      "parse": {
+        "error": null,
+        "status": "completed",
+        "assetId": "6b00ed74-0264-4809-8e15-0bd1726c32e4",
+        "updatedAt": "2026-10-13T19:28:22.025Z"
+      },
+      "courseImports": [
+        {
+          "at": "2026-10-13T19:23:01.997Z",
+          "assetId": "6b00ed74-0264-4809-8e15-0bd1726c32e4",
+          "courseId": "ded7221f-74d2-4f0c-b183-d62293aa7ce6"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "6b00ed74-0264-4809-8e15-0bd1726c32e4",
+      "library_file_id": "be8247b4-a1a0-4652-a575-aa1287b22e2f",
+      "parse_status": "completed",
+      "enable_status": "enabled",
+      "byte_size": "2215244",
+      "wk_knowledge_id": "d4531529-e954-472a-a0c6-20012c756a0a"
+    }
+  ],
+  "courses": [
+    {
+      "id": "ded7221f-74d2-4f0c-b183-d62293aa7ce6",
+      "title": "Transformer 原论文精读·服务器验收"
+    }
+  ],
+  "bindings": [
+    {
+      "course_id": "ded7221f-74d2-4f0c-b183-d62293aa7ce6",
+      "asset_id": "6b00ed74-0264-4809-8e15-0bd1726c32e4"
+    }
+  ],
+  "topics": [
+    {
+      "id": "5ce0674d-eb30-4561-83d5-fc2a70800d25",
+      "topic_id": "custom-ded7221f-74d2-4f0c-b183-d62293aa7ce6-c380eedf-810b-4cd0-9b03-df892bc572e8",
+      "status": "ready",
+      "issues": 0
+    }
+  ],
+  "jobs": [
+    {
+      "id": "c380eedf-810b-4cd0-9b03-df892bc572e8",
+      "status": "done",
+      "error_code": null
+    }
+  ],
+  "publicUntouched": true
+}

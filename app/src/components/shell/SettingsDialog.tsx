@@ -37,7 +37,7 @@ const TABS: { id: TabId; label: string; icon: IconName }[] = [
 
 /* 三套主题:全名进 title/读屏,分段钮只显短名;色点取该主题的主色 */
 const THEME_OPTIONS: { id: UiTheme; name: string; short: string; dot: string }[] = [
-  { id: 'paper', name: '老学堂 · 票据', short: '老学堂', dot: 'oklch(0.601 0.143 38.4)' },
+  { id: 'paper', name: '简约 · 学习终端', short: '简约', dot: 'oklch(0.52 0.12 255)' },
   { id: 'anime', name: '日系动漫 · 赛璐珞', short: '日系动漫', dot: 'oklch(0.462 0.098 252.4)' },
   { id: 'tech', name: '科技 · 霓虹', short: '科技', dot: 'oklch(0.780 0.148 210.4)' },
 ];

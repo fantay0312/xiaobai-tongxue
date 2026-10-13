@@ -496,7 +496,7 @@ export default function ClassroomPage() {
       <div className={s.holder}>
         <p>
           {loadingCustom ? '正在把自选讲义送进教室。' : '这间教室还没有开放。'}
-          {!loadingCustom ? <Link to="/study"><Icon name="arrow-left" size={15} />回书斋</Link> : null}
+          {!loadingCustom ? <Link to="/learn"><Icon name="arrow-left" size={15} />回学习终端</Link> : null}
         </p>
       </div>
     );
@@ -604,7 +604,7 @@ export default function ClassroomPage() {
   };
   const dismissClass = () => {
     const sid = endSession();
-    navigate(sid ? (mode === 'review' ? `/review/${sid}` : `/exam/${sid}`) : '/study');
+    navigate(sid ? (mode === 'review' ? `/review/${sid}` : `/exam/${sid}`) : '/learn');
   };
   const backToPrep = () => {
     abandonSession();

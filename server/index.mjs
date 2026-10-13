@@ -76,6 +76,13 @@ import { createCommerceService } from './commerce/service.mjs';
 import { createStaticHandler } from './static-hosting.mjs';
 import { createCustomContentRouter } from './custom-content/router.mjs';
 import { createCustomContentService } from './custom-content/service.mjs';
+import { createDeepTutorProvider } from './deeptutor-provider.mjs';
+import { createStudyTutorRouter } from './study-tutor.mjs';
+import { createFileLibraryService } from './file-library/service.mjs';
+import { createFileLibraryRouter } from './file-library/router.mjs';
+import { postgresFileLibraryStore } from './file-library/repository.mjs';
+import { createLearningAnswerService } from './learning-answer.mjs';
+import { createLearningAnswerRouter } from './learning-answer-router.mjs';
 import { createJsonLlmClient, createTopicCompiler } from './custom-content/topic-compiler.mjs';
 import { createWeKnoraClient } from './custom-content/weknora-client.mjs';
 import {
@@ -2127,21 +2134,24 @@ const COACH_REASONING_EFFORT = 'low';
 const CLASSROOM_REASONING_EFFORT = { xiaobai: 'none', evaluator: 'low', report: 'low' };
 const UPSTREAM_TIMEOUT = 45_000;
 
-async function handleChat(req, res) {
-  const u = await protectedUser(req, res, 'chat');
-  if (!u) return;
-
+function reserveChatCalls(u, res, units = 1) {
   // 限流按账号名而非会话 token:重复登录铸新会话无法刷新额度
   const rate = chatHits.get(u.name) ?? { count: 0, resetAt: Date.now() + 60_000 };
   if (rate.resetAt < Date.now()) { rate.count = 0; rate.resetAt = Date.now() + 60_000; }
-  rate.count += 1; chatHits.set(u.name, rate);
-  if (rate.count > CHAT_MAX_PER_MIN) return send(res, 429, { error: 'rate-limited' });
+  rate.count += units; chatHits.set(u.name, rate);
+  if (rate.count > CHAT_MAX_PER_MIN) { send(res, 429, { error: 'rate-limited' }); return false; }
   // 每日封顶:防泄露凭据被长期当免费通用 LLM 薅
   const today = new Date().toISOString().slice(0, 10);
   const daily = chatDaily.get(u.name);
-  const dayCount = daily && daily.day === today ? daily.count + 1 : 1;
+  const dayCount = daily && daily.day === today ? daily.count + units : units;
   chatDaily.set(u.name, { day: today, count: dayCount });
-  if (dayCount > CHAT_MAX_PER_DAY) return send(res, 429, { error: 'daily-limit' });
+  if (dayCount > CHAT_MAX_PER_DAY) { send(res, 429, { error: 'daily-limit' }); return false; }
+  return true;
+}
+
+async function handleChat(req, res) {
+  const u = await protectedUser(req, res, 'chat');
+  if (!u || !reserveChatCalls(u, res)) return;
 
   let body;
   try { body = await readJson(req); } catch (e) {
@@ -2821,6 +2831,35 @@ const staticHandler = createStaticHandler({
   send,
 });
 
+const studyTutorRouter = createStudyTutorRouter({
+  provider: createDeepTutorProvider({ enabled: process.env.DEEPTUTOR_ENABLED === '1', model: MODEL_COACH, baseUrl: UPSTREAM, apiKey: API_KEY }),
+  resolveOwner: async (req, res) => {
+    const user = await protectedUser(req, res, 'chat');
+    return user ? { ...user, id: (await findUser(user.name))?.id } : null;
+  },
+  customContent: customContentService, fileLibrary: () => fileLibraryService, reserveCalls: reserveChatCalls, send,
+  readJson: (req, limit) => readJson(req, limit, 5000), hasJsonContentType,
+});
+
+let fileLibraryService = null;
+if (productionStorage) fileLibraryService = createFileLibraryService({ metadata: postgresFileLibraryStore(productionStorage.postgres), blobs: productionStorage.cos, customContent: customContentService });
+else if (process.env.NODE_ENV !== 'production' && process.env.FILE_LIBRARY_LOCAL_DIR) {
+  const { createLocalLibraryStore } = await import('./file-library/local-store.mjs');
+  const local = await createLocalLibraryStore(path.resolve(process.env.FILE_LIBRARY_LOCAL_DIR));
+  fileLibraryService = createFileLibraryService({ ...local, customContent: customContentService });
+}
+const fileLibraryRouter = createFileLibraryRouter({ service: fileLibraryService, send, readJson, readRaw,
+  resolveOwner: async (req, res) => { const user = await protectedUser(req, res, 'all'); return user ? { ...user, id: (await findUser(user.name))?.id ?? user.name } : null; },
+  rateLimit: productionStorage ? (owner) => productionStorage.redisOtp.rateLimit({ scope: 'library-upload', subject: owner.id, limit: 60, windowSeconds: 86400 }) : undefined,
+});
+if (fileLibraryService) { const cleanup = setInterval(() => { void fileLibraryService.reconcile().catch(() => console.error('[library] pending upload cleanup failed')); }, 300000); cleanup.unref(); }
+const learningAnswerRouter = createLearningAnswerRouter({
+  service: fileLibraryService && API_KEY && /^https:\/\//.test(UPSTREAM)
+    ? createLearningAnswerService({fileLibrary:fileLibraryService,customContent:customContentService,baseUrl:UPSTREAM,apiKey:API_KEY,model:MODEL_COACH}) : null,
+  resolveOwner: async (req,res) => {const user=await protectedUser(req,res,'chat');return user?{...user,id:(await findUser(user.name))?.id??user.name}:null;},
+  reserveCalls: reserveChatCalls,send,readJson,hasJsonContentType,
+});
+
 const server = http.createServer((req, res) => {
   let { pathname } = new URL(req.url, 'http://localhost');
   // 路径前缀部署:/xiaobai/... 与根路径 ... 等价(nginx 反代不改写,前缀由这里剥)
@@ -2828,6 +2867,9 @@ const server = http.createServer((req, res) => {
     pathname = pathname.slice(PREFIX.length) || '/';
   }
   if (pathname.startsWith('/api/')) {
+    if (pathname.startsWith('/api/learning/')) return void learningAnswerRouter.handle(req,res,pathname);
+    if (pathname === '/api/library' || pathname.startsWith('/api/library/')) return void fileLibraryRouter.handle(req, res, pathname);
+    if (pathname.startsWith('/api/study/')) return void studyTutorRouter.handle(req, res, pathname);
     if (pathname === '/api/xb' || pathname.startsWith('/api/xb/')) {
       if (!customContentRouter) return send(res, 503, { error: 'custom-content-unavailable' });
       return void customContentRouter.handle(req, res, pathname);

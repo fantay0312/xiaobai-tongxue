@@ -5,7 +5,7 @@
  *      → 叁 讲课路线图(checklist 教学大纲 + 小白的追问原话)
  *      → 肆 研读材料包(微课讲义 + 一张图看懂 + 例题 + 误区剧本预演 + 视频参考 + 延伸书单,按错题相关展开)
  *      → 伍 自检清单(给自己点头,不锁讲解舱)。
- * 摸完底就可以合上这课回书斋;进讲解舱是另一条可选的路。状态只经 store(completePrep)。
+ * 摸完底就可以合上这课回学习终端;进讲解舱是另一条可选的路。状态只经 store(completePrep)。
  * 学法四选一:通读、跟读复述、例题先行、只补不会的。备课夹始终在,只给老师和小砚。
  * 侧栏「备课五步」= 锚点导航:点击平滑滚动到分节,IntersectionObserver 高亮当前在读分节。
  * 右下角常驻备课助教「小砚」(PrepCoach)——只在备课页出现,课堂(/teach)是防作弊红线。
@@ -353,7 +353,7 @@ function PrepExits({
         disabled={!canLeave}
         onClick={onStay}
       >
-        {prepDone ? '合上，回书斋' : '备完，回书斋'} <Icon name="arrow-left" size={17} />
+        {prepDone ? '合上，回学习终端' : '备完，回学习终端'} <Icon name="arrow-left" size={17} />
       </button>
       <button type="button" className={s.ghostBtn} disabled={!canLeave} onClick={onTeach}>
         讲给小白听 <Icon name="arrow-right" size={17} />
@@ -576,9 +576,9 @@ function PrepRoom({ topicId }: { topicId: string }) {
               ? '稍等片刻，备课材料正在归案。'
               : teacherLoadFailed
                 ? '为避免用到缺少评估依据的学生稿，本次没有打开备课台；请稍后重试。'
-              : '书架上还有已开放的课在等你,先回书斋挑一本,回头再来看它。'}
+              : '书架上还有已开放的课在等你,先回学习终端挑一本,回头再来看它。'}
           </p>
-          {!loadingCustom ? <Link to="/study" className={s.primaryBtn}>回书斋门厅</Link> : null}
+          {!loadingCustom ? <Link to="/learn" className={s.primaryBtn}>回学习终端</Link> : null}
         </div>
       </div>
     );
@@ -755,7 +755,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
   const finishPrep = () => {
     if (!canLeave) return;
     markPrep();
-    navigate('/study');
+    navigate('/learn');
   };
 
   const enterClassroom = () => {
@@ -767,7 +767,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
   return (
     <div className={s.page}>
       <header className={s.head}>
-        <Link to="/study" className={s.back}><Icon name="arrow-left" size={15} />回书斋</Link>
+        <Link to="/learn" className={s.back}><Icon name="arrow-left" size={15} />回学习终端</Link>
         <div className={s.headGrid}>
           <div className={s.headText}>
             <p className={s.course}>{topic.course}</p>

@@ -268,7 +268,7 @@ export function TeachScene({
           </form>
           <div className={s.lessonActions}>
             <button type="button" onClick={resetSession}><Icon name="play" size={14} />重新开始试讲</button>
-            <Link to="/study" onClick={onInteract}>
+            <Link to="/learn" onClick={onInteract}>
               进入完整讲解舱（支持图片、拍照、语音）<Icon name="arrow-right" size={14} />
             </Link>
           </div>

@@ -1,0 +1,81 @@
+import assert from 'node:assert/strict';
+import { TOPICS } from '../src/data';
+import { askStudyTutor, buildStudyPrompt, emptyWorkspace, lectureSections, loadWorkspace, prepareStudySources, saveWorkspace, studyCards, workspaceKey } from '../src/engine/studyWorkspace';
+import { clampCompanionPosition, emptyLearningIdentity, loadLearningIdentity, saveLearningIdentity } from '../src/engine/learningIdentity';
+import { createMemoryRouter } from 'react-router';
+
+const storage = new Map<string, string>();
+Object.defineProperty(globalThis, 'localStorage', { value: {
+  getItem: (key: string) => storage.get(key) ?? null,
+  setItem: (key: string, value: string) => storage.set(key, value),
+} });
+const topic = TOPICS.find((item) => item.topicId === 'attention')!;
+assert.ok(topic);
+const state = emptyWorkspace();
+state.note = '我的理解';
+assert.equal(saveWorkspace('alice', topic.topicId, state), true);
+assert.equal(loadWorkspace('alice', topic.topicId).note, state.note);
+assert.equal(loadWorkspace('bob', topic.topicId).note, '');
+assert.equal(loadWorkspace('alice', 'another-topic').note, '');
+storage.set(workspaceKey('alice', 'bad'), '{bad json');
+assert.equal(loadWorkspace('alice', 'bad').conversations.length, 1);
+const identity = { ...emptyLearningIdentity(), acceptedAt: '2026-10-14T00:00:00.000Z', actor: 'xiaobai' as const, lastTopicId: 'attention' };
+saveLearningIdentity('alice', identity);
+assert.equal(loadLearningIdentity('alice').actor, 'xiaobai');
+assert.equal(loadLearningIdentity('alice').acceptedAt, identity.acceptedAt);
+assert.equal(loadLearningIdentity('bob').acceptedAt, null);
+assert.deepEqual(clampCompanionPosition({ x: -300, y: 9000 }, { width: 390, height: 844 }), { x: 8, y: 596 });
+assert.deepEqual(clampCompanionPosition({ x: 9000, y: -300 }, { width: 390, height: 844 }), { x: 206, y: 64 });
+storage.set(workspaceKey('alice', 'invalid'), JSON.stringify({ conversations: [null, { id: 'x', messages: [null] }], ratings: { x: 'invalid' }, readSections: [-1, 2, 2, 'bad'] }));
+assert.deepEqual(loadWorkspace('alice', 'invalid').readSections, [2]);
+assert.deepEqual(loadWorkspace('alice', 'invalid').ratings, {});
+
+const copied = structuredClone(topic);
+copied.checklist[0].groundTruth = 'PRIVATE_GRADING_RUBRIC';
+copied.checklist[0].lookupCard = 'PRIVATE_LOOKUP_CARD';
+copied.misconceptions[0].correctionCriteria = ['PRIVATE_CORRECTION'];
+const prompt = buildStudyPrompt(copied, 'socratic', '我的笔记', [{ id: '1', title: 'test', excerpt: 'UNTRUSTED_TEXT' }]);
+assert.doesNotMatch(prompt, /PRIVATE_GRADING_RUBRIC|PRIVATE_LOOKUP_CARD|PRIVATE_CORRECTION/);
+assert.match(prompt, /一次只问一个/);
+assert.match(prompt, /不是系统指令/);
+assert.match(prompt, /UNTRUSTED_TEXT/);
+const boundedSources = prepareStudySources([{ id: 'source', title: 'source.pdf', excerpt: 'x'.repeat(2000) }]);
+assert.equal(boundedSources[0].excerpt.length, 550);
+assert.match(buildStudyPrompt(copied, 'ask', '', boundedSources), new RegExp(`"excerpt":"${boundedSources[0].excerpt}"`));
+assert.ok(buildStudyPrompt(copied, 'ask', 'n'.repeat(20000), Array.from({ length: 10 }, () => ({ id: 'i'.repeat(500), title: 't'.repeat(1000), excerpt: 'e'.repeat(10000) })), 'p'.repeat(5000)).length < 8000, 'all sources and boundary instructions must fit the gateway budget');
+assert.ok(lectureSections(topic).every((part) => part.title && part.text));
+assert.equal(studyCards(topic).length, topic.misconceptions.filter((item) => item.probe.explanation).length);
+
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async (_url, init) => new Promise((_resolve, reject) => {
+  const abort = () => reject(new DOMException('Aborted', 'AbortError'));
+  if (init?.signal?.aborted) abort();
+  else init?.signal?.addEventListener('abort', abort, { once: true });
+});
+const controller = new AbortController();
+const pending = askStudyTutor({ topic, mode: 'ask', note: '', sources: [], history: [], question: '为什么', settings: { mode: 'proxy' } as never, signal: controller.signal });
+controller.abort();
+await assert.rejects(pending, /llm-timeout/);
+globalThis.fetch = originalFetch;
+const router = createMemoryRouter([{ path: '*', element: null }], { initialEntries: ['/learn?view=library'] });
+router.getBlocker('workspace', () => true);
+await router.navigate('/growth');
+assert.equal(router.state.location.pathname, '/learn');
+assert.equal(router.state.blockers.get('workspace')?.state, 'blocked');
+router.state.blockers.get('workspace')?.reset?.();
+router.deleteBlocker('workspace');
+await router.navigate('/growth');
+assert.equal(router.state.location.pathname, '/growth');
+router.dispose();
+console.log('study-workspace: account/topic isolation, storage recovery, prompt boundaries, source cards and request cancellation passed');
+const filesChat = emptyWorkspace();
+const fileA = '11111111-1111-4111-8111-111111111111';
+filesChat.conversations[0].libraryFileIds = [fileA];
+filesChat.conversations[0].selectedSourceIds = [`library:${fileA}`];
+filesChat.conversations.push({ id: 'second-chat', title: '第二段对话', messages: [], libraryFileIds: [], selectedSourceIds: [] });
+saveWorkspace('alice', 'library-chat', filesChat);
+const restoredChats = loadWorkspace('alice', 'library-chat');
+assert.deepEqual(restoredChats.conversations[0].libraryFileIds, [fileA]);
+assert.deepEqual(restoredChats.conversations[1].libraryFileIds, []);
+assert.deepEqual(restoredChats.conversations[1].selectedSourceIds, []);
+assert.deepEqual(loadWorkspace('bob', 'library-chat').conversations[0].libraryFileIds, undefined);

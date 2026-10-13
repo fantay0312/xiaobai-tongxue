@@ -1,0 +1,100 @@
+.welcome { width: 100%; margin: 0 auto; }
+.hero { display: grid; align-items: center; padding-block: 0 36px; }
+.heroText h1 { line-height: 1.35; margin: 0 0 18px; }
+.heroText > p { margin: 0 0 27px; }
+.heroActions { display: flex; align-items: center; flex-wrap: wrap; gap: 22px; }
+.primary { display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 10px 16px; border: 1px solid var(--ink); color: var(--paper); background: var(--ink); cursor: pointer; }
+.primary:hover { background: var(--azure); border-color: var(--azure); }
+.textButton { display: inline-flex; align-items: center; gap: 6px; padding: 4px 0; border: 0; background: none; text-decoration: none; cursor: pointer; }
+.textButton:hover { text-decoration: underline; text-underline-offset: 4px; }
+.continueTopic { margin-top: 16px; max-width: 100%; display: inline-flex; align-items: center; gap: 7px; padding: 0; border: 0; color: var(--ink-faint); background: none; font-size: 11px; text-align: left; cursor: pointer; }
+.partnerScene { position: relative; display: flex; justify-content: center; align-items: flex-end; gap: 0; padding-bottom: 9px; }
+.student { position: relative; display: flex; flex-direction: column; align-items: center; width: 178px; }
+.student > span, .assistant > span { color: var(--ink-faint); font-size: 10px; margin-top: 6px; white-space: nowrap; }
+.dialogue { position: absolute; top: -65px; left: 2px; padding: 11px 15px; border: 1px solid var(--line-strong); color: var(--ink-soft); line-height: 1.8; }
+.assistant { display: flex; flex-direction: column; align-items: center; width: 128px; margin-left: -9px; }
+.welcomeAssistant { width: 132px; }
+.deskLine { position: absolute; bottom: 0; left: 12px; right: 0; height: 1px; background: var(--line-strong); }
+.apprenticeship { margin-block: 5px 33px; border-block: 1px solid var(--line-strong); }
+.letterStrip { display: flex; align-items: center; gap: 15px; padding: 18px 0; }
+.seal { display: inline-flex; align-items: center; justify-content: center; width: 35px; height: 39px; border: 1px solid var(--seal-red); font-family: var(--font-serif); flex: none; }
+.letterStrip > div { flex: 1; }
+.letterStrip strong { font-weight: 500; }
+.letterStrip p { color: var(--ink-faint); margin: 5px 0 0; line-height: 1.7; }
+.letterStrip > button { flex: none; }
+.letterBody { padding: 4px 46px 28px; max-width: 760px; color: var(--ink-soft); line-height: 2; }
+.letterBody > p { margin: 0 0 14px; }
+.letterBody .salute { color: var(--ink); font-family: var(--font-display); }
+.letterSignature { text-align: right; font-family: var(--font-display); color: var(--ink); margin-block: 13px 22px; }
+.accepted { display: inline-flex; align-items: center; gap: 6px; color: var(--jade); font-size: 12px; }
+.journey { margin-top: 20px; }
+.journey > header { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.journey h2 { line-height: 1.5; margin: 0 0 10px; }
+.journey header p { font-size: 12px; color: var(--ink-faint); margin: 0; line-height: 1.8; }
+.journeyMotto { font-family: var(--font-display); white-space: nowrap; }
+.stageList { list-style: none; padding: 0; margin: 28px 0; display: grid; grid-template-columns: 1fr; gap: 0; }
+.stageList > li { display: flex; align-items: flex-start; gap: 16px; position: relative; padding: 0 0 27px; }
+.stageList > li:not(:last-child)::after { content: ''; position: absolute; width: 1px; background: var(--line-strong); left: 16px; top: 38px; bottom: 7px; }
+.stageNumber { display: inline-flex; align-items: center; justify-content: center; width: 33px; height: 33px; flex: none; border: 1px solid var(--line-strong); border-radius: 50%; color: var(--ink-faint); }
+.stageList > li[data-done] .stageNumber { color: var(--jade); background: var(--reed-wash); border-color: var(--jade); }
+.stageList h3 { font-size: 14px; font-weight: 550; margin: 3px 0 5px; }
+.stageList p { color: var(--ink-faint); font-size: 12px; line-height: 1.8; margin: 0 0 7px; }
+.stageHint { color: var(--ink-faint); font-size: 11px; }
+.compactJourney .stageList { grid-template-columns: repeat(5,minmax(0,1fr)); gap: 20px; margin-block: 28px 17px; }
+.compactJourney .stageList > li { display: block; padding: 0; }
+.compactJourney .stageList > li::after { display: none; }
+.compactJourney .stageNumber { margin-bottom: 10px; }
+.compactJourney h3 { font-size: 12px; }
+.compactJourney .stageList p { font-size: 11px; }
+.nextStep { display: flex; align-items: center; gap: 13px; padding-top: 18px; border-top: 1px solid var(--line); }
+.nextStep p { flex: 1; font-size: 12px; color: var(--ink-soft); }
+.journeyPage { width: 100%; margin: 0 auto; }
+.journeyPage > h1 { margin: 0 0 12px; }
+.journeyPage > p { font-size: 13px; color: var(--ink-faint); line-height: 1.8; margin: 0 0 22px; }
+@media (max-width: 1000px) {
+  .welcome { padding: 30px 28px; }
+  .hero { gap: 12px; }
+  .partnerScene { transform-origin: center right; width: 270px; }
+  .compactJourney .stageList { gap: 13px; }
+}
+@media (max-width: 700px) {
+  .hero { flex-direction: column; align-items: stretch; }
+  .heroText > p { font-size: 13px; }
+  .partnerScene { width: 295px; max-width: 100%; }
+  .student { width: 162px; }
+  .student > div:nth-child(2) { max-width: 162px; max-height: 162px; }
+  .welcomeAssistant { width: 113px; }
+  .dialogue { top: -55px; font-size: 12px; }
+  .letterStrip { gap: 11px; flex-wrap: wrap; }
+  .letterStrip > button { margin-left: 46px; }
+  .letterBody { padding: 8px 0 25px; font-size: 13px; }
+  .compactJourney .stageList { grid-template-columns: 1fr; gap: 0; }
+  .compactJourney .stageList > li { display: flex; padding-bottom: 17px; gap: 13px; }
+  .compactJourney .stageList h3 { font-size: 13px; }
+  .compactJourney .stageList p { font-size: 12px; }
+  .journeyPage > h1 { font-size: 28px; }
+  .nextStep { align-items: flex-start; flex-wrap: wrap; }
+  .nextStep p { min-width: 70%; margin: 0; }
+}
+
+.welcome { max-width: 1040px; padding: 52px clamp(30px, 6vw, 82px) 45px; }
+.hero { grid-template-columns: 1fr 245px; gap: 20px; padding-bottom: 35px; }
+.heroText h1 { font-family: var(--font-body); font-size: 32px; font-weight: 570; letter-spacing: -.035em; }
+.heroText > p { font-size: 14px; color: var(--ink-faint); line-height: 1.9; }
+.primary { border-radius: 7px; font-size: 13px; min-height: 42px; }
+.textButton { color: var(--ink-soft); font-size: 12px; }
+.partnerScene { height: 210px; transform: scale(.8); transform-origin: center; width: 290px; margin-left: -24px; }
+.dialogue { transform: none; background: var(--paper-warm); border-radius: 10px; font-family: var(--font-body); font-size: 12px; }
+.apprenticeship { border-block-color: var(--line); }
+.seal { border-radius: 7px; transform: none; background: var(--paper-warm); color: var(--ink-soft); border-color: var(--line); font-size: 20px; }
+.letterStrip strong { font-size: 13px; }
+.letterStrip p { font-family: var(--font-body); font-size: 12px; }
+.letterBody { font-size: 14px; }
+.letterBody .salute, .letterSignature { font-family: var(--font-body); }
+.journey h2 { font-family: var(--font-body); font-size: 22px; font-weight: 570; }
+.journeyMotto { writing-mode: initial; font-size: 12px; letter-spacing: 0; color: var(--ink-faint); }
+.stageNumber { font-family: var(--font-body); font-size: 11px; }
+.journeyPage { max-width: 1040px; padding: 35px clamp(30px, 6vw, 82px); }
+.journeyPage > h1 { font-family: var(--font-body); font-size: 27px; font-weight: 570; }
+@media (max-width: 1000px) { .hero { grid-template-columns: 1fr 190px; } .partnerScene { transform: scale(.68); margin-left: -58px; } }
+@media (max-width: 700px) { .welcome { padding: 36px 24px; } .hero { display: flex; padding-bottom: 15px; } .heroText h1 { font-size: 28px; } .partnerScene { height: 190px; margin: 28px auto 0; transform: scale(.78); } .journey h2 { font-size: 20px; } .journeyMotto { display: none; } .journeyPage { padding: 27px 23px; } }

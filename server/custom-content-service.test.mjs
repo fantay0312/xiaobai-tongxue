@@ -435,6 +435,7 @@ function cosFixture() {
       if (!body) throw new Error('not-found');
       return { byteSize: body.length, etag: 'etag' };
     },
+    async read({ key }) { const body = objects.get(key); if (!body) throw new Error('not-found'); return { body }; },
     async delete({ key }) { objects.delete(key); return true; },
   };
 }
@@ -746,6 +747,12 @@ test('custom content service runs create, upload, compile, review, publish and s
   assert.equal(asset.parseStatus, 'completed');
   assert.equal(Object.hasOwn(asset, 'cosKey'), false, '浏览器资产响应不得暴露 COS key');
   assert.equal(cos.objects.size, 1, '用户原文件应先落 COS');
+  const libraryFiles = await service.listLibraryFiles(alice);
+  assert.equal(libraryFiles[0].assetId, asset.id);
+  assert.equal(Object.hasOwn(libraryFiles[0], 'cosKey'), false);
+  assert.deepEqual(await service.listLibraryFiles(bob), []);
+  assert.deepEqual(await service.readLibraryFile(alice, asset.id), Buffer.from('%PDF-1.7\nlesson\n%%EOF'));
+  await assert.rejects(service.readLibraryFile(bob, asset.id), /asset-not-found/);
 
   const queued = await service.startCompile(alice, { courseId: course.id, assetIds: [asset.id], title: '栈与函数调用' });
   await assert.rejects(
