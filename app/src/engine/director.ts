@@ -339,18 +339,25 @@ function nextUnhitAfterSkip(topic: Topic, hit: string[], skippedId?: string | nu
   return topic.checklist.find((c) => c.id !== skippedId && !hit.includes(c.id))?.id ?? null;
 }
 
-/** 会话开场白指令(reteach/review 模式小白先开口;teach 模式打招呼) */
+/**
+ * 会话开场白指令(reteach/review 模式小白先开口;teach 模式打招呼)。
+ * focusChecklistId 只在 teach 开场挪动第一问的靶子,不改 decide 的阶梯。
+ */
 export function openingCard(
   mode: SessionMode, topic: Topic, state: TopicState, g: XiaobaiGlobal,
+  focusChecklistId?: string | null,
 ): { card: InstructionCard; mood: XiaobaiMood; action: DirectorAction; pendingMcId: string | null } {
   const reMc = topic.misconceptions.find((m) =>
     mode === 'reteach'
       ? state.mcStates[m.mcId] === '被带偏'
       : state.mcStates[m.mcId] === '已纠正',
   );
+  const focus = mode === 'teach'
+    ? topic.checklist.find((item) => item.id === focusChecklistId)?.id ?? null
+    : null;
   const base: InstructionCard = {
     action: 'ask_clarify', mcId: null, mcBelief: null,
-    targetChecklistId: topic.checklist[0]?.id ?? null,
+    targetChecklistId: focus ?? topic.checklist[0]?.id ?? null,
     knownWhitelist: state.hitChecklist.map((id) => topic.checklist.find((c) => c.id === id)?.point ?? id),
     recentTeacherTerms: [],
     style: { persona: g.persona, learningLevel: g.learningLevel, maxSentences: 2, mustEndWithQuestion: true },

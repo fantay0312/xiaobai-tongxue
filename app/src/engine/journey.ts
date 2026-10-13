@@ -22,6 +22,19 @@ export interface JourneyInput {
   topics: Topic[];
 }
 
+const CLASSROOM_EVENT = new Set<LearnEvent['type']>([
+  'session_started', 'checklist_hit', 'accuracy_flag',
+  'misconception_injected', 'misconception_corrected', 'misconception_adopted',
+  'golden_analogy_saved', 'stuck_rescued', 'xiaobai_quiz_scored', 'session_ended',
+  'review_passed',
+]);
+
+/** 真的进过讲解舱。prep_completed 单独不算。 */
+function classStarted(topicId: string, st: TopicState, events: LearnEvent[]): boolean {
+  if (st.hitChecklist.length > 0 || st.knowledgeState !== '没懂') return true;
+  return events.some((event) => event.topicId === topicId && CLASSROOM_EVENT.has(event.type));
+}
+
 /** 未动过的主题:没有任何真实痕迹(备课/命中/掌握度)才算"新" */
 function untouched(st: TopicState | undefined): boolean {
   return !st || (
@@ -96,20 +109,18 @@ export function nextStep(input: JourneyInput): JourneyStep {
     };
   }
 
-  // 4. 有进度未出师的课:该开讲了
+  // 4. 已经坐进讲解舱、尚未出师的课才叫回来。
+  // 只完成备课的课不是欠债:备课本身可以收场,让路给下一门还没翻开的课。
   const ready = open.find((t) => {
     const st = topicStates[t.topicId];
-    return !!st && st.knowledgeState !== '出师' && (st.prepDone || st.hitChecklist.length > 0);
+    return !!st && st.knowledgeState !== '出师' && classStarted(t.topicId, st, events);
   });
   if (ready) {
-    const started = (topicStates[ready.topicId]?.hitChecklist.length ?? 0) > 0;
     return {
       key: 'teach', title: '开讲',
-      line: started
-        ? `「${ready.title}」讲了一半,小白还坐在原位等下文。`
-        : `「${ready.title}」的课备好了,小白已在讲解舱里坐得笔直。`,
+      line: `「${ready.title}」讲了一半,小白还坐在原位等下文。`,
       to: `/teach/${ready.topicId}`,
-      cta: '该开讲了',
+      cta: '接着讲',
     };
   }
 

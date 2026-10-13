@@ -20,6 +20,8 @@ import {
 import type { EventDraft } from '../engine';
 // 跨会话回忆:直接从 recall 模块导入,不走 engine barrel(simulate 在 Node 加载 barrel,recall 不得混入)
 import { recallGreetingLine } from '../engine/recall';
+// 备课桌开场焦点:只在 teach 开场选用,不进 barrel,不改导演阶梯
+import { openingFocusId } from '../engine/prepDesk';
 // 进化派生(升期):同为不进 barrel 的纯函数,按路径直连
 import { deriveEvolution } from '../engine/evolution';
 // 课堂小本本:每轮派生一次,同时喂给评估器(轮次/上一轮讲解)与小白提示(【这堂课到现在】);不进 barrel
@@ -317,7 +319,8 @@ export const useAppStore = create<AppState>()(
         const state = get().topicState(topicId);
         const sessionId = `T${now().slice(0, 10).replaceAll('-', '')}-${uid().slice(0, 4)}`;
 
-        const opening = openingCard(mode, topic, state, g);
+        const focus = mode === 'teach' ? openingFocusId(topic, topicId) : null;
+        const opening = openingCard(mode, topic, state, g, focus);
         const live: LiveSession = {
           sessionId, topicId, mode, startedAt: now(),
           messages: [], traces: [], mood: opening.mood,

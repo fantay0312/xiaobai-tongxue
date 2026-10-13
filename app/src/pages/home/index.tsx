@@ -33,7 +33,7 @@ function buildHomeTour(hasStory: boolean): TourStep[] {
     {
       target: '[data-tour="loop"]',
       title: '一课的走法',
-      text: '每一课都走这六步:备课、讲解、赴考、批注、补学、再讲,直到把小生教到出师。',
+      text: '备课可以单独走完。想教小白，再续讲解、赴考、批注、补学、再讲。',
     },
     {
       target: '#shelf',
@@ -49,7 +49,7 @@ function buildHomeTour(hasStory: boolean): TourStep[] {
 }
 
 const LOOP_STEPS: { num: string; name: string; desc: string }[] = [
-  { num: '壹', name: '备课', desc: '摸底快测,领材料包' },
+  { num: '壹', name: '备课', desc: '摸底、读材料，备完可合上' },
   { num: '贰', name: '讲解', desc: '小白追问,误区试探' },
   { num: '叁', name: '赴考', desc: '独自作答,先生观战' },
   { num: '肆', name: '批注', desc: '五维雷达,盲区显形' },
@@ -119,7 +119,7 @@ export default function HomePage() {
       >
         <header className={sec.head}>
           <h2 className={sec.title}>一课的走法</h2>
-          <p className={sec.note}>六步一环，教到出师为止。</p>
+          <p className={sec.note}>备课可以到此为止。想教小白，再往下走。</p>
         </header>
         <div className={styles.route}>
           {LOOP_STEPS.map((step) => (

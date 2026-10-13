@@ -12,7 +12,7 @@ import { useAppStore } from '../../store/appStore';
 import {
   appendCoachMessage, askCoach, COACH_FOLLOW_UPS, critiqueDraft, deriveQuickAsks, getCoachThread,
   getDraft, mockCoachReply, mockCritiqueReply, mockRehearsalReply, rehearseWithCoach, setDraft,
-  splitRehearsal, type CoachMessage, type PrepContext,
+  splitRehearsal, subscribeDraft, type CoachMessage, type PrepContext,
 } from '../../engine/coach';
 import type { Misconception, Topic } from '../../types';
 import { Icon, type IconName } from '../ui/Icon';
@@ -26,6 +26,10 @@ const uid = () => (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(3
 const now = () => new Date().toISOString();
 
 type CoachMode = 'ask' | 'rehearse' | 'draft';
+export interface CoachOpenRequest {
+  mode: CoachMode;
+  nonce: number;
+}
 const MODES: { id: CoachMode; label: string; icon: IconName }[] = [
   { id: 'ask', label: '答疑', icon: 'lightbulb' },
   { id: 'rehearse', label: '试讲', icon: 'swords' },
@@ -67,7 +71,13 @@ function contextBits(ctx: PrepContext): string[] {
   return bits;
 }
 
-export function PrepCoach({ topic, ctx }: { topic: Topic; ctx: PrepContext }) {
+export function PrepCoach({
+  topic, ctx, openRequest,
+}: {
+  topic: Topic;
+  ctx: PrepContext;
+  openRequest?: CoachOpenRequest | null;
+}) {
   const settings = useAppStore((st) => st.settings);
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -168,6 +178,19 @@ export function PrepCoach({ topic, ctx }: { topic: Topic; ctx: PrepContext }) {
     setDraftText(getDraft(topic.topicId));
     setRehearseMc(null);
   }, [topic.topicId]);
+  useEffect(() => subscribeDraft(topic.topicId, setDraftText), [topic.topicId]);
+  const openNonce = openRequest?.nonce ?? 0;
+  useEffect(() => {
+    if (!openRequest || openNonce === 0) return;
+    if (openRequest.mode === 'rehearse' && !ctxRef.current.quiz.done && ctxRef.current.quiz.total > 0) return;
+    if (closeTimer.current !== null) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    setClosing(false);
+    setMode(openRequest.mode);
+    setOpen(true);
+  }, [openNonce, openRequest]);
 
   /* 新消息滚到底;面板打开聚焦输入框 */
   useEffect(() => {
@@ -417,7 +440,7 @@ export function PrepCoach({ topic, ctx }: { topic: Topic; ctx: PrepContext }) {
             <div key="draft" className={`${s.body} ${s.draftPad}`}>
               <div className={s.draftHead}>
                 <span className={s.draftTitle}>讲稿草稿</span>
-                <span className={s.draftCount}>{draftText.length} / 3000 字 · 不进课堂记录</span>
+                <span className={s.draftCount}>{draftText.length} / 3000 字 · 和备课夹是同一份 · 不进课堂记录</span>
               </div>
               <textarea
                 className={s.draftArea}

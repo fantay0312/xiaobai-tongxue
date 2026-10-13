@@ -4,8 +4,9 @@
  *      → 贰 教学任务卡(真实卡片质感)
  *      → 叁 讲课路线图(checklist 教学大纲 + 小白的追问原话)
  *      → 肆 研读材料包(微课讲义 + 一张图看懂 + 例题 + 误区剧本预演 + 视频参考 + 延伸书单,按错题相关展开)
- *      → 伍 自检清单全勾 → 解锁讲解舱。
- * 全对可跳过备课直接开讲;状态只经 store(completePrep)。
+ *      → 伍 自检清单(给自己点头,不锁讲解舱)。
+ * 摸完底就可以合上这课回书斋;进讲解舱是另一条可选的路。状态只经 store(completePrep)。
+ * 学法四选一:通读、跟读复述、例题先行、只补不会的。备课夹始终在,只给老师和小砚。
  * 侧栏「备课五步」= 锚点导航:点击平滑滚动到分节,IntersectionObserver 高亮当前在读分节。
  * 右下角常驻备课助教「小砚」(PrepCoach)——只在备课页出现,课堂(/teach)是防作弊红线。
  *
@@ -25,6 +26,10 @@ import { deriveTopicRecall, type TopicRecall } from '../../engine/recall';
 // 学伴记忆:课级长短板与讲课习惯,≤2 行进记忆回执(不进 barrel,按路径直连)
 import { retrieveMemories } from '../../engine/learnerMemory';
 import type { PrepContext } from '../../engine/coach';
+import {
+  gapsView, loadDesk, orderExamples, PREP_METHODS, revealedLecture, saveDesk,
+  splitLecture, visibleSegmentCount, weakPointNames, walkthroughLocked,
+} from '../../engine/prepDesk';
 import { getSelfTest } from '../../data/selfTest';
 import { getFigures } from '../../components/diagrams';
 import { Md } from '../../components/Md';
@@ -36,6 +41,9 @@ import type { Misconception, PrepReference, QuestionLevel, XiaobaiMood } from '.
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { useAllTopics } from '../../hooks/useAllTopics';
 import { deriveTeachingFlow } from './flow';
+import {
+  ExampleStudy, GapMarks, GapsHold, MethodBar, PrepFolder, RehearseEntry, RetellLecture,
+} from './deskUi';
 import paper from '../../styles/paper.module.css';
 import s from './prep.module.css';
 
@@ -62,17 +70,17 @@ const PREP_TOUR: TourStep[] = [
   {
     target: `#${SECTIONS[0].id}`,
     title: '先摸个底',
-    text: '开讲前先把摸底做完,看看先生现在站在哪——摸完这轮底,下面的讲义材料才会摊开;全对还能直接拍案开讲。',
+    text: '先摸底,看看自己站在哪。摸完就可以读材料、合上这课,也可以去讲给小白听。',
   },
   {
     target: '[data-tour="prep-steps"]',
     title: '备课五步',
-    text: '温书按这五步走:摸底、任务卡、路线图、材料包、自检。走到哪儿这里亮到哪儿,亮开的一步点一下就能跳过去。',
+    text: '温书按这五步走:摸底、任务卡、路线图、材料包、自检。走到哪儿这里亮到哪儿,亮开的一步点一下就能跳过去。五步走完不必上讲台。',
   },
   {
     target: '[data-tour="coach"]',
     title: '备课助教小砚',
-    text: '卡住了就点它。小砚只陪备课、不进课堂,问答也不落进课堂记录;它还能扮小白陪你试讲。',
+    text: '卡住了就点它。小砚只陪你把这一课读懂,不进讲解舱,问答也不落进课堂记录。',
   },
 ];
 
@@ -121,6 +129,8 @@ function Collapse({ title, tag, tagTone, onOpen, children }: {
 }) {
   const [open, setOpen] = useState(false);
   const onOpenRef = useRef(onOpen);
+  const openRef = useRef(false);
+  const hoverOpenedAt = useRef(0);
   onOpenRef.current = onOpen;
   useEffect(() => {
     if (open) onOpenRef.current?.(title);
@@ -129,14 +139,26 @@ function Collapse({ title, tag, tagTone, onOpen, children }: {
     <section
       className={`${s.collapse} ${open ? s.collapseOn : ''}`}
       onPointerEnter={(event) => {
-        if (event.pointerType === 'mouse' && window.matchMedia('(hover: hover)').matches) setOpen(true);
+        if (event.pointerType !== 'mouse' || !window.matchMedia('(hover: hover)').matches) return;
+        if (!openRef.current) hoverOpenedAt.current = Date.now();
+        openRef.current = true;
+        setOpen(true);
       }}
     >
       <button
         type="button"
         className={s.collapseHead}
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          // 悬停刚打开时，同一次点击会紧跟着到来，不能把册子又合上
+          if (Date.now() - hoverOpenedAt.current < 500) {
+            hoverOpenedAt.current = 0;
+            return;
+          }
+          hoverOpenedAt.current = 0;
+          openRef.current = !openRef.current;
+          setOpen(openRef.current);
+        }}
       >
         <span className={s.collapseChev} aria-hidden="true" />
         <span className={s.collapseTitle}>{title}</span>
@@ -260,25 +282,38 @@ function derivePupil(input: {
   quizDone: boolean;
   allCorrect: boolean;
   wrongCount: number;
-  materialsVisible: boolean;
+  studyOpen: boolean;
+  method: 'read' | 'retell' | 'examples' | 'gaps';
+  weakMarkCount: number;
   section: string;
   allChecked: boolean;
   checkedCount: number;
 }): PupilState {
-  const { title, started, quizDone, allCorrect, wrongCount, materialsVisible, section, allChecked, checkedCount } = input;
-  if (allChecked) return { mood: 'happy', line: '板凳搬好了,先生请上讲台——我第一个问题已经想好了。' };
-  if (!started) return { mood: 'curious', line: `明日要讲「${title}」,先生且温书。我会带着一个真问题在学堂里等你。` };
+  const { title, started, quizDone, allCorrect, wrongCount, studyOpen, method, weakMarkCount, section, allChecked, checkedCount } = input;
+  if (allChecked) return { mood: 'happy', line: '这课可以合上了。想讲的话,我在讲解舱等你。' };
+  if (!started) return { mood: 'curious', line: `先生先温「${title}」。讲不讲,等你自己定。` };
   if (!quizDone) return { mood: 'curious', line: '先生慢慢答,我就在旁边看着——这些说法我有一半也分不清。' };
-  if (allCorrect && !materialsVisible) return { mood: 'happy', line: '先生全对!我等着开讲——不过再翻一翻材料也不亏。' };
+  if (allCorrect && !studyOpen) return { mood: 'happy', line: '先生全对。材料再翻一翻也值,不翻也可以先合上。' };
+  if (section === '讲课路线图' && method === 'gaps') {
+    return {
+      mood: 'curious',
+      line: weakMarkCount > 0
+        ? '先生标不会的地方，我课上会从那儿问起。'
+        : '先生在路线图上标一会、模糊、不会。全标会也可以先合上。',
+    };
+  }
+  if (section === '研读材料包' && method === 'retell') {
+    return { mood: 'thinking', line: '先生先用自己的话说一句，我再跟下一段。' };
+  }
   if (section === '备课自检') {
     return {
       mood: checkedCount > 0 ? 'aha' : 'thinking',
-      line: checkedCount > 0 ? '先生点一次头,我就往讲台前挪一步。' : '先生对着清单问问自己,都能点头再上讲台。',
+      line: checkedCount > 0 ? '先生点一次头,我就在旁边把这一课记牢一点。' : '清单是给先生自己点的,不点也能合上。',
     };
   }
-  if (section === '研读材料包') return { mood: 'thinking', line: '先生慢慢读,我在门口候着;讲义里最绕的那段,我课上八成会问。' };
-  if (section === '讲课路线图') return { mood: 'curious', line: '我大概会顺着这条路问下去——先生照着走,别急着赶进度。' };
-  if (section === '教学任务卡') return { mood: 'curious', line: '这张卡上的靶心,先生记牢了,课上我会往它上面撞。' };
+  if (section === '研读材料包') return { mood: 'thinking', line: '先生慢慢读。这段读通了,比赶去讲台要紧。' };
+  if (section === '讲课路线图') return { mood: 'curious', line: '这些是这一课的骨头。先生顺着看,不用赶。' };
+  if (section === '教学任务卡') return { mood: 'curious', line: '这张卡写的是这一课的靶心,先生先自己对准。' };
   if (wrongCount > 0) {
     return { mood: 'confused', line: `有 ${wrongCount} 处我也是这么想的……先生翻翻材料,别让咱俩一起绕进去。` };
   }
@@ -296,6 +331,42 @@ const REACT_BAD: PupilState[] = [
   { mood: 'shy', line: '先生别急,这个坑我课上八成也会掉。' },
   { mood: 'confused', line: '那……到底是哪儿不对呀?' },
 ];
+function PrepExits({
+  canLeave,
+  prepDone,
+  ready,
+  onStay,
+  onTeach,
+}: {
+  canLeave: boolean;
+  prepDone: boolean;
+  /** 自检全勾:主按钮轻呼吸,表示这课可以合上 */
+  ready: boolean;
+  onStay: () => void;
+  onTeach: () => void;
+}) {
+  return (
+    <div className={s.exits}>
+      <button
+        type="button"
+        className={`${s.primaryBtn} ${ready ? s.primaryBtnReady : ''}`}
+        disabled={!canLeave}
+        onClick={onStay}
+      >
+        {prepDone ? '合上，回书斋' : '备完，回书斋'} <Icon name="arrow-left" size={17} />
+      </button>
+      <button type="button" className={s.ghostBtn} disabled={!canLeave} onClick={onTeach}>
+        讲给小白听 <Icon name="arrow-right" size={17} />
+      </button>
+      <p className={s.lockHint}>
+        {canLeave
+          ? '只温书也算数。讲解舱要去的时候再进。'
+          : '摸完这一轮底，就可以合上，也可以去讲。'}
+      </p>
+    </div>
+  );
+}
+
 const TEACHER_TOPIC_RETRY_MS = [750, 1_500] as const;
 
 export default function PrepPage() {
@@ -388,7 +459,14 @@ function PrepRoom({ topicId }: { topicId: string }) {
   const [streak, setStreak] = useState(0);
   /** 案头计时:坐下多少分钟 */
   const [minutesOnDesk, setMinutesOnDesk] = useState(0);
+  const [desk, setDesk] = useState(() => loadDesk(topicId));
+  const [coachAsk, setCoachAsk] = useState<{ mode: 'rehearse'; nonce: number } | null>(null);
   const submittedRef = useRef(false);
+  const lectureBody = topic?.prep.microLecture.body ?? '';
+  const lectureSegments = useMemo(() => splitLecture(lectureBody), [lectureBody]);
+  useEffect(() => {
+    saveDesk(topicId, desk);
+  }, [desk, topicId]);
 
   /* 派生态提前算(hooks 必须在提前 return 之前):不可用主题一律给空 */
   // 记忆回执:首学该课(零事件)deriveTopicRecall 返回 null → 顶部纸条完全不渲染
@@ -435,11 +513,12 @@ function PrepRoom({ topicId }: { topicId: string }) {
     });
     return list;
   })();
-  const materialsVisible = quizDone && (!allCorrect || wantMaterials);
+  const packRequested = quizDone && (!allCorrect || wantMaterials);
+  const studyOpen = packRequested || (quizDone && desk.method !== 'read');
 
   /**
    * scrollspy:观察各分节与视口上部"阅读带"(约 30%~45% 高度)的交叠。
-   * 取带内文档序最靠后者——向下读时新分节一进带即接管高亮;分节增减(materialsVisible)时重建。
+   * 取带内文档序最靠后者——向下读时新分节一进带即接管高亮;分节增减(studyOpen)时重建。
    */
   useEffect(() => {
     const els = SECTIONS.map((sec) => document.getElementById(sec.id)).filter(
@@ -465,7 +544,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
     );
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
-  }, [materialsVisible, topicId]);
+  }, [studyOpen, topicId]);
 
   /* 小白的即时反应 2.4s 后收回 */
   useEffect(() => {
@@ -509,6 +588,18 @@ function PrepRoom({ topicId }: { topicId: string }) {
   const exampleRelated = topic.prep.examples.map((ex) =>
     relatedToWrong(ex.title + ex.code + ex.walkthrough, wrongMcs),
   );
+  const lectureSeen = visibleSegmentCount(desk.method, lectureSegments.length, desk.retells);
+  const gapState = gapsView({
+    method: desk.method,
+    checklistIds: topic.checklist.map((item) => item.id),
+    marks: desk.marks,
+    wrongCount: wrongMcs.length,
+    peek: desk.peek,
+  });
+  const orderedExamples = orderExamples(topic.prep.examples, exampleRelated, desk.method);
+  const weakMarkCount = topic.checklist.filter((item) => desk.marks[item.id] === 'gap' || desk.marks[item.id] === 'fuzzy').length;
+  const seenLecture = desk.method === 'retell' ? revealedLecture(lectureSegments, lectureSeen) : '';
+  const methodLabel = PREP_METHODS.find((item) => item.id === desk.method)?.label;
 
   const checkedCount = checks.filter(Boolean).length;
   const allChecked =
@@ -549,25 +640,24 @@ function PrepRoom({ topicId }: { topicId: string }) {
   /** 侧栏五步的进度态(done/active 与 scrollspy 的"当前在读"叠加,互不打架) */
   const stepStates = [
     { done: quizDone, active: !quizDone, reachable: true },
-    { done: materialsVisible, active: false, reachable: materialsVisible },
-    { done: materialsVisible, active: false, reachable: materialsVisible },
+    { done: studyOpen, active: false, reachable: studyOpen },
+    { done: studyOpen, active: false, reachable: studyOpen },
     {
-      done: materialsVisible && allChecked,
-      active: materialsVisible && !allChecked,
-      reachable: materialsVisible,
+      done: studyOpen && allChecked,
+      active: studyOpen && !allChecked,
+      reachable: studyOpen,
     },
-    { done: allChecked, active: false, reachable: materialsVisible },
+    { done: allChecked, active: false, reachable: studyOpen },
   ];
   const currentSection = SECTIONS.find((sec) => sec.id === currentId)?.name ?? SECTIONS[0].name;
 
-  /** 备课进度:摸底 40 · 翻材料 20 · 自检 40;全对可直接开讲时直接记满 */
-  const readPart = materialsVisible ? Math.min(1, opened.length / Math.max(1, materialCount)) : 0;
+  /** 备课进度:摸底 40 · 翻材料 20 · 自检 40。百分数只记真做过的,摸完就能合上。 */
+  const readPart = studyOpen ? Math.min(1, opened.length / Math.max(1, materialCount)) : 0;
   const checkPart = topic.prep.selfCheck.length > 0 ? checkedCount / topic.prep.selfCheck.length : 0;
-  const progress = allCorrect && !materialsVisible
-    ? 100
-    : Math.round((quizTotal > 0 ? quizAnswered / quizTotal : 1) * 40 + readPart * 20 + checkPart * 40);
-  const stepsLeft = stepStates.filter((st) => !st.done).length;
-  const canEnter = allChecked || (allCorrect && !materialsVisible);
+  const progress = Math.round(
+    (quizTotal > 0 ? quizAnswered / quizTotal : 1) * 40 + readPart * 20 + checkPart * 40,
+  );
+  const canLeave = quizDone;
 
   /** 小白此刻的表情与一句话 */
   const pupil: PupilState = reaction ?? derivePupil({
@@ -576,7 +666,9 @@ function PrepRoom({ topicId }: { topicId: string }) {
     quizDone,
     allCorrect,
     wrongCount: wrongMcs.length,
-    materialsVisible,
+    studyOpen,
+    method: desk.method,
+    weakMarkCount,
     section: currentSection,
     allChecked,
     checkedCount,
@@ -591,9 +683,16 @@ function PrepRoom({ topicId }: { topicId: string }) {
       point: topic.checklist.find((c) => c.id === q.checklistRef)?.point ?? '这个角度',
     })),
     section: currentSection,
-    materialsOpen: materialsVisible,
+    materialsOpen: studyOpen,
     selfCheck: { done: checkedCount, total: topic.prep.selfCheck.length },
     openedMaterials: opened,
+    methodLabel,
+    seenLecture: seenLecture || undefined,
+    retells: desk.method === 'retell' ? desk.retells : undefined,
+    ownNote: desk.folder.note || undefined,
+    ownExample: desk.folder.example || undefined,
+    ownLink: desk.folder.link || undefined,
+    weakPoints: desk.method === 'gaps' ? weakPointNames(topic.checklist, desk.marks) : undefined,
   };
 
   const react = (good: boolean) => {
@@ -636,7 +735,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
     });
   };
 
-  /** 重新摸底:两波作答与"过一遍材料"的选择一并清空;completePrep 仍只在进讲解舱时按当次成绩提交 */
+  /** 重新摸底:两波作答与"过一遍材料"的选择一并清空;completePrep 仍只在合上或进讲解舱时按当次成绩提交 */
   const retakeQuiz = () => {
     setAnswers([]);
     setMcAnswers([]);
@@ -647,11 +746,21 @@ function PrepRoom({ topicId }: { topicId: string }) {
     jumpTo(SECTIONS[0].id);
   };
 
+  const markPrep = () => {
+    if (submittedRef.current || prepDone) return;
+    submittedRef.current = true;
+    completePrep(topic.topicId, correctCount, quizTotal);
+  };
+
+  const finishPrep = () => {
+    if (!canLeave) return;
+    markPrep();
+    navigate('/study');
+  };
+
   const enterClassroom = () => {
-    if (!submittedRef.current) {
-      submittedRef.current = true;
-      completePrep(topic.topicId, correctCount, quizTotal);
-    }
+    if (!canLeave) return;
+    markPrep();
     navigate(`/teach/${topic.topicId}`);
   };
 
@@ -665,8 +774,8 @@ function PrepRoom({ topicId }: { topicId: string }) {
             <h1 className={s.title}>{topic.title}</h1>
             <p className={s.tagline}>{topic.tagline}</p>
           </div>
-          {/* 小白本人坐在页头等你:表情与一句话随备课进度实时变 */}
-          <aside className={s.pupil} aria-label="小白在旁候教">
+          {/* 小白坐在页头陪读:表情与一句话随备课进度实时变 */}
+          <aside className={s.pupil} aria-label="小白在书桌旁">
             <p
               key={pupil.line}
               className={`${s.pupilBubble} ${reaction ? s.pupilBubbleReact : ''}`}
@@ -676,7 +785,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
             </p>
             <div className={s.pupilFigure}>
               <XiaobaiAvatar mood={pupil.mood} level={level} variant="paper" size={132} />
-              <span className={s.pupilName}>小白 · 候教中</span>
+              <span className={s.pupilName}>小白 · 在书桌旁</span>
             </div>
           </aside>
         </div>
@@ -684,6 +793,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
 
       <div className={s.layout}>
         <main className={s.main}>
+          <MethodBar method={desk.method} onChange={(method) => setDesk((prev) => ({ ...prev, method }))} />
           {/* ── 记忆回执:接着上次讲(首学该课不渲染) ── */}
           {recall && <RecallCard recall={recall} memoryLines={memoryLines} />}
 
@@ -705,7 +815,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
               )}
             </div>
             <p className={s.sectionHint}>
-              开讲之前,先看看你现在站在哪。判断下面的说法对不对:
+              先看看你现在站在哪。判断下面的说法对不对:
             </p>
             {/* 常驻 live region:读屏用户答题后在此听到判分(节点须先于反馈存在,否则首条丢播) */}
             <p className={s.srOnly} aria-live="polite">{liveMsg}</p>
@@ -825,25 +935,34 @@ function PrepRoom({ topicId }: { topicId: string }) {
               allCorrect ? (
                 <div className={s.verdictGood}>
                   <p>
-                    摸底 {correctCount}/{quizTotal},基础相当扎实——你有资格直接上讲台。
+                    摸底 {correctCount}/{quizTotal}，这一课的底你已经摸清了。材料可以再过一遍，也可以先合上。
                   </p>
+                  {studyOpen ? (
+                    <p className={s.unlockHint}>材料已经摊开。读完可以合上，想讲再进讲解舱。</p>
+                  ) : null}
                   <div className={s.verdictBtns}>
-                    <button type="button" className={s.primaryBtn} onClick={enterClassroom}>
-                      跳过备课,拍案开讲 <Icon name="arrow-right" size={17} />
-                    </button>
-                    {!wantMaterials && (
+                    {!studyOpen && (
                       <button
                         type="button"
-                        className={s.ghostBtn}
+                        className={s.primaryBtn}
                         onClick={() => setWantMaterials(true)}
                       >
-                        稳一点,还是过一遍材料
+                        继续把材料过一遍
                       </button>
                     )}
                     <button type="button" className={s.ghostBtnSm} onClick={retakeQuiz}>
                       重新测一遍
                     </button>
                   </div>
+                  {!studyOpen ? (
+                    <PrepExits
+                      canLeave
+                      prepDone={prepDone}
+                      ready={false}
+                      onStay={finishPrep}
+                      onTeach={enterClassroom}
+                    />
+                  ) : null}
                 </div>
               ) : (
                 <div className={s.verdictBad}>
@@ -853,19 +972,37 @@ function PrepRoom({ topicId }: { topicId: string }) {
                       ? `有 ${wrongMcs.length} 个误区还没吃透`
                       : '判断都稳,选择题露了怯'}
                     {dimReport ? `,${dimReport}` : ''}。
-                    别慌,下面的材料就是为它准备的;等会小白多半会拿这里考你。
+                    别慌,下面的材料是给你自己读的。读完可以合上，不必进讲解舱。
                   </p>
                   <div className={s.verdictBtns}>
                     <button type="button" className={s.ghostBtnSm} onClick={retakeQuiz}>
                       重新测一遍
                     </button>
                   </div>
+                  <PrepExits
+                    canLeave
+                    prepDone={prepDone}
+                    ready={false}
+                    onStay={finishPrep}
+                    onTeach={enterClassroom}
+                  />
                 </div>
               )
             )}
           </section>
 
-          {materialsVisible && (
+          {quizDone && !studyOpen && (
+            <>
+              <PrepFolder
+                topicId={topic.topicId}
+                folder={desk.folder}
+                onChange={(folder) => setDesk((prev) => ({ ...prev, folder }))}
+              />
+              <RehearseEntry onOpen={() => setCoachAsk({ mode: 'rehearse', nonce: Date.now() })} />
+            </>
+          )}
+
+          {studyOpen && (
             <>
               {/* ── 贰 · 教学任务卡 ── */}
               <section id={SECTIONS[1].id} className={s.section}>
@@ -889,7 +1026,8 @@ function PrepRoom({ topicId }: { topicId: string }) {
                   </h2>
                 </div>
                 <p className={s.sectionHint}>
-                  你要把下面 {topic.checklist.length} 件事讲明白——小白到时候大概会这么问。
+                  这一课要站稳的 {topic.checklist.length} 件事。若去讲给小白听，他大概会这么问。
+                  {desk.method === 'gaps' ? ' 标上会、模糊、不会。不会的地方，开讲时他会先从那儿问起。' : ''}
                 </p>
                 <div className={s.flowNote}>
                   <span className={s.flowLabel}>讲课节奏</span>
@@ -910,6 +1048,15 @@ function PrepRoom({ topicId }: { topicId: string }) {
                             「{item.probeLine}」
                             <span className={s.roadWho}>—— 小白</span>
                           </p>
+                          {desk.method === 'gaps' && (
+                            <GapMarks
+                              value={desk.marks[item.id]}
+                              onChange={(mark) => setDesk((prev) => ({
+                                ...prev,
+                                marks: { ...prev.marks, [item.id]: mark },
+                              }))}
+                            />
+                          )}
                         </div>
                       </li>
                       {i === ambushAfter && topic.misconceptions.length > 0 && (
@@ -943,9 +1090,35 @@ function PrepRoom({ topicId }: { topicId: string }) {
                   </span>
                 </div>
                 <p className={s.sectionHint}>
-                  材料默认收起，移到标题上或点击即可翻开；再点标题收起。带着任务卡上的问题读。
+                  {desk.method === 'retell'
+                    ? '微课一段一段来。先用自己的话说一句，下一段才打开。'
+                    : desk.method === 'examples'
+                      ? '先看题目和代码。写下判断，或点「先看讲解」，走查才打开。'
+                      : desk.method === 'gaps'
+                        ? '材料跟着你标的模糊和不会走。和错题相关的例题排在前面。'
+                        : '材料默认收起，移到标题上或点击即可翻开；再点标题收起。带着任务卡上的问题读。'}
                 </p>
+                {desk.method === 'gaps' && !gapState.showCore ? (
+                  <GapsHold view={gapState} onPeek={() => setDesk((prev) => ({ ...prev, peek: true }))} />
+                ) : (
                 <div className={s.materials}>
+                  {desk.method === 'retell' ? (
+                    <div className={s.retellCard}>
+                      <p className={s.retellTitle}>{topic.prep.microLecture.title}</p>
+                      <RetellLecture
+                        segments={lectureSegments}
+                        visible={lectureSeen}
+                        retells={desk.retells}
+                        className={s.md}
+                        onShow={() => markOpened(topic.prep.microLecture.title)}
+                        onRetell={(index, text) => setDesk((prev) => {
+                          const retells = prev.retells.slice();
+                          retells[index] = text.slice(0, 400);
+                          return { ...prev, retells };
+                        })}
+                      />
+                    </div>
+                  ) : (
                   <Collapse
                     title={topic.prep.microLecture.title}
                     tag="微课讲义"
@@ -954,6 +1127,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                   >
                     <Md text={topic.prep.microLecture.body} className={s.md} />
                   </Collapse>
+                  )}
                   {figures.length > 0 && (
                     <Collapse
                       title="一张图看懂"
@@ -973,16 +1147,33 @@ function PrepRoom({ topicId }: { topicId: string }) {
                       ))}
                     </Collapse>
                   )}
-                  {topic.prep.examples.map((ex, i) => (
+                  {orderedExamples.map((row) => (
                     <Collapse
-                      key={ex.title}
-                      title={ex.title}
-                      tag={wrongMcs.length > 0 && exampleRelated[i] ? '与错题相关' : undefined}
+                      key={`${row.index}-${row.item.title}`}
+                      title={row.item.title}
+                      tag={wrongMcs.length > 0 && row.related ? '与错题相关' : undefined}
                       tagTone="warn"
                       onOpen={markOpened}
                     >
-                      <pre className={s.code}><code>{ex.code}</code></pre>
-                      <p className={s.walkthrough}>{ex.walkthrough}</p>
+                      <ExampleStudy
+                        title={row.item.title}
+                        code={row.item.code}
+                        walkthrough={row.item.walkthrough}
+                        locked={walkthroughLocked(
+                          desk.method,
+                          desk.exampleNotes[row.item.title] ?? '',
+                          desk.exampleRevealed[row.item.title] === true,
+                        )}
+                        note={desk.exampleNotes[row.item.title] ?? ''}
+                        onNote={(text) => setDesk((prev) => ({
+                          ...prev,
+                          exampleNotes: { ...prev.exampleNotes, [row.item.title]: text.slice(0, 800) },
+                        }))}
+                        onReveal={() => setDesk((prev) => ({
+                          ...prev,
+                          exampleRevealed: { ...prev.exampleRevealed, [row.item.title]: true },
+                        }))}
+                      />
                     </Collapse>
                   ))}
                   <Collapse
@@ -1061,7 +1252,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                   )}
                   {readRefs.length > 0 && (
                     <Collapse title="延伸书单" tag="选读" tagTone="plain" onOpen={markOpened}>
-                      <p className={s.refLead}>课上用不到,课后想深挖再看——先把课讲完。</p>
+                      <p className={s.refLead}>想再深挖时再翻，不急。</p>
                       <ul className={s.refList}>
                         {readRefs.map((ref) => (
                           <li key={ref.url} className={s.refItem}>
@@ -1089,6 +1280,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                     </Collapse>
                   )}
                 </div>
+                )}
               </section>
 
               {/* ── 伍 · 自检清单 ── */}
@@ -1099,7 +1291,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                   </h2>
                   <span className={s.quizCount}>已点头 {checkedCount} / {topic.prep.selfCheck.length}</span>
                 </div>
-                <p className={s.sectionHint}>对着清单问自己,都能点头再上讲台。</p>
+                <p className={s.sectionHint}>对着清单问自己。点头是给自己看的，不点也能合上这课。</p>
                 <ul className={s.checkList}>
                   {topic.prep.selfCheck.map((item, i) => {
                     const on = !!checks[i];
@@ -1124,29 +1316,37 @@ function PrepRoom({ topicId }: { topicId: string }) {
                     );
                   })}
                 </ul>
-                <div className={s.unlockRow}>
-                  <button
-                    type="button"
-                    className={`${s.primaryBtn} ${allChecked ? s.primaryBtnReady : ''}`}
-                    disabled={!allChecked}
-                    onClick={enterClassroom}
-                  >
-                    备课完成,拍惊堂木 <Icon name="arrow-right" size={17} />
-                  </button>
-                  {!allChecked ? (
-                    <p className={s.lockHint}>把自检清单全部勾完,讲解舱才会解锁。</p>
-                  ) : (
-                    <p className={s.unlockHint}>小白已经坐好了,案头 {minutesOnDesk} 分钟没白费。</p>
-                  )}
-                </div>
+                <PrepExits
+                  canLeave={canLeave}
+                  prepDone={prepDone}
+                  ready={allChecked}
+                  onStay={finishPrep}
+                  onTeach={enterClassroom}
+                />
+                {allChecked ? (
+                  <p className={s.unlockHint}>案头 {minutesOnDesk === 0 ? '刚坐下' : `${minutesOnDesk} 分钟`}，这课可以合上了。</p>
+                ) : null}
               </section>
+              <PrepFolder
+                topicId={topic.topicId}
+                folder={desk.folder}
+                onChange={(folder) => setDesk((prev) => ({ ...prev, folder }))}
+              />
+              <RehearseEntry onOpen={() => setCoachAsk({ mode: 'rehearse', nonce: Date.now() })} />
             </>
           )}
         </main>
 
         {/* ── 眉批侧注 ── */}
         <aside className={s.aside}>
-          {/* 备课进度:一条细线 + 还差几步 + 案头计时 */}
+          <PrepExits
+            canLeave={canLeave}
+            prepDone={prepDone}
+            ready={allChecked}
+            onStay={finishPrep}
+            onTeach={enterClassroom}
+          />
+          {/* 备课进度:一条细线 + 能不能合上 + 案头计时 */}
           <div className={s.progressCard} aria-label="备课进度">
             <div className={s.progressHead}>
               <span className={s.asideTitle}>备课进度</span>
@@ -1156,11 +1356,11 @@ function PrepRoom({ topicId }: { topicId: string }) {
               <span className={s.progressFill} style={{ transform: `scaleX(${Math.max(0.02, progress / 100)})` }} />
             </div>
             <p className={s.progressNote}>
-              {canEnter
-                ? '可以开讲了'
-                : stepsLeft > 0
-                  ? `还差 ${stepsLeft} 步开讲`
-                  : '快了'}
+              {!quizDone
+                ? '先把摸底做完'
+                : allChecked || prepDone || (allCorrect && !studyOpen)
+                  ? '这课可以合上'
+                  : '材料随你翻'}
               <span className={s.progressDesk}>
                 {' · '}
                 {minutesOnDesk === 0 ? '刚坐下' : `案头 ${minutesOnDesk} 分钟`}
@@ -1220,13 +1420,6 @@ function PrepRoom({ topicId }: { topicId: string }) {
               </ul>
             </div>
           )}
-          {prepDone && (
-            <p>
-              <Link className={s.doneLink} to={`/teach/${topic.topicId}`}>
-                你之前备过这门课 · 直接开讲 <Icon name="arrow-right" size={15} />
-              </Link>
-            </p>
-          )}
           <blockquote className={s.asideQuote}>
             「教然后知困。」
             <br />
@@ -1235,7 +1428,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
         </aside>
       </div>
 
-      <PrepCoach topic={topic} ctx={coachCtx} />
+      <PrepCoach topic={topic} ctx={coachCtx} openRequest={coachAsk} />
 
       {/* ── 新手引路(首访自动开一次) ── */}
       <Tour tourKey="prep" steps={PREP_TOUR} />

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { TOPICS } from '../src/data';
 import { nextStep } from '../src/engine/journey';
+import type { LearnEvent, Topic, TopicState } from '../src/types';
 import { profileAvatarMimeForFile } from '../src/lib/profileAvatar';
 
 const read = (relativePath: string): string =>
@@ -33,9 +34,66 @@ const seaList = read('../src/pages/growth/KnowledgeSeaList.tsx');
 const achievement = read('../src/pages/growth/AchievementWall.tsx');
 const achievementStyles = read('../src/pages/growth/AchievementWall.module.css');
 
+const prepPage = read('../src/pages/prep/index.tsx');
+const prepDesk = read('../src/engine/prepDesk.ts');
+const prepDeskUi = read('../src/pages/prep/deskUi.tsx');
+const homePage = read('../src/pages/home/index.tsx');
+
 const firstStep = nextStep({ events: [], reports: [], topicStates: {}, topics: TOPICS });
 assert.equal(firstStep.to, '/study#shelf', '首次旅程必须先让用户到书架选课');
 assert.equal(firstStep.cta, '去书架选课', '首次行动文案必须明示选课');
+
+assert.match(prepPage, /备完，回书斋/, '备课桌必须能合上并回书斋');
+assert.match(prepPage, /讲给小白听/, '讲解舱保留为可选去向');
+assert.doesNotMatch(prepPage, /跳过备课/, '备课不得再把跳过材料去讲课写成主路');
+assert.doesNotMatch(prepPage, /讲解舱才会解锁/, '自检不得再把门闩指向讲解舱');
+assert.match(homePage, /备课可以到此为止/, '门厅要写明备课可以单独收场');
+const prepSurface = `${prepPage}\n${prepDesk}\n${prepDeskUi}`;
+assert.match(prepSurface, /跟读复述/, '备课桌要有跟读复述');
+assert.match(prepSurface, /例题先行/, '备课桌要有例题先行');
+assert.match(prepSurface, /只补不会的/, '备课桌要有只补不会的');
+assert.match(prepSurface, /我的备课夹/, '备课夹要留在备课桌');
+
+const bareTopic = (topicId: string, title: string) => ({ topicId, title, locked: false }) as Topic;
+const bareState = (topicId: string, patch: Partial<TopicState>): TopicState => ({
+  topicId,
+  knowledgeState: '没懂',
+  level: 'L1',
+  hitChecklist: [],
+  mcStates: {},
+  accuracyFlags: [],
+  stuckStreak: 0,
+  rescueLevel: 0,
+  prepDone: false,
+  lastVerified: null,
+  reviewDue: null,
+  forgotten: false,
+  mastery: 0,
+  ...patch,
+});
+const prepEvent = {
+  id: 'prep',
+  t: '2026-10-14T00:00:00.000Z',
+  type: 'prep_completed',
+  topicId: 'done',
+  sessionId: null,
+  payload: {},
+  evidence: '备课完成',
+} satisfies LearnEvent;
+const prepOnly = nextStep({
+  events: [prepEvent],
+  reports: [],
+  topicStates: { done: bareState('done', { prepDone: true }) },
+  topics: [bareTopic('done', '已备课'), bareTopic('fresh', '还没翻')],
+});
+assert.equal(prepOnly.to, '/prep/fresh', '只备课的课不得把旅程拖进讲解舱');
+const teaching = nextStep({
+  events: [{ ...prepEvent, id: 'session', type: 'session_started', topicId: 'live' }],
+  reports: [],
+  topicStates: { live: bareState('live', { prepDone: true }) },
+  topics: [bareTopic('live', '讲到一半'), bareTopic('fresh', '还没翻')],
+});
+assert.equal(teaching.to, '/teach/live', '已经开讲的课仍回到讲解舱');
 
 assert.match(
   bookshelf,

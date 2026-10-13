@@ -520,15 +520,21 @@
 .primaryBtn:disabled { opacity: 0.55; cursor: not-allowed; }
 /* 次级幽灵钮:青描边一族(与成长页/看板对齐) */
 .ghostBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-hair);
   background: none;
   border: 1px solid var(--azure);
   color: var(--azure);
   border-radius: var(--radius-s);
   padding: 0.55rem 1.2rem;
   font-size: var(--fs-body);
+  white-space: nowrap;
   transition: background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
 }
-.ghostBtn:hover { background: var(--azure-wash); }
+.ghostBtn:hover:not(:disabled) { background: var(--azure-wash); }
+.ghostBtn:disabled { opacity: 0.55; cursor: not-allowed; }
 /* 小号幽灵钮:重新摸底等低优先操作 */
 .ghostBtnSm {
   background: none;
@@ -956,8 +962,10 @@
   display: grid;
   grid-template-rows: 0fr;
   transition: grid-template-rows var(--t-med) var(--ease-out);
+  /* auto 才能跟着后加的走查长高;1fr 会把按钮裁进下一节标题的点击区 */
+  interpolate-size: allow-keywords;
 }
-.collapseOpen { grid-template-rows: 1fr; }
+.collapseOpen { grid-template-rows: auto; }
 /* 垂直留白全部用可被 0fr 轨道裁剪的"内容型" spacer(::before/::after),
    不用 padding —— border-box 下 padding 压不到 0,闭合时会露出一条内容边 */
 .collapseInner {
@@ -1227,6 +1235,17 @@
   margin-top: var(--gap);
   flex-wrap: wrap;
 }
+.exits {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--gap-tight);
+  margin-top: var(--gap);
+}
+.aside > .exits { margin-top: 0; }
+.exits .primaryBtn,
+.exits .ghostBtn { width: 100%; }
+.exits .lockHint { margin: 0; }
 .lockHint { font-size: var(--fs-small); color: var(--ink-faint); }
 .unlockHint { font-size: var(--fs-small); color: var(--jade-ink); font-family: var(--font-display); }
 /* 自检全勾:惊堂木钮醒来——两轮轻呼吸(box-shadow 晕),之后静止 */
@@ -1412,6 +1431,124 @@ button.stepCurrent:hover { background: var(--azure-wash); }
   white-space: nowrap;
 }
 .doneLink { display: inline-flex; align-items: center; gap: var(--gap-hair); color: var(--azure); }
+
+.methodBar {
+  margin: 0 0 var(--gap);
+  padding: var(--gap-tight);
+  border: 1px dashed var(--paper-edge);
+  background: var(--paper);
+}
+.methodRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-hair);
+}
+.methodBtn {
+  font-family: var(--font-display);
+  font-size: var(--fs-small);
+  background: none;
+  border: 1px solid var(--paper-edge);
+  color: var(--ink);
+  border-radius: var(--radius-s);
+  padding: 0.4rem 0.85rem;
+  min-height: 2.4rem;
+}
+.methodOn {
+  border-color: var(--azure);
+  background: var(--azure-wash);
+  color: var(--azure);
+}
+.methodHint {
+  margin: var(--gap-hair) 0 0;
+  color: var(--ink-soft);
+  font-size: var(--fs-small);
+  line-height: 1.7;
+}
+.gapMarks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-hair);
+  margin-top: var(--gap-hair);
+}
+.gapMark {
+  font-family: var(--font-display);
+  font-size: var(--fs-tiny);
+  background: none;
+  border: 1px solid var(--paper-edge);
+  color: var(--ink-soft);
+  border-radius: var(--radius-s);
+  min-height: 2rem;
+  padding: 0.15rem 0.7rem;
+}
+.gapKnow.gapOn { border-color: var(--jade); color: var(--jade); background: var(--jade-wash); }
+.gapFuzzy.gapOn { border-color: var(--mustard); color: var(--ink); background: var(--mustard-wash); }
+.gapGap.gapOn { border-color: var(--cinnabar); color: var(--cinnabar); background: var(--cinnabar-wash); }
+.deskField,
+.deskInput {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0.35rem;
+  border: 1px solid var(--paper-edge);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  border-radius: var(--radius-s);
+  padding: 0.55rem 0.7rem;
+  line-height: 1.7;
+}
+.deskField { min-height: 4.5rem; resize: vertical; }
+.folder {
+  margin: var(--gap) 0;
+  padding-bottom: var(--gap);
+  border-bottom: 1px solid var(--paper-edge);
+}
+.folderLabel,
+.retellLabel {
+  display: block;
+  margin-top: var(--gap-tight);
+  font-size: var(--fs-small);
+  color: var(--ink-soft);
+}
+.folderNote,
+.retellWait,
+.gapsNote,
+.folderWarn {
+  margin-top: var(--gap-hair);
+  color: var(--ink-soft);
+  font-size: var(--fs-small);
+  line-height: 1.7;
+}
+.folderWarn { color: var(--cinnabar); }
+.gapsNote .ghostBtnSm { margin-top: var(--gap-hair); }
+.retellCard {
+  padding: var(--gap-tight) var(--gap) var(--gap);
+}
+.retellTitle {
+  margin: 0 0 var(--gap-tight);
+  font-family: var(--font-display);
+  font-size: var(--fs-sub);
+}
+.retellNo {
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+.retellSeg + .retellSeg {
+  margin-top: var(--gap);
+  padding-top: var(--gap-tight);
+  border-top: 1px dashed var(--paper-edge);
+}
+.exampleGate {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gap-tight);
+  margin-top: var(--gap-tight);
+}
+.exampleStudy .ghostBtnSm { margin-top: var(--gap-tight); }
+.rehearseEntry { margin-top: var(--gap); }
 .asideQuote {
   margin: 0;
   font-family: var(--font-display);
@@ -1447,7 +1584,9 @@ button.stepCurrent:hover { background: var(--azure-wash); }
   .verdictBtns { align-items: stretch; }
   .verdictBtns .primaryBtn,
   .verdictBtns .ghostBtn { flex: 1 1 100%; }
-  .unlockRow .primaryBtn { width: 100%; }
+  .unlockRow .primaryBtn,
+  .exits .primaryBtn,
+  .exits .ghostBtn { width: 100%; }
   .taskCard { padding: var(--gap) var(--gap) calc(var(--gap) + 0.25rem); }
   .collapseHead { padding: 0.8rem var(--gap-tight); }
   .collapseInner { padding: 0 var(--gap-tight); margin-left: 0.85rem; }
@@ -1463,6 +1602,7 @@ button.stepCurrent:hover { background: var(--azure-wash); }
   .roadAmbushText { margin-top: 0; }
   .roadBody { padding: var(--gap-tight); }
   .drill { padding: var(--gap-tight); }
+  .methodBtn { flex: 1 1 calc(50% - var(--gap-hair)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
