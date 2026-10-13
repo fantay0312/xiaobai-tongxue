@@ -80,6 +80,7 @@ export default function App() {
   const refreshSession = useAuthStore((s) => s.refreshSession);
   const authStatus = useAuthStore((s) => s.status);
   const authUser = useAuthStore((s) => s.user);
+  const emailBindingRequired = useAuthStore((s) => s.emailBindingRequired);
   const phoneBindingRequired = useAuthStore((s) => s.phoneBindingRequired);
   const loadCustomTopics = useAppStore((s) => s.loadCustomTopics);
   const clearCustomTopics = useAppStore((s) => s.clearCustomTopics);
@@ -126,7 +127,9 @@ export default function App() {
   }, [refreshSession]);
 
   useEffect(() => {
-    if (authStatus === 'authed' && authUser) {
+    // A signed-in account may still need contact verification. Reading protected
+    // topics in that state returns 403 and used to restart auth indefinitely.
+    if (authStatus === 'authed' && authUser && !emailBindingRequired && !phoneBindingRequired) {
       const switchedAccount = customTopicUserRef.current !== authUser;
       if (switchedAccount && customTopicUserRef.current !== null) clearCustomTopics();
       customTopicUserRef.current = authUser;
@@ -137,7 +140,7 @@ export default function App() {
       customTopicUserRef.current = null;
       clearCustomTopics();
     }
-  }, [authStatus, authUser, clearCustomTopics, loadCustomTopics]);
+  }, [authStatus, authUser, emailBindingRequired, phoneBindingRequired, clearCustomTopics, loadCustomTopics]);
 
   return (
     <AppShell>
