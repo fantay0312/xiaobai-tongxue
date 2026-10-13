@@ -472,17 +472,95 @@
 }
 
 @media (max-width: 640px) {
+  /* 工具条排成一行横滑，不折成两行 */
+  .tools {
+    flex-wrap: nowrap;
+    margin-inline: calc(var(--lp-gutter) * -1);
+    padding-inline: var(--lp-gutter);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tools::-webkit-scrollbar {
+    display: none;
+  }
+
   .tools li {
-    height: 32px;
+    flex: none;
+    height: 34px;
     padding-left: 12px;
     font-size: var(--fz-sm);
+  }
+
+  /* 四格收成一条横滑的卡片带：一屏一张，露出下一张的边，提示还能往后滑 */
+  .bento {
+    display: flex;
+    gap: 12px;
+    margin: 12px calc(var(--lp-gutter) * -1) -24px;
+    padding: 4px var(--lp-gutter) 28px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--lp-gutter);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .bento::-webkit-scrollbar {
+    display: none;
+  }
+
+  .span7,
+  .span5 {
+    flex: 0 0 min(86%, 340px);
+    scroll-snap-align: start;
+  }
+
+  /* 横滑带里的卡片不参与滚动显现：屏幕外的那几张要一滑就在 */
+  .bento > [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .cell {
+    padding: 16px;
+  }
+
+  .card {
+    min-height: 136px;
+    padding: 16px 18px;
+  }
+
+  .ratings {
+    gap: 6px;
+  }
+
+  .rating {
+    height: 56px;
+  }
+
+  .todo {
+    min-height: 46px;
+  }
+
+  .memory {
+    gap: 18px;
+    margin-top: 48px;
+    padding-top: 32px;
+  }
+
+  .memoryIntro p {
+    margin-top: 8px;
+    line-height: 1.7;
   }
 
   .memoryCards {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .ratings {
-    gap: 6px;
+  .memoryCard {
+    border-radius: var(--r-lg);
   }
 }

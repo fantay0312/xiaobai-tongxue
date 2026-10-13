@@ -492,6 +492,41 @@
   }
 }
 
+@media (max-width: 640px) {
+  .duo {
+    gap: 36px;
+  }
+
+  .col {
+    gap: 14px;
+  }
+
+  .colText p,
+  .libraryText p {
+    margin-top: 6px;
+    line-height: 1.7;
+  }
+
+  .run,
+  .lesson {
+    padding: 14px;
+  }
+
+  .slide {
+    gap: 14px;
+    padding: 18px 12px 22px;
+  }
+
+  .library {
+    gap: 16px;
+    margin-top: 44px;
+  }
+
+  .fileType {
+    font-size: var(--fz-xs);
+  }
+}
+
 @media (max-width: 560px) {
   .lanes {
     grid-template-columns: minmax(0, 1fr);

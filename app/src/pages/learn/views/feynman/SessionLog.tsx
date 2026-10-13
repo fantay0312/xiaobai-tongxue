@@ -1,8 +1,9 @@
 /**
- * 课堂记录：最近几堂课的分数、落下的印、降服的心魔，以及答卷和批注的入口。
+ * 课堂记录（主区版）：最近几堂课的分数、落下的印、降服的心魔，以及答卷和批注的入口。
+ * 只在没有侧栏挂载位时出现；有侧栏时记录列在 SideNav 里。
  */
-import { FileCheck2, PenLine, Presentation } from 'lucide-react';
 import { Badge, Button, Empty, Tip } from '../../../../components/ui';
+import { IconExam, IconLesson, IconReview } from '../../../../components/ui/icons';
 import type { SessionRecord } from './data';
 import s from './feynman.module.css';
 
@@ -36,7 +37,8 @@ export function SessionLog({ records, total, onOpen }: Props) {
       {records.length === 0 ? (
         <div className={s.panel}>
           <Empty
-            icon={<Presentation size={20} strokeWidth={1.75} />}
+            className={s.logEmpty}
+            icon={<IconLesson size={20} />}
             title="还没有课堂记录"
             description="上完第一堂课，小白的答卷、批注和他写的日记都会出现在这里。"
           />
@@ -82,7 +84,7 @@ export function SessionLog({ records, total, onOpen }: Props) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      icon={<PenLine size={14} strokeWidth={1.75} />}
+                      icon={<IconExam size={14} />}
                       onClick={() => onOpen(`/exam/${report.sessionId}`)}
                     >
                       答卷
@@ -91,7 +93,7 @@ export function SessionLog({ records, total, onOpen }: Props) {
                   <Button
                     variant="soft"
                     size="sm"
-                    icon={<FileCheck2 size={14} strokeWidth={1.75} />}
+                    icon={<IconReview size={14} />}
                     onClick={() => onOpen(`/review/${report.sessionId}`)}
                   >
                     批注

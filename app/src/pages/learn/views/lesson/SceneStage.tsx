@@ -84,7 +84,11 @@ function BoardView({ scene, reveal }: { scene: WhiteboardScene; reveal: number }
   const stepping = Number.isFinite(reveal);
   // 新写的一笔滚进视野
   useEffect(() => {
-    if (stepping) endRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (!stepping) return;
+    // 只滚舞台自己，不带动整页（手机上学习者可能正翻到下面看课堂记录）
+    const body = endRef.current?.closest<HTMLElement>('[data-stage-body]');
+    if (body) body.scrollTo({ top: body.scrollHeight, behavior: 'smooth' });
+    else endRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [shown, stepping]);
   return (
     <div className={s.board}>

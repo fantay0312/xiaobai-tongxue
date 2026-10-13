@@ -10,15 +10,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import {
-  ArrowRight,
-  ChevronRight,
-  FileSearch,
-  Highlighter,
-  NotebookText,
-  Radar as RadarIcon,
-  RotateCcw,
-  Sparkles,
-  Swords,
+  ArrowRight, ChevronRight, FileSearch, Highlighter, NotebookText, Radar as RadarIcon, RotateCcw, Swords,
 } from 'lucide-react';
 import type { KnowledgeState, LearnEventType, RadarScores, SessionMode } from '../../types';
 import { useAppStore } from '../../store/appStore';
@@ -35,6 +27,7 @@ import { Radar } from './Radar';
 import { RemedyPath } from './RemedyPath';
 import paper from '../../styles/paper.module.css';
 import s from './review.module.css';
+import { IconSpark } from '../../components/ui/icons';
 
 type ReviewTab = 'notes' | 'scores' | 'diary';
 
@@ -306,7 +299,7 @@ export default function ReviewPage() {
               <ul className={s.highlightList}>
                 {report.highlights.map((h) => (
                   <li key={h} className={s.highlightItem}>
-                    <Sparkles size={16} strokeWidth={1.75} aria-hidden="true" />
+                    <IconSpark size={16} />
                     <span>{h}</span>
                   </li>
                 ))}

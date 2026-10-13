@@ -137,9 +137,16 @@
 }
 
 .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--fz-xs);
   color: var(--text-3);
   letter-spacing: 0.02em;
+}
+
+.eyebrow svg {
+  flex: none;
 }
 
 .streak {
@@ -746,6 +753,28 @@
   border-top: 1px solid var(--border);
 }
 
+/* 独占一行时：每项课业一张卡，两列排开 */
+.questGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 12px;
+}
+
+.questGrid .questItem {
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border), var(--shadow-1);
+  overflow: hidden;
+}
+
+.questGrid .questItem + .questItem {
+  border-top: 0;
+}
+
+.questGrid .questRow {
+  height: 100%;
+}
+
 .questRow {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr) 18px;
@@ -1264,6 +1293,350 @@ button.questRow:hover:not(:disabled) .questGo {
 /* 证书在复盘页自带下外边距，叠在弹层里不需要 */
 .certList > [data-story] {
   margin-bottom: 0;
+}
+
+/* ── 手机版式 ──
+   data-compact 由 FeynmanView 在 760px 以下加上（外壳此时把导轨换成底栏）。
+   小白在左，连续天数、科名、学识条在右；其余通栏排下去，主按钮占满一行。 */
+
+.hero[data-compact] {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 14px;
+  padding: 16px;
+  border-radius: var(--r-xl);
+}
+
+.hero[data-compact] .heroBody,
+.hero[data-compact] .xp {
+  display: contents;
+}
+
+.hero[data-compact] .heroFigure {
+  grid-column: 1;
+  grid-row: 1 / span 4;
+}
+
+.hero[data-compact] .heroHalo {
+  width: 84px;
+  height: 84px;
+}
+
+.hero[data-compact] .stageSeal {
+  margin-top: -12px;
+  padding: 2px 6px 2px 9px;
+  border-width: 1.5px;
+  font-size: var(--fz-sm);
+}
+
+.hero[data-compact] .heroTop {
+  grid-column: 2;
+  grid-row: 1;
+  flex-wrap: nowrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.hero[data-compact] .eyebrow {
+  display: none;
+}
+
+.hero[data-compact] .streak {
+  display: inline-block;
+  min-width: 0;
+  overflow: hidden;
+  line-height: 26px;
+  text-overflow: ellipsis;
+}
+
+.hero[data-compact] .streak svg {
+  margin-right: 5px;
+  vertical-align: -3px;
+}
+
+.hero[data-compact] .heroTitle {
+  grid-column: 2;
+  grid-row: 2;
+  font-size: var(--fz-2xl);
+}
+
+.hero[data-compact] .xpHead {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.hero[data-compact] .xpBar {
+  grid-column: 2;
+  grid-row: 4;
+}
+
+.hero[data-compact] .xpFoot {
+  grid-column: 1 / -1;
+  grid-row: 5;
+  margin-top: 4px;
+}
+
+.hero[data-compact] .stageRail {
+  grid-column: 1 / -1;
+  grid-row: 6;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.hero[data-compact] .stageRail li {
+  flex: none;
+  padding: 0 8px;
+}
+
+.hero[data-compact] .voice {
+  grid-column: 1 / -1;
+  grid-row: 7;
+  margin-top: 4px;
+  padding: 10px 14px;
+  font-size: var(--fz-md);
+}
+
+.hero[data-compact] .heroActions {
+  grid-column: 1 / -1;
+  grid-row: 8;
+  margin-top: 4px;
+}
+
+/* 成长册入口：和连续天数并排的一枚小签；看起来 26px 高，可点范围向外各扩 8px */
+.growthChip {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  height: 26px;
+  padding: 0 6px 0 10px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border-2);
+  color: var(--text-2);
+  font: 500 var(--fz-xs)/1 var(--ui-font);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+
+.growthChip::after {
+  content: '';
+  position: absolute;
+  inset: -8px -6px;
+}
+
+.growthChip:active {
+  background: var(--active);
+}
+
+.growthChip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* 换课：一条通栏按钮，点开底部抽屉 */
+.courseSwitch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 10px 8px 16px;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border), var(--shadow-1);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+
+.courseSwitch:active {
+  background: var(--active);
+}
+
+.courseSwitch:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--border-2), 0 0 0 3px var(--ring);
+}
+
+.courseSwitchText {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.courseSwitchText b,
+.courseSwitchText span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.courseSwitchText b {
+  font-size: var(--fz-lg);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.courseSwitchText span {
+  font-size: var(--fz-xs);
+  color: var(--text-3);
+}
+
+.courseSwitchHint {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 8px 0 12px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  font-weight: 500;
+}
+
+/* 底部抽屉里的选课：抽屉在页面之外，容器查询和段落边距要自己带上 */
+.pickerSheet {
+  container-type: inline-size;
+  margin: 0 -8px;
+}
+
+.pickerSheet :where(p) {
+  margin: 0;
+}
+
+.pickerSheet .pickerTools {
+  padding: 2px 8px 8px;
+  border-bottom: 0;
+}
+
+.pickerSheet .pickerList {
+  max-height: none;
+  padding: 0 0 4px;
+  overflow: visible;
+}
+
+.pickerSheet .pickerTools > * {
+  flex: 1 1 100%;
+}
+
+.pickerSheet .courseRow {
+  min-height: 56px;
+  padding: 10px 8px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 56px;
+}
+
+/* 还没讲的课掌握度都是 0，抽屉里不占一行 */
+.pickerSheet .courseRow[data-group='fresh'] .courseMastery {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .sectionHead {
+    align-items: center;
+  }
+
+  .page .sectionHead > button {
+    flex: none;
+    min-height: 40px;
+  }
+
+  /* 四站：左边竖轨，右边一颗 40px 高的按钮，一站一行 */
+  .stations {
+    padding: 16px 12px 2px 8px;
+  }
+
+  .stationBody {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    justify-items: stretch;
+    column-gap: 12px;
+    padding-bottom: 18px;
+  }
+
+  .stationName,
+  .stationStatus {
+    grid-column: 1;
+  }
+
+  .page .stationAction {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    min-width: 76px;
+    min-height: 40px;
+    margin: 0;
+  }
+
+  .page .stationGhost {
+    box-shadow: inset 0 0 0 1px var(--border-2);
+  }
+
+  .stationLocked {
+    grid-column: 1 / -1;
+    min-height: 0;
+    margin-top: 0;
+  }
+
+  /* 课业与课堂记录：行内按钮够一指宽 */
+  .questRow {
+    min-height: 64px;
+  }
+
+  .page .logActions > button {
+    flex: 1;
+    min-height: 40px;
+  }
+
+  .page .logEmpty {
+    padding-block: 20px;
+  }
+
+  /* 故事匣：横向滑动，一次露出两张半 */
+  .shelf {
+    display: flex;
+    gap: 12px;
+    margin: -4px -16px -8px;
+    padding: 4px 16px 12px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 16px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .shelf::-webkit-scrollbar {
+    display: none;
+  }
+
+  .shelf > * {
+    flex: none;
+    width: 152px;
+    scroll-snap-align: start;
+  }
+}
+
+/* 触屏没有悬停：点过之后卡片不该一直浮着 */
+@media (hover: none) {
+  .storyCard:hover:not(:disabled) {
+    box-shadow: inset 0 0 0 1px var(--border), var(--shadow-1);
+    transform: none;
+  }
+
+  .storyCard:hover:not(:disabled) .thumb {
+    transform: rotate(-0.8deg);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

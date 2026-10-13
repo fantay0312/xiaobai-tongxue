@@ -13,7 +13,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import {
-  BookOpen, Check, ClipboardList, Clock, ExternalLink, Flame, Play, RotateCcw, Route, X,
+  ArrowLeft, ArrowRight, BookOpen, Check, ClipboardList, Clock, ExternalLink, Flame, Play, RotateCcw, Route, X,
 } from 'lucide-react';
 import { useAppStore } from '../../store/appStore';
 import { useAuthStore } from '../../store/authStore';
@@ -36,7 +36,7 @@ import { CoachMarkdown } from '../../components/coach/CoachMarkdown';
 import { PrepCoach } from '../../components/coach/PrepCoach';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
 import { Tour, type TourStep } from '../../components/tour/Tour';
-import { Badge, Button, Progress, Shimmer, cx, toast } from '../../components/ui';
+import { Badge, Button, IconButton, Progress, Shimmer, cx, toast } from '../../components/ui';
 import type { Misconception, QuestionLevel, XiaobaiMood } from '../../types';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { useAllTopics } from '../../hooks/useAllTopics';
@@ -344,6 +344,14 @@ function PrepRoom({ topicId }: { topicId: string }) {
       const pet = document.querySelector<HTMLElement>('[data-tour="coach"]');
       const overlap = pet ? page.getBoundingClientRect().right - pet.getBoundingClientRect().left : 0;
       setPetGutter(overlap > 0 && window.innerWidth >= 900 ? Math.round(overlap) + 8 : 0);
+      /* 手机:量出滚动区下方被底栏占掉的高度,小砚站到底栏上面(coach.module.css 读 --prep-floor) */
+      let scroller: HTMLElement | null = page.parentElement;
+      while (scroller && !/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) scroller = scroller.parentElement;
+      const floor = scroller && window.innerWidth <= 760
+        ? Math.max(0, Math.round(window.innerHeight - scroller.getBoundingClientRect().bottom))
+        : 0;
+      if (floor > 0) document.documentElement.style.setProperty('--prep-floor', `${floor}px`);
+      else document.documentElement.style.removeProperty('--prep-floor');
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -352,6 +360,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
     return () => {
       observer.disconnect();
       window.removeEventListener('resize', measure);
+      document.documentElement.style.removeProperty('--prep-floor');
     };
   }, [usable]);
 
@@ -614,6 +623,8 @@ function PrepRoom({ topicId }: { topicId: string }) {
   const nextLink = studyOpen && stepIndex < SECTIONS.length - 1
     ? { label: `下一步：${SECTIONS[stepIndex + 1].name}`, onClick: () => jumpTo(SECTIONS[stepIndex + 1].id) }
     : undefined;
+  /** 手机底部的吸底主动作:有下一步就是下一步;流程走到头就是去上课 */
+  const dockAction = nextLink ?? (flowEnd && canLeave ? { label: '去给小白上课', onClick: enterClassroom } : undefined);
   const weakBeliefItems = wrongMcs.map((mc) => ({ id: mc.mcId, text: mc.belief }));
   const weakDimItems = wrongSelfTests.map((q) => ({
     id: q.id,
@@ -624,7 +635,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
 
   return (
     <div ref={pageRef} className={s.page} style={petGutter ? { paddingRight: petGutter } : undefined}>
-      <div className={s.shell}>
+      <div className={s.shell} data-dock={dockAction ? '' : undefined}>
         {/* ── 课题 + 小白候教 ── */}
         <header className={s.hero}>
           <div>
@@ -969,7 +980,7 @@ function PrepRoom({ topicId }: { topicId: string }) {
                     ? '先看题目和代码。写下判断，或点「先看讲解」，走查才打开。'
                     : desk.method === 'gaps'
                       ? '材料跟着你标的模糊和不会走。和错题相关的例题排在前面。'
-                      : '材料默认收起，移到标题上或点击即可翻开；再点标题收起。带着任务卡上的问题读。'}
+                      : '材料默认收起，点标题翻开，再点一下收起。带着任务卡上的问题读。'}
                 aside={(
                   <span>
                     全读约 {readMinutes} 分钟 · 已翻 {Math.min(opened.length, materialCount)}/{materialCount} 册
@@ -1227,6 +1238,27 @@ function PrepRoom({ topicId }: { topicId: string }) {
         )}
 
         <p className={s.motto}>「教然后知困。」带着小白的问题去读，比通读三遍记得牢。</p>
+
+        {/* ── 手机:吸底主动作(桌面隐藏,用步骤面板下方的按钮) ── */}
+        {dockAction && (
+          <div className={s.dock}>
+            {prevLink && (
+              <IconButton label={prevLink.label} variant="outline" size="lg" tip={false} onClick={prevLink.onClick}>
+                <ArrowLeft {...ICON} />
+              </IconButton>
+            )}
+            <Button
+              variant="solid"
+              size="lg"
+              block
+              className={s.dockMain}
+              iconRight={<ArrowRight {...ICON} />}
+              onClick={dockAction.onClick}
+            >
+              {dockAction.label}
+            </Button>
+          </div>
+        )}
       </div>
 
       <PrepCoach topic={topic} ctx={coachCtx} openRequest={coachAsk} />

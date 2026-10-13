@@ -491,13 +491,37 @@
 }
 
 @media (max-width: 560px) {
+  .examTitle { font-size: var(--fz-xl); }
+  /* 答题卡:题多时横向滑动,不折行 */
+  .headSide { gap: 12px; }
+  .answerCard {
+    flex: 1;
+    flex-wrap: nowrap;
+    min-width: 0;
+    margin: -3px;
+    padding: 3px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .cell { flex: none; min-width: 32px; height: 32px; scroll-snap-align: center; }
+  .headSide > :global(button) { flex: none; min-height: 40px; }
+  .stage { padding-top: 16px; }
+  .seatAvatar > div { width: 72px !important; height: 72px !important; }
+  .bubble { min-height: 4.6rem; padding: 12px 14px; }
   .sheet { min-height: 0; padding: 0 16px 24px 34px; }
   .sheet::after { left: 22px; }
   .questionText { margin-top: 20px; font-size: var(--fz-xl); }
-  .option { font-size: var(--fz-md); }
+  /* 选项:一行一指宽,字不小于 15px */
+  .options { gap: 0; margin-top: 16px; }
+  .option { align-items: center; min-height: 44px; padding: 8px 10px; font-size: var(--fz-lg); }
+  .optionKey { width: 26px; height: 26px; }
+  .verdictRow { font-size: var(--fz-lg); }
   /* 章落在作答栏内偏上,不压批语 */
   .stamp { bottom: 10px; transform: rotate(-6deg) scale(0.88); transform-origin: right bottom; }
-  .foot { flex-direction: column; align-items: stretch; }
+  /* 底栏吸底的定位与底色在 exam.module.css(.examDesk > footer) */
+  .foot { flex-direction: column; align-items: stretch; gap: 8px; }
   .nextBtn { width: 100%; }
 }
 

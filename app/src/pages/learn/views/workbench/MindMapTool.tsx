@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type KeyboardEvent, type Ref } from 'react';
 import {
   ChevronRight, ChevronsDownUp, ChevronsUpDown, Columns2, CornerDownRight, Download, FileImage, FileText, ListTree, Maximize,
-  MessageCircleQuestion, Network, Plus, Sparkles, Trash2, ZoomIn, ZoomOut,
+  MessageCircleQuestion, Network, Plus, Trash2, ZoomIn, ZoomOut,
 } from 'lucide-react';
 import { Button, IconButton, Kbd, Menu, MenuContent, MenuItem, MenuTrigger, Segmented, Shimmer, toast } from '../../../../components/ui';
 import { useSkinStore } from '../../../../store/skinStore';
 import { mindNode, newId, studyData, useStudyData, type MindMap, type MindNode } from '../../../../store/studyData';
-import { DetailHead, GenerateDialog, ICON_SM, OriginBadge, SplitLayout, ToolHead, removeWithUndo, type Entry, type ToolProps } from './shared';
-import { ago, download, safeName, useAutosave, useWorkbenchNav } from './util';
+import { DetailHead, ICON_SM, OriginBadge, ToolFrame, type ToolProps } from './shared';
+import { download, safeName, useAutosave, useNarrow } from './util';
 import s from './workbench.module.css';
 import m from './mindmap.module.css';
 
@@ -239,79 +239,40 @@ function MapCanvas({ root, folded, onToggleFold, onFoldAll, onExpandAll, ref }: 
 }
 
 export default function MindMapTool(props: ToolProps) {
-  const { owner, topic, activeId, onAsk } = props;
-  const { go } = useWorkbenchNav();
+  const { owner, onAsk } = props;
   const { mindmaps } = useStudyData(owner);
-  const [genOpen, setGenOpen] = useState(false);
   const [view, setView] = useState<View>(() => (typeof window !== 'undefined' && window.innerWidth < 900 ? 'map' : 'both'));
 
-  const entries = useMemo<Entry[]>(() => [...mindmaps]
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .map((map) => ({
-      id: map.id,
-      title: map.title,
-      origin: map.origin,
-      topicId: map.topicId,
-      text: toMarkdown(sanitize(map.root)),
-      meta: <>{countNodes(sanitize(map.root))} 个节点 · {ago(map.updatedAt)}</>,
-    })), [mindmaps]);
-
-  const create = () => {
-    const root = mindNode(topic?.title ?? '中心主题', [mindNode('分支一'), mindNode('分支二'), mindNode('分支三')]);
-    const map = studyData.saveMindMap(owner, { title: topic ? `${topic.title} · 思维导图` : '', root, ...(topic ? { topicId: topic.topicId } : {}) });
-    go('mindmap', map.id);
-  };
-  const remove = (id: string) => {
-    const map = mindmaps.find((item) => item.id === id);
-    if (!map) return;
-    removeWithUndo(map.title, () => studyData.removeMindMap(owner, id), () => studyData.saveMindMap(owner, map));
-    if (activeId === id) go('mindmap', null, true);
-  };
-
   return (
-    <>
-      <ToolHead tool="mindmap">
-        <Button variant="soft" icon={<Sparkles {...ICON_SM} />} onClick={() => setGenOpen(true)}>AI 生成</Button>
-        <Button variant="outline" icon={<Plus {...ICON_SM} />} onClick={create}>新建导图</Button>
-      </ToolHead>
-      <SplitLayout
-        tool="mindmap"
-        entries={entries}
-        activeId={activeId}
-        topic={topic}
-        empty={{
-          title: '还没有思维导图',
-          description: '把一课的结构理成一张图：中心主题、分支、要点。左边写大纲，右边就是图。',
-          action: (
-            <>
-              <Button variant="solid" icon={<Sparkles {...ICON_SM} />} onClick={() => setGenOpen(true)}>从本课生成导图</Button>
-              <Button variant="soft" icon={<Plus {...ICON_SM} />} onClick={create}>从空白开始</Button>
-            </>
-          ),
-        }}
-        onRename={(id, title) => {
-          const map = mindmaps.find((item) => item.id === id);
-          if (map) studyData.saveMindMap(owner, { ...map, title });
-        }}
-        onDelete={remove}
-      >
-        {(id) => {
-          const map = mindmaps.find((item) => item.id === id);
-          return map ? <MapEditor key={map.id} map={map} owner={owner} view={view} onView={setView} onAsk={onAsk} /> : null;
-        }}
-      </SplitLayout>
-      <GenerateDialog kind="mindmap" open={genOpen} onOpenChange={setGenOpen} view={props} onCreated={(created) => go('mindmap', created.id)} />
-    </>
+    <ToolFrame
+      tool="mindmap"
+      view={props}
+      empty={{
+        title: '还没有思维导图',
+        description: '把一课的结构理成一张图：中心主题、分支、要点。一边写大纲，一边就是图。',
+        primary: 'generate',
+        generateLabel: '从本课生成导图',
+        createLabel: '从空白开始',
+      }}
+    >
+      {(id) => {
+        const map = mindmaps.find((item) => item.id === id);
+        return map ? <MapEditor key={map.id} map={map} owner={owner} view={view} onView={setView} onAsk={onAsk} /> : null;
+      }}
+    </ToolFrame>
   );
 }
 
-function MapEditor({ map, owner, view, onView, onAsk }: {
+function MapEditor({ map, owner, view: pickedView, onView, onAsk }: {
   map: MindMap;
   owner: string | null;
   view: View;
   onView: (view: View) => void;
   onAsk: (text: string) => void;
 }) {
+  // 手机上画布要占满宽度：大纲单独一个页签，不和导图并排
+  const narrow = useNarrow();
+  const view: View = narrow && pickedView === 'both' ? 'map' : pickedView;
   const [title, setTitle] = useState(map.title);
   const [root, setRoot] = useState(() => sanitize(map.root));
   const [dirty, setDirty] = useState(false);
@@ -445,9 +406,9 @@ function MapEditor({ map, owner, view, onView, onAsk }: {
           value={view}
           onChange={onView}
           options={[
-            { value: 'both', label: '并排', icon: <Columns2 {...ICON_SM} /> },
-            { value: 'map', label: '导图', icon: <Network {...ICON_SM} /> },
-            { value: 'outline', label: '大纲', icon: <ListTree {...ICON_SM} /> },
+            ...(narrow ? [] : [{ value: 'both' as const, label: '并排', icon: <Columns2 {...ICON_SM} /> }]),
+            { value: 'map' as const, label: '导图', icon: <Network {...ICON_SM} /> },
+            { value: 'outline' as const, label: '大纲', icon: <ListTree {...ICON_SM} /> },
           ]}
         />
         <IconButton
@@ -515,7 +476,8 @@ function MapEditor({ map, owner, view, onView, onAsk }: {
       <div className={m.foot}>
         <span>{countNodes(root)} 个节点</span>
         <span className={s.saved}>{dirty ? '正在保存…' : '已保存'}</span>
-        <span className={m.footHint}>拖动平移，按住 ⌘ 或 Ctrl 滚动缩放，点圆点收起分支</span>
+        <span className={m.footHint} data-for="mouse">拖动平移，按住 ⌘ 或 Ctrl 滚动缩放，点圆点收起分支</span>
+        <span className={m.footHint} data-for="touch">单指拖动，双指缩放，点圆点收起分支</span>
       </div>
     </div>
   );

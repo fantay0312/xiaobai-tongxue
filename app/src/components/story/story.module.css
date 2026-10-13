@@ -597,6 +597,43 @@
     animation-name: letter-sheet-sink;
   }
 
+  /* 手机抽屉:关闭钮一指宽;两枚动作吸在抽屉底部并排铺满,信长也够得着 */
+  .letterCard {
+    padding-bottom: 0;
+  }
+
+  .modalClose {
+    top: 6px;
+    right: 6px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .letterBody {
+    align-items: stretch;
+  }
+
+  .letterActions {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    flex-wrap: nowrap;
+    margin-top: 0;
+    padding: 12px 0 calc(12px + env(safe-area-inset-bottom));
+    background: var(--paper-warm);
+    box-shadow: 0 -1px 0 var(--paper-edge);
+  }
+
+  .letterActions > * {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 48px;
+    display: grid;
+    place-items: center;
+    padding-inline: 12px;
+    text-align: center;
+  }
+
   .letterStrip {
     flex-wrap: wrap;
   }

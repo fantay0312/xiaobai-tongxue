@@ -481,6 +481,21 @@
   text-align: right;
 }
 
+/* 贴边的星:上下挂的题签往画面里收,不被星区边缘裁掉 */
+.nodeSlot[data-label='below'][data-edge='right'] .nodeCopy,
+.nodeSlot[data-label='above'][data-edge='right'] .nodeCopy {
+  left: auto;
+  right: -4px;
+  transform: none;
+  text-align: right;
+}
+.nodeSlot[data-label='below'][data-edge='left'] .nodeCopy,
+.nodeSlot[data-label='above'][data-edge='left'] .nodeCopy {
+  left: -4px;
+  transform: none;
+  text-align: left;
+}
+
 .node[data-linked='true'] .core {
   box-shadow: 0 0 7px color-mix(in oklch, var(--sky-blue) 70%, transparent);
 }
@@ -514,19 +529,27 @@
 
 @media (max-width: 720px) {
   .field {
-    min-height: 33rem;
+    min-height: 30rem;
   }
 
   .courseMarker {
-    font-size: 0.62rem;
+    font-size: 0.75rem;
   }
 
   .nodeCopy {
     width: 7rem;
   }
 
-  .nodeCopy b {
-    font-size: 0.68rem;
+  .nodeCopy b,
+  .nodeCopy small {
+    font-size: 0.75rem;
+  }
+}
+
+/* 触屏:地球上竖滑仍滚页面,横滑才转地球 */
+@media (pointer: coarse) {
+  .earth {
+    touch-action: pan-y;
   }
 }
 

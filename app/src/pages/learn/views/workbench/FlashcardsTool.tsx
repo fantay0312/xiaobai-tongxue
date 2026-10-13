@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CircleCheck, Pencil, Play, Plus, Search, Sparkles, Trash2, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { CircleCheck, Pencil, Play, Plus, Search, Trash2, X } from 'lucide-react';
 import { CoachMarkdown } from '../../../../components/coach/CoachMarkdown';
 import { Button, Dialog, Field, IconButton, Input, Kbd, Progress, Segmented, Textarea, toast } from '../../../../components/ui';
 import { dueCards, newCard, scheduleCard, studyData, useStudyData, type CardRating, type Deck, type Flashcard } from '../../../../store/studyData';
-import { DetailHead, GenerateDialog, ICON_SM, OriginBadge, SplitLayout, ToolHead, removeWithUndo, type Entry, type ToolProps } from './shared';
-import { addDays, clip, dayKey, dayLabel, matches, spanLabel, useAutosave, useHotkeys, useWorkbenchNav, weekday } from './util';
+import { DetailHead, ICON_SM, OriginBadge, ToolFrame, type ToolProps } from './shared';
+import { addDays, clip, dayKey, dayLabel, matches, spanLabel, useAutosave, useHotkeys, weekday } from './util';
 import s from './workbench.module.css';
 import f from './flashcards.module.css';
 
@@ -46,70 +46,26 @@ function nextDueText(deck: Deck): string {
 }
 
 export default function FlashcardsTool(props: ToolProps) {
-  const { owner, topic, activeId } = props;
-  const { go } = useWorkbenchNav();
+  const { owner } = props;
   const { decks } = useStudyData(owner);
-  const [genOpen, setGenOpen] = useState(false);
-
-  const entries = useMemo<Entry[]>(() => [...decks]
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .map((deck) => {
-      const due = dueCards(deck).length;
-      return {
-        id: deck.id,
-        title: deck.title,
-        origin: deck.origin,
-        topicId: deck.topicId,
-        text: deck.cards.map((card) => `${card.front} ${card.back}`).join(' '),
-        meta: <>{deck.cards.length} 张{due > 0 ? <b className={f.dueMeta}> · 待复习 {due}</b> : deck.cards.length > 0 && ' · 今天已复习完'}</>,
-      };
-    }), [decks]);
-
-  const create = () => {
-    const deck = studyData.saveDeck(owner, { title: topic ? `${topic.title} · 闪卡` : '', cards: [], ...(topic ? { topicId: topic.topicId } : {}) });
-    go('flashcards', deck.id);
-  };
-  const remove = (id: string) => {
-    const deck = decks.find((item) => item.id === id);
-    if (!deck) return;
-    removeWithUndo(deck.title, () => studyData.removeDeck(owner, id), () => studyData.saveDeck(owner, deck));
-    if (activeId === id) go('flashcards', null, true);
-  };
 
   return (
-    <>
-      <ToolHead tool="flashcards">
-        <Button variant="soft" icon={<Sparkles {...ICON_SM} />} onClick={() => setGenOpen(true)}>AI 生成</Button>
-        <Button variant="outline" icon={<Plus {...ICON_SM} />} onClick={create}>新建卡组</Button>
-      </ToolHead>
-      <SplitLayout
-        tool="flashcards"
-        entries={entries}
-        activeId={activeId}
-        topic={topic}
-        empty={{
-          title: '还没有闪卡',
-          description: '一张卡考一个知识点。每次复习后按掌握程度评分，记得牢的卡会隔得越来越久才再出现。',
-          action: (
-            <>
-              <Button variant="solid" icon={<Sparkles {...ICON_SM} />} onClick={() => setGenOpen(true)}>从本课生成卡组</Button>
-              <Button variant="soft" icon={<Plus {...ICON_SM} />} onClick={create}>自己做卡片</Button>
-            </>
-          ),
-        }}
-        onRename={(id, title) => {
-          const deck = decks.find((item) => item.id === id);
-          if (deck) studyData.saveDeck(owner, { ...deck, title });
-        }}
-        onDelete={remove}
-      >
-        {(id) => {
-          const deck = decks.find((item) => item.id === id);
-          return deck ? <DeckDetail key={deck.id} deck={deck} owner={owner} /> : null;
-        }}
-      </SplitLayout>
-      <GenerateDialog kind="deck" open={genOpen} onOpenChange={setGenOpen} view={props} onCreated={(created) => go('flashcards', created.id)} />
-    </>
+    <ToolFrame
+      tool="flashcards"
+      view={props}
+      empty={{
+        title: '还没有闪卡',
+        description: '一张卡考一个知识点。每次复习后按掌握程度评分，记得牢的卡会隔得越来越久才再出现。',
+        primary: 'generate',
+        generateLabel: '从本课生成卡组',
+        createLabel: '自己做卡片',
+      }}
+    >
+      {(id) => {
+        const deck = decks.find((item) => item.id === id);
+        return deck ? <DeckDetail key={deck.id} deck={deck} owner={owner} /> : null;
+      }}
+    </ToolFrame>
   );
 }
 
@@ -353,7 +309,7 @@ function Review({ deck, ids, owner, onExit }: { deck: Deck; ids: string[]; owner
   if (!card) return null;
 
   return (
-    <div className={f.review}>
+    <div className={f.review} data-wb-focus="">
       <div className={f.rTop}>
         <span className={f.rCount}>{Math.min(cleared + 1, total)} / {total}</span>
         <Progress value={cleared} max={total} className={f.rBar} label="复习进度" />

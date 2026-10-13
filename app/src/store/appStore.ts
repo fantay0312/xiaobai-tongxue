@@ -26,6 +26,8 @@ import { openingFocusId } from '../engine/prepDesk';
 import { deriveEvolution } from '../engine/evolution';
 // 课堂小本本:每轮派生一次,同时喂给评估器(轮次/上一轮讲解)与小白提示(【这堂课到现在】);不进 barrel
 import { deriveSessionBrief } from '../engine/sessionBrief';
+// 开场白(起个头 + 第一问)由渲染层一口气给出;按路径直连,不动 barrel
+import { speakOpening } from '../engine/renderer';
 // 语音转写默认配置:同为浏览器专用模块,不走 barrel
 import { DEFAULT_ASR } from '../engine/asr';
 // 学伴记忆:纯引擎按路径直连(不进 barrel);LLM 润色在独立 sidecar,只在非 mock 模式后台调用
@@ -334,7 +336,7 @@ export const useAppStore = create<AppState>()(
         );
 
         // 跨会话回忆必须在 await 前取材(长渲染期间事件流可能变化);excludeSessionId 滤掉刚开的本场。
-        // 冷启动(无任何往史)返回 null,开场白与从前一字不差;仅 teach 模式追加,reteach/review 不动
+        // 冷启动(无任何往史)返回 null;仅 teach 模式取,reteach/review 不取
         const recall = mode === 'teach'
           ? recallGreetingLine({ topic, events: get().events, reports: get().reports, excludeSessionId: sessionId })
           : null;
@@ -345,21 +347,24 @@ export const useAppStore = create<AppState>()(
         });
         // 开场小本本:空对话,但 reteach/review 里"已听懂的要点"已有内容,值得进【这堂课到现在】
         const sessionBrief = deriveSessionBrief({ topic, state, messages: [], traces: [], pendingMcId: opening.pendingMcId });
-        const speak = await speakXiaobai({
-          card: opening.card, topic, state, recentMessages: [], settings: get().settings, seed: 0, memoryHints, sessionBrief,
+        // 开场种子同样在 await 前取:事件总数每堂课都不同,本地开场白据此轮转
+        const openingSeed = get().events.length;
+        // 梦里还惦记的一句(按账号存在本机):动态引入,不给 store 添静态依赖;取不到就当没有。
+        // 账号名取自 sync 注入的 provider(store 不直接依赖 authStore),未登录为 null
+        const dreamHint = await import('../engine/dreams')
+          .then((m) => m.xiaobaiDreamHint(memoryPiiProvider()[0] ?? null, topicId))
+          .catch(() => null);
+        // 开场白整句由 speakOpening 给出(时段 / 头一回或再来 / 补课 / 复习 / 往事 / 梦),不再拼固定问候
+        const speak = await speakOpening({
+          mode, card: opening.card, topic, state, settings: get().settings, seed: openingSeed,
+          hour: new Date().getHours(), memoryHints, sessionBrief, recall, dreamHint,
         });
         // api 模式下渲染可能耗时数秒,期间用户可能已退出/切换会话 —— 续体只允许写回本会话
         if (get().live?.sessionId !== sessionId) return;
-        const greeting =
-          mode === 'teach'
-            ? `老师好!今天你要给我讲「${topic.title}」呀?我搬好小板凳了!${recall ? `\n${recall}` : ''}`
-            : mode === 'reteach'
-              ? `老师,上次那个问题我后来想了想,还是没转过弯来……`
-              : `老师……上次学的东西,我好像有点忘了。`;
         set((s) => s.live && s.live.sessionId === sessionId ? {
           live: {
             ...s.live, busy: false, mood: speak.mood,
-            messages: [msg('xiaobai', `${greeting}\n${speak.text}`, { action: opening.action, mood: speak.mood })],
+            messages: [msg('xiaobai', speak.text, { action: opening.action, mood: speak.mood })],
           },
         } : {});
         if (opening.pendingMcId) {

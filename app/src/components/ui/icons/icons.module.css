@@ -1,0 +1,75 @@
+/* 自绘图标：尺寸、选中态的淡墨层、悬停时的小动作 */
+.icon {
+  flex: none;
+  overflow: visible;
+}
+
+/* 淡墨层：只在选中态显出 */
+.wash {
+  transition: opacity var(--dur-2, 200ms) var(--ease, ease);
+}
+
+.key {
+  transition: stroke-width var(--dur-1, 120ms) var(--ease, ease);
+}
+
+/*
+ * 选中态有两个来源：组件自己的 active，或者所在的导航项已经标了当前页 / 已选中 / 已按下。
+ * 后一种让没有传 active 的地方也能自动跟上。
+ */
+.icon[data-active] .wash,
+:is([aria-current='page'], [aria-selected='true'], [aria-pressed='true'], [data-active]) > .icon .wash,
+:is([aria-current='page'], [aria-selected='true'], [aria-pressed='true']) > :is(span, i) > .icon .wash {
+  opacity: 0.2;
+}
+
+.icon[data-active] .key,
+:is([aria-current='page'], [aria-selected='true'], [aria-pressed='true'], [data-active]) > .icon .key,
+:is([aria-current='page'], [aria-selected='true'], [aria-pressed='true']) > :is(span, i) > .icon .key {
+  stroke-width: 1.9;
+}
+
+/* 悬停的小动作：只动一个部件，幅度很小 */
+.tilt,
+.tiltBack,
+.lift,
+.sway,
+.nudge {
+  transition: transform var(--dur-2, 200ms) var(--ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+}
+
+:is(a, button, label, [role='option'], [role='tab'], [role='menuitem']):hover .tilt {
+  transform: rotate(-6deg);
+}
+
+:is(a, button, label, [role='option'], [role='tab'], [role='menuitem']):hover .tiltBack {
+  transform: rotate(6deg);
+}
+
+:is(a, button, label, [role='option'], [role='tab'], [role='menuitem']):hover .lift {
+  transform: translateY(-1px);
+}
+
+:is(a, button, label, [role='option'], [role='tab'], [role='menuitem']):hover .sway {
+  transform: rotate(10deg);
+}
+
+:is(a, button, label, [role='option'], [role='tab'], [role='menuitem']):hover .nudge {
+  transform: translate(0.8px, -0.8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wash,
+  .key,
+  .tilt,
+  .tiltBack,
+  .lift,
+  .sway,
+  .nudge {
+    transition: none;
+  }
+
+  :is(a, button, label, [role='option'], [role='tab'], [role='menuitem']):hover :is(.tilt, .tiltBack, .lift, .sway, .nudge) {
+    transform: none;
+  }
+}

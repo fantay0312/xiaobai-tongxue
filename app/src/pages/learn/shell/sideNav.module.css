@@ -1,0 +1,51 @@
+/* 板块侧栏：图标栏选中某个板块后，侧栏整块换成该板块自己的导航。外观与对话板块的侧栏保持一致。 */
+.panel { display: flex; flex: 1; flex-direction: column; gap: 6px; min-width: 0; min-height: 0; }
+.panelHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 30px; padding: 2px 4px 2px 8px; }
+.panelHead h2 { margin: 0; overflow: hidden; color: var(--text); font: 600 var(--fz-lg)/1.3 var(--ui-font); letter-spacing: 0.01em; text-overflow: ellipsis; white-space: nowrap; }
+.panelHead p { margin: 0; color: var(--text-3); font-size: var(--fz-xs); }
+.panelScroll { display: flex; flex: 1; flex-direction: column; gap: 16px; min-height: 0; margin: 6px -4px 0; padding: 0 4px 12px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border-2) transparent; }
+.panelFoot { padding: 8px 8px 2px; border-top: 1px solid var(--border); color: var(--text-3); font-size: var(--fz-xs); line-height: 1.6; }
+
+.action {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--ctl-md); padding: 0 10px;
+  border: 0; border-radius: var(--r-md); background: var(--surface); color: var(--text);
+  box-shadow: var(--shadow-1), 0 0 0 1px var(--border);
+  font: 550 var(--fz-sm)/1 var(--ui-font); text-align: left; cursor: pointer;
+  transition: box-shadow var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.action:hover:not(:disabled) { box-shadow: var(--shadow-1), 0 0 0 1px var(--border-2); }
+.action:active:not(:disabled) { transform: scale(0.985); }
+.action:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.action:disabled { opacity: 0.5; cursor: not-allowed; }
+.action svg { flex: none; }
+
+.group { display: flex; flex-direction: column; gap: 2px; }
+.groupHead { display: flex; align-items: center; justify-content: space-between; min-height: 28px; margin: 0; padding: 0 2px 0 8px; color: var(--text-3); font: 500 var(--fz-xs)/1 var(--ui-font); }
+
+.row { position: relative; display: flex; align-items: center; min-width: 0; border-radius: var(--r-md); transition: background var(--dur-1) var(--ease); }
+.row:hover, .row:focus-within { background: var(--hover); }
+.row[data-active] { background: var(--active); }
+.item {
+  display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; min-height: 32px; padding: 0 8px;
+  border: 0; border-radius: var(--r-md); background: none; color: var(--text-2);
+  font: var(--fz-sm)/1.3 var(--ui-font); text-align: left; cursor: pointer;
+  transition: color var(--dur-1) var(--ease);
+}
+.row:hover .item, .row[data-active] .item { color: var(--text); }
+.row[data-active] .item { font-weight: 550; }
+.item:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.item:disabled { opacity: 0.45; cursor: not-allowed; }
+.item svg { flex: none; color: var(--text-3); }
+.row[data-active] .item svg { color: var(--text); }
+.item[data-indent='1'] { padding-left: 30px; }
+.item[data-indent='2'] { padding-left: 46px; }
+.label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub { display: block; overflow: hidden; color: var(--text-3); font-size: var(--fz-2xs); font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.item[data-two-line] { min-height: 44px; padding-block: 6px; }
+.item[data-two-line] .label { display: grid; gap: 2px; white-space: normal; }
+.item[data-two-line] .label > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meta { flex: none; color: var(--text-3); font-size: var(--fz-2xs); font-variant-numeric: tabular-nums; }
+.trailing { display: flex; flex: none; align-items: center; padding-right: 4px; opacity: 0; transition: opacity var(--dur-1) var(--ease); }
+.row:hover .trailing, .row:focus-within .trailing, .row[data-active] .trailing { opacity: 1; }
+@media (hover: none) { .trailing { opacity: 1; } }
+.empty { margin: 0; padding: 4px 8px; color: var(--text-3); font-size: var(--fz-xs); line-height: 1.7; }

@@ -1,26 +1,27 @@
 import { useEffect, useState } from 'react';
 import {
-  BookOpen, Bot, Brain, ClipboardList, FolderOpen, GraduationCap, Layers, LayoutGrid, MessageSquare, Presentation, Route, Users,
-  type LucideIcon,
-} from 'lucide-react';
+  IconAgent, IconChat, IconClassroom, IconFlashcard, IconGuide, IconLibrary, IconMemory, IconPrep, IconQuiz, IconRead, IconTeach,
+  IconWorkbench, type XbIconType,
+} from '../../../components/ui/icons';
 
 export interface TerminalNavItem {
   /** 终端视图 id，对应 /learn?view=<view>；对话为 ask */
   view: string;
   label: string;
   hint: string;
-  icon: LucideIcon;
+  /** 自绘图标；接受 size / active / className */
+  icon: XbIconType;
 }
 
 /** 学习终端的一级入口，导轨、侧栏与命令面板共用同一份 */
 export const TERMINAL_NAV: TerminalNavItem[] = [
-  { view: 'ask', label: '对话', hint: '和小砚把问题学明白', icon: MessageSquare },
-  { view: 'workbench', label: '工作台', hint: '笔记、导图、测验、闪卡', icon: LayoutGrid },
-  { view: 'feynman', label: '教小白', hint: '把学懂的讲给小白听', icon: GraduationCap },
-  { view: 'classroom', label: 'AI 课堂', hint: '生成一堂可以播放的课', icon: Presentation },
-  { view: 'agent', label: '助理任务', hint: '交给小砚去办的事', icon: Bot },
-  { view: 'memory', label: '记忆', hint: '小砚记住的你', icon: Brain },
-  { view: 'library', label: '资料库', hint: '上传与管理学习资料', icon: FolderOpen },
+  { view: 'ask', label: '对话', hint: '和小砚把问题学明白', icon: IconChat },
+  { view: 'workbench', label: '工作台', hint: '笔记、导图、测验、闪卡', icon: IconWorkbench },
+  { view: 'feynman', label: '教小白', hint: '把学懂的讲给小白听', icon: IconTeach },
+  { view: 'classroom', label: 'AI 课堂', hint: '生成一堂可以播放的课', icon: IconClassroom },
+  { view: 'agent', label: '助理任务', hint: '交给小砚去办的事', icon: IconAgent },
+  { view: 'memory', label: '记忆', hint: '小砚记住的你', icon: IconMemory },
+  { view: 'library', label: '资料库', hint: '上传与管理学习资料', icon: IconLibrary },
 ];
 
 export const terminalViewPath = (view: string) => (view === 'ask' ? '/learn' : `/learn?view=${view}`);
@@ -41,13 +42,13 @@ export type ToolView = (typeof TOOL_VIEWS)[number];
 export const isToolView = (view: View): view is ToolView => TOOL_VIEWS.includes(view as ToolView);
 
 /** 课内学习方式：打开课程后显示为一条标签 */
-export const STUDY_TABS: { id: View; label: string; icon: LucideIcon }[] = [
-  { id: 'ask', label: '问小砚', icon: MessageSquare },
-  { id: 'guided', label: '带我学', icon: Route },
-  { id: 'read', label: '读讲义', icon: BookOpen },
-  { id: 'practice', label: '练一练', icon: ClipboardList },
-  { id: 'cards', label: '闪卡', icon: Layers },
-  { id: 'prepare', label: '备课流程', icon: Users },
+export const STUDY_TABS: { id: View; label: string; icon: XbIconType }[] = [
+  { id: 'ask', label: '问小砚', icon: IconChat },
+  { id: 'guided', label: '带我学', icon: IconGuide },
+  { id: 'read', label: '读讲义', icon: IconRead },
+  { id: 'practice', label: '练一练', icon: IconQuiz },
+  { id: 'cards', label: '闪卡', icon: IconFlashcard },
+  { id: 'prepare', label: '备课流程', icon: IconPrep },
 ];
 
 export const VIEW_LABELS: Record<View, string> = {

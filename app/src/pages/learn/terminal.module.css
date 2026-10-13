@@ -169,6 +169,15 @@
   object-fit: contain;
 }
 
+/* 非对话板块的侧栏挂载位：由各板块用 SidebarPortal 填入自己的导航 */
+.sectionSlot {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
 .newChat,
 .searchTrigger {
   display: flex;
@@ -835,11 +844,18 @@ button.crumb:hover {
 }
 
 /* ── 手机：导轨变底栏，侧栏进抽屉，侧面板铺满 ── */
+@keyframes inspectorUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+
 @media (max-width: 760px) {
   .terminal,
   .terminal[data-sidebar='collapsed'] {
     display: flex;
     flex-direction: column;
+    /* 软键盘弹出时，useKeyboardViewport 把可视区高度写进 --app-vh */
+    height: var(--app-vh, 100dvh);
   }
 
   .terminal > .sidebar {
@@ -851,12 +867,13 @@ button.crumb:hover {
     order: 1;
   }
 
+  /* ── 底栏：四个常用板块 + 更多 ── */
   .rail {
     flex: none;
     flex-direction: row;
     order: 2;
     gap: 0;
-    padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+    padding: 3px 6px calc(3px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--border);
     border-right: 0;
   }
@@ -881,12 +898,43 @@ button.crumb:hover {
     justify-content: center;
     gap: 2px;
     width: auto;
-    max-width: 88px;
-    height: 48px;
+    max-width: 96px;
+    height: 50px;
+    border-radius: var(--r-lg);
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .railItem[aria-current='page'] {
+  /* 图标外包一粒胶囊，当前项点亮 */
+  .railItem > svg {
+    box-sizing: content-box;
+    padding: 2px 16px;
+    border-radius: var(--r-full);
+    transition: background var(--dur-2) var(--ease), color var(--dur-1) var(--ease);
+  }
+
+  .railItem:hover {
     background: none;
+    color: var(--text-3);
+  }
+
+  .railItem:active {
+    transform: none;
+  }
+
+  .railItem:active > svg {
+    background: var(--active);
+  }
+
+  .railItem[aria-current='page'],
+  .railItem[data-active] {
+    background: none;
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .railItem[aria-current='page'] > svg,
+  .railItem[data-active] > svg {
+    background: var(--accent-soft);
     color: var(--accent);
   }
 
@@ -898,56 +946,252 @@ button.crumb:hover {
     display: block;
     font-size: var(--fz-xs);
     line-height: 1.2;
+    white-space: nowrap;
   }
 
+  /* 键盘弹出时底栏让位，输入框贴着键盘 */
+  :global(html[data-keyboard='open']) .rail {
+    display: none;
+  }
+
+  /* ── 顶栏：一行标题 + 图标操作 ── */
   .header {
-    gap: 4px;
-    padding: 0 8px;
+    gap: 2px;
+    min-height: calc(48px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 8px 0 4px;
   }
 
   .header .showSidebar,
   .header .showSidebar[data-collapsed] {
     display: inline-grid;
+    width: 40px;
+    height: 40px;
+  }
+
+  /* 课内只留课题名（学习方式看下面的标签条）；课外只留当前板块名 */
+  .breadcrumb > svg,
+  .breadcrumb[data-has-topic] > [data-level='view'],
+  .breadcrumb[data-has-view]:not([data-has-topic]) > [data-level='root'] {
+    display: none;
+  }
+
+  .crumb,
+  .crumb[data-level] {
+    flex: 0 1 auto;
+    min-height: 40px;
+    padding: 6px 4px;
+    color: var(--text);
+    font-size: var(--fz-lg);
+    font-weight: 600;
+  }
+
+  .headerActions {
+    gap: 2px;
+  }
+
+  .headerActions .headerButton {
+    min-width: 40px;
+    height: 40px;
+    padding: 0 8px;
+  }
+
+  .headerActions > a {
+    height: 36px;
+    margin-left: 4px;
+    padding: 0 12px;
   }
 
   .headerLabel {
     display: none;
   }
 
+  /* ── 课内标签条：横向滑动，两端贴边 ── */
   .tabs {
-    padding-inline: 8px;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .tabs [role='tablist'] {
+    gap: 0;
+    padding-inline: 6px;
+    scroll-padding-inline: 16px;
+    overscroll-behavior-x: contain;
+  }
+
+  .tabs [role='tab'] {
+    height: 44px;
+    padding: 0 12px;
+    font-size: var(--fz-md);
+  }
+
+  .returnBar {
+    padding: 4px 8px 0;
+  }
+
+  .banner {
+    flex-wrap: wrap;
+    padding: 8px 12px;
   }
 
   .notice {
-    margin-inline: 12px;
+    margin: 8px 12px 0;
+  }
+
+  .scroll,
+  .fill,
+  .chatArea {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── 资料 / 工具与产物：整屏面板，盖住底栏 ── */
+  .terminal[data-inspector='open'] .workspace {
+    z-index: 3;
   }
 
   .inspector {
-    left: 0;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
     width: 100%;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
     border-left: 0;
-    box-shadow: none;
     background: var(--bg);
+    box-shadow: none;
+    animation: inspectorUp var(--dur-2) var(--ease);
   }
 
+  .inspectorHead {
+    min-height: 52px;
+    padding: 6px 8px 6px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .inspectorHead [role='radio'] {
+    height: 34px;
+    padding: 0 14px;
+    font-size: var(--fz-sm);
+  }
+
+  .inspectorHead > button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .inspector > :not(.inspectorHead) {
+    overscroll-behavior: contain;
+  }
+
+  /* ── 输入框停靠区 ── */
   .composerDock {
-    padding: 8px 12px 10px;
+    padding: 6px 12px 8px;
   }
 
   .chatEmpty {
-    padding: 32px 16px;
+    padding: 28px 16px;
   }
 
   .chatEmpty h2 {
     font-size: var(--fz-2xl);
   }
 
+  .chatEmpty p {
+    font-size: var(--fz-md);
+  }
+
+  .chips button {
+    min-height: 40px;
+    font-size: var(--fz-md);
+  }
+
   .document {
-    padding: 24px 16px 40px;
+    padding: 20px 16px 40px;
+  }
+
+  .document h1 {
+    font-size: var(--fz-2xl);
+  }
+
+  .document .notes {
+    min-height: 46dvh;
+  }
+
+  .working {
+    padding: 12px 16px 20px;
+  }
+
+  /* ── 抽屉里的侧栏：行高按手指来 ── */
+  .navSheet .newChat,
+  .navSheet .searchTrigger {
+    min-height: 44px;
+    font-size: var(--fz-md);
+  }
+
+  .navSheet .searchTrigger > kbd {
+    display: none;
+  }
+
+  .navSheet .sidebarScroll {
+    gap: 12px;
+    overscroll-behavior: contain;
+  }
+
+  .navSheet .sideItem,
+  .navSheet .groupToggle,
+  .navSheet .topicItem,
+  .navSheet .chatItem {
+    min-height: 44px;
+    font-size: var(--fz-md);
+  }
+
+  .navSheet .sideItem,
+  .navSheet .chatItem {
+    gap: 12px;
+    padding: 0 10px;
+  }
+
+  .navSheet .sideHeading {
+    min-height: 32px;
+  }
+
+  .navSheet .sideHeading > button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .navSheet .chatMenu {
+    width: 40px;
+    height: 40px;
+    margin-right: 2px;
+  }
+
+  .navSheet .renameInput {
+    height: 44px;
+    font-size: 16px;
+  }
+
+  .navSheet .mobileAccountRow > a,
+  .navSheet .mobileAccountRow > button:not(:first-child) {
+    width: 44px;
+    height: 44px;
   }
 
   .chatMenu {
     opacity: 1;
+  }
+
+  /* 壁纸皮肤：手机上不做大面积毛玻璃，改成更实的底色 */
+  :global(html[data-wallpaper='on']) .rail,
+  :global(html[data-wallpaper='on']) .inspector {
+    background: color-mix(in srgb, var(--sidebar) 94%, transparent);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  :global(html[data-wallpaper='on']) .workspace::before {
+    background: color-mix(in srgb, var(--bg) max(calc(var(--wallpaper-dim) * 100%), 86%), transparent);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
 

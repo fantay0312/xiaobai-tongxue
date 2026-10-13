@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, BookMarked, Check, CircleCheck, CircleX, Pencil, Play, Plus, RotateCcw, Sparkles, Trash2, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { ArrowRight, BookMarked, Check, CircleCheck, CircleX, Pencil, Play, Plus, RotateCcw, Trash2, X } from 'lucide-react';
 import { CoachMarkdown } from '../../../../components/coach/CoachMarkdown';
 import { Badge, Button, Dialog, Field, IconButton, Input, Kbd, Progress, Segmented, Switch, Textarea, toast } from '../../../../components/ui';
 import { newId, studyData, useStudyData, type QuestionType, type QuizQuestion, type QuizSet } from '../../../../store/studyData';
 import { QUESTION_TYPES, TRUE_FALSE } from './generate';
-import { DetailHead, GenerateDialog, ICON_SM, OriginBadge, SplitLayout, ToolHead, removeWithUndo, type Entry, type ToolProps } from './shared';
-import { clip, useAutosave, useHotkeys, useWorkbenchNav } from './util';
+import { DetailHead, ICON_SM, OriginBadge, ToolFrame, type ToolProps } from './shared';
+import { clip, useAutosave, useHotkeys } from './util';
 import s from './workbench.module.css';
 import q from './quiz.module.css';
 
@@ -42,70 +42,26 @@ const lastScore = (set: QuizSet) => {
 };
 
 export default function QuizTool(props: ToolProps) {
-  const { owner, topic, activeId } = props;
-  const { go } = useWorkbenchNav();
+  const { owner, onAsk } = props;
   const { quizSets } = useStudyData(owner);
-  const [genOpen, setGenOpen] = useState(false);
-
-  const entries = useMemo<Entry[]>(() => [...quizSets]
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .map((set) => {
-      const score = lastScore(set);
-      return {
-        id: set.id,
-        title: set.title,
-        origin: set.origin,
-        topicId: set.topicId,
-        text: set.questions.map((question) => question.stem).join(' '),
-        meta: <>{set.questions.length} 题{score !== null && ` · 上次 ${score}%`}{set.wrongIds.length > 0 && ` · 错题 ${set.wrongIds.length}`}</>,
-      };
-    }), [quizSets]);
-
-  const create = () => {
-    const set = studyData.saveQuizSet(owner, { title: topic ? `${topic.title} · 练习题` : '', questions: [], ...(topic ? { topicId: topic.topicId } : {}) });
-    go('quiz', set.id);
-  };
-  const remove = (id: string) => {
-    const set = quizSets.find((item) => item.id === id);
-    if (!set) return;
-    removeWithUndo(set.title, () => studyData.removeQuizSet(owner, id), () => studyData.saveQuizSet(owner, set));
-    if (activeId === id) go('quiz', null, true);
-  };
 
   return (
-    <>
-      <ToolHead tool="quiz">
-        <Button variant="soft" icon={<Sparkles {...ICON_SM} />} onClick={() => setGenOpen(true)}>AI 生成</Button>
-        <Button variant="outline" icon={<Plus {...ICON_SM} />} onClick={create}>新建题目集</Button>
-      </ToolHead>
-      <SplitLayout
-        tool="quiz"
-        entries={entries}
-        activeId={activeId}
-        topic={topic}
-        empty={{
-          title: '还没有题目集',
-          description: '做题是检验是否真懂的最快办法。让小砚按本课出一套题，做错的会自动进错题本。',
-          action: (
-            <>
-              <Button variant="solid" icon={<Sparkles {...ICON_SM} />} onClick={() => setGenOpen(true)}>从本课出一套题</Button>
-              <Button variant="soft" icon={<Plus {...ICON_SM} />} onClick={create}>自己录题</Button>
-            </>
-          ),
-        }}
-        onRename={(id, title) => {
-          const set = quizSets.find((item) => item.id === id);
-          if (set) studyData.saveQuizSet(owner, { ...set, title });
-        }}
-        onDelete={remove}
-      >
-        {(id) => {
-          const set = quizSets.find((item) => item.id === id);
-          return set ? <QuizDetail key={set.id} set={set} owner={owner} onAsk={props.onAsk} /> : null;
-        }}
-      </SplitLayout>
-      <GenerateDialog kind="quiz" open={genOpen} onOpenChange={setGenOpen} view={props} onCreated={(created) => go('quiz', created.id)} />
-    </>
+    <ToolFrame
+      tool="quiz"
+      view={props}
+      empty={{
+        title: '还没有题目集',
+        description: '做题是检验是否真懂的最快办法。让小砚按本课出一套题，做错的会自动进错题本。',
+        primary: 'generate',
+        generateLabel: '从本课出一套题',
+        createLabel: '自己录题',
+      }}
+    >
+      {(id) => {
+        const set = quizSets.find((item) => item.id === id);
+        return set ? <QuizDetail key={set.id} set={set} owner={owner} onAsk={onAsk} /> : null;
+      }}
+    </ToolFrame>
   );
 }
 
@@ -332,7 +288,7 @@ function Practice({ set, ids, wrongOnly, owner, onExit, onRestart, onAsk }: {
   const selfGrade = checked && verdict === undefined;
 
   return (
-    <div className={q.practice}>
+    <div className={q.practice} data-wb-focus="">
       <div className={q.pTop}>
         <span className={q.pCount}>{wrongOnly ? '错题本 · ' : ''}第 {index + 1} / {total} 题</span>
         <Progress value={index + (checked ? 1 : 0)} max={total} className={q.pBar} label="练习进度" />

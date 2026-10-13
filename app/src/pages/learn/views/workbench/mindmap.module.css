@@ -146,6 +146,36 @@
   .body[data-view='both'] .rows { overflow: visible; }
   .footHint { display: none; }
 }
+.footHint[data-for='touch'] { display: none; }
+@media (pointer: coarse) {
+  .rowActions > button, .zoom > button { width: 40px; height: 40px; }
+  .fold { width: 32px; height: 32px; }
+}
+@media (hover: none) {
+  .footHint[data-for='mouse'] { display: none; }
+  .footHint[data-for='touch'] { display: block; }
+  /* 没有实体键盘：不显示按键提示 */
+  .keys { display: none; }
+}
+
+/* 手机：画布占满宽度和一屏高；大纲是单独的页签，随内容撑开 */
+@media (max-width: 760px) {
+  .editor { overflow: visible; }
+  .body { height: clamp(340px, calc(100dvh - 336px), 720px); }
+  .body[data-view='outline'] { height: auto; }
+  .body[data-view='outline'] .outline { padding: 10px 8px 12px; }
+  .body[data-view='outline'] .rows { overflow: visible; }
+  .canvas { border-radius: 0; }
+  .row { min-height: 44px; }
+  .fold, .dot { width: 28px; height: 28px; }
+  .rowInput { height: 40px; }
+  .zoom { right: 8px; bottom: 8px; gap: 2px; }
+  .foot { gap: 10px; padding: 8px 14px; }
+  .foot > span { flex: none; white-space: nowrap; }
+  .foot > .footHint { flex: 1; min-width: 0; margin-left: 0; text-align: right; }
+  .footHint[data-for='touch'] { display: block; }
+  .footHint[data-for='mouse'] { display: none; }
+}
 @media (prefers-reduced-motion: reduce) {
   .fold svg { transition: none; }
 }

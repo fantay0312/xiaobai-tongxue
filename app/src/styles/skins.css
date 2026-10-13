@@ -108,6 +108,16 @@
   --story-gold: #ffc233;
 }
 
+/* 触屏：控件加高到好点按的尺寸；输入类文字不小于 16px，避免 iOS 聚焦时自动放大页面 */
+@media (pointer: coarse) {
+  :root {
+    --ctl-sm: 34px;
+    --ctl-md: 40px;
+    --ctl-lg: 46px;
+  }
+  input, textarea, select { font-size: max(16px, 1em); }
+}
+
 /* ── 皮肤 ── */
 html[data-skin='dark'] {
   color-scheme: dark;
@@ -332,6 +342,15 @@ html[data-surface='marketing'] body {
 }
 html[data-surface='workspace'] body::after,
 html[data-surface='marketing'] body::after { display: none; }
+
+/* 手机上的通用手感：去掉点按灰块、禁止双击缩放延迟、滚动不带动整页回弹 */
+html[data-surface] {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+html[data-surface='workspace'] body { overscroll-behavior: none; }
 
 /* ── 故事岛：拜师帖、证书、日记、来信、印章等纸质物件保留老学堂工艺 ── */
 [data-story] {

@@ -21,6 +21,7 @@
 /* ── 浮层 ── */
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes rise { from { opacity: 0; transform: translateY(10px) scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes sheetIn { from { opacity: 0.6; transform: translateY(24px); } to { opacity: 1; transform: none; } }
 .overlay { position: fixed; inset: 0; z-index: 2000; background: var(--overlay); backdrop-filter: blur(3px); animation: fade var(--dur-2) var(--ease); }
 .panel {
   position: fixed; z-index: 2000; inset: 20px; margin: auto; max-width: 1480px;
@@ -38,6 +39,9 @@
 .pager { display: flex; align-items: center; gap: 2px; margin-right: 6px; padding: 3px; border-radius: var(--r-md); background: var(--inset); }
 .pagerText { min-width: 46px; text-align: center; color: var(--text-3); font-size: var(--fz-xs); font-variant-numeric: tabular-nums; }
 .paneBar { display: flex; padding: 8px 20px; border-bottom: 1px solid var(--border); background: var(--surface); }
+/* 只在手机上出现的按钮：返回、更多、笔记抽屉的开合 */
+.head .headBack, .head .headMore, .notesHead .notesToggle { display: none; }
+.touchOnly { display: none; }
 
 .stage { flex: 1; min-height: 0; display: flex; background: var(--sidebar); }
 .stageLayer { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
@@ -56,7 +60,7 @@
 .pageInput:hover { border-color: var(--text-4); }
 .pageInput:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
 .pageTotal { margin: 0 4px 0 2px; color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.pdfScroll { position: relative; flex: 1; min-height: 0; padding: 16px 16px 32px; overflow: auto; background: var(--inset); outline: none; scrollbar-width: thin; scrollbar-color: var(--border-2) transparent; }
+.pdfScroll { position: relative; flex: 1; min-height: 0; padding: 16px 16px 32px; overflow: auto; background: var(--inset); outline: none; scrollbar-width: thin; scrollbar-color: var(--border-2) transparent; touch-action: pan-x pan-y; overscroll-behavior: contain; }
 .pdfScroll[hidden] { display: none; }
 .pdfPages { display: flex; flex-direction: column; align-items: center; gap: 12px; width: max-content; min-width: 100%; }
 .pdfPage { position: relative; flex: none; overflow: hidden; color-scheme: light; border-radius: 2px; background: Canvas; box-shadow: var(--shadow-2); }
@@ -78,7 +82,7 @@
 .reading { max-width: 860px; margin: 0 auto; padding: 32px 40px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); font-size: var(--fz-lg); overflow-wrap: anywhere; }
 .codePane { max-width: 1080px; margin: 0 auto; }
 .sheetStage { flex: 1; min-height: 0; display: flex; padding: 16px; }
-.tableScroll { flex: 1; min-width: 0; overflow: auto; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); scrollbar-width: thin; scrollbar-color: var(--border-2) transparent; }
+.tableScroll { flex: 1; min-width: 0; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); scrollbar-width: thin; scrollbar-color: var(--border-2) transparent; }
 .tableScroll:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 .table { min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--fz-sm); line-height: 1.5; }
 .table th, .table td { max-width: 360px; padding: 8px 12px; overflow: hidden; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; text-overflow: ellipsis; }
@@ -180,15 +184,18 @@
   .screen { padding: 12px; }
 }
 @media (max-width: 640px) {
-  .panel { inset: 0; max-width: none; border-radius: 0; }
-  .head { gap: 10px; padding: 10px 8px 10px 12px; }
+  /* 全屏：没有遮罩可看，不做模糊；上下让出刘海和底部横条 */
+  .overlay { backdrop-filter: none; }
+  .panel { inset: 0; max-width: none; border-radius: 0; padding-bottom: env(safe-area-inset-bottom); }
+  .head { gap: 4px; padding: calc(6px + env(safe-area-inset-top)) 6px 6px 6px; }
+  .head .headBack, .head .headMore { display: inline-grid; flex: none; }
+  .head .headClose, .head .pager, .head .headButton { display: none; }
   .headIcon { display: none; }
+  .headText { padding-left: 2px; }
   .headActions { gap: 2px; }
-  .headButton { width: var(--ctl-md); padding: 0; }
-  .headButton > span { display: none; }
-  .pager { margin-right: 2px; background: none; padding: 0; }
-  .pagerText { display: none; }
-  .paneBar { padding: 8px 12px; }
+  .paneBar { padding: 6px 12px; }
+  .paneBar > * { flex: 1; }
+  .paneBar [role='radio'] { flex: 1; }
   .viewBar { gap: 8px; padding-left: 12px; padding-right: 8px; }
   .viewControls { gap: 2px; }
   .viewControls + .viewTools .zoomText { display: none; }
@@ -196,13 +203,64 @@
   .barLink span { display: none; }
   .pdfScroll { padding: 8px 8px 24px; }
   .pdfPages { gap: 8px; }
-  .docStage { padding: 12px; }
+  .docStage { padding: 12px; overscroll-behavior: contain; }
   .reading { padding: 20px 16px; font-size: var(--fz-md); }
   .sheetStage { padding: 8px; }
   .slide { gap: 12px; padding: 16px 16px 16px 12px; }
   .docxStage :global(.docx-wrapper) { padding: 12px 0 0; }
+  .stageCenter { padding: 20px 16px; }
+  .fallback { padding: 32px 20px 24px; box-shadow: var(--shadow-1); }
+  .fallbackActions > button { flex: 1 1 100%; }
+
+  /* 时间点笔记：底部抽屉。平时只露出标题一行；点开占下半屏，视频和控制条缩到上半屏，边看边记 */
+  .media, .media[data-kind='audio'] { grid-template-rows: minmax(0, 1fr) 60px; }
+  .media[data-notes='open'], .media[data-kind='audio'][data-notes='open'] { grid-template-rows: minmax(0, 1fr) minmax(0, 54%); }
+  .media[data-kind='audio'] .audioCard { flex-direction: column; justify-content: center; gap: 18px; padding: 24px; text-align: center; }
+  .media[data-kind='audio'] .audioDisc { width: 96px; height: 96px; }
+  .media[data-kind='audio'][data-notes='open'] .audioCard { flex-direction: row; justify-content: flex-start; gap: 14px; padding: 16px; text-align: left; }
+  .media[data-kind='audio'][data-notes='open'] .audioDisc { width: 56px; height: 56px; }
+  .screen { padding: 8px; }
+  .video { border-radius: var(--r-md); box-shadow: var(--shadow-1); }
+  .controls { gap: 4px; padding: 8px 12px 10px; }
+  .notes {
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+    border-top: 1px solid var(--border);
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    box-shadow: var(--shadow-2);
+  }
+  .media[data-notes='open'] .notes { animation: sheetIn var(--dur-2) var(--ease); }
+  .notesHead { align-items: center; gap: 4px; min-height: 59px; padding: 8px 10px 8px 6px; }
+  .notesHead .notesToggle { display: inline-grid; flex: none; }
+  .notesHead .notesToggle svg { transition: transform var(--dur-2) var(--ease); }
+  .media[data-notes='open'] .notesToggle svg { transform: rotate(180deg); }
+  .notesHead > div { cursor: pointer; }
+  .notesHead p { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .media[data-notes='closed'] .noteList, .media[data-notes='closed'] .noteForm { display: none; }
+  .noteList { overscroll-behavior: contain; }
+  .noteForm { padding: 10px 12px 12px; }
+}
+/* 触屏：播放与缩放控件加大，进度条好拖 */
+@media (pointer: coarse) {
+  .buttonRow > button, .viewTools > button, .viewControls > button { min-width: 40px; min-height: 40px; }
+  .buttonRow { gap: 6px; }
+  .seekTrack, .seek { height: 32px; }
+  .seek::-webkit-slider-thumb { width: 20px; height: 20px; margin-top: -8px; }
+  .seek::-moz-range-thumb { width: 20px; height: 20px; }
+  .pageInput { width: 52px; height: 36px; }
+  .paneBar [role='radio'], .viewTools [role='radio'] { min-height: 34px; padding-inline: 12px; font-size: var(--fz-sm); }
+  .noteItem .noteRemove { width: 40px; height: 40px; margin: 0 2px 0 0; }
+  .noteJump { padding: 10px 8px; }
+}
+@media (hover: none) {
+  .mouseOnly { display: none; }
+  .touchOnly { display: inline; }
+  .table tbody tr:hover td { background: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .overlay, .panel, .audioDisc[data-playing] { animation: none; }
   .bigPlay, .seek::-webkit-slider-thumb { transition: none; }
+  .media[data-notes='open'] .notes { animation: none; }
+  .notesHead .notesToggle svg { transition: none; }
 }

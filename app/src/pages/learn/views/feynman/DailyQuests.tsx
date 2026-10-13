@@ -11,10 +11,12 @@ interface Props {
   /** 刚完成、要播放落印的课业 key */
   fresh: string[];
   busy: boolean;
+  /** 独占一整行时把课业排成两列卡片；与选课并排时是一列清单 */
+  wide?: boolean;
   onGo: (quest: DailyQuest) => void;
 }
 
-export function DailyQuests({ board, fresh, busy, onGo }: Props) {
+export function DailyQuests({ board, fresh, busy, wide = false, onGo }: Props) {
   const allDone = board.total > 0 && board.done === board.total;
 
   return (
@@ -32,7 +34,7 @@ export function DailyQuests({ board, fresh, busy, onGo }: Props) {
         </span>
       </header>
 
-      <ul className={s.panel}>
+      <ul className={wide ? s.questGrid : s.panel}>
         {board.quests.map((quest) => {
           const ratio = quest.target > 0 ? Math.min(1, quest.now / quest.target) : 0;
           const body = (

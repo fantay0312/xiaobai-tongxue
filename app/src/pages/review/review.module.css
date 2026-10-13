@@ -412,6 +412,8 @@
 }
 .open { grid-template-rows: 1fr; }
 .collapse > div { overflow: hidden; min-height: 0; }
+/* 收起时连内边距一起收掉,否则会露出一条证据链的边 */
+.collapse:not(.open) > div { padding-block: 0; }
 
 /* ── 补学微路径:三步竖排,序号圆点串一条细线 ── */
 .remedy {
@@ -836,6 +838,9 @@
 
 @media (max-width: 560px) {
   .page { padding-top: 16px; padding-bottom: 40px; }
+  .crumb a { padding-block: 9px; margin-block: -9px; }
+  .title { font-size: var(--fz-2xl); }
+  .timelineText { font-size: var(--fz-md); }
   .section { margin-bottom: 32px; }
   .blindItem { padding: 14px; }
   .remedyStage { padding-left: 36px; }

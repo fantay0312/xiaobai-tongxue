@@ -56,12 +56,18 @@ export function ImageView({ blob, name, onDownload }: { blob: Blob; name: string
   const url = useObjectUrl(blob);
   const boxRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ id: number; x: number; y: number } | null>(null);
+  // 触屏：记下按着的每根手指，两根时按间距缩放；lastTap 用来认出连点两下
+  const pointsRef = useRef(new Map<number, { x: number; y: number }>());
+  const pinchRef = useRef<{ spread: number; scale: number } | null>(null);
+  const lastTapRef = useRef({ at: 0, x: 0, y: 0, moved: false, toggledAt: 0 });
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
   const [view, setView] = useState<ImageViewState>({ fit: true, scale: 1, x: 0, y: 0 });
   const [failed, setFailed] = useState(false);
 
-  const fitScale = natural && box.w && box.h ? Math.min(1, (box.w - 48) / natural.w, (box.h - 48) / natural.h) : 1;
+  // 手机上四周少留一点边，图片尽量大
+  const margin = box.w <= 640 ? 16 : 48;
+  const fitScale = natural && box.w && box.h ? Math.min(1, (box.w - margin) / natural.w, (box.h - margin) / natural.h) : 1;
   const scale = view.fit ? Math.max(0.01, fitScale) : view.scale;
   const fitRef = useRef(scale);
   fitRef.current = scale;
@@ -84,21 +90,58 @@ export function ImageView({ blob, name, onDownload }: { blob: Blob; name: string
   }, [url]);
 
   const zoom = (factor: number) => setView((current) => ({ fit: false, scale: clampScale((current.fit ? scale : current.scale) * factor), x: current.fit ? 0 : current.x, y: current.fit ? 0 : current.y }));
+  const toggleFit = () => setView((current) => ({ fit: !current.fit, scale: 1, x: 0, y: 0 }));
+  const spreadOf = () => {
+    const [a, b] = [...pointsRef.current.values()];
+    return a && b ? Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)) : 1;
+  };
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
+    pointsRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* 指针已经抬起时捕获会失败，不影响拖动 */ }
+    if (pointsRef.current.size === 2) {
+      pinchRef.current = { spread: spreadOf(), scale: fitRef.current };
+      dragRef.current = null;
+      lastTapRef.current.moved = true;
+      return;
+    }
     dragRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY };
-    event.currentTarget.setPointerCapture(event.pointerId);
+    lastTapRef.current.moved = false;
   };
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (pointsRef.current.has(event.pointerId)) pointsRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const pinch = pinchRef.current;
+    if (pinch && pointsRef.current.size >= 2) {
+      const next = clampScale(pinch.scale * (spreadOf() / pinch.spread));
+      setView((current) => ({ fit: false, scale: next, x: current.fit ? 0 : current.x, y: current.fit ? 0 : current.y }));
+      return;
+    }
     const drag = dragRef.current;
     if (!drag || drag.id !== event.pointerId) return;
     const dx = event.clientX - drag.x;
     const dy = event.clientY - drag.y;
     if (!dx && !dy) return;
+    if (Math.abs(dx) + Math.abs(dy) > 3) lastTapRef.current.moved = true;
     dragRef.current = { id: drag.id, x: event.clientX, y: event.clientY };
     setView((current) => ({ fit: false, scale: current.fit ? scale : current.scale, x: (current.fit ? 0 : current.x) + dx, y: (current.fit ? 0 : current.y) + dy }));
   };
-  const endDrag = () => { dragRef.current = null; };
+  const endDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    pointsRef.current.delete(event.pointerId);
+    pinchRef.current = null;
+    // 松开一根手指后，剩下那根接着拖
+    const [rest] = [...pointsRef.current.entries()];
+    dragRef.current = rest ? { id: rest[0], x: rest[1].x, y: rest[1].y } : null;
+    if (event.type !== 'pointerup' || event.pointerType !== 'touch' || rest) return;
+    // 触屏上连点两下：在「适应」和「100%」之间切换
+    const tap = lastTapRef.current;
+    const now = Date.now();
+    if (!tap.moved && now - tap.at < 320 && Math.hypot(event.clientX - tap.x, event.clientY - tap.y) < 28) {
+      lastTapRef.current = { at: 0, x: 0, y: 0, moved: false, toggledAt: now };
+      toggleFit();
+    } else {
+      lastTapRef.current = { ...tap, at: tap.moved ? 0 : now, x: event.clientX, y: event.clientY };
+    }
+  };
 
   if (!url) return <StageLoading />;
   if (failed) {
@@ -115,7 +158,7 @@ export function ImageView({ blob, name, onDownload }: { blob: Blob; name: string
   }
   return (
     <>
-      <ViewBar note={natural ? `${natural.w} × ${natural.h} 像素 · 拖动平移，滚轮缩放` : '正在读取图片…'}>
+      <ViewBar note={natural ? <span>{natural.w} × {natural.h} 像素<span className={s.mouseOnly}> · 拖动平移，滚轮缩放</span><span className={s.touchOnly}> · 双指缩放，连点两下放大</span></span> : '正在读取图片…'}>
         {/* 自由缩放时两项都不选中 */}
         <Segmented<'fit' | 'actual' | 'free'>
           size="sm"
@@ -135,7 +178,7 @@ export function ImageView({ blob, name, onDownload }: { blob: Blob; name: string
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
-        onDoubleClick={() => setView((current) => ({ fit: !current.fit, scale: 1, x: 0, y: 0 }))}
+        onDoubleClick={() => { if (Date.now() - lastTapRef.current.toggledAt > 600) toggleFit(); }}
       >
         <img
           src={url}

@@ -1,18 +1,19 @@
 /**
  * 一堂课的四站：备课 → 上课 → 赴考 → 批注复盘。每一站显示所选课程的真实进度。
  */
-import { BookOpen, Check, FileCheck2, PenLine, Presentation, RotateCcw } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { Check, ChevronsUpDown, RotateCcw } from 'lucide-react';
+import type { ComponentType } from 'react';
 import { Badge, Button } from '../../../../components/ui';
+import { IconExam, IconLesson, IconPrep, IconReview, type XbIconProps } from '../../../../components/ui/icons';
 import type { Topic } from '../../../../types';
 import type { Station, StationKey } from './data';
 import s from './feynman.module.css';
 
-const ICONS: Record<StationKey, ReactNode> = {
-  prepare: <BookOpen size={16} strokeWidth={1.75} />,
-  teach: <Presentation size={16} strokeWidth={1.75} />,
-  exam: <PenLine size={16} strokeWidth={1.75} />,
-  review: <FileCheck2 size={16} strokeWidth={1.75} />,
+const ICONS: Record<StationKey, ComponentType<XbIconProps>> = {
+  prepare: IconPrep,
+  teach: IconLesson,
+  exam: IconExam,
+  review: IconReview,
 };
 
 const LOCKED_HINT: Record<StationKey, string> = {
@@ -27,57 +28,94 @@ interface Props {
   stations: Station[];
   busy: boolean;
   onRun: (station: Station) => void;
-  onPick: () => void;
+  /** 主区里有选课列表时，跳到它；选课在侧栏时不传 */
+  onPick?: () => void;
+  /** 手机版式：当前课做成一条通栏的换课按钮，点开底部抽屉选课 */
+  compact?: boolean;
 }
 
-export function LoopStations({ topic, stations, busy, onRun, onPick }: Props) {
+function StationItem({ station, index, busy, onRun }: {
+  station: Station;
+  index: number;
+  busy: boolean;
+  onRun: (station: Station) => void;
+}) {
+  const StationIcon = ICONS[station.key];
+  const current = station.state === 'current';
+  return (
+    <li className={s.station} data-state={station.state}>
+      <div className={s.stationRail} aria-hidden="true">
+        <span className={s.stationNode}>
+          {station.state === 'done' ? <Check size={15} strokeWidth={2.25} /> : index + 1}
+        </span>
+        <span className={s.stationLine} />
+      </div>
+      <div className={s.stationBody}>
+        <h3 className={s.stationName}>
+          <StationIcon size={17} active={current} />
+          {station.name}
+          {current && <Badge tone="accent">现在</Badge>}
+        </h3>
+        <p className={s.stationStatus}>{station.status}</p>
+        {station.to ? (
+          <Button
+            variant={current ? 'soft' : 'ghost'}
+            size="sm"
+            className={current ? s.stationAction : `${s.stationAction} ${s.stationGhost}`}
+            disabled={busy}
+            onClick={() => onRun(station)}
+          >
+            {station.cta}
+          </Button>
+        ) : (
+          <span className={s.stationLocked}>{LOCKED_HINT[station.key]}</span>
+        )}
+      </div>
+    </li>
+  );
+}
+
+export function LoopStations({ topic, stations, busy, onRun, onPick, compact = false }: Props) {
   return (
     <section className={s.section} aria-labelledby="feynman-loop-title">
       <header className={s.sectionHead}>
         <div>
           <h2 id="feynman-loop-title" className={s.sectionTitle}>一堂课的四站</h2>
-          <p className={s.sectionNote}>
-            {topic ? `${topic.course} · ${topic.title}` : '先在下面选一门课'}
-          </p>
+          {!(compact && onPick) && (
+            <p className={s.sectionNote}>
+              {topic ? `${topic.course} · ${topic.title}` : '先选一门课'}
+            </p>
+          )}
         </div>
-        {topic && (
+        {topic && onPick && !compact && (
           <Button variant="ghost" size="sm" onClick={onPick}>换一门课</Button>
         )}
       </header>
+
+      {compact && onPick && (
+        <button type="button" className={s.courseSwitch} aria-haspopup="dialog" onClick={onPick}>
+          <span className={s.courseSwitchText}>
+            <b>{topic ? topic.title : '选一门课'}</b>
+            <span>{topic ? topic.course : '书架上的课都在这里'}</span>
+          </span>
+          <span className={s.courseSwitchHint}>
+            换一门
+            <ChevronsUpDown size={15} strokeWidth={1.75} aria-hidden="true" />
+          </span>
+        </button>
+      )}
 
       {topic ? (
         <>
           <ol className={s.stations}>
             {stations.map((station, index) => (
-              <li key={station.key} className={s.station} data-state={station.state}>
-                <div className={s.stationRail} aria-hidden="true">
-                  <span className={s.stationNode}>
-                    {station.state === 'done' ? <Check size={15} strokeWidth={2.25} /> : index + 1}
-                  </span>
-                  <span className={s.stationLine} />
-                </div>
-                <div className={s.stationBody}>
-                  <h3 className={s.stationName}>
-                    {ICONS[station.key]}
-                    {station.name}
-                    {station.state === 'current' && <Badge tone="accent">现在</Badge>}
-                  </h3>
-                  <p className={s.stationStatus}>{station.status}</p>
-                  {station.to ? (
-                    <Button
-                      variant={station.state === 'current' ? 'soft' : 'ghost'}
-                      size="sm"
-                      className={station.state === 'current' ? s.stationAction : `${s.stationAction} ${s.stationGhost}`}
-                      disabled={busy}
-                      onClick={() => onRun(station)}
-                    >
-                      {station.cta}
-                    </Button>
-                  ) : (
-                    <span className={s.stationLocked}>{LOCKED_HINT[station.key]}</span>
-                  )}
-                </div>
-              </li>
+              <StationItem
+                key={station.key}
+                station={station}
+                index={index}
+                busy={busy}
+                onRun={onRun}
+              />
             ))}
           </ol>
           <p className={s.loopBack}>

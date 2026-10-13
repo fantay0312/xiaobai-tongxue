@@ -1,103 +1,53 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import {
-  Bold, Check, Code, Columns2, Download, Eye, Heading2, Italic, List, ListChecks, MessageCircleQuestion, Plus, Quote, Sigma,
-  Sparkles, SquarePen, X,
+  Bold, Check, Code, Columns2, Download, Eye, Heading2, Italic, List, ListChecks, MessageCircleQuestion, Quote, Sigma, SquarePen, X,
 } from 'lucide-react';
 import { CoachMarkdown } from '../../../../components/coach/CoachMarkdown';
-import { Button, IconButton, MenuItem, Segmented, toast } from '../../../../components/ui';
+import { Button, IconButton, Segmented, toast } from '../../../../components/ui';
 import { studyData, useStudyData, type StudyNote } from '../../../../store/studyData';
-import { DetailHead, GenerateDialog, ICON_SM, OriginBadge, SplitLayout, ToolHead, removeWithUndo, type Entry, type ToolProps } from './shared';
-import { ago, clip, countWords, download, safeName, useAutosave, useWorkbenchNav } from './util';
+import { exportNote } from './registry';
+import { DetailHead, ICON_SM, OriginBadge, ToolFrame, type ToolProps } from './shared';
+import { clip, countWords, useAutosave, useNarrow } from './util';
 import s from './workbench.module.css';
 import n from './notes.module.css';
 
 type Mode = 'edit' | 'split' | 'preview';
 type Mark = 'bold' | 'italic' | 'heading' | 'list' | 'todo' | 'quote' | 'code' | 'math';
 
-const exportNote = (note: Pick<StudyNote, 'title' | 'body'>) => {
-  const body = /^#\s/.test(note.body.trimStart()) ? note.body : `# ${note.title || '未命名笔记'}\n\n${note.body}`;
-  download(`${safeName(note.title)}.md`, body, 'text/markdown');
-};
-
 export default function NotesTool(props: ToolProps) {
-  const { owner, topic, activeId, onAsk } = props;
-  const { go } = useWorkbenchNav();
+  const { owner, onAsk } = props;
   const { notes } = useStudyData(owner);
-  const [genOpen, setGenOpen] = useState(false);
-  // 详情栏够宽才默认分栏；窄的时候先看排好版的预览，新建时再切到编辑
+  // 详情栏够宽才默认分栏；窄的时候先看排好版的预览，空笔记打开时再切到编辑
   const [mode, setMode] = useState<Mode>(() => (typeof window !== 'undefined' && window.innerWidth < 1320 ? 'preview' : 'split'));
 
-  const entries = useMemo<Entry[]>(() => [...notes]
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .map((note) => ({
-      id: note.id,
-      title: note.title,
-      origin: note.origin,
-      topicId: note.topicId,
-      text: `${note.body} ${note.tags.join(' ')}`,
-      meta: <>{ago(note.updatedAt)} · {countWords(note.body)} 字{note.tags.length > 0 && ` · ${note.tags.slice(0, 2).join(' ')}`}</>,
-    })), [notes]);
-
-  const create = () => {
-    const note = studyData.saveNote(owner, { title: '', body: '', ...(topic ? { topicId: topic.topicId } : {}) });
-    setMode((current) => (current === 'preview' ? 'edit' : current));
-    go('notes', note.id);
-  };
-  const remove = (id: string) => {
-    const note = notes.find((item) => item.id === id);
-    if (!note) return;
-    removeWithUndo(note.title, () => studyData.removeNote(owner, id), () => studyData.saveNote(owner, note));
-    if (activeId === id) go('notes', null, true);
-  };
-
   return (
-    <>
-      <ToolHead tool="notes">
-        <Button variant="soft" icon={<Sparkles {...ICON_SM} />} onClick={() => setGenOpen(true)}>AI 生成</Button>
-        <Button variant="outline" icon={<Plus {...ICON_SM} />} onClick={create}>新建笔记</Button>
-      </ToolHead>
-      <SplitLayout
-        tool="notes"
-        entries={entries}
-        activeId={activeId}
-        topic={topic}
-        empty={{
-          title: '还没有笔记',
-          description: '边学边记，支持 Markdown、公式和代码。也可以让小砚把本课整理成一篇要点笔记。',
-          action: (
-            <>
-              <Button variant="solid" icon={<Plus {...ICON_SM} />} onClick={create}>写第一篇笔记</Button>
-              <Button variant="soft" icon={<Sparkles {...ICON_SM} />} onClick={() => setGenOpen(true)}>AI 生成</Button>
-            </>
-          ),
-        }}
-        onRename={(id, title) => {
-          const note = notes.find((item) => item.id === id);
-          if (note) studyData.saveNote(owner, { ...note, title });
-        }}
-        onDelete={remove}
-        menu={(id) => {
-          const note = notes.find((item) => item.id === id);
-          return note ? <MenuItem icon={<Download {...ICON_SM} />} onSelect={() => exportNote(note)}>导出 Markdown</MenuItem> : null;
-        }}
-      >
-        {(id) => {
-          const note = notes.find((item) => item.id === id);
-          return note ? <NoteEditor key={note.id} note={note} owner={owner} mode={mode} onMode={setMode} onAsk={onAsk} /> : null;
-        }}
-      </SplitLayout>
-      <GenerateDialog kind="note" open={genOpen} onOpenChange={setGenOpen} view={props} onCreated={(created) => { setMode('preview'); go('notes', created.id); }} />
-    </>
+    <ToolFrame
+      tool="notes"
+      view={props}
+      empty={{
+        title: '还没有笔记',
+        description: '边学边记，支持 Markdown、公式和代码。也可以让小砚把本课整理成一篇要点笔记。',
+        createLabel: '写第一篇笔记',
+      }}
+    >
+      {(id) => {
+        const note = notes.find((item) => item.id === id);
+        return note ? <NoteEditor key={note.id} note={note} owner={owner} mode={mode} onMode={setMode} onAsk={onAsk} /> : null;
+      }}
+    </ToolFrame>
   );
 }
 
-function NoteEditor({ note, owner, mode, onMode, onAsk }: {
+function NoteEditor({ note, owner, mode: pickedMode, onMode, onAsk }: {
   note: StudyNote;
   owner: string | null;
   mode: Mode;
   onMode: (mode: Mode) => void;
   onAsk: (text: string) => void;
 }) {
+  // 手机上放不下左右分栏：只在「编辑」和「预览」之间切换
+  const narrow = useNarrow();
+  const mode: Mode = narrow && pickedMode === 'split' ? 'preview' : pickedMode;
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   const [tags, setTags] = useState(note.tags);
@@ -123,6 +73,12 @@ function NoteEditor({ note, owner, mode, onMode, onAsk }: {
     setTags(note.tags);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note.updatedAt]);
+
+  // 空笔记没有可预览的内容，打开时直接进编辑
+  useEffect(() => {
+    if (mode === 'preview' && !note.body.trim()) onMode('edit');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const edit = (next: string) => { setBody(next); setDirty(true); };
 
@@ -236,7 +192,8 @@ function NoteEditor({ note, owner, mode, onMode, onAsk }: {
       </div>
 
       <div className={n.bar}>
-        <div className={n.marks} data-off={mode === 'preview'}>
+        {/* 点格式按钮时不让焦点离开正文，手机上键盘不会收起再弹出 */}
+        <div className={n.marks} data-off={mode === 'preview'} onMouseDown={(event) => event.preventDefault()}>
           {tools.map(({ mark, label, icon: Icon, shortcut }) => (
             <IconButton key={mark} label={label} shortcut={shortcut} size="sm" disabled={mode === 'preview'} onClick={() => apply(mark)}>
               <Icon {...ICON_SM} />
@@ -253,9 +210,9 @@ function NoteEditor({ note, owner, mode, onMode, onAsk }: {
           value={mode}
           onChange={onMode}
           options={[
-            { value: 'edit', label: '编辑', icon: <SquarePen {...ICON_SM} /> },
-            { value: 'split', label: '分栏', icon: <Columns2 {...ICON_SM} /> },
-            { value: 'preview', label: '预览', icon: <Eye {...ICON_SM} /> },
+            { value: 'edit' as const, label: '编辑', icon: <SquarePen {...ICON_SM} /> },
+            ...(narrow ? [] : [{ value: 'split' as const, label: '分栏', icon: <Columns2 {...ICON_SM} /> }]),
+            { value: 'preview' as const, label: '预览', icon: <Eye {...ICON_SM} /> },
           ]}
         />
       </div>

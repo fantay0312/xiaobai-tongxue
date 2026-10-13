@@ -527,18 +527,6 @@
   }
 }
 
-@media (max-width: 560px) {
-  .root {
-    right: max(8px, env(safe-area-inset-right));
-    bottom: max(2px, env(safe-area-inset-bottom));
-  }
-  .panel {
-    width: calc(100vw - 16px);
-    height: min(620px, calc(100dvh - 9.5rem - env(safe-area-inset-bottom)));
-    border-radius: var(--r-xl);
-  }
-}
-
 /* 矮窗（横屏手机、小窗）：面板占满可视高度 */
 @media (max-height: 600px) {
   .panel {
@@ -547,6 +535,98 @@
     right: max(8px, env(safe-area-inset-right));
     bottom: max(8px, env(safe-area-inset-bottom));
     height: auto;
+  }
+}
+
+/* ── 手机：桌宠缩小、站到底栏上面；面板是全屏抽屉，高度跟着可视视口（键盘弹出时收到键盘上方） ── */
+@keyframes coachSheetIn {
+  from { opacity: 0; transform: translate3d(0, 28px, 0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes coachSheetOut {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translate3d(0, 28px, 0); }
+}
+@media (max-width: 760px) {
+  .root {
+    right: max(8px, env(safe-area-inset-right));
+    /* --prep-floor：备课页量出的底栏高度（已含安全区） */
+    bottom: calc(var(--prep-floor, env(safe-area-inset-bottom)) + 4px);
+  }
+  .root .pet {
+    width: 3.5rem;
+  }
+  .root[data-open] .pet {
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .panel {
+    position: fixed;
+    top: var(--coach-vv-top, 0px);
+    right: 0;
+    bottom: auto;
+    left: 0;
+    width: auto;
+    height: var(--coach-vv-height, 100dvh);
+    padding-top: env(safe-area-inset-top);
+    border-radius: 0;
+    box-shadow: none;
+    transform-origin: 50% 100%;
+    animation-name: coachSheetIn;
+  }
+  .panel[data-closing='true'] {
+    animation-name: coachSheetOut;
+  }
+  .head {
+    padding: 10px 8px 8px 16px;
+  }
+  .head .closeBtn {
+    width: 40px;
+    height: 40px;
+  }
+  .bubble {
+    font-size: var(--fz-lg);
+  }
+  .suggestBtn,
+  .pickBtn {
+    min-height: 48px;
+    font-size: var(--fz-md);
+  }
+  .rowBody .keepBtn {
+    min-height: 40px;
+    opacity: 1;
+  }
+  .followUps {
+    flex-wrap: nowrap;
+    padding: 4px 16px 6px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .followUps > * {
+    flex: none;
+    min-height: 40px;
+    scroll-snap-align: start;
+  }
+  .composer {
+    margin: 6px 12px calc(10px + env(safe-area-inset-bottom));
+  }
+  /* 16px：iOS 聚焦时不放大页面 */
+  .field {
+    min-height: 40px;
+    padding: 8px 0;
+    font-size: 16px;
+  }
+  .composer .send {
+    width: 40px;
+    height: 40px;
+  }
+  .draftPad {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+  .draftPad .draftArea {
+    font-size: 16px;
   }
 }
 

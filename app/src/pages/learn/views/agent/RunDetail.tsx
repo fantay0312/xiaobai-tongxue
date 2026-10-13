@@ -13,9 +13,11 @@ interface Props {
   onRerun: () => void;
   onDelete: () => void;
   onOpen: (item: ProducedItem) => void;
+  /** 手机版式：动作吸在页面底部，一只手够得着 */
+  compact?: boolean;
 }
 
-export function RunDetail({ run, onStop, onContinue, onRerun, onDelete, onOpen }: Props) {
+export function RunDetail({ run, onStop, onContinue, onRerun, onDelete, onOpen, compact = false }: Props) {
   const status = STATUS_META[run.status];
   const progress = goalProgress(run);
   const running = run.status === 'running';
@@ -36,8 +38,25 @@ export function RunDetail({ run, onStop, onContinue, onRerun, onDelete, onOpen }
     if (running && pinned.current) endRef.current?.scrollIntoView({ block: 'nearest' });
   }, [running, run.events]);
 
+  const actions = (
+    <>
+      {(running || autoPending) && (
+        <Button variant="outline" icon={<Square size={13} strokeWidth={2} />} onClick={onStop}>
+          {autoPending ? '取消续跑' : '停止'}
+        </Button>
+      )}
+      {canContinue && !autoPending && (
+        <Button variant="solid" icon={<Play size={14} strokeWidth={2} />} onClick={onContinue}>继续推进</Button>
+      )}
+      {!running && (
+        <Button variant={canContinue ? 'ghost' : 'soft'} icon={<RotateCw size={14} strokeWidth={1.75} />} onClick={onRerun}>重新运行</Button>
+      )}
+      <IconButton label="删除这次记录" onClick={onDelete}><Trash2 size={16} strokeWidth={1.75} /></IconButton>
+    </>
+  );
+
   return (
-    <article className={s.detail} aria-label={run.title}>
+    <article className={s.detail} data-compact={compact || undefined} aria-label={run.title}>
       <header className={s.detailHead}>
         <div className={s.detailHeading}>
           <div className={s.detailBadges}>
@@ -57,20 +76,7 @@ export function RunDetail({ run, onStop, onContinue, onRerun, onDelete, onOpen }
             {run.sourceTitles.length > 0 && <span>{run.sourceTitles.length} 份资料</span>}
           </p>
         </div>
-        <div className={s.actions}>
-          {(running || autoPending) && (
-            <Button variant="outline" icon={<Square size={13} strokeWidth={2} />} onClick={onStop}>
-              {autoPending ? '取消续跑' : '停止'}
-            </Button>
-          )}
-          {canContinue && !autoPending && (
-            <Button variant="solid" icon={<Play size={14} strokeWidth={2} />} onClick={onContinue}>继续推进</Button>
-          )}
-          {!running && (
-            <Button variant={canContinue ? 'ghost' : 'soft'} icon={<RotateCw size={14} strokeWidth={1.75} />} onClick={onRerun}>重新运行</Button>
-          )}
-          <IconButton label="删除这次记录" onClick={onDelete}><Trash2 size={16} strokeWidth={1.75} /></IconButton>
-        </div>
+        {!compact && <div className={s.actions}>{actions}</div>}
       </header>
 
       {progress.total > 0 && (
@@ -92,7 +98,7 @@ export function RunDetail({ run, onStop, onContinue, onRerun, onDelete, onOpen }
       )}
 
       <Timeline run={run} onOpen={onOpen} />
-      <div ref={endRef} aria-hidden="true" />
+      <div ref={endRef} className={s.tail} aria-hidden="true" />
 
       {run.produced.length > 0 && (
         <section className={s.produced} aria-label="已写入工作台">
@@ -100,6 +106,8 @@ export function RunDetail({ run, onStop, onContinue, onRerun, onDelete, onOpen }
           <ProducedChips items={run.produced} onOpen={onOpen} />
         </section>
       )}
+
+      {compact && <div className={s.runDock}>{actions}</div>}
     </article>
   );
 }

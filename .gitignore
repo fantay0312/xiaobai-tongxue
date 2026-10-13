@@ -42,3 +42,6 @@ deploy/deeptutor/__pycache__/
 # 含账号凭据/本地打包产物,禁止入库
 doc/账号.md
 app.zip
+
+# 含腾讯云 ASR 密钥,禁止入库
+doc/腾讯云 ASR.md

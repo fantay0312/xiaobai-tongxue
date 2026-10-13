@@ -123,7 +123,8 @@ export function InteractiveFrame({ html, title }: { html: string; title: string 
   const [round, setRound] = useState(0);
   const [showCode, setShowCode] = useState(false);
   const frameRef = useRef<HTMLIFrameElement>(null);
-  const doc = useMemo(() => prepareInteractiveDoc(html, palette), [html, palette]);
+  // 互动页自己滚到头时不要带着外面的课堂一起滚
+  const doc = useMemo(() => `${prepareInteractiveDoc(html, palette)}<style>html,body{overscroll-behavior:contain}</style>`, [html, palette]);
   // 文档一变（换幕、换皮肤）就重挂 iframe：宿主页只接收一次内容
   const docKey = useMemo(() => {
     let value = 0;

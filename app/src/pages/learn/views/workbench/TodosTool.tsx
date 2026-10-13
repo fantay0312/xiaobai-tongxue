@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
+import { BookOpen, CalendarDays, ChevronLeft, ChevronRight, Plus, Search, Trash2 } from 'lucide-react';
 import { Button, Empty, IconButton, Input, Popover, PopoverContent, PopoverTrigger, Progress, Segmented, toast } from '../../../../components/ui';
 import { studyData, useStudyData, type Todo } from '../../../../store/studyData';
-import { GenerateDialog, ICON_SM, OriginBadge, TOOLS, ToolHead, type ToolProps } from './shared';
-import { addDays, clip, dayDiff, dayKey, dayLabel, dueDay, matches } from './util';
+import { ICON_SM, OriginBadge, TOOLS, ToolHead, type ToolProps } from './shared';
+import { addDays, clip, dayDiff, dayKey, dayLabel, dueDay, matches, useNarrow } from './util';
 import s from './workbench.module.css';
 import t from './todos.module.css';
+import { IconSpark } from '../../../../components/ui/icons';
 
 const WEEK_HEAD = ['一', '二', '三', '四', '五', '六', '日'];
 
@@ -87,19 +88,23 @@ function DueChip({ value, done, onChange }: { value: string | null; done?: boole
 }
 
 export default function TodosTool(props: ToolProps) {
-  const { owner, topic, topics, onOpenTopic } = props;
+  const { owner, topic, topics, onOpenTopic, activeId, sideNav, onGenerate, todoInputRef } = props;
   const { todos } = useStudyData(owner);
+  // 侧栏里点「今天 / 接下来 / 已完成」时只看这一组
+  const only = activeId === 'today' || activeId === 'upcoming' || activeId === 'done' ? activeId : null;
   const [text, setText] = useState('');
   const [due, setDue] = useState<string | null>(() => dayKey());
   const [linked, setLinked] = useState(true);
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<'all' | 'course'>('all');
   const [showDone, setShowDone] = useState(false);
-  const [genOpen, setGenOpen] = useState(false);
   const [closing, setClosing] = useState<string[]>([]);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const ownInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = todoInputRef ?? ownInputRef;
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const today = dayKey();
+  // 手机上一行放不下「文字 + 日期 + 删除」：日期挪到文字下面那一行
+  const narrow = useNarrow();
 
   useEffect(() => {
     const pending = timers.current;
@@ -159,6 +164,7 @@ export default function TodosTool(props: ToolProps) {
   const row = (todo: Todo) => {
     const course = todo.topicId ? topics.find((item) => item.topicId === todo.topicId) : undefined;
     const checked = todo.done || closing.includes(todo.id);
+    const dueChip = <DueChip value={dueDay(todo.due)} done={todo.done} onChange={(value) => studyData.updateTodo(owner, todo.id, { due: value ?? undefined })} />;
     return (
       <li key={todo.id} className={t.row} data-done={checked} data-closing={closing.includes(todo.id)}>
         <button type="button" className={t.check} role="checkbox" aria-checked={checked} aria-label={checked ? '标为未完成' : '标为完成'} onClick={() => toggle(todo)}>
@@ -166,8 +172,9 @@ export default function TodosTool(props: ToolProps) {
         </button>
         <div className={t.main}>
           <TodoText key={todo.text} text={todo.text} onChange={(value) => studyData.updateTodo(owner, todo.id, { text: value })} />
-          {(course || todo.origin !== 'user') && (
+          {(narrow || course || todo.origin !== 'user') && (
             <div className={t.tags}>
+              {narrow && dueChip}
               {course && (
                 <button type="button" className={t.course} onClick={() => onOpenTopic(course.topicId)} title="打开这门课">
                   <BookOpen size={12} strokeWidth={1.75} />{clip(course.title, 14)}
@@ -177,7 +184,7 @@ export default function TodosTool(props: ToolProps) {
             </div>
           )}
         </div>
-        <DueChip value={dueDay(todo.due)} done={todo.done} onChange={(value) => studyData.updateTodo(owner, todo.id, { due: value ?? undefined })} />
+        {!narrow && dueChip}
         <span className={t.del}>
           <IconButton label="删除" size="sm" tip={false} onClick={() => remove(todo)}><Trash2 {...ICON_SM} /></IconButton>
         </span>
@@ -187,13 +194,19 @@ export default function TodosTool(props: ToolProps) {
 
   const Icon = TOOLS.todos.icon;
   const nothing = todos.length === 0;
-  const filteredOut = !nothing && !groups.today.length && !groups.upcoming.length && !groups.done.length;
+  const shownToday = only === null || only === 'today' ? groups.today : [];
+  const shownUpcoming = only === null || only === 'upcoming' ? groups.upcoming : [];
+  const shownDone = only === null || only === 'done' ? groups.done : [];
+  const filteredOut = !nothing && !shownToday.length && !shownUpcoming.length && !shownDone.length;
+  const doneOpen = showDone || only === 'done';
 
   return (
     <>
-      <ToolHead tool="todos">
-        <Button variant="soft" icon={<Sparkles {...ICON_SM} />} onClick={() => setGenOpen(true)}>AI 生成</Button>
-      </ToolHead>
+      {!sideNav && (
+        <ToolHead tool="todos">
+          <Button variant="soft" icon={<IconSpark />} onClick={() => onGenerate('todos')}>AI 生成</Button>
+        </ToolHead>
+      )}
 
       <div className={t.wrap}>
         <form className={t.add} onSubmit={add}>
@@ -203,8 +216,9 @@ export default function TodosTool(props: ToolProps) {
             className={t.addInput}
             value={text}
             maxLength={200}
-            placeholder="添加一件要学的事，回车确认"
+            placeholder={narrow ? '添加一件要学的事' : '添加一件要学的事，回车确认'}
             aria-label="添加待办"
+            enterKeyHint="done"
             onChange={(event) => setText(event.target.value)}
           />
           <div className={t.addTools}>
@@ -221,13 +235,13 @@ export default function TodosTool(props: ToolProps) {
         {nothing ? (
           <div className={s.emptyCard}>
             <Empty
-              icon={<Icon size={22} strokeWidth={1.75} />}
+              icon={<Icon size={22} />}
               title="今天打算学点什么"
               description="把要做的事写成一条条小任务：读哪一节、做哪组题、给小白讲哪一课。也可以让小砚按本课排好。"
               action={(
                 <>
                   <Button variant="solid" icon={<Plus {...ICON_SM} />} onClick={() => inputRef.current?.focus()}>写第一条待办</Button>
-                  <Button variant="soft" icon={<Sparkles {...ICON_SM} />} onClick={() => setGenOpen(true)}>让小砚排计划</Button>
+                  <Button variant="soft" icon={<IconSpark />} onClick={() => onGenerate('todos')}>让小砚排计划</Button>
                 </>
               )}
             />
@@ -245,38 +259,36 @@ export default function TodosTool(props: ToolProps) {
               </div>
             </div>
 
-            {filteredOut && <p className={t.none}>没有符合条件的待办。</p>}
+            {filteredOut && <p className={t.none}>{only === 'today' && dayTotal > 0 && doneToday === dayTotal ? '今天的事都做完了。' : '这里没有待办。'}</p>}
 
-            {groups.today.length > 0 && (
+            {shownToday.length > 0 && (
               <section className={t.group}>
-                <h3>今天<span>{groups.today.length}</span></h3>
-                <ul className={t.list}>{groups.today.map(row)}</ul>
+                <h3>今天<span>{shownToday.length}</span></h3>
+                <ul className={t.list}>{shownToday.map(row)}</ul>
               </section>
             )}
-            {!groups.today.length && !filteredOut && dayTotal > 0 && doneToday === dayTotal && (
+            {only === null && !groups.today.length && !filteredOut && dayTotal > 0 && doneToday === dayTotal && (
               <p className={t.clear}>今天的事都做完了。</p>
             )}
-            {groups.upcoming.length > 0 && (
+            {shownUpcoming.length > 0 && (
               <section className={t.group}>
-                <h3>接下来<span>{groups.upcoming.length}</span></h3>
-                <ul className={t.list}>{groups.upcoming.map(row)}</ul>
+                <h3>接下来<span>{shownUpcoming.length}</span></h3>
+                <ul className={t.list}>{shownUpcoming.map(row)}</ul>
               </section>
             )}
-            {groups.done.length > 0 && (
+            {shownDone.length > 0 && (
               <section className={t.group}>
                 <h3>
-                  <button type="button" className={t.fold} aria-expanded={showDone} onClick={() => setShowDone((value) => !value)}>
-                    <ChevronRight size={14} strokeWidth={2} />已完成<span>{groups.done.length}</span>
+                  <button type="button" className={t.fold} aria-expanded={doneOpen} onClick={() => setShowDone((value) => !value)}>
+                    <ChevronRight size={14} strokeWidth={2} />已完成<span>{shownDone.length}</span>
                   </button>
                 </h3>
-                {showDone && <ul className={t.list}>{groups.done.map(row)}</ul>}
+                {doneOpen && <ul className={t.list}>{shownDone.map(row)}</ul>}
               </section>
             )}
           </>
         )}
       </div>
-
-      <GenerateDialog kind="todos" open={genOpen} onOpenChange={setGenOpen} view={props} />
     </>
   );
 }

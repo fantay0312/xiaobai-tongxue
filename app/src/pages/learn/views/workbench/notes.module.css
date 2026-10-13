@@ -102,3 +102,25 @@
   .area, .preview { padding: 16px 16px 28px; }
   .tags { padding: 0 16px 12px; }
 }
+
+/* 手机：整页只有一个滚动区。预览随内容撑开；编辑区留一屏高；工具条跟着停在工具切换下面 */
+@media (max-width: 760px) {
+  .editor { overflow: visible; }
+  .body { height: auto; }
+  .body[data-mode='preview'] .preview { height: auto; overflow: visible; }
+  .body[data-mode='edit'] .area { height: clamp(300px, calc(100dvh - 330px), 720px); overscroll-behavior: contain; }
+  /* 键盘弹出时终端外壳把可视高度写进 --app-vh 并收起底栏：
+     顶栏、工具切换和格式条共约 212px，其余留给正文，格式条和光标都在键盘上方 */
+  :global(html[data-keyboard='open']) .body[data-mode='edit'] .area { height: max(140px, calc(var(--app-vh, 100dvh) - 212px)); }
+  .bar { position: sticky; top: var(--wb-nav-h, 0px); z-index: 3; gap: 8px; padding: 6px 8px 6px 12px; }
+  .marks { gap: 2px; scroll-snap-type: x proximity; overscroll-behavior-x: contain; }
+  .marks > * { scroll-snap-align: start; }
+  .tag { height: 28px; }
+  .tag button { position: relative; width: 22px; height: 22px; }
+  .tag button::before { content: ''; position: absolute; inset: -9px -5px; }
+  .tagInput { height: 28px; }
+}
+@media (pointer: coarse) {
+  .bar [role='radio'] { min-height: 34px; padding-inline: 12px; font-size: var(--fz-sm); }
+  .marks > button { width: 40px; height: 40px; }
+}

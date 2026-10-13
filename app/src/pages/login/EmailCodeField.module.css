@@ -97,6 +97,11 @@
   margin-right: -6px;
 }
 
+/* 输入框有固有宽度，带发码钮时最小内容宽度会超过窄屏的一列；允许整框收窄，不把字段撑出表单 */
+.wrap {
+  min-width: 0;
+}
+
 /* 禁用态（提交中、发码中）：整框退到凹面色，不只是里面的字变灰 */
 .wrap:has(input:disabled) {
   background: var(--inset);
@@ -149,6 +154,22 @@
 
 @media (prefers-reduced-motion: reduce) {
   .alert { animation: none; }
+}
+
+/* 触屏与窄屏：输入框文字不小于 16px，iOS 聚焦时才不会把页面放大。
+   kit 的 `.inputWrap input` 比全站那条 16px 兜底规则优先级高，所以这里叠一层类名压回去 */
+@media (pointer: coarse), (max-width: 640px) {
+  .wrap.wrap input,
+  .input.input {
+    font-size: 16px;
+  }
+
+  /* 发码钮：窄屏收一点最小宽度，把位置让给验证码 */
+  .sendCode.sendCode {
+    min-width: 88px;
+    padding-inline: 8px;
+    font-size: var(--fz-sm);
+  }
 }
 
 /* 验证码六位数字留出字距，更好核对 */

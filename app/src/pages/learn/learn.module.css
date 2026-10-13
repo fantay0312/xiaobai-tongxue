@@ -612,6 +612,89 @@
     padding: 20px 16px 40px;
   }
 
+  .primaryButton,
+  .softButton {
+    min-height: 42px;
+    font-size: var(--fz-md);
+  }
+
+  .textButton {
+    min-height: 38px;
+    font-size: var(--fz-md);
+  }
+
+  /* 段落导航：一条横向滑动的小签，不把正文挤到屏幕下面 */
+  .chapterNav {
+    flex-wrap: nowrap;
+    margin: 0 -16px 16px;
+    padding: 2px 16px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: 16px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chapterNav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chapterNav button {
+    display: block;
+    flex: none;
+    max-width: 232px;
+    height: 36px;
+    padding: 0 14px 0 12px;
+    overflow: hidden;
+    font-size: var(--fz-sm);
+    line-height: 36px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    scroll-snap-align: start;
+  }
+
+  .chapterNav button > :first-child {
+    display: inline-block;
+    margin-right: 6px;
+    vertical-align: -1px;
+  }
+
+  .practiceProgress {
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .practiceProgress button {
+    width: 38px;
+    height: 38px;
+    font-size: var(--fz-sm);
+  }
+
+  .option {
+    min-height: 48px;
+  }
+
+  .readingActions {
+    gap: 10px;
+  }
+
+  .pagerArrow {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* 圆点本身很小，给它一圈看不见的可点区域 */
+  .pagerDot {
+    position: relative;
+  }
+
+  .pagerDot::after {
+    content: '';
+    position: absolute;
+    inset: -14px -4px;
+  }
+
   .flashcard {
     min-height: 280px;
     padding: 20px;

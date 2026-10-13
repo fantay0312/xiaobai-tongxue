@@ -518,24 +518,77 @@
 
 @media (max-width: 760px) {
   .welcome {
-    gap: 20px;
-    padding: 24px 16px;
+    gap: 16px;
+    padding: 20px 16px 28px;
+  }
+
+  /* 小白缩小站在问候语右边，气泡的话交给下面的拜师帖说 */
+  .hero {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .heroText {
+    flex: 1;
+  }
+
+  .kicker {
+    margin-bottom: 8px;
   }
 
   .heroText h1 {
     font-size: var(--fz-3xl);
   }
 
+  .lead {
+    margin-top: 8px;
+    font-size: var(--fz-md);
+    line-height: 1.7;
+  }
+
   .heroCast {
+    margin: -4px -4px 0 0;
+    zoom: 0.6;
+  }
+
+  .bubble {
     display: none;
   }
 
   .suggestions {
     grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .suggestion {
+    align-items: center;
+    padding: 12px 14px;
+  }
+
+  .suggestionArrow {
+    margin-top: 0;
+  }
+
+  .journeyLink {
+    min-height: 40px;
   }
 
   .letterStrip {
-    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 14px;
+  }
+
+  .letterToggle {
+    min-height: 40px;
+    padding: 0 12px;
+  }
+
+  .acceptButton {
+    min-height: 44px;
+  }
+
+  .stageLink {
+    min-height: 36px;
   }
 
   .letterBody {

@@ -68,3 +68,25 @@
   .score, .feedback, .compare { padding-inline: 16px; }
   .intro { min-height: 160px; }
 }
+
+/* 手机：题目 → 作文 → 讲评 从上到下，提交钮钉在底部 */
+@media (max-width: 760px) {
+  .inputs { padding: 14px 14px 0; }
+  .run {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin: 0 -14px;
+    padding: 10px 14px 12px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .run > button:first-child { flex: 1; height: 48px; font-size: 16px; }
+  .run > span { flex: 1 1 100%; order: -1; text-align: center; }
+  .score, .feedback, .compare { padding-inline: 14px; }
+  .scoreTools { width: 100%; justify-content: space-between; }
+  .diff { padding: 14px; font-size: 16px; }
+}
+@media (pointer: coarse) {
+  .scoreTools [role='radio'] { min-height: 34px; padding-inline: 12px; font-size: var(--fz-sm); }
+}

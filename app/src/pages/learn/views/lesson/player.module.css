@@ -103,6 +103,7 @@
 }
 .stageBody {
   height: clamp(340px, 52vh, 540px);
+  height: clamp(340px, 52dvh, 540px);
   overflow: auto;
   padding: 20px 28px 28px;
   transition: opacity var(--dur-2) var(--ease);
@@ -482,6 +483,7 @@
   display: block;
   width: 100%;
   height: clamp(320px, 46vh, 460px);
+  height: clamp(320px, 46dvh, 460px);
   margin: 0;
   border: 0;
 }
@@ -666,6 +668,12 @@
   line-height: 1.6;
 }
 .bubble p.bubbleIdle { color: var(--text-3); font-size: var(--fz-md); }
+.bubbleHold {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
 .mates {
   display: flex;
   gap: 8px;
@@ -1056,6 +1064,281 @@
 }
 @media (max-width: 560px) {
   .root { padding: 12px 16px 24px; }
+}
+
+/* ── 手机 ──
+   data-phone 由播放器在 760px 以下加上。自上而下：顶栏、定高的舞台、字幕与成员、编号幕带、课堂记录；
+   播放控制吸在底部。根节点改成纵向 flex：grid 里的 sticky 只能在自己那一格里动，吸不住。 */
+.root[data-phone] {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 16px 0;
+}
+.root[data-phone] .header {
+  gap: 4px;
+  margin: 0 -6px;
+}
+.root[data-phone] .header > button {
+  min-width: 40px;
+  min-height: 40px;
+}
+.root[data-phone] .headerTitle h1 { font-size: var(--fz-lg); }
+.root[data-phone] .layout,
+.root[data-phone] .main { gap: 10px; }
+
+/* 舞台整块定高：标题折两行、换一种幕、出现结束语，下面的字幕都不会跟着跳。
+   高度取「一屏减去其余固定件」（外壳顶栏与底栏、课堂顶栏、字幕与成员、幕带、吸底控制条共约 456px），
+   这样不用滚动就能同时看到舞台、字幕、幕带和播放控制；矮屏保底 330px，先保证字幕看得见。 */
+.root[data-phone] .stage {
+  flex: none;
+  height: clamp(330px, calc(100dvh - 456px), 520px);
+  border-radius: var(--r-xl);
+}
+.root[data-phone] .stageHead { padding: 14px 16px 0; }
+.root[data-phone] .stageHead h2 {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--fz-lg);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+.root[data-phone] .stageBody {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  padding: 12px 16px 16px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.root[data-phone] .stage[data-type='whiteboard'] .stageBody { padding: 10px 12px 12px; }
+.root[data-phone] .stageNote {
+  margin: 0 12px 12px;
+  padding: 8px 8px 8px 12px;
+}
+.root[data-phone] .stageNote > button { min-height: 40px; }
+.root[data-phone] .slide { gap: 16px; }
+.root[data-phone] .bullets { gap: 12px; }
+.root[data-phone] .bullets li { font-size: 16px; }
+.root[data-phone] .chalk { font-size: 18px; }
+.root[data-phone] .chalkMark { font-size: 17px; }
+
+/* 测验：选项是一整行的大按钮 */
+.root[data-phone] .quiz { gap: 20px; }
+.root[data-phone] .stem { font-size: var(--fz-lg); }
+.root[data-phone] .option {
+  min-height: 52px;
+  padding: 10px 14px;
+}
+.root[data-phone] .questionActions > button { min-height: 40px; }
+.root[data-phone] .teachCard { padding: 14px 16px; }
+.root[data-phone] .teachCard > button {
+  flex: 1 1 100%;
+  min-height: 44px;
+}
+
+/* 互动模拟：画框填满舞台剩下的高度，页面自己在框里滚 */
+.root[data-phone] .stage[data-type='interactive'] .stageBody {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.root[data-phone] .interactive {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+.root[data-phone] .lead {
+  display: -webkit-box;
+  flex: none;
+  overflow: hidden;
+  font-size: var(--fz-md);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+.root[data-phone] .frameWrap {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.root[data-phone] .frameBar {
+  flex: none;
+  padding: 0 4px 0 12px;
+}
+.root[data-phone] .frameDots { display: none; }
+.root[data-phone] .frame,
+.root[data-phone] .frameCode {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+.root[data-phone] .frameCode { overscroll-behavior: contain; }
+/* 矮屏：说明收成一行，把高度让给互动页 */
+@media (max-height: 780px) {
+  .root[data-phone] .lead {
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+  .root[data-phone] .frameBar { height: 36px; }
+}
+
+/* 字幕紧贴舞台，成员收成一行小头像 */
+.root[data-phone] .table {
+  --pet-w: 28px;
+  flex: none;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 12px;
+  padding: 8px 10px;
+  border-radius: var(--r-lg);
+}
+.root[data-phone] .bubble {
+  grid-column: 1 / -1;
+  order: -1;
+  min-height: 66px;
+  padding: 10px 14px;
+  border-radius: var(--r-lg);
+}
+.root[data-phone] .bubble p { line-height: 1.55; }
+.root[data-phone] .bubbleHold > button {
+  flex: none;
+  min-height: 40px;
+}
+.root[data-phone] .teacher {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding-left: 4px;
+}
+.root[data-phone] .pet { max-height: 32px; }
+.root[data-phone] .mates {
+  grid-column: auto;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.root[data-phone] .mates li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+}
+.root[data-phone] .mateAvatar {
+  width: 32px;
+  height: 32px;
+}
+.root[data-phone] .mateName small { display: none; }
+.root[data-phone] .handBadge {
+  width: 16px;
+  height: 16px;
+}
+
+/* 幕导航：横向滑动的编号带 */
+.root[data-phone] .rail {
+  gap: 8px;
+  margin: 0 -16px;
+  padding: 2px 16px;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 16px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.root[data-phone] .rail::-webkit-scrollbar { display: none; }
+.root[data-phone] .thumb {
+  display: flex;
+  align-items: center;
+  width: auto;
+  min-height: 44px;
+  padding: 0 14px 0 10px;
+  border-radius: var(--r-full);
+  scroll-snap-align: start;
+}
+.root[data-phone] .thumbTitle { display: none; }
+.root[data-phone] .thumbTop {
+  font-size: var(--fz-sm);
+  white-space: nowrap;
+}
+.root[data-phone] .thumbTop b {
+  display: grid;
+  order: -1;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin: 0 2px 0 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-2);
+  font-weight: 600;
+}
+.root[data-phone] .thumb[aria-current='true'] .thumbTop b {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* 课堂记录：自己滚，滚到头不带动整页；滚进视野时让开吸底的控制条 */
+.root[data-phone] .side { scroll-margin-bottom: 104px; }
+.root[data-phone] .sideInner {
+  height: min(58dvh, 440px);
+  border-radius: var(--r-xl);
+}
+.root[data-phone] .log {
+  overscroll-behavior: contain;
+  scroll-behavior: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.root[data-phone] .lineText { font-size: var(--fz-md); }
+.root[data-phone] .resume > button { min-height: 40px; }
+.root[data-phone] .ask > button {
+  min-width: 40px;
+  min-height: 40px;
+}
+
+/* 播放控制：吸在底部，按钮 44px */
+.root[data-phone] .transport {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  gap: 0 8px;
+  margin: 2px -16px 0;
+  padding: 2px 12px 8px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+.root[data-phone] .timeline {
+  order: -1;
+  flex-basis: 100%;
+  min-width: 0;
+}
+/* 手机上换幕用上面的编号带；这排细条只显示进度，不接点按，免得误触 */
+.root[data-phone] .timeline button {
+  height: 20px;
+  pointer-events: none;
+}
+.root[data-phone] .timeline button::before,
+.root[data-phone] .timeline button i { inset: 8px 0; }
+.root[data-phone] .transportKeys { gap: 8px; }
+.root[data-phone] .transportOpts {
+  gap: 8px;
+  margin-left: auto;
+}
+.root[data-phone] .transportKeys > button,
+.root[data-phone] .transportOpts > button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.root[data-phone] .transportOpts > button:last-child {
+  padding-inline: 14px;
+  border-radius: var(--r-full);
+}
+
+/* 触屏上自写的输入框也保持 16px，聚焦时 iOS 不放大页面 */
+@media (pointer: coarse), (max-width: 760px) {
+  .ask textarea { font-size: 16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -15,9 +15,16 @@ export type Tone = 'neutral' | 'accent' | 'ok' | 'warn' | 'bad';
 export type CourseGroup = 'reteach' | 'taught' | 'fresh';
 
 export const GROUP_LABELS: Record<CourseGroup, string> = {
-  reteach: '待重讲',
-  taught: '已教过',
-  fresh: '还没教',
+  reteach: '该回讲了',
+  taught: '讲过的',
+  fresh: '还没讲的',
+};
+
+/** 分段筛选里放不下全名，用两个字的短名 */
+export const GROUP_SHORT: Record<CourseGroup, string> = {
+  reteach: '回讲',
+  taught: '讲过',
+  fresh: '没讲',
 };
 
 export interface CourseRow {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { Eye, EyeOff, Pencil, Pin, PinOff, Trash2 } from 'lucide-react';
-import { Button, IconButton, Input } from '../../../../components/ui';
+import { Eye, EyeOff, MoreHorizontal, Pencil, Pin, PinOff, Trash2 } from 'lucide-react';
+import { Button, IconButton, Input, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '../../../../components/ui';
+import { useMediaQuery } from '../../shell/views';
 import s from './memory.module.css';
 
 export interface MemoryRowProps {
@@ -24,13 +25,17 @@ export interface MemoryRowProps {
   extra?: ReactNode;
   /** 额外控件的弹层打开时，保持操作区可见 */
   actionsOpen?: boolean;
+  /** 手机上操作收进一个菜单：这里给出追加在菜单里的条目（如「改到哪一类」） */
+  menuExtra?: ReactNode;
 }
 
 /** 一条记忆：就地编辑、置顶、隐藏、删除。小砚与小白两份记忆共用。 */
 export function MemoryRow({
   text, meta, pinned = false, muted = false, fresh, maxLength = 80,
-  onEdit, onPin, onMute, onDelete, confirmDelete, extra, actionsOpen,
+  onEdit, onPin, onMute, onDelete, confirmDelete, extra, actionsOpen, menuExtra,
 }: MemoryRowProps) {
+  // 手机和触屏没有悬停：一颗始终可见的「更多」，置顶、隐藏、编辑、删除都在菜单里
+  const compact = useMediaQuery('(max-width: 760px), (hover: none)');
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(text);
   const [confirming, setConfirming] = useState(false);
@@ -65,7 +70,7 @@ export function MemoryRow({
   };
 
   return (
-    <li className={s.row} data-pinned={pinned || undefined} data-muted={muted || undefined} data-fresh={fresh || undefined}>
+    <li className={s.row} data-compact={compact || undefined} data-pinned={pinned || undefined} data-muted={muted || undefined} data-fresh={fresh || undefined}>
       <div className={s.rowMain}>
         {editing ? (
           <div className={s.rowEdit}>
@@ -109,6 +114,32 @@ export function MemoryRow({
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>取消</Button>
             </>
+          ) : compact ? (
+            <Menu>
+              <MenuTrigger asChild>
+                <IconButton label="更多操作" tip={false}><MoreHorizontal strokeWidth={1.75} /></IconButton>
+              </MenuTrigger>
+              <MenuContent align="end">
+                <MenuItem icon={pinned ? <PinOff size={16} strokeWidth={1.75} /> : <Pin size={16} strokeWidth={1.75} />} onSelect={() => onPin(!pinned)}>
+                  {pinned ? '取消置顶' : '置顶'}
+                </MenuItem>
+                {onMute && (
+                  <MenuItem
+                    icon={muted ? <Eye size={16} strokeWidth={1.75} /> : <EyeOff size={16} strokeWidth={1.75} />}
+                    hint={muted ? undefined : '留着但不再用'}
+                    onSelect={() => onMute(!muted)}
+                  >
+                    {muted ? '取消隐藏' : '隐藏'}
+                  </MenuItem>
+                )}
+                <MenuItem icon={<Pencil size={16} strokeWidth={1.75} />} onSelect={beginEdit}>编辑</MenuItem>
+                {menuExtra}
+                <MenuSeparator />
+                <MenuItem danger icon={<Trash2 size={16} strokeWidth={1.75} />} onSelect={() => (confirmDelete ? setConfirming(true) : onDelete())}>
+                  删除
+                </MenuItem>
+              </MenuContent>
+            </Menu>
           ) : (
             <>
               <IconButton size="sm" label={pinned ? '取消置顶' : '置顶'} aria-pressed={pinned} onClick={() => onPin(!pinned)}>

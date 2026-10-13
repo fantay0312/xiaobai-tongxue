@@ -24,6 +24,7 @@ import { TranscriptUpload } from './TranscriptUpload';
 import { ProfileCommerce } from './ProfileCommerce';
 import { ProfileAvatar } from './ProfileAvatar';
 import { ProfileAvatarEditor } from './ProfileAvatarEditor';
+import { useSheetKeyboardInset } from './ProfileSheetKeyboard';
 import s from './ProfileDialog.module.css';
 
 interface ProfileDialogProps {
@@ -79,6 +80,8 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
   const phoneToggleRef = useRef<HTMLButtonElement>(null);
   const passwordToggleRef = useRef<HTMLButtonElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLDivElement>(null);
+  useSheetKeyboardInset(scrollRef, open);
 
   useEffect(() => {
     if (open) return;
@@ -91,6 +94,19 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
   }, [activeSection, securityFlow]);
+
+  /* 窄屏目录是一条横滑的胶囊：把选中的那一枚带到中间，后面的分区才露得出来 */
+  useEffect(() => {
+    const nav = navRef.current;
+    const chip = nav?.querySelector<HTMLElement>('[data-state="active"]');
+    if (!nav || !chip || nav.scrollWidth <= nav.clientWidth) return;
+    const navBox = nav.getBoundingClientRect();
+    const chipBox = chip.getBoundingClientRect();
+    nav.scrollTo({
+      left: nav.scrollLeft + chipBox.left - navBox.left - (navBox.width - chipBox.width) / 2,
+      behavior: 'smooth',
+    });
+  }, [activeSection]);
 
   /* 窄屏目录横排：朝向如实交给 Tabs（断点与 module.css 的 720 咬合） */
   useEffect(() => {
@@ -187,7 +203,7 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
         orientation={narrow ? 'horizontal' : 'vertical'}
       >
         <div className={s.rail}>
-          <RTabs.List className={s.nav} aria-label="个人中心分区">
+          <RTabs.List ref={navRef} className={s.nav} aria-label="个人中心分区">
             {PROFILE_SECTIONS.map(({ id, label, icon: IconComp }) => (
               <RTabs.Trigger key={id} value={id} className={s.navItem}>
                 <IconComp size={17} strokeWidth={1.75} />

@@ -39,11 +39,28 @@ const VOICE_PROFILE: Record<SpeakerId, { pitch: number; rate: number; pick: numb
 
 export const speechSupported = () => typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
 
-function chineseVoices(): SpeechSynthesisVoice[] {
-  if (!speechSupported()) return [];
-  const voices = window.speechSynthesis.getVoices().filter((voice) => /^zh([-_](CN|Hans))?/i.test(voice.lang) && !/HK|TW|yue/i.test(voice.lang));
-  // 本机语音优先：离线可用，起声快
-  return voices.sort((a, b) => Number(b.localService) - Number(a.localService));
+/** 起声失败过的语音不再选；连续两次起不了声，后面的句子直接按字数计时 */
+const speechHealth = { failures: 0, bad: new Set<string>() };
+const START_TIMEOUT_MS = 2_000;
+
+function resetSpeechHealth() {
+  speechHealth.failures = 0;
+  speechHealth.bad.clear();
+}
+
+/**
+ * 选一个中文语音。只在本机语音里挑：联网语音（如「Google 普通话」）连不上时既不出声也不报错。
+ * 没有本机中文语音时退到第一个中文语音；一个都没有就返回 null，由 lang = zh-CN 交给浏览器默认。
+ * 语音表是异步加载的，所以每次朗读前都重新读一遍。
+ */
+function pickVoice(pick: number): SpeechSynthesisVoice | null {
+  const chinese = window.speechSynthesis.getVoices().filter((voice) => /^zh/i.test(voice.lang) && !speechHealth.bad.has(voice.voiceURI));
+  if (!chinese.length) return null;
+  // 普通话优先于粤语和台湾口音
+  const mandarin = chinese.filter((voice) => !/HK|TW|yue/i.test(voice.lang));
+  const pool = mandarin.length ? mandarin : chinese;
+  const local = pool.filter((voice) => voice.localService);
+  return local.length ? local[pick % local.length] : pool[0];
 }
 
 /**
@@ -53,38 +70,65 @@ function chineseVoices(): SpeechSynthesisVoice[] {
 function speakLine(text: string, speaker: SpeakerId, voiceOn: boolean, rate: number, onDone: () => void): () => void {
   let settled = false;
   let timer: number | undefined;
+  let startTimer: number | undefined;
   const finish = () => {
     if (settled) return;
     settled = true;
     window.clearTimeout(timer);
+    window.clearTimeout(startTimer);
     onDone();
   };
   const spoken = plainText(text);
   const readMs = Math.min(15_000, Math.max(1_300, spoken.length * 215)) / rate;
-  const byTimer = () => { timer = window.setTimeout(finish, spoken ? readMs : 350); };
+  const byTimer = (elapsed = 0) => { timer = window.setTimeout(finish, spoken ? Math.max(600, readMs - elapsed) : 350); };
 
-  if (!voiceOn || !speechSupported() || !spoken) {
+  if (!voiceOn || !speechSupported() || !spoken || speechHealth.failures >= 2) {
     byTimer();
     return () => { settled = true; window.clearTimeout(timer); };
   }
   const synth = window.speechSynthesis;
   const profile = VOICE_PROFILE[speaker];
   const utterance = new SpeechSynthesisUtterance(spoken);
-  const voices = chineseVoices();
+  const chosen = pickVoice(profile.pick);
+  const startedAt = Date.now();
+  let started = false;
   utterance.lang = 'zh-CN';
-  if (voices.length) utterance.voice = voices[profile.pick % voices.length];
+  if (chosen) utterance.voice = chosen;
   utterance.rate = Math.min(2, rate * profile.rate);
   utterance.pitch = profile.pitch;
-  utterance.onend = finish;
-  utterance.onerror = (event) => {
+
+  /** 这一句读不出来：改成按字数计时的字幕，课不停 */
+  const fallBack = (blame: boolean) => {
     if (settled) return;
-    // 浏览器拒绝朗读（没有用户手势、没有语音包）时改用计时，不要一口气跳完整堂课
-    if (event.error === 'interrupted' || event.error === 'canceled') return;
+    if (blame) {
+      speechHealth.failures += 1;
+      // 本机语音偶尔被上一句的 cancel 吞掉，不因此弃用；联网语音起不了声就换掉
+      if (chosen && !chosen.localService) speechHealth.bad.add(chosen.voiceURI);
+    }
     window.clearTimeout(timer);
-    byTimer();
+    window.clearTimeout(startTimer);
+    utterance.onstart = null;
+    utterance.onboundary = null;
+    utterance.onend = null;
+    utterance.onerror = null;
+    synth.cancel();
+    byTimer(Date.now() - startedAt);
   };
+  const markStarted = () => {
+    if (started) return;
+    started = true;
+    speechHealth.failures = 0;
+    window.clearTimeout(startTimer);
+  };
+  utterance.onstart = markStarted;
+  utterance.onboundary = markStarted;
+  utterance.onend = finish;
+  // 被别处打断、或浏览器要求先有用户手势，不算这个语音坏了
+  utterance.onerror = (event) => fallBack(!['interrupted', 'canceled', 'not-allowed'].includes(event.error));
   // 个别浏览器长句不触发 onend，留一个看门狗
   timer = window.setTimeout(finish, readMs * 2.4 + 4_000);
+  // 两秒还没起声：语音包没装好或联网语音连不上
+  startTimer = window.setTimeout(() => { if (!started) fallBack(true); }, START_TIMEOUT_MS);
   if (synth.speaking || synth.pending) synth.cancel();
   synth.speak(utterance);
   return () => {
@@ -92,6 +136,7 @@ function speakLine(text: string, speaker: SpeakerId, voiceOn: boolean, rate: num
     const wasSpeaking = !settled;
     settled = true;
     window.clearTimeout(timer);
+    window.clearTimeout(startTimer);
     if (wasSpeaking) synth.cancel();
   };
 }
@@ -110,6 +155,21 @@ export function useLessonPlayback(lesson: Lesson) {
   /** 测验答完 / 互动做完，可以离开当前停留 */
   const [holdDone, setHoldDone] = useState(false);
   const adhocSeq = useRef(0);
+
+  // 语音表异步加载：先读一次触发加载，加载完再读一次，第一句就能选到本机中文语音
+  useEffect(() => {
+    if (!speechSupported()) return undefined;
+    const synth = window.speechSynthesis;
+    const warm = () => { synth.getVoices(); };
+    warm();
+    synth.addEventListener?.('voiceschanged', warm);
+    return () => synth.removeEventListener?.('voiceschanged', warm);
+  }, []);
+
+  // 重新打开语音时再给朗读一次机会
+  useEffect(() => {
+    if (voice) resetSpeechHealth();
+  }, [voice]);
 
   const index = Math.min(sceneIndex, Math.max(0, total - 1));
   const scene = lesson.scenes[index];

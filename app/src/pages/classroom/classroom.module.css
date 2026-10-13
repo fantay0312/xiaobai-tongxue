@@ -1,7 +1,8 @@
-/* 讲解舱 —— 满幅黑板场景。
+/* 讲解舱 —— 一间夜课教室。
+   墙是暗的,黑板是一块有边框、有粉笔槽的板子;小白坐在板子左手边的课桌后,老师的讲桌在板下。
    黑板是故事场景而不是皮肤:颜色只取 --board / --chalk 一族(styles/tokens.css)。
-   .room 把语义令牌就地改写成粉笔系,kit 组件(按钮、徽标、流光字)放到板上直接可用;
-   弹层与提示走 Portal 挂在 body,仍随用户皮肤。 */
+   .room 把语义令牌就地改写成粉笔系,kit 组件(按钮、徽标、流光字)放到教室里直接可用;
+   提示走 Portal 挂在 body,仍随用户皮肤;小本本、查书卡是纸(data-story)。 */
 
 .room {
   /* 场景自用的派生色 */
@@ -10,8 +11,12 @@
   --chalk-ghost: color-mix(in oklab, var(--chalk) 6%, transparent);
   --board-raise: color-mix(in oklab, var(--board) 91%, var(--chalk));
   --chalk-red: color-mix(in oklab, var(--cinnabar) 52%, var(--chalk));
-  /* 版心:宽屏给左下角的小白让出位置 */
-  --col: min(52rem, calc(100% - 19rem));
+  --wood: color-mix(in oklab, var(--board-glow) 62%, var(--board-deep));
+  --wood-deep: color-mix(in oklab, var(--board-glow) 30%, var(--board-shade));
+  --frame: color-mix(in oklab, var(--board-line) 52%, var(--board-deep));
+  /* 板内版心与左侧留给表情/「师」字的窄栏 */
+  --col: 46rem;
+  --gutter: 36px;
 
   /* 语义令牌 → 粉笔系 */
   --bg: var(--board);
@@ -54,27 +59,13 @@
   font-family: var(--ui-font);
   font-size: var(--fz-md);
   line-height: 1.6;
-  /* 一盏暖灯从板顶打下,板脚入影,中间几片擦过的浮灰 */
+  /* 教室的墙:比板面更暗,一盏暖灯从黑板上方打下来 */
   background:
-    radial-gradient(72% 44% at 50% 0%, color-mix(in oklab, var(--board-glow) 64%, transparent), transparent 66%),
-    radial-gradient(30rem 9rem at 22% 42%, color-mix(in oklab, var(--chalk) 4.5%, transparent), transparent 70%),
-    radial-gradient(34rem 12rem at 76% 66%, color-mix(in oklab, var(--chalk) 4%, transparent), transparent 72%),
-    radial-gradient(120% 80% at 50% 122%, var(--board-shade), transparent 58%),
-    var(--board);
+    radial-gradient(64% 46% at 58% 0%, color-mix(in oklab, var(--board-glow) 44%, transparent), transparent 70%),
+    radial-gradient(40% 50% at 0% 100%, color-mix(in oklab, var(--board-glow) 22%, transparent), transparent 72%),
+    linear-gradient(180deg, var(--board-deep), var(--board-shade));
   color-scheme: dark;
   scrollbar-color: var(--border-2) transparent;
-}
-
-/* 板面颗粒:一层分形噪点做粉笔灰的质感 */
-.room::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background-image: url("data:image/svg+xml,%3Csvg width='240' height='240' viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)'/%3E%3C/svg%3E");
-  opacity: 0.14;
-  mix-blend-mode: overlay;
-  pointer-events: none;
 }
 
 .room ::selection {
@@ -82,7 +73,7 @@
   color: var(--chalk);
 }
 
-/* 开灯前/未开放:同一块黑板,只有一行粉笔字 */
+/* 开灯前/未开放:同一面墙,只有一行粉笔字 */
 .holder {
   flex: 1;
   min-height: 60dvh;
@@ -116,12 +107,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 52px;
-  padding: 8px max(16px, env(safe-area-inset-right)) 8px max(10px, env(safe-area-inset-left));
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in oklab, var(--board-deep) 46%, transparent);
-  backdrop-filter: blur(10px);
+  min-height: 56px;
+  padding: max(8px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left));
 }
+.topSpacer { flex: 1; min-width: 0; }
 
 .crumb {
   flex: 1;
@@ -153,21 +142,45 @@
 }
 .modeBadge { flex: none; margin-left: 4px; }
 
-/* 轮次:粉笔正字计数 + 当前轮 */
-.rounds {
+/* 课堂节奏:粉笔正字计数 · 第几轮 · 用时 · 小白跟得怎么样 */
+.flow {
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: var(--ctl-sm);
-  padding: 0 12px;
+  gap: 10px;
+  height: var(--ctl-md);
+  padding: 0 14px;
   border-radius: var(--r-full);
   background: var(--inset);
   color: var(--text-2);
-  font-size: var(--fz-xs);
+  font-size: var(--fz-sm);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+.flow time { min-width: 2.6em; color: var(--text-3); }
+.flowSep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-4);
+}
+.flowFollow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+  transition: color var(--dur-2) var(--ease);
+}
+.flowFollow::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+.flowFollow[data-tone='glad'] { color: var(--chalk-jade); }
+.flowFollow[data-tone='warm'] { color: var(--chalk-amber); }
+
 .tally { display: inline-flex; align-items: center; gap: 3px; }
 .tally svg { display: block; overflow: visible; }
 .tally line {
@@ -202,43 +215,95 @@
   text-align: center;
 }
 
-/* ── 主体 ── */
+/* ── 主体:左边一张课桌,右边黑板 + 讲桌 ── */
 .main {
   position: relative;
   flex: 1;
-  display: flex;
   min-height: 0;
+  display: grid;
+  grid-template-columns: clamp(208px, 19vw, 256px) minmax(0, 1fr);
+  column-gap: 24px;
+  padding: 6px max(24px, env(safe-area-inset-right)) 0 max(20px, env(safe-area-inset-left));
+}
+.stage {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-/* 讲台边的小白:宽屏坐在左下角 */
-.stage {
-  position: absolute;
+/* ── 课桌后的小白 ── */
+.seat {
+  position: relative;
   z-index: 12;
-  left: max(24px, env(safe-area-inset-left));
-  bottom: max(24px, env(safe-area-inset-bottom));
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+.seatBody {
+  position: relative;
+  flex: none;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
 }
-.boardFrame {
-  --avatar-frame-pad: 6px;
+
+/* 头顶的小念头:一朵小云,两粒泡泡连到脑袋 */
+.thought {
   position: relative;
+  align-self: flex-end;
   display: inline-flex;
-  padding: var(--avatar-frame-pad);
-  border: 0;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-height: 34px;
+  margin: 0 4px 10px 0;
+  padding: 6px 14px;
+  border-radius: 18px;
+  background: var(--board-raise);
+  box-shadow:
+    inset 0 0 0 1px var(--border-2),
+    0 8px 20px color-mix(in oklab, var(--board-shade) 70%, transparent);
+  color: var(--chalk-soft);
+  font-family: var(--font-display);
+  font-size: var(--fz-md);
+  letter-spacing: 0.02em;
+  animation: global(rise) var(--dur-3) var(--ease) backwards;
+}
+.thought::before,
+.thought::after {
+  content: '';
+  position: absolute;
   border-radius: 50%;
-  background: radial-gradient(closest-side, color-mix(in oklab, var(--board-glow) 78%, transparent), transparent 78%);
+  background: var(--board-raise);
+  box-shadow: inset 0 0 0 1px var(--border-2);
+}
+.thought::before { left: 26px; bottom: -9px; width: 8px; height: 8px; }
+.thought::after { left: 18px; bottom: -17px; width: 5px; height: 5px; }
+.thought[data-tone='glad'] { color: var(--chalk-jade); }
+.thought[data-tone='warm'],
+.thought[data-tone='think'] { color: var(--chalk-amber); }
+
+.figure {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-xl);
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--board-glow) 60%, transparent), transparent 74%);
   cursor: pointer;
   transition: transform var(--dur-2) var(--ease), box-shadow var(--dur-1) var(--ease);
 }
-.boardFrame:hover { transform: translateY(-2px); }
-.boardFrame:active { transform: scale(0.97); }
-.boardFrame:focus { outline: none; }
-.boardFrame:focus-visible { box-shadow: 0 0 0 3px var(--ring); }
+.figure:hover { transform: translateY(-2px); }
+.figure:active { transform: scale(0.98); }
+.figure:focus { outline: none; }
+.figure:focus-visible { box-shadow: 0 0 0 3px var(--ring); }
 .tapBlush {
   position: absolute;
-  inset: var(--avatar-frame-pad);
+  inset: 0;
   z-index: 1;
   border-radius: 46% 46% 42% 42%;
   background:
@@ -248,42 +313,188 @@
   animation: tapBlush 900ms var(--ease) backwards;
 }
 
-/* 心情签:挂在小白下面的一枚粉笔小签 */
-.moodChip {
+/* 课桌:暖灯色的一条桌面,压住半身的下沿;桌上立一块桌牌 */
+.desk {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  margin-top: -20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px 14px;
+  border-radius: 14px 14px 10px 10px;
+  background: linear-gradient(180deg, var(--wood), var(--wood-deep));
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, var(--chalk) 16%, transparent),
+    inset 0 -6px 0 color-mix(in oklab, var(--board-shade) 46%, transparent),
+    0 16px 30px color-mix(in oklab, var(--board-shade) 80%, transparent);
+}
+.namePlate {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  padding: 3px 10px 4px;
+  border-radius: var(--r-xs);
+  background: var(--chalk);
+  box-shadow: 0 2px 0 color-mix(in oklab, var(--board-shade) 60%, transparent);
+  color: var(--board-deep);
+  font-family: var(--font-display);
+  white-space: nowrap;
+}
+.namePlate b { font-size: var(--fz-lg); font-weight: 600; letter-spacing: 0.1em; }
+.namePlate i {
+  color: color-mix(in oklab, var(--board-deep) 70%, var(--chalk));
+  font-size: var(--fz-xs);
+  font-style: normal;
+  letter-spacing: 0.06em;
+}
+.deskMood {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 24px;
-  padding: 0 10px;
-  border-radius: var(--r-full);
-  background: color-mix(in oklab, var(--board-deep) 72%, transparent);
-  box-shadow: inset 0 0 0 1px var(--border);
   color: var(--chalk-soft);
   font-family: var(--font-display);
-  font-size: var(--fz-xs);
+  font-size: var(--fz-sm);
   letter-spacing: 0.04em;
   white-space: nowrap;
-  transition: color var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
+  transition: color var(--dur-2) var(--ease);
 }
-.moodChip b { color: var(--chalk); font-weight: 500; }
-.moodChip[data-tone='glad'] {
-  color: var(--chalk-jade);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--chalk-jade) 36%, transparent);
+.deskMood::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentcolor;
 }
-.moodChip[data-tone='warm'],
-.moodChip[data-tone='think'] {
-  color: var(--chalk-amber);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--chalk-amber) 30%, transparent);
+.deskMood[data-tone='glad'] { color: var(--chalk-jade); }
+.deskMood[data-tone='warm'],
+.deskMood[data-tone='think'] { color: var(--chalk-amber); }
+
+/* ── 小本本:贴在墙上的一页纸(data-story) ── */
+.notebook {
+  position: relative;
+  flex: 0 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 22px 14px 14px;
+  overflow: hidden;
+  border-radius: 4px 4px var(--r-md) var(--r-md);
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--paper-shade) 70%, transparent), transparent 14px),
+    var(--paper-warm);
+  box-shadow: 0 14px 30px color-mix(in oklab, var(--board-shade) 76%, transparent);
+  color: var(--ink);
+  font-family: var(--font-display);
+  animation: global(rise) var(--dur-3) var(--ease) backwards;
+}
+/* 线圈孔 */
+.notebook::before {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: 12px;
+  right: 12px;
+  height: 7px;
+  background: radial-gradient(circle at 3.5px 3.5px, var(--ink-soft) 0 2.4px, transparent 3px) 0 0 / 16px 7px repeat-x;
+  opacity: 0.5;
+}
+.notebookHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+}
+.notebookHead strong { font-size: var(--fz-lg); font-weight: 600; letter-spacing: 0.06em; }
+.notebookFollow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--line-strong);
+  font-size: var(--fz-sm);
+}
+.notebookFollow > span { color: var(--ink-faint); }
+.notebookFollow b { color: var(--ink); font-weight: 600; }
+.notebookFollow[data-tone='glad'] b { color: var(--jade-ink); }
+.notebookFollow[data-tone='warm'] b { color: var(--amber-ink); }
+.trail {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+}
+.trail i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--ink-faint) 46%, transparent);
+}
+.trail i[data-tone='glad'] { background: var(--jade); }
+.trail i[data-tone='warm'] { background: var(--amber-ink); }
+.trail i:last-child { box-shadow: 0 0 0 2px color-mix(in oklab, var(--ink) 14%, transparent); }
+.notebookEmpty {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: var(--fz-sm);
+  line-height: 1.7;
+}
+.notebookList {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  list-style: none;
+}
+.notebookList li {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 6px;
+  color: var(--ink);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+  animation: noteIn 420ms var(--ease) backwards;
+}
+.notebookList li svg { margin-top: 5px; }
+.notebookList li[data-kind='golden'] svg { color: var(--amber-ink); }
+.notebookList li[data-kind='cleared'] svg { color: var(--jade-ink); }
+.notebookList .notebookMore {
+  display: block;
+  color: var(--ink-faint);
+  font-size: var(--fz-xs);
+  animation: none;
+}
+.notebookCompact {
+  margin-top: 12px;
+  box-shadow: none;
+  animation: none;
+}
+@keyframes noteIn {
+  from { opacity: 0; transform: translateY(6px); }
 }
 
-/* 小白简介:头像上方浮起的一张板面卡 */
+/* 小白简介:头像旁浮起的一张板面卡 */
 .profilePopover {
   position: absolute;
-  bottom: calc(100% + 12px);
-  left: 0;
+  z-index: 30;
+  bottom: 16px;
+  left: calc(100% + 12px);
   width: min(19rem, calc(100vw - 32px));
-  max-height: min(26rem, 60dvh);
+  max-height: min(30rem, 70dvh);
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px;
   border-radius: var(--r-xl);
   background: var(--board-raise);
@@ -291,11 +502,13 @@
     inset 0 0 0 1px var(--border-2),
     0 18px 44px color-mix(in oklab, var(--board-shade) 82%, transparent);
   color: var(--chalk);
+  text-align: left;
   animation: popUp var(--dur-2) var(--ease) backwards;
 }
 .profilePopover[hidden] { display: none; }
 .profileHead {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding-bottom: 12px;
@@ -337,32 +550,53 @@
   line-height: 1.75;
 }
 
-/* ── 黑板:板头 + 对话流 ── */
-.chat {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.slate {
+/* ── 黑板:有边框的板面,板头粉笔字,板脚一条粉笔槽 ── */
+.board {
   position: relative;
+  isolation: isolate;
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  margin: 6px 6px 0;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  /* 一盏暖灯从板顶打下,中间几片擦过的浮灰,板脚入影 */
+  background:
+    radial-gradient(70% 40% at 50% 0%, color-mix(in oklab, var(--board-glow) 58%, transparent), transparent 68%),
+    radial-gradient(30rem 9rem at 22% 46%, color-mix(in oklab, var(--chalk) 4.5%, transparent), transparent 70%),
+    radial-gradient(34rem 12rem at 78% 70%, color-mix(in oklab, var(--chalk) 4%, transparent), transparent 72%),
+    radial-gradient(120% 70% at 50% 124%, var(--board-shade), transparent 60%),
+    var(--board);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--chalk) 8%, transparent),
+    inset 0 10px 34px color-mix(in oklab, var(--board-shade) 50%, transparent),
+    0 0 0 6px var(--frame),
+    0 0 0 7px color-mix(in oklab, var(--chalk) 8%, transparent),
+    0 24px 48px color-mix(in oklab, var(--board-shade) 92%, transparent);
+}
+/* 板面颗粒:一层分形噪点做粉笔灰的质感 */
+.board::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: url("data:image/svg+xml,%3Csvg width='240' height='240' viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)'/%3E%3C/svg%3E");
+  opacity: 0.14;
+  mix-blend-mode: overlay;
+  pointer-events: none;
 }
 
-/* 板头:先生上课前写下的课题一行——楷体粉笔字 + 手画的粉笔底线 */
+/* 板头:上课前写下的课题一行——楷体粉笔字 + 手画的粉笔底线 */
 .chalkHead {
   flex: none;
-  width: var(--col);
+  width: min(100% - 56px, var(--col));
   margin: 0 auto;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 0 6px;
+  padding: 18px 0 8px;
   color: var(--chalk);
   font-family: var(--font-display);
 }
@@ -403,7 +637,8 @@
   flex: none;
   color: var(--chalk-soft);
   font-size: var(--fz-sm);
-  letter-spacing: 0.14em;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
 }
 
 .stream {
@@ -414,9 +649,10 @@
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  /* 与板头、讲桌同一条版心;用内边距而不是内层容器,滚动条仍贴板右缘 */
-  padding: 14px max(16px, calc((100% - min(52rem, 100% - 19rem)) / 2)) 28px;
+  padding: 18px 28px 30px;
+  /* 滚上去的旧字在板头下面淡出,不和课题一行打架 */
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, black 18px);
+  mask-image: linear-gradient(180deg, transparent 0, black 18px);
   color: var(--chalk);
   scrollbar-width: thin;
   scrollbar-color: var(--border-2) transparent;
@@ -434,57 +670,88 @@
 .stream > * { flex: none; }
 .stream :focus-visible { outline-color: var(--chalk-soft); }
 
-/* 老师的话:靠右,粉笔色气泡 */
-.rowT {
+/* 一轮:老师的一段板书 + 小白的回应。当前这一轮是亮的,讲过的退后一步,指上去再亮回来 */
+.round {
+  width: min(100%, var(--col));
+  margin-inline: auto;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
+  gap: 18px;
+  transition: opacity var(--dur-3) var(--ease);
+}
+.round + .round {
+  margin-top: 26px;
+  padding-top: 26px;
+  border-top: 1px dashed color-mix(in oklab, var(--chalk) 12%, transparent);
+}
+.roundNow { opacity: 1; }
+.roundPast { opacity: 0.56; }
+.roundPast:hover,
+.roundPast:focus-within { opacity: 1; }
+
+/* 老师的话:直接写在板上,不套气泡 */
+.rowT {
+  display: grid;
+  grid-template-columns: var(--gutter) minmax(0, 1fr);
+  column-gap: 14px;
+  align-items: start;
   animation: global(rise) var(--dur-3) var(--ease) both;
 }
-.bubbleT {
-  position: relative;
-  max-width: min(84%, 40rem);
-  min-width: 0;
-  padding: 10px 16px;
-  border-radius: var(--r-xl) var(--r-xl) var(--r-xs) var(--r-xl);
-  background: var(--chalk-tint);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--chalk) 8%, transparent);
-  color: var(--chalk);
+.mark {
+  display: grid;
+  place-items: center;
+  width: var(--gutter);
+  height: var(--gutter);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--chalk) 34%, transparent);
+  color: var(--chalk-soft);
+  font-family: var(--font-display);
   font-size: var(--fz-lg);
-  line-height: 1.75;
-  overflow-wrap: anywhere;
+  line-height: 1;
 }
-.bubbleTWithImage {
+.writing {
+  position: relative;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
-  padding: 6px;
+  gap: 10px;
+  padding: 4px 0 2px;
+  color: var(--chalk);
+  overflow-wrap: anywhere;
+}
+.teacherText { min-width: 0; max-width: 100%; }
+/* 长讲解要好重读:16px、1.85 行高、版心不过宽 */
+.md {
+  font-size: 16px;
+  line-height: 1.85;
+  letter-spacing: 0.01em;
 }
 .teacherImage {
   display: block;
   inline-size: auto;
-  max-inline-size: min(100%, 24rem);
+  max-inline-size: min(100%, 26rem);
   block-size: auto;
-  max-block-size: 17rem;
+  max-block-size: 18rem;
   object-fit: contain;
-  border-radius: calc(var(--r-xl) - 6px);
+  border-radius: var(--r-md);
   background: var(--board-deep);
+  box-shadow:
+    0 0 0 4px color-mix(in oklab, var(--chalk) 88%, transparent),
+    0 10px 24px color-mix(in oklab, var(--board-shade) 80%, transparent);
+  margin: 4px;
 }
-.teacherText { min-width: 0; max-width: 100%; }
-.bubbleTWithImage .teacherText { padding: 4px 10px 6px; }
 
 /* 事后贺签:金句被记下 / 心魔被讲退 */
 .beat {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 24px;
-  padding: 2px 10px;
+  min-height: 26px;
+  padding: 3px 12px;
   border-radius: var(--r-full);
   font-family: var(--font-display);
-  font-size: var(--fz-xs);
+  font-size: var(--fz-sm);
   letter-spacing: 0.04em;
   animation: beatPop 520ms var(--ease) 120ms backwards;
 }
@@ -497,29 +764,34 @@
   background: color-mix(in oklab, var(--chalk-jade) 14%, transparent);
   color: var(--chalk-jade);
 }
-.rowGold .bubbleT {
-  overflow: hidden;
-  background: color-mix(in oklab, var(--chalk-amber) 11%, transparent);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in oklab, var(--chalk-amber) 46%, transparent),
-    0 0 26px color-mix(in oklab, var(--chalk-amber) 10%, transparent);
-}
-/* 金句落定时一道粉笔光从左扫到右,只扫一次 */
-.rowGold .bubbleT::after {
+/* 被记下的那段话:左边一道芥末粉笔线,落定时一道粉笔光扫过一次 */
+.rowGold .writing,
+.rowVanquished .writing { padding-left: 14px; }
+.rowGold .writing::before,
+.rowVanquished .writing::before {
   content: '';
   position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, transparent 35%, color-mix(in oklab, var(--chalk) 22%, transparent) 50%, transparent 65%);
-  transform: translateX(-110%);
-  pointer-events: none;
-  animation: goldSweep 1.1s var(--ease) 160ms backwards;
+  left: 0;
+  top: 8px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--chalk-jade);
 }
-.rowVanquished .bubbleT {
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--chalk-jade) 44%, transparent);
+.rowGold .writing::before { background: var(--chalk-amber); }
+.rowGold .mark {
+  box-shadow: inset 0 0 0 1.5px var(--chalk-amber);
+  color: var(--chalk-amber);
+}
+.rowGold .teacherText {
+  background: linear-gradient(105deg, transparent 38%, color-mix(in oklab, var(--chalk-amber) 20%, transparent) 50%, transparent 62%) no-repeat;
+  background-size: 260% 100%;
+  background-position: 130% 0;
+  animation: goldSweep 1.3s var(--ease) 160ms backwards;
 }
 @keyframes goldSweep {
-  from { transform: translateX(-110%); }
-  to { transform: translateX(110%); }
+  from { background-position: -40% 0; }
+  to { background-position: 130% 0; }
 }
 @keyframes beatPop {
   0% { opacity: 0; transform: translateY(4px) scale(0.92); }
@@ -527,58 +799,104 @@
   100% { opacity: 1; transform: none; }
 }
 
-/* 小白的话:靠左,楷体粉笔字,一道竖线做引 */
+/* 小白的话:从座位那边说过来的气泡,尖角朝左 */
 .rowX {
+  display: grid;
+  grid-template-columns: var(--gutter) minmax(0, 1fr);
+  column-gap: 14px;
+  align-items: start;
+  animation: global(rise) var(--dur-3) var(--ease) both;
+}
+.face {
+  margin-top: 22px;
+  background-color: var(--board-deep);
+  box-shadow:
+    0 0 0 1.5px color-mix(in oklab, var(--chalk) 22%, transparent),
+    0 4px 10px color-mix(in oklab, var(--board-shade) 70%, transparent);
+  transition: box-shadow var(--dur-3) var(--ease);
+}
+.rowX[data-tone='glad'] .face { box-shadow: 0 0 0 1.5px var(--chalk-jade), 0 4px 10px color-mix(in oklab, var(--board-shade) 70%, transparent); }
+.rowX[data-tone='warm'] .face,
+.rowX[data-tone='think'] .face { box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--chalk-amber) 76%, transparent), 0 4px 10px color-mix(in oklab, var(--board-shade) 70%, transparent); }
+.say {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
-  animation: global(rise) var(--dur-3) var(--ease) both;
 }
 .anno {
   display: inline-flex;
   align-items: baseline;
-  gap: 2px;
+  gap: 8px;
+  padding-left: 4px;
   color: var(--chalk-soft);
   font-family: var(--font-display);
   font-size: var(--fz-xs);
   letter-spacing: 0.08em;
 }
 .anno i { font-style: normal; }
+.rowX[data-tone='glad'] .anno i { color: var(--chalk-jade); }
+.rowX[data-tone='warm'] .anno i { color: var(--chalk-amber); }
 .bubbleX {
-  max-width: min(88%, 42rem);
-  padding: 2px 4px 2px 16px;
-  border-left: 2px solid var(--border-2);
+  position: relative;
+  max-width: min(100%, 38rem);
+  padding: 10px 18px 12px;
+  border-radius: 6px 20px 20px 20px;
+  background: var(--board-raise);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--chalk) 12%, transparent),
+    0 8px 20px color-mix(in oklab, var(--board-shade) 60%, transparent);
   color: var(--chalk);
   font-family: var(--font-display);
   font-size: var(--fz-xl);
-  line-height: 1.85;
+  line-height: 1.8;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  text-shadow: 0 0 6px color-mix(in oklab, var(--chalk) 18%, transparent);
-  transition: border-color var(--dur-3) var(--ease);
 }
-
-/* 情绪分档的粉笔配色:开窍/开心/出师 → 黛绿粉笔;困惑/害羞 → 藤黄粉笔(默认灰粉笔) */
-.moodGlad .bubbleX { border-left-color: var(--chalk-jade); }
-.moodGlad .anno i { color: var(--chalk-jade); }
-.moodWarm .bubbleX { border-left-color: var(--chalk-amber); }
-.moodWarm .anno i { color: var(--chalk-amber); }
+/* 气泡的小尖:朝着左边的座位 */
+.bubbleX::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 12px;
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--board-raise);
+  box-shadow: inset 1px -1px 0 color-mix(in oklab, var(--chalk) 12%, transparent);
+  transform: rotate(45deg);
+}
 /* 开窍瞬间(仅 aha):一层黛绿水洗光亮起再退去(一次性,backwards 起帧) */
-.moodAha .bubbleX {
-  border-radius: 0 var(--r-md) var(--r-md) 0;
-  animation: ahaWash 1.4s var(--ease) backwards;
-}
+.rowX[data-mood='aha'] .bubbleX { animation: ahaWash 1.4s var(--ease) backwards; }
 @keyframes ahaWash {
-  from { background: color-mix(in oklab, var(--chalk-jade) 14%, transparent); }
-  to { background: transparent; }
+  from {
+    box-shadow:
+      inset 0 0 0 1px var(--chalk-jade),
+      0 0 0 6px color-mix(in oklab, var(--chalk-jade) 18%, transparent),
+      0 8px 20px color-mix(in oklab, var(--board-shade) 60%, transparent);
+  }
 }
 .caret {
   color: var(--chalk-amber);
   animation: blink 0.9s step-end infinite;
 }
 
-/* 导演出场:居中一行芥末粉笔小字 */
+/* 小白在琢磨:一枚虚线的空气泡,一行流光小字,板上不转圈 */
+.rowThinking .face { margin-top: 2px; }
+.pondering {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 6px 20px 20px 20px;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--chalk-amber) 28%, transparent);
+  font-family: var(--font-display);
+  font-size: var(--fz-lg);
+  letter-spacing: 0.04em;
+}
+
+/* 旁白:居中一行芥末粉笔小字 */
 .rowSys {
   align-self: center;
   max-width: min(36rem, 94%);
@@ -603,34 +921,90 @@
   letter-spacing: 0.14em;
 }
 
-.thinking {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 32px;
-  padding-left: 16px;
-  border-left: 2px solid color-mix(in oklab, var(--chalk-amber) 50%, transparent);
-  font-family: var(--font-display);
-  font-size: var(--fz-lg);
+/* 粉笔槽:板脚一条窄托,上面两截粉笔一块板擦 */
+.ledge {
+  position: relative;
+  flex: none;
+  height: 10px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--frame) 86%, var(--chalk)), var(--frame));
+  box-shadow: 0 -1px 0 color-mix(in oklab, var(--board-shade) 70%, transparent);
+}
+.ledge i,
+.ledge b {
+  position: absolute;
+  bottom: 6px;
+  border-radius: 2px;
+}
+.ledge i { right: 96px; width: 22px; height: 5px; background: var(--chalk); opacity: 0.9; }
+.ledge i + i { right: 126px; width: 14px; background: var(--chalk-amber); opacity: 0.86; }
+.ledge b {
+  right: 34px;
+  width: 44px;
+  height: 9px;
+  border-radius: 3px 3px 1px 1px;
+  background: linear-gradient(180deg, var(--wood) 0 56%, color-mix(in oklab, var(--chalk) 60%, var(--board)) 56%);
 }
 
-/* ── 讲桌:输入区 ── */
+/* ── 讲桌:讲法提示 + 输入框 ── */
 .dock {
   position: relative;
   z-index: 5;
   flex: none;
-  width: var(--col);
+  width: min(100%, 50rem);
   margin: 0 auto;
-  padding: 4px 0 max(14px, env(safe-area-inset-bottom));
+  padding: 14px 0 max(12px, env(safe-area-inset-bottom));
   color: var(--chalk);
 }
 
+/* 讲法提示签:粉笔画的虚线小框,点一下往草稿里添一句开头 */
+.scaffolds {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.scaffolds::-webkit-scrollbar { display: none; }
+.scaffoldLead {
+  flex: none;
+  margin-right: 2px;
+  color: var(--chalk-dim);
+  font-family: var(--font-display);
+  font-size: var(--fz-sm);
+  letter-spacing: 0.16em;
+}
+.scaffold {
+  position: relative;
+  flex: none;
+  height: 30px;
+  padding: 0 13px;
+  border: 1px dashed color-mix(in oklab, var(--chalk) 28%, transparent);
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--chalk-soft);
+  font: var(--fz-sm)/1 var(--ui-font);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+.scaffold:hover:enabled {
+  border-style: solid;
+  border-color: color-mix(in oklab, var(--chalk) 40%, transparent);
+  background: var(--chalk-tint);
+  color: var(--chalk);
+}
+.scaffold:active:enabled { transform: scale(0.96); }
+.scaffold:focus { outline: none; }
+.scaffold:focus-visible { box-shadow: 0 0 0 3px var(--ring); }
+.scaffold:disabled { opacity: 0.4; cursor: not-allowed; }
+
 .composer {
-  position: relative; /* 语音提示笺的锚 */
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 10px 10px 8px;
+  padding: 12px 12px 10px;
   border: 1px solid var(--border-2);
   border-radius: var(--r-2xl);
   background: var(--board-raise);
@@ -651,13 +1025,13 @@
 .input {
   display: block;
   width: 100%;
-  min-height: 3.4em;
-  max-height: min(34dvh, 15rem);
-  padding: 6px 8px;
+  min-height: 3.5em;
+  max-height: min(30dvh, 14rem);
+  padding: 4px 8px 6px;
   border: 0;
   background: transparent;
   color: var(--chalk);
-  font: var(--fz-lg)/1.7 var(--ui-font);
+  font: 16px/1.75 var(--ui-font);
   resize: none;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -674,7 +1048,7 @@
   align-items: center;
   gap: 10px;
   max-width: 100%;
-  padding: 6px 6px 6px 6px;
+  padding: 6px;
   border-radius: var(--r-lg);
   background: var(--chalk-ghost);
   box-shadow: inset 0 0 0 1px var(--border);
@@ -699,11 +1073,17 @@
 .attachMeta strong { color: var(--text); font-size: var(--fz-sm); font-weight: 500; }
 .attachMeta small { color: var(--text-3); font-size: var(--fz-xs); font-variant-numeric: tabular-nums; }
 
+/* 状态行:图片提示、麦克风提示、实时字幕共用一处,最多两行 */
 .status {
+  display: -webkit-box;
   padding: 0 8px 2px;
+  overflow: hidden;
   color: var(--chalk-soft);
-  font-size: var(--fz-xs);
+  font-size: var(--fz-sm);
   line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 .fileInput { display: none; }
 
@@ -711,7 +1091,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 36px;
+  min-height: 40px;
 }
 .tools {
   flex: 1;
@@ -778,41 +1158,28 @@
   50% { opacity: 0.35; transform: scale(0.8); }
 }
 
-/* 转写提示笺:浮在讲桌上沿,几秒后自动消隐 */
-.micHint {
-  position: absolute;
-  left: 12px;
-  bottom: calc(100% + 8px);
-  max-width: min(26rem, calc(100% - 24px));
-  padding: 8px 12px;
-  border-radius: var(--r-md);
-  background: var(--board-raise);
-  box-shadow:
-    inset 0 0 0 1px var(--border-2),
-    0 10px 26px color-mix(in oklab, var(--board-shade) 80%, transparent);
-  color: var(--chalk);
-  font-size: var(--fz-xs);
-  line-height: 1.5;
-  animation: global(rise) var(--dur-3) var(--ease) backwards;
-}
-
-/* 发送:一枚粉笔白的圆钮,全场唯一的实心主动作 */
+/* 发送:一枚粉笔白的胶囊,讲桌上唯一的实心主动作;小白在想时换成一行等待 */
 .sendBtn {
   flex: none;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 12px 0 16px;
   border: 0;
-  border-radius: 50%;
+  border-radius: var(--r-full);
   background: var(--chalk);
   color: var(--board-deep);
+  font: 600 var(--fz-md)/1 var(--ui-font);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
   cursor: pointer;
   transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
 }
 .sendBtn:hover:enabled { background: var(--solid-hover); transform: translateY(-1px); }
-.sendBtn:active:enabled { transform: scale(0.93); }
+.sendBtn:active:enabled { transform: scale(0.96); }
 .sendBtn:focus { outline: none; }
 .sendBtn:focus-visible { box-shadow: 0 0 0 3px var(--ring); }
 .sendBtn:disabled {
@@ -821,11 +1188,12 @@
   cursor: not-allowed;
 }
 .sendBusy:disabled {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--chalk-amber) 40%, transparent);
+  padding: 0 16px;
+  background: color-mix(in oklab, var(--chalk-amber) 12%, transparent);
   color: var(--chalk-amber);
   cursor: progress;
 }
+.sendBusy :global(i) { background: var(--chalk-amber); }
 
 .dockHint {
   margin: 8px 0 0;
@@ -865,46 +1233,64 @@
 }
 .videoError { margin: 6px 4px 2px; color: var(--chalk-red); font-size: var(--fz-xs); }
 
-/* 演示助手(仅本地开发构建可见) */
-.demoWrap { margin-bottom: 6px; }
+/* 演示助手(仅本地开发构建可见):讲法提示行尾的一枚小钮,话术单浮在讲桌上方,不挤黑板 */
+.dockTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 10px;
+}
+.dockTop .scaffolds { flex: 1; min-width: 0; padding: 0; }
 .demoToggle {
+  flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
+  gap: 4px;
+  height: 30px;
+  padding: 0 6px 0 10px;
   border: 0;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-full);
   background: none;
   color: var(--chalk-dim);
-  font: var(--fz-xs)/1.4 var(--ui-font);
+  font: var(--fz-xs)/1 var(--ui-font);
+  white-space: nowrap;
   cursor: pointer;
   transition: color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
 }
-.demoToggle:hover { background: var(--hover); color: var(--chalk); }
+.demoToggle:hover,
+.demoToggle[aria-expanded='true'] { background: var(--hover); color: var(--chalk); }
 .demoToggle:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
-.chevron { transition: transform var(--dur-2) var(--ease); }
+.chevron { transform: rotate(-90deg); transition: transform var(--dur-2) var(--ease); }
 .chevronOpen { transform: rotate(90deg); transition: transform var(--dur-2) var(--ease); }
-.demoBody {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows var(--dur-3) var(--ease);
+.demoSheet {
+  position: absolute;
+  z-index: 8;
+  left: 0;
+  right: 0;
+  bottom: calc(100% - 6px);
+  max-height: min(22rem, 52dvh);
+  padding: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--r-xl);
+  background: var(--board-raise);
+  box-shadow:
+    inset 0 0 0 1px var(--border-2),
+    0 18px 44px color-mix(in oklab, var(--board-shade) 86%, transparent);
+  animation: popUp var(--dur-2) var(--ease) backwards;
 }
-.demoBodyOpen { grid-template-rows: 1fr; }
+.demoTip { margin: 0 2px 8px; color: var(--chalk-soft); font-size: var(--fz-xs); }
 .demoInner {
-  overflow: hidden;
-  min-height: 0;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
   gap: 6px;
 }
-.demoBodyOpen .demoInner { padding: 6px 0 4px; }
 .demoLine {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
-  max-width: 16rem;
-  padding: 6px 10px;
+  padding: 8px 10px;
   border: 0;
   border-radius: var(--r-md);
   background: var(--chalk-ghost);
@@ -917,43 +1303,173 @@
 }
 .demoLine:hover { background: var(--chalk-tint); transform: translateY(-1px); }
 .demoLine:active { transform: scale(0.98); }
+.demoLine:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 .demoLabel { font-size: var(--fz-sm); }
-.demoNote { color: var(--chalk-soft); font-size: var(--fz-xs); }
+.demoNote { color: var(--chalk-soft); font-size: var(--fz-xs); line-height: 1.5; }
 
-/* ── 本轮结束面板 ── */
-.endedPanel {
+/* ── 下课:小结(送考前的弹层与提前结束的讲桌面板共用内文) ── */
+.byeOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  background: color-mix(in oklab, var(--board-shade) 78%, transparent);
+  animation: fadeIn var(--dur-2) var(--ease) backwards;
+}
+.bye {
+  position: absolute;
+  inset: 0;
+  z-index: 61;
+  width: min(35rem, calc(100% - 32px));
+  height: fit-content;
+  max-height: calc(100% - 32px);
+  margin: auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 20px 20px 18px;
-  border: 1px solid var(--border-2);
+  gap: 18px;
+  padding: 28px 28px 22px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border-radius: var(--r-2xl);
-  background: var(--board-raise);
-  box-shadow: 0 12px 32px color-mix(in oklab, var(--board-shade) 76%, transparent);
-  text-align: center;
-  animation: global(rise) var(--dur-3) var(--ease) both;
+  background:
+    radial-gradient(80% 50% at 50% 0%, color-mix(in oklab, var(--board-glow) 46%, transparent), transparent 72%),
+    var(--board-raise);
+  box-shadow:
+    inset 0 0 0 1px var(--border-2),
+    0 30px 70px color-mix(in oklab, var(--board-shade) 92%, transparent);
+  color: var(--chalk);
+  animation: popUp var(--dur-3) var(--ease) backwards;
 }
-.endedTitle {
+.bye:focus { outline: none; }
+.byeClose { position: absolute; top: 12px; right: 12px; }
+.byeHead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+}
+.byeFigure {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--board-glow) 70%, transparent), transparent 76%);
+}
+.byeIntro { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.byeTitle {
+  margin: 0;
+  color: var(--chalk);
+  font-family: var(--font-display);
+  font-size: var(--fz-3xl);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+}
+.byeLead {
+  margin: 0;
+  color: var(--chalk-soft);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+/* 小白临走说的一句 */
+.byeSay {
+  position: relative;
+  margin: 8px 0 0;
+  padding: 10px 16px 11px;
+  border-radius: 6px 18px 18px 18px;
+  background: var(--chalk-ghost);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--chalk);
+  font-family: var(--font-display);
+  font-size: var(--fz-xl);
+  line-height: 1.7;
+}
+.byeStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.byeStats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border-radius: var(--r-lg);
+  background: var(--chalk-ghost);
+}
+.byeStats dt { color: var(--chalk-soft); font-size: var(--fz-xs); letter-spacing: 0.06em; }
+.byeStats dd {
   margin: 0;
   color: var(--chalk);
   font-family: var(--font-display);
   font-size: var(--fz-xl);
-  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
 }
-.endedNote {
-  max-width: 40rem;
+.byeTaught > p {
+  margin: 0 0 6px;
+  color: var(--chalk-soft);
+  font-size: var(--fz-xs);
+  letter-spacing: 0.06em;
+}
+.byeTaught ol {
+  display: grid;
+  gap: 4px;
   margin: 0;
-  color: var(--chalk-amber);
-  font-size: var(--fz-sm);
-  line-height: 1.8;
+  padding: 0 0 0 1.5em;
+  color: var(--text-2);
+  font-size: var(--fz-md);
+  line-height: 1.65;
 }
-.endedBtns {
+.byeTaught ol li::marker { color: var(--chalk-dim); font-variant-numeric: tabular-nums; }
+.byeTaught small { display: block; margin-top: 4px; padding-left: 1.5em; color: var(--chalk-dim); font-size: var(--fz-xs); }
+.byeActions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+.byePrep { margin-right: auto; }
+.byePrimary { font-weight: 600; }
+
+/* 提前结束:讲桌上一条收场——小白作揖、一句交代、两个去向 */
+.endedPanel {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px 14px 12px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-2xl);
+  background: var(--board-raise);
+  box-shadow: 0 12px 32px color-mix(in oklab, var(--board-shade) 76%, transparent);
+  animation: global(rise) var(--dur-3) var(--ease) both;
+}
+/* 宽屏时小白就坐在旁边作揖,面板里不再放第二个 */
+.endedFigure { display: none; }
+.endedPanel { padding-left: 24px; }
+.endedText { flex: 1; min-width: 0; }
+.endedTitle {
+  margin: 0;
+  color: var(--chalk);
+  font-family: var(--font-display);
+  font-size: var(--fz-2xl);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+}
+.endedNote {
+  margin: 4px 0 0;
+  color: var(--chalk-soft);
+  font-size: var(--fz-md);
+  line-height: 1.65;
+}
+.endedActions {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 /* ── 一起查书:黑教室里一页被台灯照亮的书(data-story 纸质物件) ── */
@@ -981,6 +1497,7 @@
   gap: 12px;
   padding: 28px 24px 20px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   border-radius: var(--radius-l);
   background:
     radial-gradient(90% 40% at 50% 0%, color-mix(in oklab, var(--paper-warm) 90%, transparent), transparent 80%),
@@ -1013,6 +1530,7 @@
 }
 .lookupBtn {
   align-self: flex-start;
+  flex: none;
   height: var(--ctl-lg);
   padding: 0 20px;
   border: 0;
@@ -1049,8 +1567,14 @@
   from { transform: translateX(24px); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
+@keyframes slideUp {
+  from { transform: translateY(24px); opacity: 0; }
+}
 @keyframes popUp {
   from { opacity: 0; transform: translateY(6px) scale(0.98); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
 }
 @keyframes tapBlush {
   0% { opacity: 0; }
@@ -1058,53 +1582,222 @@
   100% { opacity: 0; }
 }
 
-/* 880px 以下:小白从左下角收进板头,成一条"小白在听"的细行;版心铺满 */
-@media (max-width: 880px) {
-  .room { --col: calc(100% - 32px); }
-  .main { flex-direction: column; }
-  .stage {
-    position: relative;
-    left: auto;
-    bottom: auto;
-    flex: none;
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 16px 0;
-  }
-  .boardFrame { --avatar-frame-pad: 3px; }
-  .boardFrame > div { width: 44px !important; height: 44px !important; }
-  .profilePopover { top: calc(100% + 8px); bottom: auto; left: 16px; }
-  .chalkHead { padding-top: 10px; }
-  .chalkTopic { font-size: var(--fz-xl); }
-  .stream { padding-inline: 16px; }
-  .dockHint { display: none; }
+/* 宽屏查书:书页摊在黑板右手边,板面和讲桌让出位置,不被盖住 */
+@media (min-width: 1180px) {
+  .room[data-lookup] .main { padding-right: 440px; }
+  .main { transition: padding-right var(--dur-3) var(--ease); }
 }
 
-@media (max-width: 560px) {
-  .topbar { gap: 8px; padding-right: max(12px, env(safe-area-inset-right)); }
-  .crumbCourse,
-  .crumbSep,
-  .modeBadge,
-  .tally { display: none; }
-  .rounds { padding: 0 10px; }
-  .endBtn { padding: 0 12px; }
-  .chalkHead { display: none; }
-  .stream { gap: 18px; padding-top: 12px; padding-bottom: 20px; }
-  .bubbleT { max-width: 90%; font-size: var(--fz-lg); }
-  .bubbleX { max-width: 96%; }
+/* 矮窗:课桌留着,小本本先收起来 */
+@media (max-height: 640px) {
+  .notebookList,
+  .notebookEmpty { display: none; }
+}
+@media (max-height: 520px) {
+  .seat .notebook { display: none; }
+}
+
+/* 中等宽度:课桌窄一点,讲法提示的引子收掉 */
+@media (max-width: 1100px) {
+  .main { column-gap: 18px; }
+  .flowFollow,
+  .flow .flowSep:last-of-type { display: none; }
+}
+
+/* ── 900px 以下:不摆课桌,小白收进顶栏;黑板铺满,讲桌贴底 ── */
+@media (max-width: 900px) {
+  .room {
+    --gutter: 30px;
+    /* 钉在可视视口里:键盘弹起时顶栏不被推走,讲桌坐在键盘上沿 */
+    position: fixed;
+    inset: var(--vv-top, 0px) 0 auto 0;
+    height: var(--vvh, 100dvh);
+    flex: none;
+    background: var(--board);
+  }
+  .topbar {
+    gap: 6px;
+    min-height: 52px;
+    padding: max(6px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 6px max(6px, env(safe-area-inset-left));
+    border-bottom: 1px solid var(--border);
+    background: var(--board-deep);
+  }
+  .main {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+  }
+  .board {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .ledge { display: none; }
+  .chalkHead {
+    width: calc(100% - 28px);
+    padding: 10px 0 4px;
+    gap: 12px;
+  }
+  .chalkTopic { font-size: var(--fz-xl); letter-spacing: 0.04em; }
+  .chalkTopic small { display: none; }
+  .chalkMeta { font-size: var(--fz-xs); letter-spacing: 0.06em; }
+  .stream { padding: 10px 14px 18px; }
+  .round { gap: 14px; }
+  .round + .round { margin-top: 20px; padding-top: 20px; }
+  .rowT,
+  .rowX { column-gap: 10px; }
+  .mark { font-size: var(--fz-sm); }
+  .face { margin-top: 20px; }
+  .bubbleX { padding: 9px 14px 10px; font-size: 16px; line-height: 1.75; }
   .teacherImage { max-block-size: 13rem; }
-  /* 16px 起步,iOS 聚焦时不放大页面 */
-  .input { min-height: 3.2em; font-size: max(16px, var(--fz-lg)); }
-  .micBtn { min-width: 40px; height: 40px; }
+  .dock {
+    width: 100%;
+    padding: 8px 10px max(8px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: var(--board-deep);
+  }
+  .dockHint { display: none; }
+  /* 讲法提示:横向滑动的一排,右缘渐隐提示还有 */
+  .topbar > :global(button) { min-width: 40px; min-height: 40px; }
+  .dockTop { gap: 4px; padding: 0 0 8px; }
+  .dockTop .scaffolds {
+    gap: 8px;
+    margin-left: -10px;
+    padding: 4px 10px;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 10px;
+    -webkit-overflow-scrolling: touch;
+    /* 右缘渐隐:提示后面还有 */
+    -webkit-mask-image: linear-gradient(90deg, black calc(100% - 28px), transparent);
+    mask-image: linear-gradient(90deg, black calc(100% - 28px), transparent);
+  }
+  .dockTop .scaffolds:last-child { margin-right: -10px; }
+  .demoToggle { height: 40px; }
+  .demoSheet { left: 8px; right: 8px; bottom: calc(100% + 4px); }
+  .scaffoldLead { display: none; }
+  .scaffold {
+    height: 36px;
+    padding: 0 14px;
+    font-size: var(--fz-md);
+    scroll-snap-align: start;
+  }
+  /* 触控热区补到 40px 以上 */
+  .scaffold::after { content: ''; position: absolute; inset: -4px -2px; }
+  .composer {
+    padding: 8px 8px 6px;
+    border-radius: var(--r-xl);
+    box-shadow: inset 0 1px 0 color-mix(in oklab, var(--chalk) 7%, transparent);
+  }
+  .input { min-height: 3.2em; max-height: min(26dvh, 9rem); padding: 4px 8px; }
+  .toolbar { gap: 6px; }
+  .tools { gap: 0; }
   .tools :global(button) { min-width: 40px; min-height: 40px; }
-  .sendBtn { width: 40px; height: 40px; }
-  .lookup { top: auto; right: 0; bottom: 0; left: 0; width: auto; max-height: 82dvh; border-radius: var(--radius-l) var(--radius-l) 0 0; }
+  .micBtn { min-width: 40px; height: 40px; }
+  .sendBtn { width: 40px; padding: 0; }
+  .sendBusy:disabled { width: auto; padding: 0 12px; }
+  .sendText { display: none; }
+  .endBtn { padding: 0 14px; }
+
+  /* 顶栏里的小白 */
+  .chipWrap { position: relative; min-width: 0; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 3px 12px 3px 3px;
+    border: 0;
+    border-radius: var(--r-full);
+    background: var(--chalk-ghost);
+    color: var(--chalk);
+    cursor: pointer;
+    transition: background var(--dur-1) var(--ease), transform var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+  }
+  .chip:active { transform: scale(0.97); background: var(--chalk-tint); }
+  .chip:focus { outline: none; }
+  .chip:focus-visible { box-shadow: 0 0 0 3px var(--ring); }
+  .chipFace { position: relative; display: inline-flex; flex: none; }
+  .chipText {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+  .chipText b { font-family: var(--font-display); font-size: var(--fz-md); font-weight: 600; letter-spacing: 0.08em; }
+  .chipText i { color: var(--chalk-soft); font-size: var(--fz-xs); font-style: normal; transition: color var(--dur-2) var(--ease); }
+  .chipText i[data-tone='glad'] { color: var(--chalk-jade); }
+  .chipText i[data-tone='warm'],
+  .chipText i[data-tone='think'] { color: var(--chalk-amber); }
+  .profilePopover {
+    top: calc(100% + 10px);
+    bottom: auto;
+    left: -40px;
+    width: min(20rem, calc(100vw - 24px));
+    max-height: min(32rem, calc(var(--vvh, 100dvh) - 96px));
+  }
+
+  /* 下课:底部抽屉 */
+  .bye {
+    inset: auto 0 0 0;
+    width: auto;
+    max-height: calc(100% - 40px);
+    margin: 0;
+    gap: 14px;
+    padding: 22px 16px max(16px, env(safe-area-inset-bottom));
+    border-radius: var(--r-2xl) var(--r-2xl) 0 0;
+    animation-name: slideUp;
+  }
+  .byeHead { gap: 12px; align-items: start; }
+  .byeTitle { font-size: var(--fz-2xl); }
+  .byeSay { font-size: 16px; }
+  .byeStats { grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr)); gap: 6px; }
+  .byeStats > div { padding: 8px 10px; }
+  .byeStats dd { font-size: var(--fz-lg); white-space: nowrap; }
+  .byeActions { flex-direction: column-reverse; align-items: stretch; gap: 8px; }
+  .byePrep { margin-right: 0; }
+  .endedPanel {
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    padding: 10px 14px 14px 8px;
+    border-radius: var(--r-xl);
+  }
+  .endedFigure { flex: none; display: grid; place-items: center; margin-top: -8px; }
+  .endedPanel { padding-left: 8px; }
+  .endedTitle { font-size: var(--fz-xl); }
+  .endedActions { flex: 1 1 100%; flex-direction: column-reverse; align-items: stretch; gap: 8px; padding-left: 6px; }
+
+  .lookup { top: auto; right: 0; bottom: 0; left: 0; width: auto; max-height: 82dvh; padding-bottom: max(20px, env(safe-area-inset-bottom)); border-radius: var(--radius-l) var(--radius-l) 0 0; }
+
+  /* 键盘弹起:板面要紧——板头让出来,讲桌收矮一档 */
+  .room[data-keyboard='open'] .chalkHead { display: none; }
+  .room[data-keyboard='open'] .dock { padding-top: 6px; padding-bottom: 6px; }
+  .room[data-keyboard='open'] .dockTop { padding-bottom: 4px; }
+  .room[data-keyboard='open'] .input { min-height: 2.6em; max-height: 5.4em; }
+  .room[data-keyboard='open'] .attachRow { padding-bottom: 2px; }
+  .room[data-keyboard='open'] .attachChip { padding: 4px; }
+  .room[data-keyboard='open'] .attachThumb { width: 34px; height: 34px; }
+  .room[data-keyboard='open'] .status { -webkit-line-clamp: 1; line-clamp: 1; }
+}
+
+/* 触屏上讲过的轮次不靠悬停点亮,退得浅一点 */
+@media (hover: none) {
+  .roundPast { opacity: 0.74; }
+}
+
+@media (max-width: 380px) {
+  .endBtn :global(svg) { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .endBtnReady,
   .micDot,
   .caret,
-  .rowGold .bubbleT::after { animation: none; }
+  .rowGold .teacherText,
+  .thought,
+  .beat,
+  .notebookList li,
+  .bye,
+  .byeOverlay { animation: none; }
+  .roundPast { transition: none; }
 }

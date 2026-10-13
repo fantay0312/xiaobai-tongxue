@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Topic } from '../../types';
 import { getSelfTest } from '../../data/selfTest';
 import { lectureSections, studyCards, downloadStudyFile, type StudyWorkspace } from '../../engine/studyWorkspace';
@@ -15,9 +15,19 @@ export function ReadingPanel({ topic, readSections, onRead, onAsk }: {
   const active = sections[index];
   const [examplesOpen, setExamplesOpen] = useState(false);
   const figures = getFigures(topic.topicId);
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    // 窄屏上段落小签是一条横向滑动的带子：让当前段落保持可见，只动这一条，不带动正文
+    const nav = navRef.current;
+    const current = nav?.querySelector<HTMLElement>('[aria-current="step"]');
+    if (!nav || !current || nav.scrollWidth <= nav.clientWidth) return;
+    const box = nav.getBoundingClientRect();
+    const item = current.getBoundingClientRect();
+    nav.scrollLeft += item.left - box.left - (box.width - item.width) / 2;
+  }, [index]);
   return <div className={s.reading}>
     <div className={s.sectionHeading}><div><h2>{topic.prep.microLecture.title}</h2><p>逐段读懂，再用自己的话说出来。</p></div><span>{index + 1} / {sections.length}</span></div>
-    <nav className={s.chapterNav} aria-label="讲义段落">{sections.map((section, i) => <button key={i} className={i === index ? s.chapterActive : ''} aria-current={i === index ? 'step' : undefined} onClick={() => setIndex(i)}>{readSections.includes(i) ? <Icon name="check" size={13} /> : <span>{i + 1}</span>}{section.title}</button>)}</nav>
+    <nav ref={navRef} className={s.chapterNav} aria-label="讲义段落">{sections.map((section, i) => <button key={i} className={i === index ? s.chapterActive : ''} aria-current={i === index ? 'step' : undefined} onClick={() => setIndex(i)}>{readSections.includes(i) ? <Icon name="check" size={13} /> : <span>{i + 1}</span>}{section.title}</button>)}</nav>
     {active && <article className={s.lecturePaper}><CoachMarkdown text={active.text} /></article>}
     <div className={s.readingActions}>
       <button className={s.softButton} disabled={index === 0} onClick={() => setIndex((i) => i - 1)}><Icon name="arrow-left" size={15} />上一段</button>

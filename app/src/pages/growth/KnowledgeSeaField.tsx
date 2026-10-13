@@ -27,6 +27,10 @@ import {
 import { StarSkyCanvas } from './StarSkyCanvas';
 import s from './KnowledgeSeaField.module.css';
 
+/** 题签侧挂时从星心伸出去的宽度、上下挂时的半宽(px,与 .nodeCopy 的 7rem 对应) */
+const LABEL_REACH = 150;
+const LABEL_HALF = 62;
+
 function label(node: MapNode): string {
   const status: Record<NodeStatus, string> = {
     mastered: '星火已明',
@@ -279,9 +283,21 @@ export function KnowledgeSeaField({
       slot.style.zIndex = pulled || local.z >= 0 ? '7' : '3';
       slot.style.opacity = pose.opacity.toFixed(3);
       slot.style.pointerEvents = pose.opacity < 0.4 && !pulled ? 'none' : '';
-      slot.dataset.label = Math.abs(dx) > Math.abs(dy)
+      let side = Math.abs(dx) > Math.abs(dy)
         ? (dx >= 0 ? 'right' : 'left')
         : (dy >= 0 ? 'below' : 'above');
+      /* 窄星区:侧挂的题签会伸出画面,改成上下挂;贴边的星再把题签往里收(data-edge) */
+      if ((side === 'right' && pose.x + LABEL_REACH > fieldBox.width) || (side === 'left' && pose.x - LABEL_REACH < 0)) {
+        side = dy >= 0 ? 'below' : 'above';
+      }
+      const edge = side === 'right' || side === 'left'
+        ? ''
+        : pose.x > fieldBox.width - LABEL_HALF ? 'right' : pose.x < LABEL_HALF ? 'left' : '';
+      if (slot.dataset.label !== side) slot.dataset.label = side;
+      if ((slot.dataset.edge ?? '') !== edge) {
+        if (edge) slot.dataset.edge = edge;
+        else delete slot.dataset.edge;
+      }
     });
 
     const lanes = new Map(orbitLanes);

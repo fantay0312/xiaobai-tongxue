@@ -303,6 +303,58 @@
   .footKeys { display: none; }
 }
 
+/* ── 手机：一行工具只留「+」、模型、听写、发送；其余进「+」菜单 ── */
+@media (max-width: 760px) {
+  .input {
+    max-height: 40dvh;
+    padding: 12px 16px 2px;
+    font-size: max(16px, var(--fz-lg));
+  }
+  .input::placeholder { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .toolbar { gap: 4px; padding: 2px 6px 6px; }
+  .sendGroup { gap: 4px; }
+  .plus, .sendGroup .mic, .send { width: 40px; height: 40px; }
+  .pill { height: 36px; }
+  /* 回答方式、互动回答、资料数都在「+」菜单里；改过回答方式或还没选资料时才留一个提示 */
+  .pill[data-kind='interactive'],
+  .pill[data-kind='mode'][data-default],
+  .pill[data-kind='sources']:not([data-tone]) { display: none; }
+  .pill[data-kind='mode'] .pillChevron { display: none; }
+  .pill[data-kind='sources'][data-tone] { padding: 0 12px; }
+  .pill[data-kind='sources'][data-tone] .pillText { display: inline; }
+  /* 有模型胶囊时把位置让给模型名，「先选资料」只留图标 */
+  .toolbar:has(.modelSlot) .pill[data-kind='sources'][data-tone] { padding: 0 10px; }
+  .toolbar:has(.modelSlot) .pill[data-kind='sources'][data-tone] .pillText { display: none; }
+  .demoTag { height: 28px; }
+  .attachment { height: 34px; }
+  .attachment > button { width: 28px; height: 28px; }
+  .commands { width: 100%; }
+  .command { min-height: 48px; }
+  .command kbd { display: none; }
+  /* 脚注只在有状态要说（听写中、字数将满）时出现 */
+  .foot { margin-top: 6px; }
+  .foot > span:first-child { display: none; }
+  .foot:not(:has(.footLive, .footCount)) { display: none; }
+
+  /* 阅读、练习页里的输入框：平时缩成一行，点进去再展开成完整的 */
+  :global([data-composer='compact']) .wrap:not([data-expanded]) .box {
+    flex-direction: row;
+    align-items: center;
+    box-shadow: var(--shadow-1);
+  }
+  :global([data-composer='compact']) .wrap:not([data-expanded]) .toolbar { display: contents; }
+  :global([data-composer='compact']) .wrap:not([data-expanded]) .tools { order: 0; padding-left: 5px; }
+  :global([data-composer='compact']) .wrap:not([data-expanded]) .input {
+    flex: 1;
+    order: 1;
+    width: auto;
+    min-width: 0;
+    padding: 11px 6px;
+  }
+  :global([data-composer='compact']) .wrap:not([data-expanded]) .sendGroup { order: 2; margin-left: 0; padding-right: 5px; }
+  :global([data-composer='compact']) .wrap:not([data-expanded]) :is(.pill, .demoTag, .modelSlot) { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .commands { animation: none; }
   .sendGroup .mic[data-listening] { animation: none; }

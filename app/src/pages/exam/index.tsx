@@ -240,14 +240,17 @@ export default function ExamPage() {
               <ShieldAlert size={17} strokeWidth={1.75} aria-hidden="true" />
               考场之内，先生不得代答。
             </p>
-            <Button
-              variant="solid"
-              size="lg"
-              icon={<Route size={18} strokeWidth={1.75} />}
-              onClick={() => setPhase('question')}
-            >
-              送小白入场
-            </Button>
+            {/* 手机上这一条吸在屏幕底部（见 exam.module.css），主动作始终够得着 */}
+            <div className={s.sendoffAction}>
+              <Button
+                variant="solid"
+                size="lg"
+                icon={<Route size={18} strokeWidth={1.75} />}
+                onClick={() => setPhase('question')}
+              >
+                送小白入场
+              </Button>
+            </div>
           </div>
         </section>
       )}
@@ -321,17 +324,19 @@ export default function ExamPage() {
             </ol>
           </div>
 
-          <footer className={s.resultFoot}>
+          <div className={s.resultEnd}>
             <p className={s.resultNote}>分数只来自随堂测验；考场独白只是把小白当时的理解状态说给你听。</p>
-            <Button
-              asChild
-              variant="solid"
-              size="lg"
-              icon={<PenLine size={18} strokeWidth={1.75} />}
-            >
-              <Link to={`/review/${report.sessionId}`}>灯下批注这份答卷</Link>
-            </Button>
-          </footer>
+            <footer className={s.resultFoot}>
+              <Button
+                asChild
+                variant="solid"
+                size="lg"
+                icon={<PenLine size={18} strokeWidth={1.75} />}
+              >
+                <Link to={`/review/${report.sessionId}`}>灯下批注这份答卷</Link>
+              </Button>
+            </footer>
+          </div>
         </section>
       )}
     </div>

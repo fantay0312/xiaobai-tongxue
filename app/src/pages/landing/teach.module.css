@@ -113,6 +113,11 @@
   animation-play-state: running;
 }
 
+/* 当前一步的说明：只在手机的一行分段条下面出现 */
+.stepHint {
+  display: none;
+}
+
 .sceneWrap {
   display: grid;
   /* 取四个场景里最高的一个，自动轮播时下方内容不跳 */
@@ -859,9 +864,105 @@
   }
 }
 
+/* ── 手机：四步收成一行分段条，点哪一步，紧挨着的下方就是哪一幕 ── */
+@media (max-width: 640px) {
+  .loop {
+    gap: 10px;
+  }
+
+  .steps {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .step {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-height: 68px;
+    padding: 10px 2px 9px;
+    text-align: center;
+  }
+
+  .stepText {
+    justify-items: center;
+  }
+
+  .stepText strong {
+    font-size: var(--fz-sm);
+    line-height: 1.3;
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+
+  .step .stepText span {
+    display: none;
+  }
+
+  .stepHint {
+    display: block;
+    padding-inline: 4px;
+    color: var(--text-2);
+    font-size: var(--fz-md);
+    line-height: 1.6;
+  }
+
+  .sceneWrap {
+    padding: 14px;
+  }
+
+  .scene {
+    gap: 14px;
+  }
+
+  .sceneHead,
+  .note {
+    font-size: var(--fz-md);
+  }
+
+  .prepList li {
+    padding: 11px 2px;
+    font-size: var(--fz-md);
+  }
+
+  .quote {
+    padding: 12px 14px;
+    font-size: var(--fz-lg);
+    line-height: 1.7;
+  }
+
+  .motto {
+    gap: 10px;
+    margin-top: 52px;
+  }
+
+  .journey {
+    gap: 28px;
+    margin-top: 36px;
+  }
+
+  .journeyText > p {
+    line-height: 1.7;
+  }
+
+  .stages {
+    margin-top: 24px;
+  }
+
+  .stages strong {
+    font-size: var(--fz-md);
+  }
+
+  .sealRow {
+    margin-top: 22px;
+  }
+}
+
 @media (max-width: 560px) {
   .classroom {
     grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding-block: 0;
   }
 
   .pupil {
@@ -871,8 +972,16 @@
     gap: 14px;
   }
 
+  /* 头像组件按 px 定尺寸；手机上缩一档，把位置让给对话 */
+  .pupil > div {
+    width: 88px !important;
+    height: 88px !important;
+  }
+
   .his {
-    font-size: 18px;
+    padding: 10px 14px;
+    font-size: 17px;
+    line-height: 1.7;
   }
 
   .paper {

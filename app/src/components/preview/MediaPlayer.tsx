@@ -3,7 +3,7 @@
  * 笔记草稿按账号和文件存在当前浏览器；「保存到笔记」写一条 Markdown 笔记进学习工作台。
  */
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
-import { BookmarkPlus, Check, Gauge, Maximize, Music, Pause, Play, Redo2, Save, Trash2, Undo2, Volume2, VolumeX } from 'lucide-react';
+import { BookmarkPlus, Check, ChevronUp, Gauge, Maximize, Music, Pause, Play, Redo2, Save, Trash2, Undo2, Volume2, VolumeX } from 'lucide-react';
 import { Button, IconButton, Menu, MenuContent, MenuItem, MenuLabel, MenuTrigger, Spinner, Textarea, toast } from '../ui';
 import { newId, studyData } from '../../store/studyData';
 import { formatClock } from './fileKind';
@@ -57,6 +57,8 @@ export function MediaPlayer({ blob, kind, file, owner, onDownload }: {
   const [draft, setDraft] = useState<NoteDraft>(() => loadDraft(draftKey));
   const [text, setText] = useState('');
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  // 手机上笔记是底部抽屉，平时只露出标题一行；宽屏上这个状态不起作用
+  const [notesOpen, setNotesOpen] = useState(false);
 
   useEffect(() => { const media = mediaRef.current; if (media) media.playbackRate = rate; }, [rate, url]);
 
@@ -139,7 +141,7 @@ export function MediaPlayer({ blob, kind, file, owner, onDownload }: {
   };
 
   return (
-    <div className={s.media} data-kind={kind} onKeyDown={onKeyDown}>
+    <div className={s.media} data-kind={kind} data-notes={notesOpen ? 'open' : 'closed'} onKeyDown={onKeyDown}>
       <div ref={playerRef} className={s.player}>
         {kind === 'video'
           ? (
@@ -208,7 +210,10 @@ export function MediaPlayer({ blob, kind, file, owner, onDownload }: {
 
       <aside className={s.notes} aria-label="时间点笔记">
         <header className={s.notesHead}>
-          <div>
+          <IconButton label={notesOpen ? '收起时间点笔记' : '展开时间点笔记'} tip={false} className={s.notesToggle} aria-expanded={notesOpen} onClick={() => setNotesOpen((value) => !value)}>
+            <ChevronUp size={18} />
+          </IconButton>
+          <div onClick={() => setNotesOpen((value) => !value)}>
             <h3>时间点笔记</h3>
             <p>{draft.items.length ? `${draft.items.length} 条 · 点时间跳回原处` : '听到关键处记一条，之后点时间就能跳回'}</p>
           </div>

@@ -1,6 +1,6 @@
-import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import {
-  ArrowLeft, Check, ChevronRight, Clock, CloudUpload, Download, Ellipsis, Eye, Files, Folder, FolderInput, FolderOpen, FolderPlus,
+  ArrowLeft, Check, ChevronDown, ChevronRight, Clock, CloudUpload, Download, Ellipsis, Eye, Files, Folder, FolderInput, FolderOpen, FolderPlus,
   GraduationCap, HardDrive, LayoutGrid, List, MessageSquarePlus, Minus, Pencil, RefreshCw, RotateCcw, ScanText, Search, Star,
   Trash2, TriangleAlert, Upload, X,
 } from 'lucide-react';
@@ -8,7 +8,9 @@ import {
   Badge, Button, Dialog, Empty, Field, IconButton, Input, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger,
   Segmented, Skeleton, Spinner, cx, toast, type Tone,
 } from '../../components/ui';
+import { IconLibrary } from '../../components/ui/icons';
 import { FilePreview, FileTypeIcon, extensionOf, formatSize, kindLabel } from '../../components/preview';
+import { SideAction, SideEmpty, SideGroup, SideNavItem, SidePanel, SidebarPortal, useSidebarSlot } from '../learn/shell/sidebarSlot';
 import { useAuthStore } from '../../store/authStore';
 import { isCurrentAccount } from '../../lib/api';
 import {
@@ -31,12 +33,16 @@ const BLOCKED_TEXT = '请先保存当前校订，或等待操作完成。';
 const ROLES: { value: AssetRole; label: string }[] = [
   { value: 'lecture', label: '讲义课件' }, { value: 'reading', label: '阅读材料' }, { value: 'lab', label: '实验练习' }, { value: 'syllabus', label: '课程大纲' },
 ];
-const CATEGORIES = [
-  { value: 'all', label: '全部文件', icon: Files },
-  { value: 'recent', label: '最近', icon: Clock },
-  { value: 'favorites', label: '收藏', icon: Star },
-  { value: 'trash', label: '回收站', icon: Trash2 },
-] as const;
+const CATEGORIES: { value: Filter; label: string; short: string }[] = [
+  { value: 'all', label: '全部文件', short: '全部' },
+  { value: 'recent', label: '最近', short: '最近' },
+  { value: 'favorites', label: '收藏', short: '收藏' },
+  { value: 'trash', label: '回收站', short: '回收站' },
+];
+const categoryIcon = (value: Filter, active: boolean) => value === 'all' ? <IconLibrary size={16} active={active} />
+  : value === 'recent' ? <Clock size={16} strokeWidth={1.75} />
+    : value === 'favorites' ? <Star size={16} strokeWidth={1.75} />
+      : <Trash2 size={16} strokeWidth={1.75} />;
 
 const formatDate = (iso: string) => Number.isFinite(Date.parse(iso))
   ? new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
@@ -50,6 +56,25 @@ function parseBadge(entry: LibraryEntry): { tone: Tone; label: string; live?: bo
   if (status === 'cancelled') return { tone: 'warn', label: '解析已取消' };
   if (status && LIVE_PARSE.includes(status)) return { tone: 'accent', label: '解析中', live: true };
   return PARSEABLE.test(entry.name) ? { tone: 'outline', label: '未解析' } : null;
+}
+
+/**
+ * 侧栏挂载位是否真的可见。侧栏收起时外壳只是把它隐藏，挂载位还在；
+ * 这时仍把导航放进去就谁也点不到，所以按实际尺寸判断，并跟随展开 / 收起变化。
+ */
+function useDockedSidebar(): boolean {
+  const slot = useSidebarSlot();
+  const [visible, setVisible] = useState(() => !!slot && slot.getClientRects().length > 0);
+  // 每次渲染后核对一次：侧栏展开 / 收起会让外壳连同本页重渲染
+  useLayoutEffect(() => { setVisible(!!slot && slot.getClientRects().length > 0); });
+  // 再用尺寸观察兜底（例如窗口变窄后侧栏被样式隐藏）
+  useEffect(() => {
+    if (!slot) return;
+    const observer = new ResizeObserver(() => setVisible(slot.getClientRects().length > 0));
+    observer.observe(slot);
+    return () => observer.disconnect();
+  }, [slot]);
+  return visible;
 }
 
 export default function LibraryPage({ onLeaveGuardChange, onUseInConversation }: { onLeaveGuardChange?: (value: boolean) => void; onUseInConversation?: (ids: string[]) => Promise<void> }) {
@@ -112,6 +137,9 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation }: { ow
   const lastForm = useRef<FormKind>('folder');
   /** 对话框由行内操作打开（而不是批量操作条） */
   const rowForm = useRef(false);
+
+  /** 终端侧栏可用：导航放进侧栏，主区不再自带左栏 */
+  const docked = useDockedSidebar();
 
   const valid = () => isCurrentAccount(owner, useAuthStore.getState(), alive.current);
   const warn = (text: string) => setNotice({ text, tone: 'warn' });
@@ -250,6 +278,7 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation }: { ow
   const counts: Partial<Record<Filter, number>> = { favorites: entries.filter((entry) => entry.favorite && !entry.deletedAt).length, trash: entries.filter((entry) => entry.deletedAt).length };
   const dropTarget = !project && filter !== 'trash' && !preview && !form;
 
+  /** 文件夹树：用终端侧栏的共用行，缩进最多两级 */
   const renderFolders = (parent: string | null, depth = 0): ReactNode => depth > 64 ? null : folders
     .filter((entry) => entry.parentId === parent)
     .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
@@ -259,23 +288,32 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation }: { ow
       const current = folderId === entry.id && !project;
       return (
         <div key={entry.id}>
-          <div className={s.treeRow} style={{ paddingLeft: depth * 14 }}>
-            {hasChildren
-              ? (
-                <button type="button" className={s.treeToggle} aria-expanded={expanded} aria-label={`${expanded ? '收起' : '展开'} ${entry.name}`} onClick={() => setCollapsed((list) => expanded ? [...list, entry.id] : list.filter((id) => id !== entry.id))}>
-                  <ChevronRight size={14} />
-                </button>
-              )
-              : <span className={s.treeToggle} aria-hidden="true" />}
-            <button type="button" className={s.navItem} aria-current={current ? 'page' : undefined} onClick={() => browse(entry.id)}>
-              {current ? <FolderOpen size={16} strokeWidth={1.75} /> : <Folder size={16} strokeWidth={1.75} />}
-              <span>{entry.name}</span>
-            </button>
-          </div>
+          <SideNavItem
+            icon={current ? <FolderOpen size={16} strokeWidth={1.75} /> : <Folder size={16} strokeWidth={1.75} />}
+            label={entry.name}
+            title={entry.name}
+            active={current}
+            indent={depth === 0 ? undefined : depth === 1 ? 1 : 2}
+            trailing={hasChildren ? (
+              <IconButton
+                label={`${expanded ? '收起' : '展开'} ${entry.name}`}
+                size="sm"
+                tip={false}
+                aria-expanded={expanded}
+                onClick={() => setCollapsed((list) => expanded ? [...list, entry.id] : list.filter((id) => id !== entry.id))}
+              >
+                {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </IconButton>
+            ) : undefined}
+            onClick={() => browse(entry.id)}
+          />
           {hasChildren && expanded && renderFolders(entry.id, depth + 1)}
         </div>
       );
     });
+  const newFolder = () => { if (project) browse(folderId); startForm('folder'); };
+  const storageNote = `${snapshot?.storage === 'cloud' ? '账号私有存储' : snapshot?.storage === 'local' ? '本机服务存储' : '正在连接存储'}${snapshot ? ` · 单文件上限 ${formatSize(snapshot.maxFileBytes)}` : ''}`;
+  const canUpload = !busy && !!snapshot && filter !== 'trash' && !project;
 
   const renderBadges = (entry: LibraryEntry) => {
     const parsed = parseBadge(entry);
@@ -403,7 +441,7 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation }: { ow
         className={s.dropHint}
         icon={<CloudUpload size={22} strokeWidth={1.75} />}
         title="这里还没有文件"
-        description="把文件拖到这里，或点上传。PDF、Word、PPT、图片、音视频都可以保存和预览。"
+        description={<><span className={s.mouseOnly}>把文件拖到这里，或点上传。</span><span className={s.touchOnly}>点「上传文件」从手机里选。</span>PDF、Word、PPT、图片、音视频都可以保存和预览。</>}
         action={(
           <>
             <Button variant="solid" icon={<Upload size={15} />} disabled={busy} onClick={() => inputRef.current?.click()}>上传文件</Button>
@@ -476,32 +514,26 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation }: { ow
       onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false); }}
       onDrop={(event) => { if (!dropTarget) return; event.preventDefault(); setDragging(false); if (!busy && snapshot) upload(Array.from(event.dataTransfer.files)); }}
     >
-      <aside className={s.side}>
-        <h2 className={s.sideTitle}>资料库</h2>
-        <nav className={s.categories} aria-label="资料库分类">
-          {CATEGORIES.map(({ value, label, icon: CategoryIcon }) => (
-            <button key={value} type="button" className={s.navItem} aria-current={filter === value && !folderId && !project ? 'page' : undefined} onClick={() => browse(null, value)}>
-              <CategoryIcon size={16} strokeWidth={1.75} />
-              <span>{label}</span>
-              {counts[value] ? <em>{counts[value]}</em> : null}
-            </button>
-          ))}
-        </nav>
-        <div className={s.treeHead}>
-          <span>文件夹</span>
-          <IconButton label="新建文件夹" size="sm" disabled={busy} onClick={() => { if (project) browse(folderId); startForm('folder'); }}><FolderPlus size={15} /></IconButton>
-        </div>
-        <div className={s.tree}>
-          {folders.length ? renderFolders(null) : <p className={s.treeEmpty}>按课程或主题建文件夹，资料更好找。</p>}
-        </div>
-        <p className={s.storage}>
-          <HardDrive size={14} strokeWidth={1.75} />
-          <span>
-            {snapshot?.storage === 'cloud' ? '账号私有存储' : snapshot?.storage === 'local' ? '本机服务存储' : '正在连接存储'}
-            {snapshot ? ` · 单文件上限 ${formatSize(snapshot.maxFileBytes)}` : ''}
-          </span>
-        </p>
-      </aside>
+      {/* 有侧栏挂载位时，导航整块放进终端侧栏；没有时（手机、侧栏收起）主区顶部放一条简版导航 */}
+      {docked && (
+        <SidebarPortal>
+          <SidePanel
+            title="资料库"
+            action={<SideAction icon={<Upload size={16} strokeWidth={1.75} />} disabled={!canUpload} onClick={() => inputRef.current?.click()}>上传文件</SideAction>}
+            footer={storageNote}
+          >
+            <SideGroup label="分类">
+              {CATEGORIES.map(({ value, label }) => {
+                const active = filter === value && !folderId && !project;
+                return <SideNavItem key={value} icon={categoryIcon(value, active)} label={label} meta={counts[value] || undefined} active={active} onClick={() => browse(null, value)} />;
+              })}
+            </SideGroup>
+            <SideGroup label="文件夹" action={<IconButton label="新建文件夹" size="sm" disabled={busy} onClick={newFolder}><FolderPlus size={15} /></IconButton>}>
+              {folders.length ? renderFolders(null) : <SideEmpty>按课程或主题建文件夹，资料更好找。</SideEmpty>}
+            </SideGroup>
+          </SidePanel>
+        </SidebarPortal>
+      )}
 
       <main className={s.main}>
         <div className={s.inner}>
@@ -518,18 +550,40 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation }: { ow
                   leading={<Search size={15} />}
                   trailing={query ? <button type="button" className={s.clearSearch} aria-label="清除搜索" onClick={() => setQuery('')}><X size={14} /></button> : undefined}
                   aria-label="搜索资料库"
-                  placeholder="搜索文件或文件夹"
+                  placeholder="搜索资料"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                 />
                 <Button variant="ghost" className={s.toolButton} icon={<GraduationCap size={16} />} aria-label={picked.length ? '解析所选文件' : '学习项目'} disabled={busy} onClick={() => startForm('course')}>
                   <span>{picked.length ? '解析所选文件' : '学习项目'}</span>
                 </Button>
-                <IconButton label="新建文件夹" variant="outline" disabled={busy} onClick={() => startForm('folder')}><FolderPlus size={16} /></IconButton>
-                <Button variant="solid" icon={<Upload size={15} />} disabled={busy || !snapshot || filter === 'trash'} onClick={() => inputRef.current?.click()}>上传</Button>
+                {!docked && <IconButton label="新建文件夹" variant="outline" disabled={busy} onClick={() => startForm('folder')}><FolderPlus size={16} /></IconButton>}
+                {!docked && <Button variant="solid" icon={<Upload size={15} />} disabled={!canUpload} onClick={() => inputRef.current?.click()}>上传</Button>}
               </div>
             )}
           </header>
+
+          {!docked && (
+            <div className={s.quickNav}>
+              <Segmented size="sm" label="资料库分类" value={filter} onChange={(value) => browse(null, value)} options={CATEGORIES.map(({ value, short }) => ({ value, label: short }))} />
+              <Menu modal={false}>
+                <MenuTrigger asChild>
+                  <Button variant="ghost" size="sm" icon={<Folder size={15} strokeWidth={1.75} />} iconRight={<ChevronDown size={13} />}>文件夹</Button>
+                </MenuTrigger>
+                <MenuContent align="end">
+                  <MenuItem icon={<Files size={15} />} checked={!folderId && filter === 'all' && !project} onSelect={() => browse(null)}>全部文件</MenuItem>
+                  {folders
+                    .map((folder) => ({ id: folder.id, path: libraryPath(entries, folder.id).map((entry) => entry.name).join(' / ') }))
+                    .sort((a, b) => a.path.localeCompare(b.path, 'zh-CN'))
+                    .map((folder) => (
+                      <MenuItem key={folder.id} icon={<Folder size={15} />} checked={folderId === folder.id && !project} onSelect={() => browse(folder.id)}>{folder.path}</MenuItem>
+                    ))}
+                  <MenuSeparator />
+                  <MenuItem icon={<FolderPlus size={15} />} disabled={busy} onSelect={newFolder}>新建文件夹</MenuItem>
+                </MenuContent>
+              </Menu>
+            </div>
+          )}
 
           {snapshot?.syncWarning && (
             <div className={s.banner} data-tone="warn" role="status">
@@ -619,6 +673,7 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation }: { ow
                 </div>
               </>
             )}
+          {!docked && <p className={s.storageNote}><HardDrive size={14} strokeWidth={1.75} /><span>{storageNote}</span></p>}
         </div>
 
         {selected.length > 0 && !project && (
@@ -634,11 +689,11 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation }: { ow
                 )
                 : (
                   <>
-                    {onUseInConversation && <Button variant="ghost" size="sm" icon={<MessageSquarePlus size={14} />} disabled={busy || !usable(picked)} onClick={() => sendToConversation(picked.map((entry) => entry.id))}>用于当前对话</Button>}
+                    {onUseInConversation && <Button variant="ghost" size="sm" icon={<MessageSquarePlus size={14} />} disabled={busy || !usable(picked)} onClick={() => sendToConversation(picked.map((entry) => entry.id))}><span className={s.longLabel}>用于当前对话</span><span className={s.shortLabel}>用于对话</span></Button>}
                     <Button variant="ghost" size="sm" icon={<GraduationCap size={14} />} disabled={busy || !usable(picked)} onClick={() => startForm('course')}>加入课程</Button>
                     <Button variant="ghost" size="sm" icon={<Pencil size={14} />} disabled={busy || selected.length !== 1} onClick={() => startForm('rename')}>重命名</Button>
                     <Button variant="ghost" size="sm" icon={<FolderInput size={14} />} disabled={busy} onClick={() => startForm('move')}>移动</Button>
-                    <Button variant="ghost" size="sm" icon={<Trash2 size={14} />} disabled={busy} onClick={() => updateMany({ trashed: true }, '已移入回收站，可随时恢复。')}>移入回收站</Button>
+                    <Button variant="ghost" size="sm" icon={<Trash2 size={14} />} disabled={busy} onClick={() => updateMany({ trashed: true }, '已移入回收站，可随时恢复。')}><span className={s.longLabel}>移入回收站</span><span className={s.shortLabel}>回收站</span></Button>
                   </>
                 )}
             </div>

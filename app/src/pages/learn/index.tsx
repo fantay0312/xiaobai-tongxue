@@ -8,7 +8,7 @@ import {
   type ComponentType, type FormEvent, type LazyExoticComponent, type ReactNode,
 } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { ArrowLeft, ArrowRight, Download, FileText, Info, Library, Sparkles, TriangleAlert, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Download, FileText, Info, Library, TriangleAlert, X } from 'lucide-react';
 import { useAllTopics } from '../../hooks/useAllTopics';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { useAuthStore } from '../../store/authStore';
@@ -55,9 +55,13 @@ import { Inspector } from './shell/Inspector';
 import { TerminalHeader, type InspectorPanel } from './shell/TerminalHeader';
 import { TerminalRail } from './shell/TerminalRail';
 import { TerminalSidebar, type CourseGroup } from './shell/TerminalSidebar';
+import { SidebarSlotProvider } from './shell/sidebarSlot';
+import { maybeDream } from '../../engine/dreams';
 import { TerminalWelcome } from './shell/TerminalWelcome';
-import { STUDY_TABS, VIEW_LABELS, isToolView, isView, useMediaQuery, type ToolView, type View } from './shell/views';
+import { STUDY_TABS, VIEW_LABELS, isToolView, isView, railKey, useMediaQuery, type ToolView, type View } from './shell/views';
+import { useKeyboardViewport } from './shell/useKeyboardViewport';
 import t from './terminal.module.css';
+import { IconSpark } from '../../components/ui/icons';
 
 const PrepPage = lazy(() => import('../prep'));
 const LibraryPage = lazy(() => import('../library/LibraryPage'));
@@ -159,6 +163,10 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
   const companionOn = useSkinStore((state) => state.companion);
   const shellActions = useShellActions();
   const isMobile = useMediaQuery('(max-width: 760px)');
+  // 进入终端时给两套记忆一次「做梦」整理的机会；是否真的做由引擎按间隔和新材料决定
+  useEffect(() => { maybeDream(owner); }, [owner]);
+  // 非对话板块的侧栏挂载位；侧栏收起或手机上不存在，板块会改在主区自带导航
+  const [sectionSlot, setSectionSlot] = useState<HTMLDivElement | null>(null);
   const workspaceKeyId = topicId || 'library-chat';
 
   const [workspace, setWorkspace] = useState<StudyWorkspace>(() => loadWorkspace(owner, workspaceKeyId));
@@ -311,7 +319,8 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
     if (libraryBlocked && next !== 'library') { setNotice('资料中有未保存的校订或正在提交的任务，请先完成后再切换。'); return; }
     setParams({ ...(next === 'ask' ? {} : { view: next }), ...extra });
     setNavSheetOpen(false);
-    if (next === 'library' || next === 'prepare') setInspectorPanel(null);
+    // 手机上侧面板是整屏的，换了视图就得让开
+    if (isMobile || next === 'library' || next === 'prepare') setInspectorPanel(null);
     setNotice('');
   };
   const openTopic = (id: string) => {
@@ -639,6 +648,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
     if (libraryBlocked) { setNotice('请先保存资料校订。'); return; }
     setParams({ view: 'studio', artifact: id });
     setNavSheetOpen(false);
+    if (isMobile) setInspectorPanel(null);
     setNotice('');
   };
   const verifiedSelection = async (signal: AbortSignal) => {
@@ -884,7 +894,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
           <ArtifactPanel key={artifact.id + artifact.kind} artifact={artifact} onUpdate={updateArtifact} onEnhance={() => void enhanceArtifact()} busy={busy} saveFailed={saveFailed} onSource={openSource} />
         ) : (
           <Empty
-            icon={<Sparkles size={22} strokeWidth={1.75} />}
+            icon={<IconSpark size={22} />}
             title="还没有打开产物"
             description="用所选资料创建导图、报告或课件，或打开已保存的产物。"
             action={<Button variant="solid" onClick={() => setInspectorPanel('tools')}>打开工具与产物</Button>}
@@ -926,17 +936,47 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
     );
   }
 
+  const chatSection = railKey(view) === 'ask';
+  // 手机上常驻伙伴只在对话页出现，站在输入框上沿；阅读与练习页不挡内容
+  const companionVisible = companionOn && view !== 'prepare' && view !== 'library' && !isToolView(view)
+    && !(isMobile && (view !== 'ask' || welcomeState || navSheetOpen || Boolean(inspectorPanel)));
+
+  /* ── 手机版面：键盘让位、标签条跟随、伙伴避开输入框 ── */
+  useKeyboardViewport(isMobile);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const dockRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // 当前学习方式的标签滑到可见处（闪卡、备课流程在窄屏上排在屏外）
+    const list = tabsRef.current?.querySelector<HTMLElement>('[role="tablist"]');
+    const active = list?.querySelector<HTMLElement>('[role="tab"][data-state="active"]');
+    if (!list || !active || list.scrollWidth <= list.clientWidth) return;
+    const box = list.getBoundingClientRect();
+    const item = active.getBoundingClientRect();
+    list.scrollLeft += item.left - box.left - (box.width - item.width) / 2;
+  }, [view, showTabs, isMobile]);
+  useEffect(() => {
+    // 输入框会长高（多行、附件）：把停靠区高度交给常驻伙伴，让它始终站在输入框上沿
+    const root = rootRef.current;
+    const dock = dockRef.current;
+    if (!root || !dock || !isMobile || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => root.style.setProperty('--dock-h', `${dock.offsetHeight}px`));
+    observer.observe(dock);
+    return () => { observer.disconnect(); root.style.removeProperty('--dock-h'); };
+  }, [showComposer, isMobile]);
+
   return (
-    <div className={t.terminal} data-sidebar={sidebarOpen ? 'open' : 'collapsed'} data-inspector={inspectorPanel && showPanels ? 'open' : undefined} data-view={view}>
+    <SidebarSlotProvider value={chatSection || !sidebarOpen || isMobile ? null : sectionSlot}>
+    <div ref={rootRef} className={t.terminal} data-sidebar={sidebarOpen ? 'open' : 'collapsed'} data-inspector={inspectorPanel && showPanels ? 'open' : undefined} data-view={view} data-companion={companionVisible || undefined}>
       <TerminalRail view={view} onView={(next) => switchView(next)} onMore={() => setNavSheetOpen(true)} />
 
-      <aside className={t.sidebar} aria-label="课程项目与对话">
-        <TerminalSidebar {...sidebarProps} onCollapse={() => setSidebar(false)} />
+      <aside className={t.sidebar} aria-label={chatSection ? '课程项目与对话' : `${VIEW_LABELS[view]}导航`}>
+        <TerminalSidebar {...sidebarProps} sectionSlot={setSectionSlot} onCollapse={() => setSidebar(false)} />
       </aside>
 
       <div className={t.workspace}>
         <TerminalHeader
-          topic={topic}
+          topic={chatSection ? topic : undefined}
           viewLabel={view === 'ask' ? undefined : viewTitle}
           sidebarOpen={sidebarOpen}
           onShowSidebar={() => (isMobile ? setNavSheetOpen(true) : setSidebar(true))}
@@ -966,7 +1006,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
         <div className={t.body}>
           <section className={t.main} aria-label="学习工作区">
             {showTabs && (
-              <div className={t.tabs}>
+              <div className={t.tabs} ref={tabsRef}>
                 <Tabs
                   label="学习方式"
                   value={view}
@@ -990,7 +1030,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
             )}
             {content}
             {showComposer && (
-              <div className={t.composerDock}>
+              <div className={t.composerDock} ref={dockRef} data-composer={view === 'ask' ? undefined : 'compact'}>
                 <Composer
                   input={input}
                   onInput={setInput}
@@ -1006,11 +1046,12 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
                   intelligentAvailable={intelligentAvailable}
                   demo={settings.mode === 'mock'}
                   sourceCount={selectedSources.length}
+                  freeChat={sources.length === 0}
                   attachments={(conversation.libraryFileIds ?? []).map((id) => ({ id, title: librarySources.find((source) => source.libraryFileId === id)?.title ?? '资料文件' }))}
                   onRemoveAttachment={(id) => attachFiles((conversation.libraryFileIds ?? []).filter((fileId) => fileId !== id))}
                   onAttach={() => setPickerOpen(true)}
                   onOpenSources={() => setInspectorPanel('sources')}
-                  placeholder={topic ? `向小砚提问「${topic.title}」…` : sources.length ? '依据所选资料向小砚提问…' : '想学什么，直接问小砚…'}
+                  placeholder={isMobile && view !== 'ask' ? '哪里没懂，问小砚…' : topic ? `向小砚提问「${topic.title}」…` : sources.length ? '依据所选资料向小砚提问…' : '想学什么，直接问小砚…'}
                 />
               </div>
             )}
@@ -1051,7 +1092,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
       </div>
 
       <Sheet open={isMobile && navSheetOpen} onOpenChange={setNavSheetOpen} title="小白同学" side="left" width={320} className={t.navSheet}>
-        <TerminalSidebar {...sidebarProps} mobile />
+        <TerminalSidebar {...sidebarProps} mobile onDismiss={() => setNavSheetOpen(false)} />
       </Sheet>
 
       <CommandPalette
@@ -1079,7 +1120,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
         />
       )}
 
-      {companionOn && view !== 'prepare' && view !== 'library' && !isToolView(view) && !(isMobile && (welcomeState || navSheetOpen || inspectorPanel)) && (
+      {companionVisible && (
         <StudyCompanion
           identity={identity}
           onChange={onIdentity}
@@ -1094,6 +1135,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
         />
       )}
     </div>
+    </SidebarSlotProvider>
   );
 }
 

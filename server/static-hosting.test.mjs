@@ -111,7 +111,7 @@ test('main and admin SPAs have isolated fallbacks and cache policies', async (co
     'https://turing.captcha.qcloud.com',
     'https://turing.captcha.gtimg.com',
   ]);
-  assert.deepEqual(directiveSources(mainCsp, 'connect-src'), ["'self'", 'https:']);
+  assert.deepEqual(directiveSources(mainCsp, 'connect-src'), ["'self'", 'https:', 'wss://asr.cloud.tencent.com']);
   assert.match(main.headers['Permissions-Policy'], /microphone=\(self\)/);
   assert.equal(main.body.toString(), '<main>Main SPA</main>');
 });

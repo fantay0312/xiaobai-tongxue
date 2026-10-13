@@ -1,8 +1,11 @@
 /**
- * 浏览器语音：朗读（speechSynthesis）与听写（SpeechRecognition）。
- * 都是浏览器本机能力，不经过服务器；不支持的浏览器里对应按钮不显示。
+ * 语音：朗读（浏览器 speechSynthesis）与听写。
+ * 听写优先用网关开通的实时语音识别（边说边出字，见 lib/realtimeAsr）；没有开通时退回浏览器自带的 SpeechRecognition。
+ * 两者都不可用时，对应按钮不显示。
  */
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useAuthStore } from '../../../store/authStore';
+import { realtimeAsrAvailable, startDictation, type Dictation } from '../../../lib/realtimeAsr';
 
 /* ── 朗读：全局同一时间只读一条 ── */
 let speakingId: string | null = null;
@@ -71,7 +74,9 @@ export function toggleSpeak(id: string, markdown: string): boolean {
   const synth = window.speechSynthesis;
   synth.cancel();
   const token = ++session;
-  const voice = synth.getVoices().find((item) => /^zh/i.test(item.lang));
+  // 优先本机语音：Chrome 自带的联网语音在国内经常连不上，会表现为点了没声音
+  const voices = synth.getVoices().filter((item) => /^zh/i.test(item.lang));
+  const voice = voices.find((item) => item.localService) ?? voices[0];
   const finish = () => { if (session === token) setSpeaking(null); };
   chunks.forEach((chunk, index) => {
     const utterance = new SpeechSynthesisUtterance(chunk);
@@ -109,9 +114,12 @@ function recognitionCtor(): RecognitionCtor | null {
 
 export const dictationSupported = recognitionCtor() !== null;
 
+/** 一次实时识别会话；连接途中句柄还没回来，先记下用户的意图 */
+interface LiveSession { handle: Dictation | null; muted: boolean; stopRequested: boolean }
+
 /**
- * 语音听写（zh-CN）：识别结果接在开始听写时的文字后面。
- * onError 收到浏览器的错误码（not-allowed、audio-capture、network…）。
+ * 语音听写：识别结果接在开始听写时的文字后面。
+ * onError 收到错误码：实时识别是 lib/realtimeAsr 的 DictationError，浏览器识别是浏览器自己的码（not-allowed、network…）。
  */
 export function useDictation({ getValue, onChange, onError, maxLength = 3000 }: {
   getValue: () => string;
@@ -120,15 +128,52 @@ export function useDictation({ getValue, onChange, onError, maxLength = 3000 }: 
   maxLength?: number;
 }) {
   const [listening, setListening] = useState(false);
+  const [realtime, setRealtime] = useState(false);
+  const user = useAuthStore((state) => state.user);
   const recognition = useRef<Recognition | null>(null);
+  const live = useRef<LiveSession | null>(null);
   const latest = useRef({ getValue, onChange, onError });
   latest.current = { getValue, onChange, onError };
 
+  useEffect(() => {
+    let alive = true;
+    void realtimeAsrAvailable().then((available) => { if (alive) setRealtime(available); });
+    return () => { alive = false; };
+  }, [user]);
+
+  const startLive = useCallback(() => {
+    if (live.current) return;
+    const session: LiveSession = { handle: null, muted: false, stopRequested: false };
+    live.current = session;
+    setListening(true);
+    const base = latest.current.getValue();
+    void startDictation({
+      onText: (committed, interim) => {
+        if (!session.muted) latest.current.onChange(`${base}${committed}${interim}`.slice(0, maxLength));
+      },
+      onError: (code) => { if (!session.muted) latest.current.onError?.(code); },
+      onEnd: () => {
+        if (live.current === session) live.current = null;
+        setListening(false);
+      },
+    }).then((handle) => {
+      session.handle = handle;
+      // 连接途中就点了结束或发送
+      if (session.muted) handle.cancel(); else if (session.stopRequested) handle.stop();
+    });
+  }, [maxLength]);
+
   const stop = useCallback(() => {
+    const session = live.current;
+    if (session) {
+      if (session.handle) session.handle.stop(); else session.stopRequested = true;
+      return;
+    }
     recognition.current?.stop();
   }, []);
 
   const start = useCallback(() => {
+    if (realtime) { startLive(); return; }
     const Ctor = recognitionCtor();
     if (!Ctor || recognition.current) return;
     const instance = new Ctor();
@@ -156,14 +201,21 @@ export function useDictation({ getValue, onChange, onError, maxLength = 3000 }: 
     } catch {
       latest.current.onError?.('start-failed');
     }
-  }, [maxLength]);
+  }, [maxLength, realtime, startLive]);
 
   const toggle = useCallback(() => {
-    if (recognition.current) stop(); else start();
+    if (live.current || recognition.current) stop(); else start();
   }, [start, stop]);
 
   /** 立即结束并丢弃还没落定的识别结果（发送时用，避免迟到的结果把文字写回输入框） */
   const cancel = useCallback(() => {
+    const session = live.current;
+    if (session) {
+      session.muted = true;
+      live.current = null;
+      session.handle?.cancel();
+      setListening(false);
+    }
     const instance = recognition.current;
     if (!instance) return;
     recognition.current = null;
@@ -175,10 +227,13 @@ export function useDictation({ getValue, onChange, onError, maxLength = 3000 }: 
   }, []);
 
   useEffect(() => () => {
+    const session = live.current;
+    live.current = null;
+    if (session) { session.muted = true; session.handle?.cancel(); }
     const instance = recognition.current;
     recognition.current = null;
     if (instance) { instance.onresult = null; instance.onerror = null; instance.onend = null; instance.abort(); }
   }, []);
 
-  return { listening, toggle, stop, cancel };
+  return { listening, supported: realtime || dictationSupported, toggle, stop, cancel };
 }
