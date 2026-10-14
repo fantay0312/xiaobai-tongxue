@@ -117,6 +117,7 @@ export function RepoFileView({ owner, repo, state, path, dock, addSignal, onOpen
   const remove = (entry: RepoEntry) => {
     const linked = classroomId(entry);
     if (linked) {
+      repoOps.remove(owner, repo, entry.id);
       deleteMemory(linked);
       syncXiaobaiRepo(owner);
       toast('已从课堂记忆里删掉这条');

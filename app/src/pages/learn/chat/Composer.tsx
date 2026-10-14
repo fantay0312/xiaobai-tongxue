@@ -305,6 +305,25 @@ export function Composer({
           onBlur={() => { if (query !== null) setDismissed(true); }}
         />
 
+        {intelligentAvailable && (
+          <div className={s.formatBar}>
+            <button
+              type="button"
+              className={s.formatSwitch}
+              role="switch"
+              aria-checked={interactive}
+              aria-label="互动回答"
+              onClick={() => onAnswerFormat(interactive ? 'text' : 'auto')}
+            >
+              <LayoutGrid {...ICON} />
+              <span>互动回答</span>
+              <span className={s.switchTrack} aria-hidden="true"><span /></span>
+              <strong>{interactive ? '已开启' : '已关闭'}</strong>
+            </button>
+            <span className={s.formatHint}>{interactive ? '下次回答按需生成卡片、图表或自测' : '下次回答只用文字'}</span>
+          </div>
+        )}
+
         <div className={s.toolbar} onClick={focusFromBlank}>
           <div className={s.tools}>
             <Menu>
@@ -326,16 +345,6 @@ export function Composer({
                         {item.label}
                       </MenuItem>
                     ))}
-                    {intelligentAvailable && (
-                      <MenuItem
-                        icon={<LayoutGrid {...ICON} />}
-                        hint="按需用卡片、对比表和小测验作答"
-                        checked={interactive}
-                        onSelect={() => onAnswerFormat(interactive ? 'text' : 'auto')}
-                      >
-                        互动回答
-                      </MenuItem>
-                    )}
                   </>
                 )}
                 {/* 已经写了内容时不提供：它会把输入换成「/」 */}
@@ -361,23 +370,6 @@ export function Composer({
                 ))}
               </MenuContent>
             </Menu>
-
-            {intelligentAvailable && (
-              <Tip label={interactive ? '互动回答已开启：按需用卡片、对比表和小测验作答' : '互动回答已关闭：只用文字作答'}>
-                <button
-                  type="button"
-                  className={s.pill}
-                  data-kind="interactive"
-                  data-on={interactive || undefined}
-                  aria-pressed={interactive}
-                  aria-label="互动回答"
-                  onClick={() => onAnswerFormat(interactive ? 'text' : 'auto')}
-                >
-                  <LayoutGrid {...ICON} />
-                  <span className={s.pillText}>互动回答</span>
-                </button>
-              </Tip>
-            )}
 
             <Tip label={sourceCount ? '查看本课资料' : freeChat ? '现在不带资料直接问；点这里可以添加资料' : '还没有选资料，点这里去选'}>
               <button
@@ -441,7 +433,7 @@ export function Composer({
       </form>
 
       <p className={s.foot}>
-        <span>回答基于所选资料，重要结论请核对原文</span>
+        <span>{freeChat && !sourceCount ? '当前未选择资料，回答基于通用知识，重要结论请核实' : '回答基于所选资料，重要结论请核对原文'}</span>
         {dictation.listening ? (
           <span className={s.footLive} role="status">正在听写，再点一次麦克风结束</span>
         ) : remaining <= 300 ? (

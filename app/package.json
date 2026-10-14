@@ -16,7 +16,7 @@
     "test:custom-content": "tsx scripts/custom-content-contract.test.ts && tsx scripts/custom-content-resilience.test.ts && tsx scripts/chunked-upload.test.ts",
     "test:growth": "tsx scripts/growth-hero-contract.test.ts && tsx scripts/memory-panorama-contract.test.ts && tsx scripts/growth-progress.test.ts",
     "test:feedback": "tsx scripts/ui-feedback-contract.test.ts",
-    "test:memory": "tsx scripts/learner-memory.test.ts",
+    "test:memory": "tsx scripts/learner-memory.test.ts && tsx scripts/memory-repo.test.ts",
     "test:qa-evidence": "tsx scripts/qa-evidence.test.ts",
     "test:sync": "tsx scripts/pending-sync.test.ts",
     "test:study": "tsx scripts/study-workspace.test.ts && tsx scripts/guided-study.test.ts && tsx scripts/study-tutor.test.ts && tsx scripts/notebook-workspace.test.ts && tsx scripts/file-library.test.ts && tsx scripts/intelligent-answer.test.ts && tsx scripts/scoped-storage.test.ts",

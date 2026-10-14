@@ -72,7 +72,7 @@ export const DEFAULT_GLOBAL: XiaobaiGlobal = {
 };
 
 // 直连凭据只允许本地开发使用；生产构建始终走服务端代理，避免密钥进入浏览器产物。
-const ENV_KEY = import.meta.env.DEV
+const ENV_KEY = import.meta.env?.DEV
   ? (import.meta.env.VITE_LLM_API_KEY as string | undefined)?.trim() ?? ''
   : '';
 const ENV_LLM_DEFAULT: LlmSettings | null = ENV_KEY
@@ -153,6 +153,8 @@ export interface AppState {
   customTopicsStatus: 'idle' | 'loading' | 'ready' | 'error';
   /** 学伴记忆:条目 + 画像 + 暂停开关;随账号同步,退出登录即清 */
   memory: MemoryState;
+  /** 当前课堂快照的账号；undefined 表示账号切换或远端载入尚未完成，不持久化。 */
+  historyOwner: string | null | undefined;
 
   topicState: (topicId: string) => TopicState;
   appendEvents: (drafts: EventDraft[], sessionId: string | null) => LearnEvent[];
@@ -227,6 +229,7 @@ export const useAppStore = create<AppState>()(
       customTopics: [],
       customTopicsStatus: 'idle',
       memory: EMPTY_MEMORY,
+      historyOwner: undefined,
 
       topicState: (topicId) => {
         const cached = get().topicStates[topicId];

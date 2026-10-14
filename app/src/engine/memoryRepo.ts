@@ -80,6 +80,8 @@ export interface RepoState {
   forgotten: string[];
   /** 旧版记忆是否已迁入 */
   migrated: boolean;
+  /** 清空或暂停后，旧的后台任务不得再写入。 */
+  workGeneration: string;
 }
 
 export const REPO_NAMES: Record<RepoId, string> = { xiaoyan: '小砚的记忆库', xiaobai: '小白的记忆库' };
@@ -282,7 +284,7 @@ function browserStorage(): Storage | null {
 }
 
 function emptyState(repo: RepoId): RepoState {
-  return { repo, files: {}, titles: {}, commits: [], paused: false, review: false, pending: null, cursor: null, forgotten: [], migrated: false };
+  return { repo, files: {}, titles: {}, commits: [], paused: false, review: false, pending: null, cursor: null, forgotten: [], migrated: false, workGeneration: '' };
 }
 
 function sanitizeSource(value: unknown): EntrySource {
@@ -369,6 +371,7 @@ function sanitizeState(repo: RepoId, value: unknown): RepoState {
   state.review = raw.review === true;
   state.cursor = isIso(raw.cursor) ? raw.cursor : null;
   state.migrated = raw.migrated === true;
+  state.workGeneration = typeof raw.workGeneration === 'string' ? raw.workGeneration : '';
   state.forgotten = (Array.isArray(raw.forgotten) ? raw.forgotten : []).filter((text): text is string => typeof text === 'string' && !!text).slice(0, FORGOTTEN_CAP);
   const pending = raw.pending && typeof raw.pending === 'object' ? raw.pending as Record<string, unknown> : null;
   if (pending && typeof pending.id === 'string' && isIso(pending.at)) {
@@ -437,8 +440,9 @@ function write(owner: string | null, state: RepoState) {
 
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (event) => {
-    if (!event.key || !event.key.startsWith(STORAGE_PREFIX)) return;
-    cache.delete(event.key);
+    if (event.key === null) cache.clear();
+    else if (event.key.startsWith(STORAGE_PREFIX)) cache.delete(event.key);
+    else return;
     emit();
   });
 }
@@ -704,20 +708,25 @@ export const repoOps = {
   revert(owner: string | null, repo: RepoId, commitId: string): RepoCommit | null {
     const target = read(owner, repo).commits.find((commit) => commit.id === commitId);
     if (!target || target.reverted) return null;
+    const restored = new Set<string>();
     const commit = commitRepo(owner, repo, 'user', `撤销：${target.message}`.slice(0, 160), (draft) => {
       for (const change of [...target.changes].reverse()) {
         if (!change.before && change.after) {
-          draft.remove(change.after.id);
+          const hit = draft.find(change.after.id);
+          if (matchesSnapshot(hit, change.path, change.after)) draft.remove(change.after.id);
         } else if (change.before && !change.after) {
-          if (!draft.find(change.before.id)) draft.add(change.path, change.before);
+          if (!draft.find(change.before.id)) {
+            draft.add(change.path, change.before);
+            restored.add(normalizeText(change.before.text));
+            restored.add(`id:${change.before.id}`);
+          }
         } else if (change.before && change.after) {
           const hit = draft.find(change.after.id);
-          if (hit && hit.entry.text === change.after.text) draft.update(change.after.id, change.before);
+          if (matchesSnapshot(hit, change.path, change.after)) draft.update(change.after.id, change.before);
         }
       }
     }, (state) => {
       // 撤销的是「删除」时，把它从「别再记回来」里拿掉
-      const restored = new Set(target.changes.flatMap((change) => (change.before && !change.after ? [normalizeText(change.before.text), `id:${change.before.id}`] : [])));
       return restored.size ? { forgotten: state.forgotten.filter((old) => !restored.has(old)) } : {};
     });
     if (!commit) return null;
@@ -728,7 +737,7 @@ export const repoOps = {
   },
 
   setPaused(owner: string | null, repo: RepoId, paused: boolean) {
-    patchState(owner, repo, (state) => (state.paused === paused ? null : { paused }));
+    patchState(owner, repo, (state) => (state.paused === paused ? null : { paused, workGeneration: newRepoId(), cursor: nowIso() }));
   },
 
   setReview(owner: string | null, repo: RepoId, review: boolean) {
@@ -753,10 +762,11 @@ export const repoOps = {
     if (!pending) return null;
     const chosen = pending.changes.filter((change) => !ids || ids.includes(change.id));
     if (!chosen.length) return null;
+    const applied = new Set<string>();
     const commit = commitRepo(owner, repo, 'dream', `做梦整理（我确认过）：${pending.title}`, (draft) => {
-      for (const change of chosen) applyProposalChange(draft, change);
+      for (const change of chosen) if (applyProposalChange(draft, change)) applied.add(change.id);
     });
-    const left = pending.changes.filter((change) => !chosen.includes(change));
+    const left = pending.changes.filter((change) => !applied.has(change.id));
     patchState(owner, repo, () => ({ pending: left.length ? { ...pending, changes: left } : null }));
     return commit;
   },
@@ -772,15 +782,23 @@ export const repoOps = {
   /** 清空整个记忆库（历史一并清掉）。暂停和审阅设置保留。 */
   clear(owner: string | null, repo: RepoId) {
     const state = read(owner, repo);
-    write(owner, { ...emptyState(repo), paused: state.paused, review: state.review, cursor: state.cursor, migrated: true });
+    write(owner, { ...emptyState(repo), paused: state.paused, review: state.review, cursor: nowIso(), migrated: true, workGeneration: newRepoId() });
   },
 };
+
+/** 后台观察次数不算手动修改；路径、内容、归类、来源和保护状态必须仍与快照一致。 */
+function matchesSnapshot(hit: { path: string; entry: RepoEntry } | null, path: string, expected: RepoEntry): boolean {
+  if (!hit || hit.path !== path) return false;
+  const { updatedAt: _a, seen: _b, ...actual } = hit.entry;
+  const { updatedAt: _c, seen: _d, ...before } = expected;
+  return JSON.stringify(actual) === JSON.stringify(before);
+}
 
 /** 落一处做梦提出的改动；带 toPath 的是「拿走旧的、在另一个文件写下新的」 */
 export function applyProposalChange(draft: RepoDraft, change: ProposalChange): boolean {
   if (!change.toPath || !change.before || !change.after) return applyChange(draft, change);
   const hit = draft.find(change.before.id);
-  if (!hit || hit.entry.text !== change.before.text) return false;
+  if (!matchesSnapshot(hit, change.path, change.before)) return false;
   draft.remove(change.before.id);
   draft.add(change.toPath, change.after);
   return true;
@@ -795,13 +813,13 @@ export function applyChange(draft: RepoDraft, change: RepoChange): boolean {
   }
   if (change.before && !change.after) {
     const hit = draft.find(change.before.id);
-    if (!hit || hit.entry.text !== change.before.text) return false;
+    if (!matchesSnapshot(hit, change.path, change.before)) return false;
     draft.remove(change.before.id);
     return true;
   }
   if (change.before && change.after) {
     const hit = draft.find(change.before.id);
-    if (!hit || hit.entry.text !== change.before.text) return false;
+    if (!matchesSnapshot(hit, change.path, change.before)) return false;
     draft.update(change.before.id, change.after);
     return true;
   }

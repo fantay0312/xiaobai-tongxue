@@ -196,7 +196,8 @@ export function validateLearningUi(value, sources, { salvage = false } = {}) {
   const ids = new Set();
   const blocks = list(value.blocks, 0, LEARNING_BLOCK_LIMIT).flatMap((block, index) => {
     if (!block || typeof block !== 'object' || !LEARNING_BLOCK_TYPES.includes(block.type)) bad();
-    const sourceIds = [...new Set(array(block.sourceIds, 1, 8).map(sourceId))];
+    // 自由问答没有资料可引用；仍逐项拒绝虚构的来源 id。
+    const sourceIds = [...new Set(array(block.sourceIds, allowed.size ? 1 : 0, 8).map(sourceId))];
     try {
       const id = text(block.id, 40);
       if (!/^[a-zA-Z0-9_-]+$/.test(id) || ids.has(id)) bad();

@@ -46,6 +46,7 @@ export function RepoHistory({ owner, repo, state, onOpenFile }: Props) {
     <>
       <ol className={r.history}>
         {commits.slice(0, shown).map((commit) => {
+          const classroomSync = commit.changes.some((change) => (change.before ?? change.after)?.id.startsWith('xb:') && !(change.before ?? change.after)?.id.endsWith(':fading'));
           const author = AUTHOR[commit.author];
           const expanded = open === commit.id;
           const files = expanded ? commitDiff(commit) : [];
@@ -64,9 +65,10 @@ export function RepoHistory({ owner, repo, state, onOpenFile }: Props) {
                     {commit.reverted && <span>已撤销</span>}
                   </span>
                 </button>
-                {!commit.reverted && (
+                {!commit.reverted && !classroomSync && (
                   <Button size="sm" variant="ghost" icon={<Undo2 size={14} strokeWidth={1.75} />} onClick={() => revert(commit)}>撤销</Button>
                 )}
+                {classroomSync && <span className={r.commitMeta}>随课堂记录更新</span>}
               </div>
               {expanded && (
                 <div className={r.diff}>

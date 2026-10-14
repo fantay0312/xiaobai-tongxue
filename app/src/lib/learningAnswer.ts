@@ -50,7 +50,7 @@ export function learningSelection(sources:NotebookSource[],topicId:string) {
 /** 小砚的记忆要点：最多 8 条、每条 200 字。读取失败不影响提问。 */
 function memoryHints(owner: string | null | undefined, topicId: string): string[] {
   try {
-    return tutorMemoryHints(owner ?? null, topicId && topicId !== 'library' ? topicId : undefined, 8)
+    return tutorMemoryHints(owner ?? null, topicId && topicId !== 'library' ? topicId : undefined, 6)
       .filter((line) => typeof line === 'string' && line.trim())
       .slice(0, 8)
       .map((line) => line.trim().slice(0, 200));

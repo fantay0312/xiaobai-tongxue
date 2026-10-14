@@ -142,7 +142,8 @@ const storeSource = await readFile(new URL('../src/store/appStore.ts', import.me
 const prepSource = await readFile(new URL('../src/pages/prep/index.tsx', import.meta.url), 'utf8');
 const learnSource = await readFile(new URL('../src/pages/learn/index.tsx', import.meta.url), 'utf8');
 const librarySource = await readFile(new URL('../src/pages/library/LibraryPage.tsx', import.meta.url), 'utf8');
-const shellCss = await readFile(new URL('../src/components/shell/AppShell.module.css', import.meta.url), 'utf8');
+const shellSource = await readFile(new URL('../src/components/shell/AppShell.tsx', import.meta.url), 'utf8');
+const workspaceCss = await readFile(new URL('../src/components/shell/workspace.module.css', import.meta.url), 'utf8');
 assert.match(appSource, /path="\/custom-content"/);
 assert.match(librarySource, /ProjectCompiler[\s\S]*compilerOnly/, '统一资料库必须直接承载课题解析与校订');
 assert.doesNotMatch(librarySource, /setMode\('courses'\)/, '不得重新分出课程资料页面');
@@ -175,7 +176,9 @@ assert.match(storeSource, /CUSTOM_TOPICS_RETRY_MS\[attempt\]/);
 assert.match(prepSource, /TEACHER_TOPIC_RETRY_MS\[attempt\]/);
 assert.match(appSource, /path="\/prep\/:topicId"[^\n]*<LearningPage/, '备课路由必须使用统一学习终端');
 assert.match(learnSource, /hydrateTeacherRuntimeTopic/, '完整备课稿仍由统一终端加载');
-assert.match(shellCss, /@media \(max-width: 520px\)[\s\S]*navGroup:has\(\.linkActive\) \.menuButton/);
+assert.match(shellSource, /label="打开导航"[\s\S]*setNavSheetOpen\(true\)/, '手机页面必须保留导航入口');
+assert.match(shellSource, /<Sheet open=\{navSheetOpen\}[\s\S]*<WorkspaceNavigation onNavigate=\{\(\) => setNavSheetOpen\(false\)\}/, '手机导航选中目的地后应关闭抽屉');
+assert.match(workspaceCss, /@media \(max-width: 760px\)[\s\S]*\.mobileBar\s*\{\s*display: flex/, '手机宽度显示顶部导航入口');
 assert.doesNotMatch(apiSource, /X-API-Key|WK_API_KEY|WeKnora.*key/i, '浏览器 API 层不得持有 WeKnora 凭据');
 
 console.log('custom content contract: 56 assertions passed');

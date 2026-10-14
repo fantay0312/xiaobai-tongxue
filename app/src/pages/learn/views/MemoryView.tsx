@@ -77,13 +77,14 @@ export default function MemoryView({ owner, topic, onOpenTopic, onView }: Termin
   const dreams = useDreams(owner);
   const activities = useActivities(owner);
   const events = useAppStore((st) => st.events);
+  const historyOwner = useAppStore((st) => st.historyOwner);
   const classroom = useAppStore((st) => st.memory);
   const level = useAppStore((st) => st.global.learningLevel);
   const setClassroomPaused = useAppStore((st) => st.setMemoryPaused);
 
   // 让两个记忆库跟上：读入新的学习行为（不只是对话），对账课堂记录
   useEffect(() => { syncTutorRepo(owner); }, [owner, activities]);
-  useEffect(() => { syncXiaobaiRepo(owner); }, [owner, events, classroom]);
+  useEffect(() => { syncXiaobaiRepo(owner); }, [owner, events, classroom, historyOwner]);
 
   const files = listFiles(state);
   const file = requested === DREAMS || requested === HISTORY || files.some((entry) => entry.path === requested) || (state.files[requested]?.length ?? 0) > 0

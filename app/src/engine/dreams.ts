@@ -18,7 +18,7 @@ import { ACTIVITY_LABELS, recentActivities } from './activityLog';
 import type { Activity } from './activityLog';
 import { leakageCheck } from './leakage';
 import { computeMastery, decayedMastery } from './memory';
-import { syncXiaobaiRepo } from './memory-repo/xiaobai';
+import { classroomReadyFor, syncXiaobaiRepo } from './memory-repo/xiaobai';
 import {
   PASSIVE_FILES, allEntries, applyProposalChange, commitRepo, coursePath, fileInfo, isProtectedEntry, isSensitiveMemoryText, lessonPath, loadRepo,
   newRepoId, repoOps, supportedBy, textSimilarity, topicIdOfPath,
@@ -633,7 +633,9 @@ function xiaoyanTitle(plan: Planner): string {
 }
 
 /** 一场梦收尾：改动直接提交，或存成待确认的提议；再留下梦境记录 */
-function finishDream(owner: string | null, repo: RepoId, plan: Planner, entry: Omit<DreamEntry, 'review'>): DreamEntry {
+function finishDream(owner: string | null, repo: RepoId, plan: Planner, entry: Omit<DreamEntry, 'review'>): DreamEntry | null {
+  const current = loadRepo(owner, repo);
+  if (current.workGeneration !== plan.repo.workGeneration || current.paused || (repo === 'xiaobai' && (!classroomReadyFor(owner) || useAppStore.getState().memory.paused))) return null;
   let saved: DreamEntry = entry;
   if (plan.changes.length) {
     if (loadRepo(owner, repo).review) {
@@ -1044,6 +1046,7 @@ export function dreamStatus(owner: string | null, who: Dreamer): DreamStatus {
 }
 
 function runDream(owner: string | null, who: Dreamer, manual: boolean): Promise<DreamEntry | null> {
+  if (who === 'xiaobai' && !classroomReadyFor(owner)) return Promise.resolve(null);
   const key = `${ownerKey(owner)}:${who}`;
   const active = running.get(key);
   if (active) return active;
@@ -1115,12 +1118,13 @@ export async function dreamNow(owner: string | null, who: Dreamer): Promise<Drea
 /** 小白最近一场梦里、关于这门课还想问的一句话；课堂开场可以带上。没有则为 null。 */
 export function xiaobaiDreamHint(owner: string | null, topicId: string): string | null {
   try {
-    const recent = readStore(owner).dreams.filter((dream) => dream.who === 'xiaobai' && Date.now() - Date.parse(dream.at) < 14 * DAY_MS);
-    for (const dream of recent) {
-      const question = dream.changes.find((change) => change.kind === 'question' && change.topicId === topicId);
-      if (!question) continue;
+    if (!classroomReadyFor(owner) || useAppStore.getState().memory.paused) return null;
+    const recent = (loadRepo(owner, 'xiaobai').files['questions.md'] ?? [])
+      .filter((entry) => entry.source.topicId === topicId && Date.now() - Date.parse(entry.updatedAt) < 14 * DAY_MS)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    for (const question of recent) {
       // 做完梦之后这门课又上过，那句话就算问过了
-      const taughtSince = useAppStore.getState().events.some((event) => event.topicId === topicId && event.sessionId && event.t > dream.at);
+      const taughtSince = useAppStore.getState().events.some((event) => event.topicId === topicId && event.sessionId && event.t > question.updatedAt);
       return taughtSince ? null : clip(question.text, 60);
     }
     return null;

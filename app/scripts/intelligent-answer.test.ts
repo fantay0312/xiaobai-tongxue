@@ -13,6 +13,10 @@ base.conversations[0].messages=[{id:'answer',role:'assistant',text:'解释',sour
 saveWorkspace('alice','course',base);
 assert.equal(loadWorkspace('alice','course').conversations[0].messages[0].interaction?.q1.choice,1);
 assert.equal(loadWorkspace('bob','course').conversations[0].messages.length,0);
+const free=emptyWorkspace();
+free.conversations[0].messages=[{id:'free',role:'assistant',text:'解释',sources:[],ui:{...ui,blocks:ui.blocks.map(block=>({...block,sourceIds:[]}))}}];
+saveWorkspace('alice','free',free);
+assert.equal(loadWorkspace('alice','free').conversations[0].messages[0].ui?.blocks[0].type,'quiz','free conversation cards must survive reload');
 assert.deepEqual(restoreLearningInteraction(ui,{q1:{choice:99,revealed:false},unknown:{checked:[1]}}),{q1:{revealed:false}});
 base.conversations[0].messages[0].run!.status='running';saveWorkspace('alice','course',base);
 assert.equal(loadWorkspace('alice','course').conversations[0].messages[0].run?.status,'stopped');

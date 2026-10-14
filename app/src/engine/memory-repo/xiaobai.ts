@@ -12,6 +12,7 @@ import type { EntrySource, RepoEntry } from '../memoryRepo';
 import { demonName } from '../story';
 
 const REPO = 'xiaobai' as const;
+export const classroomReadyFor = (owner: string | null) => useAppStore.getState().historyOwner === owner;
 interface Wanted { path: string; id: string; text: string; section?: string; source: EntrySource; pinned?: boolean; fileTitle?: string }
 
 /** 课堂数据此刻应该对应哪些条目 */
@@ -77,7 +78,7 @@ function wantedEntries(): Wanted[] {
 /** 把课堂数据对账进小白的记忆库。课堂记忆暂停时不动。返回这次有没有改动。 */
 export function syncXiaobaiRepo(owner: string | null): boolean {
   try {
-    if (useAppStore.getState().memory.paused) return false;
+    if (!classroomReadyFor(owner) || useAppStore.getState().memory.paused) return false;
     const wanted = wantedEntries();
     const wantedIds = new Set(wanted.map((entry) => entry.id));
     let added = 0;

@@ -164,6 +164,8 @@ export function resetTutorTraces(owner: string | null): void {
   const entry = readEntry(owner);
   writeEntry(owner, { ...entry, concepts: [], turns: [] });
   recentByOwner.delete(ownerKey(owner));
+  const pending = pendingByOwner.get(ownerKey(owner));
+  if (pending?.timer) clearTimeout(pending.timer);
   pendingByOwner.delete(ownerKey(owner));
 }
 
@@ -602,7 +604,7 @@ export function syncTutorRepo(owner: string | null): void {
 const EXTRACT_EVERY = 2;
 const EXTRACT_DELAY_MS = 1600;
 const UNAVAILABLE_COOLDOWN_MS = 5 * 60_000;
-interface PendingSlot { turns: Turn[]; activities: Activity[]; timer: ReturnType<typeof setTimeout> | null; running: boolean; runs: number; blockedUntil: number }
+interface PendingSlot { turns: Turn[]; activities: Activity[]; timer: ReturnType<typeof setTimeout> | null; running: boolean; runs: number; blockedUntil: number; generation: string }
 const pendingByOwner = new Map<string, PendingSlot>();
 
 const EXTRACT_SYSTEM = [
@@ -643,7 +645,8 @@ function parseExtraction(result: unknown, turn: Turn | undefined, activities: Ac
 }
 
 async function runExtraction(owner: string | null, slot: PendingSlot) {
-  if (slot.running || (!slot.turns.length && !slot.activities.length)) return;
+  const current = () => pendingByOwner.get(ownerKey(owner)) === slot && loadRepo(owner, REPO).workGeneration === slot.generation && !loadRepo(owner, REPO).paused;
+  if (!current() || slot.running || (!slot.turns.length && !slot.activities.length)) return;
   const turns = slot.turns.splice(0);
   const activities = slot.activities.splice(0).slice(-8);
   slot.running = true;
@@ -668,6 +671,7 @@ async function runExtraction(owner: string | null, slot: PendingSlot) {
       maxTokens: 900,
       temperature: 0.2,
     });
+    if (!current()) return;
     const drafts = parseExtraction(result, turns[turns.length - 1], activities);
     if (drafts.length) commitAuto(owner, drafts);
   } catch (error) {
@@ -675,7 +679,7 @@ async function runExtraction(owner: string | null, slot: PendingSlot) {
     if (error instanceof ModelUnavailableError) slot.blockedUntil = Date.now() + UNAVAILABLE_COOLDOWN_MS;
   } finally {
     slot.running = false;
-    if (slot.turns.length + slot.activities.length >= EXTRACT_EVERY) scheduleExtraction(owner, slot);
+    if (current() && slot.turns.length + slot.activities.length >= EXTRACT_EVERY) scheduleExtraction(owner, slot);
   }
 }
 
@@ -690,7 +694,10 @@ function scheduleExtraction(owner: string | null, slot: PendingSlot) {
 
 function queueExtraction(owner: string | null, turn?: Turn, activities: Activity[] = []) {
   const key = ownerKey(owner);
-  const slot = pendingByOwner.get(key) ?? { turns: [], activities: [], timer: null, running: false, runs: 0, blockedUntil: 0 };
+  const generation = loadRepo(owner, REPO).workGeneration;
+  const previous = pendingByOwner.get(key);
+  if (previous && previous.generation !== generation && previous.timer) clearTimeout(previous.timer);
+  const slot = previous?.generation === generation ? previous : { turns: [], activities: [], timer: null, running: false, runs: 0, blockedUntil: 0, generation };
   pendingByOwner.set(key, slot);
   if (turn) slot.turns = [...slot.turns, turn].slice(-4);
   if (activities.length) slot.activities = [...slot.activities, ...activities].slice(-8);
@@ -701,6 +708,7 @@ function queueExtraction(owner: string | null, turn?: Turn, activities: Activity
 /** 一轮答疑结束后调用：从问答里提炼值得长期记住的内容。不抛错、不阻塞界面。 */
 export function recordTutorTurn(owner: string | null, input: TutorTurnInput): void {
   try {
+    const generation = loadRepo(owner, REPO).workGeneration;
     const question = typeof input?.question === 'string' ? input.question.trim().slice(0, 1200) : '';
     if (question.length < 2) return;
     const turn: Turn = {
@@ -712,6 +720,7 @@ export function recordTutorTurn(owner: string | null, input: TutorTurnInput): vo
     // 放到下一个任务里做，调用方的渲染不等它
     setTimeout(() => {
       try {
+        if (loadRepo(owner, REPO).workGeneration !== generation) return;
         syncTutorRepo(owner);
         if (loadRepo(owner, REPO).paused) return;
         const { drafts, concepts } = observeQuestion(owner, readEntry(owner), turn);

@@ -42,6 +42,42 @@ test('file ownership denial stops before model call',async()=>{
 const request={question:'Summarize this source',format:'auto',topicId:'library',selection:{includeLecture:false,exampleIndices:[],assetIds:[],textSources:[],libraryFileIds:['file-1']}};
 const fileLibrary={sources:async()=>({sources:[],evidence:[{id:'chunk-1',title:'Arithmetic',excerpt:'Two plus two equals four.'}]})};
 
+test('free conversation supports interactive and text answers without inventing citations', async () => {
+  const calls=[], events=[];
+  const ungrounded={...ui,blocks:[{...ui.blocks[0],sourceIds:[]}]};
+  const service=createLearningAnswerService({baseUrl:'https://model.test',apiKey:'key',model:'model',
+    fileLibrary:{sources:async()=>{throw Error('unexpected file read');}},
+    fetchImpl:async(_url,options)=>{
+      const body=JSON.parse(options.body);calls.push(body);
+      return new Response(stream(body.response_format ? JSON.stringify(ungrounded) : '纯文字解释'));
+    }});
+  const input={...request,selection:{includeLecture:false,exampleIndices:[],assetIds:[],textSources:[],libraryFileIds:[]}};
+  await service.answer({id:'owner'},input,null,async(type,data)=>events.push({type,data}));
+  assert.equal(events.at(-1).data.ui.blocks[0].type,'quiz');
+  assert.deepEqual(events.at(-1).data.sources,[]);
+  assert.match(calls[0].messages[0].content,/没有提供资料/);
+  assert.match(calls[0].messages[0].content,/sourceIds 必须为 \[\]/);
+  await service.answer({id:'owner'},{...input,format:'text'},null,async(type,data)=>events.push({type,data}));
+  assert.equal(calls[1].response_format,undefined);
+  assert.equal(events.at(-1).data.ui,undefined);
+  assert.equal(events.at(-1).data.text,'纯文字解释');
+  assert.throws(()=>validateLearningUi(ui,[]),/invalid/,'ungrounded output must not invent S1');
+  assert.throws(()=>validateLearningUi(ungrounded,[{id:'S1'}]),/invalid/,'grounded output still requires references');
+  await assert.rejects(service.answer({id:'owner'},{...input,selection:{...input.selection,textSources:[{id:'bad',content:''}]}},null,async()=>{}),/study-selection-invalid/);
+});
+
+test('grounded text answers retain verified sources and do not request interactive JSON', async () => {
+  let sent;
+  const events=[];
+  const service=createLearningAnswerService({baseUrl:'https://model.test',apiKey:'key',model:'model',fileLibrary,
+    fetchImpl:async(_url,options)=>{sent=JSON.parse(options.body);return new Response(stream('解释 [1]'));}});
+  await service.answer({id:'owner'},{...request,format:'text'},null,async(type,data)=>events.push({type,data}));
+  assert.equal(sent.response_format,undefined);
+  assert.match(sent.messages[0].content,/仅依据本轮 sources/);
+  assert.equal(events.at(-1).data.ui,undefined);
+  assert.equal(events.at(-1).data.sources[0].id,'S1');
+});
+
 test('invalid interactive output is repaired once with the same authorized sources and combined usage',async()=>{
   const calls=[],events=[];
   const invalid=JSON.stringify({...ui,blocks:[{...ui.blocks[0],type:'knowledge_card',sourceIds:['foreign']} ]});

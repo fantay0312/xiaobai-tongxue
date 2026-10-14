@@ -530,7 +530,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
     };
 
     try {
-      if (!sources.length) {
+      if (!sources.length && !(intelligentAvailable && settings.mode === 'proxy' && mode !== 'deep')) {
         if (settings.mode === 'mock') {
           appendMessage(chatId, { id: studyId(), role: 'assistant', local: true, sources: [], scopeKey, text: '当前是本地演示，没有连接模型。打开一门课或添加资料后再问我，我会把相关原文找出来给你对照。' });
           answered = true;
@@ -1280,7 +1280,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
                   onSubmit={submit}
                   inputRef={composerRef}
                   deepAvailable={deepAvailable}
-                  intelligentAvailable={intelligentAvailable}
+                  intelligentAvailable={intelligentAvailable && settings.mode === 'proxy' && mode !== 'deep'}
                   demo={settings.mode === 'mock'}
                   sourceCount={selectedSources.length}
                   freeChat={sources.length === 0}

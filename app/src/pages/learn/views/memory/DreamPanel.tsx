@@ -5,13 +5,13 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MoonStar, Trash2 } from 'lucide-react';
-import { Badge, Button, Empty, IconButton, Shimmer, Switch } from '../../../../components/ui';
+import { Badge, Button, Empty, IconButton, Shimmer, Switch, toast } from '../../../../components/ui';
 import { useActivities } from '../../../../engine/activityLog';
 import {
   DREAM_INTERVAL_HOURS, applyDreamProposal, discardDreamProposal, dreamNow, dreamStatus, removeDream, setDreamReview, useDreams,
 } from '../../../../engine/dreams';
 import type { DreamChange, DreamEntry, Dreamer } from '../../../../engine/dreams';
-import { useRepo } from '../../../../engine/memoryRepo';
+import { loadRepo, useRepo } from '../../../../engine/memoryRepo';
 import type { ProposalKind } from '../../../../engine/memoryRepo';
 import { useAppStore } from '../../../../store/appStore';
 import { DiffLines } from './repoShared';
@@ -94,6 +94,12 @@ export function DreamPanel({ owner, who }: Props) {
   }, [owner, who]);
 
   const name = NAME[who];
+  const apply = (ids?: string[]) => {
+    applyDreamProposal(owner, who, ids);
+    const remaining = loadRepo(owner, who).pending?.changes.filter((change) => !ids || ids.includes(change.id)).length ?? 0;
+    if (remaining) toast('部分记忆已被修改，保留了你的修改。请核对后丢弃旧建议。');
+    else toast.success('已采纳，记忆库已更新');
+  };
   const run = async () => {
     setBusy(true);
     setNote(null);
@@ -181,7 +187,7 @@ export function DreamPanel({ owner, who }: Props) {
             </div>
             <div className={r.proposalActions}>
               <Button size="sm" variant="ghost" onClick={() => discardDreamProposal(owner, who)}>全部丢弃</Button>
-              <Button size="sm" variant="solid" onClick={() => applyDreamProposal(owner, who)}>全部采纳</Button>
+              <Button size="sm" variant="solid" onClick={() => apply()}>全部采纳</Button>
             </div>
           </div>
           <ul className={r.proposalList}>
@@ -194,7 +200,7 @@ export function DreamPanel({ owner, who }: Props) {
                   </span>
                   <span className={r.proposalActions}>
                     <Button size="sm" variant="ghost" onClick={() => discardDreamProposal(owner, who, [change.id])}>丢弃</Button>
-                    <Button size="sm" variant="outline" onClick={() => applyDreamProposal(owner, who, [change.id])}>采纳</Button>
+                    <Button size="sm" variant="outline" onClick={() => apply([change.id])}>采纳</Button>
                   </span>
                 </div>
                 <DiffLines changes={[change]} />

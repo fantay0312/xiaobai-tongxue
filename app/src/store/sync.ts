@@ -54,7 +54,7 @@ function replaceLocal(state: SyncPayload): void {
   try {
     revokeLiveImages(useAppStore.getState().live);
     // 切换账号时上一位的记忆不得留在本地:远端没有就置空
-    useAppStore.setState({ ...state, memory: state.memory ?? EMPTY_MEMORY, topicStates: {}, live: null });
+    useAppStore.setState({ ...state, memory: state.memory ?? EMPTY_MEMORY, topicStates: {}, live: null, historyOwner: syncedUser ?? undefined });
     useAppStore.getState().rebuildStates();
   } finally { applyingRemote = false; }
 }
@@ -263,6 +263,7 @@ export function initStateSync(): void {
     const authKey = `${status}\0${user ?? ''}\0${restricted ? 'restricted' : 'ready'}`;
     if (authKey === observedAuthKey) return;
     observedAuthKey = authKey;
+    useAppStore.setState({ historyOwner: status === 'standalone' ? null : undefined });
     // 退出登录:记忆随账号走,本地切片清空(不经 authStore,免得它牵入 appStore)
     if (previousStatus === 'authed' && status === 'anon') {
       applyingRemote = true;
