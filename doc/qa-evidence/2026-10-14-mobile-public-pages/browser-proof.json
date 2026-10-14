@@ -1,0 +1,63 @@
+{
+  "login": {
+    "buttons": [
+      {
+        "height": 44,
+        "label": "密码"
+      },
+      {
+        "height": 44,
+        "label": "邮箱验证码"
+      },
+      {
+        "height": 44,
+        "label": "手机验证码"
+      },
+      {
+        "height": 44,
+        "label": "显示密码"
+      },
+      {
+        "height": 44,
+        "label": "忘记密码？"
+      },
+      {
+        "height": 48,
+        "label": "登录"
+      },
+      {
+        "height": 44,
+        "label": "注册"
+      }
+    ],
+    "inputs": [
+      {
+        "fontSize": "16px",
+        "type": "text"
+      },
+      {
+        "fontSize": "16px",
+        "type": "password"
+      }
+    ],
+    "pageWidth": 320,
+    "url": "https://xiaobai.tokentosea.com/?release=cd303b2#/login",
+    "viewport": {
+      "height": 720,
+      "width": 320
+    }
+  },
+  "landing": {
+    "width": 390,
+    "pageWidth": 390,
+    "headerTargetHeights": [
+      44,
+      44,
+      44
+    ],
+    "gallerySelected": "翻译批改",
+    "galleryScrollLeft": 949.5
+  },
+  "engine": "Chromium via Codex in-app browser",
+  "touchSimulation": "unavailable; horizontal browser scrolling and button navigation verified"
+}

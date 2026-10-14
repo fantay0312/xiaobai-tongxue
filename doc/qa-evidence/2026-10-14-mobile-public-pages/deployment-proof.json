@@ -1,0 +1,14 @@
+{
+  "release": "20261014-mobile-cd303b2",
+  "gitCommit": "cd303b295018165b964994a321ff27a085ca23a7",
+  "backup": "/var/backups/xiaobai/20261014-mobile-cd303b2",
+  "previousDist": "/opt/xiaobai/dist.prev-20261014-mobile-cd303b2",
+  "filesVerified": 646,
+  "retainedHashedAssets": 42,
+  "secretScan": "passed",
+  "service": "active",
+  "gatewayPidUnchanged": true,
+  "rootMatchesBuild": true,
+  "authRequired": true,
+  "serverCommit": "ca9a57956956421fba9a3ecd03b389b8ca01eb74"
+}

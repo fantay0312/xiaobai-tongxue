@@ -1,0 +1,61 @@
+{
+  "url": "https://xiaobai.tokentosea.com",
+  "rootMatchesBuild": true,
+  "assetChecks": [
+    {
+      "path": "/assets/appStore-BIfXz6qy.js",
+      "sha256": "59562ee1b494fba1601351a75b24c5342138f9317053c8a1e1c16e6aebc97658",
+      "matchesBuild": true
+    },
+    {
+      "path": "/assets/index-BBYrUgvG.css",
+      "sha256": "7a0a52b54ceafd71e7303a93bcd7c0bd2703ac97ba8bab717ee3c92b7e93d6c7",
+      "matchesBuild": true
+    },
+    {
+      "path": "/assets/index-BO4btYuF.js",
+      "sha256": "7f334f9d29fb9d7409d8b9acf038c192af02941b3bbc7ee04d0883f66a9f9e24",
+      "matchesBuild": true
+    },
+    {
+      "path": "/assets/landing-D-zPg0Ub.js",
+      "sha256": "713be2531bf37a13e3a625653b882fb930ee3852bf6990f07b5d32026d15ac78",
+      "matchesBuild": true
+    },
+    {
+      "path": "/assets/landing-DED4LNL1.css",
+      "sha256": "d8d25caf66e0bd9bd825d3c458117fda46d1b89419cc58d69f841da4d5c01058",
+      "matchesBuild": true
+    },
+    {
+      "path": "/assets/llm-DUasHg3J.js",
+      "sha256": "ac61fef33edf767f450600cf796b03ae31146e57c795e8aeb3187cd31997c206",
+      "matchesBuild": true
+    },
+    {
+      "path": "/assets/login-C1atvkaQ.js",
+      "sha256": "5faac51151571a61e21c11ba5b9531f1866ac1e4aea86029695647340401f78e",
+      "matchesBuild": true
+    },
+    {
+      "path": "/assets/login-DudwwEhd.css",
+      "sha256": "fd0479b7a80e6f91e68092470f0fc0c40010831680c5258dc082b25de0929c98",
+      "matchesBuild": true
+    },
+    {
+      "path": "/assets/rolldown-runtime-DAXXjFlN.js",
+      "sha256": "152d561ebfda45259b1bd8a6ea69fdfd98bb2ea4f7a1bf1e0eba68b2d08cca41",
+      "matchesBuild": true
+    },
+    {
+      "path": "/assets/topics-BsLcbcvC.js",
+      "sha256": "859efe67cea87b9dab21ce7e169e0ab0994ae7fb197302b4170b8828fe92c123",
+      "matchesBuild": true
+    },
+    {
+      "path": "/assets/vendor-d6HjHU_y.js",
+      "sha256": "44c4aec6dd88a65e66a54e4210986fbfe2ac59101abef76ac860394d286a507b",
+      "matchesBuild": true
+    }
+  ]
+}
