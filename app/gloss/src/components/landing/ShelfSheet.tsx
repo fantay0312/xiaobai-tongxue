@@ -180,8 +180,8 @@ export function ShelfSheet({
                 ref={inputRef}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder={view === "highlights" ? "搜索高亮与笔记" : "Find a title or author"}
-                aria-label={view === "highlights" ? "搜索高亮与笔记" : "Find a title or author"}
+                placeholder={view === "highlights" ? "搜索高亮与笔记" : "查找标题或作者"}
+                aria-label={view === "highlights" ? "搜索高亮与笔记" : "查找标题或作者"}
                 className="h-full min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-ink-4 focus-visible:outline-none"
               />
             </label>

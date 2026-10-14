@@ -306,7 +306,7 @@ function Agent({ signedIn }: { signedIn: boolean }) {
     const res = await fetch("/api/agent-tokens", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ label }) });
     const j = (await res.json().catch(() => ({}))) as { id?: string; token?: string; label?: string; error?: string };
     setBusy(false);
-    if (!res.ok || !j.token || !j.id) return setErr(j.error ?? "Could not make a connection. Try again.");
+    if (!res.ok || !j.token || !j.id) return setErr(j.error ?? "无法创建连接，请重试。");
     setMade({ token: j.token, label: j.label ?? label });
     setConns((c) => [{ id: j.id!, label: j.label ?? label, createdAt: new Date().toISOString(), lastUsedAt: null }, ...(c ?? [])]);
   };

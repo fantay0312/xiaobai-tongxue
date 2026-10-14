@@ -130,7 +130,7 @@ export function TopBar({ currentN, pastTitle, listenFrom }: { currentN: number |
             onClick={() => setUI({ notebookOpen: !notebookOpen })}
             aria-pressed={notebookOpen}
             aria-label="笔记本"
-            data-tip={notebookOpen ? "关闭笔记本" : "Your notes and highlights"}
+            data-tip={notebookOpen ? "关闭笔记本" : "你的笔记和高亮"}
             data-tip-kbd="N"
           >
             <NotebookPen size={16} strokeWidth={1.8} />

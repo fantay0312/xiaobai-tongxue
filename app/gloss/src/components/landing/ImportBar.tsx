@@ -52,7 +52,7 @@ export const ImportBar = forwardRef<HTMLInputElement, Props>(function ImportBar(
             onClick={() => onSave(url)}
             aria-label="保存到你的书库"
             data-tip="稍后阅读"
-            data-tip-hint="Into your library, sorted by topic"
+            data-tip-hint="收入书库，自动按主题整理"
             className="grid size-12 shrink-0 place-items-center rounded-[13px] text-ink-2 transition-[background-color,color,transform] hover:bg-sunk hover:text-ink active:scale-[0.95]"
             style={{ animation: "fade 0.2s both" }}
           >

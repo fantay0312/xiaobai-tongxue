@@ -28,8 +28,8 @@ const ICONS: Partial<Record<Action, LucideIcon>> = {
 
 /** Questions people reach for, offered while the box is still empty. */
 const STARTERS = {
-  word: ["Why this word here?", "Where does it come from?", "Use it in a sentence"],
-  passage: ["举个例子", "Why does it matter?", "What is the evidence?"],
+  word: ["这里为什么用这个词？", "它的来源是什么？", "用它造个句子"],
+  passage: ["举个例子", "它为什么重要？", "有什么证据？"],
 };
 
 /**

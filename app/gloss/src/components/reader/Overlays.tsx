@@ -35,7 +35,7 @@ const KEYS: [string, string][] = [
   ["N", "笔记本"],
   ["F", "专注模式"],
   ["Esc", "关闭或返回"],
-  ["?", "This list"],
+  ["?", "此列表"],
 ];
 
 export function Shortcuts() {

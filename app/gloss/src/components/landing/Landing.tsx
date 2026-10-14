@@ -111,7 +111,7 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
     if (!raw) return;
     // Off the address bar, so a reload or a shared screenshot does not import it again.
     window.history.replaceState(null, "", `${import.meta.env.BASE_URL}#/`);
-    if (!looksLikeUrl(raw)) return setError("That does not look like a link.");
+    if (!looksLikeUrl(raw)) return setError("这看起来不是有效链接。");
     const known = useStore.getState().library.find((x) => x.sourceUrl && normalizeUrl(x.sourceUrl) === normalizeUrl(raw));
     if (known) return later ? setSaved({ id: known.id, title: known.title }) : go(known.id);
     setUrl(raw);

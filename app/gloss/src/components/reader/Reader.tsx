@@ -508,7 +508,7 @@ function ReaderInner({ article }: { article: Article }) {
                 <div className="focus-hide rise mt-8 flex items-center gap-4 border-t border-rule pt-5" style={{ animationDelay: "140ms" }}>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[14.5px] leading-snug text-ink">
-                      {article.author ? <span className="font-medium">{article.author}</span> : <span className="font-medium">{kicker ?? "Untitled source"}</span>}
+                      {article.author ? <span className="font-medium">{article.author}</span> : <span className="font-medium">{kicker ?? "未命名来源"}</span>}
                       {article.published && <span className="text-ink-3">{`  \u00b7  ${article.published}`}</span>}
                     </p>
                     <p className="mt-1 text-[13px] leading-snug text-ink-3">

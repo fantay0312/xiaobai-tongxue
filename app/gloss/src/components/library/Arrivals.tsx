@@ -53,7 +53,7 @@ export function Arrivals({
   }, [books]);
 
   const mark = markFor(wave.via);
-  const who = wave.agent ? (mark ? MARK_NAMES[mark] : wave.via || "Your agent") : null;
+  const who = wave.agent ? (mark ? MARK_NAMES[mark] : wave.via || "你的助手") : null;
   const n = books.length;
   const latest = books[n - 1];
   const shown = books.slice(-SHOWN);
