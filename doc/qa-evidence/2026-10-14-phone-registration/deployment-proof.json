@@ -1,0 +1,23 @@
+{
+  "release": "20261014-phone-register-11c8584",
+  "sourceCommit": "11c8584b2ea60d3194e18007ad5265318c9012dd",
+  "backup": "/var/backups/xiaobai/20261014-phone-register-11c8584",
+  "rollbackRuntime": "/var/backups/xiaobai/20261014-phone-register-11c8584/runtime-before-switch",
+  "candidateChecks": "passed",
+  "databaseClone": {
+    "restoredDatabase": true,
+    "phoneOnlyPersisted": true,
+    "duplicatePhoneRolledBack": true,
+    "optionalVerifiedEmailPersisted": true
+  },
+  "secretScan": "passed",
+  "service": "active",
+  "http": {
+    "/": 200,
+    "/api/me": 200,
+    "/api/commerce/catalog": 200,
+    "/admin/": 200,
+    "/api/admin/v1/auth/me": 401
+  },
+  "retainedHashedAssets": 80
+}

@@ -1,0 +1,15 @@
+{
+  "rootMatchesBuild": true,
+  "registrationAvailable": true,
+  "smsAuthAvailable": true,
+  "assets": [
+    {
+      "file": "login-DudwwEhd.css",
+      "sha256": "fd0479b7a80e6f91e68092470f0fc0c40010831680c5258dc082b25de0929c98"
+    },
+    {
+      "file": "login-yjjY8YPK.js",
+      "sha256": "3327e386c4c65d134b002112be8af0dca9aa6f1beec23289b6724c0dc95bca57"
+    }
+  ]
+}
