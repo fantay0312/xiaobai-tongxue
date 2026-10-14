@@ -1,13 +1,133 @@
-/* 第一章「学」的界面碎片：可互动的回答、资料勾选、思考强度。 */
+/* 第一章「学」：页签 + 每个页签一段说明和一块复刻的终端界面；下面是模型与思考。 */
 
-.answer {
-  padding: clamp(14px, 2vw, 20px);
+@keyframes formIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
 }
 
-.answer .formTabs {
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── 页签与分栏 ── */
+.tour .tabBar {
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tour .tabBar::-webkit-scrollbar {
+  display: none;
+}
+
+.tour .tabBar [role='tab'] {
+  flex: none;
+  height: 48px;
+  padding: 0 14px;
+  font-size: var(--fz-lg);
+}
+
+.tour .tabBar [role='tab'] svg {
+  color: var(--text-3);
+}
+
+.tour .tabBar [role='tab'][data-state='active'] svg {
+  color: var(--text);
+}
+
+.pane {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  align-items: start;
+  gap: 32px clamp(32px, 4vw, 56px);
+  margin-top: clamp(28px, 4vh, 40px);
+  border-radius: var(--r-xl);
+}
+
+/* Radix 给未选中的页签面板留一个带 hidden 的空壳；上面的 display 会盖过它 */
+.pane[hidden] {
+  display: none;
+}
+
+.pane:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.modelPane {
+  margin-top: clamp(56px, 8vh, 88px);
+}
+
+.caption {
+  padding-top: 6px;
+}
+
+.caption h3 {
+  font-size: var(--fz-3xl);
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.caption > p {
+  margin-top: 12px;
+  color: var(--text-2);
+  font-size: var(--fz-lg);
+  line-height: 1.8;
+  text-wrap: pretty;
+}
+
+.kinds {
+  display: flex;
   flex-wrap: wrap;
+  gap: 6px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
 }
 
+.kinds li {
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+
+.checks {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+
+.checks li {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 10px;
+  color: var(--text-2);
+  font-size: var(--fz-md);
+  line-height: 1.6;
+}
+
+.checks svg {
+  margin-top: 3px;
+  color: var(--ok);
+}
+
+.stage {
+  min-width: 0;
+}
+
+/* ── 对话里的公共小件 ── */
 .ask {
   width: fit-content;
   max-width: 88%;
@@ -16,43 +136,66 @@
   border-radius: var(--r-xl) var(--r-xl) var(--r-xs) var(--r-xl);
   background: var(--inset);
   font-size: var(--fz-md);
+  line-height: 1.6;
 }
 
-@keyframes formIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: none; }
+.cited > .ask,
+.interrupt > .ask,
+.deepRun > .ask {
+  margin-top: 0;
 }
 
-.formBody {
-  display: grid;
-  align-content: center;
-  min-height: 236px;
+.replyHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-top: 14px;
-  animation: formIn var(--dur-3) var(--ease) backwards;
 }
 
-.formTitle {
-  font-size: var(--fz-lg);
+.replyHead strong {
+  font-size: var(--fz-md);
   font-weight: 600;
 }
 
-.formFoot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 12px;
-  min-height: 24px;
-  margin-top: 12px;
-  color: var(--text-3);
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--solid);
+  color: var(--on-solid);
   font-size: var(--fz-sm);
-  line-height: 1.6;
+  font-weight: 600;
+}
+
+.replyMeta {
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.5;
+}
+
+.replyText {
+  margin-top: 10px;
+  font-size: var(--fz-lg);
+  line-height: 1.85;
+  text-wrap: pretty;
+}
+
+.var {
+  font-family: KaTeX_Math, KaTeX_Main, 'Times New Roman', serif;
+  font-style: italic;
 }
 
 .linkButton {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
+  gap: 6px;
+  padding: 4px 8px;
   border: 0;
   border-radius: var(--r-sm);
   background: none;
@@ -75,7 +218,61 @@
   box-shadow: 0 0 0 3px var(--ring);
 }
 
-/* ── 测验 ── */
+/* ════ 互动回答 ════ */
+.answer {
+  padding: clamp(14px, 2vw, 20px);
+}
+
+.answer .formTabs {
+  flex-wrap: wrap;
+}
+
+.formBody {
+  display: grid;
+  align-content: center;
+  min-height: 236px;
+  margin-top: 12px;
+  animation: formIn var(--dur-3) var(--ease) backwards;
+}
+
+.formTitle {
+  font-size: var(--fz-lg);
+  font-weight: 600;
+}
+
+.formFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  min-height: 24px;
+  margin-top: 12px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+
+.answerFoot {
+  display: flex;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.answerFoot .linkButton {
+  margin-left: -8px;
+}
+
+.plainText p {
+  font-size: var(--fz-lg);
+  line-height: 1.85;
+}
+
+.plainText p + p {
+  margin-top: 8px;
+}
+
+/* 测验 */
 .quizOptions {
   display: grid;
   gap: 8px;
@@ -160,7 +357,7 @@
   opacity: 0.55;
 }
 
-/* ── 闪卡 ── */
+/* 翻面卡 */
 .cardForm {
   display: grid;
 }
@@ -227,7 +424,7 @@
   box-shadow: inset 0 0 0 1px var(--border-2), 0 0 0 3px var(--ring);
 }
 
-/* ── 对比表 ── */
+/* 对比 */
 .tableWrap {
   overflow: hidden;
   border-radius: var(--r-lg);
@@ -273,26 +470,40 @@
   font-weight: 500;
 }
 
-/* ── 计划 ── */
-.plan ol,
-.steps {
+/* 学习安排 */
+.plan {
   display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
-.plan li {
+.planItem {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 2px;
+  width: 100%;
+  min-height: 46px;
+  padding: 8px 6px;
+  border: 0;
   border-bottom: 1px solid var(--border);
-  font-size: var(--fz-md);
-  line-height: 1.5;
+  background: none;
+  color: var(--text);
+  font: 400 var(--fz-md) / 1.5 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
 }
 
-.plan li > i {
+.planItem:hover {
+  background: var(--hover);
+}
+
+.planItem:focus-visible {
+  outline: none;
+  border-radius: var(--r-sm);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.planItem > i,
+.check {
   display: grid;
   flex: none;
   place-items: center;
@@ -301,46 +512,47 @@
   border-radius: 6px;
   box-shadow: inset 0 0 0 1.5px var(--border-2);
   color: var(--on-accent);
+  transition: background var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
 }
 
-.plan li[data-done] > i {
-  background: var(--accent);
-  box-shadow: none;
+.planItem > span {
+  flex: 1;
 }
 
-.plan li > span {
+.planItem > small {
   flex: none;
   color: var(--text-3);
   font-size: var(--fz-sm);
   font-variant-numeric: tabular-nums;
 }
 
-.plan li[data-done] {
+.planItem[aria-checked='true'] {
   color: var(--text-3);
 }
 
-.planAdd {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  width: fit-content;
-  height: 30px;
-  margin-top: 14px;
-  padding: 0 12px;
-  border-radius: var(--r-md);
-  background: var(--inset);
-  color: var(--text-2);
-  font-size: var(--fz-sm);
-  font-weight: 500;
+.planItem[aria-checked='true'] > span {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-4);
 }
 
-/* ── 公式推导 ── */
+.planItem[aria-checked='true'] > i,
+[aria-checked='true'] > .check {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+/* 分步推导 */
 .steps {
-  counter-reset: step;
+  display: grid;
   gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
 }
 
 .steps li {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -352,7 +564,6 @@
   color: var(--text-2);
   font-size: var(--fz-md);
   counter-increment: step;
-  position: relative;
 }
 
 .steps li::before {
@@ -371,13 +582,8 @@
   font: 600 var(--fz-xs) / 1 var(--ui-mono);
 }
 
-.steps i,
-.math i {
-  font-family: KaTeX_Math, KaTeX_Main, 'Times New Roman', serif;
-  font-style: italic;
-}
-
-.math {
+.math,
+.display {
   color: var(--text);
   font-family: KaTeX_Main, 'Times New Roman', var(--ui-font);
   font-size: 19px;
@@ -386,11 +592,14 @@
 }
 
 .math sup,
-.math sub {
+.math sub,
+.display sub,
+.plainText sup,
+.plainText sub {
   font-size: 0.7em;
 }
 
-/* ── 图表 ── */
+/* 图表 */
 .chart {
   display: grid;
   gap: 16px;
@@ -437,18 +646,875 @@
   white-space: nowrap;
 }
 
-/* ── 资料与强度两张小卡 ── */
+/* ════ 资料与出处 ════ */
+.sourcesStage {
+  display: grid;
+  gap: clamp(10px, 1.6vw, 16px);
+}
+
+.library {
+  overflow: hidden;
+}
+
+.libHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fz-md);
+}
+
+.libHead strong {
+  font-weight: 600;
+}
+
+.crumb {
+  color: var(--text-3);
+}
+
+.libCount {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
+
+.libBody {
+  display: grid;
+  grid-template-columns: 172px minmax(0, 1fr);
+}
+
+.tree {
+  display: grid;
+  align-content: start;
+  gap: 1px;
+  padding: 10px 8px;
+  border-right: 1px solid var(--border);
+  background: var(--sidebar);
+}
+
+.treeItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+}
+
+.treeItem svg {
+  flex: none;
+  color: var(--text-3);
+}
+
+.treeItem[data-on] {
+  background: var(--active);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.treeLabel {
+  padding: 12px 8px 4px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+
+.files {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 6px;
+}
+
+.file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 54px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+
+.file:hover {
+  background: var(--hover);
+}
+
+.file:active {
+  background: var(--active);
+}
+
+.file:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.file > svg {
+  flex: none;
+  color: var(--text-3);
+}
+
+.fileText {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.fileName {
+  color: var(--text);
+  font-size: var(--fz-md);
+  font-weight: 500;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.fileMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.5;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px;
+  border-radius: var(--r-full);
+  font-size: var(--fz-xs);
+  font-weight: 500;
+}
+
+.status[data-tone='done'] {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.status[data-tone='running'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.status[data-tone='running']::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status[data-tone='idle'] {
+  box-shadow: inset 0 0 0 1px var(--border-2);
+  color: var(--text-2);
+}
+
+.cited {
+  padding: clamp(14px, 2vw, 20px);
+}
+
+.citedText {
+  margin-top: 10px;
+  font-size: var(--fz-lg);
+  line-height: 1.9;
+  text-wrap: pretty;
+}
+
+.citedNote {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+
+.cite {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  margin: 0 3px 0 2px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 600 var(--fz-xs) / 1 var(--ui-mono);
+  vertical-align: 2px;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+
+.cite:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.cite[aria-expanded='true'] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.cite:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.excerpt {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--r-lg);
+  background: var(--sidebar);
+  box-shadow: inset 0 0 0 1px var(--border);
+  animation: formIn var(--dur-3) var(--ease) backwards;
+}
+
+.excerpt figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+
+.excerpt figcaption b {
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.excerpt blockquote {
+  margin: 8px 0 0;
+  font-size: var(--fz-md);
+  line-height: 1.8;
+}
+
+.excerpt mark {
+  padding: 1px 2px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.sourceChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.sourceLabel {
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+
+.sourceChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 3px 10px 3px 4px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font: 400 var(--fz-sm) / 1.4 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+
+.sourceChip:hover {
+  background: var(--active);
+}
+
+.sourceChip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.sourceChip i {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface);
+  font: 600 var(--fz-xs) / 1 var(--ui-mono);
+  font-style: normal;
+}
+
+.sourceChip[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ════ 带我学 ════ */
+.guided {
+  padding: clamp(14px, 2vw, 20px);
+}
+
+.stepRail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.stepButton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--text-3);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+
+.stepButton:hover {
+  background: var(--hover);
+}
+
+.stepButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.stepButton[aria-current='step'] {
+  background: var(--inset);
+  color: var(--text);
+}
+
+.stepDot {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--border-2);
+  font: 600 var(--fz-xs) / 1 var(--ui-mono);
+}
+
+.stepButton[data-done] .stepDot {
+  background: var(--ok-soft);
+  box-shadow: none;
+  color: var(--ok);
+}
+
+.stepButton[aria-current='step'] .stepDot {
+  background: var(--solid);
+  box-shadow: none;
+  color: var(--on-solid);
+}
+
+.stepText {
+  display: grid;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.stepText small {
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+
+.stepText span {
+  overflow: hidden;
+  font-size: var(--fz-sm);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scene {
+  padding: 20px 4px 0;
+  animation: formIn var(--dur-3) var(--ease) backwards;
+}
+
+.sceneKind {
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.sceneTitle {
+  margin: 6px 0 0;
+  font-size: var(--fz-2xl);
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.sceneBody {
+  margin-top: 8px;
+  color: var(--text-2);
+  font-size: var(--fz-lg);
+  line-height: 1.8;
+  text-wrap: pretty;
+}
+
+.reflection {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: var(--r-lg);
+  background: var(--sidebar);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.reflection small {
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+
+.reflection p {
+  margin-top: 4px;
+  font-size: var(--fz-md);
+  line-height: 1.75;
+}
+
+.sceneFeedback {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--bad-soft);
+  font-size: var(--fz-md);
+  line-height: 1.6;
+}
+
+.sceneFeedback[data-correct] {
+  background: var(--ok-soft);
+}
+
+.sceneActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.sceneActions > .linkButton {
+  margin-left: -8px;
+}
+
+.sceneButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.interrupt {
+  display: grid;
+  animation: formIn var(--dur-3) var(--ease) backwards;
+}
+
+.interrupt > .returnButton {
+  justify-self: start;
+  margin: -4px 0 12px -6px;
+}
+
+.paused {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+
+/* ════ 读讲义 ════ */
+.reading {
+  padding: clamp(14px, 2vw, 22px);
+}
+
+.readHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.readHead h4 {
+  margin: 0;
+  font-size: var(--fz-xl);
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.readHead p {
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
+
+.readHead > span {
+  flex: none;
+  padding: 2px 10px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.chapterNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.chapterNav button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px 0 8px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font: 500 var(--fz-sm) / 1 var(--ui-font);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+
+.chapterNav button:hover {
+  background: var(--active);
+}
+
+.chapterNav button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.chapterNav button > span {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  font: 600 var(--fz-xs) / 1 var(--ui-mono);
+}
+
+.chapterNav button > svg {
+  width: 18px;
+  color: var(--ok);
+}
+
+.chapterNav button[aria-current='step'] {
+  background: var(--solid);
+  color: var(--on-solid);
+}
+
+.chapterNav button[aria-current='step'] > svg {
+  color: inherit;
+}
+
+.readBody {
+  min-height: 210px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  animation: formIn var(--dur-3) var(--ease) backwards;
+}
+
+.readBody h5 {
+  margin: 0;
+  font-size: var(--fz-lg);
+  font-weight: 600;
+}
+
+.readBody p {
+  margin-top: 8px;
+  color: var(--text-2);
+  font-size: var(--fz-lg);
+  line-height: 1.85;
+  text-wrap: pretty;
+}
+
+.readBody .display {
+  margin-block: 12px;
+  color: var(--text);
+  font-size: 22px;
+  text-align: center;
+}
+
+.diagram {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  margin-top: 12px;
+  padding: 16px 12px;
+  border-radius: var(--r-lg);
+  background: var(--sidebar);
+}
+
+.leaves {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.leaves i {
+  color: var(--text-3);
+  font-style: normal;
+}
+
+.node {
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border-2);
+  font: 500 var(--fz-sm) / 1.4 var(--ui-mono);
+  white-space: nowrap;
+}
+
+.code {
+  margin: 10px 0 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  border-radius: var(--r-lg);
+  background: var(--inset);
+  color: var(--text);
+  font: 400 var(--fz-sm) / 1.75 var(--ui-mono);
+  white-space: pre;
+}
+
+.tkKw {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tkCom {
+  color: var(--text-3);
+}
+
+.readActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.readStatus {
+  margin-top: 8px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+
+.readStatus:empty {
+  display: none;
+}
+
+/* ════ 深入答疑 ════ */
+.deepStage {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  align-items: start;
+  gap: clamp(10px, 1.6vw, 16px);
+}
+
+.modes {
+  padding: 16px 14px;
+}
+
+.modes > .label,
+.modes > span:first-child {
+  padding-inline: 4px;
+}
+
+.modes ul {
+  display: grid;
+  gap: 2px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.modes li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--r-md);
+  color: var(--text-2);
+}
+
+.modes li > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.modes li > svg:last-child {
+  margin-left: auto;
+  color: var(--text);
+}
+
+.modes li strong {
+  display: block;
+  color: var(--text);
+  font-size: var(--fz-md);
+  font-weight: 550;
+}
+
+.modes li small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.5;
+}
+
+.modes li[data-on] {
+  background: var(--inset);
+}
+
+.modesNote {
+  margin-top: 10px;
+  padding-inline: 4px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.6;
+}
+
+.deepRun {
+  padding: clamp(14px, 2vw, 20px);
+}
+
+.stages {
+  display: grid;
+  gap: 4px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stages li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  color: var(--text-3);
+  font-size: var(--fz-md);
+  transition: color var(--dur-2) var(--ease);
+}
+
+.stages li[data-state='done'] {
+  color: var(--text-2);
+}
+
+.stages li[data-state='running'] {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.stageMark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--border-2);
+}
+
+[data-state='done'] > .stageMark {
+  background: var(--ok-soft);
+  box-shadow: none;
+  color: var(--ok);
+}
+
+[data-state='running'] > .stageMark {
+  box-shadow: none;
+  color: var(--accent);
+}
+
+.deepAnswer {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  animation: formIn var(--dur-3) var(--ease) backwards;
+}
+
+.citeStatic {
+  margin: 0 2px;
+  color: var(--accent);
+  font: 600 var(--fz-xs) / 1 var(--ui-mono);
+}
+
+.selfCheck {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--accent-softer);
+  font-size: var(--fz-md);
+  line-height: 1.6;
+}
+
+.selfCheck b {
+  margin-right: 8px;
+  color: var(--accent);
+  font-size: var(--fz-sm);
+  font-weight: 600;
+}
+
+.deepFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-top: 12px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+
+/* ════ 模型与思考 ════ */
 .pair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: clamp(10px, 1.6vw, 16px);
-  margin-top: clamp(10px, 1.6vw, 16px);
 }
 
 .small {
   display: flex;
   flex-direction: column;
-  padding: 14px 16px 16px;
+  padding: 16px;
 }
 
 .smallHead {
@@ -457,88 +1523,39 @@
   justify-content: space-between;
   gap: 8px;
   min-height: 22px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
-.count {
-  color: var(--text-2);
-  font-size: var(--fz-sm);
-  font-variant-numeric: tabular-nums;
-}
-
-.materials {
-  display: grid;
-  gap: 2px;
-  margin-inline: -8px;
-}
-
-.material {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 34px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: var(--r-sm);
-  background: none;
+.smallHint {
   color: var(--text-3);
-  font: 400 var(--fz-sm) / 1.3 var(--ui-font);
-  text-align: left;
-  cursor: pointer;
-  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
-}
-
-.material:hover {
-  background: var(--hover);
-}
-
-.material:active {
-  background: var(--active);
-}
-
-.material:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--ring);
-}
-
-.material > i {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 17px;
-  height: 17px;
-  border-radius: 5px;
-  box-shadow: inset 0 0 0 1.5px var(--border-2);
-  color: var(--on-accent);
-  transition: background var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
-}
-
-.material > svg {
-  flex: none;
-}
-
-.material > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.material[aria-checked='true'] {
-  color: var(--text);
-}
-
-.material[aria-checked='true'] > i {
-  background: var(--accent);
-  box-shadow: none;
+  font-size: var(--fz-xs);
 }
 
 .effortNow {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
   color: var(--accent);
   font-size: var(--fz-md);
   font-weight: 650;
+}
+
+.modelRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--inset);
+  font-size: var(--fz-md);
+}
+
+.modelRow strong {
+  font-weight: 600;
+}
+
+.modelRow > span {
+  color: var(--text-3);
+  font-size: var(--fz-xs);
 }
 
 .effortHint {
@@ -548,30 +1565,155 @@
   line-height: 1.5;
 }
 
+.thinkToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--text-2);
+  font: 500 var(--fz-md) / 1.4 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+
+.thinkToggle > span {
+  flex: 1;
+}
+
+.thinkToggle:hover {
+  background: var(--hover);
+}
+
+.thinkToggle:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--border), 0 0 0 3px var(--ring);
+}
+
+.chevron {
+  color: var(--text-3);
+  transition: transform var(--dur-2) var(--ease);
+}
+
+.thinkToggle[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+
+.thought {
+  margin-top: 8px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--sidebar);
+  animation: formIn var(--dur-3) var(--ease) backwards;
+}
+
+.thoughtStep {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+}
+
+.thoughtStep svg {
+  color: var(--ok);
+}
+
+.thoughtText {
+  margin-top: 8px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.75;
+}
+
+/* ── 平板：说明叠在界面上方 ── */
+@media (max-width: 960px) {
+  .pane {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .caption {
+    padding-top: 0;
+  }
+
+  .caption h3 {
+    font-size: var(--fz-2xl);
+  }
+
+  .checks {
+    margin-top: 14px;
+    padding-top: 12px;
+  }
+}
+
+/* ── 手机 ── */
 @media (max-width: 640px) {
-  /* 六个页签排成三列两行，不留孤行 */
+  /* 页签是一条横向滑动的带子，贴到屏幕两边 */
+  .tour .tabBar {
+    margin-inline: calc(var(--lp-gutter) * -1);
+    padding-inline: var(--lp-gutter);
+    scroll-padding-inline: var(--lp-gutter);
+  }
+
+  .tour .tabBar [role='tab'] {
+    height: 48px;
+    padding: 0 12px;
+    font-size: var(--fz-md);
+  }
+
+  .pane {
+    margin-top: 20px;
+  }
+
+  .modelPane {
+    margin-top: 48px;
+  }
+
+  .caption > p {
+    margin-top: 8px;
+    font-size: 15px;
+    line-height: 1.75;
+  }
+
+  .kinds {
+    gap: 5px;
+    margin-top: 12px;
+  }
+
+  .kinds li {
+    font-size: var(--fz-xs);
+  }
+
+  .ask {
+    max-width: 92%;
+  }
+
+  /* 六种形式排成三列两行 */
   .answer .formTabs {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  /* 页签是 kit 的分段钮；手机上加高到好点按 */
   .answer .formTabs button {
     height: 44px;
     padding-inline: 4px;
   }
 
-  .answer {
-    padding: 12px;
+  .answer,
+  .cited,
+  .guided,
+  .reading,
+  .deepRun {
+    padding: 14px;
   }
 
-  .pair {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
-    margin-top: 10px;
-  }
-
-  /* 取六种形式里最高的一种：切换页签时下方不上下跳 */
   .formBody {
     min-height: 232px;
   }
@@ -600,14 +1742,128 @@
 
   .table tbody th {
     width: auto;
+    white-space: normal;
   }
 
-  .material {
+  .planItem {
+    min-height: 52px;
+  }
+
+  .steps li {
+    padding-right: 12px;
+  }
+
+  /* 资料库：目录收起，只留路径 */
+  .libBody {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tree {
+    display: none;
+  }
+
+  .libHead {
+    padding: 12px 14px;
+  }
+
+  .libCount {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+
+  .file {
+    min-height: 60px;
+  }
+
+  .sourceChip {
     min-height: 44px;
-    font-size: var(--fz-md);
+    padding-right: 12px;
   }
 
-  .small {
-    padding: 14px;
+  /* 带我学：步骤只留类型名 */
+  .stepRail {
+    gap: 4px;
+  }
+
+  .stepButton {
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    min-height: 64px;
+    padding: 8px 2px;
+    text-align: center;
+  }
+
+  .stepText small {
+    color: inherit;
+    font-size: var(--fz-sm);
+    font-weight: 500;
+  }
+
+  .stepText span {
+    display: none;
+  }
+
+  .scene {
+    padding-top: 16px;
+  }
+
+  .sceneTitle {
+    font-size: var(--fz-xl);
+  }
+
+  .sceneActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sceneActions > .linkButton {
+    align-self: flex-start;
+  }
+
+  .sceneButtons > * {
+    flex: 1 1 0;
+  }
+
+  /* 读讲义：段落小签横向滑动 */
+  .chapterNav {
+    flex-wrap: nowrap;
+    margin-inline: -14px;
+    padding-inline: 14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .chapterNav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chapterNav button {
+    height: 44px;
+  }
+
+  .readActions > button {
+    flex: 1 1 auto;
+  }
+
+  .readBody {
+    min-height: 0;
+  }
+
+  /* 深入答疑：先看运行，再看三种方式 */
+  .deepStage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .modes {
+    order: 1;
+  }
+
+  .pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .thinkToggle {
+    min-height: 48px;
   }
 }

@@ -1,4 +1,5 @@
-/* 宣传页骨架：顶栏、首屏、章节题头、公共小件、换肤与收尾。
+/* 宣传页骨架：页面容器、章节题头、公共小件、功能清单、滚动显现与页脚。
+   顶栏、首屏、各章与收尾的样式各在自己的模块里。
    只引用 styles/skins.css 的语义令牌，随皮肤（含深色）变化。 */
 
 .page {
@@ -24,211 +25,6 @@
 .wrap {
   width: min(100% - var(--lp-gutter) * 2, var(--lp-max));
   margin-inline: auto;
-}
-
-.sentinel {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 1px;
-  height: 12px;
-  pointer-events: none;
-}
-
-/* ── 顶栏 ── */
-.nav {
-  position: sticky;
-  top: 0;
-  z-index: 900;
-  border-bottom: 1px solid transparent;
-  background: color-mix(in srgb, var(--bg) 82%, transparent);
-  -webkit-backdrop-filter: saturate(1.5) blur(16px);
-  backdrop-filter: saturate(1.5) blur(16px);
-  transition: border-color var(--dur-2) var(--ease);
-}
-
-.nav[data-scrolled] {
-  border-bottom-color: var(--border);
-}
-
-.navInner {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 16px;
-  height: var(--lp-nav-h);
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  justify-self: start;
-  gap: 10px;
-  border-radius: var(--r-sm);
-  color: var(--text);
-  font-size: var(--fz-xl);
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.brand:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--ring);
-}
-
-.brandSeal {
-  width: 30px;
-  height: 30px;
-  border-radius: var(--r-xs);
-  object-fit: contain;
-}
-
-.navLinks {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.navLink {
-  height: 32px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: var(--r-full);
-  background: none;
-  color: var(--text-2);
-  font: 500 var(--fz-md) / 1 var(--ui-font);
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
-}
-
-.navLink:hover {
-  background: var(--hover);
-  color: var(--text);
-}
-
-.navLink:active {
-  background: var(--active);
-}
-
-.navLink:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--ring);
-}
-
-.navLink[aria-current='true'] {
-  background: var(--inset);
-  color: var(--text);
-}
-
-.navActions {
-  display: flex;
-  align-items: center;
-  justify-self: end;
-  gap: 6px;
-}
-
-/* 章节菜单：只在章节链接收起的窄屏出现 */
-.navActions .navMenu {
-  display: none;
-}
-
-.navMenuList {
-  min-width: 184px;
-}
-
-/* ── 首屏 ── */
-.hero {
-  padding-top: clamp(40px, 9vh, 96px);
-}
-
-.heroHead {
-  display: grid;
-  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-  align-items: end;
-  gap: 28px 56px;
-}
-
-.kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 30px;
-  padding: 4px 13px 4px 11px;
-  border-radius: var(--r-full);
-  background: var(--inset);
-  color: var(--text-2);
-  font-size: var(--fz-sm);
-  font-weight: 500;
-  line-height: 1.4;
-}
-
-.kicker i {
-  flex: none;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-
-.heroTitle {
-  margin-top: 22px;
-  font-size: clamp(46px, 7.6vw, 88px);
-  font-weight: 680;
-  line-height: 1.06;
-  letter-spacing: -0.04em;
-}
-
-.heroTitle span,
-.closingTitle span {
-  display: block;
-  white-space: nowrap;
-}
-
-.heroSide {
-  padding-bottom: clamp(0px, 0.9vw, 12px);
-}
-
-.heroLead {
-  max-width: 30em;
-  color: var(--text-2);
-  font-size: clamp(16px, 1.45vw, 18px);
-  line-height: 1.8;
-  text-wrap: pretty;
-}
-
-.heroLead strong {
-  color: var(--text);
-  font-weight: 600;
-}
-
-.heroActions,
-.closingActions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-top: 26px;
-}
-
-/* 首屏与收尾的主次按钮：比 kit 的 lg 再高一档 */
-.page .cta {
-  --h: 48px;
-  padding: 0 22px;
-  font-size: var(--fz-lg);
-  font-weight: 550;
-}
-
-.heroNote {
-  margin-top: 14px;
-  color: var(--text-3);
-  font-size: var(--fz-sm);
-}
-
-.heroScene {
-  margin-top: clamp(36px, 6vh, 64px);
 }
 
 /* ── 章节 ── */
@@ -370,6 +166,46 @@
   letter-spacing: 0.02em;
 }
 
+/* ── 功能清单（Caps.tsx）：每章末尾把能力列齐 ── */
+.caps {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 248px), 1fr));
+  gap: 0 clamp(24px, 3vw, 40px);
+  margin: clamp(40px, 6vh, 64px) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.caps li {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-content: start;
+  gap: 6px 12px;
+  padding: 18px 0 20px;
+  border-top: 1px solid var(--border);
+}
+
+.capIcon {
+  grid-row: span 2;
+  margin-top: 2px;
+  color: var(--text-2);
+}
+
+.caps strong {
+  font-size: var(--fz-lg);
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+.caps span {
+  grid-column: 2;
+  color: var(--text-2);
+  font-size: var(--fz-md);
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+
 /* ── 滚动显现 ── */
 .page[data-motion='on'] [data-reveal] {
   opacity: 0;
@@ -381,145 +217,6 @@
 .page[data-motion='on'] [data-reveal][data-shown] {
   opacity: 1;
   transform: none;
-}
-
-/* ── 换肤 ── */
-.closing {
-  padding-block: clamp(64px, 11vh, 120px) clamp(80px, 14vh, 152px);
-}
-
-.skins {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  align-items: center;
-  gap: 20px clamp(32px, 5vw, 72px);
-  padding: clamp(20px, 3vw, 32px);
-  border-radius: var(--r-2xl);
-  background: var(--sidebar);
-}
-
-.skinsText h3 {
-  font-size: var(--fz-2xl);
-  font-weight: 650;
-  letter-spacing: -0.02em;
-}
-
-.skinsText p {
-  margin-top: 8px;
-  color: var(--text-2);
-  font-size: var(--fz-lg);
-  line-height: 1.75;
-}
-
-.skinList {
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.skin {
-  display: grid;
-  justify-items: center;
-  gap: 8px;
-  padding: 6px 2px 8px;
-  border: 0;
-  border-radius: var(--r-lg);
-  background: none;
-  color: var(--text-2);
-  font: 500 var(--fz-xs) / 1.2 var(--ui-font);
-  cursor: pointer;
-  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
-}
-
-.skin:hover {
-  background: var(--hover);
-  color: var(--text);
-}
-
-.skin:active {
-  transform: scale(0.96);
-}
-
-.skin:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--ring);
-}
-
-.skin[aria-checked='true'] {
-  color: var(--text);
-}
-
-/* 色片：底色铺满，左下一角侧栏色，右下一点强调色 */
-.skinChip {
-  position: relative;
-  display: block;
-  width: 100%;
-  max-width: 64px;
-  aspect-ratio: 1;
-  overflow: hidden;
-  border-radius: var(--r-lg);
-  box-shadow: 0 0 0 1px var(--border-2);
-  transition: box-shadow var(--dur-2) var(--ease);
-}
-
-.skin[aria-checked='true'] .skinChip {
-  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text);
-}
-
-.skinChip i {
-  position: absolute;
-}
-
-.skinChip i:nth-child(1) {
-  inset: 0 auto 0 0;
-  width: 34%;
-}
-
-.skinChip i:nth-child(2) {
-  right: 16%;
-  bottom: 16%;
-  width: 26%;
-  height: 8%;
-  min-height: 4px;
-  border-radius: var(--r-full);
-}
-
-.skinCheck {
-  position: absolute;
-  top: 16%;
-  right: 14%;
-}
-
-.skinName {
-  white-space: nowrap;
-}
-
-.skinHint {
-  grid-column: 2;
-  color: var(--text-3);
-  font-size: var(--fz-sm);
-}
-
-/* ── 收尾 ── */
-.closingBody {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  justify-content: space-between;
-  gap: 28px 48px;
-  margin-top: clamp(64px, 11vh, 128px);
-}
-
-.closingTitle {
-  font-size: clamp(42px, 7.2vw, 84px);
-  font-weight: 680;
-  line-height: 1.06;
-  letter-spacing: -0.04em;
-}
-
-.closingActions {
-  margin-top: 0;
-  padding-bottom: clamp(0px, 0.9vw, 12px);
 }
 
 /* ── 页脚 ── */
@@ -592,38 +289,16 @@
 
 /* ── 响应式 ── */
 @media (max-width: 960px) {
-  .navInner {
-    grid-template-columns: 1fr auto;
-  }
 
-  .navLinks {
-    display: none;
-  }
-
-  .navActions .navMenu {
-    display: inline-grid;
-  }
-
-  .heroHead,
-  .split,
-  .skins {
+  .split {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .heroHead {
-    align-items: start;
   }
 
   .sticky {
     position: static;
   }
-
-  .skinHint {
-    grid-column: 1;
-  }
 }
 
-/* ── 手机：顶栏只留品牌 + 主按钮 + 菜单；章节收紧，整页不拖沓 ── */
 @media (max-width: 640px) {
   .page {
     --lp-nav-h: 54px;
@@ -632,81 +307,6 @@
     --ctl-sm: 44px;
     --ctl-md: 44px;
     --ctl-lg: 48px;
-  }
-
-  /* 整条顶栏的毛玻璃在手机上滚动时最费帧，换成实底 */
-  .nav {
-    padding-top: env(safe-area-inset-top);
-    background: var(--bg);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-
-  .navInner {
-    gap: 8px;
-  }
-
-  .navActions {
-    gap: 4px;
-  }
-
-  .navActions .navLogin {
-    display: none;
-  }
-
-  .brand {
-    gap: 8px;
-    min-height: 44px;
-    font-size: var(--fz-lg);
-  }
-
-  .brandSeal {
-    width: 26px;
-    height: 26px;
-  }
-
-  .hero {
-    padding-top: 28px;
-  }
-
-  .heroHead {
-    gap: 20px;
-  }
-
-  .kicker {
-    font-size: var(--fz-xs);
-  }
-
-  .heroTitle {
-    margin-top: 16px;
-    font-size: clamp(44px, 14vw, 60px);
-  }
-
-  .heroLead {
-    font-size: 16px;
-    line-height: 1.75;
-  }
-
-  .heroActions {
-    margin-top: 22px;
-  }
-
-  .heroActions,
-  .closingActions {
-    width: 100%;
-  }
-
-  .page .cta {
-    --h: 50px;
-    flex: 1 1 auto;
-  }
-
-  .heroNote {
-    margin-top: 12px;
-  }
-
-  .heroScene {
-    margin-top: 28px;
   }
 
   .chapter {
@@ -757,46 +357,6 @@
     transition-delay: 0ms;
   }
 
-  .closing {
-    padding-block: 48px 64px;
-  }
-
-  .skins {
-    gap: 16px;
-    padding: 18px 14px 16px;
-    border-radius: var(--r-xl);
-  }
-
-  .skinsText {
-    padding-inline: 4px;
-  }
-
-  .skinsText p {
-    line-height: 1.65;
-  }
-
-  .skinList {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 4px;
-  }
-
-  .skin {
-    padding: 6px 2px 10px;
-  }
-
-  .skinHint {
-    padding-inline: 4px;
-  }
-
-  .closingBody {
-    gap: 22px;
-    margin-top: 48px;
-  }
-
-  .closingTitle {
-    font-size: clamp(40px, 12.6vw, 54px);
-  }
-
   .footerInner {
     flex-direction: column;
     align-items: flex-start;
@@ -819,15 +379,11 @@
 
 @media (max-width: 960px) {
   .page { --ctl-sm: 44px; --ctl-md: 44px; --ctl-lg: 48px; }
-  .brand { min-height: 44px; }
   .wrap {
     width: auto;
     margin-left: max(var(--lp-gutter), env(safe-area-inset-left));
     margin-right: max(var(--lp-gutter), env(safe-area-inset-right));
   }
-
-  .nav { padding-top: env(safe-area-inset-top); }
-  .navMenuList [role='menuitem'] { min-height: 44px; }
 }
 
 @media print {

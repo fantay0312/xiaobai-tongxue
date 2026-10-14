@@ -1,0 +1,262 @@
+/* 收尾：常见问题（左题右答）+ 行动号召。只用语义令牌。 */
+
+.closing {
+  padding-bottom: clamp(80px, 14vh, 152px);
+}
+
+.faq {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+  align-items: start;
+  gap: 32px clamp(32px, 6vw, 96px);
+}
+
+.faqHead {
+  position: sticky;
+  top: calc(var(--lp-nav-h, 60px) + 32px);
+  display: grid;
+  gap: 16px;
+}
+
+.faqMark {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1;
+}
+
+.faqMark::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-2);
+}
+
+.faqTitle {
+  font-size: clamp(30px, 3.6vw, 44px);
+  font-weight: 670;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+
+.faqTitle span {
+  display: inline-block;
+}
+
+.faqLead {
+  max-width: 24em;
+  color: var(--text-2);
+  font-size: clamp(16px, 1.3vw, 17px);
+  line-height: 1.8;
+  text-wrap: pretty;
+}
+
+.faqList {
+  border-top: 1px solid var(--border-2);
+}
+
+.item {
+  border-bottom: 1px solid var(--border-2);
+}
+
+.question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 64px;
+  padding: 14px 4px;
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-size: var(--fz-xl);
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  list-style: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--dur-1) var(--ease);
+}
+
+.question::-webkit-details-marker {
+  display: none;
+}
+
+.question::marker {
+  content: '';
+}
+
+.question:hover {
+  color: var(--text);
+}
+
+.question:hover .toggle {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.question:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.toggle {
+  flex: none;
+  box-sizing: content-box;
+  padding: 6px;
+  border-radius: var(--r-full);
+  color: var(--text-3);
+  transition: transform var(--dur-2) var(--ease), background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+
+.item[open] .toggle {
+  color: var(--text);
+  transform: rotate(45deg);
+}
+
+.answer {
+  display: grid;
+  gap: 10px;
+  max-width: 40em;
+  padding: 0 48px 24px 4px;
+  color: var(--text-2);
+  font-size: var(--fz-lg);
+  line-height: 1.8;
+  text-wrap: pretty;
+}
+
+.item[open] .answer {
+  animation: reveal var(--dur-3, 260ms) var(--ease) both;
+}
+
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ── 行动号召 ── */
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 28px 48px;
+  margin-top: clamp(80px, 13vh, 144px);
+  padding-top: clamp(40px, 7vh, 72px);
+  border-top: 1px solid var(--border-2);
+}
+
+.ctaTitle {
+  font-size: clamp(42px, 7.2vw, 84px);
+  font-weight: 680;
+  line-height: 1.06;
+  letter-spacing: -0.04em;
+}
+
+.ctaTitle span {
+  display: block;
+  white-space: nowrap;
+}
+
+.ctaSide {
+  display: grid;
+  gap: 12px;
+  padding-bottom: clamp(0px, 0.9vw, 12px);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 主次按钮比 kit 的 lg 再高一档 */
+.actions .ctaButton {
+  --h: 48px;
+  padding: 0 22px;
+  font-size: var(--fz-lg);
+  font-weight: 550;
+}
+
+.ctaNote {
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item[open] .answer {
+    animation: none;
+  }
+
+  .toggle {
+    transition: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .faq {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .faqHead {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .closing {
+    padding-bottom: 64px;
+  }
+
+  .faq {
+    gap: 24px;
+  }
+
+  .faqHead {
+    gap: 12px;
+  }
+
+  .faqTitle {
+    font-size: clamp(28px, 8.2vw, 34px);
+  }
+
+  .faqLead {
+    font-size: 16px;
+    line-height: 1.75;
+  }
+
+  .question {
+    min-height: 56px;
+    padding: 12px 2px;
+    font-size: var(--fz-lg);
+  }
+
+  .answer {
+    padding: 0 8px 20px 2px;
+    font-size: 15px;
+    line-height: 1.75;
+  }
+
+  .cta {
+    gap: 22px;
+    margin-top: 56px;
+    padding-top: 40px;
+  }
+
+  .ctaTitle {
+    font-size: clamp(40px, 12.6vw, 54px);
+  }
+
+  .ctaSide,
+  .actions {
+    width: 100%;
+  }
+
+  .actions .ctaButton {
+    --h: 50px;
+    flex: 1 1 auto;
+  }
+}

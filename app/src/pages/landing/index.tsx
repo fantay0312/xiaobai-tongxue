@@ -1,35 +1,26 @@
 /**
  * 宣传页（站点根 `/`）。
- * 版式：自带顶栏 → 首屏大字 + 一台会动的迷你学习终端 → 学 / 教 / 练 / 托 四章 → 换肤与收尾。
- * 全页只用皮肤令牌，访客在页尾换肤，整页与终端一起变。
+ * 版式：顶栏 → 首屏大字 + 会动的迷你学习终端 → 产品全景 → 七章（学 / 教 / 练 / 托 / 研 / 记 / 随）→ 常见问题与收尾 → 页脚。
+ * 章节 id 与名字统一登记在 sections.ts；全页只用皮肤令牌，访客换肤时整页与终端一起变。
  */
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
-import { ArrowRight, Check, Menu as MenuIcon } from 'lucide-react';
-import { Button, IconButton, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '../../components/ui';
+import { useLayoutEffect, useRef } from 'react';
+import { Link } from 'react-router';
 import { Seal } from '../../components/shell/Seal';
 import { useDocTitle } from '../../hooks/useDocTitle';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { useAuthStore } from '../../store/authStore';
 import { SKINS, useSkinStore } from '../../store/skinStore';
-import { HeroTerminal } from './HeroTerminal';
+import { LandingNav } from './LandingNav';
+import { Hero } from './Hero';
+import { Overview } from './Overview';
 import { LearnChapter } from './LearnChapter';
 import { TeachChapter } from './TeachChapter';
 import { PracticeChapter } from './PracticeChapter';
 import { DelegateChapter } from './DelegateChapter';
+import { ResearchChapter } from './ResearchChapter';
+import { MemoryChapter } from './MemoryChapter';
+import { Anywhere } from './Anywhere';
+import { Closing } from './Closing';
 import s from './landing.module.css';
-
-const CHAPTERS = [
-  { id: 'learn', label: '学习终端' },
-  { id: 'teach', label: '教小白' },
-  { id: 'practice', label: '工作台' },
-  { id: 'delegate', label: '助理与课堂' },
-] as const;
-
-/** 滚动到某一章。HashRouter 下不能用真锚点（会被当成路由），所以手动滚。 */
-function scrollToChapter(id: string, smooth: boolean) {
-  document.getElementById(id)?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
-}
 
 /** 分组滚动显现：只在支持且未减弱动效时启用；否则内容始终可见。 */
 function useScrollReveal(reducedMotion: boolean) {
@@ -62,211 +53,30 @@ function useScrollReveal(reducedMotion: boolean) {
   return pageRef;
 }
 
-/** 顶栏状态：是否已离开页首、当前滚到哪一章。 */
-function useNavState() {
-  const sentinelRef = useRef<HTMLSpanElement>(null);
-  const [scrolled, setScrolled] = useState(false);
-  const [active, setActive] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!('IntersectionObserver' in window)) return undefined;
-    const sentinel = sentinelRef.current;
-    const topObserver = new IntersectionObserver(([entry]) => setScrolled(!entry?.isIntersecting));
-    if (sentinel) topObserver.observe(sentinel);
-
-    const spy = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const id = entry.target.id;
-          if (entry.isIntersecting) setActive(id);
-          else setActive((current) => (current === id ? null : current));
-        }
-      },
-      { rootMargin: '-45% 0px -50% 0px' },
-    );
-    for (const chapter of CHAPTERS) {
-      const node = document.getElementById(chapter.id);
-      if (node) spy.observe(node);
-    }
-    return () => {
-      topObserver.disconnect();
-      spy.disconnect();
-    };
-  }, []);
-
-  return { sentinelRef, scrolled, active };
-}
-
-function SkinStrip() {
-  const skin = useSkinStore((state) => state.skin);
-  const update = useSkinStore((state) => state.update);
-  const current = SKINS.find((item) => item.id === skin) ?? SKINS[0];
-  return (
-    <div className={s.skins} data-reveal>
-      <div className={s.skinsText}>
-        <h3>终端的样子，你来定</h3>
-        <p>八套皮肤，另可调强调色、圆角、字体和壁纸。在这里点一下，这一页和你的终端一起换。</p>
-      </div>
-      <div className={s.skinList} role="radiogroup" aria-label="选择皮肤">
-        {SKINS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="radio"
-            aria-checked={item.id === skin}
-            aria-label={`${item.name}：${item.hint}`}
-            className={s.skin}
-            onClick={() => update({ skin: item.id })}
-          >
-            <span className={s.skinChip} style={{ background: item.swatch[0] }}>
-              <i style={{ background: item.swatch[1] }} />
-              <i style={{ background: item.swatch[2] }} />
-              {item.id === skin && <Check size={14} strokeWidth={2.4} className={s.skinCheck} style={{ color: item.swatch[2] }} />}
-            </span>
-            <span className={s.skinName}>{item.name}</span>
-          </button>
-        ))}
-      </div>
-      <p className={s.skinHint} aria-live="polite">{current.name} · {current.hint}</p>
-    </div>
-  );
-}
-
 export default function LandingPage() {
   useDocTitle();
   const reducedMotion = useReducedMotion();
   const pageRef = useScrollReveal(reducedMotion);
-  const { sentinelRef, scrolled, active } = useNavState();
-  const navigate = useNavigate();
-  const authed = useAuthStore((state) => state.status === 'authed');
   const skin = useSkinStore((state) => state.skin);
   const darkSkin = SKINS.find((item) => item.id === skin)?.dark ?? false;
   const sealPlate = darkSkin ? 'paper' : 'ink';
 
   return (
     <div className={s.page} ref={pageRef}>
-      <span ref={sentinelRef} className={s.sentinel} aria-hidden="true" />
+      <LandingNav reducedMotion={reducedMotion} sealPlate={sealPlate} />
 
-      <header className={s.nav} data-scrolled={scrolled || undefined}>
-        <div className={`${s.wrap} ${s.navInner}`}>
-          <Link to="/" className={s.brand} aria-label="小白同学 首页">
-            <Seal className={s.brandSeal} plate={sealPlate} />
-            <span>小白同学</span>
-          </Link>
-          <nav className={s.navLinks} aria-label="页面章节">
-            {CHAPTERS.map((chapter) => (
-              <button
-                key={chapter.id}
-                type="button"
-                className={s.navLink}
-                aria-current={active === chapter.id ? 'true' : undefined}
-                onClick={() => scrollToChapter(chapter.id, !reducedMotion)}
-              >
-                {chapter.label}
-              </button>
-            ))}
-          </nav>
-          <div className={s.navActions}>
-            {!authed && (
-              <Button asChild variant="ghost" className={s.navLogin}>
-                <Link to="/login">登录</Link>
-              </Button>
-            )}
-            <Button asChild variant="solid">
-              <Link to="/learn">进入学习终端</Link>
-            </Button>
-            {/* 窄屏没有章节链接，收进一个菜单；手机上「登录」也并进来，顶栏只留品牌和一个主按钮 */}
-            <Menu modal={false}>
-              <MenuTrigger asChild>
-                <IconButton label="打开章节菜单" tip={false} className={s.navMenu}>
-                  <MenuIcon size={19} strokeWidth={1.75} />
-                </IconButton>
-              </MenuTrigger>
-              <MenuContent align="end" className={s.navMenuList}>
-                {CHAPTERS.map((chapter) => (
-                  <MenuItem
-                    key={chapter.id}
-                    checked={active === chapter.id}
-                    // 等菜单收起、焦点还回按钮后再滚，免得两边抢滚动
-                    onSelect={() => window.setTimeout(() => scrollToChapter(chapter.id, !reducedMotion), 160)}
-                  >
-                    {chapter.label}
-                  </MenuItem>
-                ))}
-                {!authed && (
-                  <>
-                    <MenuSeparator />
-                    <MenuItem onSelect={() => navigate('/login')}>登录</MenuItem>
-                  </>
-                )}
-              </MenuContent>
-            </Menu>
-          </div>
-        </div>
-      </header>
-
+      {/* AppShell 已包了一层 <main>，这里不再嵌套 */}
       <div>
-        <section className={s.hero} aria-labelledby="landing-title">
-          <div className={`${s.wrap} ${s.heroHead}`}>
-            <div>
-              <p className={s.kicker}>
-                <i aria-hidden="true" />
-                一间按费曼学习法搭起来的学习终端
-              </p>
-              <h1 id="landing-title" className={s.heroTitle}>
-                <span>讲得明白，</span>
-                <span>才算学会。</span>
-              </h1>
-            </div>
-            <div className={s.heroSide}>
-              <p className={s.heroLead}>
-                先跟导师<strong>小砚</strong>把资料读懂，再把它讲给 AI 学生<strong>小白</strong>
-                听。他会追问，也要考试；你讲不清的地方，就是还没懂的地方。
-              </p>
-              <div className={s.heroActions}>
-                <Button asChild variant="solid" size="lg" pill className={s.cta} iconRight={<ArrowRight size={17} strokeWidth={2} />}>
-                  <Link to="/learn">进入学习终端</Link>
-                </Button>
-                {!authed && (
-                  <Button asChild variant="outline" size="lg" pill className={s.cta}>
-                    <Link to="/login">登录</Link>
-                  </Button>
-                )}
-              </div>
-              <p className={s.heroNote}>学习终端需要登录后使用。</p>
-            </div>
-          </div>
-          <div className={`${s.wrap} ${s.heroScene}`}>
-            <HeroTerminal />
-          </div>
-        </section>
-
+        <Hero />
+        <Overview />
         <LearnChapter />
         <TeachChapter />
         <PracticeChapter />
         <DelegateChapter />
-
-        <section className={s.closing} aria-labelledby="landing-closing">
-          <div className={s.wrap}>
-            <SkinStrip />
-            <div className={s.closingBody} data-reveal>
-              <h2 id="landing-closing" className={s.closingTitle}>
-                <span>今天学的，</span>
-                <span>讲给小白听。</span>
-              </h2>
-              <div className={s.closingActions}>
-                <Button asChild variant="solid" size="lg" pill className={s.cta} iconRight={<ArrowRight size={17} strokeWidth={2} />}>
-                  <Link to="/learn">进入学习终端</Link>
-                </Button>
-                {!authed && (
-                  <Button asChild variant="ghost" size="lg" pill className={s.cta}>
-                    <Link to="/login">登录</Link>
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
+        <ResearchChapter />
+        <MemoryChapter />
+        <Anywhere />
+        <Closing />
       </div>
 
       <footer className={s.footer}>

@@ -1,0 +1,302 @@
+/* 宣传页顶栏与手机目录抽屉。只用 styles/skins.css 的语义令牌。
+   顶栏类名保持 .nav：截图脚本靠 header[class*="nav"] 认出它。 */
+
+.sentinel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 12px;
+  pointer-events: none;
+}
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 900;
+  border-bottom: 1px solid transparent;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  -webkit-backdrop-filter: saturate(1.5) blur(16px);
+  backdrop-filter: saturate(1.5) blur(16px);
+  transition: border-color var(--dur-2) var(--ease);
+}
+
+.nav[data-scrolled] {
+  border-bottom-color: var(--border);
+}
+
+.inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  height: var(--lp-nav-h, 60px);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 10px;
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-size: var(--fz-xl);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.brand:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.brandSeal {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-xs);
+  object-fit: contain;
+}
+
+/* ── 宽屏章节链接 ── */
+.links {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.link {
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: none;
+  color: var(--text-2);
+  font: 500 var(--fz-md) / 1 var(--ui-font);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+
+.link:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.link:active {
+  background: var(--active);
+}
+
+.link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.link[aria-current='true'] {
+  background: var(--inset);
+  color: var(--text);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-self: end;
+  gap: 6px;
+}
+
+.actions .menuButton {
+  display: none;
+}
+
+/* ── 手机目录抽屉 ── */
+.sheet {
+  --sheet-pad: 16px;
+}
+
+.sheetBody {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.sheetList {
+  display: grid;
+  gap: 2px;
+  margin: 0 -8px;
+  padding: 0;
+  list-style: none;
+}
+
+.sheetItem {
+  display: grid;
+  grid-template-columns: 26px 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: none;
+  color: var(--text);
+  font: 500 var(--fz-lg) / 1.3 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-1) var(--ease);
+}
+
+.sheetItem:hover {
+  background: var(--hover);
+}
+
+.sheetItem:active {
+  background: var(--active);
+}
+
+.sheetItem:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ring);
+}
+
+.sheetItem[aria-current='true'] {
+  background: var(--inset);
+  font-weight: 600;
+}
+
+.sheetNo {
+  color: var(--text-3);
+  font: 500 var(--fz-xs) / 1 var(--ui-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 与章节题头同款的墨块单字；全景和常见问题没有字，用一条细线占位 */
+.sheetGlyph {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  background: var(--solid);
+  color: var(--on-solid);
+  font-size: var(--fz-md);
+  font-weight: 600;
+}
+
+.sheetGlyph[data-empty] {
+  background: var(--inset);
+  color: var(--text-3);
+}
+
+.sheetLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheetHere {
+  color: var(--accent);
+  font-size: var(--fz-xs);
+  font-weight: 600;
+}
+
+.sheetActions {
+  display: grid;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 20px;
+}
+
+.sheetActions > * {
+  width: 100%;
+}
+
+.sheetActions .sheetCta {
+  --h: 48px;
+  font-size: var(--fz-lg);
+  font-weight: 550;
+}
+
+.sheetNote {
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  text-align: center;
+}
+
+/* ── 响应式 ── */
+/* 窄一点的桌面：先收起「产品全景」，章节链接不换行 */
+@media (max-width: 1120px) {
+  .link[data-optional] {
+    display: none;
+  }
+
+  .link {
+    padding: 0 10px;
+  }
+}
+
+@media (max-width: 960px) {
+  .inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .links {
+    display: none;
+  }
+
+  .actions .menuButton {
+    display: inline-grid;
+  }
+
+  .nav {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .brand {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 640px) {
+  /* 整条顶栏的毛玻璃在手机上滚动时最费帧，换成实底 */
+  .nav {
+    background: var(--bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .inner {
+    gap: 8px;
+  }
+
+  .actions {
+    gap: 4px;
+  }
+
+  .actions .login {
+    display: none;
+  }
+
+  .brand {
+    gap: 8px;
+    font-size: var(--fz-lg);
+  }
+
+  .brandSeal {
+    width: 26px;
+    height: 26px;
+  }
+
+  .actions .menuButton {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (max-width: 359px) {
+  .actions .cta {
+    padding: 0 12px;
+  }
+}
