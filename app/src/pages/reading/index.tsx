@@ -65,7 +65,7 @@ function ReadingWorkspace({ owner }: { owner: string }) {
     await library.save(doc);
     if (openAfter) setCurrent(doc);
     if (prefs.painted) {
-      try { const { cover } = await readerApi<{ cover: string }>('/cover', { title: doc.title, topic: doc.topic }); const latest = await library.open(doc.id); if (!alive.current || !latest) return; const next = { ...latest, cover }; await library.save(next); if (openAfter && currentRef.current?.id === doc.id) setCurrent(next); }
+      try { const { cover } = await readerApi<{ cover: string }>('/cover', { title: doc.title, topic: doc.topic }); if (!alive.current) return; const next = library.patch(doc.id, { cover }); if (next && openAfter && currentRef.current?.id === doc.id) setCurrent(next); }
       catch { if (alive.current) setError('文章已保存。绘图服务未连接，暂时使用文字封面。'); }
     }
   }

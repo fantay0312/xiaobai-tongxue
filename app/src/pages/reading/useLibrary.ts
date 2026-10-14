@@ -23,9 +23,12 @@ export function useReaderLibrary(owner: string) {
         const current = latest.current.get(id) ?? doc;
         const same = current === doc;
         const saved = { ...current, revision, localDirty: !same };
-        latest.current.set(id, saved); await saveLocal(owner, saved); upsert(saved);
-        if (same) break;
-        doc = saved;
+        latest.current.set(id, saved); await saveLocal(owner, saved);
+        // A keystroke can arrive while IndexedDB commits. Never publish the older snapshot over it.
+        const newest = latest.current.get(id);
+        if (newest === saved) upsert(saved);
+        doc = newest;
+        if (!doc?.localDirty) break;
       }
       if (isCurrent()) setStatus('已同步');
     } catch (error) { if (isCurrent()) setStatus(`本机已保存 · ${readerError(error)}`); }
@@ -57,9 +60,22 @@ export function useReaderLibrary(owner: string) {
     if (local?.localDirty && !forceCloud) return local;
     try {
       const cloud = await fetchCloud(id); if (!isCurrent()) return undefined;
-      latest.current.set(id, cloud); await saveLocal(owner, cloud); upsert(cloud); return cloud;
+      const newest = latest.current.get(id);
+      // Respect edits made after this read began, even during an explicit reload.
+      if (newest && newest !== local && (newest.localDirty || (newest.revision ?? 0) > (cloud.revision ?? 0))) return newest;
+      latest.current.set(id, cloud); await saveLocal(owner, cloud);
+      const committed = latest.current.get(id);
+      if (committed && committed !== cloud) return committed;
+      upsert(cloud); return cloud;
     } catch (error) { if (local && !forceCloud) return local; throw error; }
   }, [isCurrent, owner, upsert]);
+  const patch = useCallback((id: string, fields: Partial<ReaderDocument>) => {
+    const doc = latest.current.get(id);
+    if (!doc || !isCurrent()) return undefined;
+    const next = { ...doc, ...fields, id: doc.id, revision: doc.revision };
+    void save(next);
+    return next;
+  }, [isCurrent, save]);
   useEffect(() => {
     alive.current = true; void refresh();
     const online = () => void refresh();
@@ -67,5 +83,5 @@ export function useReaderLibrary(owner: string) {
     const interval = setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 30000);
     return () => { alive.current = false; clearInterval(interval); window.removeEventListener('online', online); window.removeEventListener('focus', online); timers.current.forEach(clearTimeout); };
   }, [refresh]);
-  return { documents, status, save, open, refresh };
+  return { documents, status, save, open, patch, refresh };
 }
