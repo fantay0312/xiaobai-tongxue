@@ -67,7 +67,7 @@ export function createGlossRouter({ postgres, legacy, library, modelService, med
       const coverMatch = /^\/covers\/([a-zA-Z0-9._-]{1,160})$/.exec(path);
       if (coverMatch && req.method === 'GET') { const item = await postgres?.gloss.cover(owner.id, coverMatch[1]); if (!item) throw fail('封面不存在。', 404); res.writeHead(200, { 'Content-Type': item.content_type, 'Cache-Control': 'private,max-age=300' }); res.end(item.image); return; }
       if (!await reserveCalls(owner, res)) return;
-      if (path === '/speak' && req.method === 'POST') { const input = await readJson(req, 24000); const audio = await media.speech({ ...input, signal: ctrl.signal }); res.writeHead(200, { 'Content-Type': audio.mime, 'Cache-Control': 'no-store' }); res.end(audio.bytes); return; }
+      if (path === '/speak' && req.method === 'POST') { const input = await readJson(req, 24000); const audio = await media.speech({ ...input, signal: ctrl.signal }); res.writeHead(200, { 'Content-Type': audio.mime, 'Cache-Control': 'no-store', ...(audio.model ? { 'X-Reader-Speech-Model': audio.model } : {}), ...(audio.voice ? { 'X-Reader-Voice': audio.voice } : {}) }); res.end(audio.bytes); return; }
       if (path === '/covers' && req.method === 'POST') {
         const input = await readJson(req, 10000); if (!idOk(input.id) || typeof input.scene !== 'string') throw fail('封面信息无效。');
         const image = await media.cover({ model: input.model, prompt: `Editorial risograph print. ${input.scene.slice(0, 500)}. Two-colour palette of ${COVER_PALETTES[input.topic] || COVER_PALETTES.unsorted} ink on warm cream paper filling the whole image, grain and halftone texture, mid-century book-cover illustration, wordless, no lettering, no border.`, signal: ctrl.signal });

@@ -10,7 +10,7 @@ export let mediaPrefs: MediaPrefs = { speechModel: '', imageModel: '', voice: 'a
 export function defaultEffort() {
   try { return JSON.parse(baseStorage.getItem('xiaobai-model-prefs-v1') || '{}')?.state?.effort || 'low'; } catch { return 'low'; }
 }
-export const saveMediaPrefs = (patch: Partial<MediaPrefs>) => { mediaPrefs = { ...mediaPrefs, ...patch }; localStorage.setItem('media-prefs', JSON.stringify(mediaPrefs)); };
+export const saveMediaPrefs = (patch: Partial<MediaPrefs>) => { mediaPrefs = { ...mediaPrefs, ...patch }; localStorage.setItem('media-prefs', JSON.stringify(mediaPrefs)); window.dispatchEvent(new CustomEvent('gloss:media-prefs-change')); };
 export const hostMessage = (action: string) => window.parent.postMessage({ source: 'xiaobai-gloss', action }, location.origin);
 export async function hostFetch(path: string, init?: RequestInit) {
   const headers = new Headers(init?.headers); if (owner) headers.set('X-Xiaobai-User', encodeURIComponent(owner));
@@ -33,7 +33,7 @@ export async function initializeBridge() {
   indexedDB.open = (name: string, version?: number) => idbOpen(prefix + name, version);
   try { mediaPrefs = { ...mediaPrefs, ...JSON.parse(localStorage.getItem('media-prefs') || '{}') }; } catch { /* Defaults remain. */ }
   window.addEventListener('storage', (event) => {
-    if (event.key === prefix + 'media-prefs') { try { mediaPrefs = { ...mediaPrefs, ...JSON.parse(event.newValue || '{}') }; } catch { /* Ignore malformed external writes. */ } }
+    if (event.key === prefix + 'media-prefs') { try { mediaPrefs = { ...mediaPrefs, ...JSON.parse(event.newValue || '{}') }; window.dispatchEvent(new CustomEvent('gloss:media-prefs-change')); } catch { /* Ignore malformed external writes. */ } }
     if (event.key === 'xiaobai-model-prefs-v1') { try { const prefs = JSON.parse(event.newValue || '{}')?.state; if (prefs?.model) window.dispatchEvent(new CustomEvent('gloss:default-model-change', { detail: prefs })); } catch { /* Keep the current valid choice. */ } }
   });
   window.fetch = async (input, init) => {

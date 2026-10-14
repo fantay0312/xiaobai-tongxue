@@ -1,5 +1,9 @@
 # 阅读器自然语音
 
+腾讯云 TTS 为启用后的默认服务，复用 `TENCENT_ASR_SECRET_ID` / `TENCENT_ASR_SECRET_KEY`，启用开关为 `READER_TENCENT_TTS_ENABLED=1`。不添加新的用户密钥字段。默认智菊阅读女声（501002），可在设置切换智斌阅读男声（501000）、智瑜女声（101001）、智云男声（101004）。音色表来源：https://cloud.tencent.com/document/product/1073/92668 。
+
+`server/reader/tencent-voice.mjs` 将含中文的混合文本按不超过 130 个字符分段，英文按不超过 450 字符分段，串行合成并拼接 PCM 为 WAV，支持取消请求。语音服务和音色偏好在全局设置与阅读内设置之间同步。
+
 使用 Kokoro-82M-v1.1-zh（Apache-2.0）和 kokoro-onnx，在 CPU 上合成中文语音。不需要读者 API key，不依赖外部语音余额。
 
 - Python 版本由本目录 `mise.toml` 固定。
