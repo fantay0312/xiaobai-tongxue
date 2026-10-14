@@ -1,0 +1,24 @@
+{
+  "release": "20261014-registration-redirect-61cfb2a",
+  "sourceCommit": "61cfb2acabeeb9dee6e8c51aa0283c3face35791",
+  "backup": "/var/backups/xiaobai/20261014-registration-redirect-61cfb2a",
+  "rollbackRuntime": "/var/backups/xiaobai/20261014-registration-redirect-61cfb2a/runtime-before-switch",
+  "candidateChecks": "passed",
+  "databaseClone": {
+    "restoredDatabase": true,
+    "phoneOnlyPersisted": true,
+    "duplicatePhoneRolledBack": true,
+    "optionalVerifiedEmailPersisted": true
+  },
+  "secretScan": "passed",
+  "transferMode": "delta-verified-full-manifest",
+  "service": "active",
+  "http": {
+    "/": 200,
+    "/api/me": 200,
+    "/api/commerce/catalog": 200,
+    "/admin/": 200,
+    "/api/admin/v1/auth/me": 401
+  },
+  "retainedHashedAssets": 118
+}

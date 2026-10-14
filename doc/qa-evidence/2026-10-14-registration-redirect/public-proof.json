@@ -1,0 +1,13 @@
+{
+  "rootMatchesBuild": true,
+  "assets": [
+    {
+      "file": "index-C1Z9t3Ns.js",
+      "sha256": "7147c8e4356a061003b5a1827e06eda0804f56aadea6b89b2e4dce745ebfbb0b"
+    },
+    {
+      "file": "login-C5fOM4re.js",
+      "sha256": "8ba6dfdc5819ae8d3abb0e98844ce5dfe14e271de1666e0cf785b2240c599845"
+    }
+  ]
+}
