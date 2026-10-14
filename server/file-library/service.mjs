@@ -209,7 +209,7 @@ export function createFileLibraryService({ metadata, blobs, mode = 'cloud', maxB
         throw error;
       }
     },
-    async sources(owner, ids, query = '') {
+    async sources(owner, ids, query = '', options = {}) {
       if (!Array.isArray(ids) || ids.length < 1 || ids.length > 12 || ids.some((id) => typeof id !== 'string')) fail('library-selection-invalid');
       const entries = await metadata.list(owner.id); const refs = [];
       for (const id of new Set(ids)) {
@@ -219,7 +219,7 @@ export function createFileLibraryService({ metadata, blobs, mode = 'cloud', maxB
         if (!state.assetId || state.status !== 'completed') fail('library-parse-not-ready', 409);
         refs.push({ fileId: id, assetId: state.assetId, name: file.name });
       }
-      return customContent.readLibrarySources(owner, refs, typeof query === 'string' ? query.slice(0, 3000) : '');
+      return customContent.readLibrarySources(owner, refs, typeof query === 'string' ? query.slice(0, 3000) : '', options);
     },
     async reconcile() {
       const stale = await metadata.pendingBefore(new Date(Date.now() - 15 * 60000).toISOString());

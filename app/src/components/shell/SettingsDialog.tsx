@@ -820,7 +820,7 @@ function ModelSection() {
         <Row
           label="默认模型与思考强度"
           desc={hasCatalog
-            ? '新对话默认用它；在输入框里可以随时换'
+            ? '新对话、阅读问答、全文导读与阅读分类默认用它；可随时切换'
             : line === 'api' ? '填好接口并勾选模型后，这里就能选' : '这条线路现在取不到可选模型，登录后再看'}
         >
           <ModelPicker

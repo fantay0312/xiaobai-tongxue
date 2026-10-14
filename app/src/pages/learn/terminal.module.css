@@ -569,6 +569,9 @@ button.crumb:hover {
   min-height: 0;
 }
 
+.terminal[data-view='reading'] .scroll { padding: 0; overflow: hidden; display: flex; flex: 1; min-height: 0; }
+.terminal[data-view='reading'] .scroll > * { flex: 1; min-height: 0; }
+
 .tabs {
   flex: none;
   padding: 2px 16px 0;

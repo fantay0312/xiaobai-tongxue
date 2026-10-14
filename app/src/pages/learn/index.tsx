@@ -86,6 +86,7 @@ const TOOL_COMPONENTS: Record<ToolView, LazyExoticComponent<ComponentType<Termin
   agent: lazy(() => import('./views/AgentView')),
   memory: lazy(() => import('./views/MemoryView')),
   research: lazy(() => import('./views/ResearchView')),
+  reading: lazy(() => import('../reading')),
 };
 
 /** 这些视图下方保留输入框，随时可以向小砚提问 */

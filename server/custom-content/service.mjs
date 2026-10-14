@@ -1379,7 +1379,7 @@ export function createCustomContentService({
       if (id) await weknora.deleteKnowledge(id, 'library-cleanup-' + fileId);
     },
 
-    async readLibrarySources(owner, refs, query = '') {
+    async readLibrarySources(owner, refs, query = '', options = {}) {
       const groups = [];
       for (let offset = 0; offset < refs.length; offset += 4) {
         groups.push(...await Promise.all(refs.slice(offset, offset + 4).map(async (ref) => {
@@ -1394,9 +1394,9 @@ export function createCustomContentService({
       }
       const sources = groups.map(({ asset, chunks, ref }) => {
         const usable = chunks.map((chunk) => ({ id: chunkId(chunk), content: chunkContent(chunk) })).filter((chunk) => chunk.id && chunk.content);
-        const sampled = usable.length <= 20 ? usable : Array.from({ length: 20 }, (_, i) => usable[Math.floor(i * (usable.length - 1) / 19)]);
+        const sampled = options.fullText || usable.length <= 20 ? usable : Array.from({ length: 20 }, (_, i) => usable[Math.floor(i * (usable.length - 1) / 19)]);
         return { id: `library:${ref.fileId}`, libraryFileId: ref.fileId, assetId: asset.id, title: ref.name, kind: 'library', version: `${asset.sha256}:${asset.statusRevision}`,
-          content: sampled.map((chunk) => chunk.content.slice(0, 800)).join('\n\n'), limited: usable.length > sampled.length };
+          content: sampled.map((chunk) => options.fullText ? chunk.content : chunk.content.slice(0, 800)).join('\n\n').slice(0, options.fullText ? 1_500_000 : 18000), limited: usable.length > sampled.length || (options.fullText && (chunks.length >= 500 || sampled.reduce((sum, chunk) => sum + chunk.content.length, 0) > 1_500_000)) };
       });
       const ranked = query ? rankStudySources(query, groups) : [];
       const evidence = ranked.length ? ranked.map((hit) => {

@@ -81,6 +81,7 @@ import { createStudyTutorRouter } from './study-tutor.mjs';
 import { createFileLibraryService } from './file-library/service.mjs';
 import { createFileLibraryRouter } from './file-library/router.mjs';
 import { postgresFileLibraryStore } from './file-library/repository.mjs';
+import { createReaderRouter } from './reader/router.mjs';
 import { createLearningAnswerService } from './learning-answer.mjs';
 import { createLearningAnswerRouter } from './learning-answer-router.mjs';
 import { createModelCatalog } from './model-catalog.mjs';
@@ -2926,6 +2927,13 @@ const researchConnectorsRouter = createResearchConnectorsRouter({
   resolveUser: (req, res) => protectedUser(req, res, 'chat'), send, readJson: (req, limit) => readJson(req, limit, 15_000), hasJsonContentType,
 });
 
+const readerRouter = createReaderRouter({
+  repository: productionStorage?.postgres.reader,
+  library: fileLibraryService,
+  resolveOwner: async (req, res) => { const user = await protectedUser(req, res, 'chat'); return user ? { ...user, id: (await findUser(user.name))?.id ?? user.name } : null; },
+  send, readJson: (req, limit) => readJson(req, limit, 15000), reserveCalls: reserveModelCalls,
+});
+
 const server = http.createServer((req, res) => {
   let { pathname } = new URL(req.url, 'http://localhost');
   // 路径前缀部署:/xiaobai/... 与根路径 ... 等价(nginx 反代不改写,前缀由这里剥)
@@ -2933,6 +2941,7 @@ const server = http.createServer((req, res) => {
     pathname = pathname.slice(PREFIX.length) || '/';
   }
   if (pathname.startsWith('/api/')) {
+    if (pathname.startsWith('/api/reader/')) return void readerRouter.handle(req, res, pathname);
     if (pathname.startsWith('/api/learning/')) return void learningAnswerRouter.handle(req,res,pathname);
     if (pathname.startsWith('/api/model/')) return void modelGatewayRouter.handle(req, res, pathname);
     if (pathname.startsWith('/api/research/')) return void researchConnectorsRouter.handle(req, res, pathname);

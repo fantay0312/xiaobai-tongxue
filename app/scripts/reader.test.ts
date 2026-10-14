@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import { exportNotes, highlightSegments, makeDocument, reviewMark, textBlocks } from '../src/pages/reading/types';
+import { readerContext } from '../src/pages/reading/ai';
+
+const doc = makeDocument('Reading', textBlocks('# Heading\n\nA fact deserves evidence.\n\nA second paragraph.'));
+assert.equal(doc.blocks.length, 3);
+assert.equal(doc.blocks[0].kind, 'heading');
+const mark = { id: 'mark1', anchors: [{ block: 'p2', start: 2, end: 6 }], quote: 'fact', color: 'yellow', note: 'Verify it.', createdAt: 1 };
+doc.marks.push(mark);
+const segments = highlightSegments(doc.blocks[1].text, 'p2', doc.marks);
+assert.equal(segments.map((s) => s.text).join(''), doc.blocks[1].text);
+assert.equal(segments.find((s) => s.mark)?.text, 'fact');
+const overlap = highlightSegments('abcdef', 'p1', [mark, { ...mark, anchors: [{ block: 'p1', start: -2, end: 20 }] }]);
+assert.equal(overlap.map((s) => s.text).join(''), 'abcdef');
+assert.match(exportNotes(doc), /Verify it/);
+assert.match(exportNotes(doc), /¶2/);
+assert.equal(reviewMark(mark, true, 100).due, 100 + 3 * 86400000);
+assert.equal(reviewMark(mark, false, 100).due, 100 + 86400000);
+assert.equal(readerContext(doc).partial, false);
+const long = makeDocument('Long', Array.from({ length: 200 }, (_, i) => ({ id: `p${i}`, kind: 'paragraph', text: 'x'.repeat(1000) })));
+assert.equal(readerContext(long, 'p199').partial, true);
+assert.ok(readerContext(long, 'p199').text.includes('[¶200]'));
+assert.ok(readerContext(long, 'p199').text.length <= 90000);
+console.log('Reader anchors, overlapping highlights, review intervals, export and bounded source context passed.');

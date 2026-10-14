@@ -65,6 +65,18 @@ class AssetDataFactory {
   }
 }
 
+/** Shared by the reader's text extraction; uses the same bundled worker and fonts. */
+export async function openReaderPdf(blob: Blob) {
+  const [pdfjs, script, buffer] = await Promise.all([import('pdfjs-dist'), loadWorkerScript(), blob.arrayBuffer()]);
+  pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+  const thread = new Worker(script, { type: 'module' });
+  const worker = new pdfjs.PDFWorker({ port: thread as unknown as null });
+  const task = pdfjs.getDocument({ data: new Uint8Array(buffer), worker, cMapUrl: `${assetBase}cmaps/`, cMapPacked: true,
+    standardFontDataUrl: `${assetBase}standard_fonts/`, BinaryDataFactory: AssetDataFactory, useWorkerFetch: false });
+  const destroy = () => { void task.destroy().catch(() => {}).finally(() => { worker.destroy(); thread.terminate(); }); };
+  try { return { doc: await task.promise, destroy }; } catch (error) { destroy(); throw error; }
+}
+
 function describeError(reason: unknown): string {
   const name = (reason as { name?: string } | null)?.name;
   if (name === 'PasswordException') return '这份 PDF 设了打开密码，暂不支持在线预览，可下载后用本机软件打开。';

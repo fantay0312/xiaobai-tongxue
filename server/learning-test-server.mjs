@@ -19,6 +19,7 @@ import { createLearningAnswerService } from './learning-answer.mjs';
 import { createLearningAnswerRouter } from './learning-answer-router.mjs';
 import { createModelCatalog } from './model-catalog.mjs';
 import { createModelGatewayService, createModelGatewayRouter } from './model-gateway.mjs';
+import { createReaderRouter } from './reader/router.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const cfg = JSON.parse(readFileSync(process.env.LEARNING_TEST_CONFIG ?? '/etc/xiaobai/learning-test.json', 'utf8'));
@@ -97,6 +98,7 @@ const reserveLearningCalls = async(owner,res)=>{
 const learningAnswerRouter = createLearningAnswerRouter({service:learningAnswers,resolveOwner,send,readJson,hasJsonContentType,reserveCalls:reserveLearningCalls});
 const modelGatewayRouter = createModelGatewayRouter({ service: createModelGatewayService({ baseUrl: cfg.upstreamBaseUrl, apiKey: cfg.apiKey, catalog: modelCatalog }), resolveOwner, send, readJson, hasJsonContentType, reserveCalls: reserveLearningCalls });
 const libraryRouter = createFileLibraryRouter({ service: library, resolveOwner, send, readRaw, readJson, rateLimit: (owner) => limit({ scope: 'upload', subject: owner.id, limit: 60, windowSeconds: 86400 }) });
+const readerRouter = createReaderRouter({ repository: postgres.reader, library, resolveOwner, send, readJson, reserveCalls: reserveLearningCalls });
 const studyRouter = createStudyTutorRouter({ provider: createDeepTutorProvider({ enabled: process.env.DEEPTUTOR_ENABLED === '1', model: cfg.upstreamModelCoach || cfg.upstreamModel, baseUrl: cfg.upstreamBaseUrl, apiKey: cfg.apiKey }), fileLibrary: library, customContent: custom, resolveOwner, send, readJson, hasJsonContentType,
   reserveCalls: async (owner, res, units) => { const result = await limit({ scope: 'deep', subject: owner.id, limit: 80, windowSeconds: 86400, amount: units }); if (!result.allowed) send(res,429,{error:'rate-limited'}); return result.allowed; } });
 function proxyPrimary(req, res, pathname) {
@@ -113,8 +115,9 @@ const server = http.createServer(async (req,res) => {
     if (url.pathname === prefix) { res.writeHead(308,{Location:prefix+'/'});res.end();return; }
     if (!url.pathname.startsWith(prefix+'/')) return send(res,404,{error:'not-found'});
     const pathname = url.pathname.slice(prefix.length);
-    if (!['GET','HEAD'].includes(req.method) && req.headers.origin !== origin) return send(res,403,{error:'invalid-origin'});
+    if (!['GET','HEAD'].includes(req.method) && req.headers.origin !== origin && !(pathname === '/api/reader/mcp' && !req.headers.origin && req.headers.authorization?.startsWith('Bearer '))) return send(res,403,{error:'invalid-origin'});
     if (pathname === '/api/health') return send(res,200,{ok:true,deployment:'learning-test',parser:'WeKnora',model:cfg.upstreamModelCoach || cfg.upstreamModel});
+    if (pathname.startsWith('/api/reader/')) return await readerRouter.handle(req,res,pathname);
     if (pathname.startsWith('/api/learning/')) return await learningAnswerRouter.handle(req,res,pathname);
     if (pathname.startsWith('/api/model/')) return await modelGatewayRouter.handle(req,res,pathname);
     if (pathname === '/api/chat') {
