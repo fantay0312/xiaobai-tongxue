@@ -70,9 +70,10 @@ export function createGlossRouter({ postgres, legacy, library, modelService, med
       if (path === '/speak' && req.method === 'POST') { const input = await readJson(req, 24000); const audio = await media.speech({ ...input, signal: ctrl.signal }); res.writeHead(200, { 'Content-Type': audio.mime, 'Cache-Control': 'no-store', ...(audio.model ? { 'X-Reader-Speech-Model': audio.model } : {}), ...(audio.voice ? { 'X-Reader-Voice': audio.voice } : {}) }); res.end(audio.bytes); return; }
       if (path === '/covers' && req.method === 'POST') {
         const input = await readJson(req, 10000); if (!idOk(input.id) || typeof input.scene !== 'string') throw fail('封面信息无效。');
-        const image = await media.cover({ model: input.model, prompt: `Editorial risograph print. ${input.scene.slice(0, 500)}. Two-colour palette of ${COVER_PALETTES[input.topic] || COVER_PALETTES.unsorted} ink on warm cream paper filling the whole image, grain and halftone texture, mid-century book-cover illustration, wordless, no lettering, no border.`, signal: ctrl.signal });
+        const palette = Object.hasOwn(COVER_PALETTES, input.topic) ? COVER_PALETTES[input.topic] : COVER_PALETTES.unsorted;
+        const image = await media.cover({ model: input.model, prompt: `Editorial risograph print. ${Array.from(input.scene).slice(0, 300).join('')}. Two-colour palette of ${palette} ink on warm cream paper filling the whole image, grain and halftone texture, mid-century book-cover illustration, wordless, no lettering, no border.`, signal: ctrl.signal });
         await postgres.gloss.saveCover(owner.id, input.id, image.bytes, image.mime);
-        res.writeHead(200, { 'Content-Type': image.mime, 'Cache-Control': 'no-store' }); res.end(image.bytes); return;
+        res.writeHead(200, { 'Content-Type': image.mime, 'Cache-Control': 'no-store', ...(image.model ? { 'X-Reader-Image-Model': image.model } : {}) }); res.end(image.bytes); return;
       }
       if (path === '/pdf-page' && req.method === 'POST') { const input = await readJson(req, 13000000); return send(res, 200, { markdown: await media.vision({ image: input.image, signal: ctrl.signal }) }); }
       if (path === '/pdf-careful' && req.method === 'POST') {

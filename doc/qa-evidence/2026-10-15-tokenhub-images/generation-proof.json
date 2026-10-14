@@ -1,0 +1,16 @@
+{
+  "seedream": {
+    "model": "tokenhub:seedream-image-v5.0-pro",
+    "ok": true,
+    "mime": "image/png",
+    "bytes": 2599332,
+    "seconds": 57.919
+  },
+  "hy": {
+    "model": "tokenhub:hy-image-v3.5-preview",
+    "ok": true,
+    "bytes": 1867887,
+    "mime": "image/png",
+    "seconds": 13.026
+  }
+}

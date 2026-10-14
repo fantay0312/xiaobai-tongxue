@@ -7,6 +7,11 @@ export const nativeIdbOpen = indexedDB.open.bind(indexedDB);
 const baseStorage = window.localStorage;
 export type MediaPrefs = { speechModel: string; imageModel: string; voice: string; effort: string };
 export let mediaPrefs: MediaPrefs = { speechModel: '', imageModel: '', voice: 'alloy', effort: 'low' };
+let imageCatalog: { images?: { id: string }[]; defaultImage?: string } = {};
+export function effectiveImageModel() {
+  if (!imageCatalog.images) return mediaPrefs.imageModel;
+  return imageCatalog.images.some((m) => m.id === mediaPrefs.imageModel) ? mediaPrefs.imageModel : imageCatalog.defaultImage || '';
+}
 export function defaultEffort() {
   try { return JSON.parse(baseStorage.getItem('xiaobai-model-prefs-v1') || '{}')?.state?.effort || 'low'; } catch { return 'low'; }
 }
@@ -45,7 +50,7 @@ export async function initializeBridge() {
       if (typeof body === 'string' && headers.get('Content-Type')?.includes('application/json')) {
         const payload = JSON.parse(body); delete payload.apiKey;
         const prefs = JSON.parse(baseStorage.getItem('xiaobai-model-prefs-v1') || '{}')?.state || {};
-        payload.model = url.pathname.includes('speak') ? mediaPrefs.speechModel : url.pathname.includes('covers') ? mediaPrefs.imageModel : payload.model || prefs.model;
+        payload.model = url.pathname.includes('speak') ? mediaPrefs.speechModel : url.pathname.includes('covers') ? effectiveImageModel() : payload.model || prefs.model;
         payload.voice = mediaPrefs.voice; payload.effort = prefs.effort || 'low';
         body = JSON.stringify(payload);
       }
@@ -61,6 +66,7 @@ export async function initializeBridge() {
 export async function loadModels() {
   const [chatResponse, mediaResponse] = await Promise.all([hostFetch('model/catalog'), hostFetch('reader/gloss/media/catalog')]);
   const chat = await chatResponse.json(); const media = await mediaResponse.json();
+  imageCatalog = media;
   const prefs = JSON.parse(baseStorage.getItem('xiaobai-model-prefs-v1') || '{}')?.state || {};
   return { chat, media, model: prefs.model || chat.defaultModel, effort: prefs.effort || 'low' };
 }

@@ -1,5 +1,6 @@
 import { tencentVoice } from './tencent-voice.mjs';
 import { TENCENT_VOICES, TENCENT_DEFAULT_VOICE, tencentEnabled, resolveTencentVoice } from './tencent-voices.mjs';
+import { createTokenhubImages, DEFAULT_TOKENHUB_IMAGE } from './tokenhub-images.mjs';
 const fail = (message, status = 502) => Object.assign(new Error(message), { status });
 const VOICES = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'];
 const mediaId = (host, model) => `${host}:${model}`;
@@ -20,6 +21,7 @@ export function readerMediaProviders(cfg) {
 
 export function createReaderMedia({ cfg = {}, env = process.env, fetchImpl = fetch }) {
   const providers = readerMediaProviders(cfg); let cache; let pending;
+  const tokenhub = createTokenhubImages({ env, fetchImpl });
   async function discover() {
     if (cache && Date.now() - cache.at < 300000) return cache;
     pending ??= (async () => {
@@ -56,9 +58,9 @@ export function createReaderMedia({ cfg = {}, env = process.env, fetchImpl = fet
     let local = [];
     try { const r = await fetchImpl('http://127.0.0.1:18082/health', { signal: AbortSignal.timeout(1500) }); if (r.ok) local = (await r.json()).voices.map((voice) => ({ id: `kokoro:${voice}`, model: 'Kokoro-82M-v1.1-zh', label: `Kokoro 自然语音 · ${voice}`, provider: '本机' })); } catch { /* Optional local worker is not running. */ }
     const prefer = (list, ids) => ids.map((id) => list.find((x) => x.model === id)).find(Boolean) ?? list[0];
-    return { speech: [...tencent, ...local, ...speech.filter((s) => s.model.startsWith('openai/')).map((s) => ({ ...publicRoute(s), voices: VOICES.map((id) => ({ id, label: id })), defaultVoice: 'alloy' }))], images: images.map(publicRoute), voices: VOICES,
+    return { speech: [...tencent, ...local, ...speech.filter((s) => s.model.startsWith('openai/')).map((s) => ({ ...publicRoute(s), voices: VOICES.map((id) => ({ id, label: id })), defaultVoice: 'alloy' }))], images: tokenhub.available ? tokenhub.models : images.map(publicRoute), voices: VOICES,
       defaultSpeech: tencent[0]?.id || local[0]?.id || prefer(speech, ['openai/gpt-audio-mini', 'openai/gpt-audio'])?.id || null,
-      defaultImage: prefer(images.filter((r) => r.dedicated), ['bytedance-seed/seedream-5-0-flash', 'tencent/hy-image-v3.5-preview', 'black-forest-labs/flux.2-klein-4b'])?.id ?? null };
+      defaultImage: tokenhub.available ? DEFAULT_TOKENHUB_IMAGE : prefer(images.filter((r) => r.dedicated), ['bytedance-seed/seedream-5-0-flash', 'tencent/hy-image-v3.5-preview', 'black-forest-labs/flux.2-klein-4b'])?.id ?? null };
   }
   async function route(kind, id) {
     const found = (await discover()).routes.filter((r) => r.kind === kind);
@@ -104,6 +106,7 @@ export function createReaderMedia({ cfg = {}, env = process.env, fetchImpl = fet
       return { bytes: Buffer.concat(chunks), mime: 'audio/mpeg', model: selected.model };
     },
     async cover({ prompt, model, signal }) {
+      if (tokenhub.available) return tokenhub.cover({ prompt, model, signal });
       if (typeof prompt !== 'string' || !prompt.trim() || prompt.length > 4000) throw fail('封面提示无效。', 400);
       const selected = await route('image', model || (await catalog()).defaultImage);
       if (selected.dedicated) {
