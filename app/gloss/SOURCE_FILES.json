@@ -410,7 +410,7 @@
     {
       "path": "lib/tex.ts",
       "upstreamSha256": "5c6e8ddc4dee3171838c05cd7e41f1c84b6f3dc9f43cafcb7df55ac3512e9a2b",
-      "adapted": false
+      "adapted": true
     },
     {
       "path": "lib/together.ts",
@@ -425,7 +425,7 @@
     {
       "path": "lib/voice.ts",
       "upstreamSha256": "f472f65f209c08addf643c5009cf3ff9804cd658a2390dbe01d56a91404674a7",
-      "adapted": false
+      "adapted": true
     },
     {
       "path": "lib/zip.ts",

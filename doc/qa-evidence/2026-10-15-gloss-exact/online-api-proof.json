@@ -1,0 +1,32 @@
+{
+  "realProductionCode": true,
+  "privateTestHarness": true,
+  "accountUiTest": false,
+  "ask": {
+    "status": 200,
+    "events": [
+      "content",
+      "meta",
+      "usage",
+      "done"
+    ],
+    "text": "三步操作：==阅读原文、提出问题、保存笔记==，见 [¶2]。\n\n[¶1] 只是说明材料性质，不含操作步骤。",
+    "valid": true,
+    "model": "deepseek-flash",
+    "usage": {
+      "promptTokens": 467,
+      "completionTokens": 32,
+      "cachedTokens": 0
+    }
+  },
+  "speech": {
+    "status": 200,
+    "mime": "audio/wav",
+    "bytes": 159436,
+    "wav": true
+  },
+  "cover": {
+    "status": 402,
+    "error": "服务器图像服务余额不足，请联系管理员充值。"
+  }
+}
