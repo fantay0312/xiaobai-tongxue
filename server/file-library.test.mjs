@@ -54,6 +54,22 @@ test('two parse starts may run together while the global ingestion limit stays a
   assert.deepEqual(statuses.sort(),[201,201,429]);
 });
 
+test('an old status poll cannot overwrite a newer reparse state', async (t) => {
+  const root=await mkdtemp(path.join(os.tmpdir(),'xb-poll-race-'));
+  t.after(()=>rm(root,{recursive:true,force:true}));
+  const local=await createLocalLibraryStore(root);
+  const file=await createFileLibraryService(local).upload(alice,{name:'poll.txt',bytes:Buffer.from('text')});
+  await local.metadata.mutate(alice.id,entries=>{entries[0].parse={assetId:'asset',status:'completed',updatedAt:'old'};});
+  let release;const gate=new Promise(resolve=>{release=resolve;});
+  const service=createFileLibraryService({...local,customContent:{getAsset:async()=>{await gate;return{id:'asset',parseStatus:'completed'};}}});
+  const read=service.parseState(alice,file.id);
+  await new Promise(resolve=>setTimeout(resolve,5));
+  await local.metadata.mutate(alice.id,entries=>{entries[0].parse={assetId:'asset',status:'pending',updatedAt:'new'};});
+  release();
+  assert.equal((await read).status,'pending');
+  assert.equal((await local.metadata.list(alice.id))[0].parse.status,'pending');
+});
+
 test('file library stores original bytes, preserves folders through restart, isolates users and restores trash', async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'xb-library-')); t.after(() => rm(root, { recursive: true, force: true }));
   const local = await createLocalLibraryStore(root); const imported = [];

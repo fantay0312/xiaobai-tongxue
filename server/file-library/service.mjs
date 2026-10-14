@@ -165,8 +165,13 @@ export function createFileLibraryService({ metadata, blobs, mode = 'cloud', maxB
       else if (customContent?.findLibraryAsset) asset = await customContent.findLibraryAsset(owner, id);
       if (asset) {
         const parse = { assetId: asset.id, status: asset.parseStatus, error: asset.errorMessage, updatedAt: now() };
-        await mutate(owner, (entries) => { ownedEntry(entries, id).parse = parse; });
-        return parse;
+        return mutate(owner, (entries) => {
+          const current = ownedEntry(entries, id);
+          // A poll which started before a retry must not restore the previous terminal state.
+          if (JSON.stringify(current.parse) === JSON.stringify(file.parse)) current.parse = parse;
+          return { assetId:current.parse?.assetId ?? null, status:current.parse?.status ?? 'unparsed',
+            error:current.parse?.error, updatedAt:current.parse?.updatedAt };
+        });
       }
       return { status: file.parse?.status ?? 'unparsed', error: file.parse?.error, assetId: null };
     },
