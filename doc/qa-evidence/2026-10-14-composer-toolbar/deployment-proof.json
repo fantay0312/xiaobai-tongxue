@@ -1,0 +1,62 @@
+{
+  "release": "20261014-composer-toolbar-f21c305",
+  "sourceCommit": "f21c305dfca7016973ef3a49ce80aac4f6c60a14",
+  "backup": "/var/backups/xiaobai/20261014-composer-toolbar-f21c305",
+  "rollbackRuntime": "/var/backups/xiaobai/20261014-composer-toolbar-f21c305/runtime-before-switch",
+  "candidateChecks": "passed",
+  "databaseClone": {
+    "required": false,
+    "reason": "frontend-only; database unchanged"
+  },
+  "realModel": {
+    "passed": true,
+    "cases": [
+      {
+        "format": "auto",
+        "elapsedMs": 2869,
+        "blocks": [
+          "quiz"
+        ],
+        "attempts": 1,
+        "usage": {
+          "prompt_tokens": 1286,
+          "completion_tokens": 276,
+          "total_tokens": 1562,
+          "prompt_tokens_details": {
+            "cached_tokens": 1024
+          },
+          "prompt_cache_hit_tokens": 1024,
+          "prompt_cache_miss_tokens": 262
+        }
+      },
+      {
+        "format": "text",
+        "elapsedMs": 983,
+        "blocks": [],
+        "attempts": 1,
+        "usage": {
+          "prompt_tokens": 173,
+          "completion_tokens": 26,
+          "total_tokens": 199,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "prompt_cache_hit_tokens": 0,
+          "prompt_cache_miss_tokens": 173
+        }
+      }
+    ],
+    "inheritedFrom": "4ef750bbce7c9ec0bae4608b5336a5d4524c7c86"
+  },
+  "secretScan": "passed",
+  "transferMode": "delta-verified-full-manifest",
+  "service": "active",
+  "http": {
+    "/": 200,
+    "/api/me": 200,
+    "/api/commerce/catalog": 200,
+    "/admin/": 200,
+    "/api/admin/v1/auth/me": 401
+  },
+  "retainedHashedAssets": 311
+}

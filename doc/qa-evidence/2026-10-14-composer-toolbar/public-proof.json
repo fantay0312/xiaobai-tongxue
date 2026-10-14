@@ -1,0 +1,32 @@
+{
+  "release": "20261014-composer-toolbar-f21c305",
+  "sourceCommit": "f21c305dfca7016973ef3a49ce80aac4f6c60a14",
+  "publicBytesMatch": true,
+  "checks": [
+    {
+      "path": "dist/index.html",
+      "status": 200,
+      "sha256": "8081696f183f9202c331bebb38dc9eed8628543adbf37ef92423cdeae5b49eec"
+    },
+    {
+      "path": "dist/assets/MemoryView-DYw9MMSS.js",
+      "status": 200,
+      "sha256": "d0c4d45ff984f19c5ef8b9f35e4b47773d3261440606c2aef9dac4defdf02de8"
+    },
+    {
+      "path": "dist/assets/learn-eRRjID3D.css",
+      "status": 200,
+      "sha256": "ad512b2747a73bb7af3a6aa16fa63dd0a70743784a7c272a844ea5734897944d"
+    },
+    {
+      "path": "dist/assets/learn-BEVsqJ5B.js",
+      "status": 200,
+      "sha256": "d677a4f9e00089ad6bec65230982de3cde16e4d0d75e5489fcb1436c6328d0a1"
+    },
+    {
+      "path": "dist/assets/MemoryView-C0W9H6p1.css",
+      "status": 200,
+      "sha256": "ffdcdb3749cc45169eb1934b8ba5e717da3cd660e9eae43ecc384fc5de6b8121"
+    }
+  ]
+}
