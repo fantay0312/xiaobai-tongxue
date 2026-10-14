@@ -1,0 +1,31 @@
+{
+  "frontend": [
+    "memory",
+    "study",
+    "custom-content",
+    "agent",
+    "auth",
+    "sync",
+    "growth",
+    "conversation"
+  ],
+  "typecheck": "passed",
+  "build": "passed",
+  "ui": {
+    "desktop": "1280x900",
+    "mobile": "390x844",
+    "horizontalOverflow": false,
+    "automaticDream": "expired item archived without confirmation",
+    "deduplicate": "3 repeated items became 1; pinned and frequency retained",
+    "manualRetention": "long to short update reflected immediately"
+  },
+  "memoryPolicy": {
+    "recentHours": 24,
+    "shortDays": 7,
+    "maxInjectedItems": 3,
+    "maxInjectedChars": 240,
+    "automaticDreams": true,
+    "perDreamerIntervalHours": 18
+  },
+  "serverTests": 311
+}

@@ -1,0 +1,62 @@
+{
+  "release": "20261014-memory-layers-4ef750b",
+  "sourceCommit": "4ef750bbce7c9ec0bae4608b5336a5d4524c7c86",
+  "backup": "/var/backups/xiaobai/20261014-memory-layers-4ef750b",
+  "rollbackRuntime": "/var/backups/xiaobai/20261014-memory-layers-4ef750b/runtime-before-switch",
+  "candidateChecks": "passed",
+  "databaseClone": {
+    "restoredDatabase": true,
+    "readable": true,
+    "productionWrites": false
+  },
+  "realModel": {
+    "passed": true,
+    "cases": [
+      {
+        "format": "auto",
+        "elapsedMs": 2869,
+        "blocks": [
+          "quiz"
+        ],
+        "attempts": 1,
+        "usage": {
+          "prompt_tokens": 1286,
+          "completion_tokens": 276,
+          "total_tokens": 1562,
+          "prompt_tokens_details": {
+            "cached_tokens": 1024
+          },
+          "prompt_cache_hit_tokens": 1024,
+          "prompt_cache_miss_tokens": 262
+        }
+      },
+      {
+        "format": "text",
+        "elapsedMs": 983,
+        "blocks": [],
+        "attempts": 1,
+        "usage": {
+          "prompt_tokens": 173,
+          "completion_tokens": 26,
+          "total_tokens": 199,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "prompt_cache_hit_tokens": 0,
+          "prompt_cache_miss_tokens": 173
+        }
+      }
+    ]
+  },
+  "secretScan": "passed",
+  "transferMode": "delta-verified-full-manifest",
+  "service": "active",
+  "http": {
+    "/": 200,
+    "/api/me": 200,
+    "/api/commerce/catalog": 200,
+    "/admin/": 200,
+    "/api/admin/v1/auth/me": 401
+  },
+  "retainedHashedAssets": 272
+}

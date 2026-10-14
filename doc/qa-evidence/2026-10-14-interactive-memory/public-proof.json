@@ -1,0 +1,32 @@
+{
+  "release": "20261014-memory-layers-4ef750b",
+  "sourceCommit": "4ef750bbce7c9ec0bae4608b5336a5d4524c7c86",
+  "publicBytesMatch": true,
+  "checks": [
+    {
+      "path": "dist/index.html",
+      "status": 200,
+      "sha256": "6c49d9713c008d46a8dbc6d50ba6d2e6316abaacb57cf26f5b2996e31aee5fb3"
+    },
+    {
+      "path": "dist/assets/learn-DutJqvpy.css",
+      "status": 200,
+      "sha256": "2cbbc3bc5a0dfccb797af3a487a0e297645a9cf74028b0fd9e8ddbec240cc53d"
+    },
+    {
+      "path": "dist/assets/MemoryView-CkmLCKjt.js",
+      "status": 200,
+      "sha256": "991aef7f621279747cd89fe9f8e65a42f212bb8e44457afb16eaa3016a6ec755"
+    },
+    {
+      "path": "dist/assets/MemoryView-C0W9H6p1.css",
+      "status": 200,
+      "sha256": "ffdcdb3749cc45169eb1934b8ba5e717da3cd660e9eae43ecc384fc5de6b8121"
+    },
+    {
+      "path": "dist/assets/learn-p-8S4Wiz.js",
+      "status": 200,
+      "sha256": "5c83de14fd85bc70c68fd93ecd35467229523ec5d7fe846801483c5f2f510daa"
+    }
+  ]
+}

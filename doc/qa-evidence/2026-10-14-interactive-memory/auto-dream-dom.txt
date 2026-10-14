@@ -1,0 +1,82 @@
+- main:
+  - navigation "终端导航":
+    - button "对话":
+      - generic: 对话
+    - button "工作台":
+      - generic: 工作台
+    - button "教小白":
+      - generic: 教小白
+    - button "AI 课堂":
+      - generic: AI 课堂
+    - button "更多":
+      - generic: 更多
+  - button "展开侧栏":
+  - navigation "当前位置":
+    - generic: 记忆
+  - button "资料":
+    - generic: "0"
+  - button "工具与产物":
+  - region "学习工作区":
+    - heading "记忆" [level=1]
+    - paragraph: 两个记忆库分开保存，互不混写。
+    - generic: 暂停记忆
+    - switch "暂停小砚的记忆"
+    - radiogroup "两个记忆库":
+      - radio "小砚的记忆库" [checked]
+      - radio "小白的记忆库"
+    - navigation "小砚的记忆库的文件":
+      - button "全部文件 9":
+        - text: 全部文件
+        - generic: "9"
+      - button "记忆总览"
+      - button "讲法偏好 1":
+        - text: 讲法偏好
+        - generic: "1"
+      - button "目标"
+      - button "薄弱点"
+      - button "已掌握"
+      - button "习惯"
+      - button "资料"
+      - button "归档 1":
+        - text: 归档
+        - generic: "1"
+      - button "小砚的梦 1" [pressed]:
+        - text: 小砚的梦
+        - generic: "1"
+      - button "变更历史 1":
+        - text: 变更历史
+        - generic: "1"
+    - paragraph: 空闲时，小砚把记忆库重新整理一遍，留下的记录。
+    - radiogroup "记忆保留层级":
+      - radio "全部" [checked]
+      - radio "最近记忆"
+      - radio "短期记忆"
+      - radio "长期记忆"
+    - paragraph: 当前问题优先。回答最多参考 3 条相关记忆；最近上下文不会变成长久偏好。
+    - paragraph: 空闲时自动整理三层记忆：合并重复内容，归档到期的近期和短期记录，把跨天反复确认的信息沉淀为长期记忆。不会改写你亲手写的原文；每次整理都留下历史，可以查看和撤销。
+    - region "整理状态":
+      - term: 上次整理
+      - definition: 今天 14:58
+      - term: 攒下的
+      - definition: 没有新内容
+      - term: 下次整理
+      - definition: 最早 明天 08:58 之后。那时有新内容的话，打开学习终端就会自动整理。
+      - button "现在整理":
+        - text: 现在整理
+    - paragraph: 做梦会自动整理最近、短期和长期记忆，直接生效，不需要逐条确认。你可以在变更历史中查看和撤销。
+    - region "梦境记录":
+      - heading "梦境记录" [level=2]
+      - generic: 共 1 场，最多留 20 场
+      - list:
+        - article:
+          - heading "放下了几件旧事" [level=3]
+          - generic: 今天 14:58
+          - generic: 本地规则整理
+          - generic: 已生效
+          - button "删掉这条记录":
+          - paragraph: 夜里我把记忆库里的 3 条翻了一遍，也把最近的 1 次对话之外的学习行为回想了一下。有 1 条很久没再提起，我把它归了档。
+          - term: 淡忘
+          - definition:
+            - list:
+              - listitem: 两周前临时记下的问题
+- region "Notifications alt+T"
