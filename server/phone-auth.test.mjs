@@ -63,6 +63,17 @@ test('phone OTP expires and five wrong attempts invalidate it', async () => {
   assert.equal(attempted.auth.consumeCode({ ...INPUT, code: '123456' }).ok, false);
 });
 
+test('registration codes cannot authenticate, bind, or reset a password', async () => {
+  const { auth } = fixture();
+  const registration = { ...INPUT, purpose: 'register', subject: 'unowned:phone' };
+  assert.equal((await auth.requestCode(registration)).ok, true);
+  for (const purpose of ['login', 'bind', 'change-phone', 'reset-password']) {
+    assert.equal(auth.consumeCode({ ...registration, purpose, code: '123456' }).ok, false);
+  }
+  assert.equal(auth.consumeCode({ ...registration, code: '123456' }).ok, true);
+  assert.equal(auth.consumeCode({ ...registration, code: '123456' }).ok, false);
+});
+
 test('successful resend replaces the old code and suppressed delivery stores nothing', async () => {
   const current = fixture();
   await current.auth.requestCode(INPUT);

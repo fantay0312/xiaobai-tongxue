@@ -55,7 +55,7 @@ test('legacy configured and registered accounts receive restricted sessions', as
     [registered.name, 'registered-password'],
   ]) {
     const signedIn = await login(base, name, password, name, { legacyUsername: true });
-    assert.equal(signedIn.payload.emailBindingRequired, true);
+    assert.equal(signedIn.payload.emailBindingRequired, false);
     assert.equal(signedIn.payload.emailMasked, null);
     assert.equal(signedIn.payload.phoneBindingRequired, true);
     assert.equal(signedIn.payload.phoneMasked, null);
@@ -63,7 +63,7 @@ test('legacy configured and registered accounts receive restricted sessions', as
     const me = await fetch(`${base}/api/me`, { headers: { Cookie: cookie } });
     assert.equal(me.status, 200);
     const mePayload = await me.json();
-    assert.equal(mePayload.emailBindingRequired, true);
+    assert.equal(mePayload.emailBindingRequired, false);
     assert.equal(mePayload.phoneBindingRequired, true);
     const headers = { Cookie: cookie, 'X-Xiaobai-User': encodeURIComponent(name) };
     for (const [pathname, method] of [
@@ -80,7 +80,7 @@ test('legacy configured and registered accounts receive restricted sessions', as
       assert.deepEqual(await wrongIdentity.json(), { error: 'identity-mismatch' });
       const response = await fetch(`${base}${pathname}`, { method, headers });
       assert.equal(response.status, 403, `${method} ${pathname}`);
-      assert.deepEqual(await response.json(), { error: 'email-verification-required' });
+      assert.deepEqual(await response.json(), { error: 'phone-verification-required' });
     }
   }
 });

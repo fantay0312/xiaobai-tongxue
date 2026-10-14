@@ -21,6 +21,7 @@ import s from './login.module.css';
 
 type Mode = 'login' | 'register' | 'reset';
 type LoginMethod = 'password' | 'phone-code' | 'email-code';
+type RegistrationMethod = 'phone' | 'email';
 
 const FEEDBACK_ID = 'auth-feedback';
 
@@ -92,6 +93,7 @@ export default function LoginPage() {
   const logout = useAuthStore((state) => state.logout);
   const [mode, setMode] = useState<Mode>('login');
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('password');
+  const [registrationMethod, setRegistrationMethod] = useState<RegistrationMethod>('phone');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -111,16 +113,18 @@ export default function LoginPage() {
   const bindingEmail = status === 'authed' && emailBindingRequired;
   const bindingPhone = status === 'authed' && !emailBindingRequired && phoneBindingRequired;
   const bindingRequired = bindingEmail || bindingPhone;
-  const canRegister = !bindingRequired && emailAuthAvailable && registrationAvailable;
+  const canRegister = !bindingRequired && (smsAuthAvailable || emailAuthAvailable) && registrationAvailable;
   const registering = !bindingRequired && mode === 'register' && canRegister;
+  const phoneRegistration = registering && smsAuthAvailable && (registrationMethod === 'phone' || !emailAuthAvailable);
+  const emailRegistration = registering && !phoneRegistration;
   const resetting = !bindingRequired && mode === 'reset'
     && (smsAuthAvailable || emailAuthAvailable);
   const emailCodeLogin = !bindingRequired && mode === 'login'
     && emailAuthAvailable && loginMethod === 'email-code';
   const phoneCodeLogin = !bindingRequired && mode === 'login'
     && smsAuthAvailable && loginMethod === 'phone-code';
-  const usesEmailCode = bindingEmail || registering || emailCodeLogin;
-  const usesPhoneCode = bindingPhone || phoneCodeLogin;
+  const usesEmailCode = bindingEmail || emailRegistration || emailCodeLogin;
+  const usesPhoneCode = bindingPhone || phoneRegistration || phoneCodeLogin;
   const usesAccountCredentials = !bindingRequired && !emailCodeLogin && !phoneCodeLogin && !resetting;
   // 帖上小白的表情与台词随当前步骤切换（纯派生，不入 store）
   const avatarMood: XiaobaiMood = bindingRequired ? 'thinking'
@@ -162,6 +166,7 @@ export default function LoginPage() {
     if (nextMode === mode || busy || resetFlowBusy || sendingCode
       || (nextMode === 'register' && !canRegister)) return;
     setMode(nextMode);
+    if (nextMode === 'register') setRegistrationMethod('phone');
     if (nextMode === 'login' && loginMethod === 'email-code' && !emailAuthAvailable) {
       setLoginMethod(smsAuthAvailable ? 'phone-code' : 'password');
     }
@@ -212,7 +217,7 @@ export default function LoginPage() {
     }
     if (usesPhoneCode && !CODE_RE.test(code)) return { field: 'code', message: '请输入短信中的 6 位验证码' };
     if (usesAccountCredentials && !username.trim()) {
-      return { field: 'username', message: registering ? '请输入账号' : '请输入邮箱或账号' };
+      return { field: 'username', message: registering ? '请输入账号' : '请输入手机号、邮箱或账号' };
     }
     if (registering && !NAME_RE.test(username.trim())) {
       return { field: 'username', message: '账号名需 2–20 字，可用汉字、字母、数字、_ 或 -' };
@@ -244,8 +249,9 @@ export default function LoginPage() {
     pendingOperation.current = operation;
     const result = bindingPhone
       ? await requestPhoneBindingCode(mainlandPhoneToE164(phone), currentPassword, operation.signal)
-      : phoneCodeLogin
-        ? await requestSmsCode(mainlandPhoneToE164(phone), 'login', operation.signal)
+      : phoneCodeLogin || phoneRegistration
+        ? await requestSmsCode(mainlandPhoneToE164(phone), phoneRegistration ? 'register' : 'login', operation.signal,
+          phoneRegistration && inviteRequired ? invite.trim() : undefined)
         : bindingEmail
           ? await requestEmailBindingCode(normalizedEmail, currentPassword, operation.signal)
           : await requestEmailCode(
@@ -281,7 +287,10 @@ export default function LoginPage() {
         ? await bindEmail(normalizedEmail, code, currentPassword)
         : registering
           ? await register({
-            username: username.trim(), password, email: normalizedEmail, code,
+            username: username.trim(), password, code,
+            ...(phoneRegistration
+              ? { method: 'phone', phone: mainlandPhoneToE164(phone) } as const
+              : { method: 'email', email: normalizedEmail } as const),
             ...(inviteRequired ? { invite: invite.trim() } : {}),
           })
           : phoneCodeLogin
@@ -376,14 +385,14 @@ export default function LoginPage() {
   const sub = bindingPhone ? '验证常用手机号并确认当前密码，完成后才能继续使用。'
     : bindingEmail ? '确认当前密码并验证常用邮箱，完成后才能继续使用。'
       : resetting ? '优先用已绑定的手机号验证，也可改用已验证邮箱。'
-        : registering ? '验证邮箱，再设置账号和密码。'
+        : registering ? phoneRegistration ? '验证手机号，再设置账号和密码。无需填写邮箱。' : '验证邮箱，再设置账号和密码。'
           : phoneCodeLogin ? '输入手机号和短信验证码，无需密码。'
             : emailCodeLogin ? '输入邮箱和验证码，无需密码。'
-              : '使用邮箱或账号与密码登录。';
+              : '使用手机号、邮箱或账号与密码登录。';
   const footNote = bindingPhone ? '完成手机验证前无法进入学习页面；忘记密码可退出后用已验证邮箱找回'
     : bindingEmail ? '验证完成前，此账号无法进入学习页面'
       : resetting ? '仅向已绑定手机号或已验证邮箱发送验证码'
-        : registering ? '邮箱验证为必填项'
+        : registering ? phoneRegistration ? '邮箱可选，注册后可在个人中心绑定' : '邮箱注册后，需绑定手机号以继续使用'
           : canRegister ? null : '新账号注册暂未开放';
   const submitLabel = busy
     ? bindingRequired ? '正在核验…' : registering ? '正在注册…' : '正在登录…'
@@ -416,6 +425,21 @@ export default function LoginPage() {
           value={activeMethod}
           options={methodOptions}
           onChange={switchLoginMethod}
+        />
+      ) : null}
+
+      {registering && smsAuthAvailable && emailAuthAvailable ? (
+        <Segmented
+          block
+          label="注册方式"
+          value={phoneRegistration ? 'phone' : 'email'}
+          options={[
+            { value: 'phone', label: '手机号注册', disabled: locked },
+            { value: 'email', label: '邮箱注册', disabled: locked },
+          ]}
+          onChange={(value: RegistrationMethod) => {
+            setRegistrationMethod(value); setCode(''); resetCooldown(); setIssue(null); setFeedback(null);
+          }}
         />
       ) : null}
 
@@ -507,7 +531,7 @@ export default function LoginPage() {
             {usesAccountCredentials ? (
               <>
                 <Field
-                  label={registering ? '账号' : '邮箱或账号'}
+                  label={registering ? '账号' : '手机号、邮箱或账号'}
                   htmlFor="auth-username"
                   hint={registering
                     ? <span id="auth-name-hint">2–20 字，可用汉字、字母、数字、_ 或 -</span> : undefined}

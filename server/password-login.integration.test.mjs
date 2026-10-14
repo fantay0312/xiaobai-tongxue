@@ -123,7 +123,7 @@ test('password login accepts account or verified email without weakening legacy 
   assert.equal(legacyUsername.response.status, 200);
   assert.deepEqual(legacyUsername.payload, {
     user: { name: legacy.name },
-    emailBindingRequired: true,
+    emailBindingRequired: false,
     emailMasked: null,
     phoneBindingRequired: true,
     phoneMasked: null,

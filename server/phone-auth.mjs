@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { normalizeMainlandPhone } from './tencent-sms.mjs';
 
-const PURPOSES = new Set(['login', 'bind', 'change-phone', 'reset-password']);
+const PURPOSES = new Set(['login', 'register', 'bind', 'change-phone', 'reset-password']);
 const DEFAULT_LIMITS = Object.freeze({
   codeTtlMs: 10 * 60_000,
   maxCodeAttempts: 5,

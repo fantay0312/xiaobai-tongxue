@@ -149,12 +149,15 @@ export async function createProductionStorage(env = process.env) {
               displayName: user.name,
               ...credentialInput(user),
             });
-            await transaction.contacts.upsert({
-              userId: created.id,
-              kind: 'email',
-              value: user.email,
-              verifiedAt: user.emailVerifiedAt,
-            });
+            for (const kind of ['phone', 'email']) {
+              if (!user[kind]) continue;
+              await transaction.contacts.upsert({
+                userId: created.id,
+                kind,
+                value: user[kind],
+                verifiedAt: user[`${kind}VerifiedAt`],
+              });
+            }
             return created;
           });
         } catch (error) {

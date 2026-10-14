@@ -193,7 +193,7 @@ globalThis.fetch = async (input, init) => {
     method: 'POST',
     headers: authHeaders(legacy, legacyCookie),
     body: PNG,
-  }), 403, { error: 'email-verification-required' });
+  }), 403, { error: 'phone-verification-required' });
   await expectJson(await fetch(`${base}/api/vision`, {
     method: 'POST', headers: aliceHeaders, body: Buffer.from('not-an-image'),
   }), 415, { error: 'unsupported-file-type' });
@@ -251,7 +251,7 @@ globalThis.fetch = async (input, init) => {
   }), 401, { error: 'identity-mismatch' });
   await expectJson(await fetch(`${base}/api/transcript`, {
     headers: authHeaders(legacy, legacyCookie),
-  }), 403, { error: 'email-verification-required' });
+  }), 403, { error: 'phone-verification-required' });
   await expectJson(await fetch(`${base}/api/transcript`, { headers: aliceHeaders }), 200, { file: null });
   await expectJson(await fetch(`${base}/api/transcript`, {
     method: 'PUT', headers: aliceHeaders, body: Buffer.from('plain text'),

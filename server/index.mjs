@@ -5,7 +5,7 @@
  *  - /api/auth/email-code /api/login/email:邮箱验证码发送与登录(Resend 密钥仅服务器持有)
  *  - /api/account/email-code /api/account/email:首次绑定或换绑并验证邮箱
  *  - /api/account/verify-password:敏感账号操作前签发短时、会话绑定的验证授权
- *  - /api/register:凭邀请码+已验证邮箱注册;注册用户落盘 registered-users.json,
+ *  - /api/register:凭邀请码+已验证手机或邮箱注册;注册用户落盘 registered-users.json,
  *    与 config.json 的预置账号并存
  *  - /api/chat:登录后才可用的 LLM 代理 —— DeepSeek 密钥只存在服务器 config.json,永不下发
  *  - /api/asr:登录后可用的语音转写代理 —— 浏览器上传 WAV 原始体,服务器持 OpenRouter 密钥
@@ -551,10 +551,9 @@ function findUserByPhone(phoneValue) {
   return USERS.find(match) ?? regUsers.find(match) ?? null;
 }
 
-/** 密码登录统一标识符:优先按账号名查找,再按已验证邮箱查找。
- *  findUserByEmail 本身只接受 emailVerifiedAt 合法的邮箱,旧账号不会因未验证数据被放行。 */
+/** 已验证手机号优先匹配，其他输入兼容账号名和已验证邮箱。 */
 function findUserByIdentifier(identifier) {
-  return findUser(identifier) ?? findUserByEmail(identifier);
+  return findUserByPhone(identifier) ?? findUser(identifier) ?? findUserByEmail(identifier);
 }
 
 function plainEmailAddress(value) {
@@ -696,7 +695,7 @@ function authPayload(name) {
   const user = findUser(name);
   return {
     user: { name },
-    emailBindingRequired: !userHasVerifiedEmail(user),
+    emailBindingRequired: false,
     emailMasked: userHasVerifiedEmail(user) ? maskEmail(user.email) : null,
     phoneBindingRequired: !userHasVerifiedPhone(user),
     phoneMasked: userHasVerifiedPhone(user) ? maskPhone(user.phone) : null,
@@ -711,7 +710,7 @@ function rejectRestrictedAccount(res, session) {
 }
 
 function registrationAvailable() {
-  return Boolean(emailAuth && INVITE_CODE && regUsers.length < MAX_REG_USERS);
+  return Boolean((phoneAuth || emailAuth) && INVITE_CODE && regUsers.length < MAX_REG_USERS);
 }
 
 if (USERS.length === 0 && regUsers.length === 0 && !registrationAvailable()) {
@@ -1441,18 +1440,25 @@ async function handleSmsCode(req, res) {
   if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
   let body;
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
-  if (body?.purpose !== 'login' && body?.purpose !== 'reset-password') {
+  if (!['login', 'register', 'reset-password'].includes(body?.purpose)) {
     return send(res, 400, { error: 'bad-purpose' });
   }
   if (!await verifyCaptcha(req, res, 'sms', body)) return;
+  const ip = clientIp(req);
+  if (body.purpose === 'register') {
+    if (!registrationAvailable()) return send(res, 403, { error: 'registration-disabled' });
+    const limited = takeRegistrationAttempt(ip);
+    if (!limited.ok) return sendPhoneAuthError(res, limited);
+    if (!inviteOk(body.invite)) return send(res, 403, { error: 'invalid-invite' });
+  }
   const phone = normalizeMainlandPhone(body?.phone);
   const user = findUserByPhone(phone);
   const result = await phoneAuth.requestCode({
     phone,
     purpose: body.purpose,
     subject: publicPhoneSubject(user, phone, body.purpose),
-    ip: clientIp(req),
-    deliver: Boolean(user),
+    ip,
+    deliver: body.purpose === 'register' ? !user : Boolean(user),
     opaqueDelivery: true,
   });
   if (!result.ok) return sendPhoneAuthError(res, result);
@@ -1861,10 +1867,10 @@ function inviteOk(given) {
   return crypto.timingSafeEqual(a, b);
 }
 
-async function buildRegisteredUser(name, email, password) {
+async function buildRegisteredUser(name, contact, password) {
   const credentials = await passwordService.hash(password);
   const createdAt = new Date().toISOString();
-  return { name, email, emailVerifiedAt: createdAt, ...credentials, createdAt };
+  return { name, ...contact, ...credentials, createdAt };
 }
 
 async function refreshUsersFromDatabase() {
@@ -2065,7 +2071,6 @@ function validateNewPassword(res, value) {
 
 async function handleRegister(req, res) {
   if (!INVITE_CODE) return send(res, 403, { error: 'registration-disabled' });
-  if (!emailAuth) return send(res, 503, { error: 'email-auth-unavailable' });
   if (!hasJsonContentType(req)) return send(res, 415, { error: 'json-required' });
   const ip = clientIp(req);
   // 注册发码与最终注册共用同一 IP 窗口,错邀请码也计次
@@ -2076,23 +2081,33 @@ async function handleRegister(req, res) {
   try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad-request' }); }
   const { username, password, invite, code } = body ?? {};
   if (!inviteOk(invite)) return send(res, 403, { error: 'invalid-invite' });
+  // Old clients send only email; new clients explicitly select the verified channel.
+  const method = body?.method ?? (body?.phone ? 'phone' : 'email');
+  if (method !== 'phone' && method !== 'email') return send(res, 400, { error: 'bad-registration-method' });
+  if (method === 'phone' && !phoneAuth) return send(res, 503, { error: 'sms-auth-unavailable' });
+  if (method === 'email' && !emailAuth) return send(res, 503, { error: 'email-auth-unavailable' });
   const name = typeof username === 'string' ? username.trim().normalize('NFC') : '';
-  const email = normalizeEmail(body?.email);
+  const contact = method === 'phone' ? normalizeMainlandPhone(body?.phone) : normalizeEmail(body?.email);
   if (!canonicalName(name)) return send(res, 400, { error: 'bad-name' });
-  if (!email) return send(res, 400, { error: 'bad-email' });
+  if (!contact) return send(res, 400, { error: method === 'phone' ? 'bad-phone' : 'bad-email' });
   if (typeof password !== 'string' || password.length < 8) return send(res, 400, { error: 'weak-password' });
   if (password.length > 128) return send(res, 400, { error: 'password-too-long' });
   if (regUsers.length >= MAX_REG_USERS) return send(res, 503, { error: 'registry-full' });
 
-  const verified = emailAuth.consumeCode({ email, code, purpose: 'register', ip });
-  if (!verified.ok) return sendEmailAuthError(res, verified);
-  // 用户名/邮箱存在性只在持有有效邮箱码后暴露
+  const verified = method === 'phone'
+    ? await phoneAuth.consumeCode({ phone: contact, code, purpose: 'register', ip,
+      subject: publicPhoneSubject(findUserByPhone(contact), contact, 'register') })
+    : await emailAuth.consumeCode({ email: contact, code, purpose: 'register', ip });
+  if (!verified.ok) return (method === 'phone' ? sendPhoneAuthError : sendEmailAuthError)(res, verified);
+  const contactOwner = () => method === 'phone' ? findUserByPhone(contact) : findUserByEmail(contact);
+  const contactConflict = method === 'phone' ? 'phone-taken' : 'email-taken';
+  // Account and contact existence is exposed only after verifying the channel.
   if (findUser(name)) return send(res, 409, { error: 'name-taken' });
-  if (findUserByEmail(email)) return send(res, 409, { error: 'email-taken' });
-  const user = await buildRegisteredUser(name, email, password);
+  if (contactOwner()) return send(res, 409, { error: contactConflict });
+  const user = await buildRegisteredUser(name, { [method]: contact, [`${method}VerifiedAt`]: new Date().toISOString() }, password);
   // scrypt 期间另一请求可能落盘,入库前再做一次同步唯一性门禁
   if (findUser(name)) return send(res, 409, { error: 'name-taken' });
-  if (findUserByEmail(email)) return send(res, 409, { error: 'email-taken' });
+  if (contactOwner()) return send(res, 409, { error: contactConflict });
   if (regUsers.length >= MAX_REG_USERS) return send(res, 503, { error: 'registry-full' });
   if (!await persistRegisteredUser(user)) return send(res, 500, { error: 'persist-failed' });
   console.log(`[register] 新用户: ${name} (${ip}), 总注册数 ${regUsers.length}`);

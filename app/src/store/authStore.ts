@@ -10,7 +10,7 @@ export type AuthStatus = 'unknown' | 'standalone' | 'anon' | 'authed' | 'unavail
 export type AuthField = 'email' | 'phone' | 'code' | 'username' | 'password' | 'currentPassword'
   | 'newPassword' | 'confirmPassword' | 'invite' | 'form';
 export type EmailCodePurpose = 'login' | 'register';
-export type SmsCodePurpose = 'login' | 'reset-password';
+export type SmsCodePurpose = 'login' | 'register' | 'reset-password';
 export type AccountVerificationAction = 'change-phone' | 'change-email' | 'change-password';
 
 export interface AuthResult {
@@ -25,7 +25,9 @@ export interface AuthResult {
 export interface RegistrationInput {
   username: string;
   password: string;
-  email: string;
+  method?: 'phone' | 'email';
+  email?: string;
+  phone?: string;
   code: string;
   invite?: string;
 }
@@ -52,7 +54,7 @@ interface AuthState {
   ) => Promise<AuthResult>;
   requestEmailChangeCode: (email: string, verificationToken: string) => Promise<AuthResult>;
   changeEmail: (email: string, code: string, verificationToken: string) => Promise<AuthResult>;
-  requestSmsCode: (phone: string, purpose: SmsCodePurpose, signal?: AbortSignal) => Promise<AuthResult>;
+  requestSmsCode: (phone: string, purpose: SmsCodePurpose, signal?: AbortSignal, invite?: string) => Promise<AuthResult>;
   loginWithPhoneCode: (phone: string, code: string, signal?: AbortSignal) => Promise<AuthResult>;
   requestPhoneBindingCode: (phone: string, currentPassword: string, signal?: AbortSignal) => Promise<AuthResult>;
   bindPhone: (phone: string, code: string, currentPassword: string) => Promise<AuthResult>;
@@ -572,13 +574,13 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }
   },
 
-  requestSmsCode: async (phone, purpose, signal) => {
+  requestSmsCode: async (phone, purpose, signal, invite) => {
     try {
       const captcha = await requestCaptchaProof('sms', signal);
       const response = await fetchWithTimeout(`${API_BASE}/auth/sms-code`, {
         signal,
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, purpose, captcha }),
+        body: JSON.stringify({ phone, purpose, captcha, ...(invite ? { invite } : {}) }),
       });
       if (!response.ok) return await apiFailure(response, `短信验证码发送失败（${response.status}）`);
       const payload = await readPayload(response);

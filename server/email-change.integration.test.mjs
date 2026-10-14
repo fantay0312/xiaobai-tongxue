@@ -164,7 +164,7 @@ test('verified accounts change email safely while legacy first-binding remains s
   assert.equal(oldRegisteredLogin.response.status, 401);
 
   const legacyLogin = await login(base, legacy.name, 'legacy-password', legacy.name);
-  assert.equal(legacyLogin.payload.emailBindingRequired, true);
+  assert.equal(legacyLogin.payload.emailBindingRequired, false);
   const legacySend = await postJson(`${base}/api/account/email-code`, {
     email: 'legacy-new@example.com',
     currentPassword: 'legacy-password',

@@ -107,7 +107,8 @@ test('binding rejects already-bound users and globally owned email addresses', (
   assert.equal(maskEmail('bad-address'), null);
   assert.equal(userHasVerifiedEmail(user('老师', 'teacher@example.com')), true);
   assert.equal(userHasVerifiedEmail(user('旧老师')), false);
-  assert.equal(protectedAccessError(user('旧老师')), 'email-verification-required');
+  assert.equal(protectedAccessError(user('旧老师')), 'phone-verification-required');
+  assert.equal(protectedAccessError(user('手机老师', undefined, '+8613800138000')), null);
   assert.equal(
     protectedAccessError(user('老师', 'teacher@example.com')),
     'phone-verification-required',

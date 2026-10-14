@@ -304,7 +304,6 @@ export function userHasVerifiedPhone(user) {
 }
 
 export function protectedAccessError(user) {
-  if (!userHasVerifiedEmail(user)) return 'email-verification-required';
   return userHasVerifiedPhone(user) ? null : 'phone-verification-required';
 }
 

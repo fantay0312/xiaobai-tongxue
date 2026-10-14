@@ -25,7 +25,7 @@ Node.js 20+ 网关，负责主站与独立管理后台静态入口、两套身�
 
 ## 鉴权契约
 
-- 密码登录：`POST /api/login`，账号名或已验证邮箱 + 密码 + 登录验证码。
+- 密码登录：`POST /api/login`，已验证手机号、邮箱或账号名 + 密码 + 登录验证码。
 - 邮箱验证码登录：`POST /api/auth/email-code` → `POST /api/login/email`。
 - 手机验证码登录：`POST /api/auth/sms-code` → `POST /api/login/phone`。
 - 手机重置密码：`POST /api/auth/sms-code`（`purpose=reset-password`）→
@@ -38,7 +38,8 @@ Node.js 20+ 网关，负责主站与独立管理后台静态入口、两套身�
 - 首次绑定与旧客户端保留当前密码提交路径；新个人中心只使用上述两步授权，不把授权写入 URL 或浏览器存储。
 - 未绑定手机号的历史用户可以取得受限会话，但所有业务 API 都返回
   `403 phone-verification-required`，直至完成短信验证绑定。
-- 注册仍是邀请制并要求已验证邮箱；新注册用户登录后同样必须绑定手机号。
+- 注册仍是邀请制，默认手机号注册：`POST /api/auth/sms-code`（`purpose=register`，附邀请码）→ `POST /api/register`（`method=phone`、手机号、短信码、账号、密码、邀请码）。完成后即可使用，无需邮箱。
+- 邮箱为可选联系方式，可在个人中心验证后绑定；保留邮箱注册（`method=email`）兼容入口，这类账号仍需绑定手机号才可使用业务功能。旧客户端省略 `method` 时按所提供的手机或邮箱判定注册通道。
 - 短信仅接受中国大陆手机号，后端统一保存为 `+86` E.164。
 - 验证码 6 位、10 分钟有效、最多尝试 5 次、一次消费。Redis 仅保存 HMAC 摘要，不保存明文码。
 
