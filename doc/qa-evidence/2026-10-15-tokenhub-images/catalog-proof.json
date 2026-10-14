@@ -1,0 +1,1 @@
+{"productionCatalog":true,"defaultImage":"tokenhub:seedream-image-v5.0-pro","images":[{"id":"tokenhub:seedream-image-v5.0-pro","model":"seedream-image-v5.0-pro","label":"Seedream 5.0 Pro","provider":"TokenHub"},{"id":"tokenhub:hy-image-v3.5-preview","model":"hy-image-v3.5-preview","label":"HY-Image-3.5","provider":"TokenHub"}],"defaultSpeech":"tencent-tts","keyConfigured":true}

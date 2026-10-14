@@ -1,0 +1,19 @@
+{
+  "source": "Authenticated live browser, original paste and painted-cover UI",
+  "requests": [
+    {
+      "model": "tokenhub:seedream-image-v5.0-pro",
+      "status": 200,
+      "actualModel": "tokenhub:seedream-image-v5.0-pro",
+      "mime": "image/png",
+      "elapsedSeconds": 41.82
+    },
+    {
+      "model": "tokenhub:hy-image-v3.5-preview",
+      "status": 200,
+      "actualModel": "tokenhub:hy-image-v3.5-preview",
+      "mime": "image/png",
+      "elapsedSeconds": 13.295
+    }
+  ]
+}

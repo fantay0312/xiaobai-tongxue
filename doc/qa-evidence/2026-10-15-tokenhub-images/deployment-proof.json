@@ -1,0 +1,27 @@
+{
+  "release": "20261015-reader-e4f2d7d",
+  "sourceCommit": "e4f2d7debd1c2ddda9b172d5a49cdadf7dcda819",
+  "sourceTree": "28ffba345b2e87837b4dc61a1ae6f5a62cdbd547",
+  "backup": "/var/backups/xiaobai/20261015-reader-e4f2d7d",
+  "rollbackRuntime": "/var/backups/xiaobai/20261015-reader-e4f2d7d/runtime-before-switch",
+  "candidateChecks": "passed",
+  "databaseBackup": true,
+  "secretScan": "passed",
+  "service": "active",
+  "http": {
+    "/": 200,
+    "/api/me": 200,
+    "/api/reader/documents": 401,
+    "/reader/": 200,
+    "/reader/fonts.css": 200,
+    "/api/reader/gloss/media/catalog": 401,
+    "/api/commerce/catalog": 200,
+    "/api/admin/v1/auth/me": 401
+  },
+  "retainedHashedAssets": 0,
+  "configUnchanged": true,
+  "envChanged": [
+    "READER_TOKENHUB_API_KEY"
+  ],
+  "coverProxyTimeoutSeconds": 210
+}

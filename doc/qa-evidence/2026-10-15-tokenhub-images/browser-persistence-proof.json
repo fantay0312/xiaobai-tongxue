@@ -1,0 +1,26 @@
+{
+  "afterFullPageReload": true,
+  "generatedImages": [
+    {
+      "model": "HY-Image-3.5",
+      "width": 1024,
+      "height": 1024,
+      "complete": true
+    },
+    {
+      "model": "Seedream 5.0 Pro",
+      "width": 1024,
+      "height": 1024,
+      "complete": true
+    }
+  ],
+  "setting": {
+    "label": "默认：Seedream 5.0 Pro",
+    "options": [
+      "默认：Seedream 5.0 Pro",
+      "Seedream 5.0 Pro",
+      "HY-Image-3.5"
+    ],
+    "value": ""
+  }
+}
