@@ -1,0 +1,33 @@
+{
+  "release": "20261014-library-parse-17ae939",
+  "sourceCommit": "bc26a3197ead6ca392639372228e01b2ae45a58d",
+  "backup": "/var/backups/xiaobai/20261014-library-parse-17ae939",
+  "rollbackRuntime": "/var/backups/xiaobai/20261014-library-parse-17ae939/runtime-before-switch",
+  "candidateChecks": "passed",
+  "databaseClone": {
+    "restoredDatabase": true,
+    "failedDuplicateRecovered": true,
+    "duplicateMs": 22,
+    "sourceReadable": true,
+    "pendingStatusRecovered": true,
+    "pendingMs": 13,
+    "downloads": 0,
+    "uploads": 0,
+    "parserUploads": 0,
+    "aliasRemovalKeptOriginal": true,
+    "productionDocumentsUnchanged": true
+  },
+  "secretScan": "passed",
+  "transferMode": "delta-verified-full-manifest",
+  "service": "active",
+  "http": {
+    "/": 200,
+    "/api/me": 200,
+    "/api/commerce/catalog": 200,
+    "/admin/": 200,
+    "/api/admin/v1/auth/me": 401
+  },
+  "retainedHashedAssets": 156,
+  "frontendCommit": "17ae939d43d5296972cfbf8b53ecbad7e09c04b2",
+  "stalePollGuard": "verified"
+}

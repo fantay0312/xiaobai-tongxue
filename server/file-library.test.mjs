@@ -60,10 +60,10 @@ test('an old status poll cannot overwrite a newer reparse state', async (t) => {
   const local=await createLocalLibraryStore(root);
   const file=await createFileLibraryService(local).upload(alice,{name:'poll.txt',bytes:Buffer.from('text')});
   await local.metadata.mutate(alice.id,entries=>{entries[0].parse={assetId:'asset',status:'completed',updatedAt:'old'};});
-  let release;const gate=new Promise(resolve=>{release=resolve;});
-  const service=createFileLibraryService({...local,customContent:{getAsset:async()=>{await gate;return{id:'asset',parseStatus:'completed'};}}});
+  let release,started;const gate=new Promise(resolve=>{release=resolve;});const entered=new Promise(resolve=>{started=resolve;});
+  const service=createFileLibraryService({...local,customContent:{getAsset:async()=>{started();await gate;return{id:'asset',parseStatus:'completed'};}}});
   const read=service.parseState(alice,file.id);
-  await new Promise(resolve=>setTimeout(resolve,5));
+  await entered;
   await local.metadata.mutate(alice.id,entries=>{entries[0].parse={assetId:'asset',status:'pending',updatedAt:'new'};});
   release();
   assert.equal((await read).status,'pending');

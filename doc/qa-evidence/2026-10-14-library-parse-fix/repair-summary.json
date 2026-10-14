@@ -1,0 +1,17 @@
+{
+  "repairedCount": 2,
+  "sourceFilesChanged": false,
+  "locationsPreserved": true,
+  "states": [
+    {
+      "before": "failed",
+      "after": "completed",
+      "remainsInTrash": true
+    },
+    {
+      "before": "pending",
+      "after": "completed",
+      "remainsInTrash": true
+    }
+  ]
+}
