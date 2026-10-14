@@ -206,7 +206,7 @@ export function ClassroomPlayer({ lesson, sidebar, owner, topic, topics, selecte
     try {
       const result = await askTeacher({
         lesson, scene, question: text, recent,
-        hints: tutorMemoryHints(owner, lesson.topicId, 4),
+        hints: tutorMemoryHints(owner, lesson.topicId, 3, text),
         signal: controller.signal,
         onText: (answer) => pb.pushLine({ ...answerLine, text: answer }),
       });

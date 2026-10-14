@@ -24,6 +24,7 @@ import {
   newRepoId, repoOps, supportedBy, textSimilarity, topicIdOfPath,
 } from './memoryRepo';
 import type { ProposalChange, ProposalKind, RepoEntry, RepoId, RepoState } from './memoryRepo';
+import { memoryRetention } from './memoryRetention';
 import { demonName } from './story';
 import { TUTOR_MEMORY_KINDS, loadTutorTurnLog, placeTutorKind, syncTutorRepo } from './tutorMemory';
 import type { TutorMemoryKind, TutorTurnDigest } from './tutorMemory';
@@ -278,6 +279,28 @@ const dreamEntry = (text: string, label: string, extra: Partial<RepoEntry> = {})
   const at = nowIso();
   return { id: newRepoId(), text, source: { type: 'dream', label }, addedAt: at, updatedAt: at, author: 'dream', ...extra };
 };
+
+function needsRetentionWork(repo: RepoState): boolean {
+  return allEntries(repo).some(({path,entry}) => {
+    if (PASSIVE_FILES.includes(path)) return false;
+    const retention=memoryRetention(entry,path);
+    return !retention.active || (retention.layer === 'long' && !entry.retention && !isProtectedEntry(entry));
+  });
+}
+
+/** 三层记忆自动流转：近期/短期到期归档，跨天多次确认的信息沉淀为长期。 */
+function passRetention(plan: Planner) {
+  for (const {path,entry} of plan.list()) {
+    const retention=memoryRetention(entry,path);
+    if (!retention.active) {
+      plan.relocate(entry.id,'archive.md',entry,'faded','近期或短期记忆到期，自动归档');
+      plan.line('faded',entry.text,entry.source.topicId);
+    } else if (retention.layer === 'long' && !entry.retention && !isProtectedEntry(entry)) {
+      plan.rewrite(entry.id,{...entry,retention:'long'},'promoted','跨天反复确认，自动沉淀为长期记忆');
+      plan.line('promoted',entry.text,entry.source.topicId);
+    }
+  }
+}
 const STRUGGLE_SECTIONS = new Set(['stuck', 'wrong', 'lapsed']);
 const isStruggle = ({ path, entry }: Located) => path === 'weak-points.md' || (path.startsWith('courses/') && STRUGGLE_SECTIONS.has(entry.section ?? ''));
 const isMastered = ({ path, entry }: Located) => path === 'mastered.md' || (path.startsWith('courses/') && entry.section === 'mastered');
@@ -390,7 +413,7 @@ function passPromote(plan: Planner, context: DreamContext) {
     if (item.path.startsWith('courses/') && STRUGGLE_SECTIONS.has(item.entry.section ?? '')) byCourse.set(item.path, [...(byCourse.get(item.path) ?? []), item]);
   }
   for (const [path, weak] of byCourse) {
-    if (weak.length < 2) continue;
+    if (weak.length < 3 || new Set(weak.map(({entry})=>entry.addedAt.slice(0,10))).size < 2) continue;
     const title = fileInfo('xiaoyan', path, plan.repo.titles).title;
     const concepts = [...new Set(weak.map(({ entry }) => conceptOf(entry.text)).filter(Boolean))].slice(0, 3).map((concept) => clip(concept, 20));
     const from = [...new Set(weak.map(({ entry }) => entry.source.label.split(' · ')[0]))].slice(0, 3);
@@ -412,7 +435,7 @@ function passPromote(plan: Planner, context: DreamContext) {
   const counts = new Map<Activity['source'], number>();
   for (const activity of context.activities) if (activity.source !== 'chat') counts.set(activity.source, (counts.get(activity.source) ?? 0) + 1);
   const top = [...counts].sort((a, b) => b[1] - a[1])[0];
-  if (top && top[1] >= 4) {
+  if (top && top[1] >= 4 && new Set(context.activities.filter(a=>a.source===top[0]).map(a=>a.at.slice(0,10))).size >= 2) {
     const head = `最近常用「${ACTIVITY_LABELS[top[0]]}」学习`;
     upsertPattern(plan, 'habits.md', head, `${head}（近 7 天 ${top[1]} 次）`, `做梦整理 · 依据 ${top[1]} 次${ACTIVITY_LABELS[top[0]]}`);
   }
@@ -421,7 +444,7 @@ function passPromote(plan: Planner, context: DreamContext) {
   const asked = new Map<string, TutorTurnDigest[]>();
   for (const turn of context.turns) if (turn.topicId) asked.set(turn.topicId, [...(asked.get(turn.topicId) ?? []), turn]);
   const busiest = [...asked.values()].sort((a, b) => b.length - a.length)[0];
-  if (busiest && busiest.length >= 4 && busiest[0].topicTitle) {
+  if (busiest && busiest.length >= 4 && busiest[0].topicTitle && new Set(busiest.map(turn=>turn.at.slice(0,10))).size >= 2) {
     upsertPattern(plan, 'habits.md', '最近问得最多的是', `最近问得最多的是《${clip(busiest[0].topicTitle, 18)}》`, `做梦整理 · 依据 ${busiest.length} 次提问`);
   }
 }
@@ -501,6 +524,7 @@ const XIAOYAN_SYSTEM = [
   '规则：',
   '- merge：只合并同一个文件里说同一件事的条目，每组至少两条；text 用学习者原话里的词，不超过 40 字。',
   '- promote：最多 2 条，是从反复出现的事里看出的规律，尤其留意对话之外的学习行为；kind 取 preference / goal / weakness / strength / habit / fact；text 不超过 40 字，尽量沿用材料里的词；from 至少列出两个它依据的编号。',
+  '- 不做过度推断：至少三个独立记录、跨两个日期才提炼规律；一次问错、答对、阅读或上传不代表长期能力或兴趣。近期事实留在短期记忆，不强行上升为长期偏好。',
   '- fade：只选很久没再提起、现在已经不重要的条目。keep：只选被反复印证的条目。',
   '- 标了「置顶」或「我写的」的条目不要合并、不要淡忘。',
   '- narrative：2–4 句，第一人称，语气平静，只说今晚你整理了什么，不许出现编号。question：下次想向学习者确认的一件事，不超过 40 字，没有就给空字符串。title：不超过 12 字。',
@@ -567,7 +591,8 @@ async function planXiaoyanModel(plan: Planner, material: XiaoyanMaterial): Promi
     const sourceTurns = cited.flatMap((alias) => { const index = Number(/^t(\d+)$/.exec(alias)?.[1] ?? 0); return turns[index - 1] ? [turns[index - 1]] : []; });
     const support = [...sourceItems.map(({ entry }) => entry.text), ...sourceActs.map((activity) => `${activity.summary} ${activity.detail ?? ''}`), ...sourceTurns.map((turn) => turn.question)];
     // 必须有至少两处出处，而且说法能在出处里找到影子
-    if (support.length < 2 || supportedBy(text, support) < 0.15) continue;
+    const dates=new Set([...sourceItems.map(({entry})=>entry.addedAt.slice(0,10)),...sourceActs.map(a=>a.at.slice(0,10)),...sourceTurns.map(t=>t.at.slice(0,10))]);
+    if (support.length < 3 || dates.size < 2 || supportedBy(text, support) < 0.15) continue;
     // 依据都来自同一门课时，这条认识也记在那门课下
     const topics = new Set([...sourceItems.map(({ path }) => topicIdOfPath(path) ?? ''), ...sourceActs.map((activity) => activity.topicId ?? ''), ...sourceTurns.map((turn) => turn.topicId ?? '')]);
     const topicId = topics.size === 1 ? [...topics][0] : '';
@@ -577,6 +602,7 @@ async function planXiaoyanModel(plan: Planner, material: XiaoyanMaterial): Promi
     if (plan.list().some((item) => item.path === place.path && !sources.has(item.entry.id) && textSimilarity(item.entry.text, text) >= 0.72)) continue;
     const label = `做梦整理 · 依据 ${support.length} 处记录`;
     plan.add(place.path, dreamEntry(text, label, {
+      retention: ['preference','habit','fact'].includes(kind) ? 'long' : 'short',
       ...(place.section ? { section: place.section } : {}),
       ...(topicId ? { source: { type: 'dream', label, topicId, ref: { kind: 'topic', id: topicId, ...(topicTitle ? { title: topicTitle } : {}) } } } : {}),
     }), 'promoted', `从 ${support.length} 处记录里归纳`);
@@ -636,17 +662,12 @@ function xiaoyanTitle(plan: Planner): string {
 function finishDream(owner: string | null, repo: RepoId, plan: Planner, entry: Omit<DreamEntry, 'review'>): DreamEntry | null {
   const current = loadRepo(owner, repo);
   if (current.workGeneration !== plan.repo.workGeneration || current.paused || (repo === 'xiaobai' && (!classroomReadyFor(owner) || useAppStore.getState().memory.paused))) return null;
-  let saved: DreamEntry = entry;
   if (plan.changes.length) {
-    if (loadRepo(owner, repo).review) {
-      repoOps.setPending(owner, repo, { id: entry.id, at: entry.at, title: entry.title, narrative: entry.narrative, method: entry.method, changes: plan.changes });
-      saved = { ...entry, review: 'pending' };
-    } else {
-      commitRepo(owner, repo, 'dream', `做梦整理：${entry.title}`, (draft) => {
-        for (const change of plan.changes) applyProposalChange(draft, change);
-      });
-    }
+    commitRepo(owner, repo, 'dream', `做梦整理：${entry.title}`, (draft) => {
+      for (const change of plan.changes) applyProposalChange(draft, change);
+    });
   }
+  const saved: DreamEntry = {...entry,review:'applied'};
   saveDream(owner, saved);
   return saved;
 }
@@ -655,19 +676,22 @@ async function dreamXiaoyan(owner: string | null, manual: boolean): Promise<Drea
   syncTutorRepo(owner);
   const material = xiaoyanMaterial(owner);
   const fresh = material.changed.length + material.turns.length + material.activities.length;
-  const enough = manual ? fresh >= 1 : material.changed.length >= 1 || material.turns.length >= 3 || material.activities.length >= 3;
-  if (material.repo.paused || material.repo.pending || !enough) return null;
+  const enough = needsRetentionWork(material.repo) || (manual ? fresh >= 1 : material.changed.length >= 1 || material.turns.length >= 3 || material.activities.length >= 3);
+  if (material.repo.paused || !enough) return null;
 
   const context: DreamContext = { activities: material.week, turns: material.turns };
   let method: DreamEntry['method'] = 'model';
   let story: DreamStory = { narrative: '', question: '', title: '' };
   let plan = makePlanner(material.repo);
+  passRetention(plan);
   try {
-    story = await planXiaoyanModel(plan, material);
+    if (plan.list().length || material.turns.length || material.activities.length) story = await planXiaoyanModel(plan, material);
+    else method = 'local';
   } catch {
     // 没有模型（ModelUnavailableError），或模型这次没给出合规结果：改用本地规则重新排一遍
     method = 'local';
     plan = makePlanner(material.repo);
+    passRetention(plan);
     passMerge(plan);
     passPromote(plan, context);
     passArchive(plan, LOCAL_FADE_DAYS);
@@ -682,6 +706,7 @@ async function dreamXiaoyan(owner: string | null, manual: boolean): Promise<Drea
   // 这两步是确定性的：矛盾按出处和日期裁决，入口文件保持简短
   passContradictions(plan);
   passBudget(plan);
+  passRetention(plan);
 
   const lines = [...plan.lines];
   if (method === 'local') {
@@ -914,7 +939,12 @@ async function dreamXiaobai(owner: string | null): Promise<DreamEntry | null> {
   const repo = loadRepo(owner, 'xiaobai');
   const world = readXiaobaiWorld(readStore(owner).xiaobai.consumedAt);
   // 新材料只认新上的课；光是旧课在起雾，不单独做一场梦
-  if (world.paused || repo.pending || world.lessons.length === 0) return null;
+  if (world.paused) return null;
+  if (world.lessons.length === 0) {
+    if (!needsRetentionWork(repo)) return null;
+    const plan=makePlanner(repo);passRetention(plan);
+    return finishDream(owner,'xiaobai',plan,{id:newId(),who:'xiaobai',at:nowIso(),title:'整理三层记忆',narrative:'把到期的临时记忆归档，把反复确认的信息留作长期记忆。',changes:plan.lines,method:'local'});
+  }
 
   let story: XiaobaiModelStory = { title: '', narrative: '', question: null };
   let method: DreamEntry['method'] = 'model';
@@ -929,6 +959,7 @@ async function dreamXiaobai(owner: string | null): Promise<DreamEntry | null> {
 
   // 他的梦只往自己的记忆库里写：还想问的记进 questions.md，开始模糊的记进那门课的文件
   const plan = makePlanner(loadRepo(owner, 'xiaobai'));
+  passRetention(plan);
   if (question?.topicId) {
     const topic = getTopic(question.topicId);
     const asked = plan.list().some(({ path, entry }) => path === 'questions.md' && textSimilarity(entry.text, question.text) >= 0.72);
@@ -979,6 +1010,18 @@ export function setDreamReview(owner: string | null, who: Dreamer, review: boole
   repoOps.setReview(owner, who, review);
 }
 
+/** 兼容旧版待确认记录：自动应用仍匹配的部分，过时部分跳过；不再打断学习者确认。 */
+export function settleAutomaticDreams(owner: string | null, who: Dreamer): void {
+  const repo=loadRepo(owner,who);
+  if (repo.paused) return;
+  if (repo.review) repoOps.setReview(owner,who,false);
+  if (repo.pending) {
+    const applied=repoOps.applyProposal(owner,who);
+    repoOps.discardProposal(owner,who);
+    markReview(owner,repo.pending.id,applied?'applied':'discarded');
+  }
+}
+
 /** 采纳一场梦提出的改动；不给 ids 就是全部。全部处理完后，梦境记录标成已采纳。 */
 export function applyDreamProposal(owner: string | null, who: Dreamer, ids?: string[]): void {
   const pending = loadRepo(owner, who).pending;
@@ -1023,13 +1066,14 @@ export function dreamStatus(owner: string | null, who: Dreamer): DreamStatus {
   const repo = loadRepo(owner, who);
   const last = state.lastDreamAt ? Date.parse(state.lastDreamAt) : null;
   const nextAutoAt = last !== null && Date.now() - last < DREAM_INTERVAL_MS ? new Date(last + DREAM_INTERVAL_MS).toISOString() : null;
-  const base = { lastDreamAt: state.lastDreamAt, nextAutoAt, review: repo.review, pendingChanges: repo.pending?.changes.length ?? 0 };
+  const retentionWork=needsRetentionWork(repo);
+  const base = { lastDreamAt: state.lastDreamAt, nextAutoAt, review: false, pendingChanges: 0 };
   if (who === 'xiaoyan') {
     const material = xiaoyanMaterial(owner);
     const others = material.activities.filter((activity) => activity.source !== 'chat').length;
     return {
       ...base, freshItems: material.changed.length, freshTurns: material.turns.length, freshActivities: others, freshLessons: 0,
-      canDreamNow: !repo.paused && !repo.pending && material.changed.length + material.turns.length + material.activities.length >= 1,
+      canDreamNow: !repo.paused && (retentionWork || material.changed.length + material.turns.length + material.activities.length >= 1),
       paused: repo.paused,
     };
   }
@@ -1042,11 +1086,13 @@ export function dreamStatus(owner: string | null, who: Dreamer): DreamStatus {
   } catch {
     // 课堂数据读不到时按没有新课处理
   }
-  return { ...base, freshItems: 0, freshTurns: 0, freshActivities: 0, freshLessons: lessons, canDreamNow: !paused && !repo.pending && lessons > 0, paused };
+  return { ...base, freshItems: 0, freshTurns: 0, freshActivities: 0, freshLessons: lessons, canDreamNow: !paused && (lessons > 0 || retentionWork), paused };
 }
 
 function runDream(owner: string | null, who: Dreamer, manual: boolean): Promise<DreamEntry | null> {
   if (who === 'xiaobai' && !classroomReadyFor(owner)) return Promise.resolve(null);
+  settleAutomaticDreams(owner,who);
+  if (!loadRepo(owner,who).paused) repoOps.deduplicate(owner,who,true);
   const key = `${ownerKey(owner)}:${who}`;
   const active = running.get(key);
   if (active) return active;
@@ -1067,7 +1113,7 @@ function autoEligible(owner: string | null, who: Dreamer): boolean {
   const state = readStore(owner)[who];
   if (state.lastDreamAt && Date.now() - Date.parse(state.lastDreamAt) < DREAM_INTERVAL_MS) return false;
   // 有没有新材料由各自的做梦函数判断；这里只挡住还有改动等我确认的情况
-  return !loadRepo(owner, who).pending;
+  return !loadRepo(owner, who).paused;
 }
 
 /** 应用打开或空闲时调用：距上次做梦够久且有新材料才会做，一次最多各做一场。不抛错、不阻塞界面。 */
@@ -1120,7 +1166,7 @@ export function xiaobaiDreamHint(owner: string | null, topicId: string): string 
   try {
     if (!classroomReadyFor(owner) || useAppStore.getState().memory.paused) return null;
     const recent = (loadRepo(owner, 'xiaobai').files['questions.md'] ?? [])
-      .filter((entry) => entry.source.topicId === topicId && Date.now() - Date.parse(entry.updatedAt) < 14 * DAY_MS)
+      .filter((entry) => entry.source.topicId === topicId && memoryRetention(entry, 'questions.md').active && memoryRetention(entry, 'questions.md').layer !== 'recent')
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     for (const question of recent) {
       // 做完梦之后这门课又上过，那句话就算问过了

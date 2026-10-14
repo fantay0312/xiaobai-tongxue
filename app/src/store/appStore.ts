@@ -45,6 +45,7 @@ import { hydrateRuntimeTopic, registerRuntimeTopics } from '../data/runtimeTopic
 import { personaCard } from './personaCard';
 import { normalizeLlmSettings } from '../lib/providers/settings';
 import { logActivity } from '../engine/activityLog';
+import { retainedClassroomMemories } from '../engine/memory-repo/retention';
 
 const uid =() => (globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
 const now = () => new Date().toISOString();
@@ -352,7 +353,7 @@ export const useAppStore = create<AppState>()(
           : null;
         // 学伴记忆提示同样在 await 前取材:长渲染期间记忆可能被清空/暂停
         const memoryHints = get().memory.paused ? [] : memoryHintsForXiaobai({
-          items: get().memory.items, topicId, course: topic.course, topic,
+          items: retainedClassroomMemories(memoryPiiProvider()[0] ?? null, get().memory.items), topicId, course: topic.course, topic,
           hitChecklist: state.hitChecklist, now: now(),
         });
         // 开场小本本:空对话,但 reteach/review 里"已听懂的要点"已有内容,值得进【这堂课到现在】
@@ -554,7 +555,7 @@ export const useAppStore = create<AppState>()(
             });
           }
           const memoryHints = get().memory.paused ? [] : memoryHintsForXiaobai({
-            items: get().memory.items, topicId: topic.topicId, course: topic.course, topic,
+            items: retainedClassroomMemories(memoryPiiProvider()[0] ?? null, get().memory.items), topicId: topic.topicId, course: topic.course, topic,
             hitChecklist: stateAfter.hitChecklist, now: now(),
           });
           const speak = await speakXiaobai({

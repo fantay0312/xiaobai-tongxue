@@ -200,7 +200,13 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
   const shellActions = useShellActions();
   const isMobile = useMediaQuery('(max-width: 760px)');
   // 进入终端时给两套记忆一次「做梦」整理的机会；是否真的做由引擎按间隔和新材料决定
-  useEffect(() => { maybeDream(owner); }, [owner]);
+  useEffect(() => {
+    maybeDream(owner);
+    const onReturn=()=>{ if(document.visibilityState==='visible') maybeDream(owner); };
+    const timer=window.setInterval(onReturn,5*60_000);
+    document.addEventListener('visibilitychange',onReturn);
+    return ()=>{ window.clearInterval(timer);document.removeEventListener('visibilitychange',onReturn); };
+  }, [owner]);
   // 非对话板块的侧栏挂载位；侧栏收起或手机上不存在，板块会改在主区自带导航
   const [sectionSlot, setSectionSlot] = useState<HTMLDivElement | null>(null);
   const workspaceKeyId = topicId || 'library-chat';
@@ -537,14 +543,14 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
           return;
         }
         const { messageId, startedAt } = openAnswer(stamp, [{ id: 'model', label: '小砚正在思考', status: 'running', at: Date.now() }]);
-        const hints = tutorMemoryHints(owner, undefined, 6);
+        const hints = tutorMemoryHints(owner, undefined, 3, question);
         try {
           const result = await streamModel({
             messages: [
               { role: 'system', content: [
                 '你是小砚，帮助大学生自主学习的助教。学生还没有打开课程，也没有提供资料：凭可靠的知识回答，不确定就直说，不要编造出处或声称看过某份资料。',
                 mode === 'socratic' ? '使用苏格拉底引导：先抓住学生的具体疑点，给一个必要提示，再一次只问一个能帮助推理的问题。' : '先讲清核心想法，再给一个简洁例子和一个自检问题。',
-                hints.length ? `你记得这位学生：${hints.join('；')}` : '',
+                hints.length ? `可选背景（可能已过时，当前问题优先，不要强行提及）：${hints.join('；')}` : '',
                 '用中文 Markdown 回答，公式用 LaTeX，不用“小砚：”前缀。',
               ].filter(Boolean).join('\n') },
               ...history.slice(-8).map((message) => (message.role === 'user'

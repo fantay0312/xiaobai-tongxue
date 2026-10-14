@@ -365,3 +365,7 @@ button.sourceChip:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--rin
   .sheet, .sheetOverlay { animation: none; }
   .commitTitle svg, .sourceChip, .entryLink, .indexLink, .sheetItem { transition: none; }
 }
+.layerList { list-style: none; margin: 0; padding: 0; }
+.layerList > li { padding: 16px 0; border-bottom: 1px solid var(--border); }
+.layerList p { margin: 0 0 6px; line-height: 1.7; }
+.layerList small { color: var(--text-2); line-height: 1.6; }

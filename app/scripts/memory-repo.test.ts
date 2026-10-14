@@ -7,11 +7,13 @@ Object.defineProperty(globalThis, 'localStorage', { value: {
   removeItem: (key: string) => { data.delete(key); },
 } });
 const { addEntries, commitRepo, loadRepo, repoOps } = await import('../src/engine/memoryRepo');
-const { recordTutorTurn, resetTutorTraces } = await import('../src/engine/tutorMemory');
+const { recordTutorTurn, resetTutorTraces, tutorMemoryHints } = await import('../src/engine/tutorMemory');
+const { memoryRetention } = await import('../src/engine/memoryRetention');
 const { syncXiaobaiRepo } = await import('../src/engine/memory-repo/xiaobai');
-const { xiaobaiDreamHint } = await import('../src/engine/dreams');
+const { dreamNow, xiaobaiDreamHint } = await import('../src/engine/dreams');
 const { useAppStore } = await import('../src/store/appStore');
 const { EMPTY_MEMORY } = await import('../src/engine/learnerMemory');
+const { retainedClassroomMemories } = await import('../src/engine/memory-repo/retention');
 const source = { type: 'user', label: 'test' };
 const add = (owner: string) => addEntries(owner, 'xiaoyan', [{ path: 'MEMORY.md', text: '讲解时先给具体例子', source }], 'user', 'add')[0];
 
@@ -65,8 +67,35 @@ addEntries('polarity', 'xiaoyan', [
 assert.equal(loadRepo('polarity', 'xiaoyan').files['preferences.md'].length, 2);
 assert.equal(loadRepo('polarity', 'xiaoyan').files['goals.md'].length, 2);
 
+const stamp = new Date().toISOString();
+const oldStamp = new Date(Date.now() - 9 * 86400000).toISOString();
+const once = { id: 'once', text: '梯度下降还没理解', source, addedAt: stamp, updatedAt: stamp, author: 'auto' as const };
+assert.equal(memoryRetention(once, 'courses/gradient.md').layer, 'short', 'one observation is not long-term');
+assert.equal(memoryRetention({...once,updatedAt:oldStamp,addedAt:oldStamp}, 'courses/gradient.md').active, false);
+assert.equal(memoryRetention({...once,seen:3,addedAt:oldStamp}, 'courses/gradient.md').layer, 'long');
+assert.equal(memoryRetention({...once,retention:'recent'}, 'courses/gradient.md').layer, 'recent');
+commitRepo('weight', 'xiaoyan', 'auto', 'layer samples', draft => {
+  draft.add('preferences.md', {...once,id:'style',text:'喜欢先举一个生活中的例子',author:'user'});
+  draft.add('goals.md', {...once,id:'unrelated',text:'目标是通过雅思考试',author:'user'});
+  draft.add('courses/gradient.md', {...once,id:'short',section:'stuck'});
+  draft.add('courses/gradient.md', {...once,id:'expired',text:'梯度下降昨天还是没懂',updatedAt:oldStamp,addedAt:oldStamp});
+  draft.add('courses/gradient.md', {...once,id:'recent',text:'最近读过梯度下降',retention:'recent'});
+});
+const relevant = tutorMemoryHints('weight','gradient',10,'请解释梯度下降');
+assert.ok(relevant.some(line=>line.includes('还没理解')));
+assert.ok(!relevant.some(line=>line.includes('雅思')||line.includes('昨天')||line.includes('最近读过')));
+assert.ok(relevant.length<=3 && relevant.join('').length<=240);
+assert.ok(!tutorMemoryHints('weight','gradient',3,'请只给公式解释梯度下降').some(line=>line.includes('例子')), 'current instructions override old style');
+repoOps.edit('weight','xiaoyan','short',{retention:'long'});
+assert.equal(memoryRetention(loadRepo('weight','xiaoyan').files['courses/gradient.md'].find(entry=>entry.id==='short')!,'courses/gradient.md').layer,'long');
+addEntries('free-short','xiaoyan',[{path:'weak-points.md',text:'梯度下降的更新方向还没理解',source}], 'auto','one-off');
+assert.ok(tutorMemoryHints('free-short',undefined,3,'解释梯度下降的更新方向').length>0);
+
 useAppStore.setState({ historyOwner: 'teacher-a', memory: EMPTY_MEMORY, events: [] });
 useAppStore.getState().addExplicitMemory('讲课之前先用一个生活中的例子', {});
+const explicit = useAppStore.getState().memory.items[0];
+assert.equal(retainedClassroomMemories('unprojected',[explicit]).length,1);
+assert.equal(retainedClassroomMemories('unprojected',[{...explicit,source:'observed',pinned:false,createdAt:oldStamp,lastSeenAt:oldStamp,updatedAt:oldStamp}]).length,0);
 assert.equal(syncXiaobaiRepo('teacher-b'), false, 'previous account classroom must not enter the new account repository');
 assert.deepEqual(loadRepo('teacher-b', 'xiaobai').files, {});
 syncXiaobaiRepo('teacher-a');
@@ -89,6 +118,19 @@ assert.equal(xiaobaiDreamHint('dream-review', 'attention'), '下一堂先讲一�
 repoOps.remove('dream-review', 'xiaobai', question.id);
 assert.equal(xiaobaiDreamHint('dream-review', 'attention'), null, 'deleted questions cannot return from dream history');
 
+useAppStore.getState().setSettings({mode:'mock'});
+commitRepo('auto-dream','xiaoyan','auto','retention samples',draft=>{
+  draft.add('weak-points.md',{...once,id:'expired-dream',text:'过期的一次性问题',addedAt:oldStamp,updatedAt:oldStamp});
+  draft.add('habits.md',{...once,id:'stable-dream',text:'跨天反复确认的稳定学习习惯',addedAt:oldStamp,updatedAt:stamp,seen:4});
+});
+repoOps.setReview('auto-dream','xiaoyan',true);
+const autoDream=await dreamNow('auto-dream','xiaoyan');
+assert.equal(autoDream?.review,'applied','dream changes apply automatically');
+assert.equal(loadRepo('auto-dream','xiaoyan').review,false,'old confirmation setting is migrated');
+assert.equal(loadRepo('auto-dream','xiaoyan').pending,null);
+assert.ok(loadRepo('auto-dream','xiaoyan').files['archive.md']?.some(entry=>entry.id==='expired-dream'));
+assert.equal(loadRepo('auto-dream','xiaoyan').files['habits.md']?.find(entry=>entry.id==='stable-dream')?.retention,'long');
+
 const originalFetch = globalThis.fetch;
 let resolveModel!: (response: Response) => void;
 let modelStarted!: () => void;
@@ -98,8 +140,8 @@ globalThis.fetch = async () => {
   return new Promise<Response>((resolve) => { resolveModel = resolve; });
 };
 useAppStore.getState().setSettings({ mode: 'proxy' });
-recordTutorTurn('clear-race', { question: '请帮我理解梯度下降的计算步骤', answer: '从斜率开始理解。' });
-const deadline = setTimeout(() => { throw new Error('background extraction did not start'); }, 5000);
+for (let i = 0; i < 4; i++) recordTutorTurn('clear-race', { question: `记住，我喜欢用生活例子${i}来理解概念`, answer: '好' });
+const deadline = setTimeout(() => { throw new Error('background extraction did not start'); }, 10000);
 await started;
 clearTimeout(deadline);
 repoOps.clear('clear-race', 'xiaoyan');

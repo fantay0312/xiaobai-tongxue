@@ -47,7 +47,7 @@ export function RepoHome({ owner, repo, state, paused, topic }: Props) {
 
   // 与对话里实际注入的要点同一个函数，所见即所用（放在 effect 里：它会顺手让记忆库跟上最新的学习行为）
   useEffect(() => {
-    if (repo === 'xiaoyan') setHints(tutorMemoryHints(owner, topic?.topicId, 6));
+    if (repo === 'xiaoyan') setHints(tutorMemoryHints(owner, topic?.topicId, 3));
   }, [owner, repo, topic?.topicId, state]);
 
   const clearAll = () => {
@@ -98,7 +98,8 @@ export function RepoHome({ owner, repo, state, paused, topic }: Props) {
         <h3 id="repo-usage-title">这些记忆怎么用</h3>
         {repo === 'xiaoyan' ? (
           <ul>
-            <li>你向小砚提问时，只有下面这几行会作为背景交给模型：始终记着的、置顶的、当前课程文件里最相关的几行。记忆库的其余内容不发出去。</li>
+            <li>当前问题优先。每次最多参考 3 条相关记忆，共不超过 240 字，不强行关联旧兴趣、旧目标。</li>
+            <li>最近上下文保留 24 小时，短期记忆 7 天未再提及就淡出回答；长期记忆来自明确要求或跨天反复确认。原记录仍可查看，也能手动调整层级。</li>
             <li>记忆库按账号保存在这个浏览器里。换设备，或清除浏览器数据后，不会跟过去。</li>
             <li>暂停后不再记入新的学习行为，回答时也不带记忆；暂停期间做的事，恢复后也不补记。</li>
             <li>密码、手机号、邮箱这类信息不会被记下。你删掉的自动记录，之后不会再自动记回来。</li>
@@ -116,13 +117,13 @@ export function RepoHome({ owner, repo, state, paused, topic }: Props) {
               <p>记忆已暂停，现在提问不会带上任何一条。</p>
             ) : hints.length > 0 ? (
               <>
-                <p>现在{topic ? `在《${topic.title}》里` : ''}提问，小砚会带上这 {hints.length} 行：</p>
+                <p>默认可参考这 {hints.length} 行少量背景；是否使用还取决于具体问题：</p>
                 <ol className={m.hintList}>
                   {hints.map((hint) => <li key={hint}>{hint}</li>)}
                 </ol>
               </>
             ) : (
-              <p>还没有可以带上的记忆。</p>
+              <p>当前没有需要默认参考的背景。小砚会优先直接回答你的问题。</p>
             )}
           </div>
         )}

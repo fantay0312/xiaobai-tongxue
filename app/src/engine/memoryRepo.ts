@@ -10,6 +10,7 @@
  * 每个文件最多 80 条、整库最多 400 条、历史最多 200 次提交。
  */
 import { useSyncExternalStore } from 'react';
+import type { MemoryLayer } from './memoryRetention';
 
 export type RepoId = 'xiaoyan' | 'xiaobai';
 /** auto=学习过程中自动记下 user=我亲手写或改 dream=做梦整理 */
@@ -41,6 +42,7 @@ export interface RepoEntry {
   edited?: boolean;
   /** 同一件事被再次观察到的次数 */
   seen?: number;
+  retention?: MemoryLayer;
 }
 
 /** 一处改动：before 为空是新增，after 为空是删除，都有是修改；跨文件移动记成一删一增 */
@@ -133,7 +135,7 @@ const TEACHER_SECTIONS: RepoSection[] = [
 
 const STATIC_FILES: Record<RepoId, RepoFileInfo[]> = {
   xiaoyan: [
-    { path: 'MEMORY.md', title: '始终记着的', hint: '小砚每次回答前都会带上的要点：你是谁、眼下的目标、喜欢的讲法。其余细节在索引里的各个文件，用到时才取。' },
+    { path: 'MEMORY.md', title: '记忆总览', hint: '这里的背景只在与当前问题相关时使用。一次性问题不会自动变成长久的偏好。' },
     { path: 'preferences.md', title: '讲法偏好', hint: '你喜欢怎样的讲法，对什么感兴趣。', sections: [{ id: 'style', label: '讲法' }, { id: 'interest', label: '感兴趣的' }] },
     { path: 'goals.md', title: '目标', hint: '你在为什么而学：考试、升学，或想学会的东西。' },
     { path: 'weak-points.md', title: '薄弱点', hint: '不分课程的薄弱点，和从各门课里看出的规律。具体卡在哪一题，记在各门课的文件里。' },
@@ -319,6 +321,7 @@ function sanitizeEntry(value: unknown): RepoEntry | null {
   if (typeof raw.section === 'string' && raw.section) entry.section = raw.section.slice(0, 24);
   if (raw.pinned === true) entry.pinned = true;
   if (raw.edited === true) entry.edited = true;
+  if (raw.retention === 'recent' || raw.retention === 'short' || raw.retention === 'long') entry.retention = raw.retention;
   if (typeof raw.seen === 'number' && Number.isFinite(raw.seen) && raw.seen > 1) entry.seen = Math.min(99, Math.floor(raw.seen));
   return entry;
 }
@@ -596,6 +599,7 @@ export interface NewEntry {
   pinned?: boolean;
   /** 这件事发生的时刻（来自学习行为时用它，而不是记下的时刻，这样先后顺序才对） */
   at?: string;
+  retention?: MemoryLayer;
 }
 
 function findDuplicate(entries: RepoEntry[], text: string, section?: string): RepoEntry | undefined {
@@ -642,7 +646,9 @@ export function addEntries(owner: string | null, repo: RepoId, inputs: NewEntry[
         const duplicate = findDuplicate(draft.entries(input.path), text, input.section);
         if (duplicate) {
           const more = Math.min(99, (duplicate.seen ?? 1) + 1);
-          if (author === 'user') {
+          if (input.retention && duplicate.retention !== input.retention) {
+            draft.update(duplicate.id, { ...duplicate, retention: input.retention, updatedAt: at, seen: more });
+          } else if (author === 'user') {
             draft.update(duplicate.id, { ...duplicate, text, author: 'user', updatedAt: at, seen: more, ...(input.section ? { section: input.section } : {}) });
           } else if (!isProtectedEntry(duplicate) && text.length > duplicate.text.length && normalizeText(text).includes(normalizeText(duplicate.text))) {
             // 新说法更具体：换成新的
@@ -655,6 +661,7 @@ export function addEntries(owner: string | null, repo: RepoId, inputs: NewEntry[
         const entry: RepoEntry = { id: input.id ?? newRepoId(), text, source: input.source, addedAt: at, updatedAt: at, author };
         if (input.section) entry.section = input.section;
         if (input.pinned) entry.pinned = true;
+        if (input.retention) entry.retention = input.retention;
         draft.add(input.path, entry);
         added.push(entry);
       }
@@ -684,7 +691,8 @@ export const repoOps = {
         group.sort((a, b) => rank(b.entry) - rank(a.entry) || b.entry.updatedAt.localeCompare(a.entry.updatedAt));
         const keep = group[0].entry;
         const seen = Math.min(99, group.reduce((sum, { entry }) => sum + (entry.seen ?? 1), 0));
-        draft.update(keep.id, { ...keep, seen });
+        const retention = group.filter(({entry}) => entry.retention).sort((a,b) => b.entry.updatedAt.localeCompare(a.entry.updatedAt))[0]?.entry.retention;
+        draft.update(keep.id, { ...keep, seen, ...(retention ? {retention} : {}) });
         for (const { entry } of group.slice(1)) {
           draft.remove(entry.id);
           if (entry.id.startsWith('xb:')) forgottenIds.push(`id:${entry.id}`);
@@ -695,7 +703,7 @@ export const repoOps = {
     return removed;
   },
   /** 改文字或小节。改过的自动条目标为「我改过」，之后不会被自动覆盖 */
-  edit(owner: string | null, repo: RepoId, id: string, patch: { text?: string; section?: string }): boolean {
+  edit(owner: string | null, repo: RepoId, id: string, patch: { text?: string; section?: string; retention?: MemoryLayer }): boolean {
     const text = patch.text === undefined ? undefined : cleanText(patch.text);
     if (text !== undefined && (text.length < 2 || isSensitiveMemoryText(text))) return false;
     let found = false;
@@ -703,9 +711,9 @@ export const repoOps = {
       const hit = draft.find(id);
       if (!hit) return;
       found = true;
-      const next: RepoEntry = { ...hit.entry, text: text ?? hit.entry.text, ...(patch.section ? { section: patch.section } : {}) };
-      if (next.text === hit.entry.text && next.section === hit.entry.section) return;
-      draft.update(id, { ...next, updatedAt: nowIso(), ...(hit.entry.author !== 'user' ? { edited: true } : {}) });
+      const next: RepoEntry = { ...hit.entry, text: text ?? hit.entry.text, ...(patch.section ? { section: patch.section } : {}), ...(patch.retention ? { retention: patch.retention } : {}) };
+      if (next.text === hit.entry.text && next.section === hit.entry.section && next.retention === hit.entry.retention) return;
+      draft.update(id, { ...next, updatedAt: nowIso(), ...(hit.entry.author !== 'user' && (patch.text !== undefined || patch.section !== undefined) ? { edited: true } : {}) });
     });
     return found;
   },

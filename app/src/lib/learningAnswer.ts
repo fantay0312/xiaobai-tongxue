@@ -47,20 +47,20 @@ export function learningSelection(sources:NotebookSource[],topicId:string) {
     textSources:sources.filter((source)=>source.kind==='text').map(({id,title,content})=>({id,title,content:content.slice(0,4000)}))};
 }
 
-/** 小砚的记忆要点：最多 8 条、每条 200 字。读取失败不影响提问。 */
-function memoryHints(owner: string | null | undefined, topicId: string): string[] {
+/** 最多 3 条相关记忆，合计 240 字。读取失败不影响提问。 */
+function memoryHints(owner: string | null | undefined, topicId: string, question: string): string[] {
   try {
-    return tutorMemoryHints(owner ?? null, topicId && topicId !== 'library' ? topicId : undefined, 6)
+    return tutorMemoryHints(owner ?? null, topicId && topicId !== 'library' ? topicId : undefined, 3, question)
       .filter((line) => typeof line === 'string' && line.trim())
-      .slice(0, 8)
-      .map((line) => line.trim().slice(0, 200));
+      .slice(0, 3)
+      .map((line) => line.trim().slice(0, 100));
   } catch {
     return [];
   }
 }
 
 export async function streamLearningAnswer(input: LearningAnswerInput) {
-  const memory = memoryHints(input.owner, input.topicId);
+  const memory = memoryHints(input.owner, input.topicId, input.question);
   const response=await gatewayFetch(`${API_BASE}/learning/answer`,{method:'POST',headers:{'Content-Type':'application/json'},signal:input.signal,
     body:JSON.stringify({question:input.question,topicId:input.topicId||'library',selection:learningSelection(input.sources,input.topicId),
       history:input.history.slice(-6).map(({role,text})=>({role,text:text.slice(0,700)})),mode:input.mode,format:input.format,

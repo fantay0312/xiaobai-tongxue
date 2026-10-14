@@ -11,6 +11,7 @@ import {
 } from '../../../../engine/memoryRepo';
 import type { EntrySource, RepoEntry, RepoId, RepoState } from '../../../../engine/memoryRepo';
 import { relDay } from '../../../../lib/relDay';
+import { MEMORY_LAYERS, memoryRetention, type MemoryLayer } from '../../../../engine/memoryRetention';
 import { useAppStore } from '../../../../store/appStore';
 import { MemoryRow } from './MemoryRow';
 import m from './memory.module.css';
@@ -127,6 +128,13 @@ export function RepoFileView({ owner, repo, state, path, dock, addSignal, onOpen
     if (!commit) return;
     toast('已删除这条记忆', { duration: 6000, action: { label: '撤销', onClick: () => { repoOps.revert(owner, repo, commit.id); } } });
   };
+  const setLayer = (entry: RepoEntry, retention: MemoryLayer) => {
+    repoOps.edit(owner, repo, entry.id, { retention });
+    toast(`已改为${MEMORY_LAYERS.find(item => item.id === retention)!.label}`);
+  };
+  const layerItems = (entry: RepoEntry) => MEMORY_LAYERS.map(layer => (
+    <MenuItem key={layer.id} checked={memoryRetention(entry, path).layer === layer.id} onSelect={() => setLayer(entry, layer.id)}>{layer.label}</MenuItem>
+  ));
 
   const draftText = draft.trim();
   const submit = (event: FormEvent) => {
@@ -223,6 +231,8 @@ export function RepoFileView({ owner, repo, state, path, dock, addSignal, onOpen
                       onEdit={(text) => edit(entry, text)}
                       onPin={(pinned) => pin(entry, pinned)}
                       onDelete={() => remove(entry)}
+                      menuExtra={layerItems(entry)}
+                      extra={<Menu><MenuTrigger asChild><Button size="sm" variant="ghost">调整记忆层级</Button></MenuTrigger><MenuContent>{layerItems(entry)}</MenuContent></Menu>}
                       meta={(
                         <>
                           {back ? (
@@ -234,6 +244,7 @@ export function RepoFileView({ owner, repo, state, path, dock, addSignal, onOpen
                             <span className={r.sourceChip}><span>{entry.source.label}</span></span>
                           )}
                           <span>{relDay(entry.addedAt)}</span>
+                          <Badge>{memoryRetention(entry, path).active ? MEMORY_LAYERS.find(layer => layer.id === memoryRetention(entry, path).layer)!.label : '已淡出回答'}</Badge>
                           {(entry.seen ?? 1) > 1 && <span>提到 {entry.seen} 次</span>}
                           {entry.author === 'dream' && <Badge tone="accent">做梦整理</Badge>}
                           {entry.edited && <Badge>我改过</Badge>}

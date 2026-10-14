@@ -71,11 +71,16 @@ test('grounded text answers retain verified sources and do not request interacti
   const events=[];
   const service=createLearningAnswerService({baseUrl:'https://model.test',apiKey:'key',model:'model',fileLibrary,
     fetchImpl:async(_url,options)=>{sent=JSON.parse(options.body);return new Response(stream('解释 [1]'));}});
-  await service.answer({id:'owner'},{...request,format:'text'},null,async(type,data)=>events.push({type,data}));
+  await service.answer({id:'owner'},{...request,format:'text',memory:Array.from({length:10},()=> '学习偏好'.repeat(80))},null,async(type,data)=>events.push({type,data}));
   assert.equal(sent.response_format,undefined);
   assert.match(sent.messages[0].content,/仅依据本轮 sources/);
   assert.equal(events.at(-1).data.ui,undefined);
   assert.equal(events.at(-1).data.sources[0].id,'S1');
+  const context=JSON.parse(sent.messages[1].content);
+  assert.equal(context.learnerMemory.length,3);
+  assert.ok(context.learnerMemory.every(line=>line.length<=100));
+  assert.ok(context.learnerMemory.join('').length<=240);
+  assert.match(sent.messages[0].content,/当前问题、当前资料与最近对话优先/);
 });
 
 test('invalid interactive output is repaired once with the same authorized sources and combined usage',async()=>{

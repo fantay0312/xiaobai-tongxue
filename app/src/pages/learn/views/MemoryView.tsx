@@ -18,7 +18,7 @@ import { IconMemory } from '../../../components/ui/icons';
 import { XiaoyanPet } from '../../../components/coach/XiaoyanPet';
 import { XiaobaiAvatar } from '../../../components/xiaobai/XiaobaiAvatar';
 import { useActivities } from '../../../engine/activityLog';
-import { useDreams } from '../../../engine/dreams';
+import { settleAutomaticDreams, useDreams } from '../../../engine/dreams';
 import { syncXiaobaiRepo } from '../../../engine/memory-repo/xiaobai';
 import { REPO_NAMES, fileInfo, folderLabel, listFiles, repoOps, useRepo } from '../../../engine/memoryRepo';
 import type { EntrySource, RepoId, RepoState } from '../../../engine/memoryRepo';
@@ -30,6 +30,8 @@ import { DreamPanel } from './memory/DreamPanel';
 import { RepoFileView } from './memory/RepoFileView';
 import { RepoHistory } from './memory/RepoHistory';
 import { RepoHome } from './memory/RepoHome';
+import { MemoryLayers } from './memory/MemoryLayers';
+import { MEMORY_LAYERS, type MemoryLayer } from '../../../engine/memoryRetention';
 import type { TerminalViewProps } from './types';
 import s from './memory/memory.module.css';
 import r from './memory/repo.module.css';
@@ -68,6 +70,7 @@ export default function MemoryView({ owner, topic, onOpenTopic, onView }: Termin
   // 旧地址 tab=xiaobai / kind=dreams 仍然认
   const repo: RepoId = params.get('repo') === 'xiaobai' || params.get('tab') === 'xiaobai' ? 'xiaobai' : 'xiaoyan';
   const requested = params.get('file') ?? (params.get('kind') === 'dreams' ? DREAMS : 'MEMORY.md');
+  const layer = ['@recent', '@short', '@long'].includes(requested) ? requested.slice(1) as MemoryLayer : null;
   const [addSignal, setAddSignal] = useState(0);
   const [treeOpen, setTreeOpen] = useState(false);
 
@@ -86,12 +89,14 @@ export default function MemoryView({ owner, topic, onOpenTopic, onView }: Termin
   useEffect(() => { syncTutorRepo(owner); }, [owner, activities]);
   useEffect(() => { syncXiaobaiRepo(owner); }, [owner, events, classroom, historyOwner]);
   useEffect(() => {
+    settleAutomaticDreams(owner, 'xiaoyan');
+    if (historyOwner === owner) settleAutomaticDreams(owner, 'xiaobai');
     if (!xiaoyan.dedupeVersion) repoOps.deduplicate(owner, 'xiaoyan', true);
     if (historyOwner === owner && !xiaobai.dedupeVersion) repoOps.deduplicate(owner, 'xiaobai', true);
   }, [owner, historyOwner, xiaoyan.dedupeVersion, xiaobai.dedupeVersion]);
 
   const files = listFiles(state);
-  const file = requested === DREAMS || requested === HISTORY || files.some((entry) => entry.path === requested) || (state.files[requested]?.length ?? 0) > 0
+  const file = layer || requested === DREAMS || requested === HISTORY || files.some((entry) => entry.path === requested) || (state.files[requested]?.length ?? 0) > 0
     ? requested
     : 'MEMORY.md';
   const go = (nextRepo: RepoId, nextFile: string = 'MEMORY.md') => {
@@ -104,7 +109,7 @@ export default function MemoryView({ owner, topic, onOpenTopic, onView }: Termin
 
   // 「添加一条记忆」：梦境和历史页没有输入框，先回到入口文件
   const startAdd = () => {
-    if (file === DREAMS || file === HISTORY) go(repo);
+    if (file === DREAMS || file === HISTORY || layer) go(repo);
     setAddSignal(Date.now());
   };
 
@@ -123,8 +128,8 @@ export default function MemoryView({ owner, topic, onOpenTopic, onView }: Termin
     return null;
   };
 
-  const info = file === DREAMS || file === HISTORY ? null : fileInfo(repo, file, state.titles);
-  const heading = file === DREAMS
+  const info = layer || file === DREAMS || file === HISTORY ? null : fileInfo(repo, file, state.titles);
+  const heading = layer ? { title: MEMORY_LAYERS.find(item => item.id === layer)!.label, intro: MEMORY_LAYERS.find(item => item.id === layer)!.hint } : file === DREAMS
     ? { title: DREAM_NAME[repo], intro: DREAM_INTRO[repo] }
     : file === HISTORY
       ? { title: '变更历史', intro: '记忆库的每一次写入：是自动记下的、你亲手改的，还是做梦整理的，改了哪几行。可以逐次撤销。' }
@@ -133,7 +138,7 @@ export default function MemoryView({ owner, topic, onOpenTopic, onView }: Termin
     ? '记忆已暂停：不再记入新的学习行为，回答时也不带记忆。'
     : '记忆已暂停：这段时间上的课，小白不会再记。';
 
-  const content = file === DREAMS ? (
+  const fileContent = file === DREAMS ? (
     <DreamPanel owner={owner} who={repo} />
   ) : file === HISTORY ? (
     <RepoHistory owner={owner} repo={repo} state={state} onOpenFile={(path) => go(repo, path)} />
@@ -165,6 +170,7 @@ export default function MemoryView({ owner, topic, onOpenTopic, onView }: Termin
       {file === 'MEMORY.md' && <RepoHome owner={owner} repo={repo} state={state} paused={paused} topic={topic} />}
     </>
   );
+  const content = <MemoryLayers owner={owner} state={state} active={layer} onLayer={next => go(repo, next ? `@${next}` : 'MEMORY.md')} onOpenFile={path => go(repo,path)}>{fileContent}</MemoryLayers>;
 
   const figure = repo === 'xiaoyan' ? (
     <XiaoyanPet state="listening" suppressReply title="回到小砚记忆库的入口" aria-label="回到小砚记忆库的入口" onClick={() => go('xiaoyan')} />
@@ -192,7 +198,7 @@ export default function MemoryView({ owner, topic, onOpenTopic, onView }: Termin
             key={entry.path}
             icon={fileIcon(entry.path)}
             label={entry.title}
-            sub={entry.path === 'MEMORY.md' ? (id === 'xiaoyan' ? '每次回答都带上的要点' : '小白心里的先生') : undefined}
+            sub={entry.path === 'MEMORY.md' ? (id === 'xiaoyan' ? '仅在相关时少量使用' : '小白心里的先生') : undefined}
             title={entry.path}
             meta={entry.count || undefined}
             active={active(entry.path)}

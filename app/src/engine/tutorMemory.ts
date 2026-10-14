@@ -19,6 +19,7 @@ import {
   loadRepo, newRepoId, normalizeText, nowIso, projectPath, repoOps, subscribeRepo, textSimilarity, topicIdOfPath,
 } from './memoryRepo';
 import type { EntrySource, NewEntry, RepoEntry, RepoState } from './memoryRepo';
+import { memoryRetention, memoryRelevance, type MemoryLayer } from './memoryRetention';
 
 export { isSensitiveMemoryText } from './memoryRepo';
 
@@ -71,6 +72,7 @@ interface Draft {
   resolves?: string;
   /** 出处；省略时记为对话 */
   origin?: EntrySource;
+  retention?: MemoryLayer;
 }
 interface Turn { topicId?: string; topicTitle?: string; question: string; answer: string }
 
@@ -384,7 +386,10 @@ function observeQuestion(owner: string | null, entry: Entry, turn: Turn): { draf
   // 「记住……」：学习者明确要求记下
   const remember = REMEMBER.exec(question);
   const remembered = remember ? cleanText(dropSubject(cleanText(remember[1], 60)), 60) : '';
-  if (remembered) push(guessTutorMemoryKind(remembered), remembered);
+  if (remembered) {
+    push(guessTutorMemoryKind(remembered), remembered);
+    if (drafts[0]) drafts[0].retention = 'long';
+  }
 
   let confused = false;
   for (const clause of clauses(question)) {
@@ -488,7 +493,7 @@ function draftEntry(draft: Draft): NewEntry {
     label: draft.topicTitle ? `对话 · ${draft.topicTitle}` : '对话',
     ...(draft.topicId ? { topicId: draft.topicId, ref: { kind: 'topic', id: draft.topicId, ...(draft.topicTitle ? { title: draft.topicTitle } : {}) } } : {}),
   };
-  return { ...placeKind(draft.kind, draft), text: draft.text, source: origin };
+  return { ...placeKind(draft.kind, draft), text: draft.text, source: origin, ...(draft.retention ? { retention: draft.retention } : {}) };
 }
 
 /** 写入自动提炼的草稿：尊重暂停；提问摘要与概念计数一并更新 */
@@ -540,7 +545,8 @@ function activityEntries(activity: Activity): NewEntry[] {
   const course = activity.topicId ? { path: coursePath(activity.topicId), fileTitle: title ?? activity.topicId } : null;
   const entry = (place: Pick<NewEntry, 'path' | 'section' | 'fileTitle'>, text = full): NewEntry[] => [{ ...place, text, source, at: activity.at }];
 
-  if (activity.source === 'library') return entry({ path: 'materials.md' });
+  // 上传、阅读、完成任务本身只属于最近上下文，不变成对学习者的永久判断。
+  if (activity.signal === 'neutral' || activity.source === 'library') return [];
   switch (activity.signal) {
     case 'struggle': {
       const section = WRONG_SOURCES.has(activity.source) ? 'wrong' : activity.source === 'flashcards' ? 'lapsed' : 'stuck';
@@ -581,7 +587,7 @@ export function ingestActivities(owner: string | null): number {
     const added = inputs.length ? addEntries(owner, REPO, inputs, 'auto', `从学习行为里记下：${labels.slice(0, 4).join('、')}`) : [];
     repoOps.setCursor(owner, REPO, cursor);
     // 带细节的行为再交给模型看一眼，提炼规则认不出的东西
-    const subtle = fresh.filter((activity) => activity.detail && activity.source !== 'library');
+    const subtle = fresh.filter((activity) => activity.detail && activity.signal !== 'neutral' && activity.source !== 'library');
     if (subtle.length) queueExtraction(owner, undefined, subtle);
     return added.length;
   } catch {
@@ -601,8 +607,8 @@ export function syncTutorRepo(owner: string | null): void {
 
 // ───────────────────────── 模型提炼（防抖，每隔几轮或几条行为一次） ─────────────────────────
 
-const EXTRACT_EVERY = 2;
-const EXTRACT_DELAY_MS = 1600;
+const EXTRACT_EVERY = 4;
+const EXTRACT_DELAY_MS = 5000;
 const UNAVAILABLE_COOLDOWN_MS = 5 * 60_000;
 interface PendingSlot { turns: Turn[]; activities: Activity[]; timer: ReturnType<typeof setTimeout> | null; running: boolean; runs: number; blockedUntil: number; generation: string }
 const pendingByOwner = new Map<string, PendingSlot>();
@@ -612,6 +618,7 @@ const EXTRACT_SYSTEM = [
   'kind 只能取：preference（喜欢的讲解方式）、goal（学习目标或考试安排）、weakness（反复卡住的知识点）、strength（已经掌握的内容）、habit（学习习惯）、fact（专业、年级等背景）。',
   '每条 text 是一句不超过 40 字的中文陈述，不带「用户」「学习者」这类主语。from 填它依据的那一条的编号（a1、a2… 是学习行为；来自问答就填 "chat"）。',
   '只记以后还用得上的稳定信息；忽略一次性的题目细节、寒暄和助教自己说的话；已经记住的不要重复。',
+  '一次提问不代表薄弱，一次答对不代表掌握；不得从课程主题推断专业、兴趣或长期目标。只有明确自述或反复出现的证据才能提炼。',
   '不要记录密码、密钥、手机号、邮箱、住址、证件号等隐私或联系方式。没有值得记的就返回空数组。',
   '只输出 JSON：{"memories":[{"kind":"goal","text":"……","from":"chat"}]}',
 ].join('\n');
@@ -701,8 +708,7 @@ function queueExtraction(owner: string | null, turn?: Turn, activities: Activity
   pendingByOwner.set(key, slot);
   if (turn) slot.turns = [...slot.turns, turn].slice(-4);
   if (activities.length) slot.activities = [...slot.activities, ...activities].slice(-8);
-  // 头两次有一条就整理，让新用户很快看到记忆；之后攒几条再整理
-  if (slot.turns.length + slot.activities.length >= (slot.runs < 2 ? 1 : EXTRACT_EVERY)) scheduleExtraction(owner, slot);
+  if (slot.turns.length + slot.activities.length >= EXTRACT_EVERY) scheduleExtraction(owner, slot);
 }
 
 /** 一轮答疑结束后调用：从问答里提炼值得长期记住的内容。不抛错、不阻塞界面。 */
@@ -730,7 +736,7 @@ export function recordTutorTurn(owner: string | null, input: TutorTurnInput): vo
           ? { at: nowIso(), question: digestText, ...(turn.topicId ? { topicId: turn.topicId } : {}), ...(turn.topicTitle ? { topicTitle: turn.topicTitle } : {}) }
           : undefined;
         commitAuto(owner, drafts, concepts, digest);
-        queueExtraction(owner, turn);
+        if (drafts.length) queueExtraction(owner, turn);
       } catch {
         // 记忆整理失败不影响对话
       }
@@ -754,39 +760,40 @@ function hintLine(repo: RepoState, path: string, entry: RepoEntry): string {
 }
 
 /**
- * 注入提示词的记忆要点（每条一句话），取前 limit 条；暂停时返回空数组。
- * 取法照「入口文件 + 按需取用」：MEMORY.md 里始终记着的、置顶的、当前课程文件里最相关的几行，
- * 再从目标、偏好、薄弱点等文件里轮流各取最近的一条。只有这几行会交给模型，记忆库的其余内容留在本机。
+ * 按当前问题筛选有效的短期/长期记忆，最多 3 条、240 字。最近上下文由对话 history 承载。
+ * 置顶不等于强制注入；最多带一条讲法偏好，显式的当前讲法要求优先。
  */
-export function tutorMemoryHints(owner: string | null, topicId?: string, limit = 6): string[] {
+export function tutorMemoryHints(owner: string | null, topicId?: string, limit = 3, question = ''): string[] {
   try {
     syncTutorRepo(owner);
     const repo = loadRepo(owner, REPO);
     if (repo.paused || limit <= 0) return [];
-    const recentFirst = (path: string) => [...(repo.files[path] ?? [])].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((entry) => ({ path, entry }));
-    const pinned = allEntries(repo)
-      .filter(({ path, entry }) => entry.pinned && !PASSIVE_FILES.includes(path))
-      .sort((a, b) => b.entry.updatedAt.localeCompare(a.entry.updatedAt));
-    // 当前课程：卡住的、做错的、忘掉的排在学过的前面
-    const urgency = (entry: RepoEntry) => (entry.section === 'stuck' || entry.section === 'wrong' || entry.section === 'lapsed' ? 0 : 1);
-    const course = topicId ? recentFirst(coursePath(topicId)).sort((a, b) => urgency(a.entry) - urgency(b.entry)) : [];
-    // 当前课程最相关：每一轮取两行
-    const buckets = [
-      pinned, recentFirst('MEMORY.md'), course.filter((_, index) => index % 2 === 0), recentFirst('goals.md'), recentFirst('preferences.md'),
-      course.filter((_, index) => index % 2 === 1), recentFirst('weak-points.md'), recentFirst('habits.md'), recentFirst('mastered.md'), recentFirst('materials.md'),
-    ];
-    // 各处轮流取：早先说过的讲法偏好不会被后来的零碎记录挤出去
-    const picked: { path: string; entry: RepoEntry }[] = [];
-    const taken = new Set<string>();
-    for (let round = 0; picked.length < limit && buckets.some((bucket) => bucket.length > round); round += 1) {
-      for (const bucket of buckets) {
-        const candidate = bucket[round];
-        if (!candidate || taken.has(candidate.entry.id) || picked.length >= limit) continue;
-        taken.add(candidate.entry.id);
-        picked.push(candidate);
-      }
+    const candidates = allEntries(repo).flatMap(({ path, entry }) => {
+      const retention = memoryRetention(entry, path);
+      if (!retention.active || retention.layer === 'recent' || PASSIVE_FILES.includes(path)) return [];
+      const relevant = memoryRelevance(entry.text, question);
+      const sameCourse = Boolean(topicId && topicIdOfPath(path) === topicId);
+      const style = path === 'preferences.md';
+      if (style && /只用|只要|只给|不要|不需要|简短|详细|一句话|用.{0,8}(?:解释|说明)/.test(question)) return [];
+      if (retention.layer === 'short' && !(sameCourse ? !question || relevant >= 0.15 : !topicIdOfPath(path) && relevant >= 0.25)) return [];
+      if (retention.layer === 'long' && !style && relevant < 0.15) return [];
+      return [{ path, entry, style, score: relevant * 4 + Number(sameCourse) + Number(Boolean(entry.pinned)) * 0.2 }];
+    }).sort((a, b) => b.score - a.score || b.entry.updatedAt.localeCompare(a.entry.updatedAt));
+    const picked: string[] = [];
+    const seen = new Set<string>();
+    let usedStyle = false, budget = 240;
+    for (const item of candidates) {
+      if (picked.length >= Math.min(3, limit)) break;
+      if (item.style && usedStyle) continue;
+      const normalized = normalizeText(item.entry.text);
+      if (seen.has(normalized)) continue;
+      const line = clip(hintLine(repo, item.path, item.entry), Math.min(100, budget));
+      if (line.length < 8) continue;
+      picked.push(line); seen.add(normalized); budget -= line.length;
+      if (item.style) usedStyle = true;
+      if (budget < 20) break;
     }
-    return picked.map(({ path, entry }) => hintLine(repo, path, entry));
+    return picked;
   } catch {
     return [];
   }

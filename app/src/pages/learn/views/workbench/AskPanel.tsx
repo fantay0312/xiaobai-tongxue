@@ -113,7 +113,7 @@ export function useAskSession(view: TerminalViewProps) {
         history,
         focus: focus ? { label: focus.label, title: focus.title, text: focus.getText(), ...(focus.detail ? { detail: focus.detail } : {}) } : null,
         ...(course ? { topic: course } : {}),
-        memory: tutorMemoryHints(owner, topicId, 4),
+        memory: tutorMemoryHints(owner, topicId, 3, question),
       }, {
         signal: controller.signal,
         onText: (text) => {
