@@ -1,0 +1,2 @@
+{"credential":"TENCENT_ASR","ok":true,"mime":"audio/wav","bytes":56364}
+{"credential":"TENCENTCLOUD","ok":false,"error":"语音服务暂不可用（AuthFailure.UnauthorizedOperation）。"}

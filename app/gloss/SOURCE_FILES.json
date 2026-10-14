@@ -25,7 +25,7 @@
     {
       "path": "components/brand/Together.tsx",
       "upstreamSha256": "72469fc83d58779acac45d8b5137c9b937e8c092a6b33366cf383c97480b5f38",
-      "adapted": false
+      "adapted": true
     },
     {
       "path": "components/landing/DailyHighlight.tsx",
