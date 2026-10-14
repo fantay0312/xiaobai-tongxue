@@ -1,0 +1,75 @@
+[
+  {
+    "antipattern": "bounce-easing",
+    "name": "Bounce or elastic easing",
+    "description": "Bounce and elastic easing feel dated and tacky. Real objects decelerate smoothly — use exponential easing (ease-out-quart/quint/expo) instead.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/Users/fantasy/Documents/作业/竞赛 /学伴智仓/app/gloss/src/components/reader/Overlays.tsx",
+    "line": 83,
+    "snippet": "animation: var(--ease-spring)",
+    "importedBy": [
+      "Reader.tsx"
+    ]
+  },
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/Users/fantasy/Documents/作业/竞赛 /学伴智仓/app/gloss/src/globals.css",
+    "line": 1899,
+    "snippet": "border-left: 2px solid color-mix(in oklab, var(--note-c) 80%, transparent)"
+  },
+  {
+    "antipattern": "bounce-easing",
+    "name": "Bounce or elastic easing",
+    "description": "Bounce and elastic easing feel dated and tacky. Real objects decelerate smoothly — use exponential easing (ease-out-quart/quint/expo) instead.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/Users/fantasy/Documents/作业/竞赛 /学伴智仓/app/gloss/src/globals.css",
+    "line": 1017,
+    "snippet": "animation: var(--ease-spring)"
+  },
+  {
+    "antipattern": "bounce-easing",
+    "name": "Bounce or elastic easing",
+    "description": "Bounce and elastic easing feel dated and tacky. Real objects decelerate smoothly — use exponential easing (ease-out-quart/quint/expo) instead.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/Users/fantasy/Documents/作业/竞赛 /学伴智仓/app/gloss/src/globals.css",
+    "line": 185,
+    "snippet": "cubic-bezier(0.34, 1.36, 0.64, 1)"
+  },
+  {
+    "antipattern": "border-accent-on-rounded",
+    "name": "Border accent on rounded element",
+    "description": "Thick accent border on a rounded card — the border clashes with the rounded corners. Remove the border or the border-radius.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/Users/fantasy/Documents/作业/竞赛 /学伴智仓/app/gloss/src/library.css",
+    "line": 985,
+    "snippet": "border-bottom: 5px solid"
+  },
+  {
+    "antipattern": "bounce-easing",
+    "name": "Bounce or elastic easing",
+    "description": "Bounce and elastic easing feel dated and tacky. Real objects decelerate smoothly — use exponential easing (ease-out-quart/quint/expo) instead.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/Users/fantasy/Documents/作业/竞赛 /学伴智仓/app/gloss/src/library.css",
+    "line": 1936,
+    "snippet": "cubic-bezier(0.34, 1.36, 0.64, 1)"
+  },
+  {
+    "antipattern": "layout-transition",
+    "name": "Layout property animation",
+    "description": "Animating width, height, padding, or margin causes layout thrash and janky performance. Use transform and opacity instead, or grid-template-rows for height animations.",
+    "severity": "warning",
+    "category": "quality",
+    "file": "/Users/fantasy/Documents/作业/竞赛 /学伴智仓/app/gloss/src/library.css",
+    "line": 457,
+    "snippet": "transition: height"
+  }
+]

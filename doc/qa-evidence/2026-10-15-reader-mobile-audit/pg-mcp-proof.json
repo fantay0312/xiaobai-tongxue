@@ -1,0 +1,1 @@
+{"realPostgres":true,"isolatedTemporaryTables":true,"transactionRolledBack":true,"protocolNegotiation":true,"tokenAuthentication":true,"tokenRevocation":true,"nativeMarkdown":true,"metadataAndConnectionName":true,"searchFilters":true,"accountIsolation":true}

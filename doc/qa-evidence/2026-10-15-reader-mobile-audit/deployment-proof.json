@@ -1,0 +1,26 @@
+{
+  "release": "20261015-reader-33c9f64",
+  "sourceCommit": "33c9f64dd21408f58a986568e06e846807426028",
+  "sourceTree": "918706bca9a677bb2a04212c1d2bfb4e984bfcaf",
+  "backup": "/var/backups/xiaobai/20261015-reader-33c9f64",
+  "rollbackRuntime": "/var/backups/xiaobai/20261015-reader-33c9f64/runtime-before-switch",
+  "candidateChecks": "passed",
+  "databaseBackup": true,
+  "secretScan": "passed",
+  "service": "active",
+  "http": {
+    "/": 200,
+    "/api/me": 200,
+    "/api/reader/documents": 401,
+    "/api/reader/status": 401,
+    "/reader/": 200,
+    "/reader/fonts.css": 200,
+    "/api/reader/gloss/media/catalog": 401,
+    "/api/commerce/catalog": 200,
+    "/api/admin/v1/auth/me": 401
+  },
+  "retainedHashedAssets": 0,
+  "configUnchanged": true,
+  "envChanged": [],
+  "nginxUnchanged": true
+}

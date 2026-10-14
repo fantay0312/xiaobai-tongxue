@@ -1,0 +1,14 @@
+{
+  "server": {
+    "tests": 335,
+    "passed": 335,
+    "failed": 0
+  },
+  "readerSync": [
+    "concurrent edit backup",
+    "409 retry",
+    "501-row batch"
+  ],
+  "typecheck": "passed",
+  "productionBuild": "passed"
+}
