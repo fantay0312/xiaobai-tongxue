@@ -1,0 +1,1 @@
+{"realUpstream":true,"model":"deepseek-flash","eventTypes":["start","text","done"],"text":"按原文，三个操作依次是：\n\n1. 阅读原文 [¶2]\n2. 提出问题 [¶2]\n3. 保存笔记 [¶2]","usage":{"promptTokens":143,"completionTokens":34}}

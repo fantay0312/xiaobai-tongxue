@@ -1,0 +1,10 @@
+{
+  "realPostgres": true,
+  "insert": true,
+  "update": true,
+  "staleRejected": true,
+  "ownerIsolation": true,
+  "search": true,
+  "tokenHashAndRevoke": true,
+  "persistentDataChanged": false
+}
