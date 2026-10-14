@@ -1,252 +1,675 @@
-/* 第四章「托」：助理任务运行记录、AI 课堂的一页课、资料库文件。 */
+/* 第四章「托」：助理任务的一次运行、AI 课堂的一幕白板课。
+   复刻 pages/learn/views/agent 与 views/lesson 的比例与用词；data-on = 自动播放走到了这一拍。 */
 
-.duo {
+/* ── 两段图文：桌面左文右图、第二段反过来；窄屏叠成一栏 ── */
+.feature {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 40px clamp(20px, 3vw, 40px);
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 32px clamp(32px, 5vw, 72px);
 }
 
-.col {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.featureFlip {
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  margin-top: clamp(72px, 11vh, 128px);
 }
 
-.colText h3,
-.libraryText h3 {
-  font-size: clamp(20px, 2.2vw, 26px);
+.featureFlip .copy {
+  order: 2;
+}
+
+.copyTitle {
+  margin-top: 10px;
+  font-size: clamp(22px, 2.4vw, 28px);
   font-weight: 650;
   line-height: 1.3;
   letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
-.colText p,
-.libraryText p {
+.copyLead {
   max-width: 30em;
-  margin-top: 8px;
+  margin-top: 12px;
   color: var(--text-2);
   font-size: var(--fz-lg);
   line-height: 1.75;
+  text-wrap: pretty;
 }
 
-.run,
-.lesson {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  padding: clamp(16px, 2vw, 22px);
+.points {
+  margin-top: 24px;
 }
 
-.panelHead {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
-  color: var(--text-3);
+.points li {
+  padding: 14px 0;
 }
 
-.panelHead strong {
-  margin-right: auto;
-  color: var(--text);
+.points strong {
   font-size: var(--fz-lg);
-  font-weight: 600;
 }
 
-/* ── 助理任务 ── */
-.goal {
-  align-self: flex-end;
-  max-width: 92%;
-  padding: 10px 16px;
-  border-radius: var(--r-xl) var(--r-xl) var(--r-xs) var(--r-xl);
-  background: var(--inset);
+.points span {
   font-size: var(--fz-md);
-  line-height: 1.6;
 }
 
-@keyframes logIn {
+/* 播放时逐拍出现。助理时间线像真的运行一样往下长：没轮到的行不占位置，轮到时淡入 */
+@keyframes beatIn {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
 
-.log {
-  position: relative;
+.item:not([data-on]),
+.trail li:not([data-on]),
+.laneChip:not([data-on]),
+.toolChip:not([data-on]),
+.producedChip:not([data-on]) {
+  display: none;
+}
+
+.item[data-on],
+.trail li[data-on],
+.laneChip[data-on],
+.toolChip[data-on],
+.producedChip[data-on] {
+  animation: beatIn var(--dur-3) var(--ease) both;
+}
+
+/* 白板上的三笔占着位置，写到哪一笔显出哪一笔 */
+.chalk,
+.tree,
+.chalkMark {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity var(--dur-3) var(--ease), transform var(--dur-3) var(--ease);
+}
+
+.chalk[data-on],
+.tree[data-on],
+.chalkMark[data-on] {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── 助理任务 ── */
+.run,
+.lesson {
   display: grid;
-  gap: 14px;
-  margin: 18px 0 0;
-  padding: 0;
-  list-style: none;
+  gap: 16px;
+  padding: clamp(16px, 2vw, 22px);
 }
 
-/* 步骤之间的一条竖线 */
-.log::before {
-  content: '';
-  position: absolute;
-  top: 12px;
-  bottom: 12px;
-  left: 10px;
-  width: 1.5px;
-  background: var(--border-2);
-}
-
-.log > li {
-  position: relative;
+.runHead,
+.lessonHead {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  animation: logIn 460ms var(--ease) backwards;
-  animation-delay: var(--d, 0ms);
+  justify-content: space-between;
+  gap: 10px 14px;
 }
 
-.log > li > i {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1.5px var(--border-2);
-  color: var(--accent);
-}
-
-.log > li > i[data-done] {
-  background: var(--ok);
-  box-shadow: 0 0 0 3px var(--surface);
-  color: var(--bg);
-}
-
-.log > li > div {
-  display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 10px;
+.runHeading,
+.lessonHeading {
   min-width: 0;
-  color: var(--text-2);
-  font-size: var(--fz-md);
-  line-height: 22px;
 }
 
-.log code,
-.lane code {
-  padding: 1px 7px;
-  border-radius: var(--r-xs);
-  background: var(--inset);
-  color: var(--text);
-  font-family: var(--ui-mono);
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.runTitle,
+.lessonHeading h4 {
+  margin-top: 8px;
+  font-size: var(--fz-xl);
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.runTitle,
+.lessonHeading h4 {
+  margin-bottom: 0;
+}
+
+.lessonHeading h4 {
+  margin-top: 0;
+}
+
+.runMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin-top: 4px;
+  color: var(--text-3);
   font-size: var(--fz-xs);
-  line-height: 20px;
-  white-space: nowrap;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
 }
 
 .withIcon {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
-.lanes {
-  display: grid;
-  flex: 1 0 100%;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.lane {
-  display: grid;
-  justify-items: start;
-  gap: 6px;
-  padding: 10px 12px;
-  border-radius: var(--r-md);
-  background: var(--sidebar);
-  font-size: var(--fz-sm);
-  line-height: 1.4;
-}
-
-.laneWho {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text);
-  font-weight: 600;
-}
-
-.laneWho svg {
-  color: var(--text-3);
-}
-
-.laneResult {
-  display: inline-flex;
-  align-items: flex-start;
-  gap: 5px;
-  color: var(--text-2);
-}
-
-.laneResult svg {
+.runAction {
   flex: none;
-  margin-top: 2px;
-  color: var(--ok);
 }
 
-.runFoot {
-  margin-top: auto;
-  padding-top: 16px;
-  color: var(--text-3);
-  font-size: var(--fz-sm);
-  font-variant-numeric: tabular-nums;
+.goalBox {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-lg);
+  background: var(--inset);
 }
 
-/* ── AI 课堂 ── */
-.exports {
-  display: inline-flex;
+.goalBox > p {
+  font-size: var(--fz-md);
+  line-height: 1.65;
+}
+
+.context {
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
-.exports span {
+.ctx {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 26px;
+  max-width: 100%;
+  min-height: 26px;
   padding: 0 9px;
-  border-radius: var(--r-sm);
-  box-shadow: inset 0 0 0 1px var(--border-2);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
   color: var(--text-2);
-  font: 500 var(--fz-xs) / 1 var(--ui-mono);
+  font-size: var(--fz-xs);
 }
 
-.slide {
-  position: relative;
+.ctx svg {
+  flex: none;
+  color: var(--text-3);
+}
+
+.ctx span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checklist {
   display: grid;
-  justify-items: center;
-  gap: 18px;
-  padding: 20px 16px 26px;
+  gap: 10px;
+  padding: 14px 16px;
   border-radius: var(--r-lg);
   background: var(--sidebar);
 }
 
-.slide > strong {
-  font-size: var(--fz-xl);
-  font-weight: 650;
-  letter-spacing: -0.01em;
+.checkHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  font-weight: 600;
 }
 
-.slideNo {
-  position: absolute;
-  top: 12px;
-  right: 14px;
+.checkCount {
   color: var(--text-3);
-  font: 500 var(--fz-xs) / 1 var(--ui-mono);
+  font-family: var(--ui-mono);
+  font-variant-numeric: tabular-nums;
 }
 
-.tree {
-  position: relative;
+.checkList {
   display: grid;
-  justify-items: center;
-  gap: 0;
+  gap: 8px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checkList li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  color: var(--text);
+  font-size: var(--fz-md);
+  line-height: 1.5;
+  transition: color var(--dur-2) var(--ease);
+}
+
+.checkList li[data-done] {
+  color: var(--text-3);
+}
+
+.checkMark {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: var(--inset);
+  color: var(--text-3);
+}
+
+.checkList li[data-done] .checkMark {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.timeline {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
 }
 
 .node {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--inset);
+  color: var(--text-3);
+}
+
+.node[data-tone='accent'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.node[data-tone='ok'] {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.itemBody {
+  min-width: 0;
+}
+
+.tool {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+.tool[data-running] {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.toolHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+  min-height: 40px;
+  padding: 8px 12px;
+}
+
+.toolName {
+  flex: none;
+  font-size: var(--fz-md);
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.toolArgs {
+  flex: 1 1 8em;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolState {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--text-3);
+  font-family: var(--ui-mono);
+  font-size: var(--fz-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.okMark {
+  color: var(--ok);
+}
+
+.toolFoot {
+  display: grid;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+
+.toolResult {
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.lanes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.lane {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: var(--r-md);
+  background: var(--sidebar);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: box-shadow var(--dur-2) var(--ease);
+}
+
+.lane[data-done] {
+  box-shadow: inset 0 0 0 1px transparent;
+}
+
+.laneHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.laneHead strong {
+  font-size: var(--fz-md);
+  font-weight: 600;
+}
+
+.laneState {
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+
+.laneBrief {
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.55;
+}
+
+.trail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trail li {
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--text-2);
+  font-size: var(--fz-xs);
+  line-height: 1.6;
+}
+
+.laneChip,
+.toolChip {
+  display: flex;
+  min-width: 0;
+}
+
+/* 成果标签：和终端里点开工作台的那枚一样 */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-height: 34px;
+  padding: 4px 10px 4px 4px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+  font-size: var(--fz-sm);
+}
+
+.chipIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.chipKind {
+  flex: none;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+
+.chipTitle {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chipArrow {
+  flex: none;
+  color: var(--text-4);
+}
+
+.notice {
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 28px;
+}
+
+.summary {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--ok) 8%, var(--surface));
+}
+
+.summaryLabel {
+  color: var(--ok);
+  font-size: var(--fz-xs);
+  font-weight: 600;
+}
+
+.summary p {
+  color: var(--text);
+  font-size: var(--fz-md);
+  line-height: 1.65;
+}
+
+.produced {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.produced h5 {
+  margin: 0;
+  font-size: var(--fz-sm);
+  font-weight: 600;
+}
+
+.produced h5 span {
+  margin-left: 4px;
+  color: var(--text-3);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.producedChip {
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.libraryNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
+
+.libraryNote svg {
+  flex: none;
+}
+
+/* ── AI 课堂 ── */
+.exports {
+  display: flex;
+  flex: none;
+  gap: 6px;
+}
+
+.exportNote {
+  display: none;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: var(--fz-sm);
+  line-height: 1.6;
+}
+
+.exportNote[data-on] {
+  display: block;
+}
+
+.stageCard {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  overflow: hidden;
+  padding: 14px 14px 16px;
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.stageProgress {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(var(--p, 0));
+  transform-origin: left;
+  transition: transform 600ms var(--ease);
+}
+
+.stageHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stageHead strong {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fz-lg);
+  font-weight: 650;
+}
+
+.sceneChip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-xs);
+  font-weight: 500;
+}
+
+.sceneCount {
+  flex: none;
+  color: var(--text-3);
+  font-family: var(--ui-mono);
+  font-size: var(--fz-xs);
+}
+
+/* 白板：点阵底，手写字 */
+.board {
+  display: grid;
+  justify-items: start;
+  gap: 18px;
+  padding: 20px 22px 22px;
+  border-radius: var(--r-lg);
+  background-color: var(--inset);
+  background-image: radial-gradient(color-mix(in srgb, var(--text) 14%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.chalk,
+.chalkMark {
+  color: var(--text);
+  font-family: var(--story-hand);
+  line-height: 1.5;
+}
+
+.chalk {
+  font-size: clamp(19px, 2vw, 23px);
+  font-weight: 500;
+}
+
+.chalkMark {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  box-shadow: inset 0 -3px 0 var(--accent);
+  font-size: clamp(17px, 1.8vw, 20px);
+  font-weight: 600;
+}
+
+.tree {
+  display: grid;
+  justify-items: center;
+  justify-self: center;
+}
+
+.key {
   display: flex;
   gap: 3px;
   padding: 3px;
@@ -255,37 +678,45 @@
   box-shadow: var(--shadow-1), 0 0 0 1px var(--border-2);
 }
 
-.node b {
+.key b {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 30px;
+  width: 36px;
+  height: 32px;
   border-radius: 5px;
   background: var(--inset);
   font: 600 var(--fz-md) / 1 var(--ui-mono);
 }
 
-.node b[data-new] {
+.key b[data-new] {
   background: var(--accent);
   color: var(--on-accent);
 }
 
-/* 父节点到两个孩子的连线 */
+.key[data-full] b[data-mid] {
+  box-shadow: inset 0 0 0 2px var(--accent);
+  color: var(--accent);
+}
+
+/* 父节点到两个孩子的连线：两列等宽，竖线落在各列正中 */
 .kids {
+  --gap: 28px;
   position: relative;
-  display: flex;
-  gap: 24px;
-  margin-top: 10px;
-  padding-top: 16px;
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  column-gap: var(--gap);
+  margin-top: 12px;
+  padding-top: 18px;
 }
 
 .kids::before {
   content: '';
   position: absolute;
   top: 0;
-  right: 22%;
-  left: 20%;
-  height: 16px;
+  right: calc((100% - var(--gap)) / 4);
+  left: calc((100% - var(--gap)) / 4);
+  height: 18px;
   border: 1.5px solid var(--border-2);
   border-bottom: 0;
   border-radius: 6px 6px 0 0;
@@ -294,60 +725,62 @@
 .kids::after {
   content: '';
   position: absolute;
-  top: -10px;
-  left: 50%;
+  top: -12px;
+  left: calc(50% - 0.75px);
   width: 1.5px;
-  height: 10px;
+  height: 12px;
   background: var(--border-2);
 }
 
-/* 白板上的手写批注 */
-.chalk {
-  margin-top: 10px;
-  padding: 2px 10px;
-  border-bottom: 1.5px dashed var(--accent);
-  color: var(--accent);
-  font-family: var(--story-hand);
-  font-size: 17px;
-  line-height: 1.5;
-  transform: rotate(-1.5deg);
-}
-
-.voices {
-  display: grid;
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.voices p {
+.kid {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  color: var(--text-2);
-  font-size: var(--fz-md);
-  line-height: 1.65;
+  justify-content: center;
 }
 
-.speaker {
+/* 讲台圆桌 */
+.table {
   display: grid;
-  flex: none;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--inset);
-  color: var(--text-2);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+.bubble {
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  min-height: 76px;
+  padding: 10px 14px;
+  border-radius: var(--r-xl) var(--r-xl) var(--r-xl) var(--r-xs);
+  background: var(--sidebar);
+}
+
+.bubble[data-speaker='xiaobai'],
+.bubble[data-speaker='acheng'] {
+  border-radius: var(--r-xl) var(--r-xl) var(--r-xs) var(--r-xl);
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+}
+
+.bubbleWho {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
   font-size: var(--fz-xs);
-  font-weight: 650;
+  font-weight: 600;
+  line-height: 1;
 }
 
-.speaker[data-teacher] {
-  background: var(--solid);
-  color: var(--on-solid);
+@keyframes lineIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
 }
 
-.speaker[data-teacher] + span {
+.bubble p {
   color: var(--text);
+  font-size: var(--fz-md);
+  line-height: 1.6;
+  animation: lineIn 360ms var(--ease) both;
 }
 
 @keyframes wave {
@@ -355,14 +788,13 @@
   50% { transform: scaleY(1); }
 }
 
-/* 语音讲解中的小波形 */
+/* 朗读中的小波形 */
 .wave {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  height: 14px;
-  margin-left: 8px;
-  vertical-align: -2px;
+  height: 12px;
+  margin-left: 4px;
 }
 
 .wave i {
@@ -377,171 +809,394 @@
 .wave i:nth-child(3) { animation-delay: 300ms; }
 .wave i:nth-child(4) { animation-delay: 450ms; }
 
-.outline {
+.mates {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: auto 0 0;
-  padding: 16px 0 0;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
   list-style: none;
 }
 
-.outline li {
-  padding: 4px 10px;
-  border-radius: var(--r-full);
-  background: var(--inset);
+.mates li {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-width: 48px;
   color: var(--text-2);
   font-size: var(--fz-xs);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-/* ── 资料库 ── */
-.library {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  align-items: center;
-  gap: 24px clamp(32px, 5vw, 72px);
-  margin-top: clamp(56px, 9vh, 104px);
-}
-
-.files {
-  display: grid;
-  margin: 0;
-  padding: 6px 8px;
-  list-style: none;
-}
-
-.files li {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 48px;
-  padding: 0 10px;
-  color: var(--text-3);
-  font-size: var(--fz-md);
-}
-
-.files li + li {
-  border-top: 1px solid var(--border);
-}
-
-.fileType {
-  flex: none;
-  width: 40px;
-  padding: 3px 0;
-  border-radius: var(--r-xs);
-  background: var(--inset);
-  color: var(--text-2);
-  font: 650 var(--fz-2xs) / 1.4 var(--ui-mono);
+  line-height: 1.3;
   text-align: center;
 }
 
-.files strong {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
+.mates li > span:last-child {
+  display: grid;
+}
+
+.mates small {
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  white-space: nowrap;
+}
+
+.face {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 1;
+  transition: box-shadow var(--dur-2) var(--ease);
+}
+
+.face[data-size='sm'] {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+
+.face[data-size='md'] {
+  width: 40px;
+  height: 40px;
+  font-size: 17px;
+}
+
+.face[data-speaker='teacher'] { background: var(--solid); color: var(--on-solid); }
+.face[data-speaker='xiaobai'] { background: color-mix(in srgb, var(--ok) 18%, var(--surface)); color: var(--ok); }
+.face[data-speaker='acheng'] { background: color-mix(in srgb, var(--warn) 22%, var(--surface)); color: var(--warn); }
+.face[data-speaker='user'] { background: var(--accent-soft); color: var(--accent); }
+
+.mates li[data-speaking] .face {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+}
+
+.mates li[data-speaking] {
+  color: var(--text);
+}
+
+/* 播放控制 */
+.transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ghostKey {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: var(--text-3);
+}
+
+.playBtn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--solid);
+  color: var(--on-solid);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+
+.playBtn:hover {
+  background: var(--solid-hover);
+}
+
+.playBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: var(--r-md);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+}
+
+.opt svg {
+  flex: none;
+}
+
+.opt[data-strong] {
+  margin-left: auto;
+  background: var(--inset);
   color: var(--text);
   font-weight: 500;
+}
+
+/* 幕导航：桌面两行缩略，手机一条编号带 */
+.rail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rail li {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 7px 9px;
+  border-radius: var(--r-md);
+  background: var(--sidebar);
+}
+
+.rail li[data-current] {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.railTop {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  white-space: nowrap;
+}
+
+.railTop svg {
+  flex: none;
+}
+
+.railTop b {
+  margin-left: auto;
+  font-family: var(--ui-mono);
+  font-weight: 600;
+}
+
+.rail li[data-current] .railTop {
+  color: var(--accent);
+}
+
+.railTitle {
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: var(--fz-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.fileMeta {
-  flex: none;
-  font-size: var(--fz-sm);
-  font-variant-numeric: tabular-nums;
-}
-
-@keyframes parsing {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(260%); }
-}
-
-.parsing {
-  flex: none;
-  width: 48px;
-  height: 4px;
-  overflow: hidden;
-  border-radius: var(--r-full);
-  background: var(--inset);
-}
-
-.parsing i {
-  display: block;
-  width: 40%;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--accent);
-  animation: parsing 1.3s var(--ease-in-out) infinite;
+.rail li[data-done] .railTitle {
+  color: var(--text-3);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wave i:nth-child(odd) { transform: scaleY(0.5); }
+  .chalk,
+  .tree,
+  .chalkMark,
+  .stageProgress {
+    transition: none;
+  }
 
-  .parsing i {
-    width: 55%;
+  .item[data-on],
+  .trail li[data-on],
+  .laneChip[data-on],
+  .toolChip[data-on],
+  .producedChip[data-on],
+  .bubble p,
+  .wave i {
     animation: none;
   }
 }
 
-@media (max-width: 960px) {
-  .duo,
-  .library {
+@media (max-width: 1100px) and (min-width: 961px) {
+  .lanes {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 960px) {
+  .feature,
+  .featureFlip {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .featureFlip .copy {
+    order: 0;
   }
 }
 
 @media (max-width: 640px) {
-  .duo {
-    gap: 36px;
+  .featureFlip {
+    margin-top: 64px;
   }
 
-  .col {
-    gap: 14px;
+  /* 这三条在章末的功能清单里都有，手机上不重复 */
+  .points {
+    display: none;
   }
 
-  .colText p,
-  .libraryText p {
-    margin-top: 6px;
-    line-height: 1.7;
+  .badges .tag,
+  .laneHead .tag {
+    height: 22px;
+    font-size: var(--fz-xs);
   }
 
   .run,
   .lesson {
+    gap: 14px;
     padding: 14px;
   }
 
-  .slide {
-    gap: 14px;
-    padding: 18px 12px 22px;
+  .runHead {
+    flex-direction: column;
   }
 
-  .library {
-    gap: 16px;
-    margin-top: 44px;
+  .lessonHead {
+    flex-wrap: wrap;
   }
 
-  .fileType {
-    font-size: var(--fz-xs);
+  .toolArgs,
+  .toolResult,
+  .laneBrief,
+  .notice,
+  .libraryNote,
+  .exportNote {
+    font-size: var(--fz-md);
   }
-}
 
-@media (max-width: 560px) {
+  .feature > .stageWrap {
+    padding: 10px;
+  }
+
+  /* 窄屏上成果标签折行，不截断标题 */
+  .chipTitle {
+    white-space: normal;
+  }
+
+  /* 参数摘要换到第二行，不截断 */
+  .toolArgs {
+    flex-basis: 100%;
+    order: 3;
+    white-space: normal;
+  }
+
   .lanes {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .fileMeta {
+  .item {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .node {
+    width: 24px;
+    height: 24px;
+  }
+
+  .node svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .board {
+    padding: 16px 14px 18px;
+  }
+
+  .table {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mates {
+    justify-content: space-between;
+  }
+
+  .playBtn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .opt[data-strong] {
+    margin-left: 0;
+  }
+
+  .rail {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .rail li {
+    place-items: center;
+    padding: 6px 0;
+  }
+
+  .railTop {
+    gap: 0;
+  }
+
+  .railTop svg,
+  .railTop span,
+  .railTitle {
     display: none;
   }
 
-  .node b {
+  .railTop b {
+    margin: 0;
+  }
+}
+
+@media (max-width: 400px) {
+  .feature > .stageWrap {
+    padding: 6px;
+  }
+
+  .run,
+  .lesson {
+    padding: 12px;
+  }
+
+  .toolFoot {
+    padding: 0 10px 10px;
+  }
+
+  .lane {
+    padding: 10px;
+  }
+
+  .stageCard {
+    padding: 12px 10px 12px;
+  }
+
+  .stageHead strong {
+    font-size: var(--fz-md);
+  }
+
+  .chalk {
+    font-size: 18px;
+  }
+
+  .kids {
+    --gap: 16px;
+  }
+
+  .key b {
     width: 30px;
     height: 28px;
   }
 
-  .kids {
-    gap: 14px;
+  .chalkMark {
+    padding: 6px 10px;
   }
 }

@@ -1,0 +1,268 @@
+/* 首屏：主张、导语、主次按钮、七个板块的一行索引，下接迷你学习终端。 */
+
+.hero {
+  padding-top: clamp(36px, 7vh, 84px);
+}
+
+.head {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  align-items: end;
+  gap: 28px 56px;
+}
+
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 4px 13px 4px 11px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.kicker i {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.title {
+  margin-top: 22px;
+  font-size: clamp(46px, 7.6vw, 88px);
+  font-weight: 680;
+  line-height: 1.06;
+  letter-spacing: -0.04em;
+}
+
+.title span {
+  display: block;
+  white-space: nowrap;
+}
+
+.side {
+  padding-bottom: clamp(0px, 0.9vw, 12px);
+}
+
+.lead {
+  max-width: 30em;
+  color: var(--text-2);
+  font-size: clamp(16px, 1.45vw, 18px);
+  line-height: 1.8;
+  text-wrap: pretty;
+}
+
+.lead strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+/* 首屏的主次按钮：比 kit 的 lg 再高一档 */
+.hero .cta {
+  --h: 48px;
+  padding: 0 22px;
+  font-size: var(--fz-lg);
+  font-weight: 550;
+}
+
+.note {
+  margin-top: 14px;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+}
+
+/* ── 七个板块的索引：一格一个板块，点了滚到那一章 ── */
+.modules {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin: clamp(36px, 5.5vh, 56px) 0 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+
+.module {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-content: start;
+  gap: 4px 9px;
+  width: 100%;
+  height: 100%;
+  padding: 16px 14px 4px 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--dur-1) var(--ease);
+}
+
+.modules li + li .module {
+  padding-left: 14px;
+  box-shadow: inset 1px 0 0 var(--border);
+}
+
+.moduleIcon {
+  grid-row: span 2;
+  margin-top: 1px;
+  color: var(--text-2);
+  transition: color var(--dur-1) var(--ease);
+}
+
+.moduleName {
+  font-size: var(--fz-lg);
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.moduleFact {
+  display: grid;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  line-height: 1.5;
+}
+
+.moduleFact span {
+  white-space: nowrap;
+}
+
+.module:hover .moduleIcon,
+.module:hover .moduleName {
+  color: var(--accent);
+}
+
+.module:focus-visible {
+  outline: none;
+  border-radius: var(--r-sm);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.scene {
+  margin-top: clamp(28px, 4.5vh, 44px);
+}
+
+/* ── 平板：一栏；七格改成四列两行 ── */
+@media (max-width: 960px) {
+  .head {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .modules {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    row-gap: 4px;
+  }
+
+  .module,
+  .modules li + li .module {
+    padding: 14px 12px 10px 0;
+    box-shadow: none;
+  }
+}
+
+/* ── 手机：按钮占满一行；板块索引变成图标在上、名字在下的四列格 ── */
+@media (max-width: 640px) {
+  .hero {
+    padding-top: 28px;
+  }
+
+  .head {
+    gap: 20px;
+  }
+
+  .kicker {
+    font-size: var(--fz-xs);
+  }
+
+  .title {
+    margin-top: 16px;
+    font-size: clamp(44px, 14vw, 60px);
+  }
+
+  .lead {
+    font-size: 16px;
+    line-height: 1.75;
+  }
+
+  .actions {
+    width: 100%;
+    margin-top: 22px;
+  }
+
+  .hero .cta {
+    --h: 50px;
+    flex: 1 1 auto;
+  }
+
+  .note {
+    margin-top: 12px;
+  }
+
+  .modules {
+    gap: 4px;
+    margin-top: 28px;
+    padding-top: 10px;
+  }
+
+  .module,
+  .modules li + li .module {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 6px;
+    min-height: 64px;
+    padding: 10px 2px 8px;
+    border-radius: var(--r-md);
+    text-align: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .module:active {
+    background: var(--active);
+  }
+
+  .moduleIcon {
+    grid-row: auto;
+    margin: 0;
+  }
+
+  .moduleName {
+    font-size: var(--fz-sm);
+    font-weight: 500;
+  }
+
+  .moduleFact {
+    display: none;
+  }
+
+  .scene {
+    margin-top: 20px;
+  }
+}
+
+@media (hover: none) {
+  .module:hover .moduleIcon {
+    color: var(--text-2);
+  }
+
+  .module:hover .moduleName {
+    color: var(--text);
+  }
+}

@@ -1,0 +1,1208 @@
+/* 第五章「研」：科研台的复刻。比例与配色照着 pages/learn/views/research/research.module.css。 */
+
+.desk {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  overflow: hidden;
+  font-size: var(--fz-md);
+}
+
+/* ── 左栏：课题导航 ── */
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 16px 10px 14px;
+  border-right: 1px solid var(--border);
+  background: var(--sidebar);
+}
+
+.navTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 10px;
+}
+
+.navTitle strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--fz-md);
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navAction {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+
+.navLabel {
+  margin: 12px 0 2px;
+  padding: 0 8px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  font-weight: 500;
+}
+
+.navGroup,
+.navGroup ul {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.navGroup li:not(.dirRow),
+.dirName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+}
+
+.navGroup li > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navGroup li > svg,
+.dirName svg {
+  flex: none;
+  color: var(--text-3);
+}
+
+.navGroup li em {
+  color: var(--text-4);
+  font-size: var(--fz-xs);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.navGroup li[data-current] {
+  background: var(--active);
+  color: var(--text);
+  font-weight: 550;
+}
+
+.dirName {
+  font-family: var(--ui-mono);
+  font-size: var(--fz-xs);
+}
+
+.dirRow ul {
+  margin-left: 14px;
+  padding-left: 6px;
+  border-left: 1px solid var(--border);
+}
+
+.navGroup li[data-fresh] {
+  color: var(--text);
+}
+
+.freshDot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--accent);
+}
+
+.navFoot {
+  margin-top: auto;
+  padding: 18px 8px 0;
+  color: var(--text-4);
+  font-size: var(--fz-xs);
+  line-height: 1.5;
+}
+
+/* 手机的课题条：默认藏起来 */
+.compact {
+  display: none;
+}
+
+/* ── 右侧：控制台 ── */
+.console {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bar {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.bar strong {
+  flex: none;
+  font-size: var(--fz-md);
+  font-weight: 600;
+}
+
+.bar span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: var(--fz-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feed {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  padding: 18px 22px 8px;
+}
+
+.feed > * {
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .feed > [data-enter],
+  .after {
+    animation: enter 420ms var(--ease) both;
+  }
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* 用户的话 */
+.turn {
+  display: flex;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--r-lg);
+  background: var(--inset);
+}
+
+.turnMark {
+  flex: none;
+  color: var(--accent);
+  font: 600 var(--fz-lg) / 1.5 var(--ui-mono);
+}
+
+.turnBody {
+  display: grid;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
+  justify-items: start;
+}
+
+.turnBody p {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font: 500 var(--fz-xs) / 1 var(--ui-mono);
+}
+
+.chip svg {
+  flex: none;
+  color: var(--text-3);
+}
+
+.chip > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip[data-static] {
+  background: var(--surface);
+  font-family: var(--ui-font);
+}
+
+/* 计划清单 */
+.plan {
+  border-radius: var(--r-lg);
+  background: var(--inset);
+}
+
+.planHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+}
+
+.planHead svg {
+  flex: none;
+  color: var(--text-3);
+}
+
+.planHead strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.planCount {
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.planTrack {
+  flex: none;
+  width: 56px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--r-full);
+  background: var(--active);
+}
+
+.planTrack i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transform-origin: left;
+  transition: transform var(--dur-3) var(--ease);
+}
+
+.planNow {
+  color: var(--ok);
+  font-size: var(--fz-xs);
+}
+
+.planItems {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0 12px 10px;
+  list-style: none;
+}
+
+.planItems li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 3px 0;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.55;
+}
+
+.planItems li svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--text-4);
+}
+
+.planItems li[data-status='active'] {
+  color: var(--text);
+  font-weight: 550;
+}
+
+.planItems li[data-status='active'] svg {
+  color: var(--accent);
+}
+
+.planItems li[data-status='done'] {
+  color: var(--text-3);
+}
+
+.planItems li[data-status='done'] svg {
+  color: var(--ok);
+}
+
+/* 工具调用 */
+.tool {
+  min-width: 0;
+  border-radius: var(--r-md);
+}
+
+.tool[data-open] {
+  background: var(--sidebar);
+}
+
+.toolHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 34px;
+  padding: 4px 8px;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+}
+
+.toolIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-xs);
+  background: var(--inset);
+  color: var(--text-2);
+}
+
+.toolHead[data-tone='running'] .toolIcon {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.toolName {
+  flex: none;
+  color: var(--text);
+  font-weight: 550;
+}
+
+.toolWhat {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-3);
+  font-family: var(--ui-mono);
+  font-size: var(--fz-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolState {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  white-space: nowrap;
+}
+
+.toolState > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toolState svg {
+  flex: none;
+}
+
+.toolHead[data-tone='denied'] .toolState > span {
+  color: var(--warn);
+}
+
+.toolTime {
+  flex: none;
+  color: var(--text-4);
+  font-size: var(--fz-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.okMark {
+  flex: none;
+  color: var(--ok);
+}
+
+.warnMark {
+  flex: none;
+  color: var(--warn);
+}
+
+.toolBody {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 2px 12px 12px 40px;
+}
+
+.note {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.6;
+}
+
+.detailLabel {
+  margin: 4px 0 0;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  font-weight: 500;
+}
+
+/* 文献行 */
+.papers {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.paper {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.paper + .paper {
+  border-top: 1px solid var(--border);
+}
+
+.paperNo {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: var(--r-xs);
+  background: var(--surface);
+  color: var(--text-2);
+  font: 600 var(--fz-xs) / 1 var(--ui-mono);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.paperMain {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+  min-width: 0;
+}
+
+.paperTop {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.paperTop > :last-child {
+  flex: none;
+}
+
+.paperTitle {
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  font-size: var(--fz-sm);
+  font-weight: 550;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.paperTitle svg {
+  margin-left: 4px;
+  color: var(--text-4);
+  vertical-align: -1px;
+}
+
+.paperMeta,
+.paperId {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.paperId {
+  color: var(--accent);
+  font-family: var(--ui-mono);
+}
+
+/* 代码：在自己的框里横向滚动 */
+.code,
+.stdout {
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border-radius: var(--r-md);
+  background: var(--inset);
+  color: var(--text-2);
+  font: var(--fz-xs) / 1.65 var(--ui-mono);
+  white-space: pre;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-2) transparent;
+}
+
+.code:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.stdout {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+/* 审批卡 */
+.approval {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--warn) 6%, var(--surface));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--warn) 40%, var(--border-2)), var(--shadow-2);
+}
+
+.approvalHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.approvalIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.approvalHead > div {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.approvalHead strong {
+  font-size: var(--fz-md);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.approvalHead span {
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+
+.approval .code {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.approvalActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.approvalDeny {
+  display: grid;
+  gap: 8px;
+}
+
+.denyInput {
+  width: 100%;
+  min-width: 0;
+  height: var(--ctl-md);
+  padding: 0 12px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fz-md);
+  transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+
+.denyInput::placeholder {
+  color: var(--text-4);
+}
+
+.denyInput:hover {
+  border-color: var(--text-4);
+}
+
+.denyInput:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.approvalTip {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+
+.approvalDone {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 2px 8px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.6;
+}
+
+.approvalDone svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.approvalDone span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.approvalDone[data-tone='ok'] svg {
+  color: var(--ok);
+}
+
+.approvalDone[data-tone='bad'] {
+  color: var(--text-2);
+}
+
+.approvalDone[data-tone='bad'] svg {
+  color: var(--bad);
+}
+
+.after {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.after > .note {
+  padding: 0 8px;
+}
+
+.replay {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 6px;
+}
+
+/* 图：matplotlib 画出的 fig1.png，这里用令牌重画 */
+.figure {
+  display: grid;
+  gap: 6px;
+  width: min(100%, 380px);
+  margin: 4px 0 0;
+  padding: 12px 12px 8px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.figure svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.figure figcaption {
+  color: var(--text-3);
+  font: var(--fz-xs) / 1.4 var(--ui-mono);
+}
+
+.chartTitle {
+  fill: var(--text);
+  font: 600 12px var(--ui-font);
+}
+
+.chartTick {
+  fill: var(--text-3);
+  font: 12px var(--ui-mono);
+}
+
+.chartGrid {
+  stroke: var(--border);
+  stroke-dasharray: 3 4;
+}
+
+.chartAxis {
+  stroke: var(--border-2);
+}
+
+.chartFit {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.chartDot {
+  fill: var(--surface);
+  stroke: var(--text-2);
+  stroke-width: 1.75;
+}
+
+/* 结论 */
+.final {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px 16px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--border-2);
+}
+
+.finalHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.finalMark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.finalHead strong {
+  font-weight: 600;
+}
+
+.finalText {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.75;
+  text-wrap: pretty;
+}
+
+.finalPart {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.finalPart h4 {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  font-weight: 500;
+}
+
+.sources {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+}
+
+.sources li {
+  padding-left: 2px;
+}
+
+.sources li::marker {
+  color: var(--text-3);
+  font-family: var(--ui-mono);
+  font-size: var(--fz-xs);
+}
+
+.sources li svg {
+  margin-right: 6px;
+  vertical-align: -2px;
+}
+
+.sourcesNote {
+  margin: 2px 0 0;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.6;
+}
+
+/* ── 输入区 ── */
+.composer {
+  display: grid;
+  gap: 8px;
+  padding: 10px 22px 18px;
+}
+
+.box {
+  display: grid;
+  gap: 6px;
+  padding: 12px 12px 10px 16px;
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--border-2), var(--shadow-1);
+}
+
+.placeholder {
+  margin: 0;
+  color: var(--text-4);
+  line-height: 1.6;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.toolGlyph {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-full);
+  color: var(--text-3);
+}
+
+.modes {
+  min-width: 0;
+  margin-left: 4px;
+}
+
+.modeShort {
+  display: none;
+}
+
+.send {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-left: auto;
+  border-radius: var(--r-full);
+  background: var(--solid);
+  color: var(--on-solid);
+  opacity: 0.35;
+}
+
+.modeHint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: 0 4px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+  line-height: 1.6;
+}
+
+.modeHint svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.modeHint strong {
+  color: var(--text-2);
+  font-weight: 550;
+}
+
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0 4px;
+  color: var(--text-3);
+  font-size: var(--fz-xs);
+}
+
+.status span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status i {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--ok);
+}
+
+.status [data-tone='warn'] i {
+  background: var(--warn);
+}
+
+/* ── 平板与手机：文件树收成一行课题条 ── */
+@media (max-width: 960px) {
+  .desk {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nav {
+    display: none;
+  }
+
+  .compact {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--sidebar);
+  }
+
+  .compactBar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    color: var(--text-3);
+    font-size: var(--fz-sm);
+  }
+
+  .compactBar svg {
+    flex: none;
+  }
+
+  .compactBar strong {
+    flex: none;
+    color: var(--text);
+    font-size: var(--fz-md);
+    font-weight: 600;
+  }
+
+  .compactBar span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* 一行放不下就在自己的框里横向滑，不折成好几行 */
+  .compactFiles {
+    display: flex;
+    gap: 6px;
+    margin: 0 -16px;
+    padding: 1px 16px 2px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    list-style: none;
+    scrollbar-width: none;
+  }
+
+  .compactFiles::-webkit-scrollbar {
+    display: none;
+  }
+
+  .compactFiles li {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 5px;
+    min-height: 26px;
+    padding: 0 9px;
+    border-radius: var(--r-full);
+    background: var(--surface);
+    color: var(--text-2);
+    font: 500 var(--fz-xs) / 1 var(--ui-mono);
+    box-shadow: 0 0 0 1px var(--border);
+  }
+
+  .compactFiles li svg {
+    color: var(--text-3);
+  }
+
+  .compactFiles li[data-fresh] {
+    color: var(--accent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, var(--border));
+  }
+
+  .compactFiles li[data-fresh] svg {
+    color: var(--accent);
+  }
+
+  .bar {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .compact {
+    padding: 12px 14px;
+  }
+
+  .compactFiles {
+    margin: 0 -14px;
+    padding-inline: 14px;
+  }
+
+  .compactBar > span,
+  .compactBar > svg:nth-of-type(2) {
+    display: none;
+  }
+
+  .feed {
+    gap: 8px;
+    padding: 14px 12px 6px;
+  }
+
+  .turn {
+    padding: 10px 12px;
+  }
+
+  .turnBody p,
+  .finalText,
+  .placeholder {
+    font-size: var(--fz-md);
+  }
+
+  .planHead,
+  .planItems li,
+  .toolHead {
+    font-size: var(--fz-md);
+  }
+
+  .toolHead {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+
+  /* 手机上标题行放不下「做什么」，挪到第二行 */
+  .toolWhat {
+    order: 5;
+    flex-basis: 100%;
+    padding-left: 32px;
+  }
+
+  .toolTime {
+    display: none;
+  }
+
+  .toolBody {
+    padding: 2px 10px 12px;
+  }
+
+  .paperTitle {
+    font-size: var(--fz-md);
+  }
+
+  .paperTop {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .paperTop > :last-child {
+    font-size: var(--fz-xs);
+  }
+
+  .approval {
+    padding: 12px;
+  }
+
+  .approvalActions > button {
+    flex: 1 1 auto;
+  }
+
+  .denyInput {
+    font-size: 16px;
+  }
+
+  .final {
+    padding: 12px;
+  }
+
+  .sources {
+    font-size: var(--fz-md);
+  }
+
+  .replay > button {
+    width: 100%;
+  }
+
+  .composer {
+    padding: 8px 12px 14px;
+  }
+
+  .box {
+    padding: 10px 10px 8px 12px;
+  }
+
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 8px 4px;
+  }
+
+  .toolGlyph {
+    display: none;
+  }
+
+  .modes {
+    flex: 1 1 auto;
+    margin-left: 0;
+  }
+
+  /* 比 kit 的 .segSm .segItem 更具体，手机上压过它的 28px 高 */
+  .toolbar .modes > button {
+    flex: 1 1 0;
+    justify-content: center;
+    height: 44px;
+    font-size: var(--fz-sm);
+  }
+
+  .modeLong {
+    display: none;
+  }
+
+  .modeShort {
+    display: inline;
+  }
+
+  .send {
+    width: 44px;
+    height: 44px;
+  }
+}
