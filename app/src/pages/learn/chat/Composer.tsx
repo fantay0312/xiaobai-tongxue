@@ -305,25 +305,6 @@ export function Composer({
           onBlur={() => { if (query !== null) setDismissed(true); }}
         />
 
-        {intelligentAvailable && (
-          <div className={s.formatBar}>
-            <button
-              type="button"
-              className={s.formatSwitch}
-              role="switch"
-              aria-checked={interactive}
-              aria-label="互动回答"
-              onClick={() => onAnswerFormat(interactive ? 'text' : 'auto')}
-            >
-              <LayoutGrid {...ICON} />
-              <span>互动回答</span>
-              <span className={s.switchTrack} aria-hidden="true"><span /></span>
-              <strong>{interactive ? '已开启' : '已关闭'}</strong>
-            </button>
-            <span className={s.formatHint}>{interactive ? '下次回答按需生成卡片、图表或自测' : '下次回答只用文字'}</span>
-          </div>
-        )}
-
         <div className={s.toolbar} onClick={focusFromBlank}>
           <div className={s.tools}>
             <Menu>
@@ -370,6 +351,23 @@ export function Composer({
                 ))}
               </MenuContent>
             </Menu>
+
+            {intelligentAvailable && (
+              <Tip label={interactive ? '互动回答已开启：下次回答按需生成卡片、图表或自测' : '互动回答已关闭：下次回答只用文字'}>
+                <button
+                  type="button"
+                  className={s.formatSwitch}
+                  role="switch"
+                  aria-checked={interactive}
+                  aria-label="互动回答"
+                  onClick={() => onAnswerFormat(interactive ? 'text' : 'auto')}
+                >
+                  <LayoutGrid {...ICON} className={s.formatIcon} />
+                  <span className={s.formatLabel}>互动回答</span>
+                  <span className={s.switchTrack} aria-hidden="true"><span /></span>
+                </button>
+              </Tip>
+            )}
 
             <Tip label={sourceCount ? '查看本课资料' : freeChat ? '现在不带资料直接问；点这里可以添加资料' : '还没有选资料，点这里去选'}>
               <button

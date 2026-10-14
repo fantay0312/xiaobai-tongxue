@@ -96,18 +96,11 @@
 .input::placeholder { color: var(--text-4); opacity: 1; }
 
 /* ── 工具行 ── */
-.formatBar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 2px 10px;
-  padding: 2px 12px 4px;
-  cursor: default;
-}
 .formatSwitch {
   display: inline-flex;
+  flex: none;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   min-height: 44px;
   padding: 0 8px;
   border: 0;
@@ -115,14 +108,16 @@
   color: var(--text-2);
   background: transparent;
   font: 500 var(--fz-sm)/1 var(--ui-font);
+  white-space: nowrap;
   cursor: pointer;
 }
 .formatSwitch:hover { background: var(--hover); }
 .formatSwitch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.formatSwitch strong { font-size: var(--fz-xs); }
+.formatIcon { flex: none; }
 .formatSwitch[aria-checked='true'] { color: var(--accent); }
 .switchTrack {
   display: flex;
+  flex: none;
   align-items: center;
   width: 30px;
   height: 18px;
@@ -132,7 +127,6 @@
 }
 .switchTrack > span { width: 12px; height: 12px; border-radius: 50%; background: var(--surface); }
 .formatSwitch[aria-checked='true'] .switchTrack { background: var(--accent); justify-content: flex-end; }
-.formatHint { color: var(--text-2); font-size: var(--fz-xs); line-height: 1.5; }
 
 .toolbar {
   display: flex;
@@ -335,6 +329,11 @@
   .toolbar { gap: 4px; padding: 4px 6px 6px; }
   .sendGroup { gap: 4px; }
   .input { padding: 12px 14px 4px; }
+  .formatSwitch { padding: 0 6px; }
+  .formatIcon { display: none; }
+}
+@container composer (max-width: 340px) {
+  .formatLabel { display: none; }
 }
 
 /* 触屏：输入字号不低于 16px，避免 iOS 聚焦时放大页面 */
@@ -355,8 +354,6 @@
   .sendGroup { gap: 4px; }
   .plus, .sendGroup .mic, .send { width: 40px; height: 40px; }
   .pill { height: 36px; }
-  .formatBar { gap: 0; padding: 0 8px 4px; }
-  .formatHint { padding: 0 8px; }
   /* 回答方式、资料数在「+」菜单里；互动开关始终在输入框下可见 */
   .pill[data-kind='mode'][data-default],
   .pill[data-kind='sources']:not([data-tone]) { display: none; }
@@ -397,8 +394,7 @@
     padding: 11px 6px;
   }
   :global([data-composer='compact']) .wrap:not([data-expanded]) .sendGroup { order: 2; margin-left: 0; padding-right: 5px; }
-  :global([data-composer='compact']) .wrap:not([data-expanded]) :is(.pill, .demoTag, .modelSlot) { display: none; }
-  :global([data-composer='compact']) .wrap:not([data-expanded]) .formatBar { display: none; }
+  :global([data-composer='compact']) .wrap:not([data-expanded]) :is(.pill, .demoTag, .modelSlot, .formatSwitch) { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
