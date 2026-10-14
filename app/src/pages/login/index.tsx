@@ -263,6 +263,15 @@ export default function LoginPage() {
     if (operation.signal.aborted) return;
     pendingOperation.current = null;
     setSendingCode(false);
+    if (!result.ok && registering && result.alreadyRegistered) {
+      const contact = usesPhoneCode ? '手机号' : '邮箱';
+      setMode('login');
+      setLoginMethod(usesPhoneCode ? 'phone-code' : 'email-code');
+      setPassword(''); setCode(''); setInvite(''); resetCooldown();
+      setIssue(null);
+      setFeedback(`该${contact}已注册，已切换到验证码登录。请获取登录验证码。`);
+      return;
+    }
     if (!result.ok) {
       setIssue({ field: result.field ?? 'form', message: result.message ?? '验证码发送失败，请稍后再试' });
       if (result.retryAfter) startCooldown(result.retryAfter);

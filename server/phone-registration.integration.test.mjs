@@ -26,7 +26,8 @@ test('phone registration works without email service and persists a verified pho
   const start = async () => {
     child = spawn(process.execPath, ['index.mjs'], {
       cwd: root,
-      env: { ...process.env, RESEND_API_KEY: '', RESEND_FROM: '', SMS_TEST_LOG: smsLog },
+      env: { ...process.env, RESEND_API_KEY: '', RESEND_FROM: '', SMS_TEST_LOG: smsLog,
+        SMS_FAIL_PHONES: '+8613999999999' },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     await waitForReady(child);
@@ -85,8 +86,14 @@ test('phone registration works without email service and persists a verified pho
   assert.equal(signedIn.payload.emailBindingRequired, false);
   assert.equal(signedIn.payload.phoneBindingRequired, false);
   const occupied = await postJson(`${base}/api/auth/sms-code`, request);
-  assert.equal(occupied.response.status, 200);
+  assert.equal(occupied.response.status, 409);
+  assert.deepEqual(occupied.payload, { error: 'already-registered' });
   assert.equal((await smsRequests(smsLog)).length, 1);
   const smsLogin = await postJson(`${base}/api/auth/sms-code`, { phone, purpose: 'login' });
-  assert.equal(smsLogin.response.status, 429); // Per-phone cooldown also spans purposes.
+  assert.equal(smsLogin.response.status, 200);
+  const failedSend = await postJson(`${base}/api/auth/sms-code`, {
+    phone: '+8613999999999', purpose: 'register', invite: 'test-invite',
+  });
+  assert.equal(failedSend.response.status, 502);
+  assert.deepEqual(failedSend.payload, { error: 'sms-unavailable' });
 });

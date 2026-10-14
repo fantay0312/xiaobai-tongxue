@@ -107,4 +107,18 @@ assert.equal(failed.ok, false);
 assert.match(failed.message ?? '', /超时/);
 await useAuthStore.getState().refreshSession(false);
 assert.equal(useAuthStore.getState().user, 'latest-user', 'body timeout must release the authentication lock');
+for (const requestCode of [
+  () => useAuthStore.getState().requestSmsCode('+8613800000000', 'register', undefined, 'test-invite'),
+  () => useAuthStore.getState().requestEmailCode('qa@example.com', 'register', 'test-invite'),
+]) {
+  globalThis.fetch = async (input) => String(input).endsWith('/captcha/challenge')
+    ? challenge() : new Response(JSON.stringify({ error: 'already-registered' }), { status: 409 });
+  const count = callbacks.length + 1;
+  const pending = requestCode();
+  await waitForCallback(count);
+  callbacks[count - 1](proof);
+  const result = await pending;
+  assert.equal(result.ok, false);
+  assert.equal(result.alreadyRegistered, true);
+}
 console.log('auth request deadlines and CAPTCHA lifecycle: ok');

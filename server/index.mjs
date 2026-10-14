@@ -1453,13 +1453,16 @@ async function handleSmsCode(req, res) {
   }
   const phone = normalizeMainlandPhone(body?.phone);
   const user = findUserByPhone(phone);
+  if (body.purpose === 'register' && user) {
+    return send(res, 409, { error: 'already-registered' });
+  }
   const result = await phoneAuth.requestCode({
     phone,
     purpose: body.purpose,
     subject: publicPhoneSubject(user, phone, body.purpose),
     ip,
     deliver: body.purpose === 'register' ? !user : Boolean(user),
-    opaqueDelivery: true,
+    opaqueDelivery: body.purpose !== 'register',
   });
   if (!result.ok) return sendPhoneAuthError(res, result);
   send(res, 200, { ok: true, retryAfter: result.retryAfter });
@@ -1506,6 +1509,9 @@ async function handleEmailCode(req, res) {
   const email = normalizeEmail(body?.email);
   // 未知登录邮箱不触发真实发信,但与已存在账号共用限流/冷却/返回形状与近似延迟
   const emailOwner = findUserByEmail(email);
+  if (body.purpose === 'register' && emailOwner) {
+    return send(res, 409, { error: 'already-registered' });
+  }
   const deliver = body?.purpose === 'login' ? Boolean(emailOwner) : !emailOwner;
   const result = await emailAuth.requestCode({
     email,
@@ -1513,10 +1519,10 @@ async function handleEmailCode(req, res) {
     ...(body?.purpose === 'login' ? { subject: publicEmailSubject(emailOwner, email, 'login') } : {}),
     ip,
     deliver,
-    opaqueDelivery: true,
+    opaqueDelivery: body.purpose !== 'register',
   });
-  // 登录/注册的真实发信上游故障也必须与抑制发送同形，避免反向暴露邮箱归属。
-  if (!result.ok && result.error === 'email-unavailable') {
+  // Login keeps a generic response; registration reports an actual delivery failure.
+  if (!result.ok && result.error === 'email-unavailable' && body.purpose !== 'register') {
     return send(res, 200, { ok: true, retryAfter: 60 });
   }
   if (!result.ok) return sendEmailAuthError(res, result);

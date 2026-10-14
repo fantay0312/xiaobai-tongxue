@@ -112,21 +112,21 @@ test('binding endpoints suppress occupied-email enumeration and still consume li
   const occupiedRegister = await postJson(`${base}/api/auth/email-code`, {
     email: 'REGISTER-OWNED@EXAMPLE.COM', purpose: 'register', invite: 'test-invite',
   });
-  assert.equal(occupiedRegister.response.status, 200);
-  assert.deepEqual(occupiedRegister.payload, { ok: true, retryAfter: 60 });
+  assert.equal(occupiedRegister.response.status, 409);
+  assert.deepEqual(occupiedRegister.payload, { error: 'already-registered' });
   assert.equal((await readFile(resendLog, 'utf8')).trim().split('\n').length, messagesBeforeRegister);
 
   const occupiedRegisterAgain = await postJson(`${base}/api/auth/email-code`, {
     email: 'register-owned@example.com', purpose: 'register', invite: 'test-invite',
   });
-  assert.equal(occupiedRegisterAgain.response.status, 429);
-  assert.equal(occupiedRegisterAgain.payload.error, 'send-too-frequent');
+  assert.equal(occupiedRegisterAgain.response.status, 409);
+  assert.equal(occupiedRegisterAgain.payload.error, 'already-registered');
 
   const failedRegister = await postJson(`${base}/api/auth/email-code`, {
     email: 'register-failure@example.com', purpose: 'register', invite: 'test-invite',
   });
-  assert.equal(failedRegister.response.status, 200);
-  assert.deepEqual(failedRegister.payload, occupiedRegister.payload);
+  assert.equal(failedRegister.response.status, 502);
+  assert.deepEqual(failedRegister.payload, { error: 'email-unavailable' });
   assert.equal(
     (await readFile(resendLog, 'utf8')).trim().split('\n').length,
     messagesBeforeRegister + 1,
@@ -146,7 +146,7 @@ test('binding endpoints suppress occupied-email enumeration and still consume li
     email: 'register-available@example.com', purpose: 'register', invite: 'test-invite',
   });
   assert.equal(availableRegister.response.status, 200);
-  assert.deepEqual(availableRegister.payload, occupiedRegister.payload);
+  assert.deepEqual(availableRegister.payload, { ok: true, retryAfter: 60 });
   assert.equal(
     (await readFile(resendLog, 'utf8')).trim().split('\n').length,
     messagesBeforeRegister + 2,

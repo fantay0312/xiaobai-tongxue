@@ -76,6 +76,7 @@ function captchaResponse(captchaCode, evilLevel) {
 }
 
 function smsResponse(phone) {
+  const failed = String(process.env.SMS_FAIL_PHONES ?? '').split(',').includes(phone);
   return new Response(JSON.stringify({
     Response: {
       SendStatusSet: [{
@@ -83,8 +84,8 @@ function smsResponse(phone) {
         PhoneNumber: phone,
         Fee: 1,
         SessionContext: '',
-        Code: 'Ok',
-        Message: 'send success',
+        Code: failed ? 'FailedOperation.TemplateIncorrectOrUnapproved' : 'Ok',
+        Message: failed ? 'test sender failure' : 'send success',
         IsoCode: 'CN',
       }],
       RequestId: randomUUID(),

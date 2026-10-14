@@ -15,6 +15,7 @@ export type AccountVerificationAction = 'change-phone' | 'change-email' | 'chang
 
 export interface AuthResult {
   ok: boolean;
+  alreadyRegistered?: boolean;
   message?: string;
   field?: AuthField;
   retryAfter?: number;
@@ -90,6 +91,7 @@ function finishAuthMutation(getState: () => AuthState): void {
 
 type ErrorInfo = { message: string; field?: AuthField };
 const API_ERRORS: Record<string, ErrorInfo> = {
+  'already-registered': { message: '该手机号或邮箱已注册，请直接登录', field: 'form' },
   'invalid-email': { message: '邮箱格式不正确，请核对后再试', field: 'email' },
   'bad-email': { message: '邮箱格式不正确，请核对后再试', field: 'email' },
   'invalid-phone': { message: '请输入中国大陆 11 位手机号', field: 'phone' },
@@ -117,7 +119,7 @@ const API_ERRORS: Record<string, ErrorInfo> = {
   'sms-auth-unavailable': { message: '手机验证码服务暂不可用，请使用其他方式登录' },
   'sms-unavailable': { message: '手机验证码服务暂不可用，请稍后再试' },
   'phone-unavailable': { message: '暂时无法使用该手机号，请更换手机号或稍后再试', field: 'phone' },
-  'email-unavailable': { message: '该邮箱暂时无法接收验证码，请更换邮箱或稍后再试', field: 'email' },
+  'email-unavailable': { message: '邮件发送服务暂时不可用，请稍后再试', field: 'form' },
   'registration-disabled': { message: '注册暂未开放，请联系管理员' },
   'registry-full': { message: '注册名额已满，请联系管理员' },
   'too-many-attempts': { message: '尝试过于频繁，请稍后再试' },
@@ -137,8 +139,8 @@ const API_ERRORS: Record<string, ErrorInfo> = {
 
 const AUTH_TIMEOUT_MS = 10_000;
 
-async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  return completeResponse((signal) => fetch(input, { ...init, signal }), AUTH_TIMEOUT_MS, init?.signal);
+async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit, timeoutMs = AUTH_TIMEOUT_MS): Promise<Response> {
+  return completeResponse((signal) => fetch(input, { ...init, signal }), timeoutMs, init?.signal);
 }
 
 async function gatewayFetchWithTimeout(
@@ -202,6 +204,7 @@ async function apiFailure(response: Response, fallback: string): Promise<AuthRes
   const retryAfter = retrySeconds(response, payload);
   return {
     ok: false,
+    ...(code === 'already-registered' ? { alreadyRegistered: true } : {}),
     message: mapped?.message ?? fallback,
     field: mapped?.field ?? 'form',
     ...(retryAfter > 0 ? { retryAfter } : {}),
@@ -401,7 +404,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         signal,
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, purpose, ...(invite ? { invite } : {}), captcha }),
-      });
+      }, purpose === 'register' ? 15_000 : AUTH_TIMEOUT_MS);
       if (!response.ok) return await apiFailure(response, `验证码发送失败（${response.status}）`);
       const payload = await readPayload(response);
       return { ok: true, retryAfter: retrySeconds(response, payload, 60) };
@@ -581,7 +584,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         signal,
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, purpose, captcha, ...(invite ? { invite } : {}) }),
-      });
+      }, purpose === 'register' ? 15_000 : AUTH_TIMEOUT_MS);
       if (!response.ok) return await apiFailure(response, `短信验证码发送失败（${response.status}）`);
       const payload = await readPayload(response);
       return { ok: true, retryAfter: retrySeconds(response, payload, 60) };
