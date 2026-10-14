@@ -28,7 +28,7 @@ const useListen = create<ListenState>(() => ({ status: "idle", block: null, rate
 
 /** Paragraphs are split at sentence ends; the very first clip is short, so the voice starts quickly. */
 function chunks(text: string, first: boolean): string[] {
-  const sentences = text.match(/[^.!?]+[.!?]+["'”’)\]]*\s*|[^.!?]+$/g) ?? [text];
+  const sentences = text.match(/[^.!?。！？]+[.!?。！？]+["'”’)\]]*\s*|[^.!?。！？]+$/g) ?? [text];
   const out: string[] = [];
   let cur = "";
   for (const s of sentences) {

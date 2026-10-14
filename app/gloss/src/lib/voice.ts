@@ -8,4 +8,5 @@ export const TTS_MODEL = "cartesia/sonic-3";
 /** "Marian - Poised Narrator": even and unhurried, made for long reading. */
 export const TTS_VOICE = "26403c37-80c1-4a1a-8692-540551ca2ae5";
 /** One request's worth of text. Paragraphs past this are split at sentence ends. */
-export const TTS_MAX_CHARS = 1200;
+// Bound local neural synthesis latency while retaining the original playback/prefetch flow.
+export const TTS_MAX_CHARS = 240;
