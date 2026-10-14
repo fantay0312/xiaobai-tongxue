@@ -288,7 +288,7 @@ export function BookOpen({
                     <span style={{ width: `${Math.round(book.pct * 100)}%` }} />
                   </span>
                   <span>
-                    {book.pct >= 1 ? "阅读" : reading ? `${Math.round(book.pct * 100)}% read` : "尚未开始"}
+                    {book.pct >= 1 ? "已读完" : reading ? `已读 ${Math.round(book.pct * 100)}%` : "尚未开始"}
                     {book.highlights > 0 && ` · ${book.highlights} 处高亮`}
                   </span>
                 </div>
@@ -367,6 +367,7 @@ function TitleField({ title, onDone }: { title: string; onDone: (title: string |
       aria-label="标题"
       spellCheck={false}
       onKeyDown={(e) => {
+        if (e.nativeEvent.isComposing || e.keyCode === 229) return;
         if (e.key === "Enter") {
           e.preventDefault();
           finish(e.currentTarget.value);

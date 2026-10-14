@@ -20,7 +20,7 @@
     "test:qa-evidence": "tsx scripts/qa-evidence.test.ts",
     "test:sync": "tsx scripts/pending-sync.test.ts",
     "test:study": "tsx scripts/study-workspace.test.ts && tsx scripts/guided-study.test.ts && tsx scripts/study-tutor.test.ts && tsx scripts/notebook-workspace.test.ts && tsx scripts/file-library.test.ts && tsx scripts/intelligent-answer.test.ts && tsx scripts/scoped-storage.test.ts",
-    "test:reader": "tsx scripts/reader.test.ts",
+    "test:reader": "tsx scripts/reader.test.ts && tsx --tsconfig gloss/tsconfig.json scripts/reader-sync.test.ts",
     "preview": "vite preview",
     "simulate": "tsx scripts/simulate.ts",
     "livetest": "tsx scripts/livetest.ts"

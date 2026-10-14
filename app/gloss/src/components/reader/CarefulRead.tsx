@@ -62,7 +62,7 @@ export function CarefulRead({ article }: { article: Article }) {
   return (
     <div className="focus-hide mt-3 text-[13px] leading-snug text-ink-3" aria-live="polite">
       {state.kind === "idle" && upgrading?.active && (
-        <p className="animate-pulse">{`Improving tables and columns, ${upgrading.done} of ${upgrading.total} ${upgrading.total === 1 ? "page" : "pages"}…`}</p>
+        <p className="animate-pulse">{`正在优化表格与分栏，${upgrading.done} / ${upgrading.total} 页…`}</p>
       )}
       {state.kind === "idle" && !upgrading?.active && (
         <p>
@@ -75,7 +75,7 @@ export function CarefulRead({ article }: { article: Article }) {
       )}
       {state.kind === "confirm" && (
         <p>
-          {`This replaces the text and clears your ${marks} ${marks === 1 ? "mark" : "marks"} on it. `}
+          {`这会替换正文，并清除其中的 ${marks} 处标记。`}
           <button type="button" onClick={() => void run()} className={link}>
             重新阅读
           </button>
@@ -93,7 +93,7 @@ export function CarefulRead({ article }: { article: Article }) {
           </button>
         </p>
       )}
-      {state.kind === "done" && <p>重新仔细阅读。</p>}
+      {state.kind === "done" && <p>精读处理已完成。</p>}
       {state.kind === "error" && (
         <p>
           <span className="text-rubric-text">{state.error}</span>{" "}

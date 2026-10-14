@@ -106,9 +106,9 @@ function Links() {
 
   const fromExport = async (f: File) => {
     const found = linksIn(await f.text().catch(() => ""));
-    if (!found.length) return setNote(`No links found in ${f.name}.`);
+    if (!found.length) return setNote(`未在 ${f.name} 中找到链接。`);
     setText((cur) => [cur.trim(), ...found].filter(Boolean).join("\n"));
-    setNote(`Found ${found.length} link${found.length === 1 ? "" : "s"} in ${f.name}.`);
+    setNote(`已在 ${f.name} 中找到 ${found.length} 个链接。`);
   };
 
   const save = async () => {
@@ -125,7 +125,7 @@ function Links() {
     setText(rest.join("\n"));
     setNote(
       all.length > BATCH
-        ? [rest.length ? `Saving ${BATCH} now; ${rest.length} more wait above for the next Save.` : `Saving ${fresh.length}.`, known ? `${known} already in your library.` : ""].filter(Boolean).join(" ")
+        ? [rest.length ? `正在保存 ${BATCH} 个链接，剩余 ${rest.length} 个留在上方，可继续保存。` : `正在保存 ${fresh.length} 个链接。`, known ? `${known} 个已在书库中。` : ""].filter(Boolean).join(" ")
         : null
     );
     const set = (i: number, r: Partial<Row>) => setRows((cur) => cur.map((x, j) => (j === i ? { ...x, ...r } : x)));
@@ -183,6 +183,7 @@ function Links() {
         style={over ? { borderColor: "var(--rubric)", borderStyle: "dashed" } : undefined}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
+          if (e.nativeEvent.isComposing || e.keyCode === 229) return;
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
             e.preventDefault();
             void save();
@@ -194,10 +195,10 @@ function Links() {
         aria-label="待收藏链接"
       />
       <div className="mt-3 flex items-center justify-between gap-3">
-        <span className="text-[12.5px] text-ink-4">{urls.length ? `${urls.length} link${urls.length === 1 ? "" : "s"}` : text.trim() ? "尚未找到链接" : ""}</span>
+        <span className="text-[12.5px] text-ink-4">{urls.length ? `${urls.length} 个链接` : text.trim() ? "尚未找到链接" : ""}</span>
         <button type="button" onClick={save} disabled={!urls.length || busy} className="add-btn">
           {busy && <Loader2 size={14} className="animate-spin" />}
-          {busy ? "正在保存" : urls.length > 1 ? `Save ${Math.min(urls.length, BATCH)}` : "保存"}
+          {busy ? "正在保存" : urls.length > 1 ? `保存 ${Math.min(urls.length, BATCH)} 个链接` : "保存"}
         </button>
       </div>
       {note && <p className="mt-2 text-[12.5px] text-ink-3">{note}</p>}
@@ -211,7 +212,7 @@ function Links() {
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13.5px] text-ink">{r.title ?? r.url.replace(/^https?:\/\/(www\.)?/, "")}</span>
                 <span className="block truncate text-[12px] text-ink-3">
-                  {r.state === "saved" ? "书架中" : r.state === "already" ? "已在书库" : r.state === "failed" ? r.error : r.state === "reading" ? "阅读" : "等待中"}
+                  {r.state === "saved" ? "已保存到书库" : r.state === "already" ? "已在书库" : r.state === "failed" ? r.error : r.state === "reading" ? "正在读取" : "等待中"}
                 </span>
               </span>
             </li>
@@ -268,7 +269,7 @@ const LABELS: { label: string; mark?: AgentMark }[] = [
   { label: "Grok Bot", mark: "grok" },
   { label: "Claude", mark: "claude" },
   { label: "ChatGPT", mark: "chatgpt" },
-  { label: "Other" },
+  { label: "其他" },
 ];
 
 function Agent({ signedIn }: { signedIn: boolean }) {

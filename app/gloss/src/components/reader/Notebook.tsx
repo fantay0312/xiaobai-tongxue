@@ -9,7 +9,7 @@ import { undash } from "@/lib/article";
 import { stopGloss } from "@/lib/ask";
 import { useGlosses, useHighlights, useStore, type Gloss, type Highlight, type Turn } from "@/lib/store";
 import { ACTIONS } from "@/lib/actions";
-import { notesMarkdown, pairsOf } from "@/lib/export";
+import { download, notesMarkdown, pairsOf } from "@/lib/export";
 import { Answer, Sources } from "./Answer";
 import { Writing } from "./Writing";
 import { useReader } from "./context";
@@ -92,11 +92,7 @@ export function Notebook() {
             disabled={!entries.length}
             onClick={() => {
               const blob = new Blob([markdown()], { type: "text/markdown" });
-              const a = document.createElement("a");
-              a.href = URL.createObjectURL(blob);
-              a.download = `${ix.article.title.replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-").toLowerCase() || "notes"}-notes.md`;
-              a.click();
-              URL.revokeObjectURL(a.href);
+              download(blob, `${ix.article.title.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "").trim().slice(0, 80) || "阅读"}-笔记.md`);
             }}
           >
             <Download size={16} />

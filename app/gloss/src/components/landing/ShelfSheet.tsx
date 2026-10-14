@@ -25,7 +25,7 @@ type Filter = "all" | "reading" | "unread" | "done";
 
 const FILTERS: { key: Filter; label: string; test: (it: ShelfItem) => boolean }[] = [
   { key: "all", label: "全部", test: () => true },
-  { key: "reading", label: "阅读", test: (it) => it.pct > 0 && it.pct < 1 },
+  { key: "reading", label: "正在阅读", test: (it) => it.pct > 0 && it.pct < 1 },
   { key: "unread", label: "尚未开始", test: (it) => it.pct === 0 },
   { key: "done", label: "已读", test: (it) => it.pct >= 1 },
 ];
@@ -310,7 +310,7 @@ export function ShelfSheet({
                         <>
                           <span aria-hidden className="text-ink-4">{"·"}</span>
                           <span className="text-rubric-text">
-                            {it.glosses} note{it.glosses === 1 ? "" : "s"}
+                            {it.glosses} 条笔记
                           </span>
                         </>
                       )}
@@ -320,7 +320,7 @@ export function ShelfSheet({
                 {!it.sample && (
                   <button
                     type="button"
-                    aria-label={`Rename ${it.title}`}
+                    aria-label={`重命名 ${it.title}`}
                     data-tip="重命名"
                     onClick={() => setRenaming(it.id)}
                     className="absolute right-10 top-3 grid size-7 place-items-center rounded-full text-ink-4 opacity-0 transition-[opacity,background-color] hover:bg-bg hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
@@ -330,7 +330,7 @@ export function ShelfSheet({
                 )}
                 <button
                   type="button"
-                  aria-label={it.sample ? `Remove the sample ${it.title}` : `Remove ${it.title} from your shelf`}
+                  aria-label={it.sample ? `移除示例 ${it.title}` : `从书架移除 ${it.title}`}
                   data-tip={it.sample ? "移除此示例" : "从书架移除"}
                   onClick={() => onRemove(it)}
                   className="absolute right-2 top-3 grid size-7 place-items-center rounded-full text-ink-4 opacity-0 transition-[opacity,background-color] hover:bg-bg hover:text-ink focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
@@ -377,6 +377,7 @@ function RenameRow({ title, onDone }: { title: string; onDone: (title: string | 
         aria-label="标题"
         spellCheck={false}
         onKeyDown={(e) => {
+          if (e.nativeEvent.isComposing || e.keyCode === 229) return;
           if (e.key === "Enter") {
             e.preventDefault();
             finish(e.currentTarget.value);

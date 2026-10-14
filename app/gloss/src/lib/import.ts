@@ -42,7 +42,7 @@ export async function importFromFile(file: File, onProgress?: (p: number, label?
       a.source = file.name;
       return { ok: true, article: a };
     }
-    return { ok: false, error: "Gloss reads PDF, .txt and .md files." };
+    return { ok: false, error: "支持 PDF、TXT 和 Markdown 文件，请选择这些格式。" };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "无法读取这个文件。" };
   }

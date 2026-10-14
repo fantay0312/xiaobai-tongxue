@@ -1,13 +1,8 @@
-import { randomUUID } from 'node:crypto';
-import { parseHTML } from 'linkedom';
-import { Readability } from '@mozilla/readability';
-import { fetchPublic, externalUrl } from './importer.mjs';
-import { htmlToBlocks } from './gloss-html-to-blocks.mjs';
-import { prepareImages, leadImage } from './gloss-images.mjs';
 import { legacyArticle, legacyRows } from './gloss-legacy.mjs';
-import { buildMessages, BRIEF_TASK, systemFor, webBlock } from './gloss-prompts.mjs';
+import { buildMessages, BRIEF_TASK, systemFor, webBlock, searchQuery } from './gloss-prompts.mjs';
 import { readerSearch, READER_TOPICS } from './router.mjs';
 import { COVER_PALETTES } from './gloss-cover-palettes.mjs';
+import { fetchGlossArticle } from './gloss-fetch.mjs';
 const COLLECTIONS = ['articles', 'highlights', 'glosses', 'briefs', 'progress'];
 const idOk = (id) => typeof id === 'string' && /^[a-zA-Z0-9._-]{1,160}$/.test(id) && !['__proto__', 'constructor', 'prototype'].includes(id);
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
@@ -89,16 +84,9 @@ export function createGlossRouter({ postgres, legacy, library, modelService, med
       }
       const input = await readJson(req, 500000);
       if (path === '/import') {
-        let target = String(input.url || '').trim(); if (!/^https?:\/\//.test(target)) target = `https://${target}`;
-        const url = externalUrl(target); if (url.hostname === 'arxiv.org' && url.pathname.startsWith('/abs/')) target = `https://arxiv.org/pdf/${url.pathname.slice(5)}`;
-        if (/(^|\.)(x\.com|twitter\.com|youtube\.com|youtu\.be|threads\.net|bsky\.app)$/.test(url.hostname)) throw fail('社交帖子和视频请复制正文或字幕，使用“粘贴文字”阅读。', 422);
-        const fetched = await fetchPublic(target, { maxBytes: 25000000 });
-        if (fetched.contentType.includes('pdf') || fetched.bytes.subarray(0, 5).toString() === '%PDF-') { res.writeHead(200, { 'Content-Type': 'application/pdf', 'X-File-Name': encodeURIComponent(new URL(target).pathname.split('/').pop() || 'article.pdf') }); res.end(fetched.bytes); return; }
-        const { document } = parseHTML(fetched.bytes.toString('utf8')); let image;
-        try { image = leadImage(document, fetched.url); prepareImages(document, fetched.url); } catch { /* Reading does not depend on optional pictures. */ }
-        const parsed = new Readability(document, { charThreshold: 150 }).parse(); if (!parsed?.content) throw fail('未找到文章正文，请使用粘贴文字。', 422);
-        const clean = parseHTML(`<div id="article">${parsed.content}</div>`).document.getElementById('article'); const blocks = htmlToBlocks(clean, fetched.url);
-        return send(res, 200, { article: { id: randomUUID(), title: parsed.title || url.hostname, author: parsed.byline || undefined, dek: parsed.excerpt || undefined, source: url.hostname, sourceUrl: fetched.url, image, blocks, origin: 'url', addedAt: Date.now() } });
+        const result = await fetchGlossArticle(String(input.url || '').trim());
+        if (result.pdf) { res.writeHead(200, { 'Content-Type': 'application/pdf', 'X-File-Name': encodeURIComponent(result.name) }); res.end(result.pdf); return; }
+        return send(res, 200, result);
       }
       if (!modelService) throw fail('模型服务未配置。', 503);
       let final;
@@ -117,7 +105,8 @@ export function createGlossRouter({ postgres, legacy, library, modelService, med
         const emit = (event) => { if (!res.destroyed) res.write(`data: ${JSON.stringify(event)}\n\n`); };
         try {
           const length = ['short', 'normal', 'long'].includes(input.length) ? input.length : 'normal';
-          let result; let query = thread.action === 'check' ? `${thread.quote || doc.title} ${thread.question || ''}`.slice(0, 450) : '';
+          const latest = history.filter(m => m.role === 'user').at(-1)?.content;
+          let result; let query = thread.action === 'check' ? searchQuery(thread, latest).slice(0, 450) : '';
           const tools = input.search ? [{ name: 'web_search', description: 'Search for current factual evidence outside the supplied reading.', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } }] : undefined;
           if (!query) {
             result = await complete([...buildMessages(doc, thread, history, length, undefined, !!tools), chinese], { emit, tools });

@@ -33,7 +33,7 @@ function Seg<T extends string>({ value, options, onChange, label }: { value: T; 
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="grid grid-cols-[80px_minmax(0,1fr)] items-center gap-3">
+    <div className="grid grid-cols-[64px_minmax(0,1fr)] items-center gap-3 min-[380px]:grid-cols-[80px_minmax(0,1fr)]">
       <span className="text-[12.5px] text-ink-3">{label}</span>
       {children}
     </div>
@@ -239,7 +239,7 @@ export function SettingsMenu({ compact = false }: { compact?: boolean }) {
                       <span className="size-5 rounded-full" style={{ background: dark ? p.dark : p.light }} />
                     </button>
                   ))}
-                  <span className="ml-1 text-[12px] text-ink-3">{PENS.find((p) => p.key === settings.pen)?.label}</span>
+                  <span className="ml-1 whitespace-nowrap text-[12px] text-ink-3">{PENS.find((p) => p.key === settings.pen)?.label}</span>
                 </div>
               </Row>
 

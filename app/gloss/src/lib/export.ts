@@ -62,7 +62,7 @@ export function notesMarkdown(meta: NotesMeta, glosses: Gloss[], highlights: Hig
   const by = [meta.author, meta.published].filter(Boolean).join(", ");
   if (by) lines.push(by);
   if (meta.url && !opts.frontmatter) lines.push(meta.url);
-  lines.push("", `Notes from Gloss, ${day(Date.now())}`, "");
+  lines.push("", `阅读笔记，${day(Date.now())}`, "");
 
   for (const e of entries) {
     if (e.kind === "hl") {

@@ -15,7 +15,6 @@ async function start() {
     const { applySettings } = await import('./lib/settings'); applySettings(useStore.getState().settings);
   } catch { /* The reader still opens when the model catalog is unavailable. */ }
   useStore.getState().hydrate();
-  await import('./compat/legacy').then(({ migrateLegacy }) => migrateLegacy(nativeIdbOpen, owner)).catch(() => {});
   // The original first-paint script runs only after the account-scoped storage is ready.
   void BOOT_SCRIPT;
   function App() {
@@ -26,5 +25,9 @@ async function start() {
     return <>{id ? <Reader key={id} id={id} initial={sampleById(id)} /> : path === '/library' ? <Library /> : <Landing signedIn />}<SyncAgent /><Tooltips /></>;
   }
   createRoot(document.getElementById('root')!).render(<App />);
+  // An old IndexedDB connection can be blocked by another tab. Never hold the reader's first paint hostage to migration.
+  void import('./compat/legacy').then(({ migrateLegacy }) => migrateLegacy(nativeIdbOpen, owner)).catch(() => {
+    window.dispatchEvent(new CustomEvent('gloss:sync-error', { detail: '旧版笔记迁移暂未完成，原数据仍保留。关闭旧版阅读页面后可重试。' }));
+  });
 }
 void start().catch((error) => { document.getElementById('root')!.textContent = error.message || '阅读暂时无法打开，请刷新重试。'; });

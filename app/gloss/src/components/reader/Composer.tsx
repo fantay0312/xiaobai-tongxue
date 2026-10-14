@@ -64,6 +64,10 @@ export const Composer = forwardRef<ComposerHandle, { currentBlock: () => string 
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           onKeyDown={(e) => {
+            if (e.nativeEvent.isComposing || e.keyCode === 229) {
+              if (e.key === "Enter") e.preventDefault();
+              return;
+            }
             if (e.key === "Escape") {
               e.stopPropagation();
               inputRef.current?.blur();

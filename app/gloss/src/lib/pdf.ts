@@ -55,7 +55,7 @@ function liteparse(): Promise<LP> {
 }
 
 const failed = (e: unknown) =>
-  new PdfError(/password/i.test(String(e)) ? "This PDF is password protected. Remove the password and try again." : "无法读取这份 PDF。");
+  new PdfError(/password/i.test(String(e)) ? "这份 PDF 已加密，请解除密码后重试。" : "无法读取这份 PDF。");
 
 export async function pdfToArticle(file: File, onProgress?: PdfProgress): Promise<Article> {
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -70,19 +70,19 @@ export async function pdfToArticle(file: File, onProgress?: PdfProgress): Promis
   }
   const total = session.totalPages;
   const pages = Math.min(total, PDF_MAX_PAGES);
-  const label = `${pages} page${pages === 1 ? "" : "s"}`;
+  const label = `${pages} 页`;
   if (pages > PDF_FREE_PAGES && !readApiKey()) {
     session.free();
     throw new PdfError(`这份 PDF 有 ${pages} 页，请先在设置中选择可用的模型。`, true);
   }
 
   // Pass 1: the text layer, a batch at a time.
-  onProgress?.(0, `Reading ${label}`);
+  onProgress?.(0, `正在读取 ${label}`);
   const byPage = new Map<number, LayoutBlock[]>();
   try {
     for (let b = await session.nextBatch(); b; b = await session.nextBatch()) {
       for (const pg of b.result.pages) byPage.set(pg.pageNum, pg.blocks ?? []);
-      onProgress?.(b.endPage / pages, `Reading ${label}`);
+      onProgress?.(b.endPage / pages, `正在读取 ${label}`);
     }
   } catch (e) {
     throw failed(e);
@@ -147,13 +147,13 @@ export async function pdfToArticle(file: File, onProgress?: PdfProgress): Promis
   // No title from the text layer (a scan, say): the first heading the page reader found.
   if (!title && stitched[0] && (stitched[0].type === "h2" || stitched[0].type === "h3") && text(stitched[0]).length < 200) title = text(stitched.shift()!);
   const blocks = stitched.map((b, i) => ({ ...b, id: `b${i + 1}` }));
-  if (!blocks.length) throw new PdfError(unreadable.length ? "无法读取 PDF 页面，请稍后重试。" : "There was no readable text in this PDF.");
+  if (!blocks.length) throw new PdfError(unreadable.length ? "无法读取 PDF 页面，请稍后重试。" : "这份 PDF 中没有可读取的文字。");
 
   if (!title) title = file.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ");
   return {
     id: `${slugify(title)}-${Math.random().toString(36).slice(2, 7)}`,
     title: tidyTitle(undash(title)),
-    source: `${file.name}${total > PDF_MAX_PAGES ? `, first ${PDF_MAX_PAGES} pages` : ""}`,
+    source: `${file.name}${total > PDF_MAX_PAGES ? `，前 ${PDF_MAX_PAGES} 页` : ""}`,
     blocks,
     origin: "file",
     addedAt: Date.now(),
@@ -264,7 +264,7 @@ async function readByVision(lp: LP, bytes: Uint8Array, pageNums: number[], into:
   const apiKey = readApiKey() || undefined;
   let done = 0;
   let stop: PdfError | null = null;
-  const label = () => `Reading ${pageNums.length === 1 ? "a scanned page" : `scanned pages, ${done} of ${pageNums.length}`}`;
+  const label = () => `正在读取扫描页，${done} / ${pageNums.length}`;
   onProgress?.(0, label());
 
   for (let i = 0; i < pageNums.length && !stop; i += VISION_AT_ONCE) {

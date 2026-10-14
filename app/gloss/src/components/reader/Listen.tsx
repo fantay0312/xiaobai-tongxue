@@ -335,7 +335,7 @@ export function ListenBar() {
         <button
           type="button"
           onClick={cycleRate}
-          aria-label={`Speed ${rate} times. Change speed.`}
+          aria-label={`朗读速度 ${rate} 倍，点击调整。`}
           className="h-9 min-w-[48px] rounded-full px-2.5 text-[13px] font-medium tabular-nums transition-colors hover:bg-lens-hover"
         >
           {`${rate}×`}

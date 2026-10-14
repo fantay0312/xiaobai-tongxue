@@ -72,17 +72,17 @@ export function Brief() {
   const { data, usage, modelKey } = brief;
   const caveats = data.caveats ?? [];
   return (
-    <section aria-label="阅读" className="mt-6 rounded-[16px] border border-rule bg-raised/60 px-5">
+    <section aria-label="全文导读" className="mt-6 rounded-[16px] border border-rule bg-raised/60 px-5">
       <button
         type="button"
         onClick={() => setUI({ briefOpen: !open })}
         aria-expanded={open}
         className="flex w-full items-center gap-2.5 py-3.5 text-left"
       >
-        <span className="text-[13.5px] font-medium text-ink">阅读</span>
+        <span className="text-[13.5px] font-medium text-ink">全文导读</span>
         <span className="text-[13px] text-ink-3">
           {data.sections.length} 个部分 {"\u00b7"} {data.claims.length} 个观点
-          {caveats.length > 0 && ` \u00b7 ${caveats.length} ${caveats.length === 1 ? "caveat" : "caveats"}`}
+          {caveats.length > 0 && ` \u00b7 ${caveats.length} 条注意事项`}
         </span>
         <ChevronDown size={16} className={`ml-auto text-ink-3 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
       </button>
@@ -155,7 +155,7 @@ export function Brief() {
           <div className="mt-5 flex items-center gap-3 text-[11.5px] tabular-nums text-ink-4">
             <span>
               {modelKey ? MODELS[modelOf(modelKey)].label : ""}
-              {usage ? ` / ${usage.promptTokens.toLocaleString()} in, ${usage.completionTokens} out / ${fmtCost(usage.costUsd)}` : ""}
+              {usage ? ` / ${usage.promptTokens.toLocaleString()} 输入，${usage.completionTokens} 输出 / ${fmtCost(usage.costUsd)}` : ""}
             </span>
             <button type="button" onClick={() => fetchBrief(ix)} className="ml-auto inline-flex items-center gap-1 rounded px-1.5 py-1 hover:bg-sunk hover:text-ink">
               <RotateCcw size={11} /> 重新生成

@@ -206,7 +206,7 @@ export function Shelf({
           </>
         );
         return onLabel ? (
-          <button key={`${sort}-${l.key}`} type="button" className="plank-label" style={style} onClick={() => onLabel(l.key)} data-tip={`Open ${l.label}`}>
+          <button key={`${sort}-${l.key}`} type="button" className="plank-label" style={style} onClick={() => onLabel(l.key)} data-tip={`打开${l.label}`}>
             {body}
           </button>
         ) : (

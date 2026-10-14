@@ -41,6 +41,11 @@ export function createReaderRepository(db) {
     async tokenRevoke(owner, id) {
       await db.query('UPDATE reader_agent_tokens SET revoked_at=NOW() WHERE owner_id=$1 AND id=$2', [owner, id]);
     },
+    async tokenIdentity(token) {
+      if (!/^xbr_[A-Za-z0-9_-]{43}$/.test(token)) return null;
+      const { rows } = await db.query('UPDATE reader_agent_tokens SET last_used_at=NOW() WHERE token_hash=$1 AND revoked_at IS NULL RETURNING owner_id AS owner,name AS label', [hashToken(token)]);
+      return rows[0] ?? null;
+    },
     async tokenOwner(token) {
       if (!/^xbr_[A-Za-z0-9_-]{43}$/.test(token)) return null;
       const { rows } = await db.query('UPDATE reader_agent_tokens SET last_used_at=NOW() WHERE token_hash=$1 AND revoked_at IS NULL RETURNING owner_id', [hashToken(token)]);

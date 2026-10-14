@@ -34,6 +34,13 @@ type OutRow = { id: string; articleId: string; data: unknown; deleted?: boolean;
 /** Pushes are split to stay well under the 4.5MB request cap. */
 const BATCH_BYTES = 1_500_000;
 const MAX_BODY = 4_300_000;
+const MAX_ROWS = 1000;
+const MAX_COLLECTION_ROWS = 500;
+const bytesOf = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).byteLength;
+class SyncConflict extends Error {}
+export function syncConflicts(userId: string): unknown[] {
+  try { return JSON.parse(localStorage.getItem(`gloss:sync-conflicts:${userId}`) || '[]'); } catch { return []; }
+}
 /** Pulls overlap a little, so a write that landed while the last pull ran is not missed. Applying a row twice is harmless. */
 const OVERLAP_MS = 30_000;
 
@@ -99,13 +106,29 @@ export function startSync(userId: string) {
       localStorage.setItem(storeKey, JSON.stringify(base));
     } catch {}
   };
+  const archiveConflict = async (c: Collection, row: NonNullable<RemoteChanges[Collection]>[number], local: unknown) => {
+    const conflicts = syncConflicts(userId) as { collection: string; id: string; revision?: number }[];
+    if (conflicts.some((r) => r.collection === c && r.id === row.id && r.revision === row.revision)) return;
+    let remoteDoc: Article | undefined;
+    if (c === 'articles' && !row.deleted) {
+      const response = await fetch(`/api/articles/${encodeURIComponent(row.id)}`);
+      if (!response.ok) throw new Error('conflict-backup-unavailable');
+      remoteDoc = (await response.json()).doc;
+    }
+    // Keep both versions before retrying a local write; never discard an unexported conflict.
+    localStorage.setItem(`gloss:sync-conflicts:${userId}`, JSON.stringify([...conflicts, {
+      collection: c, id: row.id, articleId: row.articleId, revision: row.revision,
+      at: new Date().toISOString(), local, remote: row.data, deleted: row.deleted, remoteDoc,
+    }]));
+    window.dispatchEvent(new CustomEvent('gloss:sync-conflict'));
+  };
 
   let stopped = false;
   // One operation at a time: a pull never lands in the middle of a push.
   let chain: Promise<unknown> = Promise.resolve();
   const serial = (fn: () => Promise<void>) => (chain = chain.then(() => (stopped ? undefined : fn())).catch(() => { window.dispatchEvent(new CustomEvent('gloss:sync-error', { detail: '云端同步暂未完成，本机内容已保留。请稍后重试。' })); }));
 
-  async function push() {
+  async function pushOnce() {
     const { entities, busy } = snapshot();
     const rows: { c: Collection; row: OutRow; key: string | null; size: number }[] = [];
     for (const c of COLLECTIONS) {
@@ -115,11 +138,13 @@ export function startSync(userId: string) {
         const row: OutRow = { id, articleId: e.articleId, data: e.data };
         // A text goes up with its first shelf entry, and again when it is replaced (its rev changes).
         // Samples ship with the app.
-        if (c === "articles" && (e.data as { origin?: string }).origin !== "sample") {
+        const previous = seen[id]?.[0];
+        const textChanged = !previous || (JSON.parse(previous) as { rev?: number }).rev !== (e.data as { rev?: number }).rev;
+        if (c === "articles" && (e.data as { origin?: string }).origin !== "sample" && textChanged) {
           const doc = await loadDoc(id);
           if (doc) row.doc = doc;
         }
-        rows.push({ c, row, key: e.key, size: JSON.stringify(row).length });
+        rows.push({ c, row, key: e.key, size: bytesOf(row) });
       }
       for (const [id, [, articleId]] of Object.entries(seen)) {
         if (entities[c].has(id) || busy.has(`${c}:${id}`)) continue;
@@ -132,18 +157,20 @@ export function startSync(userId: string) {
     for (const r of rows) {
       if (r.size > MAX_BODY && r.row.doc) {
         delete r.row.doc;
-        r.size = JSON.stringify(r.row).length;
+        r.size = bytesOf(r.row);
       }
     }
 
     let batch: typeof rows = [];
     let bytes = 0;
+    let counts: Partial<Record<Collection, number>> = {};
     const flush = async () => {
       if (!batch.length) return;
       const changes: Partial<Record<Collection, OutRow[]>> = {};
       for (const r of batch) (changes[r.c] ??= []).push(r.row);
       for (const r of batch) r.row.revision = base.revisions[`${r.c}:${r.row.id}`] ?? 0;
       const res = await fetch("/api/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ changes }) });
+      if (res.status === 409) throw new SyncConflict();
       if (!res.ok) throw new Error(`push ${res.status}`);
       Object.assign(base.revisions, (await res.json()).revisions || {});
       for (const r of batch) {
@@ -153,29 +180,44 @@ export function startSync(userId: string) {
       save();
       batch = [];
       bytes = 0;
+      counts = {};
     };
     for (const r of rows) {
-      if (bytes + r.size > BATCH_BYTES) await flush();
+      if (bytes + r.size > BATCH_BYTES || batch.length >= MAX_ROWS || (counts[r.c] ?? 0) >= MAX_COLLECTION_ROWS) await flush();
       batch.push(r);
       bytes += r.size;
+      counts[r.c] = (counts[r.c] ?? 0) + 1;
     }
     await flush();
   }
 
-  async function pull() {
-    const q = base.since ? `?since=${encodeURIComponent(new Date(Date.parse(base.since) - OVERLAP_MS).toISOString())}` : "";
+  async function push() {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try { await pushOnce(); return; }
+      catch (error) {
+        if (!(error instanceof SyncConflict) || attempt === 2) throw error;
+        await pull(true);
+      }
+    }
+  }
+
+  async function pull(full = false) {
+    const q = !full && base.since ? `?since=${encodeURIComponent(new Date(Date.parse(base.since) - OVERLAP_MS).toISOString())}` : "";
     const res = await fetch(`/api/sync${q}`);
     if (!res.ok) throw new Error(`pull ${res.status}`);
     const { now, changes } = (await res.json()) as { now: string; changes: RemoteChanges };
     const local = snapshot();
     for (const c of COLLECTIONS) {
       const rows = changes[c] || [];
-      changes[c] = rows.filter((r) => {
+      const accepted = [];
+      for (const r of rows) {
         const here = local.entities[c].get(r.id), known = base.seen[c][r.id]?.[0];
-        if (here && here.key !== known && here.key !== stable(r.data)) return false;
+        const pending = (here ? here.key !== known && here.key !== stable(r.data) : known !== undefined && !r.deleted) || local.busy.has(`${c}:${r.id}`);
+        if (pending && (r.revision ?? 0) !== (base.revisions[`${c}:${r.id}`] ?? 0)) await archiveConflict(c, r, here?.data);
         base.revisions[`${c}:${r.id}`] = r.revision ?? 0;
-        return true;
-      }) as never;
+        if (!pending) accepted.push(r);
+      }
+      changes[c] = accepted as never;
     }
 
     // A text replaced on another device: drop this device's copy so it is fetched fresh on open.

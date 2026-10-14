@@ -58,7 +58,6 @@ export function Arrivals({
   const latest = books[n - 1];
   const shown = books.slice(-SHOWN);
   const more = n - shown.length;
-  const noun = n === 1 ? "article" : "articles";
 
   return createPortal(
     <div ref={ref} className="arr" data-done={wave.done || undefined} data-leaving={wave.leaving || undefined} role="status" aria-live="polite">
@@ -70,7 +69,7 @@ export function Arrivals({
           {who ? (
             wave.done ? (
               <>
-                <b>{who}</b> 已添加 {n} {noun} 到你的书库
+                <b>{who}</b> 已添加 {n} 篇文章到你的书库
               </>
             ) : (
               <>
@@ -79,7 +78,7 @@ export function Arrivals({
             )
           ) : wave.done ? (
             <>
-              <b>{n}</b> 新文章 {noun} 在书架中
+              <b>{n}</b> 篇新文章已加入书库
             </>
           ) : (
             <>正在加入书库</>
@@ -117,10 +116,10 @@ export function Arrivals({
       {wave.done ? (
         <div className="arr-actions">
           <button type="button" onClick={onShow} className="arr-show">
-            显示 {n === 1 ? "it" : "them"} 在书架中
+            在书架中查看
           </button>
           <button type="button" onClick={onRemove} className="arr-undo">
-            移除 {n === 1 ? "it" : "them"}
+            撤回本次添加
           </button>
         </div>
       ) : (

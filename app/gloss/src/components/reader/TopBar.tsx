@@ -85,7 +85,7 @@ export function TopBar({ currentN, pastTitle, listenFrom }: { currentN: number |
         tucked ? "-translate-y-full" : ""
       } ${scrolled ? "border-b border-rule bg-bg/85 backdrop-blur-md" : "border-b border-transparent"}`}
     >
-      <div className="mx-auto flex h-full max-w-[1440px] items-center gap-4 px-4 sm:px-6">
+      <div className="mx-auto flex h-full max-w-[1440px] items-center gap-2 px-4 sm:gap-4 sm:px-6">
         <Lockup />
 
         {/* Always a spacer; the running title shows in it from tablet width up. */}
@@ -115,7 +115,7 @@ export function TopBar({ currentN, pastTitle, listenFrom }: { currentN: number |
           </div>
         </div>
 
-        <nav aria-label="阅读工具" className="flex items-center gap-1">
+        <nav aria-label="阅读工具" className="flex shrink-0 items-center gap-0 min-[381px]:gap-1">
           <span className="hidden sm:block">
             <button type="button" className={barBtn} onClick={() => setUI({ shortcutsOpen: true })} aria-label="键盘快捷键" data-tip="快捷键" data-tip-kbd="?">
               <Keyboard size={17} strokeWidth={1.8} />
@@ -126,7 +126,7 @@ export function TopBar({ currentN, pastTitle, listenFrom }: { currentN: number |
           <KeyMenu />
           <button
             type="button"
-            className={`${barBtn} !px-3 ${notebookOpen ? "bg-sunk text-ink" : ""}`}
+            className={`${barBtn} !px-3 max-[380px]:!px-2 max-[380px]:gap-1 ${notebookOpen ? "bg-sunk text-ink" : ""}`}
             onClick={() => setUI({ notebookOpen: !notebookOpen })}
             aria-pressed={notebookOpen}
             aria-label="笔记本"

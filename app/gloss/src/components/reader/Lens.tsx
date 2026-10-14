@@ -411,7 +411,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
               aria-label="更多操作"
               aria-expanded={menu}
               onClick={() => setMenu((v) => !v)}
-              {...tipProps("更多", existing ? "Fact-check, related, copy" : "Fact-check, counterpoint, copy")}
+              {...tipProps("更多", existing ? "事实核查、相关段落与复制" : "事实核查、反方观点与复制")}
               className={`lens-btn w-8 justify-center ${menu ? "bg-lens-hover" : ""}`}
             >
               <Ellipsis size={16} />
@@ -464,7 +464,7 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
                     <button
                       key={m.key}
                       type="button"
-                      aria-label={`Highlight in ${m.label.toLowerCase()}`}
+                      aria-label={`使用${m.label}高亮`}
                       onClick={() => highlight(m.key)}
                       {...tipProps(m.label)}
                       className={`lens-dot ${m.key === marker ? "is-on" : ""}`}

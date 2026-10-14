@@ -304,6 +304,10 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing || e.keyCode === 229) {
+                  if (e.key === "Enter") e.preventDefault();
+                  return;
+                }
                 if (e.key === "Escape") {
                   e.stopPropagation();
                   inputRef.current?.blur();

@@ -22,10 +22,11 @@ export function numberBlocks(blocks) {
     return map;
 }
 export function wordCount(a) {
-    let w = 0;
-    for (const b of a.blocks)
-        w += blockText(b).split(/\s+/).filter(Boolean).length;
-    return w;
+    return a.blocks.reduce((n, b) => {
+        const text = modelText(b);
+        const cjk = text.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/gu) || [];
+        return n + cjk.length + text.replace(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/gu, ' ').split(/\s+/).filter(word => /[\p{L}\p{N}]/u.test(word)).length;
+    }, 0);
 }
 export const readingMinutes = (words) => Math.max(1, Math.round(words / 230));
 /** Normalize model or source text so no em or en dash ever reaches the page. */

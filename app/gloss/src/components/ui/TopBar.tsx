@@ -18,6 +18,7 @@ export function TopBar({ here, onLibrary }: { here?: "library"; onLibrary?: () =
       <nav aria-label="主导航" className="flex items-center gap-1 max-[380px]:gap-0">
         <Link
           href="/library"
+          aria-label="书库"
           aria-current={here === "library" ? "page" : undefined}
           onClick={(e) => {
             if (!onLibrary) return;

@@ -1,1 +1,8 @@
 :root { --nf-serif: 'Newsreader'; --nf-sans: 'Schibsted Grotesk'; --nf-book: 'Literata'; --nf-legible: 'Atkinson Hyperlegible Next'; }
+
+/* Keep editing controls legible and prevent iOS focus zoom. */
+@media (max-width: 639px) {
+  input:not([type]), input[type="text"], input[type="search"], input[type="url"], textarea, select {
+    font-size: 16px;
+  }
+}

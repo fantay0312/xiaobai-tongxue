@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 /** A button that opens a small panel. Closes on outside click and Escape. */
 export function Popover({
@@ -26,6 +27,36 @@ export function Popover({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ left: 12, top: 56, width, maxHeight: 600 });
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const anchor = ref.current?.getBoundingClientRect();
+      if (!anchor) return;
+      const viewport = window.visualViewport;
+      const left = viewport?.offsetLeft ?? 0;
+      const top = viewport?.offsetTop ?? 0;
+      const right = left + (viewport?.width ?? window.innerWidth);
+      const bottom = top + (viewport?.height ?? window.innerHeight);
+      const w = Math.min(width, right - left - 24);
+      const x = Math.max(left + 12, Math.min(align === "right" ? anchor.right - w : anchor.left, right - w - 12));
+      const y = Math.max(top + 12, Math.min(anchor.bottom + 8, bottom - 120));
+      setPosition({ left: x, top: y, width: w, maxHeight: Math.max(96, bottom - y - 12) });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    window.visualViewport?.addEventListener("resize", place);
+    window.visualViewport?.addEventListener("scroll", place);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+      window.visualViewport?.removeEventListener("resize", place);
+      window.visualViewport?.removeEventListener("scroll", place);
+    };
+  }, [open, width, align]);
 
   useEffect(() => {
     if (!openOn) return;
@@ -40,12 +71,13 @@ export function Popover({
     const onDown = (e: PointerEvent) => {
       // During a view transition the pointer lands on the root's snapshot, not on the page.
       if (e.target === document.documentElement && document.documentElement.classList.contains("theme-swap")) return;
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+      if (!ref.current?.contains(e.target as Node) && !panel.current?.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.stopPropagation();
         setOpen(false);
+        ref.current?.querySelector("button")?.focus({ preventScroll: true });
       }
     };
     document.addEventListener("pointerdown", onDown);
@@ -69,15 +101,16 @@ export function Popover({
       >
         {trigger}
       </button>
-      {open && (
+      {open && createPortal(
         <div
+          ref={panel}
           role="dialog"
           aria-label={label}
-          className={`pop absolute top-[calc(100%+8px)] z-[60] p-4 ${align === "right" ? "right-0" : "left-0"}`}
-          style={{ width, ["--origin" as string]: align === "right" ? "top right" : "top left" }}
+          className="pop scroll-thin fixed z-[60] overflow-y-auto overscroll-contain p-4"
+          style={{ ...position, ["--origin" as string]: align === "right" ? "top right" : "top left" }}
         >
           {children(() => setOpen(false))}
-        </div>
+        </div>, document.body
       )}
     </div>
   );

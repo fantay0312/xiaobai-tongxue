@@ -1,4 +1,4 @@
-export const ASSET_BASE = import.meta.env.BASE_URL;
+export const ASSET_BASE = import.meta.env?.BASE_URL ?? '/';
 export const HOST_BASE = ASSET_BASE.replace(/reader\/$/, '');
 export let account = { name: '', signedIn: false };
 const nativeFetch = window.fetch.bind(window);

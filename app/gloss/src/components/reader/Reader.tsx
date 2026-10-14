@@ -475,7 +475,7 @@ function ReaderInner({ article }: { article: Article }) {
 
   return (
     <ReaderContext.Provider value={api}>
-      <title>{`${article.title}, glossed`}</title>
+      <title>{`${article.title} · 阅读`}</title>
       <div className={`${focusMode ? "focus-mode" : ""} ${showNumbers ? "" : "hide-nums"} ${notebookOpen ? "nb-open" : ""}`}>
         <TopBar currentN={current ? ix.numbers.get(current) ?? null : null} pastTitle={pastTitle} listenFrom={askAnchor} />
 

@@ -33,7 +33,7 @@ export function TopicGrid({ topics, onPick }: { topics: { topic: Topic; books: B
                 </h3>
               </ViewTransition>
               <p className="mt-1.5 text-[13px] text-ink-3">
-                {books.length} {books.length === 1 ? "piece" : "pieces"} · {hours(books)}
+                {books.length} 篇文章 · {hours(books)}
               </p>
             </div>
           </div>
@@ -73,8 +73,8 @@ export function TopicPage({ topic: t, books, tools, onOpen }: { topic: Topic; bo
           </ViewTransition>
           <p className="mt-4 text-pretty font-serif text-[18px] leading-[1.5] text-ink-2">{t.blurb}</p>
           <p className="mt-3 text-[13px] text-ink-3">
-            {books.length} {books.length === 1 ? "piece" : "pieces"} · {hours(books)} 阅读时长
-            {books.some((b) => b.pct > 0 && b.pct < 1) && ` · ${books.filter((b) => b.pct > 0 && b.pct < 1).length} in progress`}
+            {books.length} 篇文章 · {hours(books)} 阅读时长
+            {books.some((b) => b.pct > 0 && b.pct < 1) && ` · 正在阅读 ${books.filter((b) => b.pct > 0 && b.pct < 1).length} 篇`}
           </p>
         </div>
       </header>
@@ -97,7 +97,7 @@ export function TopicPage({ topic: t, books, tools, onOpen }: { topic: Topic; bo
               {b.pct > 0 && (
                 <>
                   <span aria-hidden>·</span>
-                  <span className={b.pct >= 1 ? "text-good" : "text-rubric-text"}>{b.pct >= 1 ? "阅读" : `${Math.round(b.pct * 100)}%`}</span>
+                  <span className={b.pct >= 1 ? "text-good" : "text-rubric-text"}>{b.pct >= 1 ? "已读完" : `${Math.round(b.pct * 100)}%`}</span>
                 </>
               )}
               {b.favorite && <span aria-label="收藏">⭐</span>}

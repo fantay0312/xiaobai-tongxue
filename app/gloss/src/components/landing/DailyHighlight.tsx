@@ -41,7 +41,7 @@ export function DailyHighlight({ foot }: { foot?: ReactNode }) {
       label={
         <>
           今日回顾 · 来自你的高亮
-          {total > 1 && <span className="ml-2 font-normal tabular-nums text-ink-4">{`${done + 1} of ${total}`}</span>}
+          {total > 1 && <span className="ml-2 font-normal tabular-nums text-ink-4">{`${done + 1} / ${total}`}</span>}
         </>
       }
       aside={<DeskLink onClick={() => setUI({ shelf: "highlights" })}>全部高亮</DeskLink>}

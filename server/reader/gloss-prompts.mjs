@@ -1,4 +1,10 @@
 // Adapted from Nutlope/gloss 54b13b8; runtime conversion only.
+export function searchQuery(thread, latest) {
+    const quote = thread.quote?.replace(/\s+/g, ' ').trim().slice(0, 300);
+    const question = (latest ?? thread.question)?.trim();
+    if (thread.action === 'check' && !latest) return quote ?? question ?? '';
+    return question && quote ? `${question} (about: "${quote}")` : question ?? quote ?? '';
+}
 /**
  * The system message carries the whole text and nothing that varies per
  * question, so Together's prefix cache serves every follow-up on the same

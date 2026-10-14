@@ -122,7 +122,7 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
     async (f: File) => {
       setError(null);
       setErrorNeedsKey(false);
-      setBusy({ label: `Opening ${f.name}`, pct: f.name.toLowerCase().endsWith(".pdf") ? 0 : undefined });
+      setBusy({ label: `正在打开 ${f.name}`, pct: f.name.toLowerCase().endsWith(".pdf") ? 0 : undefined });
       // The PDF reader reports what it is doing: "Reading 12 pages", then any scanned ones.
       const r = await importFromFile(f, (p, label) => setBusy({ label: label ?? `正在读取 ${f.name}`, pct: p }));
       if (r.ok) finish(r.article, r.file);
