@@ -252,7 +252,8 @@ export function Lens({ rootEl, openHighlight }: { rootEl: HTMLElement | null; op
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const tgt = e.target as HTMLElement;
-      if (tgt.closest("input, textarea, [contenteditable]")) return;
+      if (tgt.closest("input, textarea, select, [contenteditable]")) return;
+      if (e.key !== "Escape" && tgt.closest('a[href], button, [role="button"], [role="menuitem"]')) return;
       if (e.key === "Escape") {
         e.preventDefault();
         if (menu) setMenu(false);

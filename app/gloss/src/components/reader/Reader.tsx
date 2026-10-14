@@ -402,6 +402,7 @@ function ReaderInner({ article }: { article: Article }) {
       }
       const t = e.target as HTMLElement;
       if (t.closest("input, textarea, select, [contenteditable]")) return;
+      if (e.key !== "Escape" && t.closest('a[href], button, [role="button"], [role="menuitem"]')) return;
       const sel = window.getSelection();
       const hasSel = sel && !sel.isCollapsed;
       const st = useStore.getState();
