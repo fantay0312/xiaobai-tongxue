@@ -22,7 +22,8 @@
 - 候选服务启动、增量迁移、匿名鉴权检查通过；正式服务 active。配置逐字节保留。已备份运行目录和数据库，保留 564 个旧哈希资源。详见 [deployment-proof.json](deployment-proof.json)。
 - 公网首页与构建文件完全一致，阅读器 JS/CSS 与主入口的内容哈希一致。详见 [public-resources.json](public-resources.json)。
 - 真实服务器模型网关调用 `deepseek-flash`，收到 start/text/done 事件，并准确返回示例的三步及 `[¶2]` 引用。详见 [model-proof.json](model-proof.json)。这项是服务层实调，不是浏览器登录态端到端验收。
-- 正式浏览器的旧登录失效后，项目保存的测试账号要求绑定手机号，未绕过验证。已将登录页面留给用户；真实登录态的导入、问答与云端保存仍待用户完成登录后验收。
+- 最初项目记录的测试账号要求绑定手机号，未绕过验证。用户随后在 Codex 内置浏览器完成正常登录，已实测创建「阅读器上线验收 · 三步阅读法」、真实自动分类、DeepSeek 选区问答、¶2/¶3 引用跳转、高亮与笔记、刷新重开、Markdown 导出。
+- 生产 PostgreSQL 确认该文档为 revision 5，3 段、1 条高亮、1 个问答线程；刷新后问答与笔记完整恢复。导出文件包含问题、原文引用和个人笔记。见 [browser-storage-proof.json](browser-storage-proof.json) 与 [production-notes.png](production-notes.png)。
 - 服务器未安装 npm，未改变系统运行环境；从已有模块补齐 16 个经过哈希核验的纯 JavaScript 依赖，候选服务实际导入成功后才切换。
 
 ## 服务边界

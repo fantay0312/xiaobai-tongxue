@@ -1,0 +1,20 @@
+{
+  "authenticatedProductionBrowser": true,
+  "articleImport": true,
+  "modelClassification": true,
+  "realModel": "deepseek-flash",
+  "selectedParagraphAnswer": true,
+  "citations": [
+    2,
+    3
+  ],
+  "highlightAndNote": true,
+  "refreshRestoration": true,
+  "markdownExport": {
+    "downloaded": true,
+    "containsQuestion": true,
+    "containsNote": true,
+    "containsCitation": true
+  },
+  "paidVoiceAndCoverTested": false
+}
