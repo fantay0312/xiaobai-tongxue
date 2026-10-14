@@ -1,0 +1,27 @@
+{
+  "release": "20261015-reader-6ef8d4c",
+  "sourceCommit": "6ef8d4c35c35c1711f3412af178aa696e89aad3f",
+  "sourceTree": "ec77c2eb9bf329dcb1de76644831fd7a12427566",
+  "backup": "/var/backups/xiaobai/20261015-reader-6ef8d4c",
+  "rollbackRuntime": "/var/backups/xiaobai/20261015-reader-6ef8d4c/runtime-before-switch",
+  "candidateChecks": "passed",
+  "databaseBackup": true,
+  "secretScan": "passed",
+  "service": "active",
+  "http": {
+    "/": 200,
+    "/api/me": 200,
+    "/api/reader/documents": 401,
+    "/api/reader/status": 401,
+    "/reader/": 200,
+    "/reader/fonts.css": 200,
+    "/api/reader/gloss/media/catalog": 401,
+    "/api/commerce/catalog": 200,
+    "/api/admin/v1/auth/me": 401
+  },
+  "retainedHashedAssets": 0,
+  "configUnchanged": true,
+  "envChanged": [
+    "READER_TENCENT_TTS_ENABLED"
+  ]
+}

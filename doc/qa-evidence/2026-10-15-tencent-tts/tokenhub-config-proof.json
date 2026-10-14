@@ -1,0 +1,17 @@
+{
+  "method": "GET",
+  "endpoint": "https://tokenhub.tencentmaas.com/v1/models",
+  "status": 200,
+  "authenticated": true,
+  "modelCount": 120,
+  "imageCandidates": [
+    "hy-image-v3.5-preview",
+    "hy-image-v3",
+    "vidu-image-q2",
+    "seedream-image-v5.0-lite",
+    "seedream-image-v5.0-pro",
+    "seedream-image-v5.0-flash"
+  ],
+  "generatedImages": 0,
+  "keyPersistedToServer": false
+}

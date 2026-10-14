@@ -1,0 +1,35 @@
+[
+  {
+    "event": "Network.requestWillBeSent",
+    "model": "tencent-tts",
+    "voice": "501000"
+  },
+  {
+    "event": "Network.responseReceived",
+    "status": 200,
+    "servedModel": "tencent-tts",
+    "servedVoice": "501000"
+  },
+  {
+    "event": "Network.requestWillBeSent",
+    "model": "tencent-tts",
+    "voice": "501000"
+  },
+  {
+    "event": "Network.requestWillBeSent",
+    "model": "tencent-tts",
+    "voice": "501000"
+  },
+  {
+    "event": "Network.responseReceived",
+    "status": 200,
+    "servedModel": "tencent-tts",
+    "servedVoice": "501000"
+  },
+  {
+    "event": "Network.responseReceived",
+    "status": 200,
+    "servedModel": "tencent-tts",
+    "servedVoice": "501000"
+  }
+]

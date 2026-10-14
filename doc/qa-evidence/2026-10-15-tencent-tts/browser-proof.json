@@ -1,0 +1,46 @@
+{
+  "authenticatedUi": true,
+  "selectedService": "tencent-tts",
+  "selectedMaleVoice": "501000",
+  "networkRequests": [
+    {
+      "event": "Network.requestWillBeSent",
+      "model": "tencent-tts",
+      "voice": "501000"
+    },
+    {
+      "event": "Network.responseReceived",
+      "status": 200,
+      "servedModel": "tencent-tts",
+      "servedVoice": "501000"
+    },
+    {
+      "event": "Network.requestWillBeSent",
+      "model": "tencent-tts",
+      "voice": "501000"
+    },
+    {
+      "event": "Network.requestWillBeSent",
+      "model": "tencent-tts",
+      "voice": "501000"
+    },
+    {
+      "event": "Network.responseReceived",
+      "status": 200,
+      "servedModel": "tencent-tts",
+      "servedVoice": "501000"
+    },
+    {
+      "event": "Network.responseReceived",
+      "status": 200,
+      "servedModel": "tencent-tts",
+      "servedVoice": "501000"
+    }
+  ],
+  "playbackReachedPlaying": true,
+  "pause": true,
+  "resume": true,
+  "voiceAfterFullReload": "501000",
+  "restoredVoice": "501002",
+  "imagesGenerated": 0
+}
