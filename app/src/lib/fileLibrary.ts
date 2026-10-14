@@ -1,4 +1,6 @@
 import { API_BASE, gatewayFetch } from './api';
+import { completeResponse } from './completeResponse';
+import { waitForLibraryFiles } from './libraryParsing';
 
 export interface LibraryEntry {
   id: string; kind: 'file' | 'folder'; name: string; parentId: string | null;
@@ -30,10 +32,21 @@ const messages: Record<string, string> = {
   'library-parse-not-ready': '文件尚未解析完成，请等待完成后重试。',
   'asset-in-use': '这份资料仍被课程或课题使用，请先移除相关引用。',
 };
-async function request(path: string, init?: RequestInit) {
-  const response = await gatewayFetch(`${API_BASE}/library${path}`, init);
-  if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(messages[data.error] ?? '操作未完成，请检查连接后重试。'); }
-  return response;
+async function request(path: string, init?: RequestInit, timeoutMs = 30_000) {
+  try {
+    const response = await completeResponse((signal) => gatewayFetch(`${API_BASE}/library${path}`, { ...init, signal }), timeoutMs, init?.signal);
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw Object.assign(new Error(messages[data.error] ?? '操作未完成，请检查连接后重试。'), { status:response.status, retryable:[408,429].includes(response.status) || response.status >= 500 });
+    }
+    return response;
+  } catch (error) {
+    if (init?.signal?.aborted) throw error;
+    if (error instanceof TypeError || (error instanceof DOMException && error.name === 'AbortError')) {
+      throw Object.assign(new Error('连接解析服务超时，请稍后重试。'), { status:408, retryable:true });
+    }
+    throw error;
+  }
 }
 const json = (method: string, body: unknown): RequestInit => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 export async function listLibrary(signal?: AbortSignal): Promise<LibrarySnapshot> {
@@ -49,26 +62,12 @@ export async function uploadLibraryFile(file: File, parentId: string | null, sig
 export async function downloadLibraryFile(id: string, signal?: AbortSignal): Promise<Blob> { return (await request(`/files/${encodeURIComponent(id)}/content`, { signal })).blob(); }
 export async function importLibraryFile(id: string, courseId: string, assetRole = 'lecture'): Promise<{ assetId: string }> { return (await request(`/files/${encodeURIComponent(id)}/course`, json('POST', { courseId, assetRole }))).json(); }
 export async function purgeLibraryEntry(id: string): Promise<void> { await request(`/entries/${encodeURIComponent(id)}`, { method: 'DELETE' }); }
-export async function parseLibraryFile(id: string, signal?: AbortSignal, retry = false): Promise<LibraryParseState> { return (await request(`/files/${encodeURIComponent(id)}/parse`, { ...json('POST', { retry }), signal })).json(); }
+export async function parseLibraryFile(id: string, signal?: AbortSignal, retry = false): Promise<LibraryParseState> { return (await request(`/files/${encodeURIComponent(id)}/parse`, { ...json('POST', { retry }), signal }, 180_000)).json(); }
 export async function libraryParseState(id: string, signal?: AbortSignal): Promise<LibraryParseState> { return (await request(`/files/${encodeURIComponent(id)}/parse`, { signal })).json(); }
-export async function readLibrarySources(fileIds: string[], query = '', signal?: AbortSignal): Promise<{ sources: import('../engine/notebookSources').NotebookSource[]; evidence: import('../engine/studyWorkspace').StudySource[] }> { return (await request('/sources', { ...json('POST', { fileIds, query }), signal })).json(); }
+export async function readLibrarySources(fileIds: string[], query = '', signal?: AbortSignal): Promise<{ sources: import('../engine/notebookSources').NotebookSource[]; evidence: import('../engine/studyWorkspace').StudySource[] }> { return (await request('/sources', { ...json('POST', { fileIds, query }), signal }, 60_000)).json(); }
 export async function detachLibraryCourse(id: string, courseId: string): Promise<void> { await request(`/files/${encodeURIComponent(id)}/course/${encodeURIComponent(courseId)}`, { method: 'DELETE' }); }
 export async function prepareLibrarySources(fileIds: string[], signal: AbortSignal, onProgress: (message: string) => void = () => {}, retry = false): ReturnType<typeof readLibrarySources> {
-  const deadline = Date.now() + 240000;
-  for (const [index, id] of fileIds.entries()) {
-    onProgress(`正在准备资料 ${index + 1} / ${fileIds.length}…`);
-    let state = await parseLibraryFile(id, signal, retry);
-    while (state.status !== 'completed') {
-      if (['failed', 'cancelled'].includes(state.status)) throw new Error(state.error || '解析失败，请在资料库中重试。');
-      if (Date.now() > deadline) throw new Error('资料仍在解析，稍后可重新连接。');
-      await new Promise<void>((resolve, reject) => {
-        const abort = () => { clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')); };
-        const timer = setTimeout(() => { signal.removeEventListener('abort', abort); resolve(); }, 1500);
-        if (signal.aborted) abort(); else signal.addEventListener('abort', abort, { once: true });
-      });
-      state = await libraryParseState(id, signal);
-    }
-  }
+  await waitForLibraryFiles(fileIds, signal, { start:(id, requestSignal) => parseLibraryFile(id, requestSignal, retry), status:libraryParseState, progress:onProgress });
   return readLibrarySources(fileIds, '', signal);
 }
 

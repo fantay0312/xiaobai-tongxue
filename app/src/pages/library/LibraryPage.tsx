@@ -14,6 +14,7 @@ import { ArtifactTypeIcon, FilePreview, FileTypeIcon, extensionOf, fileTone, for
 import { SideAction, SideEmpty, SideGroup, SideNavItem, SidePanel, SidebarPortal, useSidebarSlot } from '../learn/shell/sidebarSlot';
 import { useAuthStore } from '../../store/authStore';
 import { isCurrentAccount } from '../../lib/api';
+import { useLibraryParsePolling } from '../../hooks/useLibraryParsePolling';
 import {
   createFolder, detachLibraryCourse, downloadLibraryFile, importLibraryFile, libraryPath, listLibrary, parseLibraryFile, purgeLibraryEntry,
   prepareLibrarySources, readLibrarySources, updateLibraryEntry, uploadLibraryFile, visibleLibraryEntries, type LibraryEntry, type LibrarySnapshot,
@@ -176,6 +177,7 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation, onUseA
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [snapshot, setSnapshot] = useState<LibrarySnapshot | null>(null);
+  const parseWarning = useLibraryParsePolling(snapshot, setSnapshot, owner);
   const [loadFailed, setLoadFailed] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [progress, setProgress] = useState('');
@@ -368,12 +370,12 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation, onUseA
     else if (onView) onView(target.view, target.params);
     else setParams(search);
   };
-  const run = async (action: () => Promise<void>, success: string) => {
+  const run = async (action: () => Promise<void>, success: string | (() => string)) => {
     if (busyRef.current) return;
     busyRef.current = true; setBusy(true); setNotice(null);
     try {
       await action();
-      if (valid()) { await reload(); toast.success(success); setForm(null); setSelected([]); }
+      if (valid()) { await reload(); toast.success(typeof success === 'function' ? success() : success); setForm(null); setSelected([]); }
     } catch (error) {
       if (valid()) {
         fail(error);
@@ -454,7 +456,14 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation, onUseA
   };
   const toggleFavorite = (entry: LibraryEntry) => void run(async () => { await updateLibraryEntry(entry.id, { favorite: !entry.favorite }); }, entry.favorite ? '已取消收藏。' : '已收藏。');
   const download = (entry: LibraryEntry) => void run(async () => { const blob = await downloadLibraryFile(entry.id); if (valid()) saveBlob(entry.name, blob); }, '下载已准备。');
-  const parse = (entry: LibraryEntry) => void run(async () => { await parseLibraryFile(entry.id, undefined, true); }, '解析已启动，使用时会自动读取最新状态。');
+  const parse = (entry: LibraryEntry) => {
+    let message = '解析已启动，完成后会自动更新。';
+    void run(async () => {
+      const state = await parseLibraryFile(entry.id, requestRef.current?.signal, true);
+      if (state.status === 'failed' || state.status === 'cancelled') throw new Error(state.error || '解析未完成，请重试。');
+      if (state.status === 'completed') message = '已有解析已复用，现在可以直接使用。';
+    }, () => message);
+  };
   /** 记下「用在了对话里」：服务端不记这个，写进本机的使用记录和学习行为日志 */
   const noteUse = (targets: { id: string; title: string }[]) => {
     if (!targets.length) return;
@@ -908,14 +917,14 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation, onUseA
           </header>
           <p>
             {status === 'completed' ? '已完成，可直接用于提问和生成内容。'
-              : status === 'failed' ? `解析失败，可重试。${entry.parse?.error ?? ''}`
+              : status === 'failed' || status === 'cancelled' ? `解析未完成，可重试。${entry.parse?.error ?? ''}`
                 : status && LIVE_PARSE.includes(status) ? '正在解析，完成后状态会自动更新。'
                   : PARSEABLE.test(entry.name) ? '尚未解析。解析后可以用它提问、生成讲解和练习。'
                     : '这种格式可以保存在资料库，暂不能解析。可解析 PDF、PPT、PPTX、DOCX、MD、TXT。'}
           </p>
           {PARSEABLE.test(entry.name) && (
-            <Button variant="soft" size="sm" icon={<ScanText size={14} />} disabled={busy} onClick={() => parse(entry)}>
-              {status === 'completed' ? '重新解析' : status === 'failed' ? '重试解析' : '开始解析'}
+            <Button variant="soft" size="sm" icon={<ScanText size={14} />} disabled={busy || !!status && LIVE_PARSE.includes(status)} onClick={() => parse(entry)}>
+              {status === 'completed' ? '重新解析' : status && LIVE_PARSE.includes(status) ? '解析中…' : status === 'failed' || status === 'cancelled' ? '重试解析' : '开始解析'}
             </Button>
           )}
         </section>
@@ -1068,6 +1077,7 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation, onUseA
               <Button variant="ghost" size="sm" icon={<RefreshCw size={14} />} onClick={reconnect}>重试同步</Button>
             </div>
           )}
+          {parseWarning && <div className={s.banner} data-tone="warn" role="status"><TriangleAlert size={16} /><span>{parseWarning}</span></div>}
           {notice && !form && !(!snapshot && loadFailed && rows.length > 0) && (
             <div className={s.banner} data-tone={notice.tone} role="alert">
               <TriangleAlert size={16} strokeWidth={1.75} />

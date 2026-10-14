@@ -22,6 +22,7 @@ assert.deepEqual(libraryPath(entries, 'f').map((entry) => entry.name), ['数学'
 assert.equal(libraryPath([{ ...entries[0], parentId: 'f' }], 'f').length, 1, 'a malformed cycle cannot hang the breadcrumb');
 console.log('file-library: folder view, scoped search, favorites, trash and breadcrumb cycle guard passed');
 const { prepareLibrarySources } = await import('../src/lib/fileLibrary');
+Object.defineProperty(globalThis,'window',{configurable:true,value:{setTimeout,clearTimeout}});
 const originalFetch = globalThis.fetch;
 const calls: string[] = [];
 globalThis.fetch = async (url) => {
@@ -36,3 +37,24 @@ assert.ok(calls[0].endsWith('/files/one/parse'));
 assert.ok(calls[1].endsWith('/sources'));
 assert.ok(!calls.some((path) => path.endsWith('/files')), 'selecting an existing file never uploads it again');
 globalThis.fetch = originalFetch;
+
+const { waitForLibraryFiles } = await import('../src/lib/libraryParsing');
+let clock=0;const starts:string[]=[];
+await waitForLibraryFiles(['a','b','c'],new AbortController().signal,{
+  start:async(id)=>{starts.push(id);return {assetId:id,status:'pending'};},
+  status:async(id)=>({assetId:id,status:'completed'}),
+  now:()=>clock,timeoutMs:240,pollMs:100,
+  wait:async(ms)=>{clock+=ms;},
+});
+assert.deepEqual(starts,['a','b','c']);assert.ok(clock>240,'each file gets its own deadline');
+let attempts=0;
+await waitForLibraryFiles(['one'],new AbortController().signal,{
+  start:async()=>({assetId:'one',status:'pending'}),
+  status:async()=>{if(++attempts===1)throw Object.assign(new Error('temporary'),{retryable:true,status:503});return {assetId:'one',status:'completed'};},
+  wait:async()=>{},
+});
+assert.equal(attempts,2,'a transient status failure is retried');
+const aborted=new AbortController();aborted.abort();
+await assert.rejects(waitForLibraryFiles(['one'],aborted.signal,{start:async()=>{throw new Error('must not start');},status:async()=>({assetId:null,status:'completed'})}),{name:'AbortError'});
+await assert.rejects(waitForLibraryFiles(['one'],new AbortController().signal,{start:async()=>({assetId:null,status:'failed',error:'bad document'}),status:async()=>({assetId:null,status:'completed'})}),/bad document/);
+console.log('library parsing: bounded concurrency, per-file deadlines, transient retry and cancellation passed');

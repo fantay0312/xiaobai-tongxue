@@ -11,6 +11,49 @@ import { createFileLibraryRouter } from './file-library/router.mjs';
 const alice = { id: '11111111-1111-4111-8111-111111111111' };
 const bob = { id: '22222222-2222-4222-8222-222222222222' };
 
+test('duplicate library parsing reuses the canonical asset before downloading the original', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'xb-reuse-'));
+  t.after(() => rm(root, {recursive:true,force:true}));
+  const local = await createLocalLibraryStore(root);
+  const file = await createFileLibraryService(local).upload(alice, {name:'copy.txt',bytes:Buffer.from('same file')});
+  let reads = 0, uploads = 0;
+  local.blobs.read = async () => { reads++; throw new Error('unnecessary download'); };
+  const service = createFileLibraryService({...local,customContent:{
+    findLibraryAsset:async()=>null,
+    reuseLibraryAsset:async(owner,id,token)=>{assert.equal(owner.id,alice.id);assert.equal(id,file.id);assert.ok(token);return {id:'shared-asset',parseStatus:'completed'};},
+    parseLibraryFile:async()=>{uploads++;throw new Error('unnecessary parsing');},
+  }});
+  assert.equal((await service.parse(alice,file.id)).assetId,'shared-asset');
+  assert.equal(reads,0);assert.equal(uploads,0);
+  assert.equal((await service.list(alice)).entries[0].parse.status,'completed');
+});
+
+test('legacy file list reports the parser state instead of presenting completed files as unparsed', async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'xb-status-'));
+  t.after(() => rm(root,{recursive:true,force:true}));
+  let status='pending';
+  const service=createFileLibraryService({...await createLocalLibraryStore(root),customContent:{
+    listLibraryFiles:async()=>[{assetId:'asset',courseId:'course',courseTitle:'Course',name:'file.txt',parseStatus:status,byteSize:1}],
+  }});
+  assert.equal((await service.list(alice)).entries.find(e=>e.kind==='file').parse.status,'pending');
+  status='completed';
+  assert.equal((await service.list(alice)).entries.find(e=>e.kind==='file').parse.status,'completed');
+});
+
+test('two parse starts may run together while the global ingestion limit stays at two', async () => {
+  let release;const gate=new Promise(resolve=>{release=resolve;});let starts=0;const statuses=[];
+  const router=createFileLibraryRouter({service:{parse:async()=>{starts++;await gate;return {status:'pending'};}},
+    resolveOwner:async()=>alice,send:(_r,status)=>statuses.push(status),readJson:async()=>({})});
+  const req={method:'POST'};
+  const a=router.handle(req,{},'/api/library/files/11111111-1111-4111-8111-111111111111/parse');
+  const b=router.handle(req,{},'/api/library/files/22222222-2222-4222-8222-222222222222/parse');
+  await Promise.resolve();await Promise.resolve();await Promise.resolve();
+  assert.equal(starts,2);
+  await router.handle(req,{},'/api/library/files/33333333-3333-4333-8333-333333333333/parse');
+  assert.deepEqual(statuses,[429]);release();await Promise.all([a,b]);
+  assert.deepEqual(statuses.sort(),[201,201,429]);
+});
+
 test('file library stores original bytes, preserves folders through restart, isolates users and restores trash', async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'xb-library-')); t.after(() => rm(root, { recursive: true, force: true }));
   const local = await createLocalLibraryStore(root); const imported = [];

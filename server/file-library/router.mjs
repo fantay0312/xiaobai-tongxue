@@ -1,5 +1,5 @@
 export function createFileLibraryRouter({ service, resolveOwner, send, readJson, readRaw, rateLimit }) {
-  let uploading = 0; const owners = new Set();
+  let uploading = 0; const owners = new Set(); const parsingOwners = new Map();
   return { async handle(req, res, pathname) {
     const owner = await resolveOwner(req, res); if (!owner) return;
     if (!service) return send(res, 503, { error: 'library-unavailable' });
@@ -32,14 +32,21 @@ export function createFileLibraryRouter({ service, resolveOwner, send, readJson,
         res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(entry.name)}`, 'Content-Length': bytes.length, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' }); res.end(bytes); return;
       }
       if (fileMatch && ['course', 'parse'].includes(fileMatch[2]) && req.method === 'POST') {
-        if (uploading >= 2 || owners.has(owner.id)) return send(res, 429, { error: 'library-upload-busy' });
-        uploading += 1; owners.add(owner.id);
+        const parsing = fileMatch[2] === 'parse';
+        if (uploading >= 2 || owners.has(owner.id) || (!parsing && parsingOwners.has(owner.id))) return send(res, 429, { error: 'library-upload-busy' });
+        uploading += 1;
+        if (parsing) parsingOwners.set(owner.id, (parsingOwners.get(owner.id) ?? 0) + 1);
+        else owners.add(owner.id);
         try {
           if (rateLimit && !(await rateLimit(owner)).allowed) return send(res, 429, { error: 'rate-limited' });
           const input = await readJson(req, 4096);
           return send(res, 201, fileMatch[2] === 'course' ? await service.importCourse(owner, fileMatch[1], input) : await service.parse(owner, fileMatch[1], input));
         }
-        finally { uploading -= 1; owners.delete(owner.id); }
+        finally {
+          uploading -= 1;
+          if (parsing) { const left = parsingOwners.get(owner.id) - 1; if (left) parsingOwners.set(owner.id, left); else parsingOwners.delete(owner.id); }
+          else owners.delete(owner.id);
+        }
       }
       send(res, 404, { error: 'not-found' });
     } catch (error) {

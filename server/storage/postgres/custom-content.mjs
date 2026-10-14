@@ -369,8 +369,30 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       return result.rows[0] ? { id: result.rows[0].wk_kb_id, ready: result.rows[0].ready } : null;
     },
     async findLibraryFile(ownerId, fileId) {
-      const result = await queryable.query('SELECT * FROM custom_assets WHERE owner_id=$1 AND library_file_id=$2',[ownerId,fileId]);
+      const result = await queryable.query(`SELECT a.* FROM custom_assets a WHERE a.owner_id=$1 AND (
+        a.library_file_id=$2 OR EXISTS (SELECT 1 FROM file_libraries l, jsonb_array_elements(l.catalog) e
+          WHERE l.user_id=$1 AND e->>'id'=$2::text AND (e->'parse'->>'assetId'=a.id::text OR e->>'sourceAssetId'=a.id::text))
+        ) ORDER BY (a.library_file_id=$2) DESC NULLS LAST LIMIT 1`,[ownerId,fileId]);
       return assetRow(result.rows[0]);
+    },
+    async reuseLibraryFile(ownerId, fileId, token) {
+      assertUuid(ownerId); assertUuid(fileId); assertUuid(token);
+      return withTransaction(async (client) => {
+        const catalog = await client.query('SELECT catalog FROM file_libraries WHERE user_id=$1 FOR UPDATE',[ownerId]);
+        const entries = catalog.rows[0]?.catalog ?? [];
+        const entry = entries.find((item) => item.id === fileId);
+        if (!entry || entry.kind !== 'file' || entry.deletedAt || entry.phase !== 'ready'
+          || entry.parse?.token !== token || !entry.sha256) return null;
+        const result = await client.query(`SELECT * FROM custom_assets WHERE owner_id=$1 AND sha256=$2 AND byte_size=$3
+          AND parse_status IN ('pending','processing','finalizing','completed')
+          AND LOWER(substring(filename from '\\.[^.]+$'))=LOWER(substring($4::text from '\\.[^.]+$'))
+          ORDER BY (parse_status='completed') DESC, created_at LIMIT 1 FOR UPDATE`,[ownerId,entry.sha256,entry.byteSize,entry.name]);
+        const asset = assetRow(result.rows[0]);
+        if (!asset) return null;
+        entry.parse = { assetId:asset.id, status:asset.parseStatus, error:asset.errorMessage, updatedAt:new Date().toISOString() };
+        await client.query('UPDATE file_libraries SET catalog=$2::jsonb, revision=revision+1, updated_at=NOW() WHERE user_id=$1',[ownerId,JSON.stringify(entries)]);
+        return asset;
+      });
     },
     async adoptLibraryFile(ownerId, assetId, fileId) {
       const result = await queryable.query(`UPDATE custom_assets SET library_file_id=$3 WHERE owner_id=$1 AND id=$2 AND parse_status<>'deleting' AND (library_file_id IS NULL OR library_file_id=$3) RETURNING *`,[ownerId,assetId,fileId]);
@@ -528,8 +550,11 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
                 WHERE j.status IN ('queued', 'running', 'needs_review')
                   AND $1 = ANY(j.asset_ids)
              )
-           ) OR EXISTS (SELECT 1 FROM custom_course_assets ca JOIN custom_assets a ON a.id=ca.asset_id WHERE ca.asset_id=$1 AND a.library_file_id IS NOT NULL) AS referenced`,
-          [id, source],
+           ) OR EXISTS (SELECT 1 FROM custom_course_assets ca JOIN custom_assets a ON a.id=ca.asset_id WHERE ca.asset_id=$1 AND a.library_file_id IS NOT NULL)
+             OR EXISTS (SELECT 1 FROM file_libraries l, jsonb_array_elements(l.catalog) e
+               WHERE l.user_id=$3 AND (e->'parse'->>'assetId'=$1::text OR e->>'sourceAssetId'=$1::text)
+                 AND COALESCE(e->>'phase','ready') NOT IN ('purging','removed')) AS referenced`,
+          [id, source, ownerId],
         );
         if (referenced.rows[0]?.referenced === true) return null;
         const result = await client.query(

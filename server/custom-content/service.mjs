@@ -1301,6 +1301,8 @@ export function createCustomContentService({
     async parseLibraryFile(owner, input) {
       const existing = await repository.assets.findLibraryFile(owner.id, input.fileId);
       if (existing) return publicAsset(await refreshAsset(existing, input.requestId));
+      const reused = input.parseToken && await repository.assets.reuseLibraryFile?.(owner.id, input.fileId, input.parseToken);
+      if (reused) return publicAsset(await refreshAsset(reused, input.requestId));
       const validated = await validateUploadedFile({ bytes: input.bytes, filename: cleanFilename(input.filename), maximum: maxFileBytes, validateInProcess: validateFileInProcess });
       const space = await repository.assets.ensureLibrarySpace(owner.id);
       if (!space.ready) {
@@ -1308,7 +1310,8 @@ export function createCustomContentService({
         catch (error) { if (error.status !== 409 && !String(error.message).startsWith('weknora-conflict')) throw error; }
         await repository.assets.readyLibrarySpace(owner.id);
       }
-      const found = await weknora.findKnowledgeByMetadata({ kbId: space.id, key: 'xiaobai_library_file_id', value: input.fileId, requestId: input.requestId, maximumWaitMs: 0 });
+      const found = await weknora.findKnowledgeByMetadata({ kbId: space.id, key: 'xiaobai_library_file_id', value: input.fileId, requestId: input.requestId, maximumWaitMs: 0 })
+        ?? await weknora.findKnowledgeByMetadata({ kbId: space.id, key: 'sha256', value: input.sha256, requestId: input.requestId, maximumWaitMs: 0 });
       const uploaded = found ? upstreamKnowledge(found) : upstreamKnowledge(await weknora.uploadFile(space.id, {
         bytes: validated.bytes, filename: input.filename, contentType: validated.contentType,
         metadata: { xiaobai_library_file_id: input.fileId, sha256: input.sha256 },
@@ -1331,6 +1334,11 @@ export function createCustomContentService({
     async findLibraryAsset(owner, fileId) {
       const asset = await repository.assets.findLibraryFile(owner.id, fileId);
       return asset ? publicAsset(await refreshAsset(asset, `library-${fileId}`)) : null;
+    },
+
+    async reuseLibraryAsset(owner, fileId, token) {
+      const asset = await repository.assets.reuseLibraryFile?.(owner.id, fileId, token);
+      return asset ? publicAsset(await refreshAsset(asset, `library-reuse-${fileId}`)) : null;
     },
 
     async adoptLibraryAsset(owner, assetId, fileId) {
@@ -1359,7 +1367,11 @@ export function createCustomContentService({
 
     async deleteLibraryFile(owner, fileId) {
       const asset = await repository.assets.findLibraryFile(owner.id, fileId);
-      if (asset) return this.deleteLibraryAsset(owner, asset.id);
+      if (asset) {
+        // Removing an alias never deletes the original parser asset or its COS object.
+        if (asset.libraryFileId !== fileId) return;
+        return this.deleteLibraryAsset(owner, asset.id);
+      }
       const space = await repository.assets.getLibrarySpace(owner.id);
       if (!space?.ready) return;
       const orphan = await weknora.findKnowledgeByMetadata({ kbId: space.id, key: 'xiaobai_library_file_id', value: fileId, maximumWaitMs: 0, requestId: 'library-cleanup-' + fileId });
@@ -1369,13 +1381,16 @@ export function createCustomContentService({
 
     async readLibrarySources(owner, refs, query = '') {
       const groups = [];
-      for (const ref of refs) {
+      for (let offset = 0; offset < refs.length; offset += 4) {
+        groups.push(...await Promise.all(refs.slice(offset, offset + 4).map(async (ref) => {
         const asset = await repository.assets.findOwned(owner.id, ref.assetId);
-        if (!asset || asset.libraryFileId !== ref.fileId) throw publicError('asset-not-found', 404);
+        if (!asset || (asset.libraryFileId !== ref.fileId
+          && (await repository.assets.findLibraryFile(owner.id, ref.fileId))?.id !== asset.id)) throw publicError('asset-not-found', 404);
         const fresh = await refreshAsset(asset, `library-read-${ref.fileId}`);
         if (fresh.parseStatus !== 'completed' || fresh.enableStatus !== 'enabled') throw publicError('assets-not-ready', 409);
         const chunks = await weknora.listChunks(fresh.wkKnowledgeId, `library-read-${ref.fileId}`, 500, sourceCacheOptions(fresh));
-        groups.push({ asset: fresh, chunks, ref });
+        return { asset: fresh, chunks, ref };
+        })));
       }
       const sources = groups.map(({ asset, chunks, ref }) => {
         const usable = chunks.map((chunk) => ({ id: chunkId(chunk), content: chunkContent(chunk) })).filter((chunk) => chunk.id && chunk.content);
@@ -1398,9 +1413,11 @@ export function createCustomContentService({
         const assets = await repository.assets.listOwned(owner.id, course.id);
         for (const asset of assets) {
           if (asset.parseStatus === 'deleting') continue;
+          const fresh = await refreshAsset(asset, `library-list-${asset.id}`);
           files.push({ assetId: asset.id, courseId: course.id, courseTitle: course.title,
             name: asset.filename.split(/[\\/]/).at(-1), byteSize: asset.byteSize,
-            contentType: asset.contentType, sha256: asset.sha256, createdAt: asset.createdAt });
+            contentType: asset.contentType, sha256: asset.sha256, createdAt: asset.createdAt,
+            parseStatus:fresh.parseStatus, errorMessage:fresh.errorMessage });
         }
       }
       return files;

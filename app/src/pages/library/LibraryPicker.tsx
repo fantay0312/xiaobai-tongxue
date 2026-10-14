@@ -9,6 +9,8 @@ import '../../lib/artifactProviders/studyData';
 import { recordLibraryUse, saveArtifactToLibrary, useLibrarySync } from '../../lib/librarySync';
 import { logActivity } from '../../engine/activityLog';
 import { useAuthStore } from '../../store/authStore';
+import { useLibraryParsePolling } from '../../hooks/useLibraryParsePolling';
+import { isParsing } from '../../lib/libraryParsing';
 import { ORIGIN_LABELS } from './generated';
 import s from './library.module.css';
 
@@ -30,6 +32,7 @@ export function LibraryPicker({ selected, onClose, onConfirm, onManage, selected
   const artifacts = useArtifacts(owner);
   const sync = useLibrarySync(owner);
   const [snapshot, setSnapshot] = useState<LibrarySnapshot>();
+  const parseWarning = useLibraryParsePolling(snapshot, setSnapshot, owner);
   const [ids, setIds] = useState(selected);
   const [keys, setKeys] = useState<string[]>(selectedArtifacts ?? []);
   const [tab, setTab] = useState<Tab>('files');
@@ -52,7 +55,9 @@ export function LibraryPicker({ selected, onClose, onConfirm, onManage, selected
   const enter = (id: string | null) => { setFolder(id); setQuery(''); };
   const hint = (entry: LibraryEntry) => entry.phase !== 'ready' ? '正在入库'
     : !USABLE.test(entry.name) ? '这种格式暂不能用于对话'
-      : entry.parse?.status === 'completed' ? '已解析 · 直接使用' : '首次使用时解析';
+      : entry.parse?.status === 'completed' ? '已解析 · 直接使用'
+        : isParsing(entry.parse?.status) ? '正在解析 · 完成后自动更新'
+          : entry.parse?.status === 'failed' || entry.parse?.status === 'cancelled' ? '解析未完成 · 在资料库重试' : '首次使用时解析';
   /** 没有直接接成果的通道时，成果要靠云端副本进入对话：读不到资料库就用不了 */
   const madeBlocked = !onConfirmArtifacts && !snapshot;
 
@@ -139,6 +144,7 @@ export function LibraryPicker({ selected, onClose, onConfirm, onManage, selected
           </nav>
         )}
         {error && <p className={s.formError} role="alert">{error}</p>}
+        {parseWarning && <p className={s.formError} role="status">{parseWarning}</p>}
 
         {tab === 'files' && (
           <div className={s.pickerList}>

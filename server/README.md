@@ -190,7 +190,7 @@ node index.mjs
 `/api/xb/*` 全部沿用现网登录会话、手机号/邮箱验证与账号访问门禁；WeKnora API Key 永不下发浏览器。
 
 - `GET/POST /api/xb/courses`：列出或创建当前账号的自选课程；创建时用调用方 UUID 在 sidecar 建独立 document/FAQ 双库，创建意图先持久化，歧义超时可按确定 ID 清理。
-- `GET/POST /api/xb/courses/:id/assets`：列出资料或 multipart 上传；单账号一次一份、全站最多两份并发。
+- `GET/POST /api/xb/courses/:id/assets`：列出资料或 multipart 上传；单账号一次一份、全站最多两份并发。资料库解析可同时准备两份文件，仍受全站两份的资源限制。
 - `GET/DELETE /api/xb/assets/:id`、`POST /api/xb/assets/:id/reparse`：查状态、删除与重新解析；开放编译任务或草稿引用的资料由 PostgreSQL 行锁阻止删除。
 - `POST /api/xb/topics/compile`、`GET /api/xb/compile-jobs/:id`：从已完成资料异步编译课题；数据库租约保证多进程只由一个 worker 领取，过期任务可恢复。
 - `GET /api/xb/courses/:id/compile-job`：刷新或重新进入页面时找回该课程唯一的编译中/待校订任务，避免草稿失联。

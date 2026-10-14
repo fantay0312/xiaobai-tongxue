@@ -23,6 +23,10 @@ export function createFileLibraryService({ metadata, blobs, mode = 'cloud', maxB
             const registered = entries.find((entry) => entry.sourceAssetId === file.assetId || entry.parse?.assetId === file.assetId || entry.courseImports?.some((link) => link.assetId === file.assetId));
             if (registered) {
               if (registered.phase !== 'removed' && !registered.courseImports?.some((link) => link.courseId === file.courseId)) registered.courseImports = [...(registered.courseImports ?? []), { courseId: file.courseId, assetId: file.assetId, at: now() }];
+              if (file.parseStatus && registered.phase === 'ready'
+                && (!registered.parse || registered.parse.assetId === file.assetId)) {
+                registered.parse = { assetId:file.assetId, status:file.parseStatus, error:file.errorMessage, updatedAt:now() };
+              }
               continue;
             }
             let folder = entries.find((entry) => entry.sourceCourseId === file.courseId && !entry.deletedAt && entry.phase === 'ready');
@@ -38,6 +42,7 @@ export function createFileLibraryService({ metadata, blobs, mode = 'cloud', maxB
             entries.push({ id: crypto.randomUUID(), kind: 'file', name, parentId: folder.id, sourceAssetId: file.assetId,
               byteSize: file.byteSize, contentType: file.contentType, sha256: file.sha256, phase: 'ready', favorite: false,
               createdAt: file.createdAt || now(), updatedAt: now(), deletedAt: null,
+              ...(file.parseStatus ? { parse:{assetId:file.assetId,status:file.parseStatus,error:file.errorMessage,updatedAt:now()} } : {}),
               courseImports: [{ courseId: file.courseId, assetId: file.assetId, at: file.createdAt || now() }] });
           }
           });
@@ -169,10 +174,11 @@ export function createFileLibraryService({ metadata, blobs, mode = 'cloud', maxB
       if (!customContent?.parseLibraryFile) fail('custom-content-unavailable', 503);
       const state = await this.parseState(owner, id);
       if (state.assetId) {
-        if (retry && ['failed', 'cancelled'].includes(state.status)) { await customContent.reparseAsset(owner, state.assetId, `library-retry-${id}`); return this.parseState(owner, id); }
+        if (retry && ['failed', 'cancelled', 'completed'].includes(state.status)) { await customContent.reparseAsset(owner, state.assetId, `library-retry-${id}`); return this.parseState(owner, id); }
         return state;
       }
-      const { entry, bytes } = await this.content(owner, id);
+      const entry = ownedEntry(await metadata.list(owner.id), id);
+      if (!/\.(pdf|pptx?|docx|md|txt)$/i.test(entry.name)) fail('file-type-unsupported', 415);
       const token = crypto.randomUUID();
       await mutate(owner, (entries) => {
         const file = ownedEntry(entries, id);
@@ -182,9 +188,14 @@ export function createFileLibraryService({ metadata, blobs, mode = 'cloud', maxB
       });
       try {
         const legacyAssetId = entry.sourceAssetId ?? entry.courseImports?.[0]?.assetId;
-        const asset = legacyAssetId
+        let asset = legacyAssetId
           ? await customContent.adoptLibraryAsset(owner, legacyAssetId, id)
-          : await customContent.parseLibraryFile(owner, { fileId: id, filename: entry.name, bytes, objectKey: entry.objectKey ?? ownedEntry(await metadata.list(owner.id), id).objectKey, sha256: entry.sha256, requestId: `library-${id}` });
+          : await customContent.reuseLibraryAsset?.(owner, id, token);
+        if (!asset) {
+          const { bytes } = await this.content(owner, id);
+          asset = await customContent.parseLibraryFile(owner, { fileId:id, parseToken:token, filename:entry.name, bytes,
+            objectKey:entry.objectKey, sha256:entry.sha256, requestId:`library-${id}` });
+        }
         const parse = { assetId: asset.id, status: asset.parseStatus, error: asset.errorMessage, updatedAt: now() };
         await mutate(owner, (entries) => { const file = ownedEntry(entries, id); if (file.parse?.token === token) file.parse = parse; });
         return parse;
