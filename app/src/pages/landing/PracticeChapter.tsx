@@ -1,8 +1,9 @@
 /** 第三章「练与记」：工作台的四件小件（闪卡、思维导图、待办、批改）与双记忆。 */
-import { useState, type CSSProperties } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import { Check, Layers, ListTodo, Network, PenLine } from 'lucide-react';
 import { Badge, Button } from '../../components/ui';
 import { XiaobaiAvatar } from '../../components/xiaobai/XiaobaiAvatar';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { ChapterHead } from './ChapterHead';
 import base from './landing.module.css';
 import s from './practice.module.css';
@@ -21,6 +22,8 @@ const CARDS = [
   { front: 'KMP 的 next 数组记的是什么？', back: '模式串每个前缀里，最长的相等前后缀的长度。' },
   { front: '进程和线程最核心的区别？', back: '进程是资源分配的单位，线程是调度的单位。' },
 ];
+
+const PREVIEWS = ['闪卡', '思维导图', '待办', '翻译批改'];
 
 /** 与工作台同一套间隔重复：重来 10 分钟后；其余按上次间隔与熟练度推算天数。 */
 const RATINGS = [
@@ -183,6 +186,31 @@ const PUPIL_MEMORY = [
 ] as const;
 
 export function PracticeChapter() {
+  const gallery = useRef<HTMLDivElement>(null);
+  const [preview, setPreview] = useState(0);
+  const reducedMotion = useReducedMotion();
+  const selectPreview = (index: number) => {
+    const container = gallery.current;
+    const card = container?.children[index];
+    if (!container || !(card instanceof HTMLElement)) return;
+    const inset = parseFloat(getComputedStyle(container).paddingLeft) || 0;
+    container.scrollTo({
+      left: container.scrollLeft + card.getBoundingClientRect().left - container.getBoundingClientRect().left - inset,
+      behavior: reducedMotion ? 'instant' : 'smooth',
+    });
+  };
+  const syncPreview = () => {
+    const container = gallery.current;
+    if (!container) return;
+    const start = container.getBoundingClientRect().left + (parseFloat(getComputedStyle(container).paddingLeft) || 0);
+    let nearest = 0;
+    let distance = Infinity;
+    Array.from(container.children).forEach((card, index) => {
+      const next = Math.abs(card.getBoundingClientRect().left - start);
+      if (next < distance) { nearest = index; distance = next; }
+    });
+    setPreview(nearest);
+  };
   return (
     <section id="practice" className={base.chapter} aria-labelledby="chapter-practice">
       <div className={base.wrap}>
@@ -205,7 +233,15 @@ export function PracticeChapter() {
             ))}
           </ul>
 
-          <div className={s.bento}>
+          <div className={s.galleryNav}>
+            <p>左右滑动，试试工作台的四种工具 <span aria-live="polite">{preview + 1} / {PREVIEWS.length}</span></p>
+            <div role="group" aria-label="选择工作台预览">
+              {PREVIEWS.map((name, index) => (
+                <button key={name} type="button" aria-controls="workbench-previews" aria-current={preview === index ? 'true' : undefined} onClick={() => selectPreview(index)}>{name}</button>
+              ))}
+            </div>
+          </div>
+          <div className={s.bento} id="workbench-previews" ref={gallery} onScroll={syncPreview} role="region" aria-label="工作台功能预览" tabIndex={0}>
             <div className={s.span7} data-reveal><ReviewDeck /></div>
             <div className={s.span5} data-reveal style={{ '--reveal-delay': '80ms' } as CSSProperties}><MindMap /></div>
             <div className={s.span5} data-reveal><Todos /></div>

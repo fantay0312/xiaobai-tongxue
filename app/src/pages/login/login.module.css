@@ -483,12 +483,12 @@ header ~ main .page { min-height: 0; }
 }
 
 /* ── 手机：控件用触屏尺寸，文字链放大到好点按，让出刘海与底部横条 ── */
-@media (max-width: 640px) {
+@media (max-width: 640px), (max-width: 959px) and (max-height: 540px) {
   .page {
     /* 窄屏一律用触屏尺寸的控件，不依赖指针类型 */
-    --ctl-sm: 38px;
+    --ctl-sm: 44px;
     --ctl-md: 44px;
-    --ctl-lg: 46px;
+    --ctl-lg: 48px;
   }
 
   .story {
@@ -502,11 +502,15 @@ header ~ main .page { min-height: 0; }
   }
 
   .sheet { gap: 20px; }
+  .sheet [role='radiogroup'] { min-width: 0; }
+  .sheet [role='radio'] { min-width: 0; min-height: 44px; padding-inline: 6px; }
+  .brand { min-height: 44px; }
   .head { gap: 6px; }
   .form { gap: 18px; }
 
   /* 文字链的可点范围向外撑到 40px 高，版面位置不变 */
   .link {
+    min-height: 44px;
     margin: -10px -10px;
     padding: 10px 10px;
   }
@@ -518,6 +522,17 @@ header ~ main .page { min-height: 0; }
 
   .noticeActions { width: 100%; }
   .noticeActions > * { flex: 1 1 auto; }
+}
+
+/* Landscape phones and an open keyboard should leave the form within reach. */
+@media (max-width: 959px) and (max-height: 540px) {
+  .page { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .storyBody { display: none; }
+  .story {
+    padding: max(8px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 0 max(20px, env(safe-area-inset-left));
+    border-right: 0;
+  }
+  .panel { padding-top: 16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

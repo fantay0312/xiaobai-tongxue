@@ -234,7 +234,7 @@
 /* ── 章节 ── */
 .chapter {
   padding-block: clamp(76px, 13vh, 148px);
-  scroll-margin-top: calc(var(--lp-nav-h) - 1px);
+  scroll-margin-top: calc(var(--lp-nav-h) + env(safe-area-inset-top) + 12px);
 }
 
 .chapterTinted {
@@ -629,9 +629,9 @@
     --lp-nav-h: 54px;
     --lp-gutter: 18px;
     /* 触屏尺寸的控件：窄屏一律用好点按的高度，不依赖指针类型 */
-    --ctl-sm: 34px;
-    --ctl-md: 40px;
-    --ctl-lg: 46px;
+    --ctl-sm: 44px;
+    --ctl-md: 44px;
+    --ctl-lg: 48px;
   }
 
   /* 整条顶栏的毛玻璃在手机上滚动时最费帧，换成实底 */
@@ -656,7 +656,7 @@
 
   .brand {
     gap: 8px;
-    min-height: 40px;
+    min-height: 44px;
     font-size: var(--fz-lg);
   }
 
@@ -812,9 +812,22 @@
   .footerNav button {
     display: inline-flex;
     align-items: center;
-    min-height: 40px;
+    min-height: 44px;
     padding: 0 12px;
   }
+}
+
+@media (max-width: 960px) {
+  .page { --ctl-sm: 44px; --ctl-md: 44px; --ctl-lg: 48px; }
+  .brand { min-height: 44px; }
+  .wrap {
+    width: auto;
+    margin-left: max(var(--lp-gutter), env(safe-area-inset-left));
+    margin-right: max(var(--lp-gutter), env(safe-area-inset-right));
+  }
+
+  .nav { padding-top: env(safe-area-inset-top); }
+  .navMenuList [role='menuitem'] { min-height: 44px; }
 }
 
 @media print {
