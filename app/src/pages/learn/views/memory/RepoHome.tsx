@@ -56,11 +56,16 @@ export function RepoHome({ owner, repo, state, paused, topic }: Props) {
     setClearOpen(false);
     toast('记忆库已清空');
   };
+  const deduplicate = () => {
+    const count = repoOps.deduplicate(owner, repo);
+    toast(count ? `已合并 ${count} 条重复记忆，可在变更历史中撤销` : '没有发现重复记忆');
+  };
 
   return (
     <>
       <section className={r.sources} aria-labelledby="repo-sources-title">
         <h3 id="repo-sources-title">记忆从哪里来</h3>
+        {allEntries(state).length > 0 && <Button size="sm" variant="ghost" onClick={deduplicate}>整理重复内容</Button>}
         {repo === 'xiaoyan' ? (
           <>
             <p>

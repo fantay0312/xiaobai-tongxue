@@ -85,6 +85,10 @@ export default function MemoryView({ owner, topic, onOpenTopic, onView }: Termin
   // 让两个记忆库跟上：读入新的学习行为（不只是对话），对账课堂记录
   useEffect(() => { syncTutorRepo(owner); }, [owner, activities]);
   useEffect(() => { syncXiaobaiRepo(owner); }, [owner, events, classroom, historyOwner]);
+  useEffect(() => {
+    if (!xiaoyan.dedupeVersion) repoOps.deduplicate(owner, 'xiaoyan', true);
+    if (historyOwner === owner && !xiaobai.dedupeVersion) repoOps.deduplicate(owner, 'xiaobai', true);
+  }, [owner, historyOwner, xiaoyan.dedupeVersion, xiaobai.dedupeVersion]);
 
   const files = listFiles(state);
   const file = requested === DREAMS || requested === HISTORY || files.some((entry) => entry.path === requested) || (state.files[requested]?.length ?? 0) > 0

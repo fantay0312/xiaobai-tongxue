@@ -82,6 +82,7 @@ export interface RepoState {
   migrated: boolean;
   /** 清空或暂停后，旧的后台任务不得再写入。 */
   workGeneration: string;
+  dedupeVersion: number;
 }
 
 export const REPO_NAMES: Record<RepoId, string> = { xiaoyan: '小砚的记忆库', xiaobai: '小白的记忆库' };
@@ -89,7 +90,7 @@ export const ENTRY_TEXT_MAX = 120;
 const FILE_CAP = 80;
 const REPO_CAP = 400;
 const COMMIT_CAP = 200;
-const FORGOTTEN_CAP = 80;
+const FORGOTTEN_CAP = 400;
 const DUPLICATE_AT = 0.72;
 const STORAGE_PREFIX = 'xiaobai-memory-repo-v1:';
 
@@ -284,7 +285,7 @@ function browserStorage(): Storage | null {
 }
 
 function emptyState(repo: RepoId): RepoState {
-  return { repo, files: {}, titles: {}, commits: [], paused: false, review: false, pending: null, cursor: null, forgotten: [], migrated: false, workGeneration: '' };
+  return { repo, files: {}, titles: {}, commits: [], paused: false, review: false, pending: null, cursor: null, forgotten: [], migrated: false, workGeneration: '', dedupeVersion: 0 };
 }
 
 function sanitizeSource(value: unknown): EntrySource {
@@ -361,7 +362,7 @@ function sanitizeState(repo: RepoId, value: unknown): RepoState {
       at: commit.at,
       author: commit.author === 'user' || commit.author === 'dream' ? commit.author : 'auto',
       message: typeof commit.message === 'string' ? commit.message.slice(0, 160) : '',
-      changes: changes.slice(0, 60),
+      changes: changes.slice(0, REPO_CAP * 2),
       ...(typeof commit.revertOf === 'string' ? { revertOf: commit.revertOf } : {}),
       ...(commit.reverted === true ? { reverted: true } : {}),
     });
@@ -372,6 +373,7 @@ function sanitizeState(repo: RepoId, value: unknown): RepoState {
   state.cursor = isIso(raw.cursor) ? raw.cursor : null;
   state.migrated = raw.migrated === true;
   state.workGeneration = typeof raw.workGeneration === 'string' ? raw.workGeneration : '';
+  state.dedupeVersion = raw.dedupeVersion === 1 ? 1 : 0;
   state.forgotten = (Array.isArray(raw.forgotten) ? raw.forgotten : []).filter((text): text is string => typeof text === 'string' && !!text).slice(0, FORGOTTEN_CAP);
   const pending = raw.pending && typeof raw.pending === 'object' ? raw.pending as Record<string, unknown> : null;
   if (pending && typeof pending.id === 'string' && isIso(pending.at)) {
@@ -561,7 +563,7 @@ export function commitRepo(
   const patch = extra(state);
   if (!changes.length && !touched && !Object.keys(patch).length) return null;
   const commit: RepoCommit | null = changes.length
-    ? { id: newRepoId(), at: nowIso(), author, message: (typeof message === 'function' ? message(changes) : message).slice(0, 160), changes: changes.slice(0, 60) }
+    ? { id: newRepoId(), at: nowIso(), author, message: (typeof message === 'function' ? message(changes) : message).slice(0, 160), changes: changes.slice(0, REPO_CAP * 2) }
     : null;
   write(owner, {
     ...state,
@@ -596,10 +598,14 @@ export interface NewEntry {
   at?: string;
 }
 
-function findDuplicate(entries: RepoEntry[], text: string): RepoEntry | undefined {
+function findDuplicate(entries: RepoEntry[], text: string, section?: string): RepoEntry | undefined {
   let best: RepoEntry | undefined;
   let bestScore = 0;
   for (const entry of entries) {
+    // 同一句话可能分别在错题、已掌握等小节出现，不能跨语义归类合并。
+    if ((entry.section ?? '') !== (section ?? '')) continue;
+    if (negativeMemory(entry.text) !== negativeMemory(text)) continue;
+    if (JSON.stringify(entry.text.match(/\d+(?:\.\d+)?/g)) !== JSON.stringify(text.match(/\d+(?:\.\d+)?/g))) continue;
     const score = textSimilarity(entry.text, text);
     if (score >= DUPLICATE_AT && score > bestScore) {
       best = entry;
@@ -607,6 +613,14 @@ function findDuplicate(entries: RepoEntry[], text: string): RepoEntry | undefine
     }
   }
   return best;
+}
+
+const negativeMemory = (text: string) => /不|没|未|无|别|不要|避免/.test(text);
+
+function duplicateKey(path: string, entry: RepoEntry): string {
+  const scope = path === 'profile.md' ? 'MEMORY.md' : path;
+  // 课程由路径隔离；全局偏好不因在不同课程被观察到而再存一遍。资料则保留文件身份。
+  return JSON.stringify([scope, entry.section ?? '', path === 'materials.md' ? entry.source.ref?.id ?? '' : '', normalizeText(entry.text)]);
 }
 
 /**
@@ -625,7 +639,7 @@ export function addEntries(owner: string | null, repo: RepoId, inputs: NewEntry[
         if (author !== 'user' && state.forgotten.some((old) => old === key || old === `id:${input.id}` || textSimilarity(old, key) >= DUPLICATE_AT)) continue;
         if (input.fileTitle) draft.setTitle(input.path, input.fileTitle);
         if (input.id && draft.find(input.id)) continue;
-        const duplicate = findDuplicate(draft.entries(input.path), text);
+        const duplicate = findDuplicate(draft.entries(input.path), text, input.section);
         if (duplicate) {
           const more = Math.min(99, (duplicate.seen ?? 1) + 1);
           if (author === 'user') {
@@ -654,6 +668,32 @@ export function addEntries(owner: string | null, repo: RepoId, inputs: NewEntry[
 }
 
 export const repoOps = {
+  /** 合并既有的完全重复记录；不同课程/小节不合并，保留人工修改和置顶优先。可在历史中撤销。 */
+  deduplicate(owner: string | null, repo: RepoId, automatic = false): number {
+    let removed = 0;
+    const forgottenIds: string[] = [];
+    commitRepo(owner, repo, automatic ? 'auto' : 'user', () => `合并了 ${removed} 条重复记忆`, (draft, state) => {
+      const groups = new Map<string, { path: string; entry: RepoEntry }[]>();
+      for (const item of allEntries(state)) {
+        const key = duplicateKey(item.path, item.entry);
+        groups.set(key, [...(groups.get(key) ?? []), item]);
+      }
+      const rank = (entry: RepoEntry) => Number(Boolean(entry.pinned)) * 4 + Number(Boolean(entry.edited)) * 2 + Number(entry.author === 'user');
+      for (const group of groups.values()) {
+        if (group.length < 2) continue;
+        group.sort((a, b) => rank(b.entry) - rank(a.entry) || b.entry.updatedAt.localeCompare(a.entry.updatedAt));
+        const keep = group[0].entry;
+        const seen = Math.min(99, group.reduce((sum, { entry }) => sum + (entry.seen ?? 1), 0));
+        draft.update(keep.id, { ...keep, seen });
+        for (const { entry } of group.slice(1)) {
+          draft.remove(entry.id);
+          if (entry.id.startsWith('xb:')) forgottenIds.push(`id:${entry.id}`);
+          removed += 1;
+        }
+      }
+    }, (state) => ({ dedupeVersion: 1, ...(forgottenIds.length ? { forgotten: [...new Set([...forgottenIds, ...state.forgotten])].slice(0, FORGOTTEN_CAP) } : {}) }));
+    return removed;
+  },
   /** 改文字或小节。改过的自动条目标为「我改过」，之后不会被自动覆盖 */
   edit(owner: string | null, repo: RepoId, id: string, patch: { text?: string; section?: string }): boolean {
     const text = patch.text === undefined ? undefined : cleanText(patch.text);
