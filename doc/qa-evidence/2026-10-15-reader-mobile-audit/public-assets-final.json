@@ -1,0 +1,14 @@
+{
+  "index.html": {
+    "status": 200,
+    "sha256Matches": true
+  },
+  "reader/index.html": {
+    "status": 200,
+    "sha256Matches": true
+  },
+  "reader/fonts.css": {
+    "status": 200,
+    "sha256Matches": true
+  }
+}

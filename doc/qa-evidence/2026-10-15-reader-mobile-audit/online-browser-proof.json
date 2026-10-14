@@ -1,0 +1,188 @@
+{
+  "authenticatedAccount": true,
+  "productionRelease": "20261015-reader-87cd056",
+  "model": "deepseek-flash",
+  "questionAnswered": true,
+  "followupAnswered": true,
+  "citationJump": true,
+  "questionRestoredAfterReload": true,
+  "followupRestoredAfterReload": true,
+  "noteRestoredAfterReload": true,
+  "ttsPaused": true,
+  "keyboardLinkActivation": true,
+  "settings320": {
+    "bottom": 615.3125,
+    "height": 637,
+    "left": 12,
+    "right": 308,
+    "scrollable": false,
+    "width": 320
+  },
+  "selectedMedia": [
+    {
+      "label": "默认模型",
+      "selected": "DeepSeek Flash",
+      "value": "deepseek-flash"
+    },
+    {
+      "label": null,
+      "selected": "轻度",
+      "value": "low"
+    },
+    {
+      "label": null,
+      "selected": "腾讯云 TTS",
+      "value": "tencent-tts"
+    },
+    {
+      "label": null,
+      "selected": "智菊 · 阅读女声（大模型）",
+      "value": "501002"
+    },
+    {
+      "label": null,
+      "selected": "Seedream 5.0 Pro",
+      "value": "tokenhub:seedream-image-v5.0-pro"
+    }
+  ],
+  "paintedCovers": [
+    {
+      "complete": true,
+      "height": 1024,
+      "width": 1024
+    },
+    {
+      "complete": true,
+      "height": 1024,
+      "width": 1024
+    }
+  ],
+  "network": [
+    {
+      "path": "/api/reader/gloss/sync",
+      "method": "GET",
+      "status": 200,
+      "mime": "application/json"
+    },
+    {
+      "path": "/api/reader/gloss/sync",
+      "method": "POST",
+      "requestedVoice": "501002",
+      "status": 200,
+      "mime": "application/json"
+    },
+    {
+      "path": "/api/reader/gloss/sync",
+      "method": "POST",
+      "requestedVoice": "501002",
+      "status": 200,
+      "mime": "application/json"
+    },
+    {
+      "path": "/api/reader/gloss/speak",
+      "method": "POST",
+      "requestedModel": "tencent-tts",
+      "requestedVoice": "501002",
+      "status": 200,
+      "mime": "audio/wav",
+      "speechModel": "tencent-tts",
+      "voice": "501002"
+    },
+    {
+      "path": "/api/reader/gloss/speak",
+      "method": "POST",
+      "requestedModel": "tencent-tts",
+      "requestedVoice": "501002",
+      "status": 200,
+      "mime": "audio/wav",
+      "speechModel": "tencent-tts",
+      "voice": "501002"
+    },
+    {
+      "path": "/api/reader/gloss/speak",
+      "method": "POST",
+      "requestedModel": "tencent-tts",
+      "requestedVoice": "501002",
+      "status": 200,
+      "mime": "audio/wav",
+      "speechModel": "tencent-tts",
+      "voice": "501002"
+    },
+    {
+      "path": "/api/reader/gloss/sync",
+      "method": "POST",
+      "requestedVoice": "501002",
+      "status": 200,
+      "mime": "application/json"
+    },
+    {
+      "path": "/api/reader/gloss/sync",
+      "method": "POST",
+      "requestedVoice": "501002",
+      "status": 200,
+      "mime": "application/json"
+    },
+    {
+      "path": "/api/reader/gloss/sync",
+      "method": "GET",
+      "status": 200,
+      "mime": "application/json"
+    },
+    {
+      "path": "/api/reader/gloss/sync",
+      "method": "POST",
+      "requestedVoice": "501002",
+      "status": 200,
+      "mime": "application/json"
+    },
+    {
+      "path": "/api/reader/gloss/sync",
+      "method": "GET",
+      "status": 200,
+      "mime": "application/json"
+    },
+    {
+      "path": "/api/reader/gloss/sync",
+      "method": "GET",
+      "status": 200,
+      "mime": "application/json"
+    },
+    {
+      "path": "/api/reader/gloss/sync",
+      "method": "GET",
+      "status": 200,
+      "mime": "application/json"
+    },
+    {
+      "path": "/api/reader/gloss/sync",
+      "method": "GET",
+      "status": 200,
+      "mime": "application/json"
+    },
+    {
+      "path": "/api/reader/gloss/sync",
+      "method": "GET",
+      "status": 200,
+      "mime": "application/json"
+    },
+    {
+      "path": "/api/reader/gloss/sync",
+      "method": "GET",
+      "status": 200,
+      "mime": "application/json"
+    },
+    {
+      "path": "/api/reader/gloss/ask",
+      "method": "POST",
+      "requestedModel": "deepseek-flash",
+      "status": 200,
+      "mime": "text/event-stream"
+    },
+    {
+      "path": "/api/reader/gloss/sync",
+      "method": "POST",
+      "status": 200,
+      "mime": "application/json"
+    }
+  ]
+}
