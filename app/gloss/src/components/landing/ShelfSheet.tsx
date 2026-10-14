@@ -170,8 +170,8 @@ export function ShelfSheet({
               </h2>
               <p className="mt-2 text-[13px] text-ink-3">
                 {view === "highlights"
-                  ? `${allHighlights.length} highlight${allHighlights.length === 1 ? "" : "s"} across your texts`
-                  : `${items.length} texts${counts.reading ? ` · ${counts.reading} in progress` : ""}`}
+                  ? `文章中共 ${allHighlights.length} 处高亮`
+                  : `${items.length} 篇文章${counts.reading ? ` · 正在阅读 ${counts.reading} 篇` : ""}`}
               </p>
             </div>
             <label className="flex h-10 w-full items-center gap-2 rounded-full border border-rule bg-bg px-3.5 transition-colors focus-within:border-rule-strong sm:w-[300px]">
@@ -190,7 +190,7 @@ export function ShelfSheet({
                 <button
                   type="button"
                   aria-label="导出全部笔记"
-                  data-tip={exported !== null ? `Exported ${exported} text${exported === 1 ? "" : "s"}` : "导出全部笔记"}
+                  data-tip={exported !== null ? `已导出 ${exported} 篇文章` : "导出全部笔记"}
                   data-tip-hint={exported !== null ? undefined : "Markdown 文件，可直接用于 Obsidian"}
                   onClick={async () => setExported(await exportAll())}
                   className="grid size-9 place-items-center rounded-full text-ink-3 transition-colors hover:bg-sunk hover:text-ink"
@@ -305,7 +305,7 @@ export function ShelfSheet({
                       {it.sample && <span className="rounded-full border border-dashed border-rule-strong px-1.5 text-[11.5px] leading-[17px] text-ink-3">示例</span>}
                       <span className="max-w-[60%] truncate">{it.byline}</span>
                       <span aria-hidden className="text-ink-4">{"·"}</span>
-                      <span className="tabular-nums">{it.pct > 0 && it.pct < 1 ? `${Math.round(it.pct * 100)}% read` : `${readingMinutes(it.words)} min`}</span>
+                      <span className="tabular-nums">{it.pct > 0 && it.pct < 1 ? `已读 ${Math.round(it.pct * 100)}%` : `${readingMinutes(it.words)} 分钟`}</span>
                       {it.glosses > 0 && (
                         <>
                           <span aria-hidden className="text-ink-4">{"·"}</span>

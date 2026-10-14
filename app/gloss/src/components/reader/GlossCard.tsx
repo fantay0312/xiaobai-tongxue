@@ -32,10 +32,10 @@ function Receipt({ t }: { t: Turn }) {
   if (!t.usage) return <span>{t.model}</span>;
   const u = t.usage;
   return (
-    <span data-tip={`${u.promptTokens.toLocaleString()} prompt tokens, ${u.cachedTokens.toLocaleString()} cached, ${u.completionTokens} written`}>
+    <span data-tip={`输入 ${u.promptTokens.toLocaleString()}，缓存 ${u.cachedTokens.toLocaleString()}，输出 ${u.completionTokens}`}>
       {t.model}
       <span className="mx-1.5 text-ink-4/70">/</span>
-      {fmtTokens(u.promptTokens)} in{u.cachedTokens > 0 ? ` (${Math.round((u.cachedTokens / Math.max(1, u.promptTokens)) * 100)}% cached)` : ""}, {u.completionTokens} 输出
+      {fmtTokens(u.promptTokens)} 输入{u.cachedTokens > 0 ? ` (${Math.round((u.cachedTokens / Math.max(1, u.promptTokens)) * 100)}% 缓存)` : ""}, {u.completionTokens} 输出
       <span className="mx-1.5 text-ink-4/70">/</span>
       {fmtCost(u.costUsd)}
     </span>
@@ -154,7 +154,7 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
       <article
         ref={ref}
         data-gloss={gloss.id}
-        aria-label={`${gloss.question ?? label}${n ? `, paragraph ${n}` : ""}. Open note.`}
+        aria-label={`${gloss.question ?? label}${n ? `，第 ${n} 段` : ""}。打开笔记。`}
         role="button"
         tabIndex={0}
         className={["gloss is-collapsed", mini ? "is-mini" : "", hover ? "is-hover" : "", entering ? "is-entering" : ""].join(" ")}
@@ -179,7 +179,7 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
             )}
           </p>
           {follow > 0 && (
-            <span className="shrink-0 text-[11px] tabular-nums text-ink-4" data-tip={`${follow} follow-up${follow > 1 ? "s" : ""}`}>
+            <span className="shrink-0 text-[11px] tabular-nums text-ink-4" data-tip={`${follow} 次追问`}>
               +{follow}
             </span>
           )}
@@ -194,7 +194,7 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
     <article
       ref={ref}
       data-gloss={gloss.id}
-      aria-label={`${label} note${n ? ` on paragraph ${n}` : ""}`}
+      aria-label={`${label}笔记${n ? `，第 ${n} 段` : ""}`}
       className={[
         variant === "margin" ? "gloss" : "gloss !relative !transform-none",
         active ? "is-active" : "",
@@ -221,7 +221,7 @@ export const GlossCard = forwardRef<HTMLElement, Props>(function GlossCard({ glo
             {where}
           </button>
         )}
-        {follow > 0 && <span className="text-ink-4">{`${follow} follow-up${follow > 1 ? "s" : ""}`}</span>}
+        {follow > 0 && <span className="text-ink-4">{`${follow} 次追问`}</span>}
         {variant === "margin" && (
           <button
             type="button"

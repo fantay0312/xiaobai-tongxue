@@ -24,7 +24,7 @@ export const ARTICLE_QUESTIONS = [
 
 /** How a one-click action reads in the notebook, so every entry scans as a question. */
 export const ACTION_QUESTIONS: Record<Action, string> = {
-  ask: "Your question",
+  ask: "你的问题",
   explain: "What does this mean here?",
   define: "What does this word mean here?",
   simplify: "能说得更简单些吗？",

@@ -289,7 +289,7 @@ export function BookOpen({
                   </span>
                   <span>
                     {book.pct >= 1 ? "阅读" : reading ? `${Math.round(book.pct * 100)}% read` : "尚未开始"}
-                    {book.highlights > 0 && ` · ${book.highlights} highlight${book.highlights === 1 ? "" : "s"}`}
+                    {book.highlights > 0 && ` · ${book.highlights} 处高亮`}
                   </span>
                 </div>
                 <div className="ob-actions">

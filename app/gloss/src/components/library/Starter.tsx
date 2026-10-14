@@ -74,7 +74,7 @@ export function Starter({ count, signedIn, onAdd }: { count: number; signedIn: b
         </span>
         <span className="starter-title">让 Agent 帮你整理</span>
         <span className="starter-body">
-          把书库连接到你的 AI 助手，请它从书签中收藏值得阅读的文章。{!signedIn && " Needs an account."}
+          把书库连接到你的 AI 助手，请它从书签中收藏值得阅读的文章。{!signedIn && " 需要登录账号。"}
         </span>
       </button>
     </section>

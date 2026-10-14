@@ -122,8 +122,8 @@ async function stream(ix: DocIndex, glossId: string, modelKey: ModelKey) {
     if (raf) cancelAnimationFrame(raf);
     flush();
   } catch (err) {
-    if (ctrl.signal.aborted) update((t) => ({ ...t, streaming: false, error: t.content ? undefined : "Stopped." }));
-    else update((t) => ({ ...t, streaming: false, error: `Connection lost: ${String(err)}` }));
+    if (ctrl.signal.aborted) update((t) => ({ ...t, streaming: false, error: t.content ? undefined : "已停止。" }));
+    else update((t) => ({ ...t, streaming: false, error: "连接中断，请重试。" }));
   } finally {
     controllers.delete(glossId);
     update((t) => ({ ...t, streaming: false, searching: false }));
@@ -194,7 +194,7 @@ export async function fetchBrief(ix: DocIndex) {
     if (j.brief) useStore.getState().setBrief(id, { status: "ready", data: j.brief, usage: j.usage, modelKey, at: Date.now() });
     else useStore.getState().setBrief(id, { status: "error", error: j.error ?? "暂时无法生成批注。", needKey: j.code === "need_key" });
   } catch (e) {
-    useStore.getState().setBrief(id, { status: "error", error: `Connection lost: ${String(e)}` });
+    useStore.getState().setBrief(id, { status: "error", error: "连接中断，请重试。" });
   }
 }
 
@@ -270,6 +270,6 @@ export async function streamAsk(
       }
     }
   } catch (e) {
-    if (!signal?.aborted) on.error?.(`Connection lost: ${String(e)}`);
+    if (!signal?.aborted) on.error?.("连接中断，请重试。");
   }
 }
