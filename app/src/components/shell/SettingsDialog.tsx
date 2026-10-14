@@ -35,6 +35,7 @@ import {
 } from '../ui';
 import { useSheetKeyboardInset } from './ProfileSheetKeyboard';
 import s from './SettingsDialog.module.css';
+import { ReaderMediaSettings } from './ReaderMediaSettings';
 
 /* ───────────────────────── 分区目录 ───────────────────────── */
 
@@ -837,6 +838,7 @@ function ModelSection() {
         </Row>
       </Group>
 
+      <Group title="阅读语音与封面"><ReaderMediaSettings /></Group>
       <p className={s.foot}>讲解评估与课堂状态始终在本地按规则运行，模型只负责理解与台词。</p>
     </>
   );

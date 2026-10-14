@@ -1219,7 +1219,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
       </aside>
 
       <div className={t.workspace}>
-        <TerminalHeader
+        {view !== 'reading' && <TerminalHeader
           topic={chatSection ? topic : undefined}
           viewLabel={view === 'ask' ? undefined : viewTitle}
           sidebarOpen={sidebarOpen}
@@ -1230,7 +1230,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
           onInspector={toggleInspector}
           onCourse={() => setPaletteOpen(true)}
           onTopic={() => switchView('ask')}
-        />
+        />}
 
         {materialsError && (
           <div className={t.banner} role="alert">

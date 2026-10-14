@@ -163,7 +163,12 @@ export function createStaticHandler({
   /* 发布时算一次:运行期不再读 index.html,产物换了必须重启服务(与 systemd 发布流程一致)。 */
   const mainPolicy = mainCsp(inlineScriptHashes(path.join(mainDist, 'index.html')));
   const adminPolicy = adminCsp(inlineScriptHashes(path.join(adminDist, 'index.html')));
+  const readerPolicy = ["default-src 'self'", "base-uri 'none'", "object-src 'none'", "frame-ancestors 'self'", "form-action 'self'", "script-src 'self' 'wasm-unsafe-eval'", "style-src 'self' 'unsafe-inline'", "font-src 'self'", "img-src 'self' https: data: blob:", "connect-src 'self'", "media-src 'self' blob: data:", "worker-src 'self' blob:"].join('; ');
   return function handleStatic(req, res, pathname) {
+    if (pathname === '/reader') { res.writeHead(308, { Location: `${prefix}/reader/` }); res.end(); return; }
+    if (pathname.startsWith('/reader/')) {
+      return serve(req, res, send, pathname.slice('/reader'.length), { root: path.join(mainDist, 'reader'), csp: readerPolicy, fallback: false, frameOptions: 'SAMEORIGIN' });
+    }
     if (pathname === '/admin') {
       res.writeHead(308, {
         Location: `${prefix || ''}/admin/`,

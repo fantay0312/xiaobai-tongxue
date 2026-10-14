@@ -30,6 +30,7 @@ export default defineConfig({
     // 本地联调网关(node server/index.mjs, port 8787);网关未启动时 /api 报错,
     // 前端按"独立模式"处理(不强制登录、LLM 走本地配置),不影响原有开发流
     proxy: {
+      '/reader': 'http://127.0.0.1:5174',
       '/api': 'http://localhost:8787',
     },
   },

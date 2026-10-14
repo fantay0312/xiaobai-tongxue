@@ -98,7 +98,7 @@ const reserveLearningCalls = async(owner,res)=>{
 const learningAnswerRouter = createLearningAnswerRouter({service:learningAnswers,resolveOwner,send,readJson,hasJsonContentType,reserveCalls:reserveLearningCalls});
 const modelGatewayRouter = createModelGatewayRouter({ service: createModelGatewayService({ baseUrl: cfg.upstreamBaseUrl, apiKey: cfg.apiKey, catalog: modelCatalog }), resolveOwner, send, readJson, hasJsonContentType, reserveCalls: reserveLearningCalls });
 const libraryRouter = createFileLibraryRouter({ service: library, resolveOwner, send, readRaw, readJson, rateLimit: (owner) => limit({ scope: 'upload', subject: owner.id, limit: 60, windowSeconds: 86400 }) });
-const readerRouter = createReaderRouter({ repository: postgres.reader, library, resolveOwner, send, readJson, reserveCalls: reserveLearningCalls });
+const readerRouter = createReaderRouter({ repository: postgres.reader, postgres, cfg, library, resolveOwner, send, readJson, readRaw, reserveCalls: reserveLearningCalls });
 const studyRouter = createStudyTutorRouter({ provider: createDeepTutorProvider({ enabled: process.env.DEEPTUTOR_ENABLED === '1', model: cfg.upstreamModelCoach || cfg.upstreamModel, baseUrl: cfg.upstreamBaseUrl, apiKey: cfg.apiKey }), fileLibrary: library, customContent: custom, resolveOwner, send, readJson, hasJsonContentType,
   reserveCalls: async (owner, res, units) => { const result = await limit({ scope: 'deep', subject: owner.id, limit: 80, windowSeconds: 86400, amount: units }); if (!result.allowed) send(res,429,{error:'rate-limited'}); return result.allowed; } });
 function proxyPrimary(req, res, pathname) {

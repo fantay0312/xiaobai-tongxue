@@ -116,6 +116,24 @@ test('main and admin SPAs have isolated fallbacks and cache policies', async (co
   assert.equal(main.body.toString(), '<main>Main SPA</main>');
 });
 
+test('reader assets allow only same-origin embedding without changing main protection', async (context) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'reader-static-'));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(path.join(root, 'reader'), { recursive: true });
+  await writeFile(path.join(root, 'index.html'), 'main');
+  await writeFile(path.join(root, 'reader/index.html'), 'reader');
+  const send = (res, status, body) => { res.writeHead(status, {}); res.end(body); };
+  const serve = createStaticHandler({ mainDist: root, adminDist: root, send });
+  const reader = response(); serve({ method: 'GET' }, reader, '/reader/');
+  assert.equal(reader.status, 200); assert.equal(reader.body.toString(), 'reader');
+  assert.equal(reader.headers['X-Frame-Options'], 'SAMEORIGIN');
+  assert.match(reader.headers['Content-Security-Policy'], /frame-ancestors 'self'/);
+  const main = response(); serve({ method: 'GET' }, main, '/');
+  assert.equal(main.headers['X-Frame-Options'], 'DENY');
+  assert.match(main.headers['Content-Security-Policy'], /frame-ancestors 'none'/);
+  const missing = response(); serve({ method: 'GET' }, missing, '/reader/assets/missing.js'); assert.equal(missing.status, 404);
+});
+
 test('themed index boots inline without opening script-src, and audio keeps its media type', async (context) => {
   const temporary = await mkdtemp(path.join(tmpdir(), 'xiaobai-static-theme-'));
   context.after(() => rm(temporary, { recursive: true, force: true }));

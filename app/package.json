@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/fetch-pyodide.mjs && tsx scripts/export-study-catalog.ts && tsc -b && vite build && node scripts/check-build-artifacts.mjs dist --label app/dist",
+    "build": "node scripts/fetch-pyodide.mjs && tsx scripts/export-study-catalog.ts && tsc -b && vite build && (cd gloss && mise run build) && node scripts/check-build-artifacts.mjs dist --label app/dist",
     "lint": "oxlint",
     "test:commerce": "tsx scripts/commerce-contract.test.ts",
     "test:auth": "tsx scripts/auth-state.test.ts && tsx scripts/auth-lifecycle.test.ts",

@@ -1,0 +1,28 @@
+// Original Gloss topic palettes, pinned by app/gloss/UPSTREAM_COMMIT.
+export const COVER_PALETTES = {
+  "ai": "deep violet and soft lavender",
+  "programming": "navy blue and cornflower blue",
+  "infra": "olive and pale khaki",
+  "data": "petrol blue and pale aqua",
+  "security": "slate grey and steel blue",
+  "tech": "cobalt and sky blue",
+  "design": "coral and apricot",
+  "product": "mauve and lilac",
+  "startups": "crimson and dusty rose",
+  "business": "walnut brown and tan",
+  "work": "chestnut brown and soft peach",
+  "economics": "jade green and mint",
+  "money": "old gold and pale brass",
+  "science": "forest green and sage",
+  "health": "raspberry red and blush pink",
+  "mind": "periwinkle and indigo",
+  "climate": "leaf green and lime",
+  "philosophy": "plum grey and heather",
+  "history": "sepia brown and parchment ochre",
+  "politics": "brick red and pale terracotta",
+  "culture": "magenta and pink",
+  "writing": "terracotta and burnt orange",
+  "learning": "deep teal and pale sea-green",
+  "living": "mustard ochre and olive green",
+  "unsorted": "warm grey and charcoal"
+};

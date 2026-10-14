@@ -1,0 +1,1944 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Gloss. A critical edition for anything you read.
+   Paper, ink, a yellow highlighter for you and a vermilion pen for the model.
+   ========================================================================== */
+
+/* Light grounds. Each sets its own neutrals; the pen colour is layered on top. */
+:root,
+[data-theme="paper"] {
+  --bg: #f6f3ec;
+  --bg-raised: #fcfaf6;
+  --bg-sunk: #ede8dd;
+  --ink: #1d1b18;
+  --ink-2: #4b463f;
+  --ink-3: #857e72;
+  --ink-4: #aba394;
+  --rule: #e5dfd2;
+  --rule-strong: #d3cab8;
+  --hl: rgb(242 196 56 / 0.46);
+  --hl-strong: rgb(242 196 56 / 0.7);
+  --lens-bg: #1d1b18;
+  --lens-fg: #f3efe6;
+  --lens-mute: #9a9285;
+  --lens-hover: #34312c;
+  --shadow-pop: 0 1px 1px rgb(40 30 20 / 0.04), 0 14px 36px -14px rgb(40 30 20 / 0.3), 0 3px 8px -3px rgb(40 30 20 / 0.1);
+  --shadow-card: 0 1px 1px rgb(40 30 20 / 0.03), 0 10px 26px -16px rgb(40 30 20 / 0.24);
+  --bg-pill: #fffdf9;
+  --grain-opacity: 0.045;
+  --good: #3f7d4e;
+  --rubric: var(--pen-l);
+  --rubric-text: var(--pen-l-text);
+  color-scheme: light;
+}
+
+[data-theme="sepia"] {
+  --bg: #f1e6cf;
+  --bg-raised: #f7eedc;
+  --bg-sunk: #e7d9bb;
+  --ink: #33281b;
+  --ink-2: #5a4a36;
+  --ink-3: #8c785c;
+  --ink-4: #ae9b78;
+  --rule: #e0cfad;
+  --rule-strong: #d1bd96;
+  --hl: rgb(236 186 50 / 0.42);
+  --hl-strong: rgb(236 186 50 / 0.66);
+  --lens-bg: #2e2418;
+  --lens-fg: #f4ead6;
+  --lens-mute: #a8957a;
+  --lens-hover: #463a2a;
+  --bg-pill: #fbf5e8;
+  --grain-opacity: 0.06;
+}
+
+[data-theme="snow"] {
+  --bg: #fdfdfc;
+  --bg-raised: #ffffff;
+  --bg-sunk: #f1f1ef;
+  --ink: #141518;
+  --ink-2: #45474d;
+  --ink-3: #82848a;
+  --ink-4: #abadb3;
+  --rule: #e9e9e6;
+  --rule-strong: #d7d7d3;
+  --hl: rgb(250 210 60 / 0.42);
+  --hl-strong: rgb(250 210 60 / 0.66);
+  --lens-bg: #141518;
+  --lens-fg: #f5f5f4;
+  --lens-mute: #8e9096;
+  --lens-hover: #2c2e33;
+  --bg-pill: #ffffff;
+  --shadow-pop: 0 1px 1px rgb(15 20 30 / 0.04), 0 14px 36px -14px rgb(15 20 30 / 0.22), 0 3px 8px -3px rgb(15 20 30 / 0.08);
+  --shadow-card: 0 1px 1px rgb(15 20 30 / 0.03), 0 10px 26px -16px rgb(15 20 30 / 0.18);
+  --grain-opacity: 0.02;
+}
+
+/* Dark grounds. */
+[data-theme="night"] {
+  --bg: #151412;
+  --bg-raised: #1d1b18;
+  --bg-sunk: #24221e;
+  --ink: #e9e3d6;
+  --ink-2: #b6ae9e;
+  --ink-3: #878073;
+  --ink-4: #5b564d;
+  --rule: #2c2a26;
+  --rule-strong: #3e3a34;
+  --hl: rgb(240 196 70 / 0.2);
+  --hl-strong: rgb(240 196 70 / 0.34);
+  --hl-a: 24%;
+  --hl-a-strong: 38%;
+  --key-a: 19%;
+  --lens-bg: #ece6d9;
+  --lens-fg: #191714;
+  --lens-mute: #7d766a;
+  --lens-hover: #d6cfbf;
+  --bg-pill: #34312b;
+  --shadow-pop: 0 1px 1px rgb(0 0 0 / 0.3), 0 18px 44px -14px rgb(0 0 0 / 0.65), 0 3px 8px -3px rgb(0 0 0 / 0.4);
+  --shadow-card: 0 1px 1px rgb(0 0 0 / 0.25), 0 12px 30px -16px rgb(0 0 0 / 0.6);
+  --grain-opacity: 0.035;
+  --good: #79b98a;
+  --rubric: var(--pen-d);
+  --rubric-text: var(--pen-d-text);
+  color-scheme: dark;
+}
+
+[data-theme="ink"] {
+  --bg: #0f1319;
+  --bg-raised: #161b23;
+  --bg-sunk: #1c222c;
+  --ink: #e3e8f0;
+  --ink-2: #abb4c1;
+  --ink-3: #7a8594;
+  --ink-4: #505a69;
+  --rule: #232b36;
+  --rule-strong: #303947;
+  --hl: rgb(240 200 80 / 0.2);
+  --hl-strong: rgb(240 200 80 / 0.34);
+  --hl-a: 24%;
+  --hl-a-strong: 38%;
+  --key-a: 19%;
+  --lens-bg: #e3e8f0;
+  --lens-fg: #10141a;
+  --lens-mute: #6c7685;
+  --lens-hover: #c9d0db;
+  --bg-pill: #2c3441;
+  --shadow-pop: 0 1px 1px rgb(0 0 0 / 0.35), 0 18px 44px -14px rgb(0 0 0 / 0.7), 0 3px 8px -3px rgb(0 0 0 / 0.45);
+  --shadow-card: 0 1px 1px rgb(0 0 0 / 0.3), 0 12px 30px -16px rgb(0 0 0 / 0.65);
+  --grain-opacity: 0.03;
+  --good: #7fbf95;
+  --rubric: var(--pen-d);
+  --rubric-text: var(--pen-d-text);
+  color-scheme: dark;
+}
+
+/* Pens: the colour the model writes in. One light and one dark tone each. */
+:root,
+[data-pen="vermilion"] {
+  --pen-l: #c1401b;
+  --pen-l-text: #a9361a;
+  --pen-d: #ef7a50;
+  --pen-d-text: #f28b65;
+}
+[data-pen="cobalt"] {
+  --pen-l: #2c58c9;
+  --pen-l-text: #234cb4;
+  --pen-d: #86a8ff;
+  --pen-d-text: #9bb7ff;
+}
+[data-pen="moss"] {
+  --pen-l: #3b7a3d;
+  --pen-l-text: #316934;
+  --pen-d: #8fc68c;
+  --pen-d-text: #a2d29f;
+}
+[data-pen="graphite"] {
+  --pen-l: #4b4a47;
+  --pen-l-text: #3a3936;
+  --pen-d: #cfc9bd;
+  --pen-d-text: #ddd7cb;
+}
+
+:root {
+  --rubric-line: color-mix(in oklab, var(--rubric) 52%, transparent);
+  --rubric-wash: color-mix(in oklab, var(--rubric) 9%, transparent);
+  --rubric-wash-strong: color-mix(in oklab, var(--rubric) 17%, transparent);
+  --rubric-key: color-mix(in oklab, var(--rubric) var(--key-a, 13%), transparent);
+  --selection: color-mix(in oklab, var(--rubric) 18%, transparent);
+  --font-serif: var(--nf-serif), "Iowan Old Style", Georgia, serif;
+  --font-sans: var(--nf-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-book: var(--nf-book), "Iowan Old Style", Georgia, serif;
+  --font-legible: var(--nf-legible), ui-sans-serif, system-ui, sans-serif;
+  /* highlighter inks; alpha per ground */
+  --mk-yellow: #f2c438;
+  --mk-green: #7cc66f;
+  --mk-blue: #6aa8f0;
+  --mk-pink: #f084ac;
+  --hl-a: 46%;
+  --hl-a-strong: 70%;
+  --read-size: 20px;
+  --leading: 1.64;
+  --measure-k: 32;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.36, 0.64, 1);
+  --topbar-h: 60px;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-raised: var(--bg-raised);
+  --color-sunk: var(--bg-sunk);
+  --color-pill: var(--bg-pill);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-rubric: var(--rubric);
+  --color-rubric-text: var(--rubric-text);
+  --color-rubric-wash: var(--rubric-wash);
+  --color-hl: var(--hl);
+  --color-lens: var(--lens-bg);
+  --color-lens-fg: var(--lens-fg);
+  --color-lens-mute: var(--lens-mute);
+  --color-lens-hover: var(--lens-hover);
+  --color-good: var(--good);
+  --font-serif: var(--font-serif);
+  --font-sans: var(--font-sans);
+  --shadow-pop: var(--shadow-pop);
+  --shadow-card: var(--shadow-card);
+}
+
+@layer base {
+/* ---------- base ---------- */
+
+html,
+body {
+  overflow-x: clip;
+}
+
+html {
+  background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-padding-top: calc(var(--topbar-h) + 24px);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  min-height: 100dvh;
+  transition: background-color 0.35s var(--ease-out), color 0.35s var(--ease-out);
+}
+
+/* Paper grain: a little tooth so the page does not look like a monitor. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+::selection {
+  background: var(--selection);
+}
+
+:focus-visible {
+  outline: 2px solid var(--rubric);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+button {
+  cursor: pointer;
+}
+
+kbd,
+.kbd {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--rule-strong);
+  color: var(--ink-3);
+  background: var(--bg-raised);
+  font-weight: 500;
+}
+
+}
+
+/* iOS Safari zooms the page into any field under 16px when it takes focus. On
+   touch screens every field is 16px, so asking a question keeps the page still.
+   Important, so it beats the text-[14px] utilities and the field classes in library.css. */
+@media (pointer: coarse) {
+  input:not([type="range"], [type="checkbox"], [type="radio"], [type="file"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+@layer components {
+/* ---------- reader layout: rail, numbers, text, gutter, margin ---------- */
+
+.reader-grid {
+  --m: min(calc(var(--read-size) * var(--measure-k)), 50rem);
+  display: grid;
+  justify-content: center;
+  grid-template-columns: minmax(0, var(--m));
+}
+
+.reader-grid > .rg-rail,
+.reader-grid > .rg-numgap,
+.reader-grid > .rg-gutter,
+.reader-grid > .rg-margin {
+  display: none;
+}
+
+@media (max-width: 719px) {
+  .prose-read .pnum {
+    display: none;
+  }
+}
+
+.hide-nums .prose-read .pnum {
+  visibility: hidden;
+}
+
+@media (min-width: 720px) {
+  .reader-grid {
+    grid-template-columns: 52px minmax(0, var(--m));
+  }
+  .reader-grid > .rg-numgap {
+    display: block;
+  }
+}
+
+@media (min-width: 1080px) {
+  .reader-grid {
+    grid-template-columns: 56px minmax(0, var(--m)) 52px 300px;
+  }
+  .reader-grid > .rg-gutter,
+  .reader-grid > .rg-margin {
+    display: block;
+  }
+}
+
+@media (min-width: 1260px) {
+  .reader-grid {
+    grid-template-columns: 28px 76px minmax(0, var(--m)) 64px 340px;
+  }
+  .reader-grid > .rg-rail {
+    display: block;
+  }
+}
+
+/* ---------- the reading face ---------- */
+
+.prose-read {
+  animation: fade 0.7s 0.22s var(--ease-out) both;
+  font-family: var(--font-serif);
+  font-size: var(--read-size);
+  line-height: var(--leading);
+  font-optical-sizing: auto;
+  font-variant-numeric: oldstyle-nums proportional-nums;
+  hanging-punctuation: first;
+  color: var(--ink);
+  font-kerning: normal;
+}
+
+[data-face="sans"] .prose-read {
+  font-family: var(--font-sans);
+  font-size: calc(var(--read-size) * 0.9);
+  letter-spacing: -0.003em;
+}
+
+[data-face="book"] .prose-read {
+  font-family: var(--font-book);
+  font-size: calc(var(--read-size) * 0.94);
+}
+
+[data-face="legible"] .prose-read {
+  font-family: var(--font-legible);
+  font-size: calc(var(--read-size) * 0.88);
+  letter-spacing: 0.004em;
+}
+
+[data-face="sans"] .prose-read .blk[data-type="h2"],
+[data-face="sans"] .prose-read .blk[data-type="h3"],
+[data-face="legible"] .prose-read .blk[data-type="h2"],
+[data-face="legible"] .prose-read .blk[data-type="h3"] {
+  font-family: var(--font-serif);
+}
+
+/* Justified like a printed page, with hyphens so the spacing stays even. */
+[data-align="justify"] .prose-read .blk:not([data-type="h2"]):not([data-type="h3"]) .blk-text {
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+
+/* Book paragraphs: no gap, the first line indented instead. */
+[data-paras="indented"] .prose-read .blk[data-type="p"]:has(+ .blk[data-type="p"]) {
+  margin-bottom: 0;
+}
+[data-paras="indented"] .prose-read .blk[data-type="p"] + .blk[data-type="p"]:not(.is-first) .blk-text {
+  text-indent: 1.6em;
+}
+
+@media (max-width: 640px) {
+  .prose-read {
+    font-size: calc(var(--read-size) * 0.9);
+    line-height: calc(var(--leading) - 0.05);
+  }
+  [data-face="sans"] .prose-read {
+    font-size: calc(var(--read-size) * 0.84);
+  }
+}
+
+.prose-read .blk {
+  position: relative;
+  margin: 0 0 0.95em;
+  transition: opacity 0.4s var(--ease-out);
+}
+
+.prose-read .blk-text {
+  display: block;
+  text-wrap: pretty;
+}
+
+.prose-read .blk[data-type="h2"] {
+  font-size: 1.32em;
+  line-height: 1.25;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin: 2em 0 0.7em;
+}
+
+.prose-read .blk[data-type="h3"] {
+  font-size: 1.08em;
+  line-height: 1.3;
+  font-weight: 600;
+  margin: 1.6em 0 0.5em;
+}
+
+.prose-read .blk[data-type="quote"] {
+  padding-left: 1.1em;
+  border-left: 2px solid var(--rule-strong);
+  color: var(--ink-2);
+  font-style: italic;
+}
+
+.prose-read .blk[data-type="li"] {
+  padding-left: 1.3em;
+  margin-bottom: 0.4em;
+}
+
+.prose-read .blk[data-type="li"]::before {
+  content: "";
+  position: absolute;
+  left: 0.35em;
+  top: 0.78em;
+  width: 5px;
+  height: 5px;
+  border-radius: 99px;
+  background: var(--ink-3);
+}
+
+.prose-read .blk[data-type="pre"] {
+  font-family: var(--font-sans);
+  font-size: 0.74em;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  background: var(--bg-sunk);
+  padding: 1em 1.2em;
+  border-radius: 8px;
+}
+
+.prose-read .blk[data-type="note"] {
+  font-size: 0.82em;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+
+.prose-read em {
+  font-style: italic;
+}
+
+.prose-read strong {
+  font-weight: 650;
+}
+
+.prose-read code {
+  font-family: var(--font-sans);
+  font-size: 0.82em;
+  background: var(--bg-sunk);
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+}
+
+.prose-read a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--rule-strong);
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+/* A rubricated initial: the coloured capital of a manuscript, two lines deep. */
+.prose-read .blk.is-first .blk-text::first-letter {
+  float: left;
+  font-size: 3.45em;
+  line-height: 0.84;
+  padding: 0.07em 0.05em 0 0;
+  color: var(--rubric);
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-variation-settings: "opsz" 72;
+}
+
+@supports (initial-letter: 2) or (-webkit-initial-letter: 2) {
+  .prose-read .blk.is-first .blk-text::first-letter {
+    float: none;
+    font-size: inherit;
+    line-height: inherit;
+    padding: 0;
+    -webkit-initial-letter: 2;
+    initial-letter: 2;
+    margin-right: 0.12em;
+  }
+}
+
+/* ---------- paragraph numbers: the shared address system ---------- */
+
+.pnum {
+  position: absolute;
+  left: -3.4rem;
+  top: 0.32em;
+  width: 2.4rem;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  line-height: 1.3;
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--ink-4);
+  user-select: none;
+  -webkit-user-select: none;
+  border: 0;
+  background: none;
+  padding: 2px 4px;
+  border-radius: 5px;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.pnum .pnum-ask {
+  opacity: 0;
+  transform: translateX(3px);
+  transition: opacity 0.15s, transform 0.2s var(--ease-out);
+  color: var(--rubric);
+}
+
+.blk:hover > .pnum,
+.blk.is-cursor > .pnum {
+  color: var(--rubric-text);
+}
+
+.blk:hover > .pnum .pnum-ask,
+.blk.is-cursor > .pnum .pnum-ask,
+.pnum:focus-visible .pnum-ask {
+  opacity: 1;
+  transform: none;
+}
+
+.pnum:hover {
+  background: var(--rubric-wash);
+}
+
+.pnum-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 99px;
+  background: var(--rubric);
+  flex: none;
+}
+
+.blk.is-cursor::before {
+  content: "";
+  position: absolute;
+  left: -0.85rem;
+  top: 0.25em;
+  bottom: 0.25em;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--rubric);
+  animation: grow-y 0.25s var(--ease-out);
+}
+
+/*
+ * Focus mode: the title and the text, nothing else. The rail, numbers,
+ * margin, byline, gloss, composer and footer all go; marks lose their ink;
+ * the top bar tucks away until the pointer reaches the top edge. What is
+ * on screen stays in full ink; a paragraph recedes once you have read past
+ * it (Reader marks it data-read as its last line nears the top).
+ */
+.focus-mode .reader-grid {
+  grid-template-columns: minmax(0, var(--m));
+}
+.focus-mode .reader-grid > :is(.rg-rail, .rg-numgap, .rg-gutter, .rg-margin) {
+  display: none;
+}
+/* Important: these elements also carry display utilities, which outrank this layer. */
+.focus-mode .focus-hide {
+  display: none !important;
+}
+.focus-mode .prose-read .pnum {
+  visibility: hidden;
+}
+.focus-mode .prose-read :is(.m-hl, .m-gloss) {
+  background: none;
+  cursor: auto;
+}
+.focus-mode .prose-read .blk[data-read] {
+  opacity: 0.28;
+}
+.focus-mode .reader-grid {
+  animation: fade 0.5s var(--ease-out);
+}
+
+/* Says once how to leave, then gets out of the way. */
+.focus-hint {
+  animation: focus-hint 2.8s var(--ease-out) both;
+}
+
+@keyframes focus-hint {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+  12%,
+  75% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ---------- marks: your highlighter and the model's pen ---------- */
+
+.m-hl {
+  --mk: var(--mk-yellow);
+  background-color: color-mix(in oklab, var(--mk) var(--hl-a), transparent);
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: background-color 0.2s;
+}
+
+.m-hl[data-c="green"] {
+  --mk: var(--mk-green);
+}
+.m-hl[data-c="blue"] {
+  --mk: var(--mk-blue);
+}
+.m-hl[data-c="pink"] {
+  --mk: var(--mk-pink);
+}
+
+.m-hl.is-active {
+  background-color: color-mix(in oklab, var(--mk) var(--hl-a-strong), transparent);
+}
+
+/* A new highlight is swept on, left to right, like a real marker. */
+.m-hl.is-new {
+  background-image: linear-gradient(color-mix(in oklab, var(--mk) var(--hl-a), transparent), color-mix(in oklab, var(--mk) var(--hl-a), transparent));
+  background-color: transparent;
+  background-repeat: no-repeat;
+  animation: hl-sweep 0.5s var(--ease-out) both;
+}
+
+@keyframes hl-sweep {
+  from {
+    background-size: 0% 100%;
+  }
+  to {
+    background-size: 100% 100%;
+  }
+}
+
+/* The model's underline is a background line so it can be drawn on. */
+.m-gloss {
+  --ul: var(--rubric-line);
+  background-image: linear-gradient(var(--ul), var(--ul));
+  background-repeat: no-repeat;
+  background-size: 100% 1.5px;
+  background-position: 0 calc(100% - 0.08em);
+  cursor: pointer;
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: background-color 0.25s var(--ease-out);
+}
+
+.m-gloss.is-hover {
+  background-color: var(--rubric-wash);
+}
+
+.m-gloss.is-active {
+  --ul: var(--rubric);
+  background-color: var(--rubric-wash);
+}
+
+.m-gloss.is-new {
+  animation: ul-draw 0.7s var(--ease-out) both;
+}
+
+@keyframes ul-draw {
+  from {
+    background-size: 0% 1.5px;
+  }
+}
+
+.m-pending {
+  background: var(--rubric-wash-strong);
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.blk.is-flash .blk-text {
+  animation: flash 1.8s var(--ease-out);
+  border-radius: 4px;
+}
+
+@keyframes flash {
+  0%,
+  20% {
+    background: var(--rubric-wash-strong);
+    box-shadow: 0 0 0 6px var(--rubric-wash-strong);
+  }
+  100% {
+    background: transparent;
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+/* ---------- glosses in the margin ---------- */
+
+.gloss {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  padding: 10px 14px 12px 15px;
+  border-left: 1.5px solid var(--rule-strong);
+  border-radius: 0 10px 10px 0;
+  transition:
+    transform 0.42s var(--ease-out),
+    background-color 0.25s,
+    border-color 0.25s,
+    box-shadow 0.25s,
+    opacity 0.3s;
+  will-change: transform;
+}
+
+.gloss.is-hover {
+  border-left-color: var(--rubric-line);
+}
+
+/* Closed notes: a question and its one-line answer, quiet until reached for. */
+.gloss.is-collapsed {
+  padding: 7px 12px 8px 14px;
+  cursor: pointer;
+  border-radius: 0 9px 9px 0;
+}
+
+.gloss.is-collapsed:hover,
+.gloss.is-collapsed:focus-visible {
+  background: color-mix(in oklab, var(--bg-raised) 70%, transparent);
+  border-left-color: var(--rubric-line);
+}
+
+.gloss.is-collapsed:focus-visible {
+  outline-offset: -2px;
+}
+
+.gloss.is-mini {
+  padding-block: 5px;
+}
+
+.gloss.is-active {
+  background: var(--bg-raised);
+  border-left-color: var(--rubric);
+  box-shadow: var(--shadow-card);
+  z-index: 2;
+}
+
+.gloss.is-entering {
+  animation: gloss-in 0.5s var(--ease-out);
+}
+
+@keyframes gloss-in {
+  from {
+    opacity: 0;
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.gloss-body {
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  line-height: 1.58;
+  color: var(--ink);
+  overflow-wrap: break-word;
+}
+
+.gloss-body p + p,
+.gloss-body p + ul,
+.gloss-body ul + p,
+.gloss-body p + ol {
+  margin-top: 0.6em;
+}
+
+.gloss-body ul,
+.gloss-body ol {
+  display: grid;
+  gap: 0.45em;
+}
+
+.gloss-body li {
+  position: relative;
+  padding-left: 0.95em;
+}
+
+.gloss-body li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.68em;
+  width: 4px;
+  height: 4px;
+  border-radius: 9px;
+  background: var(--rubric);
+}
+
+.gloss-body strong {
+  font-weight: 600;
+}
+
+.gloss-body em {
+  font-style: italic;
+}
+
+.gloss-body code {
+  font-family: var(--font-sans);
+  font-size: 0.92em;
+  background: var(--bg-sunk);
+  padding: 0.05em 0.3em;
+  border-radius: 4px;
+}
+
+/* A paragraph citation inside an answer: quiet as a footnote, the pen on hover. */
+.cite {
+  display: inline-flex;
+  align-items: center;
+  height: 1.4em;
+  padding: 0 0.38em;
+  margin: 0 0.04em;
+  font-family: var(--font-sans);
+  font-size: 0.72em;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  vertical-align: 0.1em;
+  line-height: 1;
+  color: var(--ink-3);
+  background: color-mix(in oklab, var(--ink) 5%, transparent);
+  border-radius: 5px;
+  border: 0;
+  transition: background-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.cite:hover,
+.cite:focus-visible {
+  background: var(--rubric-wash-strong);
+  color: var(--rubric-text);
+}
+
+.cite:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* The sources under an answer are links, not the answer's own bulleted list. */
+.gloss-body ol.sources {
+  display: block;
+}
+.gloss-body ol.sources li {
+  min-width: 0;
+  padding-left: 0;
+}
+.gloss-body ol.sources li::before {
+  content: none;
+}
+
+/* A web citation reads as a footnote number, apart from the text's own ¶ chips. */
+.cite-web {
+  min-width: 1.4em;
+  justify-content: center;
+  padding: 0 0.3em;
+  text-decoration: none;
+  vertical-align: 0.3em;
+  font-size: 0.66em;
+}
+
+/* The key answer: the model marks the words a skimmer needs, and the rest steps back. */
+mark.key {
+  color: var(--ink);
+  font-weight: 500;
+  background: var(--rubric-key);
+  border-radius: 0.22em;
+  padding: 0.05em 0.16em;
+  margin: 0 -0.06em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.gloss-body:has(mark.key) {
+  color: var(--ink-2);
+}
+
+mark.key .cite {
+  background: transparent;
+}
+
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 3px;
+  vertical-align: -0.17em;
+  border-radius: 2px;
+  background: var(--rubric);
+  animation: caret-pulse 1.05s ease-in-out infinite;
+}
+
+@keyframes caret-pulse {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/* Waiting for the first words: three lines of the pen's wash, shimmering. */
+.writing {
+  display: grid;
+  gap: 0.55em;
+  padding: 0.3em 0 0.2em;
+}
+
+.writing > span {
+  display: block;
+  height: 0.6em;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--rubric-wash) 0%, var(--rubric-wash-strong) 45%, var(--rubric-wash) 90%);
+  background-size: 220% 100%;
+  animation: shimmer 1.5s linear infinite;
+}
+
+.writing-line {
+  height: 0.55em;
+  width: 70%;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--rubric-wash) 0%, var(--rubric-wash-strong) 45%, var(--rubric-wash) 90%);
+  background-size: 220% 100%;
+  animation: shimmer 1.5s linear infinite;
+}
+.writing > span:nth-child(2) {
+  animation-delay: 0.12s;
+}
+.writing > span:nth-child(3) {
+  animation-delay: 0.24s;
+}
+
+@keyframes caret {
+  to {
+    visibility: hidden;
+  }
+}
+
+.leader {
+  fill: none;
+  stroke: var(--rubric-line);
+  stroke-width: 1.1;
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  animation: draw 0.55s var(--ease-out) forwards;
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ---------- popovers and the lens ---------- */
+
+.pop {
+  background: var(--bg-raised);
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  box-shadow: var(--shadow-pop);
+  animation: pop-in 0.18s var(--ease-out);
+  transform-origin: var(--origin, top right);
+}
+
+.lens {
+  animation: lens-in 0.24s var(--ease-spring);
+  transform-origin: var(--origin, bottom center);
+}
+
+/* On touch the lens docks where the composer sits, so the composer steps aside. */
+.composer {
+  transition:
+    opacity 0.18s var(--ease-out),
+    visibility 0.18s;
+}
+[data-lens-docked] .composer {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* The lens: one row of plain words, captions on hover, the rest one click away. */
+.lens-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 32px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s,
+    color 0.15s,
+    transform 0.15s var(--ease-out);
+}
+
+.lens-btn:hover {
+  background: var(--lens-hover);
+}
+
+.lens-btn:active {
+  transform: scale(0.95);
+}
+
+/* The bar scrolls sideways on phones, so focus rings sit inside the buttons. */
+.lens-btn:focus-visible {
+  outline-offset: -2px;
+}
+
+.lens-caret {
+  width: 1.5px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--rubric);
+  animation: caret-pulse 1.05s ease-in-out infinite;
+}
+
+.lens-dot {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 99px;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
+  transition:
+    transform 0.18s var(--ease-spring),
+    box-shadow 0.15s;
+}
+
+.lens-dot:hover {
+  transform: scale(1.18);
+}
+
+.lens-dot.is-on {
+  box-shadow:
+    0 0 0 2px var(--lens-bg),
+    0 0 0 3.5px var(--lens-fg);
+}
+
+.lens-morph {
+  animation: lens-morph 0.24s var(--ease-out);
+}
+
+@keyframes lens-morph {
+  from {
+    opacity: 0;
+    transform: scaleX(0.96);
+  }
+}
+
+.lens-starter {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 99px;
+  font-size: 12.5px;
+  color: var(--lens-mute);
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+  animation: rise 0.35s var(--ease-out) both;
+}
+
+.lens-starter:hover {
+  background: var(--lens-hover);
+  color: var(--lens-fg);
+}
+
+.lens-menu {
+  animation: menu-in 0.2s var(--ease-out);
+  transform-origin: top right;
+}
+
+.lens-item {
+  animation: fade 0.25s var(--ease-out) both;
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-4px);
+  }
+}
+
+@keyframes lens-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(4px);
+  }
+}
+
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+.rise {
+  animation: rise 0.7s var(--ease-out) both;
+}
+
+.loading-bar {
+  position: relative;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--rule);
+}
+
+.loading-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 38%;
+  border-radius: inherit;
+  background: var(--rubric);
+  animation: indeterminate 1.3s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+@keyframes indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(270%);
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, var(--bg-sunk) 0%, var(--rule) 50%, var(--bg-sunk) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-strong) transparent;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------- landing: the headline, marked once ---------- */
+
+.hero-title {
+  /* By the width, and by the height too, so the whole landing fits one screen on a short laptop. */
+  font-size: clamp(2.9rem, min(7vw, 10.5vh), 6.8rem);
+  line-height: 0.98;
+  font-weight: 350;
+  letter-spacing: -0.038em;
+  font-variation-settings: "opsz" 72;
+  text-wrap: balance;
+}
+
+.hero-title > span:last-child {
+  color: var(--ink-2);
+}
+
+/* "any line", marked the way a reader marks: the wash draws across, then the
+   pen underlines it. From above the ascenders to just under the descenders. */
+.hero-mark {
+  position: relative;
+  isolation: isolate;
+  white-space: nowrap;
+}
+
+.hero-mark::before,
+.hero-mark::after {
+  content: "";
+  position: absolute;
+  transform-origin: left;
+  animation: mark-in 0.8s 0.25s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+
+.hero-mark::before {
+  inset: -0.05em -0.07em 0.02em;
+  z-index: -1;
+  border-radius: 0.06em;
+  background: var(--rubric-wash);
+}
+
+.hero-mark::after {
+  left: 0;
+  right: 0;
+  bottom: 0.01em;
+  height: max(2.5px, 0.032em);
+  border-radius: 99px;
+  background: var(--rubric);
+  animation-duration: 0.6s;
+  animation-delay: 0.95s;
+}
+
+@keyframes mark-in {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* ---------- notebook ---------- */
+
+/* The margin steps back while the notebook covers it; on very wide screens both fit. */
+.rg-margin {
+  transition: opacity 0.3s var(--ease-out);
+}
+
+@media (max-width: 1899px) {
+  .nb-open .rg-margin {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+.nb-clamp {
+  max-height: calc(1.55em * 5);
+  overflow: hidden;
+}
+
+.nb-clamp.is-over {
+  mask-image: linear-gradient(to bottom, #000 55%, transparent);
+}
+
+.import-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--rubric), transparent);
+  background-size: 40% 100%;
+  background-repeat: no-repeat;
+  animation: sweep 1.1s var(--ease-out) infinite;
+}
+
+@keyframes sweep {
+  from {
+    background-position: -40% 0;
+  }
+  to {
+    background-position: 140% 0;
+  }
+}
+
+/* ---------- under the link bar: the way to the library ---------- */
+
+.lib-line {
+  display: flex;
+  max-width: 600px;
+  height: 34px;
+  margin: 14px auto 0;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 13.5px;
+  color: var(--ink-3);
+  animation: rise 0.45s var(--ease-out) both;
+}
+.lib-line-note {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+.lib-line-go {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--bg-sunk);
+  font-weight: 500;
+  color: var(--ink-2);
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+.lib-line-go:hover {
+  color: var(--ink);
+  background: color-mix(in oklab, var(--bg-sunk) 80%, var(--ink) 8%);
+}
+
+/* A bundled sample under the link bar: a small plate of its cover, and its author. */
+.lib-sample {
+  display: inline-flex;
+  height: 30px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px 0 4px;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  background: var(--bg-raised);
+  color: var(--ink-2);
+  transition: color 0.2s ease, border-color 0.2s ease, transform 0.2s var(--ease-out);
+}
+.lib-sample img {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08);
+}
+.lib-sample:hover {
+  color: var(--ink);
+  border-color: var(--rule-strong);
+}
+.lib-sample:active {
+  transform: scale(0.97);
+}
+@media (max-width: 639px) {
+  /* On a phone the question sits on its own line, and the samples under it. */
+  .lib-line:has(.lib-sample) {
+    height: auto;
+    min-height: 34px;
+    flex-wrap: wrap;
+    gap: 8px 6px;
+  }
+  .lib-line:has(.lib-sample) > span:first-child {
+    flex-basis: 100%;
+    text-align: center;
+  }
+}
+
+/* ---------- the desk: what is yours, at the foot of the landing ---------- */
+
+/* One frame for every state (classics, how it works, latest highlights,
+   today's review): a header line, a row of tiles of one height, a foot line. */
+.desk {
+  width: 100%;
+  max-width: 904px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+.desk.is-holding {
+  height: 198px;
+}
+.desk-head {
+  display: flex;
+  height: 30px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+  animation: fade 0.6s 0.2s var(--ease-out) both;
+}
+.desk-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.desk-aside {
+  flex-shrink: 0;
+}
+.desk-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--ink-3);
+  transition: color 0.2s ease;
+}
+.desk-link svg {
+  transition: transform 0.3s var(--ease-out);
+}
+.desk-link:hover {
+  color: var(--ink);
+}
+.desk-link:hover svg {
+  transform: translateX(2px);
+}
+
+.desk-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.desk-tiles > li,
+.desk > .desk-tile {
+  animation: rise 0.55s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 70ms + 240ms);
+}
+.desk-tile {
+  position: relative;
+  display: flex;
+  height: 124px;
+  flex-direction: column;
+  padding: 15px 18px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--rule);
+  background: var(--bg-raised);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.3s var(--ease-out), border-color 0.2s ease, box-shadow 0.3s var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  a.desk-tile:hover {
+    transform: translateY(-2px);
+    border-color: var(--rule-strong);
+    box-shadow: var(--shadow-pop);
+  }
+}
+a.desk-tile:active {
+  transform: scale(0.99);
+}
+a.desk-tile:focus-visible {
+  outline-offset: 3px;
+  border-radius: 16px;
+}
+
+/* The source under a quote: it darkens and grows an arrow when reached for. */
+.desk-source {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 10px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  transition: color 0.2s ease;
+}
+.desk-source-go {
+  flex-shrink: 0;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.2s ease, transform 0.3s var(--ease-out);
+}
+:is(a.desk-tile, .desk-tile a):hover .desk-source {
+  color: var(--ink);
+}
+:is(a.desk-tile, .desk-tile a):hover .desk-source-go {
+  opacity: 1;
+  transform: none;
+}
+
+/* How it works: plain tiles, not links. */
+.desk-tile.is-step {
+  box-shadow: none;
+  background: color-mix(in oklab, var(--bg-raised) 55%, transparent);
+}
+.desk-step-n {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--rubric-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fewer than three highlights: the empty places keep the row's shape. */
+.desk-tile.is-room {
+  align-items: center;
+  justify-content: center;
+  padding: 18px 26px;
+  border-style: dashed;
+  background: transparent;
+  box-shadow: none;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+  text-wrap: balance;
+  color: var(--ink-4);
+}
+
+/* Today's review: one wide tile, the line on the left, what to do with it on the right. */
+.desk-tile.is-review {
+  flex-direction: row;
+  gap: 20px;
+  padding: 16px 16px 14px 20px;
+}
+
+.desk-foot {
+  min-height: 20px;
+  margin-top: 14px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-3);
+  animation: fade 0.6s 0.5s var(--ease-out) both;
+}
+
+@media (max-width: 639px) {
+  .desk {
+    padding: 0 20px;
+  }
+  .desk.is-holding {
+    height: 0;
+  }
+  .desk-tiles {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .desk-tile {
+    height: auto;
+    min-height: 0;
+  }
+  .desk-tile.is-room {
+    display: none;
+  }
+  /* Steps read as a short list: the number beside its title. */
+  .desk-tile.is-step {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    padding: 13px 16px 14px;
+  }
+  .desk-tile.is-step .desk-step-n {
+    grid-row: span 2;
+    padding-top: 3px;
+  }
+  .desk-tile.is-step > p:first-of-type {
+    margin-top: 0;
+  }
+  .desk-tile.is-review {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+/* ---------- the shelf sheet: every text and highlight, pulled up over the page ---------- */
+
+/* The whole shelf, pulled up over the desk. */
+.shelf-sheet {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: min(86dvh, 820px);
+  border-radius: 22px 22px 0 0;
+  border-top: 1px solid var(--rule);
+  background: var(--bg-raised);
+  box-shadow: 0 -24px 60px -24px rgb(0 0 0 / 0.28);
+  animation: shelf-up 0.5s var(--ease-out) both;
+}
+
+@keyframes shelf-up {
+  from {
+    transform: translateY(40%);
+    opacity: 0;
+  }
+}
+
+.shelf-row {
+  border-bottom: 1px solid var(--rule);
+  animation: rise 0.4s var(--ease-out) both;
+}
+
+@keyframes drop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+
+}
+
+/* ---------- the text in miniature, read by the pen while the brief is written ---------- */
+
+.text-shape {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  width: 54px;
+  height: 30px;
+}
+
+.text-shape > span {
+  height: 2px;
+  border-radius: 2px;
+  background: var(--rule-strong);
+}
+
+.text-shape.is-scan > span {
+  animation: shape-scan 1.5s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 110ms);
+}
+
+@keyframes shape-scan {
+  0%,
+  60%,
+  100% {
+    background: var(--rule-strong);
+  }
+  25% {
+    background: var(--rubric);
+  }
+}
+
+/* ---------- tooltips: one for the whole app, instant, in the lens's inks ---------- */
+
+/* Placed and moved by script (components/ui/Tooltips.tsx). No CSS transition
+   on its transform: a new box would glide in from the top-left corner. */
+.tip-box {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 100;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.tip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: max-content;
+  max-width: 248px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.3;
+  letter-spacing: 0.005em;
+  background: var(--lens-bg);
+  color: var(--lens-fg);
+  box-shadow: 0 8px 22px -8px rgb(0 0 0 / 0.38), 0 1px 2px rgb(0 0 0 / 0.14), inset 0 0 0 0.5px rgb(255 255 255 / 0.06);
+  transform-origin: 50% 100%;
+}
+
+.tip-box[data-side="bottom"] .tip {
+  transform-origin: 50% 0;
+}
+.tip-box[data-side="left"] .tip {
+  transform-origin: 100% 50%;
+}
+.tip-box[data-side="right"] .tip {
+  transform-origin: 0 50%;
+}
+
+/* Leaving: a quick fade where it stands. Coming back, it is there at once. */
+.tip-box.is-leaving .tip {
+  opacity: 0;
+  transition: opacity 0.11s ease-out;
+}
+
+.tip-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tip-hint {
+  color: var(--lens-mute);
+}
+
+.tip:has(.tip-hint) {
+  padding: 7px 10px 8px;
+}
+
+.tip-kbd {
+  margin-right: -3px;
+  padding: 2px 5px;
+  border: 0;
+  border-radius: 4px;
+  font-size: 10.5px;
+  color: var(--lens-fg);
+  background: color-mix(in oklab, var(--lens-fg) 14%, transparent);
+}
+
+/* On a dark surface (the lens), the tip is paper. */
+.tip-paper {
+  background: var(--bg-raised);
+  color: var(--ink);
+  box-shadow: var(--shadow-card), 0 0 0 1px var(--rule);
+}
+.tip-paper .tip-hint {
+  color: var(--ink-3);
+}
+.tip-paper .tip-kbd {
+  color: var(--ink-2);
+  background: var(--bg-sunk);
+}
+
+/* ---------- a new theme pours in from the swatch you picked ---------- */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* The page stays live while the new theme pours in: clicks go through the snapshot. */
+::view-transition {
+  pointer-events: none;
+}
+
+.theme-swap *,
+.theme-swap *::before,
+.theme-swap *::after {
+  transition: none !important;
+}
+
+/* ---------- motion preferences: every animation and transition stands down ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .leader {
+    stroke-dashoffset: 0;
+  }
+  .caret {
+    animation: none !important;
+  }
+  .hero-mark::before,
+  .hero-mark::after {
+    animation: none;
+  }
+}
+
+/* Figures and tables from the source page. Pictures load from where they live,
+   fade in once they arrive, and never upscale past their own size. */
+.prose-read .blk[data-type="figure"] {
+  margin: 1.6em 0 1.5em;
+}
+
+.prose-read .fig-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  max-height: 72vh;
+  margin: 0 auto;
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity 0.5s var(--ease-out);
+}
+
+.prose-read .fig-img.is-loaded {
+  opacity: 1;
+}
+
+[data-theme="night"] .prose-read .fig-img,
+[data-theme="ink"] .prose-read .fig-img {
+  filter: brightness(0.9);
+}
+
+.prose-read .blk[data-type="figure"] .blk-text {
+  margin-top: 0.75em;
+  font-family: var(--font-sans);
+  font-size: 0.68em;
+  line-height: 1.5;
+  color: var(--ink-3);
+  text-align: center;
+  text-wrap: balance;
+}
+
+.prose-read .blk[data-type="table"] {
+  margin: 1.5em 0 1.6em;
+}
+
+.prose-read .tbl {
+  max-height: 70vh;
+  overflow: auto;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  overscroll-behavior: contain;
+}
+
+.prose-read .tbl table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+  font-size: 0.66em;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+
+.prose-read .tbl th,
+.prose-read .tbl td {
+  padding: 0.6em 0.9em;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--rule);
+}
+
+.prose-read .tbl th {
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  box-shadow: inset 0 -1px 0 var(--rule-strong);
+}
+
+.prose-read .tbl td {
+  color: var(--ink-2);
+}
+
+.prose-read .tbl tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* The reader's own notes in the margin: their words, in the reading face,
+   on a rule the colour of the highlight they belong to. */
+.mnote {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  display: block;
+  padding: 6px 12px 7px 14px;
+  border-left: 2px solid color-mix(in oklab, var(--note-c) 80%, transparent);
+  border-radius: 0 9px 9px 0;
+  text-align: left;
+  font-family: var(--font-serif);
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  cursor: text;
+  transition:
+    transform 0.42s var(--ease-out),
+    background-color 0.25s,
+    color 0.25s;
+  will-change: transform;
+}
+
+[data-face="book"] .mnote {
+  font-family: var(--font-book);
+}
+
+.mnote:hover,
+.mnote:focus-visible,
+.mnote.is-active {
+  background: color-mix(in oklab, var(--bg-raised) 70%, transparent);
+  color: var(--ink);
+}
+
+.mnote:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Below the margin's width, a highlight with a note carries a small mark at its end. */
+.note-dot {
+  display: none;
+}
+
+@media (max-width: 1079px) {
+  .note-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin: 0 0 0.12em 3px;
+    border-radius: 99px;
+    background: var(--rubric);
+    vertical-align: middle;
+  }
+}

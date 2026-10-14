@@ -1,0 +1,9 @@
+{
+  "name": "xiaobai-gloss-reader",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "vite --host 127.0.0.1 --port 5174", "build": "vite build", "check": "tsc --noEmit" },
+  "dependencies": { "@llamaindex/liteparse-wasm": "2.15.1", "lucide-react": "1.53.0", "react": "19.3.1", "react-dom": "19.3.1", "zustand": "5.0.15" },
+  "devDependencies": { "@tailwindcss/vite": "4.3.3", "@types/node": "24.13.2", "@types/react": "19.3.0", "@types/react-dom": "19.3.0", "tailwindcss": "4.3.3", "typescript": "6.0.2", "vite": "8.1.3" }
+}

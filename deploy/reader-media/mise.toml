@@ -1,0 +1,5 @@
+[tools]
+python = "3.12.12"
+
+[tasks.check]
+run = "python -m py_compile ../../server/reader/kokoro_server.py"

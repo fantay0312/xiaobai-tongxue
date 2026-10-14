@@ -21,6 +21,10 @@
   display: none;
 }
 
+.terminal[data-view='reading'] { grid-template-columns: 52px minmax(0, 1fr); }
+.terminal[data-view='reading'] > .sidebar { display: none; }
+@media (max-width: 700px) { .terminal[data-view='reading'] { grid-template-columns: minmax(0, 1fr); } }
+
 .terminal ::selection {
   background: var(--accent-soft);
   color: var(--text);

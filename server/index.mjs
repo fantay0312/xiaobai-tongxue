@@ -2929,6 +2929,7 @@ const researchConnectorsRouter = createResearchConnectorsRouter({
 
 const readerRouter = createReaderRouter({
   repository: productionStorage?.postgres.reader,
+  postgres: productionStorage?.postgres, cfg, readRaw,
   library: fileLibraryService,
   resolveOwner: async (req, res) => { const user = await protectedUser(req, res, 'chat'); return user ? { ...user, id: (await findUser(user.name))?.id ?? user.name } : null; },
   send, readJson: (req, limit) => readJson(req, limit, 15000), reserveCalls: reserveModelCalls,

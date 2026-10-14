@@ -1,0 +1,25 @@
+[Unit]
+Description=Xiaobai private neural reading voice
+After=network.target
+
+[Service]
+Type=simple
+User=xiaobai
+Group=xiaobai
+WorkingDirectory=/opt/xiaobai-media
+Environment=PYTHONUNBUFFERED=1
+Environment=OMP_NUM_THREADS=2
+Environment=NUMBA_NUM_THREADS=2
+ExecStart=/opt/xiaobai-media/venv/bin/python /opt/xiaobai-media/service.py
+Restart=on-failure
+RestartSec=3
+MemoryMax=2G
+CPUQuota=180%
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/tmp
+
+[Install]
+WantedBy=multi-user.target

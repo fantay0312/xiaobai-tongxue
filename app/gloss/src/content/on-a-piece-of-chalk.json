@@ -1,0 +1,1041 @@
+{
+ "id": "on-a-piece-of-chalk",
+ "title": "On a Piece of Chalk",
+ "author": "Thomas Henry Huxley",
+ "published": "1868",
+ "dek": "A lecture to the working men of Norwich, in which a lump of chalk becomes a history of the earth.",
+ "source": "Project Gutenberg, Discourses: Biological and Geological (public domain)",
+ "sourceUrl": "https://www.gutenberg.org/ebooks/10060",
+ "blocks": [
+  {
+   "id": "p1",
+   "type": "p",
+   "runs": [
+    {
+     "text": "If a well were sunk at our feet in the midst of the city of Norwich, the diggers would very soon find themselves at work in that white substance almost too soft to be called rock, with which we are all familiar as “chalk.”"
+    }
+   ]
+  },
+  {
+   "id": "p2",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Not only here, but over the whole county of Norfolk, the well-sinker might carry his shaft down many hundred feet without coming to the end of the chalk; and, on the sea-coast, where the waves have pared away the face of the land which breasts them, the scarped faces of the high cliffs are often wholly formed of the same material. Northward, the chalk may be followed as far as Yorkshire; on the south coast it appears abruptly in the picturesque western bays of Dorset, and breaks into the Needles of the Isle of Wight; while on the shores of Kent it supplies that long line of white cliffs to which England owes her name of Albion."
+    }
+   ]
+  },
+  {
+   "id": "p3",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Were the thin soil which covers it all washed away, a curved band of white chalk, here broader, and there narrower, might be followed diagonally across England from Lulworth in Dorset, to Flamborough Head in Yorkshire - a distance of over 280 miles as the crow flies. From this band to the North Sea, on the east, and the Channel, on the south, the chalk is largely hidden by other deposits; but, except in the Weald of Kent and Sussex, it enters into the very foundation of all the south-eastern counties."
+    }
+   ]
+  },
+  {
+   "id": "p4",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Attaining, as it does in some places, a thickness of more than a thousand feet, the English chalk must be admitted to be a mass of considerable magnitude. Nevertheless, it covers but an insignificant portion of the whole area occupied by the chalk formation of the globe, much of which has the same general characters as ours, and is found in detached patches, some less, and others more extensive, than the English. Chalk occurs in north-west Ireland; it stretches over a large part of France, the chalk which underlies Paris being, in fact, a continuation of that of the London basin; it runs through Denmark and Central Europe, and extends southward to North Africa; while eastward, it appears in the Crimea and in Syria, and may be traced as far as the shores of the Sea of Aral, in Central Asia. If all the points at which true chalk occurs were circumscribed, they would lie within an irregular oval about 3,000 miles in long diameter - the area of which would be as great as that of Europe, and would many times exceed that of the largest existing inland sea - the Mediterranean."
+    }
+   ]
+  },
+  {
+   "id": "p5",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Thus the chalk is no unimportant element in the masonry of the earth’s crust, and it impresses a peculiar stamp, varying with the conditions to which it is exposed, on the scenery of the districts in which it occurs. The undulating downs and rounded coombs, covered with sweet-grassed turf, of our inland chalk country, have a peacefully domestic and mutton-suggesting prettiness, but can hardly be called either grand or beautiful. But on our southern coasts, the wall-sided cliffs, many hundred feet high, with vast needles and pinnacles standing out in the sea, sharp and solitary enough to serve as perches for the wary cormorant, confer a wonderful beauty and grandeur upon the chalk headlands. And, in the East, chalk has its share in the formation of some of the most venerable of mountain ranges, such as the Lebanon."
+    }
+   ]
+  },
+  {
+   "id": "p6",
+   "type": "p",
+   "runs": [
+    {
+     "text": "What is this wide-spread component of the surface of the earth? and whence did it come?"
+    }
+   ]
+  },
+  {
+   "id": "p7",
+   "type": "p",
+   "runs": [
+    {
+     "text": "You may think this no very hopeful inquiry. You may not unnaturally suppose that the attempt to solve such problems as these can lead to no result, save that of entangling the inquirer in vague speculations, incapable of refutation and of verification. If such were really the case, I should have selected some other subject than a “piece of chalk” for my discourse. But, in truth, after much deliberation, I have been unable to think of any topic which would so well enable me to lead you to see how solid is the foundation upon which some of the most startling conclusions of physical science rest."
+    }
+   ]
+  },
+  {
+   "id": "p8",
+   "type": "p",
+   "runs": [
+    {
+     "text": "A great chapter of the history of the world is written in the chalk. Few passages in the history of man can be supported by such an overwhelming mass of direct and indirect evidence as that which testifies to the truth of the fragment of the history of the globe, which I hope to enable you to read, with your own eyes, to-night. Let me add, that few chapters of human history have a more profound significance for ourselves. I weigh my words well when I assert, that the man who should know the true history of the bit of chalk which every carpenter carries about in his breeches-pocket, though ignorant of all other history, is likely, if he will think his knowledge out to its ultimate results, to have a truer, and therefore a better, conception of this wonderful universe, and of man’s relation to it, than the most learned student who is deep-read in the records of humanity and ignorant of those of Nature."
+    }
+   ]
+  },
+  {
+   "id": "p9",
+   "type": "p",
+   "runs": [
+    {
+     "text": "The language of the chalk is not hard to learn, not nearly so hard as Latin, if you only want to get at the broad features of the story it has to tell; and I propose that we now set to work to spell that story out together."
+    }
+   ]
+  },
+  {
+   "id": "p10",
+   "type": "p",
+   "runs": [
+    {
+     "text": "We all know that if we “burn” chalk the result is quicklime. Chalk, in fact, is a compound of carbonic acid gas, and lime, and when you make it very hot the carbonic acid flies away and the lime is left. By this method of procedure we see the lime, but we do not see the carbonic acid. If, on the other hand, you were to powder a little chalk and drop it into a good deal of strong vinegar, there would be a great bubbling and fizzing, and, finally, a clear liquid, in which no sign of chalk would appear. Here you see the carbonic acid in the bubbles; the lime, dissolved in the vinegar, vanishes from sight. There are a great many other ways of showing that chalk is essentially nothing but carbonic acid and quicklime. Chemists enunciate the result of all the experiments which prove this, by stating that chalk is almost wholly composed of “carbonate of lime.”"
+    }
+   ]
+  },
+  {
+   "id": "p11",
+   "type": "p",
+   "runs": [
+    {
+     "text": "It is desirable for us to start from the knowledge of this fact, though it may not seem to help us very far towards what we seek. For carbonate of lime is a widely-spread substance, and is met with under very various conditions. All sorts of limestones are composed of more or less pure carbonate of lime. The crust which is often deposited by waters which have drained through limestone rocks, in the form of what are called stalagmites and stalactites, is carbonate of lime. Or, to take a more familiar example, the fur on the inside of a tea-kettle is carbonate of lime; and, for anything chemistry tells us to the contrary, the chalk might be a kind of gigantic fur upon the bottom of the earth-kettle, which is kept pretty hot below."
+    }
+   ]
+  },
+  {
+   "id": "p12",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Let us try another method of making the chalk tell us its own history. To the unassisted eye chalk looks simply like a very loose and open kind of stone. But it is possible to grind a slice of chalk down so thin that you can see through it - until it is thin enough, in fact, to be examined with any magnifying power that may be thought desirable. A thin slice of the fur of a kettle might be made in the same way. If it were examined microscopically, it would show itself to be a more or less distinctly laminated mineral substance, and nothing more."
+    }
+   ]
+  },
+  {
+   "id": "p13",
+   "type": "p",
+   "runs": [
+    {
+     "text": "But the slice of chalk presents a totally different appearance when placed under the microscope. The general mass of it is made up of very minute granules; but, imbedded in this matrix, are innumerable bodies, some smaller and some larger, but, on a rough average, not more than a hundredth of an inch in diameter, having a well-defined shape and structure. A cubic inch of some specimens of chalk may contain hundreds of thousands of these bodies, compacted together with incalculable millions of the granules."
+    }
+   ]
+  },
+  {
+   "id": "p14",
+   "type": "p",
+   "runs": [
+    {
+     "text": "The examination of a transparent slice gives a good notion of the manner in which the components of the chalk are arranged, and of their relative proportions. But, by rubbing up some chalk with a brush in water and then pouring off the milky fluid, so as to obtain sediments of different degrees of fineness, the granules and the minute rounded bodies may be pretty well separated from one another, and submitted to microscopic examination, either as opaque or as transparent objects. By combining the views obtained in these various methods, each of the rounded bodies may be proved to be a beautifully-constructed calcareous fabric, made up of a number of chambers, communicating freely with one another. The chambered bodies are of various forms. One of the commonest is something like a badly-grown raspberry, being formed of a number of nearly globular chambers of different sizes congregated together. It is called "
+    },
+    {
+     "text": "Globigerina",
+     "em": true
+    },
+    {
+     "text": ", and some specimens of chalk consist of little else than "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": " and granules. Let us fix our attention upon the "
+    },
+    {
+     "text": "Globigerina",
+     "em": true
+    },
+    {
+     "text": ". It is the spoor of the game we are tracking. If we can learn what it is and what are the conditions of its existence, we shall see our way to the origin and past history of the chalk."
+    }
+   ]
+  },
+  {
+   "id": "p15",
+   "type": "p",
+   "runs": [
+    {
+     "text": "A suggestion which may naturally enough present itself is, that these curious bodies are the result of some process of aggregation which has taken place in the carbonate of lime; that, just as in winter, the rime on our windows simulates the most delicate and elegantly arborescent foliage - proving that the mere mineral water may, under certain conditions, assume the outward form of organic bodies - so this mineral substance, carbonate of lime, hidden away in the bowels of the earth, has taken the shape of these chambered bodies. I am not raising a merely fanciful and unreal objection. Very learned men, in former days, have even entertained the notion that all the formed things found in rocks are of this nature; and if no such conception is at present held to be admissible, it is because long and varied experience has now shown that mineral matter never does assume the form and structure we find in fossils. If any one were to try to persuade you that an oyster-shell (which is also chiefly composed of carbonate of lime) had crystallized out of sea-water, I suppose you would laugh at the absurdity. Your laughter would be justified by the fact that all experience tends to show that oyster-shells are formed by the agency of oysters, and in no other way. And if there were no better reasons, we should be justified, on like grounds, in believing that "
+    },
+    {
+     "text": "Globigerina",
+     "em": true
+    },
+    {
+     "text": " is not the product of anything but vital activity."
+    }
+   ]
+  },
+  {
+   "id": "p16",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Happily, however, better evidence in proof of the organic nature of the "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": " than that of analogy is forthcoming. It so happens that calcareous skeletons, exactly similar to the "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": " of the chalk, are being formed, at the present moment, by minute living creatures, which flourish in multitudes, literally more numerous than the sands of the sea-shore, over a large extent of that part of the earth’s surface which is covered by the ocean."
+    }
+   ]
+  },
+  {
+   "id": "p17",
+   "type": "p",
+   "runs": [
+    {
+     "text": "The history of the discovery of these living "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": ", and of the part which they play in rock building, is singular enough. It is a discovery which, like others of no less scientific importance, has arisen, incidentally, out of work devoted to very different and exceedingly practical interests. When men first took to the sea, they speedily learned to look out for shoals and rocks; and the more the burthen of their ships increased, the more imperatively necessary it became for sailors to ascertain with precision the depth of the waters they traversed. Out of this necessity grew the use of the lead and sounding line; and, ultimately, marine-surveying, which is the recording of the form of coasts and of the depth of the sea, as ascertained by the sounding-lead, upon charts."
+    }
+   ]
+  },
+  {
+   "id": "p18",
+   "type": "p",
+   "runs": [
+    {
+     "text": "At the same time, it became desirable to ascertain and to indicate the nature of the sea-bottom, since this circumstance greatly affects its goodness as holding ground for anchors. Some ingenious tar, whose name deserves a better fate than the oblivion into which it has fallen, attained this object by “arming” the bottom of the lead with a lump of grease, to which more or less of the sand or mud, or broken shells, as the case might be, adhered, and was brought to the surface. But, however well adapted such an apparatus might be for rough nautical purposes, scientific accuracy could not be expected from the armed lead, and to remedy its defects (especially when applied to sounding in great depths) Lieut. Brooke, of the American Navy, some years ago invented a most ingenious machine, by which a considerable portion of the superficial layer of the sea-bottom can be scooped out and brought up from any depth to which the lead descends. In 1853, Lieut. Brooke obtained mud from the bottom of the North Atlantic, between Newfoundland and the Azores, at a depth of more than 10,000 feet, or two miles, by the help of this sounding apparatus. The specimens were sent for examination to Ehrenberg of Berlin, and to Bailey of West Point, and those able microscopists found that this deep-sea mud was almost entirely composed of the skeletons of living organisms - the greater proportion of these being just like the "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": " already known to occur in the chalk."
+    }
+   ]
+  },
+  {
+   "id": "p19",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Thus far, the work had been carried on simply in the interests of science, but Lieut. Brooke’s method of sounding acquired a high commercial value, when the enterprise of laying down the telegraph-cable between this country and the United States was undertaken. For it became a matter of immense importance to know, not only the depth of the sea over the whole line along which the cable was to be laid, but the exact nature of the bottom, so as to guard against chances of cutting or fraying the strands of that costly rope. The Admiralty consequently ordered Captain Dayman, an old friend and shipmate of mine, to ascertain the depth over the whole line of the cable, and to bring back specimens of the bottom. In former days, such a command as this might have sounded very much like one of the impossible things which the young Prince in the Fairy Tales is ordered to do before he can obtain the hand of the Princess. However, in the months of June and July, 1857, my friend performed the task assigned to him with great expedition and precision, without, so far as I know, having met with any reward of that kind. The specimens or Atlantic mud which he procured were sent to me to be examined and reported upon. [1]"
+    }
+   ]
+  },
+  {
+   "id": "p20",
+   "type": "p",
+   "runs": [
+    {
+     "text": "The result of all these operations is, that we know the contours and the nature of the surface-soil covered by the North Atlantic for a distance of 1,700 miles from east to west, as well as we know that of any part of the dry land. It is a prodigious plain - one of the widest and most even plains in the world. If the sea were drained off, you might drive a waggon all the way from Valentia, on the west coast of Ireland, to Trinity Bay, in Newfoundland. And, except upon one sharp incline about 200 miles from Valentia, I am not quite sure that it would even be necessary to put the skid on, so gentle are the ascents and descents upon that long route. From Valentia the road would lie down-hill for about 200 miles to the point at which the bottom is now covered by 1,700 fathoms of sea-water. Then would come the central plain, more than a thousand miles wide, the inequalities of the surface of which would be hardly perceptible, though the depth of water upon it now varies from 10,000 to 15,000 feet; and there are places in which Mont Blanc might be sunk without showing its peak above water. Beyond this, the ascent on the American side commences, and gradually leads, for about 300 miles, to the Newfoundland shore."
+    }
+   ]
+  },
+  {
+   "id": "p21",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Almost the whole of the bottom of this central plain (which extends for many hundred miles in a north and south direction) is covered by a fine mud, which, when brought to the surface, dries into a greyish white friable substance. You can write with this on a blackboard, if you are so inclined; and, to the eye, it is quite like very soft, grayish chalk. Examined chemically, it proves to be composed almost wholly of carbonate of lime; and if you make a section of it, in the same way as that of the piece of chalk was made, and view it with the microscope, it presents innumerable "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": " embedded in a granular matrix. Thus this deep-sea mud is substantially chalk. I say substantially, because there are a good many minor differences; but as these have no bearing on the question immediately before us, which is the nature of the "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": " of the chalk, it is unnecessary to speak of them."
+    }
+   ]
+  },
+  {
+   "id": "p22",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": " of every size, from the smallest to the largest, are associated together in the Atlantic mud, and the chambers of many are filled by a soft animal matter. This soft substance is, in fact, the remains of the creature to which the "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": " shell, or rather skeleton, owes its existence - and which is an animal of the simplest imaginable description. It is, in fact, a mere particle of living jelly, without defined parts of any kind - without a mouth, nerves, muscles, or distinct organs, and only manifesting its vitality to ordinary observation by thrusting out and retracting from all parts of its surface, long filamentous processes, which serve for arms and legs. Yet this amorphous particle, devoid of everything which, in the higher animals, we call organs, is capable of feeding, growing, and multiplying; of separating from the ocean the small proportion of carbonate of lime which is dissolved in sea-water; and of building up that substance into a skeleton for itself, according to a pattern which can be imitated by no other known agency."
+    }
+   ]
+  },
+  {
+   "id": "p23",
+   "type": "p",
+   "runs": [
+    {
+     "text": "The notion that animals can live and flourish in the sea, at the vast depths from which apparently living "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": "; have been brought up, does not agree very well with our usual conceptions respecting the conditions of animal life; and it is not so absolutely impossible as it might at first sight appear to be, that the "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": " of the Atlantic sea-bottom do not live and die where they are found."
+    }
+   ]
+  },
+  {
+   "id": "p24",
+   "type": "p",
+   "runs": [
+    {
+     "text": "As I have mentioned, the soundings from the great Atlantic plain are almost entirely made up of "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": ", with the granules which have been mentioned, and some few other calcareous shells; but a small percentage of the chalky mud - perhaps at most some five per cent. of it - is of a different nature, and consists of shells and skeletons composed of silex, or pure flint. These silicious bodies belong partly to the lowly vegetable organisms which are called "
+    },
+    {
+     "text": "Diatomaceæ",
+     "em": true
+    },
+    {
+     "text": ", and partly to the minute, and extremely simple, animals, termed "
+    },
+    {
+     "text": "Radiolaria",
+     "em": true
+    },
+    {
+     "text": ". It is quite certain that these creatures do not live at the bottom of the ocean, but at its surface - where they may be obtained in prodigious numbers by the use of a properly constructed net. Hence it follows that these silicious organisms, though they are not heavier than the lightest dust, must have fallen, in some cases, through fifteen thousand feet of water, before they reached their final resting-place on the ocean floor. And considering how large a surface these bodies expose in proportion to their weight, it is probable that they occupy a great length of time in making their burial journey from the surface of the Atlantic to the bottom."
+    }
+   ]
+  },
+  {
+   "id": "p25",
+   "type": "p",
+   "runs": [
+    {
+     "text": "But if the "
+    },
+    {
+     "text": "Radiolaria",
+     "em": true
+    },
+    {
+     "text": " and Diatoms are thus rained upon the bottom of the sea, from the superficial layer of its waters in which they pass their lives, it is obviously possible that the "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": " may be similarly derived; and if they were so, it would be much more easy to understand how they obtain their supply of food than it is at present. Nevertheless, the positive and negative evidence all points the other way. The skeletons of the full-grown, deep-sea "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": " are so remarkably solid and heavy in proportion to their surface as to seem little fitted for floating; and, as a matter of fact, they are not to be found along with the Diatoms and "
+    },
+    {
+     "text": "Radiolaria",
+     "em": true
+    },
+    {
+     "text": " in the uppermost stratum of the open ocean. It has been observed, again, that the abundance of "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": ", in proportion to other organisms, of like kind, increases with the depth of the sea; and that deep-water "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": " are larger than those which live in shallower parts of the sea; and such facts negative the supposition that these organisms have been swept by currents from the shallows into the deeps of the Atlantic. It therefore seems to be hardly doubtful that these wonderful creatures live and die at the depths in which they are found. [2]"
+    }
+   ]
+  },
+  {
+   "id": "p26",
+   "type": "p",
+   "runs": [
+    {
+     "text": "However, the important points for us are, that the living "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": " are exclusively marine animals, the skeletons of which abound at the bottom of deep seas; and that there is not a shadow of reason for believing that the habits of the "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": " of the chalk differed from those of the existing species. But if this be true, there is no escaping the conclusion that the chalk itself is the dried mud of an ancient deep sea."
+    }
+   ]
+  },
+  {
+   "id": "p27",
+   "type": "p",
+   "runs": [
+    {
+     "text": "In working over the soundings collected by Captain Dayman, I was surprised to find that many of what I have called the “granules” of that mud were not, as one might have been tempted to think at first, the more powder and waste of "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": ", but that they had a definite form and size. I termed these bodies “"
+    },
+    {
+     "text": "coccoliths",
+     "em": true
+    },
+    {
+     "text": ",” and doubted their organic nature. Dr. Wallich verified my observation, and added the interesting discovery that, not unfrequently, bodies similar to these “coccoliths” were aggregated together into spheroids, which lie termed “"
+    },
+    {
+     "text": "coccospheres",
+     "em": true
+    },
+    {
+     "text": ".” So far as we knew, these bodies, the nature of which is extremely puzzling and problematical, were peculiar to the Atlantic soundings. But, a few years ago, Mr. Sorby, in making a careful examination of the chalk by means of thin sections and otherwise, observed, as Ehrenberg had done before him, that much of its granular basis possesses a definite form. Comparing these formed particles with those in the Atlantic soundings, he found the two to be identical; and thus proved that the chalk, like the surroundings, contains these mysterious coccoliths and coccospheres. Here was a further and most interesting confirmation, from internal evidence, of the essential identity of the chalk with modern deep-sea mud. "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": ", coccoliths, and coccospheres are found as the chief constituents of both, and testify to the general similarity of the conditions under which both have been formed. [3]"
+    }
+   ]
+  },
+  {
+   "id": "p28",
+   "type": "p",
+   "runs": [
+    {
+     "text": "The evidence furnished by the hewing, facing, and superposition of the stones of the Pyramids, that these structures were built by men, has no greater weight than the evidence that the chalk was built by "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": "; and the belief that those ancient pyramid-builders were terrestrial and air-breathing creatures like ourselves, is not better based than the conviction that the chalk-makers lived in the sea. But as our belief in the building of the Pyramids by men is not only grounded on the internal evidence afforded by these structures, but gathers strength from multitudinous collateral proofs, and is clinched by the total absence of any reason for a contrary belief; so the evidence drawn from the "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": " that the chalk is an ancient sea-bottom, is fortified by innumerable independent lines of evidence; and our belief in the truth of the conclusion to which all positive testimony tends, receives the like negative justification from the fact that no other hypothesis has a shadow of foundation."
+    }
+   ]
+  },
+  {
+   "id": "p29",
+   "type": "p",
+   "runs": [
+    {
+     "text": "It may be worth while briefly to consider a few of these collateral proofs that the chalk was deposited at the bottom of the sea. The great mass of the chalk is composed, as we have seen, of the skeletons of "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": ", and other simple organisms, imbedded in granular matter. Here and there, however, this hardened mud of the ancient sea reveals the remains of higher animals which have lived and died, and left their hard parts in the mud, just as the oysters die and leave their shells behind them, in the mud of the present seas."
+    }
+   ]
+  },
+  {
+   "id": "p30",
+   "type": "p",
+   "runs": [
+    {
+     "text": "There are, at the present day, certain groups of animals which are never found in fresh waters, being unable to live anywhere but in the sea. Such are the corals; those corallines which are called "
+    },
+    {
+     "text": "Polyzoa",
+     "em": true
+    },
+    {
+     "text": "; those creatures which fabricate the lamp-shells, and are called "
+    },
+    {
+     "text": "Brachiopoda",
+     "em": true
+    },
+    {
+     "text": "; the pearly "
+    },
+    {
+     "text": "Nautilus",
+     "em": true
+    },
+    {
+     "text": ", and all animals allied to it; and all the forms of sea-urchins and star-fishes. Not only are all these creatures confined to salt water at the present day; but, so far as our records of the past go, the conditions of their existence have been the same: hence, their occurrence in any deposit is as strong evidence as can be obtained, that that deposit was formed in the sea. Now the remains of animals of all the kinds which have been enumerated, occur in the chalk, in greater or less abundance; while not one of those forms of shell-fish which are characteristic of fresh water has yet been observed in it."
+    }
+   ]
+  },
+  {
+   "id": "p31",
+   "type": "p",
+   "runs": [
+    {
+     "text": "When we consider that the remains of more than three thousand distinct species of aquatic animals have been discovered among the fossils of the chalk, that the great majority of them are of such forms as are now met with only in the sea, and that there is no reason to believe that any one of them inhabited fresh water - the collateral evidence that the chalk represents an ancient sea-bottom acquires as great force as the proof derived from the nature of the chalk itself. I think you will now allow that I did not overstate my case when I asserted that we have as strong grounds for believing that all the vast area of dry land, at present occupied by the chalk, was once at the bottom of the sea, as we have for any matter of history whatever; while there is no justification for any other belief."
+    }
+   ]
+  },
+  {
+   "id": "p32",
+   "type": "p",
+   "runs": [
+    {
+     "text": "No less certain it is that the time during which the countries we now call south-east England, France, Germany, Poland, Russia, Egypt, Arabia, Syria, were more or less completely covered by a deep sea, was of considerable duration. We have already seen that the chalk is, in places, more than a thousand feet thick. I think you will agree with me, that it must have taken some time for the skeletons of animalcules of a hundredth of an inch in diameter to heap up such a mass as that. I have said that throughout the thickness of the chalk the remains of other animals are scattered. These remains are often in the most exquisite state of preservation. The valves of the shell-fishes are commonly adherent; the long spines of some of the sea-urchins, which would be detached by the smallest jar, often remain in their places. In a word, it is certain that these animals have lived and died when the place which they now occupy was the surface of as much of the chalk as had then been deposited; and that each has been covered up by the layer of "
+    },
+    {
+     "text": "Globigerina",
+     "em": true
+    },
+    {
+     "text": " mud, upon which the creatures imbedded a little higher up have, in like manner, lived and died. But some of these remains prove the existence of reptiles of vast size in the chalk sea. These lived their time, and had their ancestors and descendants, which assuredly implies time, reptiles being of slow growth."
+    }
+   ]
+  },
+  {
+   "id": "p33",
+   "type": "p",
+   "runs": [
+    {
+     "text": "There is more curious evidence, again, that the process of covering up, or, in other words, the deposit of "
+    },
+    {
+     "text": "Globigerina",
+     "em": true
+    },
+    {
+     "text": " skeletons, did not go on very fast. It is demonstrable that an animal of the cretaceous sea might die, that its skeleton might lie uncovered upon the sea-bottom long enough to lose all its outward coverings and appendages by putrefaction; and that, after this had happened, another animal might attach itself to the dead and naked skeleton, might grow to maturity, and might itself die before the calcareous mud had buried the whole."
+    }
+   ]
+  },
+  {
+   "id": "p34",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Cases of this kind are admirably described by Sir Charles Lyell. He speaks of the frequency with which geologists find in the chalk a fossilized sea-urchin, to which is attached the lower valve of a "
+    },
+    {
+     "text": "Crania",
+     "em": true
+    },
+    {
+     "text": ". This is a kind of shell-fish, with a shell composed of two pieces, of which, as in the oyster, one is fixed and the other free."
+    }
+   ]
+  },
+  {
+   "id": "p35",
+   "type": "p",
+   "runs": [
+    {
+     "text": "“The upper valve is almost invariably wanting, though occasionally found in a perfect state of preservation in the white chalk at some distance. In this case, we see clearly that the sea-urchin first lived from youth to age, then died and lost its spines, which were carried away. Then the young "
+    },
+    {
+     "text": "Crania",
+     "em": true
+    },
+    {
+     "text": " adhered to the bared shell, grew and perished in its turn; after which, the upper valve was separated from the lower, before the Echinus became enveloped in chalky mud.” [4]"
+    }
+   ]
+  },
+  {
+   "id": "p36",
+   "type": "p",
+   "runs": [
+    {
+     "text": "A specimen in the Museum of Practical Geology, in London, still further prolongs the period which must have elapsed between the death of the sea-urchin, and its burial by the "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": ". For the outward face of the valve of a "
+    },
+    {
+     "text": "Crania",
+     "em": true
+    },
+    {
+     "text": ", which is attached to a sea-urchin, ("
+    },
+    {
+     "text": "Micraster",
+     "em": true
+    },
+    {
+     "text": "), is itself overrun by an incrusting coralline, which spreads thence over more or less of the surface of the sea-urchin. It follows that, after the upper valve of the "
+    },
+    {
+     "text": "Crania",
+     "em": true
+    },
+    {
+     "text": " fell off, the surface of the attached valve must have remained exposed long enough to allow of the growth of the whole coralline, since corallines do not live embedded in mud. [4]"
+    }
+   ]
+  },
+  {
+   "id": "p37",
+   "type": "p",
+   "runs": [
+    {
+     "text": "The progress of knowledge may, one day, enable us to deduce from such facts as these the maximum rate at which the chalk can have accumulated, and thus to arrive at the minimum duration of the chalk period. Suppose that the valve of the "
+    },
+    {
+     "text": "Cronia",
+     "em": true
+    },
+    {
+     "text": " upon which a coralline has fixed itself in the way just described, is so attached to the sea-urchin that no part of it is more than an inch above the face upon which the sea-urchin rests. Then, as the coralline could not have fixed itself, if the "
+    },
+    {
+     "text": "Crania",
+     "em": true
+    },
+    {
+     "text": " had been covered up with chalk mud, and could not have lived had itself been so covered, it follows, that an inch of chalk mud could not have accumulated within the time between the death and decay of the soft parts of the sea-urchin and the growth of the coralline to the full size which it has attained. If the decay of the soft parts of the sea-urchin; the attachment, growth to maturity, and decay of the "
+    },
+    {
+     "text": "Crania",
+     "em": true
+    },
+    {
+     "text": "; and the subsequent attachment and growth of the coralline, took a year (which is a low estimate enough), the accumulation of the inch of chalk must have taken more than a year: and the deposit of a thousand feet of chalk must, consequently, have taken more than twelve thousand years."
+    }
+   ]
+  },
+  {
+   "id": "p38",
+   "type": "p",
+   "runs": [
+    {
+     "text": "The foundation of all this calculation is, of course, a knowledge of the length of time the "
+    },
+    {
+     "text": "Crania",
+     "em": true
+    },
+    {
+     "text": " and the coralline needed to attain their full size; and, on this head, precise knowledge is at present wanting. But there are circumstances which tend to show, that nothing like an inch of chalk has accumulated during the life of a "
+    },
+    {
+     "text": "Crania",
+     "em": true
+    },
+    {
+     "text": "; and, on any probable estimate of the length of that life, the chalk period must have had a much longer duration than that thus roughly assigned to it."
+    }
+   ]
+  },
+  {
+   "id": "p39",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Thus, not only is it certain that the chalk is the mud of an ancient sea-bottom; but it is no less certain, that the chalk sea existed during an extremely long period, though we may not be prepared to give a precise estimate of the length of that period in years. The relative duration is clear, though the absolute duration may not be definable. The attempt to affix any precise date to the period at which the chalk sea began, or ended, its existence, is baffled by difficulties of the same kind. But the relative age of the cretaceous epoch may be determined with as great ease and certainty as the long duration of that epoch."
+    }
+   ]
+  },
+  {
+   "id": "p40",
+   "type": "p",
+   "runs": [
+    {
+     "text": "You will have heard of the interesting discoveries recently made, in various parts of Western Europe, of flint implements, obviously worked into shape by human hands, under circumstances which show conclusively that man is a very ancient denizen of these regions. It has been proved that the whole populations of Europe, whose existence has been revealed to us in this way, consisted of savages, such as the Esquimaux are now; that, in the country which is now France, they hunted the reindeer, and were familiar with the ways of the mammoth and the bison. The physical geography of France was in those days different from what it is now - the river Somme, for instance, having cut its bed a hundred feet deeper between that time and this; and, it is probable, that the climate was more like that of Canada or Siberia, than that of Western Europe."
+    }
+   ]
+  },
+  {
+   "id": "p41",
+   "type": "p",
+   "runs": [
+    {
+     "text": "The existence of these people is forgotten even in the traditions of the oldest historical nations. The name and fame of them had utterly vanished until a few years back; and the amount of physical change which has been effected since their day renders it more than probable that, venerable as are some of the historical nations, the workers of the chipped flints of Hoxne or of Amiens are to them, as they are to us, in point of antiquity. But, if we assign to these hoar relics of long-vanished generations of men the greatest age that can possibly be claimed for them, they are not older than the drift, or boulder clay, which, in comparison with the chalk, is but a very juvenile deposit. You need go no further than your own sea-board for evidence of this fact. At one of the most charming spots on the coast of Norfolk, Cromer, you will see the boulder clay forming a vast mass, which lies upon the chalk, and must consequently have come into existence after it. Huge boulders of chalk are, in fact, included in the clay, and have evidently been brought to the position they now occupy by the same agency as that which has planted blocks of syenite from Norway side by side with them."
+    }
+   ]
+  },
+  {
+   "id": "p42",
+   "type": "p",
+   "runs": [
+    {
+     "text": "The chalk, then, is certainly older than the boulder clay. If you ask how much, I will again take you no further than the same spot upon your own coasts for evidence. I have spoken of the boulder clay and drift as resting upon the chalk. That is not strictly true. Interposed between the chalk and the drift is a comparatively insignificant layer, containing vegetable matter. But that layer tells a wonderful history. It is full of stumps of trees standing as they grew. Fir-trees are there with their cones, and hazel-bushes with their nuts; there stand the stools of oak and yew trees, beeches and alders. Hence this stratum is appropriately called the “forest-bed.”"
+    }
+   ]
+  },
+  {
+   "id": "p43",
+   "type": "p",
+   "runs": [
+    {
+     "text": "It is obvious that the chalk must have been upheaved and converted into dry land, before the timber trees could grow upon it. As the bolls of some of these trees are from two to three feet in diameter, it is no less clear that the dry land thus formed remained in the same condition for long ages. And not only do the remains of stately oaks and well-grown firs testify to the duration of this condition of things, but additional evidence to the same effect is afforded by the abundant remains of elephants, rhinoceroses, hippopotamuses, and other great wild beasts, which it has yielded to the zealous search of such men as the Rev. Mr. Gunn. When you look at such a collection as he has formed, and bethink you that these elephantine bones did veritably carry their owners about, and these great grinders crunch, in the dark woods of which the forest-bed is now the only trace, it is impossible not to feel that they are as good evidence of the lapse of time as the annual rings of the tree stumps."
+    }
+   ]
+  },
+  {
+   "id": "p44",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Thus there is a writing upon the wall of cliffs at Cromer, and whoso runs may read it. It tells us, with an authority which cannot be impeached, that the ancient sea-bed of the chalk sea was raised up, and remained dry land, until it was covered with forest, stocked with the great game the spoils of which have rejoiced your geologists. How long it remained in that condition cannot be said; but “the whirligig of time brought its revenges” in those days as in these. That dry land, with the bones and teeth of generations of long-lived elephants, hidden away among the gnarled roots and dry leaves of its ancient trees, sank gradually to the bottom of the icy sea, which covered it with huge masses of drift and boulder clay. Sea-beasts, such as the walrus, now restricted to the extreme north, paddled about where birds had twittered among the topmost twigs of the fir-trees. How long this state of things endured we know not, but at length it came to an end. The upheaved glacial mud hardened into the soil of modern Norfolk. Forests grew once more, the wolf and the beaver replaced the reindeer and the elephant; and at length what we call the history of England dawned."
+    }
+   ]
+  },
+  {
+   "id": "p45",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Thus you have, within the limits of your own county, proof that the chalk can justly claim a very much greater antiquity than even the oldest physical traces of mankind. But we may go further and demonstrate, by evidence of the same authority as that which testifies to the existence of the father of men, that the chalk is vastly older than Adam himself. The Book of Genesis informs us that Adam, immediately upon his creation, and before the appearance of Eve, was placed in the Garden of Eden. The problem of the geographical position of Eden has greatly vexed the spirits of the learned in such matters, but there is one point respecting which, so far as I know, no commentator has ever raised a doubt. This is, that of the four rivers which are said to run out of it, Euphrates and Hiddekel are identical with the rivers now known by the names of Euphrates and Tigris. But the whole country in which these mighty rivers take their origin, and through which they run, is composed of rocks which are either of the same age as the chalk, or of later date. So that the chalk must not only have been formed, but, after its formation, the time required for the deposit of these later rocks, and for their upheaval into dry land, must have elapsed, before the smallest brook which feeds the swift stream of “the great river, the river of Babylon,” began to flow."
+    }
+   ]
+  },
+  {
+   "id": "p46",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Thus, evidence which cannot be rebutted, and which need not be strengthened, though if time permitted I might indefinitely increase its quantity, compels you to believe that the earth, from the time of the chalk to the present day, has been the theatre of a series of changes as vast in their amount, as they were slow in their progress. The area on which we stand has been first sea and then land, for at least four alternations; and has remained in each of these conditions for a period of great length."
+    }
+   ]
+  },
+  {
+   "id": "p47",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Nor have these wonderful metamorphoses of sea into land, and of land into sea, been confined to one corner of England. During the chalk period, or “cretaceous epoch,” not one of the present great physical features of the globe was in existence. Our great mountain ranges, Pyrenees, Alps, Himalayas, Andes, have all been upheaved since the chalk was deposited, and the cretaceous sea flowed over the sites of Sinai and Ararat. All this is certain, because rocks of cretaceous, or still later, date have shared in the elevatory movements which gave rise to these mountain chains; and may be found perched up, in some cases, many thousand feet high upon their flanks. And evidence of equal cogency demonstrates that, though, in Norfolk, the forest-bed rests directly upon the chalk, yet it does so, not because the period at which the forest grew immediately followed that at which the chalk was formed, but because an immense lapse of time, represented elsewhere by thousands of feet of rock, is not indicated at Cromer."
+    }
+   ]
+  },
+  {
+   "id": "p48",
+   "type": "p",
+   "runs": [
+    {
+     "text": "I must ask you to believe that there is no less conclusive proof that a still more prolonged succession of similar changes occurred, before the chalk was deposited. Nor have we any reason to think that the first term in the series of these changes is known. The oldest sea-beds preserved to us are sands, and mud, and pebbles, the wear and tear of rocks which were formed in still older oceans."
+    }
+   ]
+  },
+  {
+   "id": "p49",
+   "type": "p",
+   "runs": [
+    {
+     "text": "But, great as is the magnitude of these physical changes of the world, they have been accompanied by a no less striking series of modifications in its living inhabitants. All the great classes of animals, beasts of the field, fowls of the air, creeping things, and things which dwell in the waters, flourished upon the globe long ages before the chalk was deposited. Very few, however, if any, of these ancient forms of animal life were identical with those which now live. Certainly not one of the higher animals was of the same species as any of those now in existence. The beasts of the field, in the days before the chalk, were not our beasts of the field, nor the fowls of the air such as those which the eye of men has seen flying, unless his antiquity dates infinitely further back than we at present surmise. If we could be carried back into those times, we should be as one suddenly set down in Australia before it was colonized. We should see mammals, birds, reptiles, fishes, insects, snails, and the like, clearly recognizable as such, and yet not one of them would be just the same as those with which we are familiar, and many would be extremely different."
+    }
+   ]
+  },
+  {
+   "id": "p50",
+   "type": "p",
+   "runs": [
+    {
+     "text": "From that time to the present, the population of the world has undergone slow and gradual, but incessant, changes. There has been no grand catastrophe - no destroyer has swept away the forms of life of one period, and replaced them by a totally new creation: but one species has vanished and another has taken its place; creatures of one type of structure have diminished, those of another have increased, as time has passed on. And thus, while the differences between the living creatures of the time before the chalk and those of the present day appear startling, if placed side by side, we are led from one to the other by the most gradual progress, if we follow the course of Nature through the whole series of those relics of her operations which she has left behind. It is by the population of the chalk sea that the ancient and the modern inhabitants of the world are most completely connected. The groups which are dying out flourish, side by side, with the groups which are now the dominant forms of life. Thus the chalk contains remains of those strange flying and swimming reptiles, the pterodactyl, the ichthyosaurus, and the plesiosaurus, which are found in no later deposits, but abounded in preceding ages. The chambered shells called ammonites and belemnites, which are so characteristic of the period preceding the cretaceous, in like manner die with it."
+    }
+   ]
+  },
+  {
+   "id": "p51",
+   "type": "p",
+   "runs": [
+    {
+     "text": "But, amongst these fading remainders of a previous state of things, are some very modern forms of life, looking like Yankee pedlars among a tribe of Red Indians. Crocodiles of modern type appear; bony fishes, many of them very similar to existing species, almost supplant the forms of fish which predominate in more ancient seas; and many kinds of living shell-fish first become known to us in the chalk. The vegetation acquires a modern aspect. A few living animals are not even distinguishable as species, from those which existed at that remote epoch. The "
+    },
+    {
+     "text": "Globigerina",
+     "em": true
+    },
+    {
+     "text": " of the present day, for example, is not different specifically from that of the chalk; and the same maybe said of many other "
+    },
+    {
+     "text": "Foraminifera",
+     "em": true
+    },
+    {
+     "text": ". I think it probable that critical and unprejudiced examination will show that more than one species of much higher animals have had a similar longevity; but the only example which I can at present give confidently is the snake’s-head lampshell ("
+    },
+    {
+     "text": "Terebratulina caput serpentis",
+     "em": true
+    },
+    {
+     "text": "), which lives in our English seas and abounded (as "
+    },
+    {
+     "text": "Terebratulina striata",
+     "em": true
+    },
+    {
+     "text": " of authors) in the chalk."
+    }
+   ]
+  },
+  {
+   "id": "p52",
+   "type": "p",
+   "runs": [
+    {
+     "text": "The longest line of human ancestry must hide its diminished head before the pedigree of this insignificant shell-fish. We Englishmen are proud to have an ancestor who was present at the Battle of Hastings. The ancestors of "
+    },
+    {
+     "text": "Terebratulina caput serpentis",
+     "em": true
+    },
+    {
+     "text": " may have been present at a battle of "
+    },
+    {
+     "text": "Ichthyosauria",
+     "em": true
+    },
+    {
+     "text": " in that part of the sea which, when the chalk was forming, flowed over the site of Hastings. While all around has changed, this "
+    },
+    {
+     "text": "Terebratulina",
+     "em": true
+    },
+    {
+     "text": " has peacefully propagated its species from generation to generation, and stands to this day, as a living testimony to the continuity of the present with the past history of the globe."
+    }
+   ]
+  },
+  {
+   "id": "p53",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Up to this moment I have stated, so far as I know, nothing but well-authenticated facts, and the immediate conclusions which they force upon the mind. But the mind is so constituted that it does not willingly rest in facts and immediate causes, but seeks always after a knowledge of the remoter links in the chain of causation."
+    }
+   ]
+  },
+  {
+   "id": "p54",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Taking the many changes of any given spot of the earth’s surface, from sea to land and from land to sea, as an established fact, we cannot refrain from asking ourselves how these changes have occurred. And when we have explained them - as they must be explained - by the alternate slow movements of elevation and depression which have affected the crust of the earth, we go still further back, and ask, Why these movements?"
+    }
+   ]
+  },
+  {
+   "id": "p55",
+   "type": "p",
+   "runs": [
+    {
+     "text": "I am not certain that any one can give you a satisfactory answer to that question. Assuredly I cannot. All that can be said, for certain, is, that such movements are part of the ordinary course of nature, inasmuch as they are going on at the present time. Direct proof may be given, that some parts of the land of the northern hemisphere are at this moment insensibly rising and others insensibly sinking; and there is indirect, but perfectly satisfactory, proof, that an enormous area now covered by the Pacific has been deepened thousands of feet, since the present inhabitants of that sea came into existence. Thus there is not a shadow of a reason for believing that the physical changes of the globe, in past times, have been effected by other than natural causes. Is there any more reason for believing that the concomitant modifications in the forms of the living inhabitants of the globe have been brought about in other ways?"
+    }
+   ]
+  },
+  {
+   "id": "p56",
+   "type": "p",
+   "runs": [
+    {
+     "text": "Before attempting to answer this question, let us try to form a distinct mental picture of what has happened in some special case. The crocodiles are animals which, as a group, have a very vast antiquity. They abounded ages before the chalk was deposited; they throng the rivers in warm climates, at the present day. There is a difference in the form of the joints of the back-bone, and in some minor particulars, between the crocodiles of the present epoch and those which lived before the chalk; but, in the cretaceous epoch, as I have already mentioned, the crocodiles had assumed the modern type of structure. Notwithstanding this, the crocodiles of the chalk are not identically the same as those which lived in the times called “older tertiary,” which succeeded the cretaceous epoch; and the crocodiles of the older tertiaries are not identical with those of the newer tertiaries, nor are these identical with existing forms. I leave open the question whether particular species may have lived on from epoch to epoch. But each epoch has had its peculiar crocodiles; though all, since the chalk, have belonged to the modern type, and differ simply in their proportions, and in such structural particulars as are discernible only to trained eyes."
+    }
+   ]
+  },
+  {
+   "id": "p57",
+   "type": "p",
+   "runs": [
+    {
+     "text": "How is the existence of this long succession of different species of crocodiles to be accounted for? Only two suppositions seem to be open to us - Either each species of crocodile has been specially created, or it has arisen out of some pre-existing form by the operation of natural causes. Choose your hypothesis; I have chosen mine. I can find no warranty for believing in the distinct creation of a score of successive species of crocodiles in the course of countless ages of time. Science gives no countenance to such a wild fancy; nor can even the perverse ingenuity of a commentator pretend to discover this sense, in the simple words in which the writer of Genesis records the proceedings of the fifth and six days of the Creation."
+    }
+   ]
+  },
+  {
+   "id": "p58",
+   "type": "p",
+   "runs": [
+    {
+     "text": "On the other hand, I see no good reason for doubting the necessary alternative, that all these varied species have been evolved from pre-existing crocodilian forms, by the operation of causes as completely a part of the common order of nature as those which have effected the changes of the inorganic world. Few will venture to affirm that the reasoning which applies to crocodiles loses its force among other animals, or among plants. If one series of species has come into existence by the operation of natural causes, it seems folly to deny that all may have arisen in the same way."
+    }
+   ]
+  },
+  {
+   "id": "p59",
+   "type": "p",
+   "runs": [
+    {
+     "text": "A small beginning has led us to a great ending. If I were to put the bit of chalk with which we started into the hot but obscure flame of burning hydrogen, it would presently shine like the sun. It seems to me that this physical metamorphosis is no false image of what has been the result of our subjecting it to a jet of fervent, though nowise brilliant, thought to-night. It has become luminous, and its clear rays, penetrating the abyss of the remote past, have brought within our ken some stages of the evolution of the earth. And in the shifting “without haste, but without rest” of the land and sea, as in the endless variation of the forms assumed by living beings, we have observed nothing but the natural product of the forces originally possessed by the substance of the universe."
+    }
+   ]
+  },
+  {
+   "id": "notes",
+   "type": "h2",
+   "runs": [
+    {
+     "text": "Notes"
+    }
+   ]
+  },
+  {
+   "id": "p60",
+   "type": "note",
+   "runs": [
+    {
+     "text": "[1] "
+    },
+    {
+     "text": "See Appendix to Captain Dayman’s "
+    },
+    {
+     "text": "Deep-sea Soundings in the North Atlantic Ocean between Ireland and Newfoundland, made in H.M.S. “Cyclops",
+     "em": true
+    },
+    {
+     "text": ".” Published by order of the Lords Commissioners of the Admiralty, 1858. They have since formed the subject of an elaborate Memoir by Messrs. Parker and Jones, published in the "
+    },
+    {
+     "text": "Philosophical Transactions",
+     "em": true
+    },
+    {
+     "text": " for 1865."
+    }
+   ]
+  },
+  {
+   "id": "p61",
+   "type": "note",
+   "runs": [
+    {
+     "text": "[2] "
+    },
+    {
+     "text": "During the cruise of H.M.S. "
+    },
+    {
+     "text": "Bulldog",
+     "em": true
+    },
+    {
+     "text": ", commanded by Sir Leopold M’Clintock, in 1860, living star-fish were brought up, clinging to the lowest part of the sounding-line, from a depth of 1,260 fathoms, midway between Cape Farewell, in Greenland, and the Rockall banks. Dr. Wallich ascertained that the sea-bottom at this point consisted of the ordinary "
+    },
+    {
+     "text": "Globigerina",
+     "em": true
+    },
+    {
+     "text": " ooze, and that the stomachs of the star-fishes were full of "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": ". This discovery removes all objections to the existence of living "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": " at great depths, which are based upon the supposed difficulty of maintaining animal life under such conditions; and it throws the burden of proof upon those who object to the supposition that the "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": " live and die where they are found."
+    }
+   ]
+  },
+  {
+   "id": "p62",
+   "type": "note",
+   "runs": [
+    {
+     "text": "[3] "
+    },
+    {
+     "text": "I have recently traced out the development of the “coccoliths” from a diameter of 1/7000th of an inch up to their largest size (which is about 1/1000th), and no longer doubt that they are produced by independent organisms, which, like the "
+    },
+    {
+     "text": "Globigerinæ",
+     "em": true
+    },
+    {
+     "text": ", live and die at the bottom of the sea."
+    }
+   ]
+  },
+  {
+   "id": "p63",
+   "type": "note",
+   "runs": [
+    {
+     "text": "[4] "
+    },
+    {
+     "text": "Elements of Geology",
+     "em": true
+    },
+    {
+     "text": ", by Sir Charles Lyell, Bart. F.B.S., p. 23."
+    }
+   ]
+  }
+ ]
+}

@@ -12,6 +12,7 @@ import { createSubscriptionRepository } from './subscriptions.mjs';
 import { createUserAccessRepository } from './user-access.mjs';
 import { createFileLibraryRepository } from '../../file-library/repository.mjs';
 import { createReaderRepository } from '../../reader/repository.mjs';
+import { createGlossRepository } from '../../reader/gloss-repository.mjs';
 import { createContactRepository, createUserRepository } from './users.mjs';
 import {
   createPostgresPoolFromEnv,
@@ -27,6 +28,7 @@ function dataLayer(queryable, options) {
     userFiles: createUserFileRepository(queryable, options),
     fileLibrary: createFileLibraryRepository(queryable),
     reader: createReaderRepository(queryable),
+    gloss: createGlossRepository(queryable),
     inboundEmails: createInboundEmailRepository(queryable, options),
     authAuditEvents: createAuthAuditRepository(queryable, options),
     adminAuth: createAdminAuthRepository(queryable, options),

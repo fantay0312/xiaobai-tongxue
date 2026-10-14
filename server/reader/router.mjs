@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { importArticle, fetchPublic } from './importer.mjs';
 import { DOMParser } from 'linkedom';
+import { createReaderMedia } from './media.mjs';
+import { createGlossRouter } from './gloss-router.mjs';
+import { createModelCatalog } from '../model-catalog.mjs';
+import { createModelGatewayService } from '../model-gateway.mjs';
 
 export const READER_TOPICS = ['unsorted', 'philosophy', 'mind', 'science', 'ai', 'programming', 'tech', 'data', 'design', 'product', 'writing', 'learning', 'history', 'culture', 'politics', 'economics', 'money', 'business', 'startups', 'work', 'health', 'living', 'climate', 'security', 'infra'];
 const UUID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
@@ -40,7 +44,10 @@ export async function readerSearch(query, env = process.env) {
     .filter((item) => /^https?:\/\//.test(item.url));
 }
 
-export function createReaderRouter({ repository, library, resolveOwner, send, readJson, env = process.env, reserveCalls = async () => true }) {
+export function createReaderRouter({ repository, postgres, library, cfg = {}, resolveOwner, send, readJson, readRaw, env = process.env, reserveCalls = async () => true }) {
+  const media = createReaderMedia({ cfg, env });
+  const modelService = cfg.apiKey && cfg.upstreamBaseUrl ? createModelGatewayService({ baseUrl: cfg.upstreamBaseUrl, apiKey: cfg.apiKey, catalog: createModelCatalog(cfg) }) : null;
+  const gloss = createGlossRouter({ postgres, legacy: repository, library, modelService, media, resolveOwner, send, readJson, readRaw, reserveCalls });
   const windows = new Map();
   function quota(owner, cost = 1) {
     const now = Date.now(); const day = Math.floor(now / 86400000); const minute = Math.floor(now / 60000);
@@ -86,8 +93,18 @@ export function createReaderRouter({ repository, library, resolveOwner, send, re
         if (JSON.stringify([doc.blocks, doc.marks]).toLowerCase().includes(query)) data.push(item);
         if (data.length >= 50) break;
       }
+      if (postgres && data.length < 50) {
+        const rows = await postgres.gloss.list(owner);
+        for (const row of rows.filter((r) => r.collection === 'articles' && !r.deleted)) {
+          if (data.some((x) => x.id === row.id)) continue;
+          const doc = await postgres.gloss.article(owner, row.id);
+          if (JSON.stringify([row.data, doc, rows.filter((r) => r.articleId === row.id && !r.deleted).map((r) => r.data)]).toLowerCase().includes(query)) data.push(row.data);
+          if (data.length >= 50) break;
+        }
+      }
     } else if (name === 'save_text' || name === 'save_articles') {
       const list = await repository.list(owner);
+      if (postgres) list.push(...(await postgres.gloss.list(owner)).filter((row) => row.collection === 'articles' && !row.deleted).map((row) => row.data));
       const save = async (article) => {
         if (article.pdf) throw fail('reader-mcp-pdf-use-upload');
         const existing = article.sourceUrl && list.find((d) => !d.deleted && d.sourceUrl === article.sourceUrl);
@@ -109,7 +126,11 @@ export function createReaderRouter({ repository, library, resolveOwner, send, re
   }
   return { async handle(req, res, pathname) {
     try {
-      if (pathname === '/api/reader/mcp') return await mcp(req, res);
+      if (pathname.startsWith('/api/reader/gloss/')) return await gloss.handle(req, res, pathname);
+      if (pathname === '/api/reader/mcp' || pathname.startsWith('/api/reader/mcp/')) {
+        if (pathname.startsWith('/api/reader/mcp/')) req.headers.authorization = `Bearer ${pathname.slice('/api/reader/mcp/'.length)}`;
+        return await mcp(req, res);
+      }
       const owner = await resolveOwner(req, res); if (!owner) return;
       const ownerId = owner.id;
       const part = pathname.slice('/api/reader'.length);
