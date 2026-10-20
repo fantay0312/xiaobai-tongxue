@@ -1284,6 +1284,216 @@ mark.key .cite {
 
 /* ---------- notebook ---------- */
 
+/*
+ * The notebook arrives shut beside the text, then its cover swings open on a
+ * left binding, the way the book itself opened off the shelf, and fades as it
+ * passes the hinge. Closing runs it backwards. Timings match Notebook.tsx.
+ */
+.nb {
+  --ease-book: cubic-bezier(0.77, 0, 0.175, 1);
+  /* Bound in the reading ground: a quiet linen from the paper and its ink, warmed by the pen. */
+  --nb-c: color-mix(in oklab, color-mix(in oklab, var(--bg-sunk) 58%, var(--ink-3)) 90%, var(--rubric));
+  perspective: 2400px;
+}
+
+.nb[data-phase="opening"] {
+  animation: sheet-in 0.38s var(--ease-out);
+}
+
+.nb[data-phase="closing"] {
+  pointer-events: none;
+  animation: nb-out 0.26s 0.46s var(--ease-out) forwards;
+}
+
+/* Open, it is a book lying open: the board in its cloth, the hinge on
+   the left, and a block of pages on it, as the book on the shelf opens. */
+.nb-board {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px 8px 8px 3px;
+  background-color: var(--nb-c);
+  background-image:
+    linear-gradient(90deg, rgb(0 0 0 / 0.3), rgb(0 0 0 / 0.08) 7px, rgb(255 255 255 / 0.08) 9px, transparent 14px),
+    linear-gradient(160deg, rgb(255 255 255 / 0.07), transparent 45%, rgb(0 0 0 / 0.12));
+  box-shadow: var(--shadow-pop), inset 0 0 0 1px rgb(0 0 0 / 0.15);
+}
+
+.nb-page {
+  position: absolute;
+  top: 6px;
+  right: 9px;
+  bottom: 9px;
+  left: 11px;
+  border-radius: 2px 5px 5px 2px;
+  color: var(--ink);
+  box-shadow:
+    inset 14px 0 18px -14px rgb(0 0 0 / 0.26),
+    1px 1px 0 var(--rule-strong),
+    2px 2px 0 var(--bg-sunk),
+    3px 3px 0 var(--rule-strong),
+    4px 4px 0 var(--bg-sunk),
+    5px 5px 0 rgb(0 0 0 / 0.12);
+}
+
+/* Shade on the first page while the cover is over it. */
+.nb-page::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgb(20 14 8 / 0.16);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.nb[data-phase="opening"] .nb-page::after {
+  animation: nb-shade 0.82s 0.2s var(--ease-book) reverse both;
+}
+
+.nb[data-phase="closing"] .nb-page::after {
+  animation: nb-shade 0.5s var(--ease-book) both;
+}
+
+.nb-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 3px 8px 8px 3px;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+/* The board turns; its faces fade. Opacity on the board itself would flatten it
+   and show the front through from behind. */
+.nb[data-phase="opening"] .nb-cover {
+  animation: nb-cover-open 0.82s 0.2s var(--ease-book) both;
+}
+
+.nb[data-phase="opening"] .nb-cover-face {
+  animation: nb-face-out 0.82s 0.2s var(--ease-book) both;
+}
+
+.nb[data-phase="closing"] .nb-cover {
+  animation: nb-cover-open 0.5s var(--ease-book) reverse both;
+}
+
+.nb[data-phase="closing"] .nb-cover-face {
+  animation: nb-face-out 0.5s var(--ease-book) reverse both;
+}
+
+.nb-cover-face {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.nb-cover-front {
+  display: grid;
+  place-items: center;
+  padding: 0 64px 18% 40px;
+  background-color: var(--nb-c);
+  background-image:
+    linear-gradient(90deg, rgb(0 0 0 / 0.26), rgb(0 0 0 / 0) 16px, rgb(255 255 255 / 0.07) 20px, transparent 38px),
+    linear-gradient(160deg, rgb(255 255 255 / 0.09), transparent 45%, rgb(0 0 0 / 0.14));
+  box-shadow: var(--shadow-pop), inset 0 0 0 1px rgb(0 0 0 / 0.14);
+}
+
+/* The elastic that keeps it shut, in the pen's colour. */
+.nb-cover-front::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 30px;
+  width: 9px;
+  background: color-mix(in oklab, var(--rubric) 82%, #000);
+  box-shadow: inset 1px 0 0 rgb(255 255 255 / 0.12), 2px 0 5px rgb(0 0 0 / 0.2);
+}
+
+/* A paper label, like the bookplate inside the book's own cover. */
+.nb-label {
+  width: min(100%, 240px);
+  padding: 22px 20px 20px;
+  border-radius: 4px;
+  background: var(--bg-raised);
+  color: var(--ink);
+  text-align: center;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2), inset 0 0 0 1px rgb(0 0 0 / 0.05);
+}
+
+.nb-label-title {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 420;
+  line-height: 1;
+  letter-spacing: -0.015em;
+  font-variation-settings: "opsz" 36;
+}
+
+.nb-label-rule {
+  display: block;
+  width: 28px;
+  height: 1.5px;
+  margin: 13px auto 12px;
+  background: var(--rubric);
+}
+
+.nb-label-book {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+/* The inside of the board: endpaper, as in the book. */
+.nb-cover-back {
+  transform: rotateY(180deg);
+  border: 5px solid var(--nb-c);
+  background-color: color-mix(in oklab, var(--nb-c) 16%, var(--bg-raised));
+  background-image: radial-gradient(color-mix(in oklab, var(--nb-c) 32%, transparent) 1px, transparent 1.4px);
+  background-size: 9px 9px;
+}
+
+@keyframes nb-cover-open {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(-150deg);
+  }
+}
+
+@keyframes nb-face-out {
+  48% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes nb-shade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes nb-out {
+  to {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+
 /* The margin steps back while the notebook covers it; on very wide screens both fit. */
 .rg-margin {
   transition: opacity 0.3s var(--ease-out);

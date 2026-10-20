@@ -104,6 +104,10 @@ export function Reader({ id, initial }: { id: string; initial: Article | null })
 
 const GUTTER_WIDE = 64;
 const GUTTER_MID = 52;
+/** How long the text has to land before a pinned notebook opens beside it. */
+const NOTEBOOK_ENTRY_DELAY_MS = 320;
+/** From this width the notebook and the margin both fit (matches .nb-open in globals.css). */
+const NOTEBOOK_CLEARS_MARGIN = 1900;
 
 function ReaderInner({ article }: { article: Article }) {
   const ix = useMemo(() => indexArticle(article), [article]);
@@ -141,6 +145,18 @@ function ReaderInner({ article }: { article: Article }) {
   useEffect(() => {
     setUI({ activeGloss: null, hoverGloss: null, activeHighlight: null, pending: null, cursor: null, notebookOpen: false });
   }, [articleId, setUI]);
+
+  // A pinned notebook opens with the text, a beat after the text has settled, so its opening is seen.
+  useEffect(() => {
+    if (!hydrated || !useStore.getState().settings.notebook) return;
+    const t = setTimeout(() => setUI({ notebookOpen: true }), NOTEBOOK_ENTRY_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [articleId, hydrated, setUI]);
+
+  // An answer opening in the margin is shown, so a notebook covering the margin steps aside.
+  useEffect(() => {
+    if (activeGloss && useStore.getState().notebookOpen && window.innerWidth < NOTEBOOK_CLEARS_MARGIN) setUI({ notebookOpen: false });
+  }, [activeGloss, setUI]);
 
   /* ---------------- navigation ---------------- */
 
