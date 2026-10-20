@@ -215,6 +215,7 @@
 .accountCompact {
   flex: none;
   justify-content: center;
+  gap: 0;
   width: 36px;
   height: 36px;
   min-height: 0;
