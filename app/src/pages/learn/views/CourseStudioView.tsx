@@ -65,6 +65,12 @@ export default function CourseStudioView(props: TerminalViewProps) {
   useEffect(() => { if (preload) { setActiveId(null); setPane('new'); } }, [preload]);
   const [pendingDelete, setPendingDelete] = useState<Lesson | null>(null);
   const [progress, setProgress] = useState<GenerateProgress | null>(null);
+  const [promptSeed, setPromptSeed] = useState<{ id: number; text: string } | null>(null);
+  const pickPrompt = useCallback((text: string) => {
+    setActiveId(null);
+    setPane('new');
+    setPromptSeed({ id: Date.now(), text });
+  }, []);
   const xiaobaiLevel = useAppStore((state) => state.global.learningLevel);
   const active = activeId ? lessons.find((lesson) => lesson.id === activeId) : undefined;
   const watchingRef = useRef(false);
@@ -100,6 +106,7 @@ export default function CourseStudioView(props: TerminalViewProps) {
     onOpen: openLesson,
     onNew: newLesson,
     onDelete: setPendingDelete,
+    onPickPrompt: pickPrompt,
     progress,
   };
 
@@ -159,6 +166,8 @@ export default function CourseStudioView(props: TerminalViewProps) {
             onProgress={setProgress}
             compact={phone}
             preload={preload}
+            promptSeed={promptSeed}
+            showSuggestions={!sidebarSlot}
             onManageLibrary={() => props.onView('library')}
           />
 

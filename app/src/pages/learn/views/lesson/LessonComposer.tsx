@@ -19,7 +19,8 @@ import { SCENE_ICONS } from './sceneMeta';
 import st from './studio.module.css';
 import { IconSpark } from '../../../../components/ui/icons';
 
-const SUGGESTIONS = ['用生活例子讲清贝叶斯定理', 'TCP 三次握手为什么是三次', '进程和线程到底差在哪', '梯度下降是怎么找到最低点的'];
+/** 侧栏「对话记录」与窄屏快捷条共用的主题。点一条就填进主题框。 */
+export const LESSON_PROMPT_RECORDS = ['用生活例子讲清贝叶斯定理', 'TCP 三次握手为什么是三次', '进程和线程到底差在哪', '梯度下降是怎么找到最低点的'];
 const LEVEL_OPTIONS = (Object.keys(LEVEL_LABELS) as AudienceLevel[]).map((value) => ({ value, label: LEVEL_LABELS[value] }));
 const LENGTH_OPTIONS = (Object.keys(LENGTH_LABELS) as LessonLength[]).map((value) => ({ value, label: LENGTH_LABELS[value] }));
 const MAX_UPLOAD = 400_000;
@@ -34,9 +35,13 @@ interface ComposerProps extends Pick<TerminalViewProps, 'owner' | 'topic' | 'sel
   preload?: { key: string; attachments: Attachments; prompt?: string } | null;
   /** 去资料库上传或整理 */
   onManageLibrary?: () => void;
+  /** 侧栏点了一条对话记录；id 变了就写入主题框 */
+  promptSeed?: { id: number; text: string } | null;
+  /** 侧栏已经列出对话记录时，输入框下不再重复这些主题 */
+  showSuggestions?: boolean;
 }
 
-export function LessonComposer({ owner, topic, selectedSources, onCreated, onProgress, compact = false, preload, onManageLibrary }: ComposerProps) {
+export function LessonComposer({ owner, topic, selectedSources, onCreated, onProgress, compact = false, preload, onManageLibrary, promptSeed, showSuggestions = true }: ComposerProps) {
   const [prompt, setPrompt] = useState(() => preload?.prompt ?? '');
   /** 通过选择器附加的资料库文件与「我的内容」，以及别处直接带来的一段内容 */
   const [attachments, setAttachments] = useState<Attachments>(() => preload?.attachments ?? NO_ATTACHMENTS);
@@ -61,6 +66,13 @@ export function LessonComposer({ owner, topic, selectedSources, onCreated, onPro
   const [modelReady, setModelReady] = useState<boolean | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const promptRef = useRef<HTMLTextAreaElement>(null);
+  const seedId = promptSeed?.id;
+  useEffect(() => {
+    if (!promptSeed) return;
+    setPrompt(promptSeed.text);
+    promptRef.current?.focus();
+  }, [seedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let alive = true;
@@ -163,6 +175,7 @@ export function LessonComposer({ owner, topic, selectedSources, onCreated, onPro
   return (
     <section data-compact={compact || undefined} className={st.composer} aria-label="生成课程" aria-busy={generating}>
       <textarea
+        ref={promptRef}
         className={st.prompt}
         value={prompt}
         rows={3}
@@ -202,7 +215,7 @@ export function LessonComposer({ owner, topic, selectedSources, onCreated, onPro
           <span>上传文本</span>
         </button>
         <input ref={fileRef} type="file" hidden multiple accept=".txt,.md,.markdown,.csv,.json,.tex,text/*" onChange={onFiles} />
-        {!topic && !prompt && !generating && SUGGESTIONS.map((text) => (
+        {showSuggestions && !topic && !prompt && !generating && LESSON_PROMPT_RECORDS.map((text) => (
           <button key={text} type="button" className={cx(st.chip, st.chipGhost)} onClick={() => setPrompt(text)}>{text}</button>
         ))}
       </div>
