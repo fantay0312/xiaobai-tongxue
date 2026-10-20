@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Ellipsis, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { Button, Dialog, IconButton, Input, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, Segmented } from '../../../../components/ui';
-import { IconWorkbench, IconSpark } from '../../../../components/ui/icons';
+import { IconSpark } from '../../../../components/ui/icons';
 import { dueCards, type Origin, type StudyData, type WritingDoc } from '../../../../store/studyData';
 import { SideAction, SideEmpty, SideGroup, SideNavItem, SidePanel } from '../../shell/sidebarSlot';
 import type { TerminalViewProps } from '../types';
@@ -20,7 +20,7 @@ const TODO_GROUPS = [
 ] as const;
 
 /**
- * 工作台在终端侧栏里的导航：工具（概览 + 六个工具）与当前工具的条目。
+ * 工作台在终端侧栏里的导航：六个工具与当前工具的条目。概览不进工具列表。
  * 行只用外壳提供的侧栏件，不带自己的行样式。
  */
 export function WorkbenchSidebar({ view, data, tool, currentId, entries, pack, onGo, onCreate, onGenerate, onFocusTodo }: {
@@ -103,7 +103,6 @@ export function WorkbenchSidebar({ view, data, tool, currentId, entries, pack, o
   return (
     <SidePanel title="工作台" action={action} footer="工作台的内容保存在当前浏览器。">
       <SideGroup label="工具">
-        <SideNavItem icon={<IconWorkbench size={18} active={tool === null} />} label="概览" active={tool === null} onClick={() => onGo(null)} />
         {TOOL_IDS.map((id) => {
           const Icon = TOOLS[id].icon;
           return (
