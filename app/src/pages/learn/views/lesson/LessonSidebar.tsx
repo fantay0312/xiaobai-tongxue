@@ -3,12 +3,13 @@
  * 渲染进终端侧栏的挂载位；侧栏收起或在手机上没有挂载位时不渲染，主区自带课程库和幕导航。
  */
 import { useEffect, useState } from 'react';
-import { FileCode2, MoreHorizontal, Plus, Presentation, Trash2 } from 'lucide-react';
+import { FileCode2, MessageSquare, MoreHorizontal, Plus, Presentation, Trash2 } from 'lucide-react';
 import { IconButton, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '../../../../components/ui';
 import { IconClassroom } from '../../../../components/ui/icons';
 import { estimateMinutes, type GenerateProgress, type Lesson, type SceneProgress } from '../../../../engine/lessonStudio';
 import { LESSON_CAP } from '../../../../store/lessonStore';
 import { SideAction, SideEmpty, SideGroup, SideNavItem, SidePanel, SidebarPortal, useSidebarSlot } from '../../shell/sidebarSlot';
+import { LESSON_PROMPT_RECORDS } from './LessonComposer';
 import { SCENE_ICONS, runExport } from './sceneMeta';
 
 const PROGRESS_LABELS: Record<SceneProgress['status'], string> = { pending: '排队', running: '生成中', done: '完成', fallback: '本地补位' };
@@ -45,6 +46,8 @@ export interface LessonSidebarProps {
   onDelete: (lesson: Lesson) => void;
   /** 正在生成的新课 */
   progress?: GenerateProgress | null;
+  /** 把一条对话记录填进「新建一堂课」的主题框 */
+  onPickPrompt: (text: string) => void;
   /** 打开着的课的场景导航 */
   scenes?: {
     lesson: Lesson;
@@ -55,7 +58,7 @@ export interface LessonSidebarProps {
   };
 }
 
-export function LessonSidebar({ lessons, activeId, onOpen, onNew, onDelete, progress, scenes }: LessonSidebarProps) {
+export function LessonSidebar({ lessons, activeId, onOpen, onNew, onDelete, onPickPrompt, progress, scenes }: LessonSidebarProps) {
   return (
     <SidebarPortal>
       <SidePanel
@@ -63,6 +66,19 @@ export function LessonSidebar({ lessons, activeId, onOpen, onNew, onDelete, prog
         action={<SideAction icon={<Plus size={16} strokeWidth={1.75} />} onClick={onNew}>新建一堂课</SideAction>}
         footer={`${lessons.length} / ${LESSON_CAP} 堂 · 保存在这台设备的浏览器里`}
       >
+        <SideGroup label="对话记录">
+          {LESSON_PROMPT_RECORDS.map((text) => (
+            <SideNavItem
+              key={text}
+              icon={<MessageSquare size={15} strokeWidth={1.75} />}
+              label={text}
+              title={text}
+              disabled={!!progress}
+              onClick={() => onPickPrompt(text)}
+            />
+          ))}
+        </SideGroup>
+
         {progress && (
           <SideGroup label={progress.title ? `正在生成 · ${progress.title}` : '正在生成'}>
             {progress.scenes.length === 0 && <SideEmpty>正在设计课程大纲…</SideEmpty>}
