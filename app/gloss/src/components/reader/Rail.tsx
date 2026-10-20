@@ -6,10 +6,17 @@ import { useReader } from "./context";
 
 type Geo = { docTop: number; docH: number; blocks: { id: string; top: number; h: number; heading: boolean; fill: number }[] };
 
+/** How much wider a bar beside the reading position grows; it eases back further away. */
+const MAGNIFY = 0.9;
+const BAR_W = 18;
+const ease = "0.35s cubic-bezier(0.22, 1, 0.36, 1)";
+
 /**
- * A minimap of the whole text. Paragraphs are bars, your highlights are
- * yellow, glosses are vermilion dots, and the brief's sections are ticks.
- * Click or drag anywhere to travel.
+ * A scrollbar that maps the text as far as you have read. The track is the
+ * whole length; paragraphs appear as bars once you have scrolled to them, and
+ * swell beside where you are reading. Highlights are yellow, glosses are
+ * vermilion dots, and the brief's sections are ticks. Click or drag anywhere,
+ * read or not, to travel.
  */
 export function Rail({ articleEl }: { articleEl: HTMLElement | null }) {
   const { ix } = useReader();
@@ -21,6 +28,8 @@ export function Rail({ articleEl }: { articleEl: HTMLElement | null }) {
   const [geo, setGeo] = useState<Geo | null>(null);
   const [railH, setRailH] = useState(0);
   const [view, setView] = useState({ top: 0, h: 0 });
+  // The furthest down the text the reader has come, in text pixels.
+  const [reached, setReached] = useState(0);
   const [hoverY, setHoverY] = useState<number | null>(null);
   const drag = useRef(false);
 
@@ -57,7 +66,11 @@ export function Rail({ articleEl }: { articleEl: HTMLElement | null }) {
 
   useEffect(() => {
     if (!geo) return;
-    const on = () => setView({ top: window.scrollY - geo.docTop, h: window.innerHeight });
+    const on = () => {
+      const top = window.scrollY - geo.docTop;
+      setView({ top, h: window.innerHeight });
+      setReached((r) => Math.max(r, top + window.innerHeight));
+    };
     on();
     window.addEventListener("scroll", on, { passive: true });
     window.addEventListener("resize", on);
@@ -95,6 +108,12 @@ export function Rail({ articleEl }: { articleEl: HTMLElement | null }) {
 
   const vTop = Math.max(0, view.top * k);
   const vH = Math.max(14, Math.min(railH - vTop, view.h * k));
+  const reachedY = Math.min(railH, reached * k);
+  const shown = (y: number) => y <= reachedY;
+  // A soft lens centred on the visible stretch of text.
+  const center = vTop + vH / 2;
+  const sigma = 24 + vH / 2;
+  const lens = (y: number) => 1 + MAGNIFY * Math.exp(-((y - center) ** 2) / (2 * sigma * sigma));
 
   return (
     <div
@@ -120,48 +139,74 @@ export function Rail({ articleEl }: { articleEl: HTMLElement | null }) {
       onPointerUp={() => (drag.current = false)}
       onPointerLeave={() => setHoverY(null)}
     >
-      {geo.blocks.map((b) => (
-        <span
-          key={b.id}
-          className="absolute left-[6px]"
-          style={{
-            top: b.top * k,
-            height: Math.max(1, b.h * k - 2),
-            width: b.heading ? 18 : 18 * b.fill,
-            background: b.heading
-              ? "var(--ink-2)"
-              : "repeating-linear-gradient(to bottom, var(--ink-4) 0 1px, transparent 1px 3px)",
-            opacity: b.heading ? 0.8 : 0.75,
-          }}
-        />
-      ))}
+      {/* The track: the whole text, darker over the part already read. */}
+      <span aria-hidden className="pointer-events-none absolute left-[4px] top-0 h-full w-px bg-rule" />
+      <span aria-hidden className="pointer-events-none absolute left-[4px] top-0 w-px bg-ink-4" style={{ height: reachedY, transition: `height ${ease}` }} />
+
+      {geo.blocks.map((b) => {
+        const y = b.top * k;
+        const h = Math.max(1, b.h * k - 2);
+        const on = shown(y);
+        const s = lens(y + h / 2);
+        const base = b.heading ? 0.8 : 0.75;
+        return (
+          <span
+            key={b.id}
+            className="absolute left-[6px]"
+            style={{
+              top: y,
+              height: h,
+              width: b.heading ? BAR_W : BAR_W * b.fill,
+              background: b.heading
+                ? "var(--ink-2)"
+                : "repeating-linear-gradient(to bottom, var(--ink-4) 0 1px, transparent 1px 3px)",
+              opacity: on ? Math.min(1, base + 0.25 * ((s - 1) / MAGNIFY)) : 0,
+              transform: `scaleX(${on ? s : 0})`,
+              transformOrigin: "left center",
+              transition: `transform ${ease}, opacity ${ease}`,
+            }}
+          />
+        );
+      })}
 
       {sections.map((s) => {
         const id = ix.byNumber.get(s.start);
         const y = id ? posOf(id) : null;
-        return y === null ? null : <span key={s.start} className="absolute left-0 h-px w-[5px] bg-ink-3" style={{ top: y }} />;
+        return y === null || !shown(y) ? null : <span key={s.start} className="absolute left-0 h-px w-[5px] bg-ink-3" style={{ top: y }} />;
       })}
 
       {highlights.map((h) => {
         const y = posOf(h.anchor.start.b);
-        return y === null ? null : <span key={h.id} className="absolute left-[4px] w-[22px] rounded-[1px] bg-[var(--hl-strong)]" style={{ top: y, height: 4 }} />;
+        return y === null || !shown(y) ? null : (
+          <span
+            key={h.id}
+            className="absolute left-[4px] w-[22px] rounded-[1px] bg-[var(--hl-strong)]"
+            style={{ top: y, height: 4, transform: `scaleX(${lens(y)})`, transformOrigin: "left center", transition: `transform ${ease}` }}
+          />
+        );
       })}
 
       {glosses.map((g) => {
         const id = g.anchor?.start.b ?? g.at;
         const y = id ? posOf(id) : null;
-        return y === null ? null : <span key={g.id} className="absolute left-[25px] size-[5px] rounded-full bg-[var(--rubric)]" style={{ top: y }} />;
+        return y === null || !shown(y) ? null : (
+          <span
+            key={g.id}
+            className="absolute left-[25px] size-[5px] rounded-full bg-[var(--rubric)]"
+            style={{ top: y, transform: `translateX(${BAR_W * (lens(y) - 1)}px)`, transition: `transform ${ease}` }}
+          />
+        );
       })}
 
       <span
-        className="pointer-events-none absolute -left-[2px] w-[34px] rounded-[6px] border border-ink-3/35 bg-ink/[0.035] transition-[border-color] group-hover:border-ink-3/70"
+        className="pointer-events-none absolute -left-[2px] w-[46px] rounded-[7px] border border-ink-3/35 bg-ink/[0.035] transition-[border-color] group-hover:border-ink-3/70"
         style={{ top: vTop, height: vH }}
         aria-hidden
       />
 
       {hoverSection && (
         <span
-          className="pointer-events-none absolute left-[40px] z-10 whitespace-nowrap rounded-md bg-lens px-2 py-1 text-[11.5px] text-lens-fg shadow-pop"
+          className="pointer-events-none absolute left-[52px] z-10 whitespace-nowrap rounded-md bg-lens px-2 py-1 text-[11.5px] text-lens-fg shadow-pop"
           style={{ top: Math.max(0, hoverSection.y - 4), animation: "fade 0.15s" }}
         >
           {hoverSection.title}

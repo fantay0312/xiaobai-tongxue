@@ -39,6 +39,8 @@ export type Settings = {
   rail: boolean;
   /** Read aloud. Off by default: when on, a listen button joins the reader's top bar. */
   listen: boolean;
+  /** Pinned: opening a text opens its notebook too. */
+  notebook: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -57,6 +59,7 @@ export const DEFAULT_SETTINGS: Settings = {
   numbers: false,
   rail: true,
   listen: false,
+  notebook: true,
 };
 
 /** Swatch colours for the settings panel. The real palettes live in globals.css. */

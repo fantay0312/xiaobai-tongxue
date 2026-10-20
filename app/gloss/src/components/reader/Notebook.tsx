@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Show, SignInButton } from "@clerk/nextjs";
-import { Check, Copy, Download, Trash2, X } from "lucide-react";
+import { Check, Copy, Download, Pin, PinOff, Trash2, X } from "lucide-react";
 import { GlossMark } from "@/components/brand/Gloss";
 import { cmp } from "@/lib/anchor";
 import { undash } from "@/lib/article";
@@ -19,17 +19,69 @@ type Entry = { kind: "gloss"; g: Gloss; key: string } | { kind: "hl"; h: Highlig
 /** Below this width the notebook covers the margin, so it steps aside when you jump to a passage. */
 const covers = () => window.innerWidth < 1900;
 type Filter = "all" | "q" | "hl";
+type Phase = "opening" | "open" | "closing";
+/** How long the cover takes to swing open, and to shut and leave (see .nb in globals.css). */
+const OPENING_MS = 1080;
+const CLOSING_MS = 760;
+/** Entries rise once the cover has lifted off them. */
+const ENTRIES_AFTER_MS = 420;
+/** Full width, and the narrowest it gets to stay clear of the text; with less room it covers the text. */
+const NOTEBOOK_W = 420;
+const BESIDE_MIN_W = 300;
+/** Room kept between the text and the notebook, and between the notebook and the window edge. */
+const TEXT_GAP = 24;
+const EDGE_GAP = 10;
 
 /** Everything you marked and asked, in reading order, as questions and answers you can scan. */
 export function Notebook() {
   const { ix } = useReader();
   const open = useStore((s) => s.notebookOpen);
   const setUI = useStore((s) => s.setUI);
+  const pinned = useStore((s) => s.settings.notebook);
+  const setSettings = useStore((s) => s.setSettings);
   const glosses = useGlosses(ix.article.id);
   const highlights = useHighlights(ix.article.id);
   const [copied, setCopied] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
   const [scrolled, setScrolled] = useState(false);
+  // Stays on screen while its cover shuts, so closing is the opening run backwards.
+  const [mounted, setMounted] = useState(open);
+  const [phase, setPhase] = useState<Phase>("opening");
+
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (open) {
+      setMounted(true);
+      setPhase(reduce ? "open" : "opening");
+    } else if (reduce) setMounted(false);
+    else setPhase("closing");
+  }, [open]);
+
+  useEffect(() => {
+    if (!mounted || phase === "open") return;
+    const t = setTimeout(() => (phase === "opening" ? setPhase("open") : setMounted(false)), phase === "opening" ? OPENING_MS : CLOSING_MS);
+    return () => clearTimeout(t);
+  }, [mounted, phase]);
+
+  // Narrows to the room right of the text, so it opens beside the text rather than over it.
+  const [width, setWidth] = useState<number | null>(null);
+  useEffect(() => {
+    if (!mounted) return;
+    const text = document.querySelector<HTMLElement>(".prose-read");
+    const fit = () => {
+      const right = text?.getBoundingClientRect().right;
+      const room = right === undefined ? 0 : document.documentElement.clientWidth - right - TEXT_GAP - EDGE_GAP;
+      setWidth(room >= BESIDE_MIN_W ? Math.min(NOTEBOOK_W, Math.floor(room)) : null);
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    if (text) ro.observe(text);
+    window.addEventListener("resize", fit);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", fit);
+    };
+  }, [mounted]);
 
   const entries = useMemo(() => {
     const pos = (e: Entry) => {
@@ -49,8 +101,9 @@ export function Notebook() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, setUI]);
 
-  if (!open) return null;
+  if (!mounted) return null;
 
+  const lead = phase === "opening" ? ENTRIES_AFTER_MS : 0;
   const both = glosses.length > 0 && highlights.length > 0;
   const shown = entries.filter((e) => !both || filter === "all" || (filter === "q" ? e.kind === "gloss" : e.kind === "hl"));
   const markdown = () =>
@@ -63,116 +116,135 @@ export function Notebook() {
     .join(", ");
 
   return (
-    <aside
-      aria-label="笔记本"
-      className="fixed bottom-2.5 left-2.5 right-2.5 top-[calc(var(--topbar-h)+6px)] z-[45] flex flex-col overflow-hidden rounded-[18px] border border-rule bg-raised shadow-pop sm:left-auto sm:w-[420px]"
-      style={{ animation: "sheet-in 0.38s var(--ease-out)" }}
+    <div
+      data-phase={phase}
+      className="nb fixed bottom-2.5 left-2.5 right-2.5 top-[calc(var(--topbar-h)+6px)] z-[45] sm:left-auto sm:w-[var(--nb-w,420px)]"
+      style={width ? { ["--nb-w" as string]: `${width}px` } : undefined}
     >
-      <header className={`shrink-0 border-b px-5 pb-3.5 pt-4 transition-colors duration-200 ${scrolled ? "border-rule" : "border-transparent"}`}>
-        <div className="flex items-center gap-1">
-          <div className="min-w-0 flex-1">
-            <h2 className="font-serif text-[23px] font-[420] leading-none tracking-[-0.015em] text-ink [font-variation-settings:'opsz'_36]">笔记本</h2>
-            <p className="mt-1.5 text-[12.5px] leading-none text-ink-3">{summary || "暂时为空"}</p>
+      <div aria-hidden className="nb-board" />
+      <aside aria-label="笔记本" className="nb-page flex flex-col overflow-hidden bg-raised">
+        <header className={`shrink-0 border-b px-5 pb-3.5 pt-4 transition-colors duration-200 ${scrolled ? "border-rule" : "border-transparent"}`}>
+          <div className="flex items-center gap-1">
+            <div className="min-w-0 flex-1">
+              <h2 className="font-serif text-[23px] font-[420] leading-none tracking-[-0.015em] text-ink [font-variation-settings:'opsz'_36]">笔记本</h2>
+              <p className="mt-1.5 text-[12.5px] leading-none text-ink-3">{summary || "暂时为空"}</p>
+            </div>
+            <HeadBtn label={pinned ? "已随书打开" : "随书打开"} pressed={pinned} onClick={() => setSettings({ notebook: !pinned })}>
+              {pinned ? <Pin size={15} /> : <PinOff size={15} />}
+            </HeadBtn>
+            <HeadBtn
+              label={copied ? "已复制" : "复制为 Markdown"}
+              disabled={!entries.length}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(markdown());
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1400);
+                } catch {}
+              }}
+            >
+              {copied ? <Check size={16} className="text-good" /> : <Copy size={16} />}
+            </HeadBtn>
+            <HeadBtn
+              label="下载 Markdown"
+              disabled={!entries.length}
+              onClick={() => {
+                const blob = new Blob([markdown()], { type: "text/markdown" });
+                download(blob, `${ix.article.title.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "").trim().slice(0, 80) || "阅读"}-笔记.md`);
+              }}
+            >
+              <Download size={16} />
+            </HeadBtn>
+            <span aria-hidden className="mx-1 h-4 w-px bg-rule" />
+            <HeadBtn label="关闭笔记本" onClick={() => setUI({ notebookOpen: false })}>
+              <X size={17} />
+            </HeadBtn>
           </div>
-          <HeadBtn
-            label={copied ? "已复制" : "复制为 Markdown"}
-            disabled={!entries.length}
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(markdown());
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1400);
-              } catch {}
-            }}
-          >
-            {copied ? <Check size={16} className="text-good" /> : <Copy size={16} />}
-          </HeadBtn>
-          <HeadBtn
-            label="下载 Markdown"
-            disabled={!entries.length}
-            onClick={() => {
-              const blob = new Blob([markdown()], { type: "text/markdown" });
-              download(blob, `${ix.article.title.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "").trim().slice(0, 80) || "阅读"}-笔记.md`);
-            }}
-          >
-            <Download size={16} />
-          </HeadBtn>
-          <span aria-hidden className="mx-1 h-4 w-px bg-rule" />
-          <HeadBtn label="关闭笔记本" onClick={() => setUI({ notebookOpen: false })}>
-            <X size={17} />
-          </HeadBtn>
-        </div>
 
-        {both && (
-          <div role="tablist" aria-label="显示" className="mt-4 grid grid-cols-3 rounded-[10px] bg-sunk p-[3px]">
-            {(
-              [
-                ["all", "全部", entries.length],
-                ["q", "问答", glosses.length],
-                ["hl", "高亮", highlights.length],
-              ] as const
-            ).map(([k, label, count]) => (
-              <button
-                key={k}
-                type="button"
-                role="tab"
-                aria-selected={filter === k}
-                onClick={() => setFilter(k)}
-                className={`flex h-7 items-center justify-center gap-1.5 rounded-[8px] text-[12.5px] font-medium transition-colors ${
-                  filter === k ? "bg-pill text-ink shadow-[0_1px_2px_rgb(0_0_0/0.1)]" : "text-ink-3 hover:text-ink"
-                }`}
-              >
-                {label}
-                <span className="tabular-nums text-ink-4">{count}</span>
-              </button>
-            ))}
+          {both && (
+            <div role="tablist" aria-label="显示" className="mt-4 grid grid-cols-3 rounded-[10px] bg-sunk p-[3px]">
+              {(
+                [
+                  ["all", "全部", entries.length],
+                  ["q", "问答", glosses.length],
+                  ["hl", "高亮", highlights.length],
+                ] as const
+              ).map(([k, label, count]) => (
+                <button
+                  key={k}
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === k}
+                  onClick={() => setFilter(k)}
+                  className={`flex h-7 items-center justify-center gap-1.5 rounded-[8px] text-[12.5px] font-medium transition-colors ${
+                    filter === k ? "bg-pill text-ink shadow-[0_1px_2px_rgb(0_0_0/0.1)]" : "text-ink-3 hover:text-ink"
+                  }`}
+                >
+                  {label}
+                  <span className="tabular-nums text-ink-4">{count}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </header>
+
+        {!entries.length ? (
+          <div className="flex flex-1 flex-col items-center justify-center px-10 pb-16 text-center">
+            <GlossMark className="size-11 text-ink-4" />
+            <p className="mt-5 font-serif text-[20px] leading-tight text-ink">这里还没有内容</p>
+            <p className="mt-2 max-w-[270px] text-[13.5px] leading-relaxed text-ink-3">
+              选中文字提问或高亮，问答会按阅读顺序保存在这里。
+            </p>
+          </div>
+        ) : (
+          <div onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)} className="scroll-thin flex-1 overflow-y-auto px-3.5 pb-4 pt-0.5">
+            <ol className="space-y-2.5">
+              {shown.map((e, i) => (
+                <li key={e.key} className="rise" style={{ animationDuration: "0.45s", animationDelay: `${lead + Math.min(i, 8) * 35}ms` }}>
+                  {e.kind === "hl" ? <HighlightEntry h={e.h} /> : <GlossEntry g={e.g} />}
+                </li>
+              ))}
+            </ol>
+            <Show when="signed-out">
+              <p className="px-1 pb-1 pt-4 text-center text-[12.5px] leading-relaxed text-ink-3">
+                这些内容已保存在当前浏览器。{" "}
+                <SignInButton mode="modal">
+                  <button type="button" className="font-medium text-ink-2 underline decoration-rule-strong underline-offset-4 transition-colors hover:text-ink">
+                    登录
+                  </button>
+                </SignInButton>{" "}
+                以便跨设备保存。
+              </p>
+            </Show>
           </div>
         )}
-      </header>
-
-      {!entries.length ? (
-        <div className="flex flex-1 flex-col items-center justify-center px-10 pb-16 text-center">
-          <GlossMark className="size-11 text-ink-4" />
-          <p className="mt-5 font-serif text-[20px] leading-tight text-ink">这里还没有内容</p>
-          <p className="mt-2 max-w-[270px] text-[13.5px] leading-relaxed text-ink-3">
-            选中文字提问或高亮，问答会按阅读顺序保存在这里。
-          </p>
-        </div>
-      ) : (
-        <div onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)} className="scroll-thin flex-1 overflow-y-auto px-3.5 pb-4 pt-0.5">
-          <ol className="space-y-2.5">
-            {shown.map((e, i) => (
-              <li key={e.key} className="rise" style={{ animationDuration: "0.45s", animationDelay: `${Math.min(i, 8) * 35}ms` }}>
-                {e.kind === "hl" ? <HighlightEntry h={e.h} /> : <GlossEntry g={e.g} />}
-              </li>
-            ))}
-          </ol>
-          <Show when="signed-out">
-            <p className="px-1 pb-1 pt-4 text-center text-[12.5px] leading-relaxed text-ink-3">
-              这些内容已保存在当前浏览器。{" "}
-              <SignInButton mode="modal">
-                <button type="button" className="font-medium text-ink-2 underline decoration-rule-strong underline-offset-4 transition-colors hover:text-ink">
-                  登录
-                </button>
-              </SignInButton>{" "}
-              以便跨设备保存。
-            </p>
-          </Show>
+      </aside>
+      {phase !== "open" && (
+        <div aria-hidden className="nb-cover">
+          <div className="nb-cover-face nb-cover-front">
+            <div className="nb-label">
+              <p className="nb-label-title">笔记本</p>
+              <span className="nb-label-rule" />
+              <p className="nb-label-book">{ix.article.title}</p>
+            </div>
+          </div>
+          <div className="nb-cover-face nb-cover-back" />
         </div>
       )}
-    </aside>
+    </div>
   );
 }
 
-function HeadBtn({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: ReactNode }) {
+function HeadBtn({ label, onClick, disabled, pressed, children }: { label: string; onClick: () => void; disabled?: boolean; pressed?: boolean; children: ReactNode }) {
   return (
     <button
       type="button"
       aria-label={label}
+      aria-pressed={pressed}
       data-tip={label}
       disabled={disabled}
       onClick={onClick}
-      className="grid size-9 place-items-center rounded-full text-ink-3 transition-colors hover:bg-sunk hover:text-ink disabled:pointer-events-none disabled:opacity-35"
+      className={`grid size-9 place-items-center rounded-full transition-colors hover:bg-sunk hover:text-ink disabled:pointer-events-none disabled:opacity-35 ${pressed ? "text-rubric-text" : "text-ink-3"}`}
     >
       {children}
     </button>
