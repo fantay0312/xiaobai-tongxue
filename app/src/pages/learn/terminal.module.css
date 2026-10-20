@@ -50,16 +50,20 @@
   box-shadow: 0 0 0 3px var(--ring);
 }
 
-/* ── 导轨 ── */
+/* ── 导轨：悬停时整栏向右展开，文字跟在图标旁边，不再用浮层提示 ── */
 .rail {
+  z-index: 30;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 8px;
+  width: 52px;
   min-height: 0;
-  padding: 12px 0 10px;
+  padding: 12px 8px 10px;
+  overflow: hidden;
   background: var(--sidebar);
   border-right: 1px solid var(--border);
+  transition: width var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
 }
 
 .railGroup,
@@ -77,10 +81,13 @@
 
 .railItem {
   position: relative;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
   width: 36px;
   height: 36px;
+  margin-inline: auto;
   padding: 0;
   border: 0;
   border-radius: var(--r-md);
@@ -88,7 +95,15 @@
   color: var(--text-3);
   text-decoration: none;
   cursor: pointer;
-  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), width var(--dur-2) var(--ease), padding var(--dur-2) var(--ease), gap var(--dur-2) var(--ease);
+}
+
+.railGlyph {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
 }
 
 .railItem:hover {
@@ -105,9 +120,57 @@
   color: var(--text);
 }
 
-.railLabel,
+.railLabel {
+  display: block;
+  flex: none;
+  min-width: 0;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  color: var(--text-2);
+  font: 500 var(--fz-sm)/1 var(--ui-font);
+  white-space: nowrap;
+  transition: max-width var(--dur-2) var(--ease), opacity var(--dur-2) var(--ease);
+}
+
+.railItem[aria-current='page'] .railLabel {
+  color: var(--text);
+}
+
 .railMore {
   display: none;
+}
+
+@media (min-width: 761px) {
+  .rail:hover,
+  .rail:focus-within {
+    width: 168px;
+    box-shadow: 10px 0 28px color-mix(in srgb, var(--text) 10%, transparent);
+  }
+
+  .rail:hover .railGroup,
+  .rail:hover .railBottom,
+  .rail:focus-within .railGroup,
+  .rail:focus-within .railBottom {
+    align-items: stretch;
+  }
+
+  .rail:hover .railItem,
+  .rail:focus-within .railItem,
+  .rail:hover [data-rail],
+  .rail:focus-within [data-rail] {
+    gap: 2px;
+    width: 100%;
+    margin-inline: 0;
+    justify-content: flex-start;
+    border-radius: var(--r-md);
+  }
+
+  .rail:hover .railLabel,
+  .rail:focus-within .railLabel {
+    max-width: 7.5em;
+    opacity: 1;
+  }
 }
 
 /* ── 侧栏 ── */
@@ -868,9 +931,12 @@ button.crumb:hover {
     flex-direction: row;
     order: 2;
     gap: 0;
+    width: auto;
+    overflow: visible;
     padding: 3px 6px calc(3px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--border);
     border-right: 0;
+    box-shadow: none;
   }
 
   .railGroup {
@@ -895,12 +961,18 @@ button.crumb:hover {
     width: auto;
     max-width: 96px;
     height: 50px;
+    margin-inline: 0;
     border-radius: var(--r-lg);
     -webkit-tap-highlight-color: transparent;
   }
 
+  .railGlyph {
+    width: auto;
+    height: auto;
+  }
+
   /* 图标外包一粒胶囊，当前项点亮 */
-  .railItem > svg {
+  .railGlyph > svg {
     box-sizing: content-box;
     padding: 2px 16px;
     border-radius: var(--r-full);
@@ -916,7 +988,7 @@ button.crumb:hover {
     transform: none;
   }
 
-  .railItem:active > svg {
+  .railItem:active .railGlyph > svg {
     background: var(--active);
   }
 
@@ -927,14 +999,16 @@ button.crumb:hover {
     font-weight: 600;
   }
 
-  .railItem[aria-current='page'] > svg,
-  .railItem[data-active] > svg {
+  .railItem[aria-current='page'] .railGlyph > svg,
+  .railItem[data-active] .railGlyph > svg {
     background: var(--accent-soft);
     color: var(--accent);
   }
 
   .railLabel {
     display: block;
+    max-width: none;
+    opacity: 1;
     font-size: var(--fz-xs);
     line-height: 1.2;
     white-space: nowrap;
