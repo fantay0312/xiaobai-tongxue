@@ -1,5 +1,31 @@
 /* 记忆视图：小砚的记忆 + 小白的记忆。只用 skins.css 语义令牌；故事物件放在 [data-story] 岛里。 */
 
+.repoFolder { display: flex; flex-direction: column; gap: 2px; }
+.repoToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  margin: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-1), 0 0 0 1px var(--border);
+  color: var(--text);
+  font: 550 var(--fz-sm)/1.3 var(--ui-font);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+.repoToggle:hover { background: var(--hover); }
+.repoToggle:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+.repoToggle span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.repoChevron { flex: none; color: var(--text-3); transition: transform var(--dur-2) var(--ease); }
+.repoToggle[aria-expanded='true'] .repoChevron { transform: rotate(90deg); }
+.repoItems { display: flex; flex-direction: column; gap: 2px; padding-top: 4px; }
+
 .root {
   width: 100%;
   max-width: 960px;
