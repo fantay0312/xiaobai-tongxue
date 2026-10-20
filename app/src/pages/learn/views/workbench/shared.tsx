@@ -4,7 +4,7 @@ import {
   Badge, Button, Dialog, Empty, Field, IconButton, Input, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger,
   Segmented, Shimmer, Skeleton, Textarea, cx, toast,
 } from '../../../../components/ui';
-import { IconFlashcard, IconMindmap, IconNote, IconQuiz, IconTodo, IconWorkbench, IconWriting, type XbIconProps, IconSpark } from '../../../../components/ui/icons';
+import { IconFlashcard, IconMindmap, IconNote, IconQuiz, IconTodo, IconWriting, type XbIconProps, IconSpark } from '../../../../components/ui/icons';
 import { useStudyData, type Origin, type QuestionType } from '../../../../store/studyData';
 import type { TerminalViewProps } from '../types';
 import { createFromAI, errorText, isAbort, type Created, type GenKind } from './actions';
@@ -57,10 +57,6 @@ export function WorkbenchNav({ tool, counts, onGo }: { tool: ToolId | null; coun
   }, [tool]);
   return (
     <nav ref={ref} className={s.nav} aria-label="学习工作台">
-      <button type="button" className={s.navItem} aria-current={tool === null ? 'page' : undefined} onClick={() => onGo(null)}>
-        <IconWorkbench size={16} active={tool === null} />概览
-      </button>
-      <span className={s.navSep} aria-hidden="true" />
       {TOOL_IDS.map((id) => {
         const Icon = TOOLS[id].icon;
         return (

@@ -12,6 +12,7 @@
   container: wb / inline-size;
 }
 .root[data-wide='false'] { max-width: 960px; }
+.backRow { display: flex; justify-content: flex-start; margin: -8px 0 -8px -8px; }
 
 /* ── 外框：主区 + 右侧「问小砚」 ── */
 .shell { display: flex; align-items: stretch; width: 100%; min-height: 100%; }

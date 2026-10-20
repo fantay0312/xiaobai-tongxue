@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { useSearchParams } from 'react-router';
-import { Dialog } from '../../../components/ui';
+import { Button, Dialog } from '../../../components/ui';
 import { IconSpark } from '../../../components/ui/icons';
 import { useStudyData, type WritingDoc } from '../../../store/studyData';
 import { SidebarPortal, useSidebarSlot } from '../shell/sidebarSlot';
@@ -102,6 +103,11 @@ export default function WorkbenchView(props: TerminalViewProps) {
   return (
     <div className={s.shell} ref={shellRef} data-ai={docked ? 'open' : undefined}>
       <div className={s.root} data-wide={wide}>
+        {tool !== null && (
+          <div className={s.backRow}>
+            <Button variant="ghost" size="sm" icon={<ArrowLeft size={16} strokeWidth={1.75} />} onClick={() => go(null)}>返回工作台</Button>
+          </div>
+        )}
         <SidebarPortal fallback={<WorkbenchNav tool={tool} counts={counts} onGo={(next) => go(next)} />}>
           <WorkbenchSidebar
             view={props}
