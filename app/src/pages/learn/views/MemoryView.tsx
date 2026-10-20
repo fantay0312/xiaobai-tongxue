@@ -10,7 +10,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { Dialog as RDialog } from 'radix-ui';
 import {
-  Archive, BadgeCheck, Ban, BookOpen, FileText, FolderOpen, HeartHandshake, History, IdCard, Library, ListTree, MessageCircleQuestion, MoonStar,
+  Archive, BadgeCheck, Ban, BookOpen, ChevronRight, FileText, Folder, FolderOpen, HeartHandshake, History, IdCard, Library, ListTree, MessageCircleQuestion, MoonStar,
   Plus, Repeat, SlidersHorizontal, Target, TriangleAlert,
 } from 'lucide-react';
 import { Badge, Segmented, Switch } from '../../../components/ui';
@@ -24,7 +24,7 @@ import { REPO_NAMES, fileInfo, folderLabel, listFiles, repoOps, useRepo } from '
 import type { EntrySource, RepoId, RepoState } from '../../../engine/memoryRepo';
 import { syncTutorRepo } from '../../../engine/tutorMemory';
 import { useAppStore } from '../../../store/appStore';
-import { SideAction, SideGroup, SideNavItem, SidePanel, SidebarPortal, useSidebarSlot } from '../shell/sidebarSlot';
+import { SideAction, SideNavItem, SidePanel, SidebarPortal, useSidebarSlot } from '../shell/sidebarSlot';
 import { useMediaQuery } from '../shell/views';
 import { DreamPanel } from './memory/DreamPanel';
 import { RepoFileView } from './memory/RepoFileView';
@@ -73,6 +73,7 @@ export default function MemoryView({ owner, topic, onOpenTopic, onView }: Termin
   const layer = ['@recent', '@short', '@long'].includes(requested) ? requested.slice(1) as MemoryLayer : null;
   const [addSignal, setAddSignal] = useState(0);
   const [treeOpen, setTreeOpen] = useState(false);
+  const [repoOpen, setRepoOpen] = useState<Record<RepoId, boolean>>({ xiaoyan: true, xiaobai: true });
 
   const xiaoyan = useRepo(owner, 'xiaoyan');
   const xiaobai = useRepo(owner, 'xiaobai');
@@ -186,13 +187,25 @@ export default function MemoryView({ owner, topic, onOpenTopic, onView }: Termin
     </div>
   );
 
-  /** 一个库的文件树：顶层文件、文件夹里的文件、梦境、变更历史 */
+  /** 一个库的文件树：顶层文件、文件夹里的文件、梦境、变更历史。库名是可折叠的文件夹按钮。 */
   const tree = (id: RepoId, repoState: RepoState) => {
     const list = listFiles(repoState);
     const folders = [...new Set(list.flatMap((entry) => (entry.folder ? [entry.folder] : [])))];
     const active = (target: string) => repo === id && file === target;
+    const open = repoOpen[id];
     return (
-      <SideGroup label={REPO_NAMES[id]}>
+      <section className={s.repoFolder}>
+        <button
+          type="button"
+          className={s.repoToggle}
+          aria-expanded={open}
+          onClick={() => setRepoOpen((current) => ({ ...current, [id]: !current[id] }))}
+        >
+          <ChevronRight className={s.repoChevron} size={15} strokeWidth={1.75} />
+          <Folder size={16} strokeWidth={1.75} />
+          <span>{REPO_NAMES[id]}</span>
+        </button>
+        {open && <div className={s.repoItems}>
         {list.filter((entry) => !entry.folder).map((entry) => (
           <SideNavItem
             key={entry.path}
@@ -235,7 +248,8 @@ export default function MemoryView({ owner, topic, onOpenTopic, onView }: Termin
           active={active(HISTORY)}
           onClick={() => go(id, HISTORY)}
         />
-      </SideGroup>
+        </div>}
+      </section>
     );
   };
 
