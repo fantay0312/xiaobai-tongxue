@@ -49,3 +49,28 @@
 .row:hover .trailing, .row:focus-within .trailing, .row[data-active] .trailing { opacity: 1; }
 @media (hover: none) { .trailing { opacity: 1; } }
 .empty { margin: 0; padding: 4px 8px; color: var(--text-3); font-size: var(--fz-xs); line-height: 1.7; }
+
+/* 状态色：分组标题前一粒圆点，行内图标、小字与进度条同色 */
+.group[data-tone='accent'], .row[data-tone='accent'] { --tone: var(--accent); --tone-soft: var(--accent-soft); }
+.group[data-tone='ok'], .row[data-tone='ok'] { --tone: var(--ok); --tone-soft: var(--ok-soft); }
+.group[data-tone='warn'], .row[data-tone='warn'] { --tone: var(--warn); --tone-soft: var(--warn-soft); }
+.group[data-tone='bad'], .row[data-tone='bad'] { --tone: var(--bad); --tone-soft: var(--bad-soft); }
+.group[data-tone='muted'], .row[data-tone='muted'] { --tone: var(--text-4); --tone-soft: var(--inset); }
+
+.groupHead { gap: 6px; }
+.group[data-tone] .groupHead > span:first-child { display: inline-flex; align-items: center; gap: 6px; }
+.group[data-tone] .groupHead > span:first-child::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--tone); }
+.groupHint { margin-left: auto; padding-right: 6px; color: var(--text-4); font-size: var(--fz-2xs); font-weight: 400; }
+
+/* 需要先处理的那一组：整组压一层淡底色，和其余分组拉开 */
+.group[data-tone='warn'] { padding: 2px 4px 4px; margin: 0 -4px; border-radius: var(--r-lg); background: color-mix(in srgb, var(--warn) 7%, transparent); }
+.group[data-tone='warn'] .row:hover, .group[data-tone='warn'] .row:focus-within { background: color-mix(in srgb, var(--warn) 12%, transparent); }
+.group[data-tone='warn'] .row[data-active] { background: color-mix(in srgb, var(--warn) 18%, transparent); }
+
+.row[data-tone] .item svg { color: var(--tone); }
+.row[data-tone='warn'] .sub, .row[data-tone='bad'] .sub { color: var(--tone); }
+.row[data-tone='muted'] .item { color: var(--text-3); }
+.row[data-tone='muted']:hover .item, .row[data-tone='muted'][data-active] .item { color: var(--text); }
+
+.meter { position: relative; display: block; width: 30px; height: 4px; overflow: hidden; border-radius: var(--r-full); background: var(--inset); }
+.meter > i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--tone, var(--accent)); }

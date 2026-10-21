@@ -14,12 +14,13 @@ import { SidebarPortal } from '../shell/sidebarSlot';
 import { useMediaQuery } from '../shell/views';
 import type { TerminalViewProps } from './types';
 import {
-  classroomRoute, deriveCourseRows, derivePrimaryAction, deriveSessionRecords, deriveStations,
-  type Station,
+  classroomRoute, deriveCourseFocus, deriveCourseRows, derivePrimaryAction, deriveSessionRecords, deriveStations,
+  type FocusAction, type Station,
 } from './feynman/data';
 import { useCelebration } from './feynman/useCelebration';
 import { useSidebarVisible } from './feynman/useSidebarVisible';
 import { Hero } from './feynman/Hero';
+import { CourseFocus } from './feynman/CourseFocus';
 import { LoopStations } from './feynman/LoopStations';
 import { CoursePicker } from './feynman/CoursePicker';
 import { DailyQuests } from './feynman/DailyQuests';
@@ -73,6 +74,11 @@ export default function FeynmanView({ owner, topic, topics, onView }: TerminalVi
     ? deriveStations({ topic: selected, state: topicStates[selected.topicId], events, reports, live, now })
     : []), [selected, topicStates, events, reports, live, now]);
 
+  const focus = useMemo(() => {
+    const row = selected ? rows.find((item) => item.topic.topicId === selected.topicId) : undefined;
+    return row ? deriveCourseFocus({ row, state: topicStates[row.topic.topicId], events, reports, live }) : null;
+  }, [selected, rows, topicStates, events, reports, live]);
+
   const storyInput = useMemo(
     () => ({ events, reports, global, topicStates, topics }),
     [events, reports, global, topicStates, topics],
@@ -102,6 +108,11 @@ export default function FeynmanView({ owner, topic, topics, onView }: TerminalVi
   const runPrimary = () => {
     if (primary.reviewTopicId) void goReview(primary.reviewTopicId);
     else navigate(primary.to);
+  };
+
+  const runFocus = (action: FocusAction) => {
+    if (action.review && selected) void goReview(selected.topicId);
+    else navigate(action.to);
   };
 
   /** 换课留在本板块：只换路由里的课 */
@@ -176,13 +187,23 @@ export default function FeynmanView({ owner, topic, topics, onView }: TerminalVi
         onGrowth={() => navigate('/growth')}
       />
 
+      {selected && focus && (
+        <CourseFocus
+          topic={selected}
+          focus={focus}
+          busy={reviewBusy}
+          onRun={runFocus}
+          compact={phone}
+          onPick={phone ? () => setPickerOpen(true) : hasSidebar ? undefined : scrollToPicker}
+        />
+      )}
+
       <LoopStations
         topic={selected}
         stations={stations}
         busy={reviewBusy}
         onRun={runStation}
         compact={phone}
-        onPick={phone ? () => setPickerOpen(true) : hasSidebar ? undefined : scrollToPicker}
       />
 
       {phone ? (

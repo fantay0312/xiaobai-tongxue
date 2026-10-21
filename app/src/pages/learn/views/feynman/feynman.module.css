@@ -729,6 +729,352 @@
   }
 }
 
+/* 分组：标题前一粒状态色圆点，右侧一句该怎么带；「该回讲了」整组压一层淡底 */
+.groupLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.groupLabel > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.groupLabel > span::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-4);
+}
+
+.pickerGroup[data-group='reteach'] .groupLabel > span::before { background: var(--warn); }
+.pickerGroup[data-group='taught'] .groupLabel > span::before { background: var(--ok); }
+
+.groupLabel small {
+  margin-left: auto;
+  font-size: var(--fz-2xs);
+  font-weight: 400;
+  color: var(--text-4);
+}
+
+.pickerGroup[data-group='reteach'] {
+  margin: 6px 0 2px;
+  padding: 0 4px 4px;
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--warn) 7%, transparent);
+}
+
+.pickerGroup[data-group='reteach'] .courseRow:hover {
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+}
+
+/* 还没讲的课退后一档：标题不加粗、不着色 */
+.courseRow[data-group='fresh'] .courseText b {
+  font-weight: 450;
+  color: var(--text-2);
+}
+
+/* ── 所选课的带法：领学 / 温书 / 想起来 / 改过来，各用一种状态色 ── */
+
+.focus {
+  --kind: var(--accent);
+  --kind-soft: var(--accent-soft);
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 20px 22px;
+  border-radius: var(--r-xl);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--kind) 9%, transparent), transparent 55%),
+    var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border), var(--shadow-1);
+}
+
+.focus[data-kind='refresh'] { --kind: var(--ok); --kind-soft: var(--ok-soft); }
+.focus[data-kind='recall'] { --kind: var(--warn); --kind-soft: var(--warn-soft); }
+.focus[data-kind='correct'] { --kind: var(--bad); --kind-soft: var(--bad-soft); }
+
+.focusHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.focusTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 11px 0 9px;
+  border-radius: var(--r-full);
+  background: var(--kind-soft);
+  color: var(--kind);
+  font-size: var(--fz-xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+
+.focusMastery {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fz-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+}
+
+.focusMeter {
+  position: relative;
+  display: block;
+  width: 96px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  overflow: hidden;
+}
+
+.focusMeter > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--kind);
+  transition: width var(--dur-3) var(--ease);
+}
+
+.focusPick {
+  margin-left: auto;
+}
+
+.focusHeading {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.focusHeading b {
+  font: 650 var(--fz-2xl)/1.25 var(--ui-font);
+  letter-spacing: -0.01em;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.focusHeading span {
+  font-size: var(--fz-sm);
+  color: var(--text-3);
+}
+
+.focusVoice {
+  padding: 10px 14px;
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--kind) 7%, var(--inset));
+  color: var(--text-2);
+  font-size: var(--fz-md);
+  line-height: 1.65;
+}
+
+/* 领学三步：第一步没做完的那格描一圈状态色 */
+.focusSteps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.focusSteps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.focusSteps li:first-child:not([data-done]),
+.focusSteps li[data-done] + li:not([data-done]) {
+  box-shadow: inset 0 0 0 1.5px var(--kind), 0 0 0 3px var(--kind-soft);
+}
+
+.focusSteps li > span:last-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.focusSteps b {
+  font-size: var(--fz-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.focusSteps small {
+  font-size: var(--fz-xs);
+  line-height: 1.5;
+  color: var(--text-3);
+}
+
+.focusStepNode {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--kind-soft);
+  color: var(--kind);
+  font: 600 var(--fz-xs)/1 var(--ui-font);
+  font-variant-numeric: tabular-nums;
+}
+
+.focusSteps li[data-done] .focusStepNode {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.focusSteps li[data-done] b {
+  color: var(--text-3);
+}
+
+.focusBeliefs {
+  display: grid;
+  gap: 8px;
+}
+
+.focusBeliefs li {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--r-lg);
+  background: var(--bad-soft);
+  color: var(--text);
+  font-size: var(--fz-sm);
+  line-height: 1.55;
+}
+
+.focusBeliefs li > span {
+  font-size: var(--fz-2xs);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  color: var(--bad);
+}
+
+.focusPointGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 14px;
+}
+
+.focusPoints {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.focusPointsTitle {
+  font-size: var(--fz-xs);
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+.focusPoints ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.focusPoints li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  max-width: 100%;
+  padding: 3px 10px 3px 6px;
+  border-radius: var(--r-full);
+  background: var(--inset);
+  color: var(--text-2);
+  font-size: var(--fz-sm);
+  line-height: 1.35;
+}
+
+.focusPointMark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--border-2);
+}
+
+.focusPoints[data-done] li {
+  background: var(--kind-soft);
+  color: var(--text);
+}
+
+.focusPoints[data-done] .focusPointMark {
+  background: var(--kind);
+  box-shadow: none;
+  color: var(--on-accent);
+}
+
+/* 忘了的课：记得的要点褪成一圈淡轮廓 */
+.focus[data-kind='recall'] .focusPoints[data-done] li {
+  background: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 45%, transparent);
+  color: var(--text-3);
+}
+
+.focus[data-kind='recall'] .focusPoints[data-done] .focusPointMark {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--warn) 60%, transparent);
+  color: var(--warn);
+}
+
+.focusFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding-top: 2px;
+}
+
+.focusFacts {
+  font-size: var(--fz-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+}
+
+.focusActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+@container (max-width: 620px) {
+  .focus {
+    padding: 16px;
+  }
+
+  .focusSteps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .focusActions {
+    width: 100%;
+  }
+
+  .focusActions > * {
+    flex: 1;
+  }
+}
+
 /* ── 今日课业 ── */
 
 .questTally {
