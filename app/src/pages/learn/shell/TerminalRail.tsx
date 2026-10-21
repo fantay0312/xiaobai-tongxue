@@ -1,3 +1,4 @@
+import { useEffect, useRef, type FocusEvent as ReactFocusEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router';
 import { Menu as MenuIcon, Settings } from 'lucide-react';
 import { IconGrowth } from '../../../components/ui/icons';
@@ -9,6 +10,25 @@ import t from '../terminal.module.css';
 /** 小屏底栏只放最常用的四项，其余收进「更多」抽屉 */
 const MOBILE_PRIMARY = new Set(['ask', 'workbench', 'feynman', 'classroom']);
 
+/** 最近一次输入来自键盘还是指针。指针点过导轨后，不要让残留焦点把展开状态钉住。 */
+function useInputModality() {
+  const modality = useRef<'keyboard' | 'pointer'>('pointer');
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Shift' || event.key === 'Control' || event.key === 'Alt' || event.key === 'Meta') return;
+      modality.current = 'keyboard';
+    };
+    const onPointer = () => { modality.current = 'pointer'; };
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('pointerdown', onPointer, true);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('pointerdown', onPointer, true);
+    };
+  }, []);
+  return modality;
+}
+
 /** 应用导轨：桌面在最左一列，小屏变成底部栏 */
 export function TerminalRail({ view, onView, onMore }: {
   view: View;
@@ -18,8 +38,37 @@ export function TerminalRail({ view, onView, onMore }: {
 }) {
   const { openSettings } = useShellActions();
   const active = railKey(view);
+  const modality = useInputModality();
+
+  const onFocus = (event: ReactFocusEvent<HTMLElement>) => {
+    const rail = event.currentTarget;
+    if (modality.current === 'keyboard') {
+      rail.removeAttribute('data-suppress-focus');
+      rail.removeAttribute('data-settled');
+      return;
+    }
+    rail.setAttribute('data-suppress-focus', '');
+  };
+  const onClick = (event: ReactMouseEvent<HTMLElement>) => {
+    if (event.detail === 0) return;
+    const rail = event.currentTarget;
+    rail.setAttribute('data-settled', '');
+    rail.setAttribute('data-suppress-focus', '');
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && rail.contains(focused)) focused.blur();
+  };
+  const onMouseLeave = (event: ReactMouseEvent<HTMLElement>) => {
+    event.currentTarget.removeAttribute('data-settled');
+  };
+
   return (
-    <nav className={t.rail} aria-label="终端导航">
+    <nav
+      className={t.rail}
+      aria-label="终端导航"
+      onFocus={onFocus}
+      onClick={onClick}
+      onMouseLeave={onMouseLeave}
+    >
       <div className={t.railGroup}>
         {TERMINAL_NAV.map(({ view: id, label, icon: ItemIcon }) => (
           <button
