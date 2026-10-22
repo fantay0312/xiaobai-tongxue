@@ -50,7 +50,9 @@
   box-shadow: 0 0 0 3px var(--ring);
 }
 
-/* ── 导轨：悬停时整栏向右展开，文字跟在图标旁边，不再用浮层提示 ── */
+/* ── 导轨：悬停时整栏向右展开，文字跟在图标旁边，不再用浮层提示。
+   指针点选后先收回（data-settled），并把焦点展开抑制住（data-suppress-focus），
+   避免按钮留下的焦点或弹窗归还焦点让导轨收不回去。键盘焦点仍会展开。 ── */
 .rail {
   z-index: 30;
   display: flex;
@@ -142,23 +144,16 @@
 }
 
 @media (min-width: 761px) {
-  .rail:hover,
-  .rail:focus-within {
+  .rail:not([data-settled]):is(:hover, :has(:focus-visible):not([data-suppress-focus])) {
     width: 168px;
     box-shadow: 10px 0 28px color-mix(in srgb, var(--text) 10%, transparent);
   }
 
-  .rail:hover .railGroup,
-  .rail:hover .railBottom,
-  .rail:focus-within .railGroup,
-  .rail:focus-within .railBottom {
+  .rail:not([data-settled]):is(:hover, :has(:focus-visible):not([data-suppress-focus])) :is(.railGroup, .railBottom) {
     align-items: stretch;
   }
 
-  .rail:hover .railItem,
-  .rail:focus-within .railItem,
-  .rail:hover [data-rail],
-  .rail:focus-within [data-rail] {
+  .rail:not([data-settled]):is(:hover, :has(:focus-visible):not([data-suppress-focus])) :is(.railItem, [data-rail]) {
     gap: 2px;
     width: 100%;
     margin-inline: 0;
@@ -166,8 +161,7 @@
     border-radius: var(--r-md);
   }
 
-  .rail:hover .railLabel,
-  .rail:focus-within .railLabel {
+  .rail:not([data-settled]):is(:hover, :has(:focus-visible):not([data-suppress-focus])) .railLabel {
     max-width: 7.5em;
     opacity: 1;
   }

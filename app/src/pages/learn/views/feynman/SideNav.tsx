@@ -3,12 +3,20 @@
  * 只用外壳提供的侧栏部件拼装，不带自己的行样式；数据由 FeynmanView 派生后传入。
  */
 import { useState, type ReactNode } from 'react';
-import { ChevronDown, ChevronUp, Circle, CircleCheck, CircleDashed, NotebookText, RotateCcw } from 'lucide-react';
-import { SideAction, SideEmpty, SideGroup, SideNavItem, SidePanel } from '../../shell/sidebarSlot';
+import {
+  BookOpen, ChevronDown, ChevronUp, Circle, CircleAlert, CircleCheck, CircleDashed, NotebookText, RotateCcw,
+} from 'lucide-react';
+import { SideAction, SideEmpty, SideGroup, SideMeter, SideNavItem, SidePanel, type SideTone } from '../../shell/sidebarSlot';
 import { IconLesson, IconPrep, IconReview, IconTeach } from '../../../../components/ui/icons';
-import { GROUP_LABELS, type CourseGroup, type CourseRow, type PrimaryAction, type SessionRecord } from './data';
+import {
+  GROUP_HINTS, GROUP_LABELS, type CourseGroup, type CourseRow, type PrimaryAction, type SessionRecord, type Standing,
+} from './data';
 
 const GROUP_ORDER: CourseGroup[] = ['reteach', 'taught', 'fresh'];
+const GROUP_TONES: Record<CourseGroup, SideTone> = { reteach: 'warn', taught: 'ok', fresh: 'muted' };
+const STANDING_TONES: Record<Standing, SideTone> = {
+  forgotten: 'warn', strayed: 'bad', mastered: 'ok', learning: 'accent', prepped: 'muted', new: 'muted',
+};
 /** 一组课超过这个数就先收起，留一行「更多」 */
 const COLLAPSE_AFTER = 6;
 
@@ -32,12 +40,18 @@ function primaryIcon(key: string): ReactNode {
   return <IconTeach size={16} />;
 }
 
+const STANDING_ICONS: Record<Standing, typeof Circle> = {
+  forgotten: RotateCcw,
+  strayed: CircleAlert,
+  mastered: CircleCheck,
+  learning: CircleDashed,
+  prepped: BookOpen,
+  new: Circle,
+};
+
 function courseIcon(row: CourseRow): ReactNode {
-  if (row.group === 'reteach') return <RotateCcw size={15} strokeWidth={1.75} />;
-  if (row.group === 'fresh') return <Circle size={15} strokeWidth={1.75} />;
-  return row.tone === 'ok'
-    ? <CircleCheck size={15} strokeWidth={1.75} />
-    : <CircleDashed size={15} strokeWidth={1.75} />;
+  const Icon = STANDING_ICONS[row.standing];
+  return <Icon size={15} strokeWidth={1.75} />;
 }
 
 export function FeynmanSideNav({
@@ -72,15 +86,16 @@ export function FeynmanSideNav({
         const hidden = items.length - visible.length;
 
         return (
-          <SideGroup key={group} label={`${GROUP_LABELS[group]} · ${items.length}`}>
+          <SideGroup key={group} label={`${GROUP_LABELS[group]} · ${items.length}`} hint={GROUP_HINTS[group]} tone={GROUP_TONES[group]}>
             {visible.map((row) => (
               <SideNavItem
                 key={row.topic.topicId}
                 icon={courseIcon(row)}
                 label={row.topic.title}
-                sub={group === 'fresh' ? undefined : row.label}
-                meta={`${row.mastery}%`}
-                title={`${row.topic.course} · ${row.topic.title} · ${row.label}`}
+                sub={row.standing === 'new' ? undefined : row.label}
+                meta={group === 'fresh' ? undefined : <SideMeter value={row.mastery} label={`「${row.topic.title}」掌握度 ${row.mastery}%`} />}
+                title={`${row.topic.course} · ${row.topic.title} · ${row.label}${group === 'fresh' ? '' : ` · 掌握 ${row.mastery}%`}`}
+                tone={STANDING_TONES[row.standing]}
                 active={row.topic.topicId === selectedId}
                 onClick={() => onSelect(row.topic.topicId)}
               />

@@ -36,16 +36,42 @@ export function SideAction({ icon, children, onClick, disabled }: { icon?: React
   return <button type="button" className={s.action} onClick={onClick} disabled={disabled}>{icon}<span>{children}</span></button>;
 }
 
-export function SideGroup({ label, action, children }: { label?: string; action?: ReactNode; children: ReactNode }) {
+/** 行与分组的状态色：图标、小字和分组圆点跟着变；muted 让整行退后一档 */
+export type SideTone = 'accent' | 'ok' | 'warn' | 'bad' | 'muted';
+
+export function SideGroup({ label, hint, tone, action, children }: {
+  label?: string;
+  /** 标题右侧的一句灰字，说明这一组该怎么处理 */
+  hint?: string;
+  tone?: SideTone;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
   return (
-    <section className={s.group}>
-      {label && <h3 className={s.groupHead}><span>{label}</span>{action}</h3>}
+    <section className={s.group} data-tone={tone}>
+      {label && (
+        <h3 className={s.groupHead}>
+          <span>{label}</span>
+          {hint && <small className={s.groupHint}>{hint}</small>}
+          {action}
+        </h3>
+      )}
       {children}
     </section>
   );
 }
 
-export function SideNavItem({ icon, label, sub, meta, active, indent, trailing, title, disabled, onClick }: {
+/** 行尾的小进度条，配合 SideNavItem 的 meta 使用 */
+export function SideMeter({ value, label }: { value: number; label: string }) {
+  const clamped = Math.max(0, Math.min(100, value));
+  return (
+    <span className={s.meter} role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={clamped}>
+      <i style={{ width: `${clamped}%` }} />
+    </span>
+  );
+}
+
+export function SideNavItem({ icon, label, sub, meta, active, indent, trailing, title, disabled, tone, onClick }: {
   icon?: ReactNode;
   label: ReactNode;
   /** 第二行小字，如时间、状态 */
@@ -58,10 +84,11 @@ export function SideNavItem({ icon, label, sub, meta, active, indent, trailing, 
   trailing?: ReactNode;
   title?: string;
   disabled?: boolean;
+  tone?: SideTone;
   onClick: () => void;
 }) {
   return (
-    <div className={s.row} data-active={active || undefined}>
+    <div className={s.row} data-active={active || undefined} data-tone={tone}>
       <button
         type="button"
         className={s.item}

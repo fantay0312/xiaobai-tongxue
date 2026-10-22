@@ -27,9 +27,13 @@ export const GROUP_SHORT: Record<CourseGroup, string> = {
   fresh: '没讲',
 };
 
+/** 小白对这门课的熟练度，比分组细一档：决定侧栏图标和主区的带法 */
+export type Standing = 'forgotten' | 'strayed' | 'mastered' | 'learning' | 'prepped' | 'new';
+
 export interface CourseRow {
   topic: Topic;
   group: CourseGroup;
+  standing: Standing;
   /** 掌握度 0-100 */
   mastery: number;
   sessions: number;
@@ -79,15 +83,174 @@ export function deriveCourseRows(input: {
     else if (taught) { label = `讲明白 ${hits}/${topic.checklist.length}`; tone = 'accent'; }
     else if (state?.prepDone) { label = '已备课'; }
 
+    let standing: Standing = 'new';
+    if (forgotten) standing = 'forgotten';
+    else if (strayed) standing = 'strayed';
+    else if (state?.knowledgeState === '出师') standing = 'mastered';
+    else if (taught) standing = 'learning';
+    else if (state?.prepDone) standing = 'prepped';
+
     return {
       topic,
       group: forgotten || strayed ? 'reteach' : taught ? 'taught' : 'fresh',
+      standing,
       mastery,
       sessions,
       label,
       tone,
     };
   });
+}
+
+// ───────────────────────── 所选课的带法 ─────────────────────────
+
+/** 还没讲的领他学习；讲过的帮他温书；忘了的帮他想起来；被带偏的帮他改过来 */
+export type FocusKind = 'lead' | 'refresh' | 'recall' | 'correct';
+
+export const FOCUS_TAGS: Record<FocusKind, string> = {
+  lead: '领他学习',
+  refresh: '帮他温书',
+  recall: '帮他想起来',
+  correct: '帮他改过来',
+};
+
+/** 分组标题旁那句「这一组该怎么带」 */
+export const GROUP_HINTS: Record<CourseGroup, string> = {
+  reteach: '先补这些',
+  taught: '帮他温书',
+  fresh: '领他学习',
+};
+
+export interface FocusAction {
+  label: string;
+  to: string;
+  /** 小白忘了：进课堂前先登记复习 */
+  review?: boolean;
+}
+
+export interface CourseFocus {
+  kind: FocusKind;
+  /** 小白口吻的一句话 */
+  line: string;
+  mastery: number;
+  /** 一行小字：上过几堂、最近一卷、何时该复习 */
+  facts: string[];
+  /** 小白已经听懂的要点 */
+  known: string[];
+  /** 还没讲到的要点 */
+  pending: string[];
+  /** 小白眼下信着的错误说法 */
+  beliefs: string[];
+  /** 领学的三步；其余带法为空 */
+  steps: { label: string; note: string; done: boolean }[];
+  primary: FocusAction;
+  secondary: FocusAction | null;
+}
+
+function dayLabel(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? '' : `${date.getMonth() + 1}月${date.getDate()}日`;
+}
+
+/** 与 journey.nextStep 同口径：最近一次被带偏之后还没走完补学，就该先去复盘补学 */
+function needsRemedy(topicId: string, mcIds: string[], events: LearnEvent[]): boolean {
+  return mcIds.some((mcId) => {
+    let lastAdopt = -1;
+    let lastRemedy = -1;
+    events.forEach((event, index) => {
+      if (event.topicId !== topicId || String(event.payload.mcId ?? '') !== mcId) return;
+      if (event.type === 'misconception_adopted') lastAdopt = index;
+      if (event.type === 'remedy_completed') lastRemedy = index;
+    });
+    return lastAdopt >= 0 && lastRemedy < lastAdopt;
+  });
+}
+
+export function deriveCourseFocus(input: {
+  row: CourseRow;
+  state: TopicState | undefined;
+  events: LearnEvent[];
+  reports: SessionReport[];
+  live: LiveSession | null;
+}): CourseFocus {
+  const { row, state, events, reports, live } = input;
+  const { topic } = row;
+  const id = topic.topicId;
+  const title = topic.title;
+  const topicReports = reports.filter((report) => report.topicId === id);
+  const latest = topicReports.at(-1) ?? null;
+  const latestQuiz = [...topicReports].reverse().find((report) => report.quiz) ?? null;
+  const hit = new Set(state?.hitChecklist ?? []);
+  const known = topic.checklist.filter((item) => hit.has(item.id)).map((item) => item.point);
+  const pending = topic.checklist.filter((item) => !hit.has(item.id)).map((item) => item.point);
+  const prepRoute = `/prep/${id}?view=prepare`;
+  const prepDone = !!state?.prepDone || events.some((event) => event.topicId === id && event.type === 'prep_completed');
+  const backToClass: FocusAction | null = live && live.topicId === id && !live.ended
+    ? { label: '回到课堂', to: classroomRoute(id, live.mode) }
+    : null;
+  const lastNotes: FocusAction | null = latest ? { label: '看上次批注', to: `/review/${latest.sessionId}` } : null;
+
+  const facts: string[] = [];
+  if (row.sessions > 0) facts.push(`上过 ${row.sessions} 堂`);
+  if (latestQuiz?.quiz) facts.push(`最近一卷 ${latestQuiz.quiz.score} 分`);
+  const base = { mastery: row.mastery, facts, known, pending, beliefs: [] as string[], steps: [] as CourseFocus['steps'] };
+
+  if (row.group === 'fresh') {
+    return {
+      ...base,
+      kind: 'lead',
+      line: prepDone
+        ? `「${title}」的讲义先生读过了。现在一句一句讲给我听吧。`
+        : `「${title}」我一个字都没听过。先生先把它读懂，再领我学？`,
+      steps: [
+        { label: '自己先读懂', note: prepDone ? '讲义已经读过' : '微课讲义加自检，十来分钟', done: prepDone },
+        { label: '讲给小白听', note: `这一课要讲明白 ${topic.checklist.length} 件事`, done: false },
+        { label: '送他赴考', note: '下课后他独立答卷，看你讲得透不透', done: false },
+      ],
+      primary: backToClass ?? (prepDone
+        ? { label: '开第一堂课', to: classroomRoute(id) }
+        : { label: '先去备课', to: prepRoute }),
+      secondary: prepDone ? { label: '再看讲义', to: prepRoute } : { label: '直接开讲', to: classroomRoute(id) },
+    };
+  }
+
+  if (row.standing === 'forgotten') {
+    if (state?.lastVerified) facts.push(`${dayLabel(state.lastVerified)} 出师`);
+    return {
+      ...base,
+      kind: 'recall',
+      line: `「${title}」我记不清了……先生帮我想起来？`,
+      primary: backToClass ?? { label: '帮他温书', to: classroomRoute(id, 'review'), review: true },
+      secondary: { label: '先翻讲义', to: prepRoute },
+    };
+  }
+
+  if (row.standing === 'strayed') {
+    const strayed = topic.misconceptions.filter((item) => state?.mcStates[item.mcId] === '被带偏');
+    const remedy = !!latest && needsRemedy(id, strayed.map((item) => item.mcId), events);
+    const reteach: FocusAction = { label: '回讲解舱重讲', to: classroomRoute(id, 'reteach') };
+    return {
+      ...base,
+      kind: 'correct',
+      line: `「${title}」有个地方我好像记岔了，先生帮我改过来？`,
+      beliefs: strayed.map((item) => item.belief),
+      primary: backToClass ?? (remedy && latest ? { label: '先去复盘补学', to: `/review/${latest.sessionId}` } : reteach),
+      secondary: remedy ? { label: '直接重讲', to: reteach.to } : lastNotes,
+    };
+  }
+
+  const mastered = row.standing === 'mastered';
+  if (mastered && state?.reviewDue) facts.push(`${dayLabel(state.reviewDue)} 该复习`);
+  let line = `「${title}」我听懂了 ${known.length} 处，还差 ${pending.length} 处。先陪我把学过的温一遍？`;
+  if (mastered) line = `「${title}」我出师了。隔些日子考考我，就不容易忘。`;
+  else if (pending.length === 0) line = `「${title}」的要点我都听过了，再陪我温一遍就更稳了。`;
+  return {
+    ...base,
+    kind: 'refresh',
+    line,
+    primary: backToClass ?? { label: '帮他温书', to: classroomRoute(id, 'review') },
+    secondary: pending.length > 0 ? { label: `接着讲剩下 ${pending.length} 处`, to: classroomRoute(id) } : lastNotes,
+  };
 }
 
 // ───────────────────────── 四站 ─────────────────────────

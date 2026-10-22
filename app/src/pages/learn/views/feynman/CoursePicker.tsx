@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react';
 import { Check, Search } from 'lucide-react';
 import { Badge, Input, Segmented, type SegmentOption } from '../../../../components/ui';
-import { GROUP_LABELS, GROUP_SHORT, type CourseGroup, type CourseRow } from './data';
+import { GROUP_HINTS, GROUP_LABELS, GROUP_SHORT, type CourseGroup, type CourseRow } from './data';
 import s from './feynman.module.css';
 
 type Filter = 'all' | CourseGroup;
@@ -72,8 +72,11 @@ export function CoursePicker({ rows, selectedId, onSelect, sheet = false }: Prop
         ) : (
           <div className={s.pickerList} role="radiogroup" aria-label="课程">
             {groups.map(({ group, items }) => (
-              <div key={group} className={s.pickerGroup}>
-                <p className={s.groupLabel}>{GROUP_LABELS[group]} · {items.length}</p>
+              <div key={group} className={s.pickerGroup} data-group={group}>
+                <p className={s.groupLabel}>
+                  <span>{GROUP_LABELS[group]} · {items.length}</span>
+                  <small>{GROUP_HINTS[group]}</small>
+                </p>
                 {items.map((row) => {
                   const selected = row.topic.topicId === selectedId;
                   return (
@@ -84,6 +87,7 @@ export function CoursePicker({ rows, selectedId, onSelect, sheet = false }: Prop
                       aria-checked={selected}
                       className={s.courseRow}
                       data-group={row.group}
+                      data-standing={row.standing}
                       onClick={() => onSelect(row.topic.topicId)}
                     >
                       <span className={s.courseMark} aria-hidden="true">
@@ -101,7 +105,7 @@ export function CoursePicker({ rows, selectedId, onSelect, sheet = false }: Prop
                           aria-valuemin={0}
                           aria-valuemax={100}
                           aria-valuenow={row.mastery}
-                          data-tone={row.group === 'reteach' ? 'warn' : row.tone === 'ok' ? 'ok' : undefined}
+                          data-tone={row.standing === 'strayed' ? 'bad' : row.group === 'reteach' ? 'warn' : row.tone === 'ok' ? 'ok' : undefined}
                         >
                           <i style={{ width: `${row.mastery}%` }} />
                         </span>
