@@ -390,6 +390,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
   /* ── 导航 ── */
   const switchView = (next: View, extra?: Record<string, string>) => {
     if (libraryBlocked && next !== 'library') { setNotice('资料中有未保存的校订或正在提交的任务，请先完成后再切换。'); return; }
+    if (next === 'reading') { navigate('/learn?view=reading'); return; }
     setParams({ ...(next === 'ask' ? {} : { view: next }), ...extra });
     setNavSheetOpen(false);
     // 手机上侧面板是整屏的，换了视图就得让开

@@ -578,16 +578,9 @@ kbd,
 }
 
 .blk.is-cursor::before {
-  content: "";
-  position: absolute;
-  left: -0.85rem;
-  top: 0.25em;
-  bottom: 0.25em;
-  width: 2px;
-  border-radius: 2px;
-  background: var(--rubric);
-  animation: grow-y 0.25s var(--ease-out);
+  content: none;
 }
+.blk.is-cursor { background: var(--rubric-wash); }
 
 /*
  * Focus mode: the title and the text, nothing else. The rail, numbers,
@@ -748,8 +741,7 @@ kbd,
   right: 0;
   top: 0;
   padding: 10px 14px 12px 15px;
-  border-left: 1.5px solid var(--rule-strong);
-  border-radius: 0 10px 10px 0;
+  border-radius: 10px;
   transition:
     transform 0.42s var(--ease-out),
     background-color 0.25s,
@@ -760,20 +752,19 @@ kbd,
 }
 
 .gloss.is-hover {
-  border-left-color: var(--rubric-line);
+  background: var(--rubric-wash);
 }
 
 /* Closed notes: a question and its one-line answer, quiet until reached for. */
 .gloss.is-collapsed {
   padding: 7px 12px 8px 14px;
   cursor: pointer;
-  border-radius: 0 9px 9px 0;
+  border-radius: 9px;
 }
 
 .gloss.is-collapsed:hover,
 .gloss.is-collapsed:focus-visible {
   background: color-mix(in oklab, var(--bg-raised) 70%, transparent);
-  border-left-color: var(--rubric-line);
 }
 
 .gloss.is-collapsed:focus-visible {
@@ -786,7 +777,6 @@ kbd,
 
 .gloss.is-active {
   background: var(--bg-raised);
-  border-left-color: var(--rubric);
   box-shadow: var(--shadow-card);
   z-index: 2;
 }
@@ -1171,7 +1161,7 @@ mark.key .cite {
 }
 
 .rise {
-  animation: rise 0.7s var(--ease-out) both;
+  animation: none;
 }
 
 .loading-bar {
@@ -2106,8 +2096,8 @@ a.desk-tile:focus-visible {
   top: 0;
   display: block;
   padding: 6px 12px 7px 14px;
-  border-left: 2px solid color-mix(in oklab, var(--note-c) 80%, transparent);
-  border-radius: 0 9px 9px 0;
+  border: 0;
+  border-radius: 9px;
   text-align: left;
   font-family: var(--font-serif);
   font-size: 15px;

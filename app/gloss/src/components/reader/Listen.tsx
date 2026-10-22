@@ -11,6 +11,7 @@ import { useStore } from "@/lib/store";
 import { TTS_MAX_CHARS } from "@/lib/voice";
 import { barBtn } from "@/components/ui/Popover";
 import { useReader } from "./context";
+import { useReaderVisible } from '@/compat/visibility';
 
 /**
  * Read aloud. The text is spoken a passage at a time from where you are, each
@@ -251,6 +252,7 @@ export function ListenButton({ from }: { from: () => string | null }) {
 
 /** While the voice is reading: a small bar just above the question box, and the cursor on the paragraph being read. */
 export function ListenBar() {
+  const visible = useReaderVisible();
   const { ix, jumpToBlock } = useReader();
   const { status, block, rate, error, needKey } = useListen();
   const on = useStore((s) => s.settings.listen);
@@ -260,8 +262,8 @@ export function ListenBar() {
   // Leaving the text, or switching Listen off, stops the voice.
   useEffect(() => () => stopListening(), [ix]);
   useEffect(() => {
-    if (!on) stopListening();
-  }, [on]);
+    if (!on || !visible) stopListening();
+  }, [on, visible]);
 
   // Follow the voice, but only while the reader is following too.
   useEffect(() => {

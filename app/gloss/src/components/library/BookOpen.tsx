@@ -106,13 +106,13 @@ export function BookOpen({
       setPhase("open");
       return;
     }
-    const fly = b.animate(flight(g, origin), { duration: origin.kind === "spine" ? 840 : 660, fill: "forwards" });
+    const fly = b.animate(flight(g, origin), { duration: 140, fill: "forwards" });
     // The cover starts to open just before the book lands, so the two read as one movement.
-    const delay = origin.kind === "spine" ? 700 : 500;
-    const opts: KeyframeAnimationOptions = { duration: 780, delay, easing: easeInOut, fill: "forwards" };
+    const delay = 0;
+    const opts: KeyframeAnimationOptions = { duration: 140, delay, easing: easeInOut, fill: "forwards" };
     c.animate([{ transform: `${coverZ} rotateY(0deg)` }, { transform: `${coverZ} rotateY(-180deg)` }], opts);
     s.animate([{ transform: "translateX(0px)" }, { transform: `translateX(${shift}px)` }], opts);
-    const t1 = setTimeout(() => setPhase("open"), delay + 300);
+    const t1 = setTimeout(() => setPhase("open"), 0);
     return () => {
       clearTimeout(t1);
       fly.cancel();
@@ -162,8 +162,7 @@ export function BookOpen({
   }, [close]);
 
   const read = () => {
-    setPhase("leaving");
-    setTimeout(() => onRead(book), reduce ? 0 : 360);
+    onRead(book);
   };
 
   const reading = book.pct > 0 && book.pct < 1;

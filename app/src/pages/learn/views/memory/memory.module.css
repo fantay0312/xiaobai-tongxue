@@ -428,9 +428,8 @@
 .usage {
   display: grid;
   gap: 12px;
-  padding: 16px 20px;
-  border-radius: var(--r-lg);
-  background: var(--inset);
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
 }
 .usage h3 {
   margin: 0;
@@ -474,12 +473,8 @@
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 16px 20px;
-  padding: 20px 24px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-xl);
-  background: var(--paper);
+  padding: 12px 0;
   color: var(--ink);
-  box-shadow: var(--shadow-paper);
 }
 .storyQuote {
   margin: 0;

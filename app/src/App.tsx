@@ -9,12 +9,11 @@ import {
 } from './lib/api';
 import { subscribeAuthChanges } from './lib/authChannel';
 import { retryModule, recoverModuleLoad } from './lib/moduleRecovery';
+import { PersistentReading } from './pages/reading/PersistentReading';
 
 const LandingPage = lazy(() => retryModule(() => import('./pages/landing')));
 const loadLearningPage = () => retryModule(() => import('./pages/learn'));
 const LearningPage = lazy(loadLearningPage);
-const loadReadingTerminal = () => retryModule(() => import('./pages/reading/ReadingTerminal'));
-const ReadingTerminal = lazy(loadReadingTerminal);
 const loadLearningStore = () => retryModule(() => import('./store/appStore'));
 const ClassroomPage = lazy(() => retryModule(() => import('./pages/classroom')));
 const ExamPage = lazy(() => retryModule(() => import('./pages/exam')));
@@ -87,7 +86,7 @@ export default function App() {
   const customTopicUserRef = useRef<string | null>(null);
   // 宣传页与登录页是公开入口，任何时候都不被账号确认挡住
   const businessPath = pathname !== '/' && pathname !== '/about' && pathname !== '/login';
-  const readingOnly = pathname === '/learn' && new URLSearchParams(search).get('view') === 'reading';
+  const readingOnly = (pathname === '/learn' || pathname.startsWith('/prep/')) && new URLSearchParams(search).get('view') === 'reading';
   const resolvingBusinessAccess = authStatus === 'unknown' && businessPath;
   const forcePhoneBinding = authStatus === 'authed' && phoneBindingRequired && businessPath;
 
@@ -97,8 +96,7 @@ export default function App() {
 
   useEffect(() => {
     // Download the known destination while checking auth, without rendering protected content.
-    if (readingOnly) void loadReadingTerminal().catch(() => {});
-    else if (pathname === '/learn' || pathname.startsWith('/prep/')) void loadLearningPage().catch(() => {});
+    if (!readingOnly && (pathname === '/learn' || pathname.startsWith('/prep/'))) void loadLearningPage().catch(() => {});
   }, [pathname, readingOnly]);
 
   useEffect(() => {
@@ -159,7 +157,8 @@ export default function App() {
   }, [authStatus, authUser, emailBindingRequired, phoneBindingRequired, businessPath, readingOnly]);
 
   return (
-    <AppShell>
+    <AppShell persistent={<PersistentReading key={authUser} owner={authUser} active={readingOnly}
+      enabled={authStatus === 'authed' && Boolean(authUser) && !emailBindingRequired && !phoneBindingRequired && businessPath} />}>
       <RouteScrollManager />
       {resolvingBusinessAccess ? (
         <div className="route-loader" role="status" aria-live="polite">正在确认账号安全状态…</div>
@@ -176,8 +175,8 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/custom-content" element={<Navigate to="/learn?view=library" replace />} />
           {/* 站点根是宣传页；进入学习终端、备课与讲解须登录；查看类页面(赴考/复盘/成长/看板)不设门槛 */}
-          <Route path="/learn" element={<RequireAuth>{readingOnly ? <ReadingTerminal /> : <LearningPage />}</RequireAuth>} />
-          <Route path="/prep/:topicId" element={<RequireAuth><LearningPage /></RequireAuth>} />
+          <Route path="/learn" element={<RequireAuth>{readingOnly ? null : <LearningPage />}</RequireAuth>} />
+          <Route path="/prep/:topicId" element={<RequireAuth>{readingOnly ? null : <LearningPage />}</RequireAuth>} />
           <Route path="/teach/:topicId" element={<RequireAuth><ClassroomPage /></RequireAuth>} />
           <Route path="/exam/:sessionId" element={<ExamPage />} />
           <Route path="/review/:sessionId" element={<ReviewPage />} />

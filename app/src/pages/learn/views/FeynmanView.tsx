@@ -198,13 +198,10 @@ export default function FeynmanView({ owner, topic, topics, onView }: TerminalVi
         />
       )}
 
-      <LoopStations
-        topic={selected}
-        stations={stations}
-        busy={reviewBusy}
-        onRun={runStation}
-        compact={phone}
-      />
+      <details className={s.secondaryDetails}>
+        <summary>查看完整学习流程</summary>
+        <LoopStations topic={selected} stations={stations} busy={reviewBusy} onRun={runStation} compact={phone} />
+      </details>
 
       {phone ? (
         <>
@@ -232,14 +229,11 @@ export default function FeynmanView({ owner, topic, topics, onView }: TerminalVi
         </>
       )}
 
-      <StoryShelf
-        owner={owner}
-        input={storyInput}
-        records={records}
-        reviewBusy={reviewBusy}
-        onReview={(topicId) => void goReview(topicId)}
-        onOpen={navigate}
-      />
+      <details className={s.secondaryDetails}>
+        <summary>故事匣与成就</summary>
+        <StoryShelf owner={owner} input={storyInput} records={records} reviewBusy={reviewBusy}
+          onReview={(topicId) => void goReview(topicId)} onOpen={navigate} />
+      </details>
     </div>
   );
 }

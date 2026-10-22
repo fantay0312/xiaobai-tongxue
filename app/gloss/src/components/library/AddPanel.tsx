@@ -3,7 +3,7 @@
 import { SignInButton } from "@clerk/nextjs";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BookOpen, BookmarkPlus, Check, Copy, FileUp, Loader2, Plus, Trash2, X } from "lucide-react";
+import { BookOpen, BookmarkPlus, Check, Copy, FileUp, Loader2, Trash2, X } from "lucide-react";
 import Link from 'next/link';
 import { BOOK_ACCEPT, importFromFile, importFromUrl, keep, looksLikeUrl } from "@/lib/import";
 import { normalizeUrl } from "@/lib/links";
@@ -66,22 +66,7 @@ export function AddPanel({ tab, onTab, onClose, signedIn }: { tab: AddTab; onTab
  * do it for you. On hover the marks fan out to the right from Grok, which
  * holds its place, and the plus turns.
  */
-export function AddButton({ onClick, compact }: { onClick: () => void; compact?: boolean }) {
-  return (
-    <button type="button" onClick={onClick} className={`lib-add${compact ? " is-compact" : ""}`}>
-      <BookOpen size={compact ? 22 : 26} aria-hidden />
-      <span className="min-w-0 text-left">
-        <span className="lib-add-title">导入书籍</span>
-        {!compact && <span className="lib-add-sub">EPUB、PDF、TXT 或 Markdown</span>}
-      </span>
-      {!compact && (
-        <span className="lib-add-plus" aria-hidden>
-          <Plus size={15} strokeWidth={2.2} />
-        </span>
-      )}
-    </button>
-  );
-}
+export { AddButton } from './AddButton';
 
 type BookRow = { name: string; status: 'waiting' | 'reading' | 'saved' | 'failed'; id?: string; error?: string };
 

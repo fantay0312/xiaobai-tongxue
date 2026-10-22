@@ -5,14 +5,14 @@ import path from 'node:path';
 const root = fileURLToPath(new URL('../dist/', import.meta.url));
 const assets = path.join(root, 'assets');
 const files = new Map(readdirSync(assets).filter((name) => name.endsWith('.js')).map((name) => [name, readFileSync(path.join(assets, name), 'utf8')]));
-function closure(seeds: string[]) {
+function closure(seeds: string[], source = files) {
   const seen = new Set<string>();
   const pending = [...seeds];
   while (pending.length) {
     const name = pending.pop()!;
-    if (seen.has(name) || !files.has(name)) continue;
+    if (seen.has(name) || !source.has(name)) continue;
     seen.add(name);
-    pending.push(...Array.from(files.get(name)!.matchAll(/(?:from\s*|import\s*)["']\.\/([^"']+\.js)["']/g), (m) => m[1]));
+    pending.push(...Array.from(source.get(name)!.matchAll(/(?:from\s*|import\s*)["']\.\/([^"']+\.js)["']/g), (m) => m[1]));
   }
   return [...seen];
 }
@@ -27,3 +27,11 @@ const bytes = (names: string[]) => names.reduce((sum, name) => sum + Buffer.byte
 assert.ok(bytes(entry) < 800_000, `initial JS exceeds 800 KB: ${bytes(entry)}`);
 assert.ok(bytes(reader) < 850_000, `reader shell JS exceeds 850 KB: ${bytes(reader)}`);
 console.log(JSON.stringify({ entryBytes: bytes(entry), readingShellBytes: bytes(reader), heavyLearningCode: false }));
+const readerAssets = path.join(root, 'reader/assets');
+const embedded = new Map(readdirSync(readerAssets).filter((name) => name.endsWith('.js')).map((name) => [name, readFileSync(path.join(readerAssets, name), 'utf8')]));
+const shelf = closure([...embedded.keys()].filter((name) => name.startsWith('Library-')), embedded);
+assert.ok(shelf.length > 0, 'embedded library must be built');
+assert.ok(!shelf.some((name) => /^(samples|Reader|AddPanel|epub|pdf|liteparse)/.test(name)), `reader shelf eagerly loads optional content: ${shelf}`);
+const shelfBytes = shelf.reduce((sum, name) => sum + Buffer.byteLength(embedded.get(name)!), 0);
+assert.ok(shelfBytes < 400_000, `embedded shelf static JS exceeds 400 KB: ${shelfBytes}`);
+console.log(JSON.stringify({ embeddedShelfBytes: shelfBytes, bundledTextEagerlyLoaded: false }));

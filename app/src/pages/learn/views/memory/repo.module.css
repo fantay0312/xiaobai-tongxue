@@ -117,10 +117,8 @@ button.sourceChip:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--rin
 .sources {
   display: grid;
   gap: 10px;
-  padding: 16px 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--surface);
+  padding: 16px 0;
+  border-block: 1px solid var(--border);
 }
 .sources h3 { margin: 0; font: 600 var(--fz-md)/1.4 var(--ui-font); }
 .sources p { margin: 0; color: var(--text-3); font-size: var(--fz-sm); line-height: 1.6; }
@@ -130,15 +128,13 @@ button.sourceChip:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--rin
   align-items: baseline;
   gap: 6px;
   height: 26px;
-  padding: 0 10px;
-  border-radius: var(--r-full);
-  background: var(--inset);
+  padding: 0 12px 0 0;
   color: var(--text-2);
   font-size: var(--fz-sm);
   line-height: 26px;
 }
 .sourceCount b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
-.sourceCount[data-outside] { background: var(--accent-softer); color: var(--accent); }
+.sourceCount[data-outside] { color: var(--accent); }
 .sourceCount[data-outside] b { color: inherit; }
 
 /* ── 变更历史 ── */

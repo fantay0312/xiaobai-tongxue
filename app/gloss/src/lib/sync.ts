@@ -22,6 +22,7 @@
 import { forgetDoc, loadDoc, saveDoc, useStore, type RemoteChanges } from "./store";
 import type { Article } from "./article";
 import { forgetCover } from "./covers";
+import { readerVisible } from '../compat/visibility';
 
 const COLLECTIONS = ["articles", "highlights", "glosses", "briefs", "progress"] as const;
 type Collection = (typeof COLLECTIONS)[number];
@@ -257,7 +258,7 @@ export function startSync(userId: string) {
 
   let lastPull = 0;
   const pullIfStale = (ms: number) => {
-    if (document.visibilityState === "hidden" || Date.now() - lastPull < ms) return;
+    if (!readerVisible() || document.visibilityState === "hidden" || Date.now() - lastPull < ms) return;
     lastPull = Date.now();
     sync();
   };
@@ -266,6 +267,7 @@ export function startSync(userId: string) {
     else pullIfStale(watchers ? WATCH_MS : 20_000);
   };
   document.addEventListener("visibilitychange", onVisible);
+  window.addEventListener('gloss:visibility-change', onVisible);
   const ticker = setInterval(() => watchers && pullIfStale(WATCH_MS - 1000), WATCH_MS);
   poke = () => pullIfStale(3000);
 
@@ -280,6 +282,7 @@ export function startSync(userId: string) {
       clearInterval(ticker);
       poke = null;
       document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener('gloss:visibility-change', onVisible);
     },
   };
 }

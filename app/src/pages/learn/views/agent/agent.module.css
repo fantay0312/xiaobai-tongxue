@@ -569,7 +569,6 @@ div.option {
   max-height: 320px;
   margin-top: 8px;
   padding: 2px 0 2px 14px;
-  border-left: 2px solid var(--border);
   overflow-y: auto;
   color: var(--text-3);
   font-size: var(--fz-sm);
@@ -586,7 +585,6 @@ div.option {
   flex-direction: column-reverse;
   max-height: 132px;
   overflow: hidden;
-  border-left-color: var(--accent-soft);
 }
 
 /* 工具调用卡片 */

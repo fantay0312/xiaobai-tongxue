@@ -1215,7 +1215,6 @@ button.step:focus-visible {
 }
 .drillStumbled {
   background: color-mix(in srgb, var(--bad) 6%, var(--surface));
-  box-shadow: inset 3px 0 0 var(--bad);
 }
 .drillBelief {
   display: flex;

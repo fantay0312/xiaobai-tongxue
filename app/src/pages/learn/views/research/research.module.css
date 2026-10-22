@@ -263,7 +263,6 @@
   padding: 2px 0 2px 12px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  border-left: 2px solid var(--border);
   color: var(--text-3);
   font-size: var(--fz-sm);
   line-height: 1.7;
@@ -810,21 +809,21 @@ button.figure:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); 
   min-width: 0;
   padding: 14px 16px;
   border: 0;
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  box-shadow: 0 0 0 1px var(--border), var(--shadow-1);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
   color: var(--text);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: box-shadow var(--dur-2) var(--ease), transform var(--dur-1) var(--ease);
+  transition: background var(--dur-1) var(--ease);
 }
-.starter:hover { box-shadow: 0 0 0 1px var(--border-2), var(--shadow-2); }
+.starter:hover { background: var(--inset); }
 .starter:active { transform: scale(0.99); }
 .starter:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 .starter strong { font-size: var(--fz-md); font-weight: 600; }
 .starter span { color: var(--text-3); font-size: var(--fz-sm); line-height: 1.5; }
-.starter code { justify-self: start; margin-top: 4px; padding: 1px 7px; border-radius: var(--r-xs); background: var(--inset); color: var(--text-2); font: var(--fz-xs)/1.6 var(--ui-mono); }
+.starter code { justify-self: start; margin-top: 4px; color: var(--text-2); font: var(--fz-xs)/1.6 var(--ui-mono); }
 
 /* ── 停靠区：续跑条 + 输入框 ── */
 .dock {

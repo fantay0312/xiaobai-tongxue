@@ -1,14 +1,15 @@
-import { initializeBridge, loadChatModels, loadMediaModels, nativeIdbOpen } from './compat/bridge';
+import { hostMessage, initializeBridge, loadChatModels, loadMediaModels, nativeIdbOpen } from './compat/bridge';
 import './globals.css';
 import './library.css';
 import './local.css';
 import { routePath } from './compat/navigation';
 
 async function start() {
+  const rendering = Promise.all([import('react-dom/client'), import('react')]);
   // Account-scoped storage must be installed before any stateful reader module loads.
   const owner = await initializeBridge();
-  const [{ createRoot }, React, { useStore }, { applySettings }, modelLib] = await Promise.all([
-    import('react-dom/client'), import('react'), import('./lib/store'), import('./lib/settings'), import('./lib/models'),
+  const [[{ createRoot }, React], { useStore }, { applySettings }, modelLib] = await Promise.all([
+    rendering, import('./lib/store'), import('./lib/settings'), import('./lib/models'),
   ]);
   useStore.getState().hydrate();
   applySettings(useStore.getState().settings);
@@ -30,6 +31,7 @@ async function start() {
     </React.Suspense><React.Suspense fallback={null}><SyncAgent /><Tooltips /></React.Suspense></>;
   }
   createRoot(document.getElementById('root')!).render(<App />);
+  hostMessage('ready');
   // Model/media discovery and migration must never delay the first usable page.
   void loadChatModels().then(({ chat, model }) => {
     modelLib.configureModels(chat.models, model);

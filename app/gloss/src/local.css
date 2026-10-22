@@ -6,3 +6,8 @@
     font-size: 16px;
   }
 }
+/* The shelf is ready to use immediately, with no staggered entrance hiding its controls. */
+.library :is(.lib-add, .lib-title, .lib-stats, .lib-tools, .lib-chips, .lib-chip-row, .lib-hint,
+  .plank, .plank-label, .topic-card, .topic-card-art img, .topic-head-art img, .face-out > li, .lib-news, .starter),
+.library .is-entering .bk-in:not([data-out]) { animation: none; }
+::view-transition-old(.lib-exit), ::view-transition-new(.lib-enter) { animation: none; }

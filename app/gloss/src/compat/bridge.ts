@@ -1,3 +1,4 @@
+import { setReaderVisible } from './visibility';
 export const ASSET_BASE = import.meta.env?.BASE_URL ?? '/';
 export const HOST_BASE = ASSET_BASE.replace(/reader\/$/, '');
 export let account = { name: '', signedIn: false };
@@ -23,6 +24,10 @@ export async function hostFetch(path: string, init?: RequestInit) {
 }
 
 export async function initializeBridge() {
+  window.addEventListener('message', (event) => {
+    if (event.origin === location.origin && event.source === window.parent && event.data?.source === 'xiaobai-host'
+      && event.data.action === 'visibility' && typeof event.data.active === 'boolean') setReaderVisible(event.data.active);
+  });
   const response = await nativeFetch(`${HOST_BASE}api/me`); const me = await response.json();
   if (!response.ok || !me.user?.name || me.emailBindingRequired || me.phoneBindingRequired) { hostMessage('login'); throw new Error('请先登录后使用阅读。'); }
   owner = me.user.name; account = { name: owner, signedIn: true };

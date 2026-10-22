@@ -2,28 +2,31 @@
 
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState, ViewTransition } from "react";
+import { lazy, Suspense, startTransition, useCallback, useEffect, useMemo, useRef, useState, ViewTransition } from "react";
 import { ChevronLeft, ChevronRight, LayoutGrid, Library as LibraryIcon, Search, X } from "lucide-react";
 import { TopBar } from "@/components/ui/TopBar";
-import { readingMinutes, tidyTitle, wordCount } from "@/lib/article";
+import { readingMinutes, tidyTitle } from "@/lib/article";
 import { forgetCover, paintAll } from "@/lib/covers";
 import { SAMPLE_SHELF } from "@/lib/classics";
 import { SORTS, sortBooks, TAGS, TOPIC, TOPICS, topicOf, type Book, type Sort, type TagKey, type Topic, type TopicKey } from "@/lib/library";
 import { hideSample, useLibraryPrefs } from "@/lib/library-prefs";
-import { SAMPLES } from "@/lib/samples";
+import { SAMPLE_CATALOG } from "@/lib/sample-catalog";
 import { applySettings } from "@/lib/settings";
 import { backfill } from "@/lib/shelving";
 import { useStore } from "@/lib/store";
+import { useReaderVisible } from '@/compat/visibility';
 import { watchShelf } from "@/lib/sync";
-import { AddButton, AddPanel, type AddTab } from "./AddPanel";
+import type { AddTab } from "./AddPanel";
+import { AddButton } from './AddButton';
 import { Arrivals, type Wave } from "./Arrivals";
 import { Glyph } from "./Book";
 import { BookOpen, type Origin } from "./BookOpen";
 import { Shelf } from "./Shelf";
-import { Starter } from "./Starter";
 import { TopicGrid, TopicPage } from "./Topics";
 
 type View = "shelf" | "topics";
+const AddPanel = lazy(() => import('./AddPanel').then((m) => ({ default: m.AddPanel })));
+const Starter = lazy(() => import('./Starter').then((m) => ({ default: m.Starter })));
 
 const SEEN_KEY = "gloss:library-seen";
 /** Samples stay on the shelf until it has this many texts of your own, or for good once opened, unless taken off. */
@@ -37,6 +40,7 @@ const SAMPLES_UNTIL = 6;
  * drop onto the shelf as they arrive.
  */
 export function Library() {
+  const visible = useReaderVisible();
   const router = useRouter();
   const { user, isSignedIn } = useUser();
   const hydrate = useStore((s) => s.hydrate);
@@ -58,6 +62,7 @@ export function Library() {
   const [adding, setAdding] = useState<AddTab | null>(null);
   const [fresh, setFresh] = useState<Set<string>>(() => new Set());
   const [leaving, setLeaving] = useState(false);
+  const [showResources, setShowResources] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const known = useRef<Set<string> | null>(null);
   const [lastSeen, setLastSeen] = useState(0);
@@ -81,7 +86,7 @@ export function Library() {
   useEffect(() => () => clearTimeout(waveTimer.current), []);
 
   // Signed in, the shelf is checked every few seconds while it's open, so an agent's saves arrive as you look.
-  useEffect(() => watchShelf(), []);
+  useEffect(() => visible ? watchShelf() : undefined, [visible]);
 
   // The top bar frosts over once the page moves under it.
   const [scrolled, setScrolled] = useState(false);
@@ -125,13 +130,13 @@ export function Library() {
 
   // Texts shelved before the library existed are sorted onto topics the first time it opens.
   useEffect(() => {
-    if (hydrated) void backfill(useStore.getState().library);
-  }, [hydrated, library.length]);
+    if (visible && hydrated) void backfill(useStore.getState().library);
+  }, [visible, hydrated, library.length]);
 
   // Painted covers, when they're turned on: one at a time, for every sorted text without one.
   useEffect(() => {
-    if (hydrated && prefs.paintedCovers) void paintAll(useStore.getState().library);
-  }, [hydrated, prefs.paintedCovers, library]);
+    if (visible && hydrated && prefs.paintedCovers) void paintAll(useStore.getState().library);
+  }, [visible, hydrated, prefs.paintedCovers, library]);
 
   const own = library.filter((x) => x.origin !== "sample");
   const books = useMemo(() => {
@@ -157,13 +162,13 @@ export function Library() {
       agent: x.addedBy === "agent",
       sample: false,
     }));
-    const samples: Book[] = SAMPLES.filter((a) => !prefs.hiddenSamples.includes(a.id) && (own.length < SAMPLES_UNTIL || read(a.id) > 0)).map((a) => ({
+    const samples: Book[] = SAMPLE_CATALOG.filter((a) => !prefs.hiddenSamples.includes(a.id) && (own.length < SAMPLES_UNTIL || read(a.id) > 0)).map((a) => ({
       id: a.id,
       title: a.title,
       author: a.author ?? "",
       year: Number(a.published?.match(/\d{4}/)?.[0]) || undefined,
       topic: SAMPLE_SHELF[a.id]?.topic ?? "unsorted",
-      minutes: readingMinutes(wordCount(a)),
+      minutes: readingMinutes(a.words),
       dek: a.dek,
       tags: [],
       favorite: false,
@@ -394,7 +399,10 @@ export function Library() {
                   <p className="py-6 text-center text-[14px] text-ink-3">书架没有匹配内容{q ? <> &ldquo;{q}&rdquo;</> : ""}.</p>
                 )}
                 {hydrated && own.length < SAMPLES_UNTIL ? (
-                  <Starter count={own.length} signedIn={Boolean(isSignedIn)} onAdd={setAdding} />
+                  <details onToggle={(event) => setShowResources(event.currentTarget.open)} className="mt-6 border-t border-rule py-4 text-[14px] text-ink-3">
+                    <summary className="cursor-pointer">更多阅读资源与导入方式</summary>
+                    {showResources && <Suspense fallback={<p role="status">正在打开阅读资源…</p>}><Starter count={own.length} signedIn={Boolean(isSignedIn)} onAdd={setAdding} /></Suspense>}
+                  </details>
                 ) : (
                   hydrated && <p className="lib-hint">点击书脊拿起一本书，用方向键浏览书架。</p>
                 )}
@@ -451,7 +459,7 @@ export function Library() {
           }}
         />
       )}
-      {adding && <AddPanel tab={adding} onTab={setAdding} onClose={() => setAdding(null)} signedIn={Boolean(isSignedIn)} />}
+      {adding && <Suspense fallback={<p role="status">正在打开导入…</p>}><AddPanel tab={adding} onTab={setAdding} onClose={() => setAdding(null)} signedIn={Boolean(isSignedIn)} /></Suspense>}
     </div>
   );
 }

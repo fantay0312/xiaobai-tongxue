@@ -72,12 +72,7 @@
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 28px;
-  padding: 28px;
-  border-radius: var(--r-2xl);
-  background:
-    radial-gradient(120% 140% at 0% 0%, var(--accent-softer), transparent 55%),
-    var(--surface);
-  box-shadow: var(--shadow-2);
+  padding: 8px 0;
 }
 
 .heroFigure {
@@ -779,6 +774,11 @@
 
 /* ── 所选课的带法：领学 / 温书 / 想起来 / 改过来，各用一种状态色 ── */
 
+.secondaryDetails { padding: 12px 0; border-top: 1px solid var(--border); }
+.secondaryDetails > summary { cursor: pointer; color: var(--text-2); font-size: var(--fz-sm); font-weight: 500; }
+.secondaryDetails[open] > summary { margin-bottom: 16px; }
+.secondaryDetails > summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
+
 .focus {
   --kind: var(--accent);
   --kind-soft: var(--accent-soft);
@@ -786,11 +786,9 @@
   gap: 14px;
   min-width: 0;
   padding: 20px 22px;
-  border-radius: var(--r-xl);
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--kind) 9%, transparent), transparent 55%),
-    var(--surface);
-  box-shadow: inset 0 0 0 1px var(--border), var(--shadow-1);
+  border-radius: 0;
+  border-block: 1px solid var(--border);
+  background: transparent;
 }
 
 .focus[data-kind='refresh'] { --kind: var(--ok); --kind-soft: var(--ok-soft); }
@@ -868,9 +866,7 @@
 }
 
 .focusVoice {
-  padding: 10px 14px;
-  border-radius: var(--r-lg);
-  background: color-mix(in srgb, var(--kind) 7%, var(--inset));
+  padding: 4px 0;
   color: var(--text-2);
   font-size: var(--fz-md);
   line-height: 1.65;
@@ -888,16 +884,15 @@
   align-items: flex-start;
   gap: 10px;
   min-width: 0;
-  padding: 12px;
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--border);
+  padding: 8px 0;
 }
 
 .focusSteps li:first-child:not([data-done]),
 .focusSteps li[data-done] + li:not([data-done]) {
-  box-shadow: inset 0 0 0 1.5px var(--kind), 0 0 0 3px var(--kind-soft);
+  color: var(--kind);
 }
+.focusSteps li:first-child:not([data-done]) b,
+.focusSteps li[data-done] + li:not([data-done]) b { color: var(--kind); }
 
 .focusSteps li > span:last-child {
   display: grid;
@@ -982,8 +977,7 @@
 }
 
 .focusPoints ul {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 6px;
 }
 
@@ -993,9 +987,7 @@
   gap: 6px;
   min-height: 28px;
   max-width: 100%;
-  padding: 3px 10px 3px 6px;
-  border-radius: var(--r-full);
-  background: var(--inset);
+  padding: 3px 0;
   color: var(--text-2);
   font-size: var(--fz-sm);
   line-height: 1.35;

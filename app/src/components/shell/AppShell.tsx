@@ -37,7 +37,7 @@ const SECONDARY_TITLES: [prefix: string, title: string][] = [
   ['/review/', '复盘'],
 ];
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, persistent }: { children: ReactNode; persistent?: ReactNode }) {
   const { pathname } = useLocation();
   // 注意精确到 '/teach/'：裸 startsWith('/teach') 会把 /teacher 教师看板一并锁死（2026-07-16 生产 bug）
   const boardMode = pathname.startsWith('/teach/');
@@ -135,6 +135,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <main className={styles.main}>{children}</main>
         )}
 
+        {persistent}
         <AmbiencePlayer />
 
         <Suspense fallback={null}>
