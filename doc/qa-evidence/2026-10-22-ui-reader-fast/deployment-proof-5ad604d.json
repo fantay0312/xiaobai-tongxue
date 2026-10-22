@@ -1,0 +1,12 @@
+{
+  "release": "20261022-ui-reader-fast-5ad604d",
+  "sourceCommit": "5ad604ddc2c5e32f929691623135684889c2b95d",
+  "previousRelease": "20261022-course-list-69527d2",
+  "frontendOnly": true,
+  "serviceRestarted": false,
+  "pid": "584115",
+  "verifiedFiles": 1016,
+  "knownSecretsScan": "passed",
+  "protectedConfiguration": "unchanged",
+  "backup": "/var/backups/xiaobai/20261022-ui-reader-fast-5ad604d"
+}

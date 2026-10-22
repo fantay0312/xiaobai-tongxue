@@ -1,0 +1,14 @@
+{
+  "release": "20261022-ui-reader-fast-83a6c17",
+  "workbenchRendered": true,
+  "independentReaderRendered": true,
+  "readerBookCount": 14,
+  "embeddedChrome": "about:blank also reproduced on unchanged baseline",
+  "recoveryActionsVisible": [
+    "重新打开",
+    "在新标签页打开"
+  ],
+  "openIndependentActionVerified": true,
+  "embeddedIabVerified": true,
+  "physicalMobileTested": false
+}

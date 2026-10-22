@@ -1,0 +1,6 @@
+
+> app@0.0.0 test:performance
+> tsx scripts/performance-budget.test.ts
+
+{"entryBytes":619590,"readingShellBytes":636735,"heavyLearningCode":false}
+{"embeddedShelfBytes":141304,"bundledTextEagerlyLoaded":false}

@@ -1,0 +1,6 @@
+
+> app@0.0.0 test:reader
+> tsx scripts/reader.test.ts && tsx --tsconfig gloss/tsconfig.json scripts/reader-sync.test.ts
+
+Original Gloss rich text, table parsing, paragraph numbering, cross-block anchors and model context bounds passed.
+Reader sync: concurrent note preservation, 409 recovery and 501-row batching passed.

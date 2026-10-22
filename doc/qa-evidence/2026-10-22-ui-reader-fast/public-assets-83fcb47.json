@@ -1,0 +1,399 @@
+{
+  "release": "20261022-ui-reader-fast-83fcb47",
+  "checked": 49,
+  "allMatch": true,
+  "resources": [
+    {
+      "path": "dist/assets/AccountButton-DNhUZBiU.js",
+      "bytes": 959,
+      "sha256": "358ba9055ed526b633f56c6dc7eaa13ea0395f317e0f69ff2f0e3f5ee23c5311",
+      "matches": true,
+      "seconds": 1.199,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/AgentView-D4suGeDe.js",
+      "bytes": 41437,
+      "sha256": "edbea5288257522d0b41f2eaf6ea20fb2dd8e14b474f7d34ea81ccd4d87776a1",
+      "matches": true,
+      "seconds": 1.83,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/AttachBar-DUg2hgSl.js",
+      "bytes": 2116,
+      "sha256": "73d82085749536a41a0fc69e096b3955b512f8a88a616a44996c0905bcc41d94",
+      "matches": true,
+      "seconds": 0.921,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/CoachMarkdown-1NEh9C6y.js",
+      "bytes": 1609,
+      "sha256": "cd879d591c76ef3c1632610d0a7a52c7dfb428da2ca9509dcc8210aa1cd9f503",
+      "matches": true,
+      "seconds": 1.55,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/CourseStudioView-BXtNJCBs.js",
+      "bytes": 75244,
+      "sha256": "8fd59af47f1d671e54c23e27089b7bb3ecfd754fda7e53e699d7bff211c878e6",
+      "matches": true,
+      "seconds": 1.543,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/FeynmanView-CkiTRKPi.js",
+      "bytes": 48451,
+      "sha256": "62b73d0cb1803c4cca4f24d0965968d9efddefcc142a067588b361251933ee2a",
+      "matches": true,
+      "seconds": 3.218,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/JourneyStatus-BEkgp0ic.js",
+      "bytes": 7502,
+      "sha256": "9f07ff3fd9f72bbb46d9796c53be878b175d3aa889f99247a32b519b02ae1f8e",
+      "matches": true,
+      "seconds": 3.132,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/LibraryPage-Cw6nZbMI.js",
+      "bytes": 63135,
+      "sha256": "0c7ed45974117693d5b1ff2c957f8720dce1932484c982123042c28b0d9c7d4b",
+      "matches": true,
+      "seconds": 2.824,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/MasteryCertificate-BWUMO9Q6.js",
+      "bytes": 3007,
+      "sha256": "39278238a1b8aaa543722f2062affb740d3fc1ada883dd542f61132a7173da25",
+      "matches": true,
+      "seconds": 1.759,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/MemoryView-aCNrNiGl.js",
+      "bytes": 41027,
+      "sha256": "20c16ea57c4f4c383341a58df79eba3757f7a55f8917d70463ffdfb29f1ab2ae",
+      "matches": true,
+      "seconds": 3.24,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/ProfileDialog-Cvn_Vhao.js",
+      "bytes": 38653,
+      "sha256": "b946cb18c2c45bf995d6262af9b00a9a108e6ea7a802b29bd96477971756d29a",
+      "matches": true,
+      "seconds": 2.547,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/ReadingTerminal-CUauRY5W.js",
+      "bytes": 2056,
+      "sha256": "458de0326b8480db2936701c734439fc08ac4a050d2ca577552d8c19a95016e2",
+      "matches": true,
+      "seconds": 0.833,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/RecentWork-twV7UJIs.js",
+      "bytes": 2295,
+      "sha256": "2d184e5a443969c3134b7f043c535fd743668bb4af33b82853fd2a18cbe85884",
+      "matches": true,
+      "seconds": 1.155,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/ResearchView-CxgfBBtV.js",
+      "bytes": 152651,
+      "sha256": "0c0c4a5334b0d28177c8fd9361a8ef070f13e30b24457a9ed6964ad5654f91ec",
+      "matches": true,
+      "seconds": 1.42,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/SendTo-BxF_Lofd.js",
+      "bytes": 13973,
+      "sha256": "29057806f973287f96d79f46a68d42a207c5e8354627340534205caa02ffd4de",
+      "matches": true,
+      "seconds": 1.782,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/SettingsDialog-DbbGM0AA.js",
+      "bytes": 52235,
+      "sha256": "ec54fdab5a0bbbe3bc7d6e24da05427a7840627ad209be41be6404c548e1d692",
+      "matches": true,
+      "seconds": 0.904,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/StudyPanels-ClJRecOb.js",
+      "bytes": 11195,
+      "sha256": "2b12875a144c2752c8597b8c7f3208838e6d1c7b6c73b89dfaa0864c2e67daab",
+      "matches": true,
+      "seconds": 0.673,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/Tour-Bq6jnQbj.js",
+      "bytes": 5225,
+      "sha256": "a21a63571d4ed750671520a821cc7529e1a7f22f2e0e308a0e70be0c80dc42cf",
+      "matches": true,
+      "seconds": 0.658,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/WorkbenchView-CY2L0A9s.js",
+      "bytes": 190387,
+      "sha256": "de745fa0189f95d2a4cf5d8b14f6f91a76275beee3e510015b6bc8cf902a6d1b",
+      "matches": true,
+      "seconds": 1.708,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/WorkspaceNavigation-ac46XOrm.js",
+      "bytes": 1721,
+      "sha256": "aa52697f0dbb5854bee9e1accce638d538c8a89cedc93535fdaa53e06bbe175c",
+      "matches": true,
+      "seconds": 0.609,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/XiaobaiAvatar-BJpXptH3.js",
+      "bytes": 4484,
+      "sha256": "e4a8218752f5b594efe6ab78bd4b1ac8f13eec0c6893a89f7b21509d8ef7bd90",
+      "matches": true,
+      "seconds": 1.315,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/XiaoyanPet-CljlHZUi.js",
+      "bytes": 5500,
+      "sha256": "7496a68f6bbfe4175b7f9dc090dc3056690e7d6922dab1f636ab8c4dba22b33b",
+      "matches": true,
+      "seconds": 1.323,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/appStore-CzxHAcET.js",
+      "bytes": 171187,
+      "sha256": "39fadc78e72bc27c0b980d8ffe9b7d5de4439d208fc6568b816bdbec0dd7c8ea",
+      "matches": true,
+      "seconds": 2.402,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/classroom-ez3hlzyT.js",
+      "bytes": 47571,
+      "sha256": "054436554e6f5b5d301a110a1703a2374c036d33a7560e76e907520ef20df25a",
+      "matches": true,
+      "seconds": 1.385,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/crossActions-DNpb5G3a.js",
+      "bytes": 34934,
+      "sha256": "c5945da635bc75dee93e0ae1a87d300ea526b6aa8d97395818c52338eb97ef58",
+      "matches": true,
+      "seconds": 0.658,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/custom-content-qEhyJYye.js",
+      "bytes": 61658,
+      "sha256": "7a0e55bc1a49a4f33fdb50fd361bd2a5b0c9b614b10c75c5294bc6d84078bf5f",
+      "matches": true,
+      "seconds": 0.971,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/dreams-BqGIsIpM.js",
+      "bytes": 33790,
+      "sha256": "56dc3dc4306128e4b455f881ba743a493d720e59e807e265f2e8c3e6886b1e5a",
+      "matches": true,
+      "seconds": 0.683,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/exam-C4pFyiKm.js",
+      "bytes": 19882,
+      "sha256": "9c20fa326f63dacba817bdfe04a1a9a6c426e51953cc3f575159cacb78fa5a62",
+      "matches": true,
+      "seconds": 1.685,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/growth-CSICqqRp.js",
+      "bytes": 109411,
+      "sha256": "cc7d29cae06e9fbc99b56aa06c331f97f1ed944e72d5db0521d1aec1b2a7a7a4",
+      "matches": true,
+      "seconds": 2.376,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/index-C-qHRcFX.js",
+      "bytes": 69050,
+      "sha256": "ee8c56c3e375e8c6646efd60a888732e83f9a8c15c473fcbf1e7818853d603b3",
+      "matches": true,
+      "seconds": 0.334,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/landing-DpHquN2b.js",
+      "bytes": 251465,
+      "sha256": "24c07e81ac09c64227a4eb96be9a3b68d206bf23467a7470de4446656fb914bd",
+      "matches": true,
+      "seconds": 0.992,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/learn-DLvRYyIv.js",
+      "bytes": 515483,
+      "sha256": "2cc6427a7eead786fe229fd93e18e39bcee1b0b0440292877d5c7b820028010d",
+      "matches": true,
+      "seconds": 2.086,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/learn.module-BO9Qaysv.js",
+      "bytes": 23342,
+      "sha256": "77cb48cfef2c38394cd7ed7070a2459005f59a31df21e17d3dfbf4c940612a36",
+      "matches": true,
+      "seconds": 1.708,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/lessonStore-DfMaDtRU.js",
+      "bytes": 41789,
+      "sha256": "6a816d640b6a5da2413948634ef86613ef6152dd0d2cbfa4c4518475fada7a8c",
+      "matches": true,
+      "seconds": 2.051,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/login-DSdBnDzr.js",
+      "bytes": 27368,
+      "sha256": "53085189e39cd8c51a8c5a755f7b7b7cee97b9521a555015a52feb391e6c0859",
+      "matches": true,
+      "seconds": 2.37,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/modelGateway-CKml_-dm.js",
+      "bytes": 6730,
+      "sha256": "4358985f4532eb20bb4563d286efcabb77ac670ed053e51d7edba42930334403",
+      "matches": true,
+      "seconds": 0.724,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/prep-CUJbZuHU.js",
+      "bytes": 66943,
+      "sha256": "fb93f71a5804bfed9757debd4646c02ab054b8182bd02644d007fa6c50250239",
+      "matches": true,
+      "seconds": 0.983,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/preview-C3nyDOD6.js",
+      "bytes": 54139,
+      "sha256": "d67092a85a077733467b2db31369df7bb63c75fe1136c504cd7674150057b4c3",
+      "matches": true,
+      "seconds": 1.314,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/reading-XDdvstQs.js",
+      "bytes": 1257,
+      "sha256": "a376074c45a6d55d1945c3d90b422e864e946226763809f97df4b1cdbcd99b7d",
+      "matches": true,
+      "seconds": 0.327,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/research-C0vlpEJf.js",
+      "bytes": 13195,
+      "sha256": "ae3fb3c87560e5ed44606b34b05f091479c47dceed2c7fc16e70f76324d368a6",
+      "matches": true,
+      "seconds": 0.641,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/review-DAIeRniH.js",
+      "bytes": 25118,
+      "sha256": "1a08db609441aca38615d4140146622ed2a9a6484075c5d32a987996f59a14d1",
+      "matches": true,
+      "seconds": 0.695,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/scheduler-DNWwp0Mp.js",
+      "bytes": 56974,
+      "sha256": "dc81de4be8e27e66ac15954852ca0505c19130326599f86dc40a53a7378c7c4b",
+      "matches": true,
+      "seconds": 0.667,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/studyData-CQNQseHq.js",
+      "bytes": 15861,
+      "sha256": "0891a36ee4f4e3a12c6da36eab4fa7701dbb7d9138305a024bb4e6f2b77d6e55",
+      "matches": true,
+      "seconds": 0.623,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/sync-aDT2gbje.js",
+      "bytes": 15404,
+      "sha256": "cd4f1177a192a7a3f19aa1d877f07505fe7e91bc9468d623475cccf4b9abf204",
+      "matches": true,
+      "seconds": 1.7,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/teacher-D4I0_K9G.js",
+      "bytes": 17042,
+      "sha256": "951a3e1f02d489ceaac4f3be496255050808306e1940b85922a90792634f0a31",
+      "matches": true,
+      "seconds": 0.673,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/tutorMemory-20osfTfb.js",
+      "bytes": 21927,
+      "sha256": "34590bc714327f21891c115ad824e87017dde0421b8596deebc05842e95a127d",
+      "matches": true,
+      "seconds": 0.702,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/useAllTopics-Dxit9bXG.js",
+      "bytes": 255,
+      "sha256": "0dca4a40e88bf22ad309a53673489474c19c144b4ad917aa397efe1b9d36afb2",
+      "matches": true,
+      "seconds": 0.619,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/assets/useKeyboardViewport-BntDIxte.js",
+      "bytes": 8116,
+      "sha256": "bc59423cadc1f1ae0bf8b56cdd5908d9ba04fe43d0555b9bac5e420ecd9fdfe7",
+      "matches": true,
+      "seconds": 0.274,
+      "cacheControl": "public, immutable, max-age=31536000"
+    },
+    {
+      "path": "dist/index.html",
+      "bytes": 2305,
+      "sha256": "26cc223451ac36cd46a8161abaadc69be0768c187ad35273345c515fea689429",
+      "matches": true,
+      "seconds": 0.625,
+      "cacheControl": "no-cache"
+    }
+  ]
+}

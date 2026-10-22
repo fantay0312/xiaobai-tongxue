@@ -1,0 +1,14 @@
+{
+  "fixtureOnly": true,
+  "importedFile": "account-isolation.md",
+  "accountAContainsImportedBook": true,
+  "iframeCountAfterLogout": 0,
+  "accountBContainsImportedBook": false,
+  "accountBName": "local-second-account",
+  "mobileWidths": [
+    390,
+    320
+  ],
+  "overflowAt320": false,
+  "readingDocumentPreservedOnRouteSwitch": true
+}

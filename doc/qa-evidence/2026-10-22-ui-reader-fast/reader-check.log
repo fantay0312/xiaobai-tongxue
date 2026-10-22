@@ -1,0 +1,5 @@
+[check] $ npm run check
+
+> xiaobai-gloss-reader@1.0.0 check
+> tsc --noEmit
+

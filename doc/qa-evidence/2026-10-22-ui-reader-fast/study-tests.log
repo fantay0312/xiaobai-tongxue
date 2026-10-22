@@ -1,0 +1,12 @@
+
+> app@0.0.0 test:study
+> tsx scripts/study-workspace.test.ts && tsx scripts/guided-study.test.ts && tsx scripts/study-tutor.test.ts && tsx scripts/notebook-workspace.test.ts && tsx scripts/file-library.test.ts && tsx scripts/intelligent-answer.test.ts && tsx scripts/scoped-storage.test.ts
+
+study-workspace: account/topic isolation, storage recovery, prompt boundaries, source cards and request cancellation passed
+guided-study: typed scenes, explicit completion, skips, resume, account isolation and changed-material reset passed
+study-tutor: source projection, provider metadata and cancellation passed
+notebook-workspace: selection isolation, snapshots, safe exports, artifact validation and account persistence passed
+file-library: folder view, scoped search, favorites, trash and breadcrumb cycle guard passed
+library parsing: bounded concurrency, per-file deadlines, transient retry and cancellation passed
+Intelligent answers: persistence, owner isolation, interrupted restore and stream completion verified.
+Prefix deployment storage is isolated from the main site.

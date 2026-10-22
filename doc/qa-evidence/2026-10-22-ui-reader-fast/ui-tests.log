@@ -1,0 +1,5 @@
+
+> app@0.0.0 test:ui-simplify
+> tsx scripts/ui-simplify.test.ts
+
+Unobstructed notebook defaults, narrow screens, empty books and saved preferences: passed.
