@@ -1,0 +1,12 @@
+{
+  "release": "20261022-login-books-speed-4c11192",
+  "sourceCommit": "4c1119224b0a1f52523961b1ffb839e71b36e3d9",
+  "previousRelease": "20261015-reader-87cd056",
+  "frontendOnly": true,
+  "serviceRestarted": false,
+  "pid": "584115",
+  "verifiedFiles": 998,
+  "knownSecretsScan": "passed",
+  "protectedConfiguration": "unchanged",
+  "backup": "/var/backups/xiaobai/20261022-login-books-speed-4c11192"
+}

@@ -24,5 +24,14 @@
   ],
   "baselineFailure": "test:feedback has pre-existing old prep-page copy assertion",
   "externalPaidModelCalls": false,
-  "localMockServer": true
+  "localMockServer": true,
+  "productionRelease": "20261022-login-books-speed-4c11192",
+  "publicAssetsVerified": 96,
+  "productionChecks": [
+    "authenticated login goes directly to /learn",
+    "book import entry exposes four file formats",
+    "profile has no transcript tab",
+    "existing library visible"
+  ],
+  "serverRestarted": false
 }
