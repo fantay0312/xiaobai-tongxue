@@ -419,8 +419,12 @@
   background: var(--active);
   color: var(--text);
   font-weight: 550;
-  box-shadow: inset 2px 0 0 var(--accent);
 }
+
+.validationCourses { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--border); }
+.validationToggle { color: var(--text-3); font-weight: 500; }
+.validationToggle > svg { transition: transform var(--dur-2) var(--ease); }
+.validationToggle > svg[data-open] { transform: rotate(90deg); }
 
 .chatRow {
   display: flex;

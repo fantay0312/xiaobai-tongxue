@@ -8,6 +8,7 @@ import type { StudyConversation } from '../../../engine/studyWorkspace';
 import { ARTIFACT_LABELS, useArtifacts, type Artifact, type ArtifactKind } from '../../../lib/artifacts';
 import type { ConversationBrief } from '../../../lib/artifactProviders/chat';
 import { listLibrary, type LibraryEntry } from '../../../lib/fileLibrary';
+import { isValidationCourse } from '../../../lib/courseVisibility';
 import type { Topic } from '../../../types';
 import { STUDY_TABS, TERMINAL_NAV, type View } from './views';
 import p from './palette.module.css';
@@ -51,6 +52,10 @@ function Row({ icon, hint, children, ...rest }: { icon: ReactNode; hint?: string
 /** ⌘K 命令面板：搜课程与知识点、对话、视图和常用操作 */
 export function CommandPalette(props: CommandPaletteProps) {
   const { open, onOpenChange, topics, topic, conversations, owner = null, workspace, allConversations = [] } = props;
+  const [query, setQuery] = useState('');
+  const regularTopics = topics.filter((item) => !isValidationCourse(item.course));
+  const validationTopics = topics.filter((item) => isValidationCourse(item.course));
+  useEffect(() => { if (!open) setQuery(''); }, [open]);
   const artifacts = useArtifacts(owner);
   const artifactGroups = useMemo(() => {
     if (!open) return [];
@@ -90,6 +95,12 @@ export function CommandPalette(props: CommandPaletteProps) {
     onOpenChange(false);
     action();
   };
+  const topicRow = (item: Topic) => (
+    <Row key={item.topicId} value={`${item.course} ${item.title} ${item.topicId}`} hint={item.course}
+      icon={<IconRead size={16} />} onSelect={run(() => props.onOpenTopic(item.topicId))}>
+      {item.title}
+    </Row>
+  );
 
   return (
     <Command.Dialog
@@ -102,7 +113,7 @@ export function CommandPalette(props: CommandPaletteProps) {
     >
       <div className={p.inputRow}>
         <Search size={17} strokeWidth={1.75} />
-        <Command.Input className={p.input} placeholder="搜索课程、对话、资料和做出来的内容，或输入要做的事" />
+        <Command.Input className={p.input} value={query} onValueChange={setQuery} placeholder="搜索课程、对话、资料和做出来的内容，或输入要做的事" />
         <kbd className={p.esc}>Esc</kbd>
       </div>
       <Command.List className={p.list}>
@@ -136,19 +147,14 @@ export function CommandPalette(props: CommandPaletteProps) {
           ))}
         </Command.Group>
 
-        {topics.length > 0 && (
+        {regularTopics.length > 0 && (
           <Command.Group heading="课程与知识点" className={p.group}>
-            {topics.map((item) => (
-              <Row
-                key={item.topicId}
-                value={`${item.course} ${item.title} ${item.topicId}`}
-                hint={item.course}
-                icon={<IconRead size={16} />}
-                onSelect={run(() => props.onOpenTopic(item.topicId))}
-              >
-                {item.title}
-              </Row>
-            ))}
+            {regularTopics.map(topicRow)}
+          </Command.Group>
+        )}
+        {query.trim() && validationTopics.length > 0 && (
+          <Command.Group heading="测试与验收课程" className={p.group}>
+            {validationTopics.map(topicRow)}
           </Command.Group>
         )}
 
