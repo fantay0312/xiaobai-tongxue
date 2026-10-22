@@ -1,0 +1,45 @@
+{
+  "localOrigin": "http://127.0.0.1:5195",
+  "fixture": {
+    "validationCourses": 3,
+    "genuineTestingSubjects": [
+      "软件测试",
+      "测试驱动开发"
+    ]
+  },
+  "checks": {
+    "validationHiddenByDefault": true,
+    "regularSubjectsVisible": true,
+    "expandWithoutDataMutation": true,
+    "searchSeparateGroup": true,
+    "searchOpensActiveValidationGroup": true,
+    "activeValidationCanBeCollapsed": true,
+    "activeValidationRevealedAfterReload": true,
+    "desktopSelectedCourse": {
+      "text": "梯度下降与学习率",
+      "boxShadow": "none",
+      "borderLeft": "0px none",
+      "fontWeight": "550"
+    },
+    "keyboardFocus": {
+      "focusVisible": true,
+      "ringPx": 3
+    },
+    "mobileViewports": [
+      [
+        390,
+        844
+      ],
+      [
+        320,
+        720
+      ]
+    ],
+    "mobileScrollWidth": 320,
+    "mobileViewportWidth": 320
+  },
+  "fixtureLimitations": [
+    "Custom course original-source API is not implemented in the local fixture; published lecture is available.",
+    "Browser viewport emulation, not physical devices."
+  ]
+}

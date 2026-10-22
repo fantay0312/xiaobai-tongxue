@@ -1,0 +1,12 @@
+{
+  "release": "20261022-course-list-69527d2",
+  "sourceCommit": "69527d220159fd034179fb6b1bf84cc4de275389",
+  "previousRelease": "20261022-home-focus-d911586",
+  "frontendOnly": true,
+  "serviceRestarted": false,
+  "pid": "584115",
+  "verifiedFiles": 1005,
+  "knownSecretsScan": "passed",
+  "protectedConfiguration": "unchanged",
+  "backup": "/var/backups/xiaobai/20261022-course-list-69527d2"
+}
