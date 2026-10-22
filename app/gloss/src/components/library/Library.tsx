@@ -313,7 +313,7 @@ export function Library() {
                   )}
                 </p>
               </div>
-              <AddButton onClick={() => setAdding("agent")} />
+              <AddButton onClick={() => setAdding("books")} />
             </div>
             {fromAgent.length > 0 && (
               <button type="button" className="lib-news" onClick={() => (setTag("agent"), setOnly(null), go({ view: "shelf" }))}>
@@ -329,7 +329,7 @@ export function Library() {
             <button type="button" onClick={() => go({ view: "topics" })} className="lib-back">
               <ChevronLeft size={16} /> 全部主题
             </button>
-            <AddButton compact onClick={() => setAdding("agent")} />
+            <AddButton compact onClick={() => setAdding("books")} />
           </div>
         ) : (
           <div className="lib-tools">

@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
-import { ArrowRight, Ticket, UserRound } from 'lucide-react';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
+import { Ticket, UserRound } from 'lucide-react';
 import {
   Badge, Button, Field, Input, Segmented, Spinner, type SegmentOption,
 } from '../../components/ui';
 import type { XiaobaiMood } from '../../types';
 import { useAuthStore, type AuthField } from '../../store/authStore';
 import { useDocTitle } from '../../hooks/useDocTitle';
+import { safeNextPath } from '../../lib/authNavigation';
 import {
   CODE_RE, EMAIL_RE, MAINLAND_PHONE_RE, NAME_RE, mainlandPhoneToE164,
   useCooldown, type Issue,
@@ -24,19 +25,6 @@ type LoginMethod = 'password' | 'phone-code' | 'email-code';
 type RegistrationMethod = 'phone' | 'email';
 
 const FEEDBACK_ID = 'auth-feedback';
-
-function containsControlCharacter(value: string): boolean {
-  for (const character of value) {
-    const codePoint = character.codePointAt(0) ?? 0;
-    if (codePoint < 32 || codePoint === 127) return true;
-  }
-  return false;
-}
-
-function safeNextPath(value: string): string {
-  return value.startsWith('/') && !value.startsWith('//')
-    && !value.includes('\\') && !containsControlCharacter(value) ? value : '/learn';
-}
 
 /** 左故事栏 + 右内容栏。表单与各种状态提示共用同一副骨架，切换时不跳版 */
 function AuthFrame({ mood, voice, labelledBy, children }: {
@@ -353,17 +341,7 @@ export default function LoginPage() {
     );
   }
   if (status === 'standalone' || (status === 'authed' && !bindingRequired)) {
-    const standalone = status === 'standalone';
-    return (
-      <AuthNotice mood="happy"
-        voice={standalone ? '今日不必递帖，先生请进。' : '先生已在书斋，随时开讲。'}
-        title={standalone ? '本地演示模式' : '你已登录'}
-        text={standalone ? '当前为本地演示，无需登录即可使用全部功能。' : '可以直接去给小白开讲。'}>
-        <Button asChild variant="solid" size="lg" iconRight={<ArrowRight size={16} strokeWidth={1.75} />}>
-          <Link to={standalone ? '/learn' : next}>{standalone ? '进入学习终端' : '继续'}</Link>
-        </Button>
-      </AuthNotice>
-    );
+    return <Navigate to={next} replace />;
   }
 
   const locked = busy || sendingCode;

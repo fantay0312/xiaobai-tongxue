@@ -51,7 +51,6 @@ import '../../lib/artifactProviders/agent';
 import '../../lib/artifactProviders/studyData';
 import type { LearningInteraction } from '../../../../server/shared/learning-ui.mjs';
 import type { Topic } from '../../types';
-import { CardsPanel, PracticePanel, ReadingPanel } from './StudyPanels';
 import { StudyJourney } from './StudyWelcome';
 import { StudyCompanion } from './StudyCompanion';
 import { GuidedStudyPanel } from './GuidedStudyPanel';
@@ -78,6 +77,9 @@ import { IconSpark } from '../../components/ui/icons';
 void import('../../lib/artifactProviders/research').catch(() => { /* 科研台没准备好时不登记 */ });
 
 const PrepPage = lazy(() => import('../prep'));
+const CardsPanel = lazy(() => import('./StudyPanels').then((module) => ({ default: module.CardsPanel })));
+const PracticePanel = lazy(() => import('./StudyPanels').then((module) => ({ default: module.PracticePanel })));
+const ReadingPanel = lazy(() => import('./StudyPanels').then((module) => ({ default: module.ReadingPanel })));
 const LibraryPage = lazy(() => import('../library/LibraryPage'));
 const TOOL_COMPONENTS: Record<ToolView, LazyExoticComponent<ComponentType<TerminalViewProps>>> = {
   workbench: lazy(() => import('./views/WorkbenchView')),
@@ -1135,7 +1137,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
             action={<Button variant="solid" onClick={() => setInspectorPanel('sources')}>选择资料</Button>}
           />
         ) : scopedTopic && (
-          <>
+          <Suspense fallback={<ViewLoading label="正在打开学习内容…" />}>
             {view === 'read' && <ReadingPanel key={scopeKey} topic={scopedTopic} readSections={workspace.readSections} onRead={(index) => {
               updateWorkspace((current) => ({ ...current, readSections: [...new Set([...current.readSections, index])] }));
               const sections = lectureSections(scopedTopic);
@@ -1157,7 +1159,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
                 ...(front ? { detail: front } : {}),
               });
             }} />}
-          </>
+          </Suspense>
         )}
         {view === 'prepare' && (topic ? (
           <Suspense fallback={<ViewLoading label="正在打开备课流程…" />}><PrepPage /></Suspense>

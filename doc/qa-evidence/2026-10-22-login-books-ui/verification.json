@@ -1,0 +1,28 @@
+{
+  "build": "passed",
+  "glossTypecheck": "passed",
+  "lint": "no errors; existing warnings",
+  "tests": [
+    "auth-tests.log",
+    "loading-tests.log",
+    "login-books-tests.log",
+    "reader-tests.log",
+    "sync-tests.log",
+    "markdown-tests.log",
+    "custom-content-tests.log",
+    "performance-budget.log"
+  ],
+  "simulationAssertions": 1567,
+  "manual": [
+    "authenticated login redirect to reading",
+    "EPUB chapter order and persisted content",
+    "PDF text extraction",
+    "TXT and Markdown imports",
+    "desktop and mobile reader",
+    "profile sections without transcript",
+    "full terminal navigation"
+  ],
+  "baselineFailure": "test:feedback has pre-existing old prep-page copy assertion",
+  "externalPaidModelCalls": false,
+  "localMockServer": true
+}

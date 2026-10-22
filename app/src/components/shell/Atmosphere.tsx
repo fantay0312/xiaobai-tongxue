@@ -33,7 +33,7 @@ export function AmbiencePlayer() {
     <audio
       ref={audioRef}
       src={soundUrl('bgm.mp3')}
-      preload="metadata"
+      preload={musicOn ? 'metadata' : 'none'}
       aria-hidden="true"
     />
   );

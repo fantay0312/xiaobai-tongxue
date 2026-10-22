@@ -2,7 +2,7 @@ import { useEffect, useRef, type FocusEvent as ReactFocusEvent, type MouseEvent 
 import { Link } from 'react-router';
 import { Menu as MenuIcon, Settings } from 'lucide-react';
 import { IconGrowth } from '../../../components/ui/icons';
-import { AccountButton } from '../../../components/shell/WorkspaceNavigation';
+import { AccountButton } from '../../../components/shell/AccountButton';
 import { useShellActions } from '../../../components/shell/ShellActions';
 import { TERMINAL_NAV, railKey, type View } from './views';
 import t from '../terminal.module.css';

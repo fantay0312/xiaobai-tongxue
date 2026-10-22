@@ -1,0 +1,5 @@
+
+> app@0.0.0 test:loading
+> tsx scripts/module-recovery.test.ts
+
+module loading recovery: ok

@@ -1,9 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
-import { RichMarkdown, type RichMarkdownProps } from '../rich/RichMarkdown';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import type { RichMarkdownProps } from '../rich/RichMarkdown';
+import { retryModule } from '../../lib/moduleRecovery';
 import s from './CoachMarkdown.module.css';
 
-export { RichMarkdown };
 export type { RichMarkdownProps };
+const MarkdownRenderer = lazy(() => retryModule(() => import('../rich/RichMarkdown')).then((module) => ({ default: module.RichMarkdown })));
+
+export function RichMarkdown(props: RichMarkdownProps) {
+  return <Suspense fallback={<div className={props.className} style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{props.text}</div>}>
+    <MarkdownRenderer {...props} />
+  </Suspense>;
+}
 
 /**
  * 全站统一的 Markdown 渲染入口：GFM、LaTeX 公式、代码高亮、mermaid 图。

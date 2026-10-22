@@ -1,0 +1,121 @@
+{
+  "before": {
+    "entry": {
+      "bytes": 2207618,
+      "gzip": 754364,
+      "files": [
+        "appStore-_MtJ9NDs.js",
+        "index-yDumIEJC.js",
+        "llm-DUasHg3J.js",
+        "rolldown-runtime-DAXXjFlN.js",
+        "topics-BsLcbcvC.js",
+        "vendor-T-KpQBQH.js"
+      ]
+    },
+    "learn": {
+      "bytes": 3819654,
+      "gzip": 1274689,
+      "files": [
+        "CoachMarkdown-DHIhnZpl.js",
+        "RecentWork-DdU6SKuv.js",
+        "SendTo-h8QKDemQ.js",
+        "XiaoyanPet-BdbFg015.js",
+        "appStore-_MtJ9NDs.js",
+        "artifacts-C5h9zmAt.js",
+        "crossActions-coTpeTF8.js",
+        "diagrams-By52fHMa.js",
+        "dreams-CbYnkBMb.js",
+        "index-yDumIEJC.js",
+        "journey-khScJyKE.js",
+        "learn-CIV0ztsx.js",
+        "learningIdentity-pFxMaU60.js",
+        "lessonStore-qbTs-fgc.js",
+        "llm-DUasHg3J.js",
+        "loop-C41WHeNG.js",
+        "modelGateway-BJlu4MmO.js",
+        "preview-C9gtRQQy.js",
+        "realtimeAsr-Cz8bBx4I.js",
+        "rolldown-runtime-DAXXjFlN.js",
+        "scheduler--CAQPqKI.js",
+        "sidebarSlot-BYCNcyat.js",
+        "studyData-DOAd7yr4.js",
+        "topics-BsLcbcvC.js",
+        "useDocTitle-ojP7_kge.js",
+        "useOpenTarget-DPPUDzW6.js",
+        "vendor-T-KpQBQH.js"
+      ]
+    },
+    "reading": {
+      "bytes": 0,
+      "gzip": 0,
+      "files": []
+    }
+  },
+  "after": {
+    "entry": {
+      "bytes": 617077,
+      "gzip": 193114,
+      "files": [
+        "index-CvgnWSSq.js",
+        "rolldown-runtime-DAXXjFlN.js",
+        "vendor-T-KpQBQH.js"
+      ]
+    },
+    "learn": {
+      "bytes": 3333849,
+      "gzip": 1138319,
+      "files": [
+        "AccountButton-Dr0F1rdQ.js",
+        "CoachMarkdown-i6S2Ou5l.js",
+        "JourneyStatus-K6EsZv45.js",
+        "ProfileAvatar-Kie6792X.js",
+        "RecentWork-zatSWGxE.js",
+        "SendTo-ThiVbD6m.js",
+        "XiaobaiAvatar-BGPJFmgT.js",
+        "XiaoyanPet-Bqh0SupW.js",
+        "appStore-Dkdt8N0a.js",
+        "crossActions-BiLkWkiw.js",
+        "dreams-OXOq464-.js",
+        "index-CvgnWSSq.js",
+        "journey-khScJyKE.js",
+        "katex-DAMdw3FD.js",
+        "learn-DATiYqb0.js",
+        "learn.module-RxfwewwJ.js",
+        "learningIdentity-pFxMaU60.js",
+        "lessonStore-BHWQ3KDp.js",
+        "modelGateway-CUgJ6TiC.js",
+        "preview-Bbyi4Uwx.js",
+        "realtimeAsr-DzyOoS9X.js",
+        "rolldown-runtime-DAXXjFlN.js",
+        "scheduler-B5Vi6JlV.js",
+        "selfTest-BzI-pXLN.js",
+        "sidebarSlot-BYCNcyat.js",
+        "studyData-CTkH4UN2.js",
+        "studyData-CimoSMvA.js",
+        "topics-BsLcbcvC.js",
+        "tutorMemory-ZXqeZcVJ.js",
+        "useAllTopics-DvPP_GMl.js",
+        "useDocTitle-ojP7_kge.js",
+        "useKeyboardViewport-BfEvdIx0.js",
+        "useOpenTarget-DPPUDzW6.js",
+        "vendor-T-KpQBQH.js"
+      ]
+    },
+    "reading": {
+      "bytes": 633274,
+      "gzip": 200580,
+      "files": [
+        "AccountButton-Dr0F1rdQ.js",
+        "ProfileAvatar-Kie6792X.js",
+        "ReadingTerminal-GUDp8cTr.js",
+        "index-CvgnWSSq.js",
+        "reading-C8CYtQRG.js",
+        "rolldown-runtime-DAXXjFlN.js",
+        "studyData-CTkH4UN2.js",
+        "useDocTitle-ojP7_kge.js",
+        "useKeyboardViewport-BfEvdIx0.js",
+        "vendor-T-KpQBQH.js"
+      ]
+    }
+  }
+}

@@ -14,7 +14,6 @@ import { useAuthStore } from '../../store/authStore';
 import { LETTER_CLOSED_EVENT, THEME_HINT_EVENT, markThemeHintDone } from '../tour/tourState';
 import { retryModule } from '../../lib/moduleRecovery';
 import { ShellActionsContext } from './ShellActions';
-import { WorkspaceNavigation } from './WorkspaceNavigation';
 import { TERMINAL_NAV, terminalViewPath } from '../../pages/learn/shell/views';
 import styles from './AppShell.module.css';
 import workspace from './workspace.module.css';
@@ -25,6 +24,7 @@ const ProfileDialog = lazy(() =>
 const SettingsDialog = lazy(() =>
   retryModule(() => import('./SettingsDialog')).then((module) => ({ default: module.SettingsDialog })),
 );
+const WorkspaceNavigation = lazy(() => retryModule(() => import('./WorkspaceNavigation')).then((module) => ({ default: module.WorkspaceNavigation })));
 
 /** 手机底栏放的四个终端板块，与学习终端自己的底栏一致 */
 const MOBILE_PRIMARY = ['ask', 'workbench', 'feynman', 'classroom'];
@@ -101,7 +101,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className={shellClass}>
         {secondaryWorkspace ? (
           <div className={workspace.surface} data-navigation-collapsed={navCollapsed || undefined}>
-            <WorkspaceNavigation onClose={() => setNavCollapsed(true)} />
+            <Suspense fallback={<aside aria-label="正在加载导航" />}><WorkspaceNavigation onClose={() => setNavCollapsed(true)} /></Suspense>
             <div className={workspace.pane}>
               <div className={workspace.mobileBar}>
                 <IconButton label="打开导航" tip={false} onClick={() => setNavSheetOpen(true)}>
@@ -129,7 +129,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </nav>
             </div>
             <Sheet open={navSheetOpen} onOpenChange={setNavSheetOpen} title="导航" side="left" width={300} className={workspace.sheet}>
-              <WorkspaceNavigation onNavigate={() => setNavSheetOpen(false)} />
+              <Suspense fallback={null}><WorkspaceNavigation onNavigate={() => setNavSheetOpen(false)} /></Suspense>
             </Sheet>
           </div>
         ) : (

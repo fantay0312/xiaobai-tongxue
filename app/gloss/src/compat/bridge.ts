@@ -49,8 +49,11 @@ export async function initializeBridge() {
       let body = init?.body;
       if (typeof body === 'string' && headers.get('Content-Type')?.includes('application/json')) {
         const payload = JSON.parse(body); delete payload.apiKey;
+        // Reading can paint before catalog discovery; an AI request still waits for
+        // the authoritative model so a stale local alias is never sent upstream.
+        const catalog = /^\/api\/(ask|brief|shelve|pdf-page|pdf-careful)$/.test(url.pathname) ? await loadChatModels() : null;
         const prefs = JSON.parse(baseStorage.getItem('xiaobai-model-prefs-v1') || '{}')?.state || {};
-        payload.model = url.pathname.includes('speak') ? mediaPrefs.speechModel : url.pathname.includes('covers') ? effectiveImageModel() : payload.model || prefs.model;
+        payload.model = url.pathname.includes('speak') ? mediaPrefs.speechModel : url.pathname.includes('covers') ? effectiveImageModel() : catalog?.model || payload.model || prefs.model;
         payload.voice = mediaPrefs.voice; payload.effort = prefs.effort || 'low';
         body = JSON.stringify(payload);
       }
@@ -63,12 +66,37 @@ export async function initializeBridge() {
   return owner;
 }
 
-export async function loadModels() {
-  const [chatResponse, mediaResponse] = await Promise.all([hostFetch('model/catalog'), hostFetch('reader/gloss/media/catalog')]);
-  const chat = await chatResponse.json(); const media = await mediaResponse.json();
-  imageCatalog = media;
+type ChatCatalog = { models: { id: string; label: string; description?: string }[]; defaultModel: string };
+let chatRequest: Promise<ChatCatalog> | null = null;
+let mediaRequest: Promise<typeof imageCatalog> | null = null;
+
+async function catalogJson<T>(path: string): Promise<T> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response = await hostFetch(path, { signal: controller.signal });
+    if (!response.ok) throw new Error('模型目录暂时无法读取，请稍后重试。');
+    return await response.json() as T;
+  } finally { window.clearTimeout(timeout); }
+}
+
+export async function loadChatModels() {
+  chatRequest ??= catalogJson<ChatCatalog>('model/catalog').catch((error) => { chatRequest = null; throw error; });
+  const chat = await chatRequest;
   const prefs = JSON.parse(baseStorage.getItem('xiaobai-model-prefs-v1') || '{}')?.state || {};
-  return { chat, media, model: prefs.model || chat.defaultModel, effort: prefs.effort || 'low' };
+  const model = chat.models.some((entry) => entry.id === prefs.model) ? prefs.model : chat.defaultModel;
+  return { chat, model, effort: prefs.effort || 'low' };
+}
+
+export async function loadMediaModels() {
+  mediaRequest ??= catalogJson<typeof imageCatalog>('reader/gloss/media/catalog').catch((error) => { mediaRequest = null; throw error; });
+  imageCatalog = await mediaRequest;
+  return imageCatalog;
+}
+
+export async function loadModels() {
+  const [chat, media] = await Promise.all([loadChatModels(), loadMediaModels()]);
+  return { ...chat, media };
 }
 export function saveDefaultModel(model: string, effort: string) {
   baseStorage.setItem('xiaobai-model-prefs-v1', JSON.stringify({ state: { model, effort }, version: 0 }));

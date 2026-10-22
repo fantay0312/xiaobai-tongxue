@@ -77,15 +77,15 @@ export function deriveCourseRows(input: {
 
     let label = '还没教';
     let tone: Tone = 'neutral';
-    if (forgotten) { label = '小白忘了'; tone = 'warn'; }
-    else if (strayed) { label = '被带偏了'; tone = 'bad'; }
+    if (strayed) { label = '被带偏了'; tone = 'bad'; }
+    else if (forgotten) { label = '小白忘了'; tone = 'warn'; }
     else if (state?.knowledgeState === '出师') { label = '已出师'; tone = 'ok'; }
     else if (taught) { label = `讲明白 ${hits}/${topic.checklist.length}`; tone = 'accent'; }
     else if (state?.prepDone) { label = '已备课'; }
 
     let standing: Standing = 'new';
-    if (forgotten) standing = 'forgotten';
-    else if (strayed) standing = 'strayed';
+    if (strayed) standing = 'strayed';
+    else if (forgotten) standing = 'forgotten';
     else if (state?.knowledgeState === '出师') standing = 'mastered';
     else if (taught) standing = 'learning';
     else if (state?.prepDone) standing = 'prepped';
@@ -243,12 +243,14 @@ export function deriveCourseFocus(input: {
   if (mastered && state?.reviewDue) facts.push(`${dayLabel(state.reviewDue)} 该复习`);
   let line = `「${title}」我听懂了 ${known.length} 处，还差 ${pending.length} 处。先陪我把学过的温一遍？`;
   if (mastered) line = `「${title}」我出师了。隔些日子考考我，就不容易忘。`;
-  else if (pending.length === 0) line = `「${title}」的要点我都听过了，再陪我温一遍就更稳了。`;
+  else if (pending.length === 0) line = `「${title}」的要点我都听过了。先生再带我过一遍，下课后赴考，看能不能出师。`;
   return {
     ...base,
     kind: 'refresh',
     line,
-    primary: backToClass ?? { label: '帮他温书', to: classroomRoute(id, 'review') },
+    primary: backToClass ?? (mastered
+      ? { label: '帮他温书', to: classroomRoute(id, 'review') }
+      : { label: pending.length ? '接着讲课' : '继续讲课并赴考', to: classroomRoute(id) }),
     secondary: pending.length > 0 ? { label: `接着讲剩下 ${pending.length} 处`, to: classroomRoute(id) } : lastNotes,
   };
 }

@@ -1,0 +1,61 @@
+
+> app@0.0.0 test:custom-content
+> tsx scripts/custom-content-contract.test.ts && tsx scripts/custom-content-resilience.test.ts && tsx scripts/chunked-upload.test.ts
+
+custom content contract: 56 assertions passed
+TAP version 13
+# Subtest: a stalled read times out, while caller cancellation stays distinguishable
+ok 1 - a stalled read times out, while caller cancellation stays distinguishable
+  ---
+  duration_ms: 7.968209
+  ...
+# Subtest: ambiguous writes are never automatically repeated
+ok 2 - ambiguous writes are never automatically repeated
+  ---
+  duration_ms: 1.211709
+  ...
+# Subtest: malformed asset lists fail as recoverable contract errors
+ok 3 - malformed asset lists fail as recoverable contract errors
+  ---
+  duration_ms: 1.65325
+  ...
+# Subtest: polling backs off, honors retry-after and probes slowly after repeated transient failures
+ok 4 - polling backs off, honors retry-after and probes slowly after repeated transient failures
+  ---
+  duration_ms: 1.294166
+  ...
+# Subtest: permission failures stop immediately
+ok 5 - permission failures stop immediately
+  ---
+  duration_ms: 0.49175
+  ...
+# Subtest: hidden and offline tabs pause reads, reconnect resumes one non-overlapping read
+ok 6 - hidden and offline tabs pause reads, reconnect resumes one non-overlapping read
+  ---
+  duration_ms: 0.377
+  ...
+# Subtest: disposing a poll aborts its pending read and ignores stale data
+ok 7 - disposing a poll aborts its pending read and ignores stale data
+  ---
+  duration_ms: 0.268958
+  ...
+# Subtest: online recovers a paused transient poll
+ok 8 - online recovers a paused transient poll
+  ---
+  duration_ms: 0.810541
+  ...
+# Subtest: hiding aborts an in-flight read without consuming retry budget
+ok 9 - hiding aborts an in-flight read without consuming retry budget
+  ---
+  duration_ms: 0.334583
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 16.766041
+Chunked upload: concurrency, exact bytes, retries, progress, authentication and cancellation passed.

@@ -1,10 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useShellActions } from '../../components/shell/ShellActions';
 import { useModelPrefs } from '../../store/modelPrefs';
-import type { TerminalViewProps } from '../learn/views/types';
 
 /** The original Gloss application has its own document so host styles cannot leak into it. */
-export default function ReadingView({ owner }: TerminalViewProps) {
+export default function ReadingView({ owner }: { owner: string | null }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const { openSettings, openProfile } = useShellActions();
   useEffect(() => {

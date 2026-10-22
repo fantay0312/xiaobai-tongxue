@@ -1,0 +1,5 @@
+
+> app@0.0.0 test:coach-markdown
+> tsx scripts/coach-markdown.test.ts
+
+coach markdown table parsing: ok

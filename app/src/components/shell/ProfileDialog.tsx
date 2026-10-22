@@ -1,12 +1,12 @@
 /**
  * 个人中心 —— 与设置同一套骨架：题头是头像与名字，左侧分区目录，右侧一列设置行。
- * 账号、凭证、订阅、成绩单的流程与 store 调用不变，只换了壳与层级。
+ * 账号、凭证与订阅共用一套分区骨架。
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { Tabs as RTabs } from 'radix-ui';
 import {
-  ArrowRight, ChevronRight, FileText, LogOut, ShieldCheck, SlidersHorizontal, Ticket, UserRound,
+  ArrowRight, ChevronRight, LogOut, ShieldCheck, SlidersHorizontal, Ticket, UserRound,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
@@ -20,7 +20,6 @@ import { Badge, Button, Dialog, Progress } from '../ui';
 import { ProfileEmailChange } from './ProfileEmailChange';
 import { ProfilePhoneChange } from './ProfilePhoneChange';
 import { ProfilePasswordChange } from './ProfilePasswordChange';
-import { TranscriptUpload } from './TranscriptUpload';
 import { ProfileCommerce } from './ProfileCommerce';
 import { ProfileAvatar } from './ProfileAvatar';
 import { ProfileAvatarEditor } from './ProfileAvatarEditor';
@@ -33,14 +32,13 @@ interface ProfileDialogProps {
   onOpenSettings: () => void;
 }
 
-type ProfileSection = 'overview' | 'commerce' | 'security' | 'records' | 'preferences';
+type ProfileSection = 'overview' | 'commerce' | 'security' | 'preferences';
 type SecurityFlow = 'phone' | 'email' | 'password';
 
 const PROFILE_SECTIONS: { id: ProfileSection; label: string; icon: LucideIcon; description: string }[] = [
   { id: 'overview', label: '个人资料', icon: UserRound, description: '头像、学习身份与账号状态。' },
   { id: 'commerce', label: '订阅与用量', icon: Ticket, description: '套餐、有效权益、用量积分与兑换码。' },
   { id: 'security', label: '账号与安全', icon: ShieldCheck, description: '管理手机号、邮箱与登录密码。' },
-  { id: 'records', label: '成绩单', icon: FileText, description: '上传、预览、替换或下载你的成绩单。' },
   { id: 'preferences', label: '偏好设置', icon: SlidersHorizontal, description: '外观、模型、语音与新手引路都在设置里。' },
 ];
 
@@ -354,12 +352,6 @@ export function ProfileDialog({ open, onClose, onOpenSettings }: ProfileDialogPr
                 }}
               />
             ) : null}
-          </RTabs.Content>
-
-          <RTabs.Content value="records" className={s.content}>
-            <Group title="我的成绩单" aside={<span className={s.groupNote}>PDF 或常见图片，可随时预览、下载或替换</span>}>
-              <TranscriptUpload enabled={allCredentialsReady} />
-            </Group>
           </RTabs.Content>
 
           <RTabs.Content value="preferences" className={s.content}>

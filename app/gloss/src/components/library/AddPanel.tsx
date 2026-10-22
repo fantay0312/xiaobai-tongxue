@@ -3,14 +3,15 @@
 import { SignInButton } from "@clerk/nextjs";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BookOpen, BookmarkPlus, Check, Copy, Loader2, Plus, Trash2, X } from "lucide-react";
-import { importFromUrl, keep, looksLikeUrl } from "@/lib/import";
+import { BookOpen, BookmarkPlus, Check, Copy, FileUp, Loader2, Plus, Trash2, X } from "lucide-react";
+import Link from 'next/link';
+import { BOOK_ACCEPT, importFromFile, importFromUrl, keep, looksLikeUrl } from "@/lib/import";
 import { normalizeUrl } from "@/lib/links";
 import { useStore } from "@/lib/store";
-import { Mark, MarkStack, type AgentMark } from "./AgentMarks";
+import { Mark, type AgentMark } from "./AgentMarks";
 import { Glyph } from "./Book";
 
-export type AddTab = "links" | "agent";
+export type AddTab = "books" | "links" | "agent";
 
 /**
  * Adding to the library: paste links (one or many), or connect an agent that
@@ -39,18 +40,21 @@ export function AddPanel({ tab, onTab, onClose, signedIn }: { tab: AddTab; onTab
       <section role="dialog" aria-modal aria-label="加入书库" className="add-panel">
         <header className="flex items-center justify-between gap-3">
           <div className="lib-sort !ml-0" role="tablist" aria-label="添加">
-            <button type="button" role="tab" aria-selected={tab === "agent"} aria-checked={tab === "agent"} onClick={() => onTab("agent")}>
-              连接 Agent
+            <button type="button" role="tab" aria-selected={tab === "books"} onClick={() => onTab("books")}>
+              导入书籍
             </button>
             <button type="button" role="tab" aria-selected={tab === "links"} aria-checked={tab === "links"} onClick={() => onTab("links")}>
-              手动收藏链接
+              收藏链接
+            </button>
+            <button type="button" role="tab" aria-selected={tab === "agent"} aria-checked={tab === "agent"} onClick={() => onTab("agent")}>
+              连接 Agent
             </button>
           </div>
           <button type="button" aria-label="关闭" data-tip="关闭" data-tip-kbd="Esc" onClick={onClose} className="grid size-9 place-items-center rounded-full text-ink-3 transition-colors hover:bg-sunk hover:text-ink">
             <X size={17} />
           </button>
         </header>
-        {tab === "links" ? <Links /> : <Agent signedIn={signedIn} />}
+        {tab === "books" ? <Books /> : tab === "links" ? <Links /> : <Agent signedIn={signedIn} />}
       </section>
     </div>,
     document.body
@@ -65,10 +69,10 @@ export function AddPanel({ tab, onTab, onClose, signedIn }: { tab: AddTab; onTab
 export function AddButton({ onClick, compact }: { onClick: () => void; compact?: boolean }) {
   return (
     <button type="button" onClick={onClick} className={`lib-add${compact ? " is-compact" : ""}`}>
-      <MarkStack size={compact ? 22 : 26} />
+      <BookOpen size={compact ? 22 : 26} aria-hidden />
       <span className="min-w-0 text-left">
-        <span className="lib-add-title">添加文章</span>
-        {!compact && <span className="lib-add-sub">连接 Agent，或粘贴链接</span>}
+        <span className="lib-add-title">导入书籍</span>
+        {!compact && <span className="lib-add-sub">EPUB、PDF、TXT 或 Markdown</span>}
       </span>
       {!compact && (
         <span className="lib-add-plus" aria-hidden>
@@ -77,6 +81,69 @@ export function AddButton({ onClick, compact }: { onClick: () => void; compact?:
       )}
     </button>
   );
+}
+
+type BookRow = { name: string; status: 'waiting' | 'reading' | 'saved' | 'failed'; id?: string; error?: string };
+
+function Books() {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const busyRef = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [rows, setRows] = useState<BookRow[]>([]);
+  const [progress, setProgress] = useState('');
+  useEffect(() => buttonRef.current?.focus(), []);
+
+  const importBooks = async (files: File[]) => {
+    if (!files.length || busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    setRows(files.map((file) => ({ name: file.name, status: 'waiting' })));
+    const update = (index: number, patch: Partial<BookRow>) => setRows((current) => current.map((row, i) => i === index ? { ...row, ...patch } : row));
+    try {
+      for (let i = 0; i < files.length; i++) {
+        update(i, { status: 'reading' });
+        setProgress(`正在导入 ${i + 1} / ${files.length}：${files[i].name}`);
+        try {
+          const result = await importFromFile(files[i], (_, label) => label && setProgress(label));
+          const error = result.ok ? await keep(result.article, result.file) : result.error;
+          update(i, error ? { status: 'failed', error } : { status: 'saved', id: result.ok ? result.article.id : undefined });
+        } catch {
+          update(i, { status: 'failed', error: '导入没有完成，请重新选择文件再试。' });
+        }
+      }
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+      setProgress('导入已结束，成功的书籍已加入书库。');
+    }
+  };
+
+  return <div className="mt-5" role="tabpanel" aria-label="导入书籍">
+    <p className="text-[19px] font-serif leading-tight text-ink">把自己的书带进来</p>
+    <p className="mt-2 text-[13px] leading-relaxed text-ink-2">支持 EPUB、PDF、TXT 和 Markdown，可一次选择多本。EPUB 按章节顺序导入文字，保留标题与段落。</p>
+    <input ref={fileRef} type="file" multiple accept={BOOK_ACCEPT} className="hidden" aria-label="选择书籍文件" onChange={(event) => {
+      void importBooks(Array.from(event.target.files ?? []));
+      event.target.value = '';
+    }} />
+    <button ref={buttonRef} type="button" disabled={busy} className="mt-5 flex min-h-32 w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-rule-strong p-6 text-ink hover:bg-sunk disabled:opacity-60"
+      onClick={() => fileRef.current?.click()}
+      onDragOver={(event) => { event.preventDefault(); }}
+      onDrop={(event) => { event.preventDefault(); void importBooks(Array.from(event.dataTransfer.files)); }}>
+      {busy ? <Loader2 size={24} className="animate-spin" aria-hidden /> : <FileUp size={24} aria-hidden />}
+      <span>{busy ? '正在导入书籍…' : '选择文件，或拖到这里'}</span>
+    </button>
+    <p className="mt-3 text-[12px] leading-relaxed text-ink-3">EPUB 最大 50 MB，文本最大 10 MB；暂不支持加密 EPUB、图片与原书排版。</p>
+    <p className="mt-3 text-[13px] text-ink-2" role="status" aria-live="polite">{progress}</p>
+    {!!rows.length && <ul className="add-rows scroll-thin" aria-label="书籍导入结果">
+      {rows.map((row, index) => <li key={`${index}-${row.name}`} data-state={row.status}>
+        <span className="add-dot" aria-hidden>{row.status === 'reading' ? <Loader2 size={13} className="animate-spin" /> : row.status === 'saved' ? <Check size={13} /> : row.status === 'failed' ? <X size={13} /> : null}</span>
+        <span className="min-w-0 flex-1"><span className="block truncate text-[13.5px] text-ink">{row.name}</span>
+          <span className="block text-[12px] text-ink-2">{row.error || (row.status === 'saved' ? '已加入书库' : row.status === 'reading' ? '正在读取' : '等待导入')}</span></span>
+        {row.id && <Link href={`/read/${row.id}`} className="text-[13px] text-ink underline underline-offset-4">开始阅读</Link>}
+      </li>)}
+    </ul>}
+  </div>;
 }
 
 /* ---------- links ---------- */

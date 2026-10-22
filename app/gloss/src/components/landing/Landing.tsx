@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TopBar } from "@/components/ui/TopBar";
 import { countWords, wordCount, type Article } from "@/lib/article";
-import { importFromFile, importFromText, importFromUrl, keep, looksLikeUrl } from "@/lib/import";
+import { BOOK_ACCEPT, importFromFile, importFromText, importFromUrl, keep, looksLikeUrl } from "@/lib/import";
 import { hideSample, useLibraryPrefs } from "@/lib/library-prefs";
 import { normalizeUrl } from "@/lib/links";
 import { SAMPLES } from "@/lib/samples";
@@ -268,7 +268,7 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
       <input
         ref={fileRef}
         type="file"
-        accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain,text/markdown"
+        accept={BOOK_ACCEPT}
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0];
@@ -282,7 +282,7 @@ export function Landing({ signedIn: signedInAtLoad = false }: { signedIn?: boole
         <div className="pointer-events-none fixed inset-0 z-[90] grid place-items-center bg-bg/80 backdrop-blur-sm" style={{ animation: "fade 0.15s" }}>
           <div className="rounded-[28px] border-[1.5px] border-dashed border-[var(--rubric)] px-16 py-14 text-center">
             <p className="font-serif text-[40px] leading-none text-ink">拖入开始阅读</p>
-            <p className="mt-3 text-[14px] text-ink-3">PDF、TXT 或 Markdown</p>
+            <p className="mt-3 text-[14px] text-ink-3">EPUB、PDF、TXT 或 Markdown</p>
           </div>
         </div>
       )}

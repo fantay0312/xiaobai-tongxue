@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { IconButton, Kbd, Menu, MenuContent, MenuItem, MenuTrigger } from '../../../components/ui';
 import { Seal } from '../../../components/shell/Seal';
-import { AccountButton } from '../../../components/shell/WorkspaceNavigation';
+import { AccountButton } from '../../../components/shell/AccountButton';
 import { useShellActions } from '../../../components/shell/ShellActions';
 import { JourneyStatusCard } from '../../../components/story/JourneyStatus';
 import type { StudyConversation } from '../../../engine/studyWorkspace';

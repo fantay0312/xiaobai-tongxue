@@ -6,6 +6,7 @@ import { savePdf, saveDoc, useStore, type LibraryItem } from "./store";
 
 /** `needKey`: the import needs the reader's own Together key (a long PDF, or free use spent). `file`: the original, kept with a PDF. */
 export type ImportResult = { ok: true; article: Article; file?: Blob } | { ok: false; error: string; needKey?: boolean };
+export const BOOK_ACCEPT = '.epub,.pdf,.txt,.md,.markdown,.text,application/epub+zip,application/pdf,text/plain,text/markdown';
 
 /** A link to a PDF is fetched by the server and read here, as if the file had been dropped. */
 export async function importFromUrl(raw: string, onProgress?: (p: number, label?: string) => void): Promise<ImportResult> {
@@ -27,6 +28,10 @@ export async function importFromUrl(raw: string, onProgress?: (p: number, label?
 export async function importFromFile(file: File, onProgress?: (p: number, label?: string) => void): Promise<ImportResult> {
   const name = file.name.toLowerCase();
   try {
+    if (name.endsWith('.epub') || file.type === 'application/epub+zip') {
+      const { epubToArticle } = await import('./epub');
+      return { ok: true, article: await epubToArticle(file, onProgress) };
+    }
     if (name.endsWith(".pdf") || file.type === "application/pdf") {
       const { pdfToArticle, PdfError } = await import("./pdf");
       try {
@@ -37,12 +42,14 @@ export async function importFromFile(file: File, onProgress?: (p: number, label?
       }
     }
     if (/\.(txt|md|markdown|text)$/.test(name) || file.type.startsWith("text/")) {
+      if (file.size > 10 * 1024 * 1024) return { ok: false, error: '文本文件不能超过 10 MB，请拆分后导入。' };
       const a = textToArticle(await file.text(), { origin: "file" });
+      if (!a.blocks.length) return { ok: false, error: '没有找到可以阅读的文字。' };
       if (a.title === "未命名文章") a.title = file.name.replace(/\.(txt|md|markdown|text)$/i, "").replace(/[_-]+/g, " ");
       a.source = file.name;
       return { ok: true, article: a };
     }
-    return { ok: false, error: "支持 PDF、TXT 和 Markdown 文件，请选择这些格式。" };
+    return { ok: false, error: "支持 EPUB、PDF、TXT 和 Markdown 文件，请选择这些格式。" };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "无法读取这个文件。" };
   }

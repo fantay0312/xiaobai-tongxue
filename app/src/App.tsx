@@ -8,11 +8,14 @@ import {
   AUTH_EXPIRED_EVENT, EMAIL_BINDING_REQUIRED_EVENT, PHONE_BINDING_REQUIRED_EVENT,
 } from './lib/api';
 import { subscribeAuthChanges } from './lib/authChannel';
-import { useAppStore } from './store/appStore';
 import { retryModule, recoverModuleLoad } from './lib/moduleRecovery';
 
 const LandingPage = lazy(() => retryModule(() => import('./pages/landing')));
-const LearningPage = lazy(() => retryModule(() => import('./pages/learn')));
+const loadLearningPage = () => retryModule(() => import('./pages/learn'));
+const LearningPage = lazy(loadLearningPage);
+const loadReadingTerminal = () => retryModule(() => import('./pages/reading/ReadingTerminal'));
+const ReadingTerminal = lazy(loadReadingTerminal);
+const loadLearningStore = () => retryModule(() => import('./store/appStore'));
 const ClassroomPage = lazy(() => retryModule(() => import('./pages/classroom')));
 const ExamPage = lazy(() => retryModule(() => import('./pages/exam')));
 const ReviewPage = lazy(() => retryModule(() => import('./pages/review')));
@@ -81,11 +84,10 @@ export default function App() {
   const authUser = useAuthStore((s) => s.user);
   const emailBindingRequired = useAuthStore((s) => s.emailBindingRequired);
   const phoneBindingRequired = useAuthStore((s) => s.phoneBindingRequired);
-  const loadCustomTopics = useAppStore((s) => s.loadCustomTopics);
-  const clearCustomTopics = useAppStore((s) => s.clearCustomTopics);
   const customTopicUserRef = useRef<string | null>(null);
   // 宣传页与登录页是公开入口，任何时候都不被账号确认挡住
   const businessPath = pathname !== '/' && pathname !== '/about' && pathname !== '/login';
+  const readingOnly = pathname === '/learn' && new URLSearchParams(search).get('view') === 'reading';
   const resolvingBusinessAccess = authStatus === 'unknown' && businessPath;
   const forcePhoneBinding = authStatus === 'authed' && phoneBindingRequired && businessPath;
 
@@ -94,7 +96,13 @@ export default function App() {
   }, [initAuth]);
 
   useEffect(() => {
-    if (pathname === '/' || pathname === '/about') return;
+    // Download the known destination while checking auth, without rendering protected content.
+    if (readingOnly) void loadReadingTerminal().catch(() => {});
+    else if (pathname === '/learn' || pathname.startsWith('/prep/')) void loadLearningPage().catch(() => {});
+  }, [pathname, readingOnly]);
+
+  useEffect(() => {
+    if (pathname === '/' || pathname === '/about' || pathname === '/login' || readingOnly) return;
     let active = true;
     void retryModule(() => import('./store/sync')).then(({ initStateSync }) => {
       if (active) initStateSync();
@@ -102,7 +110,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [pathname]);
+  }, [pathname, readingOnly]);
 
   useEffect(() => {
     const revalidateNow = () => void refreshSession(true);
@@ -130,17 +138,25 @@ export default function App() {
     // A signed-in account may still need contact verification. Reading protected
     // topics in that state returns 403 and used to restart auth indefinitely.
     if (authStatus === 'authed' && authUser && !emailBindingRequired && !phoneBindingRequired) {
+      if (!businessPath || readingOnly) return;
       const switchedAccount = customTopicUserRef.current !== authUser;
-      if (switchedAccount && customTopicUserRef.current !== null) clearCustomTopics();
+      const previousUser = customTopicUserRef.current;
       customTopicUserRef.current = authUser;
-      void loadCustomTopics(switchedAccount);
-      return;
+      let active = true;
+      void loadLearningStore().then(({ useAppStore }) => {
+        if (!active) return;
+        if (switchedAccount && previousUser !== null) useAppStore.getState().clearCustomTopics();
+        void useAppStore.getState().loadCustomTopics(switchedAccount);
+      }).catch(recoverModuleLoad);
+      return () => { active = false; };
     }
     if (authStatus !== 'unknown' && customTopicUserRef.current !== null) {
       customTopicUserRef.current = null;
-      clearCustomTopics();
+      void loadLearningStore().then(({ useAppStore }) => {
+        if (customTopicUserRef.current === null) useAppStore.getState().clearCustomTopics();
+      }).catch(recoverModuleLoad);
     }
-  }, [authStatus, authUser, emailBindingRequired, phoneBindingRequired, clearCustomTopics, loadCustomTopics]);
+  }, [authStatus, authUser, emailBindingRequired, phoneBindingRequired, businessPath, readingOnly]);
 
   return (
     <AppShell>
@@ -160,7 +176,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/custom-content" element={<Navigate to="/learn?view=library" replace />} />
           {/* 站点根是宣传页；进入学习终端、备课与讲解须登录；查看类页面(赴考/复盘/成长/看板)不设门槛 */}
-          <Route path="/learn" element={<RequireAuth><LearningPage /></RequireAuth>} />
+          <Route path="/learn" element={<RequireAuth>{readingOnly ? <ReadingTerminal /> : <LearningPage />}</RequireAuth>} />
           <Route path="/prep/:topicId" element={<RequireAuth><LearningPage /></RequireAuth>} />
           <Route path="/teach/:topicId" element={<RequireAuth><ClassroomPage /></RequireAuth>} />
           <Route path="/exam/:sessionId" element={<ExamPage />} />

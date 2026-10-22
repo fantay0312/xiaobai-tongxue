@@ -1,0 +1,678 @@
+{
+  "before": [
+    {
+      "scripts": [
+        {
+          "name": "index-yDumIEJC.js",
+          "bytes": 251468,
+          "duration": 10.5
+        },
+        {
+          "name": "rolldown-runtime-DAXXjFlN.js",
+          "bytes": 1269,
+          "duration": 9.700000017881393
+        },
+        {
+          "name": "llm-DUasHg3J.js",
+          "bytes": 32778,
+          "duration": 11.900000005960464
+        },
+        {
+          "name": "appStore-_MtJ9NDs.js",
+          "bytes": 171024,
+          "duration": 14.300000011920929
+        },
+        {
+          "name": "vendor-T-KpQBQH.js",
+          "bytes": 347569,
+          "duration": 12.800000011920929
+        },
+        {
+          "name": "topics-BsLcbcvC.js",
+          "bytes": 1403510,
+          "duration": 18.700000017881393
+        },
+        {
+          "name": "perf-probe.js",
+          "bytes": 1136,
+          "duration": 13.199999988079071
+        },
+        {
+          "name": "sync-D4NmA9kh.js",
+          "bytes": 15404,
+          "duration": 3.9000000059604645
+        },
+        {
+          "name": "modelGateway-BJlu4MmO.js",
+          "bytes": 6727,
+          "duration": 5.4000000059604645
+        },
+        {
+          "name": "dreams-CbYnkBMb.js",
+          "bytes": 55460,
+          "duration": 9.699999988079071
+        },
+        {
+          "name": "learn-CIV0ztsx.js",
+          "bytes": 549584,
+          "duration": 9.699999988079071
+        },
+        {
+          "name": "artifacts-C5h9zmAt.js",
+          "bytes": 1116,
+          "duration": 6
+        },
+        {
+          "name": "realtimeAsr-Cz8bBx4I.js",
+          "bytes": 4780,
+          "duration": 12.400000005960464
+        },
+        {
+          "name": "useDocTitle-ojP7_kge.js",
+          "bytes": 243,
+          "duration": 12.699999988079071
+        },
+        {
+          "name": "journey-khScJyKE.js",
+          "bytes": 2575,
+          "duration": 14
+        },
+        {
+          "name": "XiaoyanPet-BdbFg015.js",
+          "bytes": 5500,
+          "duration": 14.300000011920929
+        },
+        {
+          "name": "CoachMarkdown-DHIhnZpl.js",
+          "bytes": 589437,
+          "duration": 11.5
+        },
+        {
+          "name": "SendTo-h8QKDemQ.js",
+          "bytes": 13968,
+          "duration": 14.700000017881393
+        },
+        {
+          "name": "preview-C9gtRQQy.js",
+          "bytes": 54052,
+          "duration": 14.700000017881393
+        },
+        {
+          "name": "useOpenTarget-DPPUDzW6.js",
+          "bytes": 1170,
+          "duration": 14.5
+        },
+        {
+          "name": "crossActions-coTpeTF8.js",
+          "bytes": 36148,
+          "duration": 16.100000023841858
+        },
+        {
+          "name": "learningIdentity-pFxMaU60.js",
+          "bytes": 974,
+          "duration": 15.699999988079071
+        },
+        {
+          "name": "scheduler--CAQPqKI.js",
+          "bytes": 53311,
+          "duration": 16.399999976158142
+        },
+        {
+          "name": "loop-C41WHeNG.js",
+          "bytes": 4246,
+          "duration": 17
+        },
+        {
+          "name": "RecentWork-DdU6SKuv.js",
+          "bytes": 2152,
+          "duration": 17.69999998807907
+        },
+        {
+          "name": "studyData-DOAd7yr4.js",
+          "bytes": 15864,
+          "duration": 17.5
+        },
+        {
+          "name": "sidebarSlot-BYCNcyat.js",
+          "bytes": 2588,
+          "duration": 17.799999982118607
+        },
+        {
+          "name": "lessonStore-qbTs-fgc.js",
+          "bytes": 41790,
+          "duration": 17.099999994039536
+        },
+        {
+          "name": "diagrams-By52fHMa.js",
+          "bytes": 170351,
+          "duration": 17.299999982118607
+        },
+        {
+          "name": "research-Dqh6OBss.js",
+          "bytes": 13191,
+          "duration": 2.5999999940395355
+        },
+        {
+          "name": "reading-Bk3HW5E6.js",
+          "bytes": 888,
+          "duration": 1.7999999821186066
+        }
+      ],
+      "scriptBytes": 3850273,
+      "readerReadyMs": 1773.6000000238419,
+      "readerHeading": "local-ui-review的书库"
+    },
+    {
+      "scripts": [
+        {
+          "name": "rolldown-runtime-DAXXjFlN.js",
+          "bytes": 1269,
+          "duration": 6.0999999940395355
+        },
+        {
+          "name": "llm-DUasHg3J.js",
+          "bytes": 32778,
+          "duration": 7.0999999940395355
+        },
+        {
+          "name": "index-yDumIEJC.js",
+          "bytes": 251468,
+          "duration": 7.5
+        },
+        {
+          "name": "vendor-T-KpQBQH.js",
+          "bytes": 347569,
+          "duration": 8.300000011920929
+        },
+        {
+          "name": "appStore-_MtJ9NDs.js",
+          "bytes": 171024,
+          "duration": 10.099999994039536
+        },
+        {
+          "name": "topics-BsLcbcvC.js",
+          "bytes": 1403510,
+          "duration": 11.900000005960464
+        },
+        {
+          "name": "perf-probe.js",
+          "bytes": 1136,
+          "duration": 8.900000005960464
+        },
+        {
+          "name": "sync-D4NmA9kh.js",
+          "bytes": 15404,
+          "duration": 2.2999999821186066
+        },
+        {
+          "name": "learn-CIV0ztsx.js",
+          "bytes": 549584,
+          "duration": 9.400000005960464
+        },
+        {
+          "name": "modelGateway-BJlu4MmO.js",
+          "bytes": 6727,
+          "duration": 8.599999994039536
+        },
+        {
+          "name": "artifacts-C5h9zmAt.js",
+          "bytes": 1116,
+          "duration": 10.300000011920929
+        },
+        {
+          "name": "dreams-CbYnkBMb.js",
+          "bytes": 55460,
+          "duration": 10.699999988079071
+        },
+        {
+          "name": "useDocTitle-ojP7_kge.js",
+          "bytes": 243,
+          "duration": 14.099999994039536
+        },
+        {
+          "name": "journey-khScJyKE.js",
+          "bytes": 2575,
+          "duration": 14.400000005960464
+        },
+        {
+          "name": "realtimeAsr-Cz8bBx4I.js",
+          "bytes": 4780,
+          "duration": 14.5
+        },
+        {
+          "name": "CoachMarkdown-DHIhnZpl.js",
+          "bytes": 589437,
+          "duration": 13.900000005960464
+        },
+        {
+          "name": "XiaoyanPet-BdbFg015.js",
+          "bytes": 5500,
+          "duration": 14.800000011920929
+        },
+        {
+          "name": "preview-C9gtRQQy.js",
+          "bytes": 54052,
+          "duration": 14.800000011920929
+        },
+        {
+          "name": "SendTo-h8QKDemQ.js",
+          "bytes": 13968,
+          "duration": 14.799999982118607
+        },
+        {
+          "name": "useOpenTarget-DPPUDzW6.js",
+          "bytes": 1170,
+          "duration": 15.5
+        },
+        {
+          "name": "crossActions-coTpeTF8.js",
+          "bytes": 36148,
+          "duration": 16.799999982118607
+        },
+        {
+          "name": "learningIdentity-pFxMaU60.js",
+          "bytes": 974,
+          "duration": 16.5
+        },
+        {
+          "name": "loop-C41WHeNG.js",
+          "bytes": 4246,
+          "duration": 18.599999994039536
+        },
+        {
+          "name": "scheduler--CAQPqKI.js",
+          "bytes": 53311,
+          "duration": 18.5
+        },
+        {
+          "name": "lessonStore-qbTs-fgc.js",
+          "bytes": 41790,
+          "duration": 19.30000001192093
+        },
+        {
+          "name": "diagrams-By52fHMa.js",
+          "bytes": 170351,
+          "duration": 19.19999998807907
+        },
+        {
+          "name": "RecentWork-DdU6SKuv.js",
+          "bytes": 2152,
+          "duration": 20.19999998807907
+        },
+        {
+          "name": "sidebarSlot-BYCNcyat.js",
+          "bytes": 2588,
+          "duration": 20.69999998807907
+        },
+        {
+          "name": "studyData-DOAd7yr4.js",
+          "bytes": 15864,
+          "duration": 20.900000005960464
+        },
+        {
+          "name": "research-Dqh6OBss.js",
+          "bytes": 13191,
+          "duration": 2.100000023841858
+        },
+        {
+          "name": "reading-Bk3HW5E6.js",
+          "bytes": 888,
+          "duration": 0.7999999821186066
+        }
+      ],
+      "scriptBytes": 3850273,
+      "readerReadyMs": 1770.0999999940395,
+      "readerHeading": "local-ui-review的书库"
+    },
+    {
+      "scripts": [
+        {
+          "name": "rolldown-runtime-DAXXjFlN.js",
+          "bytes": 1269,
+          "duration": 6.5
+        },
+        {
+          "name": "index-yDumIEJC.js",
+          "bytes": 251468,
+          "duration": 7.0999999940395355
+        },
+        {
+          "name": "llm-DUasHg3J.js",
+          "bytes": 32778,
+          "duration": 7.300000011920929
+        },
+        {
+          "name": "perf-probe.js",
+          "bytes": 1136,
+          "duration": 10.699999988079071
+        },
+        {
+          "name": "vendor-T-KpQBQH.js",
+          "bytes": 347569,
+          "duration": 8.300000011920929
+        },
+        {
+          "name": "appStore-_MtJ9NDs.js",
+          "bytes": 171024,
+          "duration": 10.900000005960464
+        },
+        {
+          "name": "topics-BsLcbcvC.js",
+          "bytes": 1403510,
+          "duration": 12.599999994039536
+        },
+        {
+          "name": "sync-D4NmA9kh.js",
+          "bytes": 15404,
+          "duration": 2
+        },
+        {
+          "name": "learn-CIV0ztsx.js",
+          "bytes": 549584,
+          "duration": 6.699999988079071
+        },
+        {
+          "name": "modelGateway-BJlu4MmO.js",
+          "bytes": 6727,
+          "duration": 3.5999999940395355
+        },
+        {
+          "name": "artifacts-C5h9zmAt.js",
+          "bytes": 1116,
+          "duration": 5.699999988079071
+        },
+        {
+          "name": "dreams-CbYnkBMb.js",
+          "bytes": 55460,
+          "duration": 5.9000000059604645
+        },
+        {
+          "name": "CoachMarkdown-DHIhnZpl.js",
+          "bytes": 589437,
+          "duration": 10.099999994039536
+        },
+        {
+          "name": "useDocTitle-ojP7_kge.js",
+          "bytes": 243,
+          "duration": 9.700000017881393
+        },
+        {
+          "name": "journey-khScJyKE.js",
+          "bytes": 2575,
+          "duration": 10.5
+        },
+        {
+          "name": "realtimeAsr-Cz8bBx4I.js",
+          "bytes": 4780,
+          "duration": 10.800000011920929
+        },
+        {
+          "name": "XiaoyanPet-BdbFg015.js",
+          "bytes": 5500,
+          "duration": 11.100000023841858
+        },
+        {
+          "name": "preview-C9gtRQQy.js",
+          "bytes": 54052,
+          "duration": 11.600000023841858
+        },
+        {
+          "name": "SendTo-h8QKDemQ.js",
+          "bytes": 13968,
+          "duration": 11.899999976158142
+        },
+        {
+          "name": "useOpenTarget-DPPUDzW6.js",
+          "bytes": 1170,
+          "duration": 11.699999988079071
+        },
+        {
+          "name": "crossActions-coTpeTF8.js",
+          "bytes": 36148,
+          "duration": 12.699999988079071
+        },
+        {
+          "name": "learningIdentity-pFxMaU60.js",
+          "bytes": 974,
+          "duration": 12.5
+        },
+        {
+          "name": "scheduler--CAQPqKI.js",
+          "bytes": 53311,
+          "duration": 13.099999994039536
+        },
+        {
+          "name": "loop-C41WHeNG.js",
+          "bytes": 4246,
+          "duration": 14.199999988079071
+        },
+        {
+          "name": "diagrams-By52fHMa.js",
+          "bytes": 170351,
+          "duration": 14.5
+        },
+        {
+          "name": "lessonStore-qbTs-fgc.js",
+          "bytes": 41790,
+          "duration": 14.5
+        },
+        {
+          "name": "RecentWork-DdU6SKuv.js",
+          "bytes": 2152,
+          "duration": 14.800000011920929
+        },
+        {
+          "name": "studyData-DOAd7yr4.js",
+          "bytes": 15864,
+          "duration": 15.199999988079071
+        },
+        {
+          "name": "sidebarSlot-BYCNcyat.js",
+          "bytes": 2588,
+          "duration": 16.19999998807907
+        },
+        {
+          "name": "research-Dqh6OBss.js",
+          "bytes": 13191,
+          "duration": 2.0999999940395355
+        },
+        {
+          "name": "reading-Bk3HW5E6.js",
+          "bytes": 888,
+          "duration": 0.7999999821186066
+        }
+      ],
+      "scriptBytes": 3850273,
+      "readerReadyMs": 1771.800000011921,
+      "readerHeading": "local-ui-review的书库"
+    }
+  ],
+  "after": [
+    {
+      "scripts": [
+        {
+          "name": "rolldown-runtime-DAXXjFlN.js",
+          "bytes": 1269,
+          "duration": 6.5999999940395355
+        },
+        {
+          "name": "perf-probe.js",
+          "bytes": 1136,
+          "duration": 7
+        },
+        {
+          "name": "index-CvgnWSSq.js",
+          "bytes": 268239,
+          "duration": 8.300000011920929
+        },
+        {
+          "name": "vendor-T-KpQBQH.js",
+          "bytes": 347569,
+          "duration": 8.400000005960464
+        },
+        {
+          "name": "ReadingTerminal-GUDp8cTr.js",
+          "bytes": 2114,
+          "duration": 3.300000011920929
+        },
+        {
+          "name": "studyData-CTkH4UN2.js",
+          "bytes": 3092,
+          "duration": 3.5999999940395355
+        },
+        {
+          "name": "AccountButton-Dr0F1rdQ.js",
+          "bytes": 929,
+          "duration": 3.7000000178813934
+        },
+        {
+          "name": "useKeyboardViewport-BfEvdIx0.js",
+          "bytes": 8148,
+          "duration": 3.4000000059604645
+        },
+        {
+          "name": "ProfileAvatar-Kie6792X.js",
+          "bytes": 783,
+          "duration": 3.9000000059604645
+        },
+        {
+          "name": "useDocTitle-ojP7_kge.js",
+          "bytes": 243,
+          "duration": 4.4000000059604645
+        },
+        {
+          "name": "reading-C8CYtQRG.js",
+          "bytes": 888,
+          "duration": 4.399999976158142
+        }
+      ],
+      "scriptBytes": 634410,
+      "readerReadyMs": 770.2999999821186,
+      "readerHeading": "local-ui-review的书库"
+    },
+    {
+      "scripts": [
+        {
+          "name": "index-CvgnWSSq.js",
+          "bytes": 268239,
+          "duration": 9.800000011920929
+        },
+        {
+          "name": "rolldown-runtime-DAXXjFlN.js",
+          "bytes": 1269,
+          "duration": 7.699999988079071
+        },
+        {
+          "name": "vendor-T-KpQBQH.js",
+          "bytes": 347569,
+          "duration": 9.599999994039536
+        },
+        {
+          "name": "perf-probe.js",
+          "bytes": 1136,
+          "duration": 7.799999982118607
+        },
+        {
+          "name": "ReadingTerminal-GUDp8cTr.js",
+          "bytes": 2114,
+          "duration": 2.5999999940395355
+        },
+        {
+          "name": "studyData-CTkH4UN2.js",
+          "bytes": 3092,
+          "duration": 3.2999999821186066
+        },
+        {
+          "name": "AccountButton-Dr0F1rdQ.js",
+          "bytes": 929,
+          "duration": 3.5
+        },
+        {
+          "name": "useKeyboardViewport-BfEvdIx0.js",
+          "bytes": 8148,
+          "duration": 3.699999988079071
+        },
+        {
+          "name": "ProfileAvatar-Kie6792X.js",
+          "bytes": 783,
+          "duration": 3.5
+        },
+        {
+          "name": "useDocTitle-ojP7_kge.js",
+          "bytes": 243,
+          "duration": 4.0999999940395355
+        },
+        {
+          "name": "reading-C8CYtQRG.js",
+          "bytes": 888,
+          "duration": 4.0999999940395355
+        }
+      ],
+      "scriptBytes": 634410,
+      "readerReadyMs": 771.5999999940395,
+      "readerHeading": "local-ui-review的书库"
+    },
+    {
+      "scripts": [
+        {
+          "name": "rolldown-runtime-DAXXjFlN.js",
+          "bytes": 1269,
+          "duration": 5.899999976158142
+        },
+        {
+          "name": "perf-probe.js",
+          "bytes": 1136,
+          "duration": 7.5999999940395355
+        },
+        {
+          "name": "index-CvgnWSSq.js",
+          "bytes": 268239,
+          "duration": 6.899999976158142
+        },
+        {
+          "name": "vendor-T-KpQBQH.js",
+          "bytes": 347569,
+          "duration": 7.0999999940395355
+        },
+        {
+          "name": "ReadingTerminal-GUDp8cTr.js",
+          "bytes": 2114,
+          "duration": 3.199999988079071
+        },
+        {
+          "name": "AccountButton-Dr0F1rdQ.js",
+          "bytes": 929,
+          "duration": 3.7999999821186066
+        },
+        {
+          "name": "useKeyboardViewport-BfEvdIx0.js",
+          "bytes": 8148,
+          "duration": 4.0999999940395355
+        },
+        {
+          "name": "studyData-CTkH4UN2.js",
+          "bytes": 3092,
+          "duration": 3.5999999940395355
+        },
+        {
+          "name": "ProfileAvatar-Kie6792X.js",
+          "bytes": 783,
+          "duration": 5.800000011920929
+        },
+        {
+          "name": "useDocTitle-ojP7_kge.js",
+          "bytes": 243,
+          "duration": 6.4000000059604645
+        },
+        {
+          "name": "reading-C8CYtQRG.js",
+          "bytes": 888,
+          "duration": 6.0999999940395355
+        }
+      ],
+      "scriptBytes": 634410,
+      "readerReadyMs": 769,
+      "readerHeading": "local-ui-review的书库"
+    }
+  ]
+}
