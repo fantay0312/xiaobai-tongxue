@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowRight, BookOpen, Check, ChevronDown, GraduationCap, Route, Search, Users, type LucideIcon } from 'lucide-react';
 import { Button } from '../../components/ui';
@@ -9,24 +9,32 @@ import type { Topic } from '../../types';
 import s from './welcome.module.css';
 
 /** 拜师帖：纸质物件，data-story 让它回到老学堂的纸墨与楷体 */
-export function Apprenticeship({ identity, onAccept }: { identity: LearningIdentity; onAccept: () => void }) {
+export function Apprenticeship({ identity, onAccept, onRead, compact = false }: { identity: LearningIdentity; onAccept: () => void; onRead?: () => void; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const accepted = Boolean(identity.acceptedAt);
+  const read = accepted || Boolean(identity.letterReadAt);
+  const bodyId = useId();
+  const toggleRef = useRef<HTMLButtonElement>(null);
   return (
-    <section className={s.letter} data-story aria-label="小白的拜师帖">
+    <section className={`${s.letter} ${compact ? s.letterCompact : ''}`} data-story aria-label="小白的拜师帖" onKeyDown={(event) => {
+      if (open && event.key === 'Escape') { event.stopPropagation(); setOpen(false); toggleRef.current?.focus(); }
+    }}>
       <div className={s.letterStrip}>
-        <span className={s.seal} aria-hidden="true">白</span>
+        {!compact && <><span className={s.seal} aria-hidden="true">白</span>
         <div className={s.letterLead}>
           <strong>{accepted ? '师徒约定已收好' : '小白给你留了一封拜师帖'}</strong>
           <p>{accepted ? '你来探索，我来追问；把一知半解，一起变成真正明白。' : '“先生，等你学懂了，可以讲给我听吗？”'}</p>
-        </div>
-        <button type="button" className={s.letterToggle} aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-          {open ? '收起信笺' : accepted ? '重读拜师帖' : '拆开看看'}
+        </div></>}
+        <button ref={toggleRef} type="button" className={s.letterToggle} aria-expanded={open} aria-controls={bodyId} onClick={() => {
+          if (!open) onRead?.();
+          setOpen((value) => !value);
+        }}>
+          {open ? '收起拜师帖' : read ? '重读拜师帖' : compact ? '小白的拜师帖' : '拆开看看'}
           <ChevronDown size={15} strokeWidth={1.75} data-open={open || undefined} />
         </button>
       </div>
       {open && (
-        <div className={s.letterBody}>
+        <div className={s.letterBody} id={bodyId}>
           <p className={s.salute}>先生台鉴：</p>
           <p>小生小白，一个什么都想学明白的 AI 学徒。听说，能把一件事讲清楚的人，才算真正懂得它，所以冒昧递上这封拜师帖。</p>
           <p>你可以先跟小砚读书、提问、做练习，慢慢把知识弄懂。不必急着站上讲台。准备好时，再把它讲给我听；我会认真追问，也会说出自己的误解。</p>
@@ -38,7 +46,7 @@ export function Apprenticeship({ identity, onAccept }: { identity: LearningIdent
               已收下 · {new Date(identity.acceptedAt!).toLocaleDateString('zh-CN')}
             </span>
           ) : (
-            <button type="button" className={s.acceptButton} onClick={onAccept}>
+            <button type="button" className={s.acceptButton} onClick={() => { onRead?.(); onAccept(); setOpen(false); toggleRef.current?.focus(); }}>
               <Check size={15} strokeWidth={2} />
               收下拜师帖
             </button>

@@ -9,7 +9,7 @@ type Item =
   | { type: 'chat'; at: number; chat: ConversationBrief }
   | { type: 'artifact'; at: number; artifact: Artifact };
 
-export function RecentWork({ owner, conversations, onOpenConversation, onOpenArtifact, onAll, limit = 6 }: {
+export function RecentWork({ owner, conversations, onOpenConversation, onOpenArtifact, onAll, limit = 6, layout = 'cards', excludeConversation }: {
   owner: string | null;
   conversations: ConversationBrief[];
   onOpenConversation: (chat: ConversationBrief) => void;
@@ -17,17 +17,19 @@ export function RecentWork({ owner, conversations, onOpenConversation, onOpenArt
   /** 「全部」：打开搜索 */
   onAll?: () => void;
   limit?: number;
+  layout?: 'cards' | 'list';
+  excludeConversation?: Pick<ConversationBrief, 'workspace' | 'id'>;
 }) {
   const artifacts = useArtifacts(owner);
   const items: Item[] = [
-    ...conversations.map((chat): Item => ({ type: 'chat', at: chat.at, chat })),
+    ...conversations.filter((chat) => !excludeConversation || chat.workspace !== excludeConversation.workspace || chat.id !== excludeConversation.id).map((chat): Item => ({ type: 'chat', at: chat.at, chat })),
     ...artifacts.map((artifact): Item => ({ type: 'artifact', at: Date.parse(artifact.updatedAt) || 0, artifact })),
   ].sort((a, b) => b.at - a.at).slice(0, limit);
 
   if (!items.length) return null;
 
   return (
-    <section className={s.recent} aria-label="最近">
+    <section className={s.recent} aria-label="最近" data-layout={layout}>
       <header className={s.recentHead}>
         <h2>最近</h2>
         {onAll && <button type="button" onClick={onAll}>搜索全部</button>}

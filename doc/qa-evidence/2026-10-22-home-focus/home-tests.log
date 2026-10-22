@@ -1,0 +1,5 @@
+
+> app@0.0.0 test:home-focus
+> tsx scripts/home-focus.test.ts
+
+Home continuation, stale/locked courses, read-state persistence and account isolation: passed.

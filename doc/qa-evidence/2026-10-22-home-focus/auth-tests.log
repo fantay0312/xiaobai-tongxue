@@ -1,0 +1,6 @@
+
+> app@0.0.0 test:auth
+> tsx scripts/auth-state.test.ts && tsx scripts/auth-lifecycle.test.ts
+
+auth state revalidation: ok
+auth request deadlines and CAPTCHA lifecycle: ok

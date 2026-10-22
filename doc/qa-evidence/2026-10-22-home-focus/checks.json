@@ -1,0 +1,94 @@
+{
+  "build": "passed",
+  "lint": "no errors, existing warnings only",
+  "designCheck": [
+    {
+      "antipattern": "design-system-radius",
+      "name": "Radius outside DESIGN.md",
+      "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+      "severity": "advisory",
+      "category": "quality",
+      "file": "/Users/fantasy/Documents/作业/竞赛 /学伴智仓/tmp/home-focus-20261022/app/src/pages/learn/welcome.module.css",
+      "line": 212,
+      "snippet": "border-radius: 6px is outside the DESIGN.md rounded scale",
+      "advisory": true,
+      "ignoreValue": "6px"
+    },
+    {
+      "antipattern": "design-system-font-size",
+      "name": "Font size outside DESIGN.md",
+      "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+      "severity": "advisory",
+      "category": "quality",
+      "file": "/Users/fantasy/Documents/作业/竞赛 /学伴智仓/tmp/home-focus-20261022/app/src/pages/learn/welcome.module.css",
+      "line": 216,
+      "snippet": "font-size: 19px is off the DESIGN.md type ramp",
+      "advisory": true,
+      "ignoreValue": "19px"
+    },
+    {
+      "antipattern": "design-system-font-size",
+      "name": "Font size outside DESIGN.md",
+      "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+      "severity": "advisory",
+      "category": "quality",
+      "file": "/Users/fantasy/Documents/作业/竞赛 /学伴智仓/tmp/home-focus-20261022/app/src/pages/learn/welcome.module.css",
+      "line": 226,
+      "snippet": "font-size: 16px is off the DESIGN.md type ramp",
+      "advisory": true,
+      "ignoreValue": "16px"
+    },
+    {
+      "antipattern": "design-system-radius",
+      "name": "Radius outside DESIGN.md",
+      "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+      "severity": "advisory",
+      "category": "quality",
+      "file": "/Users/fantasy/Documents/作业/竞赛 /学伴智仓/tmp/home-focus-20261022/app/src/pages/learn/welcome.module.css",
+      "line": 245,
+      "snippet": "border-radius: 999px is outside the DESIGN.md rounded scale",
+      "advisory": true,
+      "ignoreValue": "999px"
+    },
+    {
+      "antipattern": "design-system-radius",
+      "name": "Radius outside DESIGN.md",
+      "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+      "severity": "advisory",
+      "category": "quality",
+      "file": "/Users/fantasy/Documents/作业/竞赛 /学伴智仓/tmp/home-focus-20261022/app/src/pages/learn/welcome.module.css",
+      "line": 296,
+      "snippet": "border-radius: 999px is outside the DESIGN.md rounded scale",
+      "advisory": true,
+      "ignoreValue": "999px"
+    },
+    {
+      "antipattern": "design-system-radius",
+      "name": "Radius outside DESIGN.md",
+      "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+      "severity": "advisory",
+      "category": "quality",
+      "file": "/Users/fantasy/Documents/作业/竞赛 /学伴智仓/tmp/home-focus-20261022/app/src/pages/learn/welcome.module.css",
+      "line": 413,
+      "snippet": "border-radius: 2px is outside the DESIGN.md rounded scale",
+      "advisory": true,
+      "ignoreValue": "2px"
+    }
+  ],
+  "viewports": [
+    [
+      1440,
+      1000
+    ],
+    [
+      390,
+      844
+    ],
+    [
+      320,
+      720
+    ]
+  ],
+  "localOnly": true,
+  "paidCalls": false
+}

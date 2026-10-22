@@ -178,3 +178,18 @@
 @media (prefers-reduced-motion: reduce) {
   .recentCard, .trigger, .row, .sheetItem { transition: none; }
 }
+
+/* 首页的最近记录使用清单，不再与继续学习争抢卡片层级。 */
+.recent[data-layout='list'] .recentHead button { min-height: 44px; }
+.recent[data-layout='list'] .recentRow { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; overflow: visible; }
+.recent[data-layout='list'] .recentRow > li { width: 100%; }
+.recent[data-layout='list'] .recentCard { align-items: center; min-height: 54px; padding: 10px 4px; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: transparent; box-shadow: none; transform: none; }
+.recent[data-layout='list'] .recentCard:hover { background: var(--hover); }
+.recent[data-layout='list'] .recentIcon { width: 28px; height: 28px; background: transparent; }
+.recent[data-layout='list'] .recentText { display: flex; align-items: center; gap: 16px; }
+.recent[data-layout='list'] .recentText strong { display: block; flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--fz-sm); }
+.recent[data-layout='list'] .recentText small { max-width: 48%; }
+@media (max-width: 760px) {
+  .recent[data-layout='list'] .recentText { display: grid; gap: 3px; }
+  .recent[data-layout='list'] .recentText small { max-width: 100%; }
+}

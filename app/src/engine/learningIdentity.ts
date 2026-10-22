@@ -2,6 +2,7 @@ export type CompanionActor = 'xiaobai' | 'xiaoyan';
 export interface CompanionPosition { x: number; y: number; }
 export interface LearningIdentity {
   acceptedAt: string | null;
+  letterReadAt: string | null;
   actor: CompanionActor;
   minimized: boolean;
   position: CompanionPosition | null;
@@ -9,7 +10,7 @@ export interface LearningIdentity {
 }
 
 const PREFIX = 'xiaobai-learning-identity-v1:';
-export const emptyLearningIdentity = (): LearningIdentity => ({ acceptedAt: null, actor: 'xiaoyan', minimized: false, position: null, lastTopicId: null });
+export const emptyLearningIdentity = (): LearningIdentity => ({ acceptedAt: null, letterReadAt: null, actor: 'xiaoyan', minimized: false, position: null, lastTopicId: null });
 
 export function loadLearningIdentity(owner: string | null): LearningIdentity {
   const base = emptyLearningIdentity();
@@ -18,6 +19,7 @@ export function loadLearningIdentity(owner: string | null): LearningIdentity {
     if (!raw || typeof raw !== 'object') return base;
     return {
       acceptedAt: typeof raw.acceptedAt === 'string' && Number.isFinite(Date.parse(raw.acceptedAt)) ? raw.acceptedAt : null,
+      letterReadAt: typeof raw.letterReadAt === 'string' && Number.isFinite(Date.parse(raw.letterReadAt)) ? raw.letterReadAt : null,
       actor: raw.actor === 'xiaobai' ? 'xiaobai' : 'xiaoyan', minimized: raw.minimized === true,
       position: raw.position && Number.isFinite(raw.position.x) && Number.isFinite(raw.position.y) ? { x: raw.position.x, y: raw.position.y } : null,
       lastTopicId: typeof raw.lastTopicId === 'string' ? raw.lastTopicId.slice(0, 180) : null,

@@ -882,7 +882,8 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
   const showTabs = Boolean(topic) && !isToolView(view) && view !== 'library' && view !== 'journey';
   const showBack = !showTabs && !isToolView(view) && view !== 'ask' && view !== 'library';
   const needsSources = STUDY_VIEW_IDS.includes(view) && !selectedSources.length;
-  const acceptLetter = () => onIdentity({ acceptedAt: new Date().toISOString() });
+  const readLetter = () => onIdentity({ letterReadAt: identity.letterReadAt ?? new Date().toISOString() });
+  const acceptLetter = () => onIdentity({ acceptedAt: new Date().toISOString(), letterReadAt: identity.letterReadAt ?? new Date().toISOString() });
   const viewProps: TerminalViewProps = {
     owner, topic, topics, selectedSources,
     onAsk: askAbout,
@@ -1007,6 +1008,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
           topics={topics}
           identity={identity}
           onAccept={acceptLetter}
+          onReadLetter={readLetter}
           onSelectCourse={chooseCourse}
           onUpload={() => setPicker('files')}
           owner={owner}
@@ -1014,8 +1016,6 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
           onOpenConversation={openConversation}
           onOpenArtifact={openArtifactItem}
           onSearchAll={() => setPaletteOpen(true)}
-          onTeach={() => switchView('feynman')}
-          onClassroom={() => switchView('classroom')}
           onJourney={() => switchView('journey')}
         />
       </div>

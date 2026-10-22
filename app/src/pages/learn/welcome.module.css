@@ -617,3 +617,37 @@
     transition: none;
   }
 }
+
+/* 首页只保留一个继续入口；旅程页仍使用上方的纸笺与步骤样式。 */
+.welcome { gap: 20px; max-width: 820px; padding: clamp(28px, 5vh, 48px) 24px 28px; }
+.hero { align-items: center; }
+.heroText h1 { font-size: var(--fz-3xl); }
+.lead { margin-top: 8px; font-size: var(--fz-md); line-height: 1.6; }
+.heroCast { zoom: 1; }
+.continuation { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px; border: 1px solid var(--border); border-radius: var(--r-xl); background: var(--surface); }
+.continuationText { min-width: 0; }
+.continuation h2 { margin: 0; color: var(--text-2); font-size: var(--fz-sm); font-weight: 550; }
+.continuationTitle { margin: 10px 0 6px; color: var(--text); font-size: var(--fz-2xl); font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.continuationDetail { margin: 0; color: var(--text-2); font-size: var(--fz-sm); line-height: 1.6; overflow-wrap: anywhere; }
+.continuation > button { flex: none; min-height: 44px; }
+.secondaryActions { display: flex; flex-wrap: wrap; gap: 20px; margin-top: -12px; }
+.secondaryActions button { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 4px; border: 0; border-radius: var(--r-sm); color: var(--text-2); background: transparent; font: 500 var(--fz-sm)/1.4 var(--ui-font); cursor: pointer; }
+.secondaryActions button:hover { color: var(--text); background: var(--hover); }
+.secondaryActions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.welcomeExtras { display: flex; flex-wrap: wrap; align-items: center; column-gap: 24px; row-gap: 8px; padding-top: 4px; }
+.welcomeExtras .journeyLink { min-height: 44px; margin: 0; padding: 0 4px; }
+.letterCompact { max-width: 100%; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.letterCompact .letterStrip { padding: 0; }
+.letterCompact .letterToggle { min-height: 44px; padding: 0 4px; border: 0; border-radius: var(--r-sm); color: var(--text-3); font-family: var(--ui-font); }
+.letterCompact .letterToggle:hover { background: var(--hover); color: var(--text); }
+.letterCompact:has(.letterBody) { flex-basis: 100%; }
+.letterCompact .letterBody { margin-top: 8px; padding: 20px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--paper-warm); }
+@media (max-width: 760px) {
+  .welcome { gap: 18px; padding: 24px 16px; }
+  .hero { align-items: center; gap: 12px; }
+  .heroText h1 { font-size: var(--fz-3xl); }
+  .heroCast { zoom: 0.8; margin: 0; }
+  .continuation { flex-direction: column; align-items: stretch; gap: 18px; padding: 20px; }
+  .continuationTitle { font-size: var(--fz-2xl); }
+  .continuation > button { width: 100%; }
+}

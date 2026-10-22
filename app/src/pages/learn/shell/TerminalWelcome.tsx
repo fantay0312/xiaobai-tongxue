@@ -1,8 +1,7 @@
-import type { ReactNode } from 'react';
 import { ArrowRight, FileUp } from 'lucide-react';
-import { IconClassroom, IconJourney, IconRead, IconTeach } from '../../../components/ui/icons';
+import { Button } from '../../../components/ui';
+import { IconJourney } from '../../../components/ui/icons';
 import { XiaobaiAvatar } from '../../../components/xiaobai/XiaobaiAvatar';
-import { JourneyStatusCard } from '../../../components/story/JourneyStatus';
 import { RecentWork } from '../../../components/handoff/RecentWork';
 import type { Artifact } from '../../../lib/artifacts';
 import type { ConversationBrief } from '../../../lib/artifactProviders/chat';
@@ -11,31 +10,21 @@ import type { LearningIdentity } from '../../../engine/learningIdentity';
 import type { Topic } from '../../../types';
 import { Apprenticeship } from '../StudyWelcome';
 import { greeting } from './views';
+import { homeContinuation } from './homeContinuation';
 import w from '../welcome.module.css';
 
-interface Suggestion {
-  key: string;
-  title: string;
-  detail: string;
-  icon: ReactNode;
-  onSelect: () => void;
-}
-
-/** 没有打开课程、对话也是空的时候：一段开场，而不是一块空白的聊天区 */
+/** A single next step, with recent work and the story available when needed. */
 export function TerminalWelcome({
-  topics, identity, onAccept, onSelectCourse, onUpload, onTeach, onClassroom, onJourney,
+  topics, identity, onAccept, onReadLetter, onSelectCourse, onUpload, onJourney,
   owner = null, conversations = [], onOpenConversation, onOpenArtifact, onSearchAll,
 }: {
   topics: Topic[];
   identity: LearningIdentity;
   onAccept: () => void;
-  /** 传入课程 id 直接打开；不传则让用户挑一门 */
+  onReadLetter: () => void;
   onSelectCourse: (topicId?: string) => void;
   onUpload: () => void;
-  onTeach: () => void;
-  onClassroom: () => void;
   onJourney: () => void;
-  /** 「最近」一行：各门课里的对话，加上各板块做出来的东西 */
   owner?: string | null;
   conversations?: ConversationBrief[];
   onOpenConversation?: (chat: ConversationBrief) => void;
@@ -43,80 +32,50 @@ export function TerminalWelcome({
   onSearchAll?: () => void;
 }) {
   const level = useAppStore((state) => state.global.learningLevel);
-  const lastTopic = topics.find((topic) => topic.topicId === identity.lastTopicId && !topic.locked);
-  const accepted = Boolean(identity.acceptedAt);
-
-  const suggestions: Suggestion[] = [
-    {
-      key: 'continue',
-      title: lastTopic ? '继续上次的课' : '选一门课开始',
-      detail: lastTopic ? `${lastTopic.course} · ${lastTopic.title}` : '从课程里挑一个知识点，跟小砚学懂它',
-      icon: <IconRead size={18} />,
-      onSelect: () => onSelectCourse(lastTopic?.topicId),
-    },
-    {
-      key: 'upload',
-      title: '上传资料开始学',
-      detail: '讲义、课件、笔记都可以，小砚会依据资料回答',
-      icon: <FileUp size={18} strokeWidth={1.75} />,
-      onSelect: onUpload,
-    },
-    {
-      key: 'teach',
-      title: '给小白上一课',
-      detail: '把学懂的讲出来，小白会追问到你讲清楚',
-      icon: <IconTeach size={18} />,
-      onSelect: onTeach,
-    },
-    {
-      key: 'classroom',
-      title: '生成一堂 AI 课',
-      detail: '给一个主题，排出一堂可以播放的课',
-      icon: <IconClassroom size={18} />,
-      onSelect: onClassroom,
-    },
-  ];
+  const continuation = homeContinuation(topics, identity, conversations);
+  const chat = continuation?.conversation;
+  const topic = continuation?.topic;
+  const title = topic?.title ?? chat?.title ?? '选一门感兴趣的课程';
+  const detail = topic
+    ? [topic.course, chat ? `接着「${chat.title}」学习` : '从上次的课程继续'].filter(Boolean).join(' · ')
+    : chat ? chat.topicTitle ?? '继续上次的学习对话' : '从左侧课程开始，也可以上传自己的资料。';
+  const resume = () => {
+    if (chat && onOpenConversation) onOpenConversation(chat);
+    else onSelectCourse(topic?.topicId);
+  };
 
   return (
-    <div className={w.welcome}>
+    <section className={w.welcome} aria-label="学习首页">
       <header className={w.hero}>
         <div className={w.heroText}>
-          <p className={w.kicker}>{accepted ? '师徒旅程 · 进行中' : '师徒旅程 · 序章'}</p>
           <h1>{greeting()}，先生。</h1>
-          <p className={w.lead}>先跟小砚把一件事学明白，再讲给小白听。讲得清楚，才算真的懂了。</p>
+          <p className={w.lead}>{continuation ? '接着上次的进度，学明白一件事。' : '选一门课，或带上自己的资料。'}</p>
         </div>
-        <div className={w.heroCast} aria-hidden="true">
-          <div className={w.bubble}>{accepted ? '先生，今天我们学点什么？' : '先生，我给你留了一封拜师帖。'}</div>
-          <XiaobaiAvatar mood={accepted ? 'happy' : 'curious'} level={level} size={112} variant="paper" />
-        </div>
+        <div className={w.heroCast} aria-hidden="true"><XiaobaiAvatar mood="happy" level={level} size={72} variant="paper" /></div>
       </header>
 
-      {!accepted && <Apprenticeship identity={identity} onAccept={onAccept} />}
+      <section className={w.continuation} aria-labelledby="home-continuation-title">
+        <div className={w.continuationText}>
+          <h2 id="home-continuation-title">{continuation ? '继续上次学习' : '开始你的学习'}</h2>
+          <p className={w.continuationTitle}>{title}</p>
+          <p className={w.continuationDetail}>{detail}</p>
+        </div>
+        <Button variant="solid" size="lg" onClick={resume} iconRight={<ArrowRight size={17} />}>
+          {continuation ? '继续学习' : '选择课程'}
+        </Button>
+      </section>
 
-      <div className={w.suggestions}>
-        {suggestions.map((item) => (
-          <button key={item.key} type="button" className={w.suggestion} onClick={item.onSelect}>
-            <span className={w.suggestionIcon}>{item.icon}</span>
-            <span className={w.suggestionText}>
-              <strong>{item.title}</strong>
-              <span>{item.detail}</span>
-            </span>
-            <ArrowRight size={16} strokeWidth={1.75} className={w.suggestionArrow} />
-          </button>
-        ))}
+      <div className={w.secondaryActions}>
+        <button type="button" onClick={onUpload}><FileUp size={16} />上传资料</button>
+        {continuation && <button type="button" onClick={() => onSelectCourse()}>换一门课</button>}
       </div>
 
-      {onOpenConversation && onOpenArtifact && (
-        <RecentWork owner={owner} conversations={conversations} onOpenConversation={onOpenConversation} onOpenArtifact={onOpenArtifact} onAll={onSearchAll} />
-      )}
+      {onOpenConversation && onOpenArtifact && <RecentWork owner={owner} conversations={conversations} onOpenConversation={onOpenConversation} onOpenArtifact={onOpenArtifact} onAll={onSearchAll} limit={3} layout="list" excludeConversation={chat} />}
 
-      <JourneyStatusCard onOpen={onTeach} />
-
-      <button type="button" className={w.journeyLink} onClick={onJourney}>
-        <IconJourney size={15} />
-        <span>{accepted ? '看看完整的师徒旅程' : '这段旅程会怎样展开'}</span>
-        <ArrowRight size={14} strokeWidth={1.75} />
-      </button>
-    </div>
+      <div className={w.welcomeExtras}>
+        <Apprenticeship identity={identity} onAccept={onAccept} onRead={onReadLetter} compact />
+        <button type="button" className={w.journeyLink} onClick={onJourney}><IconJourney size={15} /><span>师徒旅程</span></button>
+      </div>
+    </section>
   );
 }
