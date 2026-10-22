@@ -20,5 +20,5 @@ export default function ReadingView({ owner, active = true }: { owner: string | 
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
   }, [openSettings, openProfile, active]);
-  return <iframe key={owner} ref={frame} title="阅读" onLoad={sendVisibility} src={`${import.meta.env.BASE_URL}reader/?embedded=1#/library`} style={{ width: '100%', height: '100%', minHeight: 0, border: 0, display: 'block', flex: 1 }} allow="autoplay; clipboard-write" />;
+  return <iframe key={owner} ref={frame} title="阅读" loading="eager" onLoad={sendVisibility} src={`${import.meta.env.BASE_URL}reader/#/library`} style={{ width: '100%', height: '100%', minHeight: 0, border: 0, display: 'block', flex: 1 }} allow="autoplay; clipboard-write" />;
 }
