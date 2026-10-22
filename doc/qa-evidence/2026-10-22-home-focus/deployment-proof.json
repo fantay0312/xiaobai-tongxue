@@ -1,0 +1,12 @@
+{
+  "release": "20261022-home-focus-d911586",
+  "sourceCommit": "d911586160975b3567fd1a0ffbc99c06a4155b11",
+  "previousRelease": "20261022-ui-simplify-65ca77a",
+  "frontendOnly": true,
+  "serviceRestarted": false,
+  "pid": "584115",
+  "verifiedFiles": 1005,
+  "knownSecretsScan": "passed",
+  "protectedConfiguration": "unchanged",
+  "backup": "/var/backups/xiaobai/20261022-home-focus-d911586"
+}
