@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuthStore } from '../../store/authStore';
 import { useDocTitle } from '../../hooks/useDocTitle';
-import { Sheet } from '../../components/ui';
 import { TerminalRail } from '../learn/shell/TerminalRail';
-import { TERMINAL_NAV, terminalViewPath } from '../learn/shell/views';
+import { terminalViewPath } from '../learn/shell/views';
 import { useKeyboardViewport } from '../learn/shell/useKeyboardViewport';
 import { agentStore } from '../../store/agentStore';
 import ReadingView from './index';
@@ -14,7 +13,6 @@ import t from '../learn/terminal.module.css';
 export default function ReadingTerminal() {
   const owner = useAuthStore((state) => state.user);
   const navigate = useNavigate();
-  const [more, setMore] = useState(false);
   useDocTitle('学习终端 · 阅读');
   useKeyboardViewport(true);
   useEffect(() => {
@@ -34,14 +32,11 @@ export default function ReadingTerminal() {
     const unsubscribe = agentStore.subscribe(startIfNeeded);
     return () => { disposed = true; unsubscribe(); stop?.(); };
   }, [owner]);
-  const onView = (view: string) => { setMore(false); navigate(terminalViewPath(view)); };
+  const onView = (view: string) => navigate(terminalViewPath(view));
   return <div className={t.terminal} data-sidebar="collapsed" data-view="reading">
-    <TerminalRail view="reading" onView={onView} onMore={() => setMore(true)} />
+    <TerminalRail view="reading" onView={onView} />
     <div className={t.workspace}><div className={t.body}><main className={t.main} aria-label="学习工作区">
       <ReadingView owner={owner} />
     </main></div></div>
-    <Sheet open={more} onOpenChange={setMore} title="学习终端" side="left" width={300}>
-      <nav aria-label="终端导航">{TERMINAL_NAV.map(({ view, label, icon: Icon }) => <button key={view} type="button" className={t.sideItem} onClick={() => onView(view)}><Icon size={18} />{label}</button>)}</nav>
-    </Sheet>
   </div>;
 }

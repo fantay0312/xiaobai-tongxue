@@ -10,13 +10,13 @@ import { useShellActions } from '../../../components/shell/ShellActions';
 import { JourneyStatusCard } from '../../../components/story/JourneyStatus';
 import type { StudyConversation } from '../../../engine/studyWorkspace';
 import type { Topic } from '../../../types';
-import { TERMINAL_NAV, railKey, type View } from './views';
+import { railKey, type View } from './views';
 import t from '../terminal.module.css';
 
 export type CourseGroup = [key: string, group: { title: string; items: Topic[] }];
 
 export interface TerminalSidebarProps {
-  /** 小屏抽屉里的侧栏：额外列出全部功能入口与账号行 */
+  /** 小屏抽屉里的侧栏：聚焦课程与对话，并提供账号行。 */
   mobile?: boolean;
   /** 非对话板块时，侧栏整块让给该板块：这里只留品牌行、挂载位和页脚 */
   sectionSlot?: (element: HTMLDivElement | null) => void;
@@ -98,24 +98,6 @@ export function TerminalSidebar(props: TerminalSidebarProps) {
       </button>
 
       <div className={t.sidebarScroll}>
-        {mobile && (
-          <section className={t.sideSection}>
-            <h3 className={t.sideHeading}><span>功能</span></h3>
-            {TERMINAL_NAV.map(({ view: id, label, icon: ItemIcon }) => (
-              <button
-                key={id}
-                type="button"
-                className={t.sideItem}
-                aria-current={railKey(view) === id ? 'page' : undefined}
-                onClick={() => props.onView(id as View)}
-              >
-                <ItemIcon size={16} strokeWidth={1.75} />
-                <span>{label}</span>
-              </button>
-            ))}
-          </section>
-        )}
-
         <section className={t.sideSection}>
           <h3 className={t.sideHeading}>
             <span>课程项目</span>

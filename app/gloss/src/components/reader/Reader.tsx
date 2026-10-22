@@ -12,6 +12,7 @@ import { indexArticle } from "@/lib/doc";
 import { fetchText } from "@/lib/sync";
 import { loadDoc, useGlosses, useHighlights, useStore, type Anchor } from "@/lib/store";
 import { applySettings } from "@/lib/settings";
+import { shouldAutoOpenNotebook } from "@/lib/notebook-policy";
 import { GlossWordmark } from "@/components/brand/Gloss";
 import { Block, type Mark } from "./Block";
 import { Brief } from "./Brief";
@@ -104,8 +105,6 @@ export function Reader({ id, initial }: { id: string; initial: Article | null })
 
 const GUTTER_WIDE = 64;
 const GUTTER_MID = 52;
-/** How long the text has to land before a pinned notebook opens beside it. */
-const NOTEBOOK_ENTRY_DELAY_MS = 320;
 /** From this width the notebook and the margin both fit (matches .nb-open in globals.css). */
 const NOTEBOOK_CLEARS_MARGIN = 1900;
 
@@ -137,6 +136,7 @@ function ReaderInner({ article }: { article: Article }) {
   const hydrated = useStore((s) => s.hydrated);
   const setUI = useStore((s) => s.setUI);
   const setProgress = useStore((s) => s.setProgress);
+  const notebookDecision = useRef<string | null>(null);
 
   const wide = useMedia("(min-width: 1080px)", true);
   const withRail = useMedia("(min-width: 1260px)", true);
@@ -146,12 +146,21 @@ function ReaderInner({ article }: { article: Article }) {
     setUI({ activeGloss: null, hoverGloss: null, activeHighlight: null, pending: null, cursor: null, notebookOpen: false });
   }, [articleId, setUI]);
 
-  // A pinned notebook opens with the text, a beat after the text has settled, so its opening is seen.
+  // Decide once after the article is ready. Later edits/sync must not reopen a notebook the reader closed.
   useEffect(() => {
-    if (!hydrated || !useStore.getState().settings.notebook) return;
-    const t = setTimeout(() => setUI({ notebookOpen: true }), NOTEBOOK_ENTRY_DELAY_MS);
-    return () => clearTimeout(t);
-  }, [articleId, hydrated, setUI]);
+    if (!hydrated || !articleEl || notebookDecision.current === articleId) return;
+    notebookDecision.current = articleId;
+    const state = useStore.getState();
+    const hasNotes = Boolean(state.glosses[articleId]?.length || state.highlights[articleId]?.length);
+    if (shouldAutoOpenNotebook(state.settings.notebook, hasNotes, window.innerWidth)) setUI({ notebookOpen: true });
+  }, [articleId, articleEl, hydrated, setUI]);
+
+  useEffect(() => {
+    const narrow = window.matchMedia('(max-width: 1079px)');
+    const onNarrow = () => { if (narrow.matches) setUI({ notebookOpen: false }); };
+    narrow.addEventListener('change', onNarrow);
+    return () => narrow.removeEventListener('change', onNarrow);
+  }, [setUI]);
 
   // An answer opening in the margin is shown, so a notebook covering the margin steps aside.
   useEffect(() => {

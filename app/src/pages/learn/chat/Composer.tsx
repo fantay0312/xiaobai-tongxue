@@ -1,5 +1,5 @@
 /**
- * 输入框：附件小签 + 自动长高的文本域 + 一行工具（资料、回答方式、互动回答、模型与思考强度、听写、发送/停止）。
+ * 输入框：附件、自动长高的文本域、资料状态和发送；回答方式、互动回答及模型集中在按需设置中。
  * 不可用的入口不渲染，不留灰掉的按钮。
  */
 import {
@@ -7,12 +7,13 @@ import {
   type FormEvent, type KeyboardEvent, type MouseEvent, type ReactNode,
 } from 'react';
 import {
-  ArrowUp, AtSign, BookOpen, ChevronDown, FileText, FolderOpen, LayoutGrid,
-  MessageCircleQuestion, Mic, Plus, Sparkles, Square, SquareSlash, Telescope, X,
+  ArrowUp, AtSign, BookOpen, FileText, FolderOpen, LayoutGrid,
+  MessageCircleQuestion, Mic, Plus, SlidersHorizontal, Sparkles, Square, SquareSlash, Telescope, X,
 } from 'lucide-react';
 import { IconChat, IconFlashcard, IconGuide, IconMindmap, IconQuiz, IconRead } from '../../../components/ui/icons';
 import {
-  IconButton, Kbd, Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger, ModelPicker, Tip, toast,
+  IconButton, Kbd, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, ModelPicker,
+  Popover, PopoverClose, PopoverContent, PopoverTrigger, Segmented, Tip, toast,
   type ModelOption,
 } from '../../../components/ui';
 import type { StudyMode } from '../../../engine/studyWorkspace';
@@ -78,7 +79,8 @@ export function Composer({
   const listId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLFormElement>(null);
-  /** 手机：次要控件收进「+」菜单；阅读页里的输入框平时缩成一行，点进去才展开 */
+  const settingsRef = useRef<HTMLDivElement>(null);
+  /** 阅读页里的手机输入框平时缩成一行，点进去才展开。 */
   const phone = useMediaQuery('(max-width: 760px)');
   const [engaged, setEngaged] = useState(false);
   useEffect(() => {
@@ -309,7 +311,7 @@ export function Composer({
           <div className={s.tools}>
             <Menu>
               <MenuTrigger asChild>
-                <IconButton label={phone ? '资料、回答方式与指令' : '添加资料与指令'} round className={s.plus}><Plus size={18} strokeWidth={1.75} /></IconButton>
+                <IconButton label="添加资料与指令" round className={s.plus}><Plus size={18} strokeWidth={1.75} /></IconButton>
               </MenuTrigger>
               <MenuContent side="top" align="start" onCloseAutoFocus={returnFocus}>
                 <MenuItem icon={<FolderOpen {...ICON} />} hint="把资料库里的文件加入这次对话" onSelect={onAttach}>从资料库选择文件</MenuItem>
@@ -317,57 +319,11 @@ export function Composer({
                   <MenuItem icon={<AtSign {...ICON} />} hint="笔记、导图、题目、AI 课、助理成果…" shortcut="@" onSelect={onAttachContent}>引用我的内容</MenuItem>
                 )}
                 <MenuItem icon={<BookOpen {...ICON} />} hint={sourceCount ? `已选 ${sourceCount} 份` : '还没有选资料'} onSelect={onOpenSources}>查看本课资料</MenuItem>
-                {phone && (
-                  <>
-                    <MenuSeparator />
-                    <MenuLabel>回答方式</MenuLabel>
-                    {modes.map((item) => (
-                      <MenuItem key={item.value} icon={item.icon} hint={item.hint} checked={item.value === mode} onSelect={() => onMode(item.value)}>
-                        {item.label}
-                      </MenuItem>
-                    ))}
-                  </>
-                )}
                 {/* 已经写了内容时不提供：它会把输入换成「/」 */}
                 {!hasText && <MenuSeparator />}
                 {!hasText && <MenuItem icon={<SquareSlash {...ICON} />} shortcut="/" onSelect={openCommands}>快捷指令</MenuItem>}
               </MenuContent>
             </Menu>
-
-            <Menu>
-              <MenuTrigger asChild>
-                <button type="button" className={s.pill} data-kind="mode" data-default={mode === 'ask' || undefined} aria-label={`回答方式：${currentMode.label}`}>
-                  {currentMode.icon}
-                  <span className={s.pillText}>{currentMode.label}</span>
-                  <ChevronDown size={13} strokeWidth={2} className={s.pillChevron} />
-                </button>
-              </MenuTrigger>
-              <MenuContent side="top" align="start" onCloseAutoFocus={returnFocus}>
-                <MenuLabel>回答方式</MenuLabel>
-                {modes.map((item) => (
-                  <MenuItem key={item.value} icon={item.icon} hint={item.hint} checked={item.value === mode} onSelect={() => onMode(item.value)}>
-                    {item.label}
-                  </MenuItem>
-                ))}
-              </MenuContent>
-            </Menu>
-
-            {intelligentAvailable && (
-              <Tip label={interactive ? '互动回答已开启：下次回答按需生成卡片、图表或自测' : '互动回答已关闭：下次回答只用文字'}>
-                <button
-                  type="button"
-                  className={s.formatSwitch}
-                  role="switch"
-                  aria-checked={interactive}
-                  aria-label="互动回答"
-                  onClick={() => onAnswerFormat(interactive ? 'text' : 'auto')}
-                >
-                  <LayoutGrid {...ICON} className={s.formatIcon} />
-                  <span className={s.formatLabel}>互动回答</span>
-                  <span className={s.switchTrack} aria-hidden="true"><span /></span>
-                </button>
-              </Tip>
-            )}
 
             <Tip label={sourceCount ? '查看本课资料' : freeChat ? '现在不带资料直接问；点这里可以添加资料' : '还没有选资料，点这里去选'}>
               <button
@@ -385,20 +341,35 @@ export function Composer({
           </div>
 
           <div className={s.sendGroup}>
-            {demo ? (
-              <span className={s.demoTag}>本地演示</span>
-            ) : models.length > 0 ? (
-              <div className={s.modelSlot}>
-                <ModelPicker
-                  models={models}
-                  model={modelId}
-                  effort={prefs.effort}
-                  onModel={prefs.setModel}
-                  onEffort={prefs.setEffort}
-                  onReset={prefs.reset}
-                />
-              </div>
-            ) : null}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button type="button" className={s.settingsTrigger} aria-label={`回答设置：${currentMode.label}`}>
+                  <SlidersHorizontal {...ICON} /><span>回答设置</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent ref={settingsRef} side="top" align="end" className={s.settingsPanel} aria-label="回答设置" onCloseAutoFocus={returnFocus} onOpenAutoFocus={(event) => {
+                event.preventDefault();
+                settingsRef.current?.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]')?.focus();
+              }}>
+                <div className={s.settingsHead}><strong>回答设置</strong><PopoverClose asChild><IconButton label="关闭回答设置" size="sm"><X size={17} /></IconButton></PopoverClose></div>
+                <div className={s.settingsSection}>
+                  <span className={s.settingsLabel}>回答方式</span>
+                  <Segmented value={mode} onChange={onMode} label="回答方式" block size="sm" options={modes.map(({ value, label }) => ({ value, label }))} />
+                  <p className={s.settingsHint}>{currentMode.hint}</p>
+                </div>
+                {intelligentAvailable && <div className={s.settingsSection}>
+                  <button type="button" className={s.formatSwitch} role="switch" aria-checked={interactive} aria-label="互动回答" onClick={() => onAnswerFormat(interactive ? 'text' : 'auto')}>
+                    <LayoutGrid {...ICON} className={s.formatIcon} /><span className={s.formatLabel}>互动回答</span>
+                    <span className={s.switchTrack} aria-hidden="true"><span /></span>
+                  </button>
+                  <p className={s.settingsHint}>{interactive ? '按需生成卡片、图表或自测' : '仅使用文字回答'}</p>
+                </div>}
+                {demo ? <span className={s.demoTag}>本地演示</span> : models.length > 0 ? <div className={s.settingsSection}>
+                  <span className={s.settingsLabel}>模型与思考强度</span>
+                  <div className={s.settingsModel}><ModelPicker models={models} model={modelId} effort={prefs.effort} onModel={prefs.setModel} onEffort={prefs.setEffort} onReset={prefs.reset} /></div>
+                </div> : null}
+              </PopoverContent>
+            </Popover>
 
             {dictation.supported && (
               <IconButton

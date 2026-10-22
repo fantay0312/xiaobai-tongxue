@@ -14,7 +14,8 @@ import { useAuthStore } from '../../store/authStore';
 import { LETTER_CLOSED_EVENT, THEME_HINT_EVENT, markThemeHintDone } from '../tour/tourState';
 import { retryModule } from '../../lib/moduleRecovery';
 import { ShellActionsContext } from './ShellActions';
-import { TERMINAL_NAV, terminalViewPath } from '../../pages/learn/shell/views';
+import { PRIMARY_TERMINAL_NAV, terminalViewPath } from '../../pages/learn/shell/views';
+import { MoreNavigationMenu } from '../../pages/learn/shell/MoreNavigationMenu';
 import styles from './AppShell.module.css';
 import workspace from './workspace.module.css';
 
@@ -27,8 +28,7 @@ const SettingsDialog = lazy(() =>
 const WorkspaceNavigation = lazy(() => retryModule(() => import('./WorkspaceNavigation')).then((module) => ({ default: module.WorkspaceNavigation })));
 
 /** 手机底栏放的四个终端板块，与学习终端自己的底栏一致 */
-const MOBILE_PRIMARY = ['ask', 'workbench', 'feynman', 'classroom'];
-const MOBILE_NAV = TERMINAL_NAV.filter((item) => MOBILE_PRIMARY.includes(item.view));
+const MOBILE_NAV = PRIMARY_TERMINAL_NAV;
 /** 二级页面在手机顶栏上显示的名字 */
 const SECONDARY_TITLES: [prefix: string, title: string][] = [
   ['/growth', '成长册'],
@@ -122,10 +122,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <span>{label}</span>
                   </Link>
                 ))}
-                <button type="button" className={workspace.mobileNavItem} data-active aria-label="更多" onClick={() => setNavSheetOpen(true)}>
-                  <MenuIcon size={19} strokeWidth={1.75} />
-                  <span>更多</span>
-                </button>
+                <MoreNavigationMenu side="top"><button type="button" className={workspace.mobileNavItem} data-active aria-label="更多功能">
+                  <MenuIcon size={19} strokeWidth={1.75} /><span>更多</span>
+                </button></MoreNavigationMenu>
               </nav>
             </div>
             <Sheet open={navSheetOpen} onOpenChange={setNavSheetOpen} title="导航" side="left" width={300} className={workspace.sheet}>

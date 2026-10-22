@@ -1,0 +1,5 @@
+
+> app@0.0.0 test:login-books
+> tsx scripts/login-books.test.ts
+
+Login return routes, Feynman completion/correction paths, EPUB metadata/spine/sanitization/corruption/limits: passed.

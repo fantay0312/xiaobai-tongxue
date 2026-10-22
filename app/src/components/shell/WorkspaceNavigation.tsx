@@ -2,12 +2,12 @@
  * 应用侧栏 —— 成长册、教师看板、赴考、复盘等二级页面使用。
  * 与学习终端侧栏同一套导航项与令牌；导航定义在 pages/learn/shell/views.ts，两边共用。
  */
-import { Link, NavLink, useLocation } from 'react-router';
-import { ClipboardList, PanelLeftClose, Settings } from 'lucide-react';
+import { Link, useLocation } from 'react-router';
+import { Menu as MenuIcon, PanelLeftClose, Settings } from 'lucide-react';
 import { IconButton } from '../ui';
-import { IconGrowth } from '../ui/icons';
 import { JourneyStatusCard } from '../story/JourneyStatus';
-import { TERMINAL_NAV, terminalViewPath } from '../../pages/learn/shell/views';
+import { PRIMARY_TERMINAL_NAV, terminalViewPath } from '../../pages/learn/shell/views';
+import { MoreNavigationMenu } from '../../pages/learn/shell/MoreNavigationMenu';
 import { AccountButton } from './AccountButton';
 import { Seal } from './Seal';
 import { useShellActions } from './ShellActions';
@@ -33,23 +33,17 @@ export function WorkspaceNavigation({ onClose, onNavigate }: { onClose?: () => v
         )}
       </div>
 
-      <nav className={s.navLinks} aria-label="学习终端" onClick={onNavigate}>
+      <nav className={s.navLinks} aria-label="学习终端">
         <p className={s.navHeading}>学习终端</p>
-        {TERMINAL_NAV.map(({ view, label, icon: ItemIcon }) => (
-          <Link key={view} to={terminalViewPath(view)} className={s.navItem} data-active={(view === 'feynman' && inReview) || undefined}>
+        {PRIMARY_TERMINAL_NAV.map(({ view, label, icon: ItemIcon }) => (
+          <Link key={view} to={terminalViewPath(view)} className={s.navItem} data-active={(view === 'feynman' && inReview) || undefined} onClick={onNavigate}>
             <ItemIcon size={17} active={view === 'feynman' && inReview} />
             <span>{label}</span>
           </Link>
         ))}
-        <p className={s.navHeading}>记录</p>
-        <NavLink to="/growth" className={s.navItem}>
-          <IconGrowth size={17} />
-          <span>成长册</span>
-        </NavLink>
-        <NavLink to="/teacher" className={s.navItem}>
-          <ClipboardList size={17} strokeWidth={1.75} />
-          <span>教师看板</span>
-        </NavLink>
+        <MoreNavigationMenu side="right" onNavigate={onNavigate}><button type="button" className={s.navItem} aria-label="更多功能" data-active={!inReview || undefined}>
+          <MenuIcon size={17} /><span>更多</span>
+        </button></MoreNavigationMenu>
       </nav>
 
       <div className={s.navFooter}>

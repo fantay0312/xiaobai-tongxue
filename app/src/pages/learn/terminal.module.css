@@ -140,7 +140,7 @@
 }
 
 .railMore {
-  display: none;
+  display: flex;
 }
 
 @media (min-width: 761px) {

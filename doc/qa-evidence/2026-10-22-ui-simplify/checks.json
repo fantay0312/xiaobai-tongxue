@@ -1,0 +1,13 @@
+{
+  "build": "passed",
+  "typescript": "passed",
+  "lint": "no errors; pre-existing warnings",
+  "designDetector": [],
+  "mobileViewport": [
+    320,
+    720
+  ],
+  "touchTargets": "44px",
+  "localFixtureOnly": true,
+  "productionDataWrites": false
+}

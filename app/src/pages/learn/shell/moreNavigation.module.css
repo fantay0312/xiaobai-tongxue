@@ -1,0 +1,4 @@
+.menu { min-width: 220px; }
+@media (max-width: 760px) {
+  .menu [role='menuitem'] { min-height: 44px; }
+}

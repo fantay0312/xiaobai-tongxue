@@ -15,7 +15,7 @@ export interface TerminalNavItem {
 
 /** 学习终端的一级入口，导轨、侧栏与命令面板共用同一份 */
 export const TERMINAL_NAV: TerminalNavItem[] = [
-  { view: 'ask', label: '对话', hint: '和小砚把问题学明白', icon: IconChat },
+  { view: 'ask', label: '学习', hint: '和小砚把问题学明白', icon: IconChat },
   { view: 'workbench', label: '工作台', hint: '笔记、导图、测验、闪卡', icon: IconWorkbench },
   { view: 'reading', label: '阅读', hint: '读文章、划重点、在页边提问', icon: IconRead },
   { view: 'feynman', label: '教小白', hint: '把学懂的讲给小白听', icon: IconTeach },
@@ -25,6 +25,11 @@ export const TERMINAL_NAV: TerminalNavItem[] = [
   { view: 'memory', label: '记忆', hint: '小砚记住的你', icon: IconMemory },
   { view: 'library', label: '资料库', hint: '上传与管理学习资料', icon: IconLibrary },
 ];
+
+/** One shared hierarchy for the desktop rail, mobile bar, and secondary pages. */
+export const PRIMARY_TERMINAL_VIEWS = ['ask', 'reading', 'feynman', 'workbench'] as const;
+export const PRIMARY_TERMINAL_NAV = PRIMARY_TERMINAL_VIEWS.map((view) => TERMINAL_NAV.find((item) => item.view === view)!);
+export const MORE_TERMINAL_NAV = TERMINAL_NAV.filter((item) => !PRIMARY_TERMINAL_VIEWS.some((view) => view === item.view));
 
 export const terminalViewPath = (view: string) => (view === 'ask' ? '/learn' : `/learn?view=${view}`);
 

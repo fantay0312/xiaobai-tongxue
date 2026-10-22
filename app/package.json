@@ -11,6 +11,7 @@
     "test:auth": "tsx scripts/auth-state.test.ts && tsx scripts/auth-lifecycle.test.ts",
     "test:login-books": "tsx scripts/login-books.test.ts",
     "test:performance": "tsx scripts/performance-budget.test.ts",
+    "test:ui-simplify": "tsx scripts/ui-simplify.test.ts",
     "test:loading": "tsx scripts/module-recovery.test.ts",
     "test:agent": "tsx scripts/xiaobai-agent.test.ts",
     "test:coach-markdown": "tsx scripts/coach-markdown.test.ts",

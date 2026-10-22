@@ -129,7 +129,7 @@ export function Notebook() {
               <h2 className="font-serif text-[23px] font-[420] leading-none tracking-[-0.015em] text-ink [font-variation-settings:'opsz'_36]">笔记本</h2>
               <p className="mt-1.5 text-[12.5px] leading-none text-ink-3">{summary || "暂时为空"}</p>
             </div>
-            <HeadBtn label={pinned ? "已随书打开" : "随书打开"} pressed={pinned} onClick={() => setSettings({ notebook: !pinned })}>
+            <HeadBtn label={pinned ? "已开启宽屏自动打开已有笔记" : "宽屏自动打开已有笔记"} pressed={pinned} onClick={() => setSettings({ notebook: !pinned })}>
               {pinned ? <Pin size={15} /> : <PinOff size={15} />}
             </HeadBtn>
             <HeadBtn
@@ -195,6 +195,9 @@ export function Notebook() {
             <p className="mt-2 max-w-[270px] text-[13.5px] leading-relaxed text-ink-3">
               选中文字提问或高亮，问答会按阅读顺序保存在这里。
             </p>
+            <button type="button" onClick={() => setUI({ notebookOpen: false })} className="mt-5 min-h-11 rounded-full border border-rule px-5 text-[14px] text-ink hover:bg-sunk">
+              返回正文
+            </button>
           </div>
         ) : (
           <div onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)} className="scroll-thin flex-1 overflow-y-auto px-3.5 pb-4 pt-0.5">
