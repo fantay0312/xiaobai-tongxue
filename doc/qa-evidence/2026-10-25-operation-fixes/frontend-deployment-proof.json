@@ -1,0 +1,12 @@
+{
+  "release": "20261025-operation-fixes-e56af29",
+  "sourceCommit": "e56af290d2276dbef7cb07a35adff781daef306e",
+  "previousRelease": "20261025-operation-fixes-01653cb",
+  "frontendOnly": true,
+  "serviceRestarted": false,
+  "pid": "2501450",
+  "verifiedFiles": 1018,
+  "knownSecretsScan": "passed",
+  "protectedConfiguration": "unchanged",
+  "backup": "/var/backups/xiaobai/20261025-operation-fixes-e56af29"
+}

@@ -1,0 +1,14 @@
+{
+  "release": "20261025-operation-fixes-01653cb",
+  "sourceCommit": "01653cb157d699eed678fcd4cd4dc95138e592e8",
+  "previousRelease": "20261022-ui-reader-fast-83a6c17",
+  "backup": "/var/backups/xiaobai/20261025-operation-fixes-01653cb",
+  "rollbackRuntime": "/var/backups/xiaobai/20261025-operation-fixes-01653cb/runtime-before-switch",
+  "databaseRehearsal": "passed",
+  "candidateChecks": "passed",
+  "verifiedFiles": 1018,
+  "knownSecretScan": "passed",
+  "configuration": "unchanged",
+  "service": "active",
+  "retainedHashedAssets": 0
+}
