@@ -23,6 +23,9 @@ for (const persona of ['好奇型', '严谨型', '杠精型'] as const) {
   assert.doesNotMatch(reply, /几百万|数组|变慢/);
 }
 assert.ok(learningPreferenceReply('小白你想先学什么？', '算法', '好奇型'));
+assert.match(learningPreferenceReply('你想学哪个，插入还是删除？', '算法', '好奇型')!, /「插入」/);
+assert.match(learningPreferenceReply('你想从哪里开始？数组还是链表？', '算法', '好奇型')!, /「数组」/);
+assert.match(learningPreferenceReply('你想了解什么？例如数组、链表、树。', '算法', '好奇型')!, /「数组」/);
 assert.equal(learningPreferenceReply('数组按索引取元素是不是常数时间？', '算法', '好奇型'), null);
 assert.equal(learningPreferenceReply('你想了解哪部分知识？我先讲数组，索引访问与数组大小无关。', '算法', '好奇型'), null);
 

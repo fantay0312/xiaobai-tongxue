@@ -465,6 +465,7 @@ export const useAppStore = create<AppState>()(
           const g = get().global;
           if (preferenceReply) {
             set((s) => s.live?.sessionId === sessionId ? {
+              topicStates: { ...s.topicStates, [topic.topicId]: { ...(s.topicStates[topic.topicId] ?? state), stuckStreak: 0 } },
               live: { ...s.live, busy: false, mood: 'curious', messages: [...s.live.messages, msg('xiaobai', preferenceReply, { mood: 'curious' })] },
             } : {});
             return { accepted: true };

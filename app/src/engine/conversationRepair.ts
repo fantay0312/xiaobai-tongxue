@@ -11,7 +11,8 @@ export function learningPreferenceReply(utterance: string, title: string, person
   // A substantive explanation following the invitation still belongs to the
   // normal evaluator. Do not turn teaching into a preference-only exchange.
   if (/(?:我先讲|下面讲|它的原理是|具体来说|定义是)/.test(compact)) return null;
-  const listed = compact.match(/(?:是|比如|例如|包括|从)[：:，,\s]*(.+?)[？?。!！]*$/)?.[1];
+  const listed = compact.match(/(?:[，,:：]\s*是|比如|例如|包括)[：:，,\s]*(.+?)[？?。!！]*$/)?.[1]
+    ?? compact.split(/[，,:：？?]/).slice(1).join('，');
   const options = listed?.split(/还是|或者|或是|[、，,；;]/).map((item) => item.replace(/^(?:是|先|学|学习|讲|听)\s*/, '').replace(/(?:呢|吗|吧|可以吗|好不好)?[？?。!！]*$/, '').trim()).filter((item) => item.length > 0 && item.length <= 40) ?? [];
   const choice = options.length > 1 ? options[0] : title;
   return persona === '严谨型' ? `我想先了解「${choice}」。老师能从一个简单的例子开始讲吗？`
