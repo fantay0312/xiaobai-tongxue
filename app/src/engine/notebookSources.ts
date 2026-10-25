@@ -48,5 +48,8 @@ export function notebookScopeKey(sources: NotebookSource[]): string {
 
 export function sourceScopedTopic(topic: Topic, sources: NotebookSource[]): Topic {
   const includeLecture = sources.some((source) => source.id === `lecture:${topic.topicId}`);
+  // Published teaching material already has a lesson structure. Original files
+  // remain evidence for Q&A; appending their covers destroys that structure.
+  if (includeLecture) return { ...topic, prep: { ...topic.prep, examples: topic.prep.examples.filter((_, index) => sources.some((source) => source.id === `example:${topic.topicId}:${index}`)) } };
   return { ...topic, prep: { ...topic.prep, microLecture: { ...topic.prep.microLecture, title: '所选资料', body: sources.map((source) => `## ${source.title}\n\n${source.content}`).join('\n\n') }, examples: [], selfCheck: includeLecture ? topic.prep.selfCheck : [] }, checklist: includeLecture ? topic.checklist : [], misconceptions: includeLecture ? topic.misconceptions : [] };
 }

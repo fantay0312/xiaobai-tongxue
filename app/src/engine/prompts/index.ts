@@ -474,6 +474,7 @@ export function buildXiaobaiUser(input: {
   opening?: OpeningContext | null;
 }): string {
   const transcript = input.recentMessages
+    .filter((m) => m.role === 'teacher' || m.role === 'xiaobai')
     .slice(-6)
     .map((m) => `${m.role === 'teacher' ? '老师' : '小白'}:${m.text}`)
     .join('\n');

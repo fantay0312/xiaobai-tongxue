@@ -7,12 +7,13 @@ import { Icon } from '../../components/ui/Icon';
 import s from './learn.module.css';
 import g from './guided.module.css';
 
-export function GuidedStudyPanel({ topic, saved, onSave, onAsk, includeSelfTests = true }: {
+export function GuidedStudyPanel({ topic, saved, onSave, onAsk, includeSelfTests = true, originalOnly = false }: {
   topic: Topic; saved?: GuidedProgress; onSave: (value: GuidedProgress) => void;
   onAsk: (text: string) => void;
   includeSelfTests?: boolean;
+  originalOnly?: boolean;
 }) {
-  const scenes = studyScenes(topic, includeSelfTests);
+  const scenes = studyScenes(topic, includeSelfTests, originalOnly);
   const progress = restoreGuidedProgress(scenes, saved);
   const index = Math.max(0, scenes.findIndex((item) => item.id === progress.activeId));
   const active = scenes[index];
@@ -28,7 +29,7 @@ export function GuidedStudyPanel({ topic, saved, onSave, onAsk, includeSelfTests
   const answered = answer !== undefined;
   const finished = progress.completed.includes(active.id);
   const ready = active.kind === 'quiz' ? answered : active.kind === 'reflect' ? !!progress.reflection.trim() : true;
-  const labels = { explain: '读懂概念', example: '跟着例子', quiz: '检查理解', reflect: '整理自己的解释' };
+  const labels = { explain: '读懂概念', read: '阅读原文摘录', example: '跟着例子', quiz: '检查理解', reflect: '整理自己的解释' };
   const complete = () => onSave(completeStudyScene(progress, scenes));
   return <div className={g.panel}>
     <div className={s.sectionHeading}><div><h2>一起把「{topic.title}」学明白</h2><p>小砚带你读、练、整理理解。随时可以停下来提问。</p></div><span>{index + 1} / {scenes.length}</span></div>
@@ -36,6 +37,7 @@ export function GuidedStudyPanel({ topic, saved, onSave, onAsk, includeSelfTests
     <article className={g.scene}>
       <div className={g.sceneLabel}><Icon name={active.kind === 'quiz' ? 'circle-help' : 'book-open'} size={16} />{labels[active.kind]}<span>小砚 · 学习引导</span></div>
       <h3>{active.title}</h3>
+      {active.kind === 'read' && <p>这是所选资料的原文摘录。要按概念和例子学习，请先在资料库生成并发布课题，或选中本课讲义。</p>}
       <CoachMarkdown text={active.body} />
       {active.kind === 'quiz' && <>
         <div className={s.options}>{active.options.map((option, i) => <button key={i} className={s.option} disabled={answered} data-result={answered ? i === active.answer ? 'right' : answer === i ? 'wrong' : undefined : undefined} onClick={() => onSave({ ...progress, answers: { ...progress.answers, [active.id]: i } })}><span>{String.fromCharCode(65 + i)}</span>{option}</button>)}</div>

@@ -297,6 +297,16 @@ export function createCustomContentRouter({
       }
 
       const courseMatch = /^\/api\/xb\/courses\/([^/]+)$/.exec(pathname);
+      if (courseMatch && req.method === 'PATCH') {
+        return withOwnerJson(req, res, 'custom-course-update', async (owner, _traceId, body) => (
+          send(res, 200, { course: await service.updateCourse(owner, decodeURIComponent(courseMatch[1]), body.title) })
+        ));
+      }
+      if (courseMatch && req.method === 'DELETE') {
+        return withOwner(req, res, 'custom-course-archive', async (owner) => (
+          send(res, 200, await service.archiveCourse(owner, decodeURIComponent(courseMatch[1])))
+        ));
+      }
       if (courseMatch && req.method === 'GET') {
         return withOwner(req, res, 'custom-course-get', async (owner) => (
           send(res, 200, { course: await service.getCourse(owner, decodeURIComponent(courseMatch[1])) })

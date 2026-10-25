@@ -163,6 +163,14 @@ export async function createCustomCourse(title: string): Promise<CustomCourse> {
   return (await request<{ course: CustomCourse }>('/courses', json('POST', { title }))).course;
 }
 
+export async function updateCustomCourse(id: string, title: string): Promise<CustomCourse> {
+  return (await request<{ course: CustomCourse }>(`/courses/${encodeURIComponent(id)}`, json('PATCH', { title }))).course;
+}
+
+export async function archiveCustomCourse(id: string): Promise<void> {
+  await request(`/courses/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
 export async function listStudyMaterials(topicId: string, signal?: AbortSignal): Promise<import('../engine/notebookSources').NotebookSource[]> {
   const data = await request<{ sources: import('../engine/notebookSources').NotebookSource[] }>(`/topics/${encodeURIComponent(topicId)}/study-materials`, { signal });
   if (!Array.isArray(data.sources) || data.sources.some((source) => typeof source?.id !== 'string' || typeof source.title !== 'string' || typeof source.content !== 'string' || typeof source.assetId !== 'string')) throw new CustomContentError('study-materials-invalid', 502);

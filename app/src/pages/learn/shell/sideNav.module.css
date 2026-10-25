@@ -19,7 +19,7 @@
 .action:disabled { opacity: 0.5; cursor: not-allowed; }
 .action svg { flex: none; }
 
-.group { display: flex; flex-direction: column; gap: 2px; }
+.group { display: flex; flex: none; flex-direction: column; gap: 2px; }
 .groupHead { display: flex; align-items: center; justify-content: space-between; min-height: 28px; margin: 0; padding: 0 2px 0 8px; color: var(--text-3); font: 500 var(--fz-xs)/1 var(--ui-font); }
 
 .row { position: relative; display: flex; align-items: center; min-width: 0; border-radius: var(--r-md); transition: background var(--dur-1) var(--ease); }

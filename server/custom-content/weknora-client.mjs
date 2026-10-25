@@ -299,12 +299,12 @@ export function createWeKnoraClient({
         const data = await json(
           'list-chunks',
           'GET',
-          `/chunks/${encodeURIComponent(knowledgeId)}?page=${page}&page_size=${requested}`,
+          `/chunks/${encodeURIComponent(knowledgeId)}?page=${page}&page_size=${pageSize}`,
           undefined,
           { requestId, timeout: Math.max(1, deadline - Date.now()) },
         );
         const batch = asArray(data);
-        chunks.push(...batch);
+        chunks.push(...batch.slice(0, requested));
         const total = Number(data?.total ?? data?.pagination?.total);
         const hasMore = data?.has_more === true || data?.hasMore === true;
         if (chunks.length >= maximum) break;

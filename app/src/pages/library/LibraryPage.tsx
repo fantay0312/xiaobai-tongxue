@@ -423,7 +423,7 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation, onUseA
     rowForm.current = targets !== picked;
     if (targets !== picked) setSelected(targets.map((entry) => entry.id));
     setNotice(null); setForm(next); setName(next === 'rename' ? targets[0]?.name ?? '' : '');
-    setDestination(next === 'course' ? targets[0]?.courseImports?.[0]?.courseId ?? folders.find((folder) => folder.id === folderId)?.sourceCourseId ?? courses[0]?.id ?? '__new__' : '');
+    setDestination(next === 'course' ? targets[0]?.courseImports?.[0]?.courseId ?? folders.find((folder) => folder.id === folderId)?.sourceCourseId ?? courses[0]?.id ?? '__new__' : next === 'folder' ? folderId ?? '' : '');
     setNewCourseTitle(path.at(-1)?.name ?? '');
     if (next === 'course') void listCustomCourses().then((nextCourses) => { if (valid()) setCourses(nextCourses); }).catch(() => { if (valid()) warn('项目服务暂不可用。文件已保存在资料库，可稍后重试。'); });
   };
@@ -443,7 +443,7 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation, onUseA
     if (valid()) { setProject({ key: Date.now(), courseId: course.id, assetIds }); setPreviewId(null); }
   }, picked.length ? '文件已关联到项目，已有解析直接复用。' : '已打开项目工作台。');
   const submitForm = () => {
-    if (form === 'folder') void run(async () => { await createFolder(name, folderId); }, '文件夹已创建。');
+    if (form === 'folder') void run(async () => { await createFolder(name, destination || null); }, '文件夹已创建。');
     if (form === 'rename' && picked[0]) void run(async () => { await updateLibraryEntry(picked[0].id, { name }); }, '名称已更新。');
     if (form === 'move') updateMany({ parentId: destination || null }, '已移动到新位置。');
     if (form === 'course') startProject();
@@ -601,7 +601,7 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation, onUseA
       const expanded = !collapsed.includes(entry.id);
       const current = folderId === entry.id && !project;
       return (
-        <div key={entry.id}>
+        <div key={entry.id} className={s.folderBranch}>
           <SideNavItem
             icon={current ? <FolderOpen size={16} strokeWidth={1.75} /> : <Folder size={16} strokeWidth={1.75} />}
             label={entry.name}
@@ -997,7 +997,7 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation, onUseA
                 return <SideNavItem key={value} icon={categoryIcon(value, active)} label={label} meta={counts[value] || undefined} active={active} onClick={() => browse(null, value)} />;
               })}
             </SideGroup>
-            <SideGroup label="文件夹" action={<IconButton label="新建文件夹" size="sm" disabled={busy} onClick={newFolder}><FolderPlus size={15} /></IconButton>}>
+            <SideGroup label="文件夹" action={<IconButton label="新建文件夹" size="sm" disabled={busy} onClick={() => { newFolder(); setDestination(''); }}><FolderPlus size={15} /></IconButton>}>
               {folders.length ? renderFolders(null) : <SideEmpty>按课程或主题建文件夹，资料更好找。</SideEmpty>}
             </SideGroup>
           </SidePanel>
@@ -1027,7 +1027,7 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation, onUseA
                   <span>{picked.length ? '解析所选文件' : '学习项目'}</span>
                 </Button>
                 {!docked && <IconButton label="新建文件夹" variant="outline" disabled={busy} onClick={() => startForm('folder')}><FolderPlus size={16} /></IconButton>}
-                {!docked && <Button variant="solid" icon={<Upload size={15} />} disabled={!canUpload} onClick={() => inputRef.current?.click()}>上传</Button>}
+                <Button variant="outline" icon={<Upload size={15} />} disabled={!canUpload} onClick={() => inputRef.current?.click()}>上传文件</Button>
               </div>
             )}
           </header>
@@ -1144,7 +1144,7 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation, onUseA
                       </button>
                       {ORIGIN_ORDER.filter((origin) => originCounts.has(origin) || originFilter === origin).map((origin) => (
                         <button key={origin} type="button" role="radio" aria-checked={originFilter === origin} className={s.chip} onClick={() => { setOriginFilter(origin); setKindFilter('any'); }}>
-                          {originIcon(origin, 14)}{ORIGIN_LABELS[origin]}<i>{originCounts.get(origin) ?? 0}</i>
+                          {origin === 'upload' ? <Files size={14} /> : originIcon(origin, 14)}{origin === 'upload' ? '我上传的' : ORIGIN_LABELS[origin]}<i>{originCounts.get(origin) ?? 0}</i>
                         </button>
                       ))}
                     </div>
@@ -1263,7 +1263,7 @@ function LibrarySession({ owner, onLeaveGuardChange, onUseInConversation, onUseA
               <Input id="library-entry-name" autoFocus aria-label="项目名称" value={name} maxLength={180} placeholder="输入名称" onChange={(event) => setName(event.target.value)} />
             </Field>
           )}
-          {shown === 'move' && (
+          {(shown === 'move' || shown === 'folder') && (
             <OptionList
               label="目标位置"
               value={destination}

@@ -12,6 +12,7 @@ import type { StudyConversation } from '../../../engine/studyWorkspace';
 import type { Topic } from '../../../types';
 import { railKey, type View } from './views';
 import { partitionCourseGroups } from '../../../lib/courseVisibility';
+import { CourseMenu } from './CourseMenu';
 import t from '../terminal.module.css';
 
 export type CourseGroup = [key: string, group: { title: string; items: Topic[] }];
@@ -35,6 +36,7 @@ export interface TerminalSidebarProps {
   onSelectChat: (id: string) => void;
   onRenameChat: (id: string, title: string) => void;
   onDeleteChat: (id: string) => void;
+  onCourseChanged: (key: string, deleted: boolean) => Promise<void>;
   onView: (view: View) => void;
   /** 抽屉里点了账号、设置这类会另开弹窗的入口：先把抽屉收起 */
   onDismiss?: () => void;
@@ -67,10 +69,10 @@ export function TerminalSidebar(props: TerminalSidebarProps) {
     const containsActive = group.items.some((item) => item.topicId === topicId);
     const open = openGroups[key] ?? (containsActive || (!topicId && index === 0));
     return <div key={key} className={t.group} data-open={open || undefined}>
-      <button type="button" className={t.groupToggle} aria-expanded={open} onClick={() => setOpenGroups((current) => ({ ...current, [key]: !open }))}>
+      <div className={t.courseHeading}><button type="button" className={t.groupToggle} aria-expanded={open} onClick={() => setOpenGroups((current) => ({ ...current, [key]: !open }))}>
         <ChevronRight size={14} strokeWidth={2} className={t.groupChevron} />
         <BookOpen size={15} strokeWidth={1.75} /><span>{group.title}</span><small>{group.items.length}</small>
-      </button>
+      </button>{key.startsWith('custom:') && <CourseMenu key={key} id={key.slice(7)} title={group.title} onDone={(deleted) => props.onCourseChanged(key, deleted)} />}</div>
       {open && <div className={t.groupItems}>{group.items.map((item) => <button key={item.topicId} type="button" className={t.topicItem} aria-current={item.topicId === topicId ? 'page' : undefined} title={item.title} onClick={() => props.onOpenTopic(item.topicId)}><span>{item.title}</span></button>)}</div>}
     </div>;
   };

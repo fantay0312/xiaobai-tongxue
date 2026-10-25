@@ -43,6 +43,20 @@ test('chunk routes authorize, stage and complete through the existing ingest pat
 import test from 'node:test';
 import { createCustomContentRouter } from './custom-content/router.mjs';
 
+test('course management resolves the owner before forwarding rename and archive', async () => {
+  let owner = null;
+  const calls = [];
+  const router = createCustomContentRouter({
+    service: { async updateCourse(...args) { calls.push(args); return {}; }, async archiveCourse(...args) { calls.push(args); return { ok: true }; } },
+    async resolveOwner() { return owner; }, async readJson() { return { title: 'New title' }; }, async readRaw() { return Buffer.alloc(0); }, send() {},
+  });
+  const call = (method) => router.handle({ method, headers: {}, resume() {} }, {}, '/api/xb/courses/course');
+  await call('PATCH'); await call('DELETE'); assert.equal(calls.length, 0);
+  owner = { id: 'owner' };
+  await call('PATCH'); await call('DELETE');
+  assert.deepEqual(calls, [[owner, 'course', 'New title'], [owner, 'course']]);
+});
+
 test('custom content owner resolution failures return a bounded 503 response', async () => {
   const responses = [];
   const logs = [];

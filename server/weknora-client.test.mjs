@@ -24,6 +24,25 @@ async function body(req) {
   return Buffer.concat(chunks);
 }
 
+test('500 chunks use stable page offsets without duplicates or omitted last-page chunks', async () => {
+  const sizes = [];
+  await withServer(async (req, res) => {
+    const url = new URL(req.url, 'http://localhost');
+    const size = Number(url.searchParams.get('page_size'));
+    const page = Number(url.searchParams.get('page'));
+    sizes.push(size);
+    const start = (page - 1) * size;
+    const items = Array.from({ length: Math.min(size, 500 - start) }, (_, index) => ({ id: String(start + index), content: 'source' }));
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true, data: { items, total: 500 } }));
+  }, async (baseUrl) => {
+    const client = createWeKnoraClient({ baseUrl, apiKey: 'test' });
+    const chunks = await client.listChunks('document', '', 500);
+    assert.deepEqual(chunks.map((chunk) => chunk.id), Array.from({ length: 500 }, (_, index) => String(index)));
+  });
+  assert.deepEqual(sizes, [200, 200, 200]);
+});
+
 test('WeKnora client sends API key, request id and exact hybrid query_text contract', async () => {
   const requests = [];
   await withServer(async (req, res) => {

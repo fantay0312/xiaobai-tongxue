@@ -123,7 +123,8 @@ export function lectureSections(topic: Topic): { title: string; text: string }[]
   let current = '';
   blocks.forEach((block) => {
     const heading = /^(?:#{1,3}\s|\*\*[^\n]+\*\*\s*$)/.test(block);
-    if (current && (heading || current.length + block.length > 650)) { parts.push(current); current = ''; }
+    const onlyHeading = /^(?:#{1,3}\s[^\n]+|\*\*[^\n]+\*\*)$/.test(current);
+    if (current && !onlyHeading && (heading || current.length + block.length > 650)) { parts.push(current); current = ''; }
     current += `${current ? '\n\n' : ''}${block}`;
   });
   if (current) parts.push(current);

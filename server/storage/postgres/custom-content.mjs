@@ -207,7 +207,7 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
            LEFT JOIN custom_course_assets ca ON ca.course_id = c.id
            LEFT JOIN custom_assets a ON a.id = ca.asset_id
            LEFT JOIN custom_topics t ON t.course_id = c.id
-          WHERE c.owner_id = $1
+          WHERE c.owner_id = $1 AND c.archived_at IS NULL
           GROUP BY c.id
           ORDER BY c.created_at DESC`,
         [ownerId],
@@ -223,10 +223,27 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       assertUuid(ownerId);
       assertUuid(courseId);
       const result = await queryable.query(
-        'SELECT * FROM custom_courses WHERE id = $1 AND owner_id = $2',
+        'SELECT * FROM custom_courses WHERE id = $1 AND owner_id = $2 AND archived_at IS NULL',
         [courseId, ownerId],
       );
       return courseRow(result.rows[0]);
+    },
+
+    async manageOwned(ownerId, courseId, title = null) {
+      assertUuid(ownerId);
+      assertUuid(courseId);
+      return withTransaction(async (client) => {
+        const owned = await client.query('SELECT * FROM custom_courses WHERE id=$1 AND owner_id=$2 AND archived_at IS NULL FOR UPDATE', [courseId, ownerId]);
+        if (!owned.rows[0]) return null;
+        const active = await client.query("SELECT id FROM custom_compile_jobs WHERE course_id=$1 AND status IN ('queued','running','needs_review') LIMIT 1", [courseId]);
+        if (active.rows.length) { const error = new Error('compile-job-active'); error.status = 409; throw error; }
+        const result = title === null
+          ? await client.query('UPDATE custom_courses SET archived_at=NOW(),updated_at=NOW() WHERE id=$1 RETURNING *', [courseId])
+          : await client.query('UPDATE custom_courses SET title=$2,updated_at=NOW() WHERE id=$1 RETURNING *', [courseId, title]);
+        if (title === null) await client.query("UPDATE custom_topics SET status='archived',updated_at=NOW() WHERE course_id=$1", [courseId]);
+        else await client.query("UPDATE custom_topics SET payload=jsonb_set(payload,'{course}',to_jsonb($2::text)),updated_at=NOW() WHERE course_id=$1", [courseId, title]);
+        return courseRow(result.rows[0]);
+      });
     },
 
     async findById(courseId) {
@@ -839,6 +856,8 @@ export function createCustomContentRepository(queryable, { uuid = randomUUID } =
       assertUuid(courseId);
       for (const assetId of assetIds) assertUuid(assetId);
       return withTransaction(async (client) => {
+        const course = await client.query('SELECT id FROM custom_courses WHERE id=$1 AND archived_at IS NULL FOR SHARE', [courseId]);
+        if (!course.rows.length) return null;
         const selected = await client.query(
           `SELECT id
              FROM custom_assets

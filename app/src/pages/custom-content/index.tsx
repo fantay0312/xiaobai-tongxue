@@ -1,3 +1,5 @@
+import { orderedCourseAssets, readCompilePlan, saveCompilePlan } from '../../lib/courseCompilePlan';
+import { CourseMenu } from '../learn/shell/CourseMenu';
 import {
   memo,
   useCallback,
@@ -637,6 +639,7 @@ export default function CustomContentPage({ embedded = false, compilerOnly = fal
   const [uploadQueue, setUploadQueue] = useState<UploadItem[]>([]);
   const [dragging, setDragging] = useState(false);
   const [topicTitle, setTopicTitle] = useState('');
+  const [splitByFile, setSplitByFile] = useState(true);
   const [job, setJob] = useState<CompileJob | null>(null);
   const [recoveringJob, setRecoveringJob] = useState(false);
   const [startingCompile, setStartingCompile] = useState(false);
@@ -673,7 +676,7 @@ export default function CustomContentPage({ embedded = false, compilerOnly = fal
   const activeJobId = job?.id ?? null;
   const activeJobStatus = job?.status ?? null;
   const selectedReadyAssets = useMemo(
-    () => assets.filter((asset) => selectedAssetIds.has(asset.id) && asset.parseStatus === 'completed'),
+    () => orderedCourseAssets(assets.filter((asset) => selectedAssetIds.has(asset.id) && asset.parseStatus === 'completed')),
     [assets, selectedAssetIds],
   );
   const visibleAssets = useMemo(() => assets.filter((asset) => (
@@ -874,7 +877,8 @@ export default function CustomContentPage({ embedded = false, compilerOnly = fal
       onData: (next) => {
         setJob(next);
         setDraftRecord(next?.status === 'needs_review' && next.topic ? next.topic : null);
-        if (next) setSelectedAssetIds(new Set(next.assetIds));
+        const pending = readCompilePlan(authUser, courseId);
+        if (next || pending.length) setSelectedAssetIds(new Set([...pending, ...(next?.assetIds ?? [])]));
         setRecoveringJob(false);
         setJobError('');
       },
@@ -1060,10 +1064,12 @@ export default function CustomContentPage({ embedded = false, compilerOnly = fal
     const generationAtRequest = workspaceGenerationRef.current;
     const courseAtRequest = courseId;
     try {
+      const plannedAssets = splitByFile ? selectedReadyAssets.slice(0, 1) : selectedReadyAssets;
+      saveCompilePlan(authUser, courseId, splitByFile ? selectedReadyAssets.map((asset) => asset.id) : []);
       const nextJob = await startTopicCompile({
         courseId,
-        assetIds: selectedReadyAssets.map((asset) => asset.id),
-        ...(topicTitle.trim() ? { title: topicTitle.trim() } : {}),
+        assetIds: plannedAssets.map((asset) => asset.id),
+        ...(topicTitle.trim() ? { title: topicTitle.trim() } : splitByFile ? { title: plannedAssets[0].filename.replace(/\.[^.]+$/, '') } : {}),
       });
       if (workspaceIsCurrent(ownerAtRequest, generationAtRequest, courseAtRequest)) setJob(nextJob);
     } catch (error) {
@@ -1123,6 +1129,13 @@ export default function CustomContentPage({ embedded = false, compilerOnly = fal
       setPublishedTopicId(published.topicId);
       setDraftRecord({ ...published, payload: published.payload });
       setJob((current) => current ? { ...current, status: 'done' } : current);
+      const completed = new Set(job?.assetIds ?? []);
+      const remaining = readCompilePlan(authUser, courseId).filter((id) => !completed.has(id));
+      saveCompilePlan(authUser, courseId, remaining);
+      if (remaining.length) {
+        setSelectedAssetIds(new Set(remaining)); setTopicTitle('');
+        setNotice(`本课已发布，还有 ${remaining.length} 份课件待生成。点击“生成下一课草稿”继续，每课可单独校订。`);
+      } else if (splitByFile) setSelectedAssetIds(new Set());
       await Promise.all([refreshRuntimeTopics(true), refreshCourses(courseId)]);
     } catch (error) {
       if (!workspaceIsCurrent(ownerAtPublish, generationAtPublish, courseAtPublish)) return;
@@ -1380,6 +1393,7 @@ export default function CustomContentPage({ embedded = false, compilerOnly = fal
             <section id="custom-compiler" className={s.section}>
               <header className={sec.head}>
                 <h2 className={sec.title}>从资料生成学习课题</h2>
+                {selectedCourse && <CourseMenu key={selectedCourse.id} id={selectedCourse.id} title={selectedCourse.title} onDone={async () => { await Promise.all([refreshCourses(), refreshRuntimeTopics(true)]); }} />}
                 <p className={sec.note}>小砚会根据所选文件整理讲解、误区和练习。检查草稿后，添加到学习终端。</p>
               </header>
               {compilerOnly && <div className={s.parseSources}>
@@ -1389,8 +1403,10 @@ export default function CustomContentPage({ embedded = false, compilerOnly = fal
               </div>}
               {selectedCourse ? (
                 <div className={s.compileRow}>
+                  <label><span>课件编排</span><select className={s.field} aria-label="课件编排" disabled={compileLocked} value={splitByFile ? 'separate' : 'merged'} onChange={(event) => setSplitByFile(event.target.value === 'separate')}><option value="separate">按文件分课，逐课校订</option><option value="merged">合并为一个专题</option></select></label>
+                  {splitByFile && selectedReadyAssets.length > 0 && <p className={s.compileMeta}>按课件编号顺序生成，每份课件一课：{selectedReadyAssets.map((asset) => asset.filename).join(' → ')}。发布当前课后继续下一课。</p>}
                   <label><span>课题名<small>　可留空，由小砚拟题</small></span><input className={s.field} value={topicTitle} maxLength={160} onChange={(event) => setTopicTitle(event.target.value)} placeholder="例如：栈与函数调用" /></label>
-                  <button className={s.btn} type="button" onClick={() => void beginCompile()} disabled={!courseId || compileLocked || selectedReadyAssets.length === 0 || selectedReadyAssets.length !== selectedAssetIds.size || pendingAssetIds.size > 0}>{startingCompile ? '正在提交…' : recoveringJob ? '正在找回草稿…' : '生成课题草稿'}</button>
+                  <button className={s.btn} type="button" onClick={() => void beginCompile()} disabled={!courseId || compileLocked || selectedReadyAssets.length === 0 || selectedReadyAssets.length !== selectedAssetIds.size || pendingAssetIds.size > 0}>{startingCompile ? '正在提交…' : recoveringJob ? '正在找回草稿…' : splitByFile ? '生成下一课草稿' : '生成课题草稿'}</button>
                   <p className={s.compileMeta}>已选 <strong>{selectedReadyAssets.length} / 12</strong> 份可用资料{selectedReadyAssets.length !== selectedAssetIds.size ? '，请等待所选文件解析完成，或取消选择失败文件' : selectedReadyAssets.length === 0 ? '，勾选文件即可开始' : job?.status === 'needs_review' ? '，先校订或放弃现有草稿' : ''}</p>
                 </div>
               ) : (

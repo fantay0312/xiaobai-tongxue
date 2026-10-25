@@ -41,6 +41,7 @@ import type { PreparedImageAttachment } from '../lib/imageAttachment';
 import { describeTeachingImage } from '../lib/vision';
 import { listPublishedCustomTopics } from '../lib/customContent';
 import { hydrateRuntimeTopic, registerRuntimeTopics } from '../data/runtimeTopics';
+import { learningPreferenceReply } from '../engine/conversationRepair';
 // 小白的角色卡(性格文字 + 对老师的称呼):按账号存在本机,请台词时读出来传给渲染层
 import { personaCard } from './personaCard';
 import { normalizeLlmSettings } from '../lib/providers/settings';
@@ -438,9 +439,10 @@ export const useAppStore = create<AppState>()(
           const clarificationSource = questionClarificationSource(
             visibleText, lastXiaobaiText,
           );
+          const preferenceReply = learningPreferenceReply(visibleText, topic.title, get().global.persona);
           // 明确的“请小白重述上一问”整轮按元对话处理；图片也不送视觉模型，
           // 避免引用问题中的关键词被评估器误记为要点、认同、纠正或复习通过。
-          const description = clarificationSource
+          const description = clarificationSource || preferenceReply
             ? null
             : image ? await describeTeachingImage(image.blob, settings) : null;
           if (get().live?.sessionId !== sessionId) return { accepted: false, error: 'teaching-stale' };
@@ -461,6 +463,12 @@ export const useAppStore = create<AppState>()(
 
           const state = get().topicState(topic.topicId);
           const g = get().global;
+          if (preferenceReply) {
+            set((s) => s.live?.sessionId === sessionId ? {
+              live: { ...s.live, busy: false, mood: 'curious', messages: [...s.live.messages, msg('xiaobai', preferenceReply, { mood: 'curious' })] },
+            } : {});
+            return { accepted: true };
+          }
           // 老师最近说过的本课术语:一次算清,交给导演填指令卡(可见消息,不含图片识别文本)
           // 守门拦截过的老师发言(blocked)不进术语提取与小本本:被拦的注入句不得在下一轮以「老师上一轮讲解」回流评估器
           const unblockedMessages = live.messages.filter((m) => !m.blocked);

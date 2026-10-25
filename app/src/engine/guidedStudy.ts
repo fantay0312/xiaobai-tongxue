@@ -3,7 +3,7 @@ import { getSelfTest } from '../data/selfTest';
 import { lectureSections } from './studyWorkspace';
 
 export type StudyScene =
-  | { id: string; kind: 'explain' | 'example'; title: string; body: string }
+  | { id: string; kind: 'explain' | 'example' | 'read'; title: string; body: string }
   | { id: string; kind: 'quiz'; title: string; body: string; options: string[]; answer: number; explanation: string; questionId: string }
   | { id: string; kind: 'reflect'; title: string; body: string };
 
@@ -24,9 +24,9 @@ function fingerprint(text: string): string {
   return (hash >>> 0).toString(36);
 }
 
-export function studyScenes(topic: Topic, includeSelfTests = true): StudyScene[] {
-  const scene = (kind: 'explain' | 'example', title: string, body: string, index: number): StudyScene => ({ kind, title, body, id: `${kind}:${index}:${fingerprint(title + body)}` });
-  const scenes: StudyScene[] = lectureSections(topic).map((part, index) => scene('explain', part.title, part.text, index));
+export function studyScenes(topic: Topic, includeSelfTests = true, originalOnly = false): StudyScene[] {
+  const scene = (kind: 'explain' | 'example' | 'read', title: string, body: string, index: number): StudyScene => ({ kind, title, body, id: `${kind}:${index}:${fingerprint(title + body)}` });
+  const scenes: StudyScene[] = lectureSections(topic).map((part, index) => scene(originalOnly ? 'read' : 'explain', part.title, part.text.replace(/^#{1,3}\s+[^\n]+\n+/, ''), index));
   topic.prep.examples.forEach((example, index) => scenes.push(scene('example', example.title, `${example.code ? `\`\`\`\n${example.code}\n\`\`\`\n\n` : ''}${example.walkthrough}`, index)));
   const questions = [
     ...topic.misconceptions.map((item) => ({ id: item.mcId, body: item.probe.statement, options: ['正确', '不正确'], answer: item.probe.isTrue ? 0 : 1, explanation: item.probe.explanation })),

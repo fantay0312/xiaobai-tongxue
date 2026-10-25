@@ -4,6 +4,21 @@
  */
 import type { ChatMessage, Persona } from '../types';
 
+/** Classroom negotiation is a dialogue turn, not an explanation to grade. */
+export function learningPreferenceReply(utterance: string, title: string, persona: Persona): string | null {
+  const compact = utterance.replace(/\s+/g, ' ').trim();
+  if (compact.length > 500 || !/(?:你|小白)(?:现在|接下来|还|更|最)?(?:想|要|希望)(?:先|继续)?(?:了解|学|学习|听|讲|从).{0,16}(?:哪|什么|啥)|(?:你|小白).{0,8}(?:选一个|选哪|挑一个)/.test(compact)) return null;
+  // A substantive explanation following the invitation still belongs to the
+  // normal evaluator. Do not turn teaching into a preference-only exchange.
+  if (/(?:我先讲|下面讲|它的原理是|具体来说|定义是)/.test(compact)) return null;
+  const listed = compact.match(/(?:是|比如|例如|包括|从)[：:，,\s]*(.+?)[？?。!！]*$/)?.[1];
+  const options = listed?.split(/还是|或者|或是|[、，,；;]/).map((item) => item.replace(/^(?:是|先|学|学习|讲|听)\s*/, '').replace(/(?:呢|吗|吧|可以吗|好不好)?[？?。!！]*$/, '').trim()).filter((item) => item.length > 0 && item.length <= 40) ?? [];
+  const choice = options.length > 1 ? options[0] : title;
+  return persona === '严谨型' ? `我想先了解「${choice}」。老师能从一个简单的例子开始讲吗？`
+    : persona === '杠精型' ? `那我先选「${choice}」。老师能举个例子，让我看看它怎么用吗？`
+    : `我想先学「${choice}」！老师能先举个简单的例子吗？`;
+}
+
 const CLARIFICATION_PATTERNS = [
   /(?:没|没有|不)(?:太)?(?:听懂|听清|听明白|明白|理解|懂)(?:你|小白)(?:刚才|前面)?(?:在|想)?(?:说|问|提)(?:的)?(?:什么|啥|意思|问题)?/,
   /(?:没|没有|不)(?:太)?(?:听懂|听清|明白|理解|懂)(?:你|小白)(?:刚才|前面)?(?:的)?(?:意思|问题|问法)/,

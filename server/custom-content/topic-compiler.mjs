@@ -3,7 +3,7 @@ import { sourceCacheOptions } from './source-cache.mjs';
 import { searchSelectedSources } from './source-search.mjs';
 import { rankStudySources } from './study-sources.mjs';
 
-export const TOPIC_PROMPT_VERSION = 'custom-topic-v2';
+export const TOPIC_PROMPT_VERSION = 'custom-topic-v3';
 const MAX_SOURCE_CHARS = 72_000;
 /** 修补轮只需回看课件要点,给一半篇幅即可,省 token 也省时间 */
 const MAX_REPAIR_SOURCE_CHARS = 36_000;
@@ -170,6 +170,8 @@ const COMPILER_PERSONA = [
 ];
 
 const TOPIC_RULES = [
+  '微课必须围绕本课目标组织：用 Markdown 小标题按概念、原理、例子、易混点递进，先解释再举例，不能只拼接原文。标题用简洁知识点名，不用文件名或扩展名；封面、学校、教师、邮箱、版权、学期和目录只作元数据，不得编成概念、要点或题目。',
+  '只编写本次所选资料支持的一课；多份资料只在确实围绕同一个专题时整合。每段讲义要有实质教学内容，不能用“第几章”或单独一个标题充当讲解。',
   'checklist 3–7 条，id 用 C1、C2…；层级只用 L1/L2/L3/L5；每条 groundTruth 要简洁、keywords 为“任一组全命中”的二维数组、probeLine 必须是小白口吻问句。',
   'misconceptions 2–5 条，mcId 用 M1、M2…；triggerLine 必须是小白会说的错误疑问；injectAfterChecklist 恰好填一个已有的 checklist.id；probe 与 remedy 必须是对象；每条 remedy.predictionQuiz 恰好 3 题且 mcRef 填本误区 mcId。',
   'quizBank 至少 3 题；每题 checklistRef 只能填一个已有的 checklist.id（不能写 "C1-C2"）；answerIndex 从 0 开始。',

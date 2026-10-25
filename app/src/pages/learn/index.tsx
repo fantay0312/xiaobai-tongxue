@@ -272,7 +272,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
   }, [attachedArtifactSources, allArtifacts]);
   const scopedTopic = sourceScopedTopic(studyTopic, selectedSources);
   const includesLecture = selectedSources.some((source) => source.id === `lecture:${topicId}`);
-  const scenes = scopedTopic ? studyScenes(scopedTopic, includesLecture) : [];
+  const scenes = scopedTopic ? studyScenes(scopedTopic, includesLecture, !includesLecture) : [];
   const guided = restoreGuidedProgress(scenes, workspace.guided);
   const artifacts = (workspace.artifacts ?? []).filter((item) => !item.conversationId || item.conversationId === conversation.id);
   const artifact = artifacts.find((item) => item.id === params.get('artifact'));
@@ -383,6 +383,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
       if (!result.has(key)) result.set(key, { title: item.course, items: [] });
       result.get(key)!.items.push(item);
     });
+    for (const [key, group] of result) if (key.startsWith('custom:')) group.items.sort((a, b) => a.title.localeCompare(b.title, 'zh-CN', { numeric: true }));
     return [...result.entries()];
   }, [topics]);
   const openTopics = useMemo(() => topics.filter((item) => !item.locked), [topics]);
@@ -938,6 +939,10 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
     onNewChat: newChat, onSearch: () => { setNavSheetOpen(false); setPaletteOpen(true); }, onOpenTopic: openTopic,
     onAddCourse: () => switchView('library'), onSelectChat: selectChat, onRenameChat: renameChat, onDeleteChat: deleteChat,
     onView: (next: View) => switchView(next),
+    onCourseChanged: async (key: string, deleted: boolean) => {
+      await useAppStore.getState().loadCustomTopics(true);
+      if (deleted && topic && topicCourseKey(topic) === key) navigate('/learn');
+    },
   };
 
   const chatEmpty = (
@@ -1144,7 +1149,7 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
               const sections = lectureSections(scopedTopic);
               logActivity(owner, { source: 'reading', ...topicRef, summary: `读讲义「${studyTopic.title}」第 ${index + 1}/${sections.length} 段：${sections[index]?.title ?? ''}`.slice(0, 150) });
             }} onAsk={askAbout} />}
-            {view === 'guided' && <GuidedStudyPanel key={scopeKey} topic={scopedTopic} includeSelfTests={includesLecture} saved={workspace.guided} onSave={(next) => { logGuided(next); updateWorkspace((current) => ({ ...current, guided: next })); }} onAsk={askAbout} />}
+            {view === 'guided' && <GuidedStudyPanel key={scopeKey} topic={scopedTopic} includeSelfTests={includesLecture} originalOnly={!includesLecture} saved={workspace.guided} onSave={(next) => { logGuided(next); updateWorkspace((current) => ({ ...current, guided: next })); }} onAsk={askAbout} />}
             {view === 'practice' && <PracticePanel key={scopeKey} topic={scopedTopic} selfChecks={customCards} answers={workspace.practiceAnswers} onAnswers={(practiceAnswers) => updateWorkspace((current) => ({ ...current, practiceAnswers }))}
               onResult={(result) => logActivity(owner, {
                 source: 'practice', signal: result.correct ? 'success' : 'struggle', ...topicRef,

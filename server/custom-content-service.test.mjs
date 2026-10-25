@@ -44,13 +44,25 @@ function repositoryFixture() {
       },
       async claimStaleCreationIntents() { return []; },
       async listByOwner(ownerId) {
-        return [...courses.values()].filter((course) => course.ownerId === ownerId).map((course) => ({
+        return [...courses.values()].filter((course) => course.ownerId === ownerId && !course.archivedAt).map((course) => ({
           ...course,
           assetCount: [...assets.values()].filter((asset) => asset.courseId === course.id).length,
           topicCount: [...topics.values()].filter((topic) => topic.courseId === course.id && topic.status === 'ready').length,
         }));
       },
-      async findOwned(ownerId, id) { return [...courses.values()].find((course) => course.id === id && course.ownerId === ownerId) ?? null; },
+      async findOwned(ownerId, id) { return [...courses.values()].find((course) => course.id === id && course.ownerId === ownerId && !course.archivedAt) ?? null; },
+      async manageOwned(ownerId, id, title = null) {
+        const course = await this.findOwned(ownerId, id);
+        if (!course) return null;
+        if ([...jobs.values()].some((job) => job.courseId === id && ['queued', 'running', 'needs_review'].includes(job.status))) throw Object.assign(new Error('compile-job-active'), { status: 409 });
+        if (title === null) course.archivedAt = new Date().toISOString();
+        else course.title = title;
+        for (const topic of topics.values()) if (topic.courseId === id) {
+          if (title === null) topic.status = 'archived';
+          else topic.payload.course = title;
+        }
+        return course;
+      },
       async findById(id) { return courses.get(id) ?? null; },
       async findOwnedByKnowledgeBaseIds(ownerId, wkDocKbId, wkFaqKbId) {
         return [...courses.values()].find((course) => (
@@ -454,6 +466,26 @@ async function compileWorkerFixture(compile) {
   const asset = await repository.assets.create({ courseId: course.id, parseStatus: 'completed' });
   return { repository, service, owner, course, asset, options };
 }
+
+test('course rename and archive enforce ownership and preserve shared originals', async () => {
+  const f = await compileWorkerFixture();
+  await assert.rejects(f.service.updateCourse({ id: IDS[29] }, f.course.id, 'Renamed'), /course-not-found/);
+  await assert.rejects(f.service.archiveCourse({ id: IDS[29] }, f.course.id), /course-not-found/);
+  await assert.rejects(f.service.updateCourse(f.owner, f.course.id, ' '), /course-title-invalid/);
+  assert.equal((await f.service.updateCourse(f.owner, f.course.id, 'Renamed course')).title, 'Renamed course');
+  await f.service.archiveCourse(f.owner, f.course.id);
+  assert.deepEqual(await f.service.listCourses(f.owner), []);
+  assert.equal((await f.repository.assets.listOwned(f.owner.id, f.course.id)).length, 1, 'archiving must not remove canonical assets');
+  await assert.rejects(f.service.getCourse(f.owner, f.course.id), /course-not-found/);
+});
+
+test('course management blocks an unfinished compiled draft', async () => {
+  const f = await compileWorkerFixture();
+  await f.service.startCompile(f.owner, { courseId: f.course.id, assetIds: [f.asset.id] });
+  await waitTurn();
+  await assert.rejects(f.service.updateCourse(f.owner, f.course.id, 'New title'), /compile-job-active/);
+  await assert.rejects(f.service.archiveCourse(f.owner, f.course.id), /compile-job-active/);
+});
 
 test('chunk upload preparation enforces course ownership, size, type and digest before staging', async () => {
   const f = await compileWorkerFixture();

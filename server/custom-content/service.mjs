@@ -1296,6 +1296,21 @@ export function createCustomContentService({
       return (await repository.courses.listByOwner(owner.id)).map(publicCourse);
     },
 
+    async updateCourse(owner, courseId, titleValue) {
+      await requireCourse(owner.id, courseId);
+      const title = cleanText(titleValue, COURSE_TITLE_MAX);
+      if (title.length < 2) throw publicError('course-title-invalid');
+      const updated = await repository.courses.manageOwned(owner.id, courseId, title);
+      if (!updated) throw publicError('course-not-found', 404);
+      return publicCourse(updated);
+    },
+
+    async archiveCourse(owner, courseId) {
+      await requireCourse(owner.id, courseId);
+      if (!await repository.courses.manageOwned(owner.id, courseId)) throw publicError('course-not-found', 404);
+      return { ok: true };
+    },
+
     async validateLibraryCourse(owner, courseId) { await requireCourse(owner.id, courseId); },
 
     async parseLibraryFile(owner, input) {
@@ -1716,7 +1731,9 @@ export function createCustomContentService({
       if (!topic) throw publicError('topic-not-found', 404);
       await requireCourse(owner.id, topic.courseId);
       const all = await repository.assets.listOwned(owner.id, topic.courseId);
-      const assets = (await Promise.all(all.slice(0, 24).map((asset) => refreshAsset(asset, requestId)))).filter((asset) => asset.parseStatus === 'completed' && asset.enableStatus !== 'disabled');
+      const sourceIds = new Set((topic.payload?.sources ?? []).map((source) => source.assetId));
+      const scopedAssets = sourceIds.size ? all.filter((asset) => sourceIds.has(asset.id)) : [];
+      const assets = (await Promise.all(scopedAssets.slice(0, 24).map((asset) => refreshAsset(asset, requestId)))).filter((asset) => asset.parseStatus === 'completed' && asset.enableStatus !== 'disabled');
       return Promise.all(assets.map(async (asset) => {
         const chunks = await weknora.listChunks(asset.wkKnowledgeId, requestId, 500, sourceCacheOptions(asset));
         return { id: `asset:${asset.id}`, assetId: asset.id, title: asset.filename, kind: 'asset', content: chunks.slice(0, 6).map(chunkContent).filter(Boolean).join('\n\n').slice(0, 6000) };
