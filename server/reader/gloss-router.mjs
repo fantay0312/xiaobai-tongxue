@@ -3,13 +3,14 @@ import { buildMessages, BRIEF_TASK, systemFor, webBlock, searchQuery } from './g
 import { readerSearch, READER_TOPICS } from './router.mjs';
 import { COVER_PALETTES } from './gloss-cover-palettes.mjs';
 import { fetchGlossArticle } from './gloss-fetch.mjs';
+import { documentUploadId, MAX_DOCUMENT_BYTES } from './gloss-document-upload.mjs';
 const COLLECTIONS = ['articles', 'highlights', 'glosses', 'briefs', 'progress'];
 const idOk = (id) => typeof id === 'string' && /^[a-zA-Z0-9._-]{1,160}$/.test(id) && !['__proto__', 'constructor', 'prototype'].includes(id);
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const usageFor = (result) => result.usage ? { promptTokens: result.usage.promptTokens || 0, completionTokens: result.usage.completionTokens || 0, cachedTokens: result.usage.cachedTokens || 0 } : undefined;
-function validateArticle(doc) {
-  if (!doc || !idOk(doc.id) || typeof doc.title !== 'string' || !Array.isArray(doc.blocks) || doc.blocks.length > 20000 || JSON.stringify(doc).length > 4300000) throw fail('文章内容无效或过大。');
+function validateArticle(doc, maxBytes = 4300000) {
+  if (!doc || !idOk(doc.id) || typeof doc.title !== 'string' || !Array.isArray(doc.blocks) || doc.blocks.length > 20000 || Buffer.byteLength(JSON.stringify(doc)) > maxBytes) throw fail('文章内容无效或过大。');
   for (const b of doc.blocks) if (!idOk(b.id) || !['p', 'h2', 'h3', 'quote', 'li', 'pre', 'note', 'figure', 'table'].includes(b.type) || !Array.isArray(b.runs) || b.runs.some((r) => typeof r.text !== 'string') || (b.src && !/^https?:\/\//.test(b.src))) throw fail('文章段落无效。');
 }
 export function createGlossRouter({ postgres, legacy, library, modelService, media, resolveOwner, send, readJson, readRaw, reserveCalls }) {
@@ -20,6 +21,15 @@ export function createGlossRouter({ postgres, legacy, library, modelService, med
     try {
       if (path === '/media/catalog' && req.method === 'GET') return send(res, 200, await media.catalog());
       if (path === '/key') return send(res, 200, { house: true, ok: true });
+      const uploadMatch = /^\/article-uploads\/([a-zA-Z0-9._-]{1,160})\/([a-f0-9]{64})\/(\d{1,2})$/.exec(path);
+      if (uploadMatch && req.method === 'PUT') {
+        if (!postgres) throw fail('云端存储不可用。', 503);
+        const [, articleId, uploadId, index] = uploadMatch;
+        if (!idOk(articleId)) throw fail('书目标识无效。');
+        const input = await readJson(req, 710000);
+        await postgres.withTransaction((tx) => tx.gloss.stageDocumentPart(owner.id, articleId, uploadId, Number(index), input));
+        return send(res, 200, { ok: true });
+      }
       if (path === '/sync' && req.method === 'GET') {
         if (!postgres) throw fail('云端存储不可用。', 503);
         const url = new URL(req.url, 'http://localhost'); const since = url.searchParams.get('since') || '1970-01-01';
@@ -38,12 +48,22 @@ export function createGlossRouter({ postgres, legacy, library, modelService, med
         const input = await readJson(req, 4500000); const changes = input.changes || {}; let count = 0;
         for (const [collection, rows] of Object.entries(changes)) {
           if (!COLLECTIONS.includes(collection) || !Array.isArray(rows) || rows.length > 500) throw fail('同步记录无效。');
-          for (const row of rows) { if (!idOk(row.id) || !idOk(row.articleId) || (!row.deleted && (!row.data || typeof row.data !== 'object'))) throw fail('同步记录无效。'); if (row.doc) validateArticle(row.doc); count++; }
+          for (const row of rows) {
+            if (!idOk(row.id) || !idOk(row.articleId) || (!row.deleted && (!row.data || typeof row.data !== 'object'))) throw fail('同步记录无效。');
+            if (row.docUpload !== undefined && (collection !== 'articles' || row.deleted || row.doc || row.id !== row.articleId || !documentUploadId(row.docUpload))) throw fail('正文上传引用无效。');
+            if (row.doc) { validateArticle(row.doc); if (collection !== 'articles' || row.doc.id !== row.id || row.articleId !== row.id) throw fail('正文与书目不匹配。'); }
+            count++;
+          }
         }
         if (count > 1000) throw fail('本次同步记录过多。');
         const revisions = await postgres.withTransaction(async (tx) => {
           const result = {};
-          for (const [c, rows] of Object.entries(changes)) for (const row of rows) result[`${c}:${row.id}`] = await tx.gloss.put(owner.id, c, row);
+          for (const [c, rows] of Object.entries(changes)) for (const row of rows) {
+            const doc = row.docUpload ? await tx.gloss.uploadedDocument(owner.id, row.id, row.docUpload) : row.doc;
+            if (row.docUpload) validateArticle(doc, MAX_DOCUMENT_BYTES);
+            result[`${c}:${row.id}`] = await tx.gloss.put(owner.id, c, { ...row, doc });
+            if (row.docUpload) await tx.gloss.consumeUpload(owner.id, row.id, row.docUpload);
+          }
           return result;
         });
         return send(res, 200, { ok: true, count, revisions });

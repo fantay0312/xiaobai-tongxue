@@ -54,4 +54,111 @@ globalThis.fetch = async (_url, init) => {
 sync = startSync('race-test'); await pause(); sync.stop();
 assert.equal(attempt, 2); assert.equal(pulls, 2);
 reset();
-console.log('Reader sync: concurrent note preservation, 409 recovery and 501-row batching passed.');
+const { createHash } = await import('node:crypto');
+const largeDoc = { id: 'large-book', title: '大篇幅中文', origin: 'file' as const,
+  blocks: [{ id: 'p1', type: 'p' as const, runs: [{ text: '中文🙂\\"\n'.repeat(450_000) }] }] };
+const item = { id: largeDoc.id, title: largeDoc.title, origin: 'file' as const, addedAt: 1, words: 1, rev: 1 };
+const waitFor = async (condition: () => boolean) => {
+  const deadline = Date.now() + 5000;
+  while (!condition()) {
+    if (Date.now() > deadline) throw new Error('sync did not settle');
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+};
+const baseline = (user: string) => JSON.parse(values.get(`gloss:sync:${user}`) || '{}');
+const seed = () => {
+  reset(); values.clear();
+  values.set(`gloss:doc:${largeDoc.id}`, JSON.stringify(largeDoc));
+  useStore.setState({ hydrated: true, library: [item] });
+};
+const parts = new Map<number, Buffer>();
+let committedDoc: typeof largeDoc | undefined;
+let uploadId = ''; let failedPart = false; let syncErrors = 0;
+events.addEventListener('gloss:sync-error', () => syncErrors++);
+globalThis.fetch = async (url, init) => {
+  if (!init?.method) return Response.json({ now: new Date().toISOString(), changes: {} });
+  if (init.method === 'PUT') {
+    const body = JSON.parse(String(init.body));
+    const index = Number(String(url).split('/').at(-1));
+    uploadId = String(url).split('/').at(-2)!;
+    assert.ok(Buffer.byteLength(String(init.body)) < 710000, 'each encoded part is bounded');
+    assert.equal(baseline('large').seen?.articles?.[item.id], undefined, 'never acknowledge a partial upload');
+    if (index === 1 && !failedPart) { failedPart = true; return new Response(null, { status: 503 }); }
+    parts.set(index, Buffer.from(body.chunk, 'base64'));
+    return Response.json({ ok: true });
+  }
+  const row = JSON.parse(String(init.body)).changes.articles[0];
+  assert.equal(row.doc, undefined);
+  assert.equal(row.docUpload, uploadId);
+  const bytes = Buffer.concat([...parts.entries()].sort(([a], [b]) => a - b).map(([, b]) => b));
+  assert.equal(createHash('sha256').update(bytes).digest('hex'), uploadId);
+  assert.deepEqual(JSON.parse(bytes.toString()), largeDoc, 'Chinese, emoji, escapes and line breaks round-trip exactly');
+  committedDoc = JSON.parse(bytes.toString());
+  return Response.json({ revisions: { [`articles:${item.id}`]: 1 } });
+};
+
+seed();
+sync = startSync('large'); await waitFor(() => syncErrors === 1); sync.stop();
+assert.equal(baseline('large').seen.articles[item.id], undefined, 'failed part leaves the book pending');
+sync = startSync('large'); await waitFor(() => !!baseline('large').seen?.articles?.[item.id]); sync.stop();
+assert.deepEqual(committedDoc, largeDoc, 'retry completes the full cloud document');
+let duplicatePushes = 0;
+globalThis.fetch = async (_url, init) => {
+  if (init?.method) duplicatePushes++;
+  return Response.json({ now: new Date().toISOString(), changes: {} });
+};
+sync = startSync('large'); await pause(); sync.stop();
+assert.equal(duplicatePushes, 0, 'acknowledged document is not uploaded again');
+
+// A second device reads the complete cloud document, without the first device's storage.
+reset(); values.clear();
+const { fetchText } = await import('../gloss/src/lib/sync');
+globalThis.fetch = async () => Response.json({ doc: committedDoc });
+assert.deepEqual(await fetchText(item.id), largeDoc);
+
+// Old metadata-only acknowledgements are discovered by a one-time full pull and repaired.
+seed();
+values.set('gloss:sync:repair', JSON.stringify({ since: '2026-10-15T00:00:00Z',
+  seen: { ...empty(), articles: { [item.id]: [JSON.stringify(item), item.id] } }, revisions: { [`articles:${item.id}`]: 3 } }));
+let repaired = false;
+globalThis.fetch = async (url, init) => {
+  if (!init?.method) {
+    assert.equal(url, '/api/sync', 'legacy baseline must inspect old rows too');
+    return Response.json({ now: new Date().toISOString(), changes: { articles: [{ id: item.id, articleId: item.id, data: item, revision: 3, docMissing: true }] } });
+  }
+  if (init.method === 'POST') {
+    assert.equal(JSON.parse(String(init.body)).changes.articles[0].revision, 3);
+    repaired = true;
+    return Response.json({ revisions: { [`articles:${item.id}`]: 4 } });
+  }
+  return Response.json({ ok: true });
+};
+sync = startSync('repair'); await waitFor(() => repaired && baseline('repair').revisions?.[`articles:${item.id}`] === 4); sync.stop();
+
+seed();
+const errorCount = syncErrors;
+globalThis.fetch = async (_url, init) => !init?.method
+  ? Response.json({ now: new Date().toISOString(), changes: {} })
+  : init.method === 'PUT' ? Response.json({ ok: true }) : new Response(null, { status: 503 });
+sync = startSync('commit-failed'); await waitFor(() => syncErrors > errorCount); sync.stop();
+assert.equal(baseline('commit-failed').seen.articles[item.id], undefined, 'failed final save never acknowledges the document');
+
+seed();
+const malformedErrors = syncErrors;
+globalThis.fetch = async (_url, init) => !init?.method
+  ? Response.json({ now: new Date().toISOString(), changes: {} }) : Response.json({ ok: true });
+sync = startSync('malformed-ack'); await waitFor(() => syncErrors > malformedErrors); sync.stop();
+assert.equal(baseline('malformed-ack').seen.articles[item.id], undefined, 'a malformed final acknowledgement cannot mark a document synced');
+
+reset(); values.clear();
+useStore.setState({ hydrated: true, library: [item] });
+const missingErrors = syncErrors;
+let missingWrites = 0;
+globalThis.fetch = async (_url, init) => {
+  if (init?.method) missingWrites++;
+  return Response.json({ now: new Date().toISOString(), changes: {} });
+};
+sync = startSync('missing'); await waitFor(() => syncErrors > missingErrors); sync.stop();
+assert.equal(missingWrites, 0, 'a missing local document cannot become a metadata-only acknowledgement');
+reset();
+console.log('Reader sync: conflicts, batching, large UTF-8 documents, interrupted retry, cross-device reads, legacy repair and failed commits passed.');
