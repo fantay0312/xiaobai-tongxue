@@ -89,7 +89,7 @@ export type LibraryItem = {
 export type Progress = { block: string; pct: number; at: number };
 
 /** A row from the account, as the sync route sends it. `data` is null on a tombstone. */
-export type RemoteRow<T> = { id: string; articleId: string; data: T | null; deleted: boolean; revision?: number };
+export type RemoteRow<T> = { id: string; articleId: string; data: T | null; deleted: boolean; revision?: number; docMissing?: boolean };
 export type RemoteChanges = {
   articles?: RemoteRow<LibraryItem>[];
   highlights?: RemoteRow<Highlight>[];

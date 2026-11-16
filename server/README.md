@@ -265,3 +265,13 @@ The file-only study path accepts library IDs and re-resolves evidence on the ser
 常规网关与隔离测试部署共同使用 `learning-answer-router.mjs` 和 `learning-answer.mjs`，提供经过鉴权的 `GET /api/learning/status` 与 `POST /api/learning/answer`。客户端只提交问题、课题 ID 和资料选择；服务器重新校验归属并生成有限来源，模型、系统提示、输出上限和调用额度由服务器控制。
 
 回答使用 SSE 发送检索、生成、校验状态及正文，完整校验后才交付交互组件。断开连接会取消上游；未知组件、无效引用、截断或缺失终态不能成为成功回答。`server/shared/learning-ui.mjs` 是前后端共用的组件数据契约。未配置真实文件存储或模型时状态返回不可用，不提供伪造结果。
+
+## 阅读正文分块同步
+
+先应用 `015_gloss_document_upload.sql`，再发布网关和阅读前端。原有小正文仍随 `/api/reader/gloss/sync` 提交；超出单次同步体积的大正文先经 `PUT /api/reader/gloss/article-uploads/:articleId/:sha256/:index` 上传，最后用书目行中的 `docUpload` 引用，在同一事务内校验、保存正文与书目，并清理暂存分块。暂存分块不作为可读取的云端文章。
+
+每块最多 512 KiB，正文 UTF-8 JSON 最多 32 MiB，仍保留 20,000 个段落上限。账号隔离、原有 revision 冲突保护保持生效；重复分块可安全重传。单账号暂存上限 64 MiB，分块一小时后过期，后续上传会回收过期数据。未完整保存、校验失败或正文超过上限时，客户端保留本机内容，不确认同步成功。
+
+新客户端首次同步会全量检查旧书目；若云端正文缺失且当前设备仍保留正文，则补传。原设备正文已丢失时无法仅凭书目还原。
+
+验证：`cd app && npm run test:reader`；`cd server && node --test gloss-document-upload.test.mjs gloss-reader.test.mjs reader-parity.test.mjs`。真实 PostgreSQL 验证需将 `READER_TEST_DATABASE_URL` 指向专用测试数据库，再运行 `node --test gloss-document-upload-postgres.test.mjs`；该测试使用独立随机 schema，并在结束时清理。

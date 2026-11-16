@@ -9,8 +9,8 @@
  *   entities in the baseline that are gone locally, sent as tombstones.
  * - Pull: rows changed since the last pull, merged in with applyRemote. The
  *   baseline then records them, so they are not pushed straight back.
- * - Texts travel separately: pushed once with the shelf entry, fetched on
- *   another device only when it is opened there.
+ * - Texts are committed with the shelf entry; large texts first travel in
+ *   checked chunks. Another device fetches a text only when it is opened.
  *
  * The baseline lives in localStorage per user, so a second account on the
  * same browser starts fresh and receives what is on this device.
@@ -23,14 +23,15 @@ import { forgetDoc, loadDoc, saveDoc, useStore, type RemoteChanges } from "./sto
 import type { Article } from "./article";
 import { forgetCover } from "./covers";
 import { readerVisible } from '../compat/visibility';
+import { uploadDocument } from './document-upload';
 
 const COLLECTIONS = ["articles", "highlights", "glosses", "briefs", "progress"] as const;
 type Collection = (typeof COLLECTIONS)[number];
 
 type Entity = { articleId: string; data: unknown; key: string };
 type Snapshot = { entities: Record<Collection, Map<string, Entity>>; busy: Set<string> };
-type Baseline = { since: string | null; seen: Record<Collection, Record<string, [key: string, articleId: string]>>; revisions: Record<string, number> };
-type OutRow = { id: string; articleId: string; data: unknown; deleted?: boolean; doc?: Article; revision?: number };
+type Baseline = { since: string | null; seen: Record<Collection, Record<string, [key: string, articleId: string]>>; revisions: Record<string, number>; documentSyncVersion?: number };
+type OutRow = { id: string; articleId: string; data: unknown; deleted?: boolean; doc?: Article; docUpload?: string; revision?: number };
 
 /** Pushes are split to stay well under the 4.5MB request cap. */
 const BATCH_BYTES = 1_500_000;
@@ -113,8 +114,8 @@ export function startSync(userId: string) {
     let remoteDoc: Article | undefined;
     if (c === 'articles' && !row.deleted) {
       const response = await fetch(`/api/articles/${encodeURIComponent(row.id)}`);
-      if (!response.ok) throw new Error('conflict-backup-unavailable');
-      remoteDoc = (await response.json()).doc;
+      if (!response.ok && !(row.docMissing && response.status === 404)) throw new Error('conflict-backup-unavailable');
+      if (response.ok) remoteDoc = (await response.json()).doc;
     }
     // Keep both versions before retrying a local write; never discard an unexported conflict.
     localStorage.setItem(`gloss:sync-conflicts:${userId}`, JSON.stringify([...conflicts, {
@@ -143,7 +144,8 @@ export function startSync(userId: string) {
         const textChanged = !previous || (JSON.parse(previous) as { rev?: number }).rev !== (e.data as { rev?: number }).rev;
         if (c === "articles" && (e.data as { origin?: string }).origin !== "sample" && textChanged) {
           const doc = await loadDoc(id);
-          if (doc) row.doc = doc;
+          if (!doc) throw new Error('document-unavailable');
+          row.doc = doc;
         }
         rows.push({ c, row, key: e.key, size: bytesOf(row) });
       }
@@ -153,14 +155,6 @@ export function startSync(userId: string) {
       }
     }
     if (!rows.length) return;
-
-    // Too big for one request even alone: send the shelf entry without the text.
-    for (const r of rows) {
-      if (r.size > MAX_BODY && r.row.doc) {
-        delete r.row.doc;
-        r.size = bytesOf(r.row);
-      }
-    }
 
     let batch: typeof rows = [];
     let bytes = 0;
@@ -173,7 +167,9 @@ export function startSync(userId: string) {
       const res = await fetch("/api/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ changes }) });
       if (res.status === 409) throw new SyncConflict();
       if (!res.ok) throw new Error(`push ${res.status}`);
-      Object.assign(base.revisions, (await res.json()).revisions || {});
+      const { revisions } = await res.json();
+      if (!revisions || batch.some((r) => !Number.isSafeInteger(revisions[`${r.c}:${r.row.id}`]) || revisions[`${r.c}:${r.row.id}`] < 1)) throw new Error('sync-acknowledgement-invalid');
+      Object.assign(base.revisions, revisions);
       for (const r of batch) {
         if (r.key === null) delete base.seen[r.c][r.row.id];
         else base.seen[r.c][r.row.id] = [r.key, r.row.articleId];
@@ -184,6 +180,16 @@ export function startSync(userId: string) {
       counts = {};
     };
     for (const r of rows) {
+      if (r.size > MAX_BODY && r.row.doc) {
+        await flush();
+        r.row.docUpload = await uploadDocument(r.row.doc);
+        delete r.row.doc;
+        r.size = bytesOf(r.row);
+        // Commit each staged document before uploading another one.
+        batch.push(r);
+        await flush();
+        continue;
+      }
       if (bytes + r.size > BATCH_BYTES || batch.length >= MAX_ROWS || (counts[r.c] ?? 0) >= MAX_COLLECTION_ROWS) await flush();
       batch.push(r);
       bytes += r.size;
@@ -203,7 +209,7 @@ export function startSync(userId: string) {
   }
 
   async function pull(full = false) {
-    const q = !full && base.since ? `?since=${encodeURIComponent(new Date(Date.parse(base.since) - OVERLAP_MS).toISOString())}` : "";
+    const q = !full && base.documentSyncVersion === 1 && base.since ? `?since=${encodeURIComponent(new Date(Date.parse(base.since) - OVERLAP_MS).toISOString())}` : "";
     const res = await fetch(`/api/sync${q}`);
     if (!res.ok) throw new Error(`pull ${res.status}`);
     const { now, changes } = (await res.json()) as { now: string; changes: RemoteChanges };
@@ -224,7 +230,7 @@ export function startSync(userId: string) {
     // A text replaced on another device: drop this device's copy so it is fetched fresh on open.
     for (const r of changes.articles ?? []) {
       const before = base.seen.articles[r.id];
-      if (!r.deleted && r.data && before && (r.data as { rev?: number }).rev !== undefined && stable(r.data) !== before[0]) void forgetDoc(r.id);
+      if (!r.deleted && !r.docMissing && r.data && before && (r.data as { rev?: number }).rev !== undefined && stable(r.data) !== before[0]) void forgetDoc(r.id);
       // Removed on another device: its painted cover goes from this one too.
       if (r.deleted) void forgetCover(r.id);
     }
@@ -236,10 +242,14 @@ export function startSync(userId: string) {
       for (const r of changes[c] ?? []) {
         const e = entities[c].get(r.id);
         if (r.deleted) delete base.seen[c][r.id];
+        // Older clients could acknowledge a shelf row after dropping its large text.
+        // Re-upload from the device that still has it; other devices keep the shelf.
+        else if (c === 'articles' && r.docMissing && e && (e.data as { origin?: string }).origin !== 'sample' && await loadDoc(r.id)) delete base.seen[c][r.id];
         else if (e) base.seen[c][r.id] = [e.key, e.articleId];
       }
     }
     base.since = now;
+    base.documentSyncVersion = 1;
     save();
   }
 

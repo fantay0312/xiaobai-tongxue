@@ -1,7 +1,11 @@
+import { stageDocumentPart, readUploadedDocument } from './gloss-document-upload.mjs';
 const fail = () => Object.assign(new Error('云端版本已更新，本机修改已保留，请刷新后重试。'), { status: 409 });
 export function createGlossRepository(db) {
   return {
-    async list(owner, since = '1970-01-01') { return (await db.query('SELECT collection,id,article_id AS "articleId",data,deleted,revision FROM reader_gloss_entities WHERE owner_id=$1 AND updated_at >= $2 ORDER BY updated_at', [owner, since])).rows; },
+    async list(owner, since = '1970-01-01') { return (await db.query('SELECT collection,id,article_id AS "articleId",data,deleted,revision,(doc IS NULL) AS "docMissing" FROM reader_gloss_entities WHERE owner_id=$1 AND updated_at >= $2 ORDER BY updated_at', [owner, since])).rows; },
+    stageDocumentPart: (owner, articleId, uploadId, index, input) => stageDocumentPart(db, owner, articleId, uploadId, index, input),
+    uploadedDocument: (owner, articleId, uploadId) => readUploadedDocument(db, owner, articleId, uploadId),
+    async consumeUpload(owner, articleId, uploadId) { await db.query('DELETE FROM reader_gloss_upload_parts WHERE owner_id=$1 AND article_id=$2 AND upload_id=$3', [owner, articleId, uploadId]); },
     async put(owner, collection, row) {
       const revision = Number.isSafeInteger(row.revision) ? row.revision : 0;
       const result = await db.query(`WITH updated AS (UPDATE reader_gloss_entities SET data=$5::jsonb,doc=COALESCE($6::jsonb,doc),deleted=$7,revision=revision+1,updated_at=NOW()
