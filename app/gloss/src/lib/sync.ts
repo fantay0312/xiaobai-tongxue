@@ -23,6 +23,7 @@ import { forgetDoc, loadDoc, saveDoc, useStore, type RemoteChanges } from "./sto
 import type { Article } from "./article";
 import { forgetCover } from "./covers";
 import { readerVisible } from '../compat/visibility';
+import { syncRequest } from './sync-request';
 
 const COLLECTIONS = ["articles", "highlights", "glosses", "briefs", "progress"] as const;
 type Collection = (typeof COLLECTIONS)[number];
@@ -112,9 +113,9 @@ export function startSync(userId: string) {
     if (conflicts.some((r) => r.collection === c && r.id === row.id && r.revision === row.revision)) return;
     let remoteDoc: Article | undefined;
     if (c === 'articles' && !row.deleted) {
-      const response = await fetch(`/api/articles/${encodeURIComponent(row.id)}`);
+      const { response, data } = await syncRequest<{ doc: Article }>(`/api/articles/${encodeURIComponent(row.id)}`);
       if (!response.ok) throw new Error('conflict-backup-unavailable');
-      remoteDoc = (await response.json()).doc;
+      remoteDoc = data!.doc;
     }
     // Keep both versions before retrying a local write; never discard an unexported conflict.
     localStorage.setItem(`gloss:sync-conflicts:${userId}`, JSON.stringify([...conflicts, {
@@ -170,10 +171,10 @@ export function startSync(userId: string) {
       const changes: Partial<Record<Collection, OutRow[]>> = {};
       for (const r of batch) (changes[r.c] ??= []).push(r.row);
       for (const r of batch) r.row.revision = base.revisions[`${r.c}:${r.row.id}`] ?? 0;
-      const res = await fetch("/api/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ changes }) });
+      const { response: res, data } = await syncRequest<{ revisions: Record<string, number> }>("/api/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ changes }) });
       if (res.status === 409) throw new SyncConflict();
       if (!res.ok) throw new Error(`push ${res.status}`);
-      Object.assign(base.revisions, (await res.json()).revisions || {});
+      Object.assign(base.revisions, data?.revisions || {});
       for (const r of batch) {
         if (r.key === null) delete base.seen[r.c][r.row.id];
         else base.seen[r.c][r.row.id] = [r.key, r.row.articleId];
@@ -204,9 +205,9 @@ export function startSync(userId: string) {
 
   async function pull(full = false) {
     const q = !full && base.since ? `?since=${encodeURIComponent(new Date(Date.parse(base.since) - OVERLAP_MS).toISOString())}` : "";
-    const res = await fetch(`/api/sync${q}`);
+    const { response: res, data } = await syncRequest<{ now: string; changes: RemoteChanges }>(`/api/sync${q}`);
     if (!res.ok) throw new Error(`pull ${res.status}`);
-    const { now, changes } = (await res.json()) as { now: string; changes: RemoteChanges };
+    const { now, changes } = data!;
     const local = snapshot();
     for (const c of COLLECTIONS) {
       const rows = changes[c] || [];
@@ -290,9 +291,9 @@ export function startSync(userId: string) {
 /** Fetch one text from the account and keep it on this device. Null when signed out or not there. */
 export async function fetchText(id: string): Promise<Article | null> {
   try {
-    const res = await fetch(`/api/articles/${encodeURIComponent(id)}`);
+    const { response: res, data } = await syncRequest<{ doc: Article }>(`/api/articles/${encodeURIComponent(id)}`);
     if (!res.ok) return null;
-    const { doc } = (await res.json()) as { doc: Article };
+    const { doc } = data!;
     await saveDoc(doc);
     return doc;
   } catch {

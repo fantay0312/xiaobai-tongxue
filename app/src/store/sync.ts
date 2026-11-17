@@ -7,6 +7,7 @@ import {
 } from './pendingSync';
 import { pendingSyncQueue } from './pendingSyncQueue';
 import { API_BASE, gatewayFetch } from '../lib/api';
+import { syncRequest } from '../../gloss/src/lib/sync-request';
 import { getAllTopics } from '../data';
 import { deriveEvolution } from '../engine/evolution';
 import { EMPTY_MEMORY, rebuildMemoryFromHistory } from '../engine/learnerMemory';
@@ -94,9 +95,8 @@ async function fetchRemote(): Promise<{
   updatedAt: string | null;
 } | null> {
   try {
-    const response = await gatewayFetch(`${API_BASE}/state`);
+    const { response, data: value } = await syncRequest(`${API_BASE}/state`, {}, gatewayFetch);
     if (!response.ok) return null;
-    const value: unknown = await response.json();
     const document = value as { state?: unknown; updatedAt?: unknown };
     return {
       state: document?.state && typeof document.state === 'object'
@@ -150,12 +150,12 @@ async function performPush(useKeepalive = false, retriedConflict = false): Promi
     const state = applyOperations(serverState, operations);
     const body = JSON.stringify({ state, baseVersion: serverVersion });
     dirty = false;
-    const response = await gatewayFetch(`${API_BASE}/state`, {
+    const { response, data: value } = await syncRequest(`${API_BASE}/state`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body,
       ...(useKeepalive && new Blob([body]).size <= KEEPALIVE_LIMIT ? { keepalive: true } : {}),
-    });
+    }, gatewayFetch);
     if (!syncIsCurrent(generation, user)) return;
     if (response.status === 401) {
       dirty = true;
@@ -180,10 +180,10 @@ async function performPush(useKeepalive = false, retriedConflict = false): Promi
       scheduleRetry();
       return;
     }
-    const value: unknown = await response.json().catch(() => null);
     if (!syncIsCurrent(generation, user)) return;
     const updatedAt = (value as { updatedAt?: unknown })?.updatedAt;
-    if (typeof updatedAt === 'string') serverVersion = updatedAt;
+    if (typeof updatedAt !== 'string' || !updatedAt) throw new Error('sync-acknowledgement-invalid');
+    serverVersion = updatedAt;
     serverState = state;
     pendingSyncQueue.clear(user, operations.map((operation) => operation.id));
     const remaining = pendingSyncQueue.list(user);
