@@ -55,3 +55,5 @@ npm run livetest   # 真实 API 全链路实测(需 .env.local;语义评估/误�
 
 改动 `src/data`(知识点/误区库)或 `src/engine` 后,必须重跑 `npm run simulate`;
 涉及 API 链路的改动加跑 `npm run livetest`。
+
+学习存档及阅读同步请求的总时限为 30 秒，覆盖响应头和 JSON 正文。超时保留本机待同步内容，交回原有同步调度处理；请求封装不会自行重发写操作。学习存档只有收到有效的 `updatedAt` 确认后才清除本地待同步队列。运行 `npm run test:sync` 验证队列、超时和取消行为，运行 `npm run test:reader` 验证阅读同步中断后的恢复。

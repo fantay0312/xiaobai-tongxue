@@ -54,4 +54,31 @@ globalThis.fetch = async (_url, init) => {
 sync = startSync('race-test'); await pause(); sync.stop();
 assert.equal(attempt, 2); assert.equal(pulls, 2);
 reset();
-console.log('Reader sync: concurrent note preservation, 409 recovery and 501-row batching passed.');
+// A response body can stall after HTTP 200; it must not acknowledge local notes or block later sync.
+values.clear();
+useStore.setState({ hydrated: true, highlights: { article: [note] } });
+const nativeSetTimeout = globalThis.setTimeout;
+globalThis.setTimeout = ((fn: () => void, delay: number) => nativeSetTimeout(fn, delay === 30_000 ? 10 : delay)) as typeof setTimeout;
+let errors = 0;
+const onError = () => { errors++; };
+events.addEventListener('gloss:sync-error', onError);
+try {
+  globalThis.fetch = async (_url, init) => !init?.method
+    ? Response.json({ now: new Date().toISOString(), changes: {} })
+    : { ok: true, status: 200, json: () => new Promise(() => {}) } as unknown as Response;
+  sync = startSync('timeout-test'); await pause(); sync.stop();
+  assert.equal(errors, 1);
+  assert.equal(JSON.parse(values.get('gloss:sync:timeout-test')!).seen.highlights.note, undefined);
+  assert.equal(useStore.getState().highlights.article[0].note, '本机笔记');
+  globalThis.fetch = async (_url, init) => !init?.method
+    ? Response.json({ now: new Date().toISOString(), changes: {} })
+    : Response.json({ revisions: { 'highlights:note': 1 } });
+  sync = startSync('timeout-test'); await pause(); sync.stop();
+  assert.ok(JSON.parse(values.get('gloss:sync:timeout-test')!).seen.highlights.note, 'next sync saves the retained note');
+} finally {
+  sync.stop();
+  globalThis.setTimeout = nativeSetTimeout;
+  events.removeEventListener('gloss:sync-error', onError);
+}
+reset();
+console.log('Reader sync: note preservation, conflicts, batching and recovery after a stalled response body passed.');
