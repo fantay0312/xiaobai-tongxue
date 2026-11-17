@@ -27,7 +27,7 @@ import { ModelUnavailableError, streamModel } from '../../lib/modelGateway';
 import { Button, Empty, IconButton, Sheet, Spinner, Tabs, Textarea } from '../../components/ui';
 import { CoachMarkdown } from '../../components/coach/CoachMarkdown';
 import { AttachPicker, type AttachTab } from '../../components/handoff/AttachPicker';
-import { artifactSourceId, artifactSources, isArtifactSourceId, type AttachSelection } from '../../components/handoff/materials';
+import { artifactSourceId, artifactSources, conversationSourceSelection, isArtifactSourceId, type AttachSelection } from '../../components/handoff/materials';
 import { SendTo } from '../../components/handoff/SendTo';
 import { targetPath, useOpenTarget } from '../../components/handoff/useOpenTarget';
 import { RequireAuth } from '../../components/shell/RequireAuth';
@@ -39,7 +39,7 @@ import {
   type StudyConversation, type StudyMessage, type StudyMode, type StudySource, type StudyWorkspace,
 } from '../../engine/studyWorkspace';
 import { restoreGuidedProgress, sceneQuestionContext, studyScenes, type GuidedProgress } from '../../engine/guidedStudy';
-import { courseSources, notebookScopeKey, selectNotebookSources, sourceEvidence, sourceScopedTopic, type NotebookSource } from '../../engine/notebookSources';
+import { notebookScopeKey, sourceEvidence, sourceScopedTopic, type NotebookSource } from '../../engine/notebookSources';
 import { artifactMarkdown, createStudyArtifact, enrichStudyArtifact, type StudioKind, type StudyArtifact } from '../../engine/studyStudio';
 import { recordTutorTurn, tutorMemoryHints } from '../../engine/tutorMemory';
 import { startAgentScheduler } from '../../engine/agent/scheduler';
@@ -253,16 +253,10 @@ function TopicWorkspace({ topicId, owner, identity, onIdentity }: {
   const conversation = workspace.conversations.find((chat) => chat.id === workspace.activeId) ?? workspace.conversations[0];
   const attachmentKey = (conversation.libraryFileIds ?? []).join(',');
   const studyTopic: Topic = topic ?? NO_COURSE_TOPIC;
-  const sources = useMemo(() => [
-    ...(topic ? courseSources(topic) : []),
-    ...remoteSources,
-    ...(workspace.textSources ?? []).filter((source) => !isArtifactSourceId(source.id) || (conversation.selectedSourceIds ?? []).includes(source.id)),
-    ...librarySources.filter((source) => (conversation.libraryFileIds ?? []).includes(source.libraryFileId ?? '')),
-  ], [topic, remoteSources, workspace.textSources, librarySources, conversation.libraryFileIds]);
-  const selectedSources = useMemo(
-    () => selectNotebookSources(sources, conversation.selectedSourceIds ?? workspace.selectedSourceIds),
-    [sources, conversation.selectedSourceIds, workspace.selectedSourceIds],
-  );
+  const { sources, selectedSources } = conversationSourceSelection({
+    topic, remoteSources, textSources: workspace.textSources, librarySources, conversation,
+    workspaceSelectedSourceIds: workspace.selectedSourceIds,
+  });
   const scopeKey = notebookScopeKey(selectedSources);
   /** 从「我的内容」带进这段对话的成果（以文本来源的形式存在工作区里） */
   const attachedArtifactSources = useMemo(() => sources.filter((source) => isArtifactSourceId(source.id)), [sources]);

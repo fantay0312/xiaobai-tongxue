@@ -3,6 +3,9 @@
  * 资料库文件走解析后的正文，生成的成果走登记处的可携带内容。
  */
 import type { NotebookSource } from '../../engine/notebookSources';
+import { courseSources, selectNotebookSources } from '../../engine/notebookSources';
+import type { StudyConversation } from '../../engine/studyWorkspace';
+import type { Topic } from '../../types';
 import { artifactContent, findArtifact } from '../../lib/artifacts';
 import { prepareLibrarySources } from '../../lib/fileLibrary';
 import { readHandoff } from './stash';
@@ -31,6 +34,24 @@ export function artifactSourceId(key: string): string {
 }
 
 export const isArtifactSourceId = (id: string) => id.startsWith(PREFIX);
+
+/** Resolve the current conversation on every render; selections can change without files changing. */
+export function conversationSourceSelection({ topic, remoteSources, textSources = [], librarySources, conversation, workspaceSelectedSourceIds }: {
+  topic?: Topic;
+  remoteSources: NotebookSource[];
+  textSources?: NotebookSource[];
+  librarySources: NotebookSource[];
+  conversation: Pick<StudyConversation, 'libraryFileIds' | 'selectedSourceIds'>;
+  workspaceSelectedSourceIds?: string[];
+}): { sources: NotebookSource[]; selectedSources: NotebookSource[] } {
+  const sources = [
+    ...(topic ? courseSources(topic) : []),
+    ...remoteSources,
+    ...textSources.filter((source) => !isArtifactSourceId(source.id) || (conversation.selectedSourceIds ?? []).includes(source.id)),
+    ...librarySources.filter((source) => (conversation.libraryFileIds ?? []).includes(source.libraryFileId ?? '')),
+  ];
+  return { sources, selectedSources: selectNotebookSources(sources, conversation.selectedSourceIds ?? workspaceSelectedSourceIds) };
+}
 
 /** 取若干成果的正文，转成文本资料；取不到的跳过并计数 */
 export async function artifactSources(owner: string | null, keys: string[], cap = SOURCE_CAP): Promise<{ sources: NotebookSource[]; missing: number }> {

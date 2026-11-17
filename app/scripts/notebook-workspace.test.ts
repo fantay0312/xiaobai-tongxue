@@ -3,6 +3,7 @@ import { TOPICS } from '../src/data';
 import { courseSources, selectNotebookSources, sourceEvidence, sourceScopedTopic, type NotebookSource } from '../src/engine/notebookSources';
 import { artifactSlidesHtml, artifactSvg, createStudyArtifact, enrichStudyArtifact, restoreArtifacts, studyArtifactEvidence, type StudioKind } from '../src/engine/studyStudio';
 import { buildStudyPrompt, emptyWorkspace, loadWorkspace, saveWorkspace } from '../src/engine/studyWorkspace';
+import { artifactSourceId, conversationSourceSelection } from '../src/components/handoff/materials';
 
 const topic = structuredClone(TOPICS[0]); topic.prep.microLecture.body = 'UNSELECTED_LECTURE';
 const sources: NotebookSource[] = [{ id: 'text:one', title: '<script>alert(1)</script>', kind: 'text', content: 'SELECTED_MATERIAL 这是第一份学习材料的具体内容。' }, { id: 'text:two', title: 'Other', kind: 'text', content: 'UNSELECTED_SOURCE' }];
@@ -18,6 +19,36 @@ const scoped = sourceScopedTopic(topic, selected);
 assert.equal(scoped.misconceptions.length, 0);
 assert.equal(scoped.checklist.length, 0);
 assert.doesNotMatch(scoped.prep.microLecture.body, /UNSELECTED/);
+
+// Shared workspace data and the same file-array reference must not freeze a conversation's artifacts.
+const artifactA: NotebookSource = { id: artifactSourceId('note:a'), title: '成果 A', kind: 'text', content: 'ONLY_ARTIFACT_A' };
+const artifactB: NotebookSource = { id: artifactSourceId('note:b'), title: '成果 B', kind: 'text', content: 'ONLY_ARTIFACT_B' };
+const libraryA: NotebookSource = { id: 'library:a', libraryFileId: 'file-a', title: '文件 A', kind: 'library', content: 'ONLY_FILE_A' };
+const libraryB: NotebookSource = { id: 'library:b', libraryFileId: 'file-b', title: '文件 B', kind: 'library', content: 'ONLY_FILE_B' };
+const shared = { topic, remoteSources: [] as NotebookSource[], textSources: [...sources, artifactA, artifactB], librarySources: [libraryA, libraryB] };
+const sameFiles = ['file-a'];
+const resolve = (selectedSourceIds: string[] | undefined, libraryFileIds = sameFiles, workspaceSelectedSourceIds?: string[]) => conversationSourceSelection({
+  ...shared, conversation: { libraryFileIds, selectedSourceIds }, workspaceSelectedSourceIds,
+});
+const beforeSwitch = resolve([artifactA.id]);
+const afterSwitch = resolve([artifactB.id]);
+assert.deepEqual(beforeSwitch.selectedSources, [artifactA]);
+assert.deepEqual(afterSwitch.selectedSources, [artifactB], 'switching conversations with identical file references selects the new artifact');
+assert.ok(!afterSwitch.sources.some((source) => source.id === artifactA.id), 'previous conversation artifact is absent from the picker');
+const switchedPrompt = buildStudyPrompt(topic, 'ask', '', sourceEvidence(afterSwitch.selectedSources), '', true);
+assert.match(switchedPrompt, /ONLY_ARTIFACT_B/);
+assert.doesNotMatch(switchedPrompt, /ONLY_ARTIFACT_A|ONLY_FILE_A|ONLY_FILE_B|UNSELECTED_LECTURE/);
+assert.deepEqual(resolve([artifactA.id]).selectedSources, [artifactA], 'switching back restores that conversation selection');
+assert.deepEqual(resolve([]).selectedSources, [], 'explicitly clearing selection must not fall back to workspace defaults');
+assert.deepEqual(resolve([], sameFiles, [artifactA.id]).selectedSources, []);
+assert.ok(!resolve([]).sources.some((source) => source.id === artifactA.id || source.id === artifactB.id), 'detaching artifacts removes them immediately');
+assert.deepEqual(resolve([libraryB.id], ['file-b']).selectedSources, [libraryB]);
+assert.deepEqual(resolve([libraryB.id], sameFiles).selectedSources, [], 'unattached files cannot become evidence through a stale selection');
+assert.deepEqual(resolve(undefined, sameFiles, ['text:one']).selectedSources, [sources[0]], 'legacy workspace selections still work');
+assert.ok(resolve(undefined).selectedSources.some((source) => source.kind === 'lecture'));
+assert.ok(!resolve(undefined).selectedSources.some((source) => source.id === artifactA.id), 'legacy defaults never inherit other conversations artifacts');
+assert.deepEqual(shared.textSources, [...sources, artifactA, artifactB], 'resolving a conversation does not mutate shared materials');
+assert.deepEqual(sameFiles, ['file-a']);
 for (const kind of ['report', 'mindmap', 'slides', 'audio', 'video', 'infographic', 'table'] as StudioKind[]) {
   const artifact = createStudyArtifact(kind, 'Course', selected);
   assert.equal(artifact.method, 'extractive');
